@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(printf:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(tree:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx msw:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 15 npm run dev)",
+      "Bash(ls:*)",
+      "Bash(grep:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,30 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { MSWProvider } from "@/components/providers/MSWProvider";
+import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
+import { Toaster } from "@/components/ui/sonner";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "ERP System - Sales & Inventory Management",
+  description: "Enterprise Resource Planning System for Sales and Inventory Management",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ReactQueryProvider>
+          <MSWProvider>{children}</MSWProvider>
+          <Toaster richColors position="top-right" />
+        </ReactQueryProvider>
+      </body>
+    </html>
+  );
+}

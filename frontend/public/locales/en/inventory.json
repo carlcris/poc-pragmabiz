@@ -1,0 +1,38 @@
+{
+  "items": {
+    "title": "Item Master",
+    "createNew": "Create New Item",
+    "itemCode": "Item Code",
+    "itemName": "Item Name",
+    "description": "Description",
+    "itemType": "Item Type",
+    "uom": "Unit of Measure",
+    "category": "Category",
+    "standardCost": "Standard Cost",
+    "listPrice": "List Price",
+    "reorderLevel": "Reorder Level",
+    "reorderQty": "Reorder Quantity",
+    "isActive": "Active",
+    "types": {
+      "goods": "Goods",
+      "service": "Service",
+      "rawMaterial": "Raw Material",
+      "finishedGoods": "Finished Goods"
+    }
+  },
+  "warehouses": {
+    "title": "Warehouses",
+    "createNew": "Create New Warehouse",
+    "warehouseCode": "Warehouse Code",
+    "warehouseName": "Warehouse Name",
+    "location": "Location",
+    "isActive": "Active"
+  },
+  "stock": {
+    "title": "Stock Transactions",
+    "transactionType": "Transaction Type",
+    "quantity": "Quantity",
+    "reference": "Reference",
+    "notes": "Notes"
+  }
+}

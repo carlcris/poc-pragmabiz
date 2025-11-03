@@ -1,0 +1,32 @@
+{
+  "app": {
+    "name": "Sistema ERP",
+    "description": "Gestión de Ventas e Inventario"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "inventory": "Inventario",
+    "sales": "Ventas",
+    "reports": "Informes",
+    "settings": "Configuración"
+  },
+  "actions": {
+    "create": "Crear",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "export": "Exportar",
+    "import": "Importar"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Ocurrió un error",
+    "success": "Éxito",
+    "confirm": "Confirmar",
+    "yes": "Sí",
+    "no": "No"
+  }
+}

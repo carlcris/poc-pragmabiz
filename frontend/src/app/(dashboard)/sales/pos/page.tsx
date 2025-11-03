@@ -1,0 +1,467 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { Search, Trash2, CreditCard, Banknote, Smartphone, X, Plus } from "lucide-react";
+import { useItems } from "@/hooks/useItems";
+import { useCustomers } from "@/hooks/useCustomers";
+import { useCreatePOSTransaction } from "@/hooks/usePos";
+import { useCurrency } from "@/hooks/useCurrency";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import type { Item } from "@/types/item";
+import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
+
+export default function POSPage() {
+  const [search, setSearch] = useState("");
+  const [cart, setCart] = useState<POSCartItem[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("walk-in");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [amountReceived, setAmountReceived] = useState("");
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [itemSearchOpen, setItemSearchOpen] = useState(false);
+
+  const { formatCurrency } = useCurrency();
+  const { data: itemsData, isLoading: itemsLoading } = useItems({ search, page: 1, limit: 100 });
+  const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, limit: 1000 });
+  const createTransaction = useCreatePOSTransaction();
+
+  const items = itemsData?.data || [];
+  const customers = customersData?.data || [];
+
+  // Calculate cart totals
+  const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
+  const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
+  const taxRate = 0.12;
+  const totalTax = Math.round((subtotal - totalDiscount) * taxRate);
+  const totalAmount = subtotal - totalDiscount + totalTax;
+  const received = parseFloat(amountReceived) || 0;
+  const changeAmount = received - totalAmount;
+
+  const addToCart = (item: Item) => {
+    const existingItemIndex = cart.findIndex((c) => c.itemId === item.id);
+
+    if (existingItemIndex >= 0) {
+      const newCart = [...cart];
+      newCart[existingItemIndex] = {
+        ...newCart[existingItemIndex],
+        quantity: newCart[existingItemIndex].quantity + 1,
+        lineTotal: (newCart[existingItemIndex].quantity + 1) * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
+      };
+      setCart(newCart);
+    } else {
+      const newItem: POSCartItem = {
+        id: `cart-${Date.now()}`,
+        itemId: item.id,
+        itemCode: item.code,
+        itemName: item.name,
+        quantity: 1,
+        unitPrice: item.listPrice,
+        discount: 0,
+        lineTotal: item.listPrice,
+      };
+      setCart([...cart, newItem]);
+    }
+    setItemSearchOpen(false);
+    setSearch("");
+  };
+
+  const updateQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      removeFromCart(index);
+      return;
+    }
+    const newCart = [...cart];
+    newCart[index] = {
+      ...newCart[index],
+      quantity: newQuantity,
+      lineTotal: newQuantity * newCart[index].unitPrice - newCart[index].discount,
+    };
+    setCart(newCart);
+  };
+
+  const updateDiscount = (index: number, discount: number) => {
+    const newCart = [...cart];
+    newCart[index] = {
+      ...newCart[index],
+      discount: discount,
+      lineTotal: newCart[index].quantity * newCart[index].unitPrice - discount,
+    };
+    setCart(newCart);
+  };
+
+  const removeFromCart = (index: number) => {
+    setCart(cart.filter((_, i) => i !== index));
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+
+    const payment: POSPayment = {
+      method: paymentMethod,
+      amount: paymentMethod === "cash" ? received : totalAmount,
+    };
+
+    const transactionData = {
+      customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
+      items: cart.map(({ id, ...item }) => item),
+      payments: [payment],
+    };
+
+    await createTransaction.mutateAsync(transactionData);
+
+    // Reset cart and form
+    setCart([]);
+    setSelectedCustomerId("walk-in");
+    setAmountReceived("");
+    setShowCheckout(false);
+  };
+
+  const clearCart = () => {
+    setCart([]);
+  };
+
+  const getPaymentIcon = (method: PaymentMethod) => {
+    switch (method) {
+      case "cash":
+        return <Banknote className="h-4 w-4" />;
+      case "credit_card":
+      case "debit_card":
+        return <CreditCard className="h-4 w-4" />;
+      case "gcash":
+      case "paymaya":
+        return <Smartphone className="h-4 w-4" />;
+    }
+  };
+
+  return (
+    <div className="h-[calc(100vh-4rem)] flex gap-4">
+      {/* Left Side - Cart Items Table */}
+      <div className="flex-1 flex flex-col space-y-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Point of Sale</h1>
+          <p className="text-muted-foreground">Quick checkout for walk-in customers</p>
+        </div>
+
+        {/* Item Search */}
+        <div className="flex gap-2">
+          <Popover open={itemSearchOpen} onOpenChange={setItemSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex-1 justify-start">
+                <Search className="mr-2 h-4 w-4" />
+                Search and add items...
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[600px] p-0" align="start">
+              <Command>
+                <CommandInput
+                  placeholder="Search items..."
+                  value={search}
+                  onValueChange={setSearch}
+                />
+                <CommandList>
+                  {itemsLoading ? (
+                    <CommandGroup>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="px-2 py-3">
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex-1">
+                              <Skeleton className="h-4 w-48 mb-2" />
+                              <Skeleton className="h-3 w-32" />
+                            </div>
+                            <Skeleton className="h-4 w-20" />
+                          </div>
+                        </div>
+                      ))}
+                    </CommandGroup>
+                  ) : (
+                    <>
+                      <CommandEmpty>No items found.</CommandEmpty>
+                      <CommandGroup>
+                        {items
+                          .filter((item) => item.isActive)
+                          .slice(0, 20)
+                          .map((item) => (
+                            <CommandItem
+                              key={item.id}
+                              value={item.name}
+                              onSelect={() => addToCart(item)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex-1">
+                                  <div className="font-medium">{item.name}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.code} • {item.uom}
+                                  </div>
+                                </div>
+                                <div className="text-sm font-medium">{formatCurrency(item.listPrice)}</div>
+                              </div>
+                            </CommandItem>
+                          ))}
+                      </CommandGroup>
+                    </>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          {cart.length > 0 && (
+            <Button variant="outline" onClick={clearCart}>
+              <X className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Cart Table */}
+        <div className="flex-1 rounded-md border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">#</TableHead>
+                <TableHead>Item</TableHead>
+                <TableHead className="w-[120px]">Price</TableHead>
+                <TableHead className="w-[100px]">Qty</TableHead>
+                <TableHead className="w-[120px]">Discount</TableHead>
+                <TableHead className="w-[120px] text-right">Total</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cart.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                    No items in cart. Search and add items to begin.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                cart.map((item, index) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{item.itemName}</div>
+                      <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                    </TableCell>
+                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
+                        className="w-20"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={item.discount}
+                        onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(item.lineTotal)}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeFromCart(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Right Side - Summary & Payment */}
+      <div className="w-[400px] flex flex-col space-y-4">
+        {/* Customer Selection */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Customer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {customersLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : (
+              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Walk-in Customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="walk-in">Walk-in Customer</SelectItem>
+                  {customers.map((customer) => (
+                    <SelectItem key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Summary */}
+        <Card className="flex-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Bill Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Items:</span>
+                <span className="font-medium">{cart.length}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="font-medium">{formatCurrency(subtotal)}</span>
+              </div>
+              {totalDiscount > 0 && (
+                <div className="flex justify-between text-sm text-red-600">
+                  <span>Discount:</span>
+                  <span>-{formatCurrency(totalDiscount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax (12%):</span>
+                <span className="font-medium">{formatCurrency(totalTax)}</span>
+              </div>
+              <div className="flex justify-between text-xl font-bold pt-2 border-t">
+                <span>Total:</span>
+                <span>{formatCurrency(totalAmount)}</span>
+              </div>
+            </div>
+
+            {!showCheckout ? (
+              <Button
+                size="lg"
+                className="w-full"
+                disabled={cart.length === 0}
+                onClick={() => setShowCheckout(true)}
+              >
+                Proceed to Payment
+              </Button>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Payment Method</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={paymentMethod === "cash" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("cash")}
+                    >
+                      {getPaymentIcon("cash")}
+                      <span className="ml-2">Cash</span>
+                    </Button>
+                    <Button
+                      variant={paymentMethod === "credit_card" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("credit_card")}
+                    >
+                      {getPaymentIcon("credit_card")}
+                      <span className="ml-2">Card</span>
+                    </Button>
+                    <Button
+                      variant={paymentMethod === "gcash" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("gcash")}
+                    >
+                      {getPaymentIcon("gcash")}
+                      <span className="ml-2">GCash</span>
+                    </Button>
+                    <Button
+                      variant={paymentMethod === "paymaya" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("paymaya")}
+                    >
+                      {getPaymentIcon("paymaya")}
+                      <span className="ml-2">Maya</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {paymentMethod === "cash" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Amount Received</label>
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={amountReceived}
+                        onChange={(e) => setAmountReceived(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+
+                    {received > 0 && (
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Change:</span>
+                        <span className={changeAmount < 0 ? "text-red-600" : "text-green-600"}>
+                          {formatCurrency(Math.abs(changeAmount))}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" onClick={() => setShowCheckout(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={
+                      createTransaction.isPending ||
+                      (paymentMethod === "cash" && (received < totalAmount || received === 0))
+                    }
+                  >
+                    Complete Sale
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
