@@ -1,0 +1,606 @@
+-- Seed data for development
+-- This file will be executed after migrations when running `supabase db reset`
+
+-- ============================================================================
+-- SEED DATA: Companies
+-- ============================================================================
+
+INSERT INTO companies (id, code, name, legal_name, tax_id, email, phone, address_line1, city, state, country, postal_code, currency_code, is_active)
+VALUES
+    ('00000000-0000-0000-0000-000000000001', 'DEMO', 'Demo Company Inc.', 'Demo Company Incorporated', '123-456-789', 'contact@democompany.com', '+63-917-123-4567', '123 Business St', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'PHP', true);
+
+-- ============================================================================
+-- SEED DATA: Demo User
+-- ============================================================================
+-- NOTE: Demo user must be created via Supabase Auth API after seeding
+-- Use the following command after running db reset:
+-- curl -X POST http://127.0.0.1:54321/auth/v1/signup \
+--   -H "apikey: YOUR_ANON_KEY" \
+--   -H "Content-Type: application/json" \
+--   -d '{"email":"demo@pragmatica.com","password":"demo1234"}'
+--
+-- Then update the users table with the generated user ID
+
+-- ============================================================================
+-- SEED DATA: Units of Measure
+-- ============================================================================
+
+-- Common units for Philippines market
+INSERT INTO units_of_measure (company_id, code, name, symbol, is_base_unit, is_active)
+VALUES
+    ('00000000-0000-0000-0000-000000000001', 'PCS', 'Pieces', 'pcs', true, true),
+    ('00000000-0000-0000-0000-000000000001', 'BOX', 'Box', 'box', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'KG', 'Kilogram', 'kg', true, true),
+    ('00000000-0000-0000-0000-000000000001', 'G', 'Gram', 'g', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'L', 'Liter', 'L', true, true),
+    ('00000000-0000-0000-0000-000000000001', 'ML', 'Milliliter', 'ml', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'SACK', 'Sack', 'sack', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'CAVAN', 'Cavan', 'cavan', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'PACK', 'Pack', 'pack', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'SET', 'Set', 'set', false, true);
+
+-- ============================================================================
+-- SEED DATA: Item Categories
+-- ============================================================================
+
+INSERT INTO item_categories (company_id, code, name, description, is_active)
+VALUES
+    -- Chicken Distribution Categories
+    ('00000000-0000-0000-0000-000000000001', 'WHOLE', 'Whole Chicken', 'Whole dressed chicken products', true),
+    ('00000000-0000-0000-0000-000000000001', 'PARTS', 'Chicken Parts', 'Individual chicken parts and cuts', true),
+    ('00000000-0000-0000-0000-000000000001', 'OFFAL', 'Chicken Offal', 'Chicken internal organs and by-products', true),
+    ('00000000-0000-0000-0000-000000000001', 'PROC', 'Processed Chicken', 'Processed and value-added chicken products', true),
+    ('00000000-0000-0000-0000-000000000001', 'FROZEN', 'Frozen Products', 'Frozen chicken items', true),
+    ('00000000-0000-0000-0000-000000000001', 'FRESH', 'Fresh Products', 'Fresh chilled chicken items', true),
+    ('00000000-0000-0000-0000-000000000001', 'PACK', 'Packaging Materials', 'Packaging and supplies for distribution', true),
+    ('00000000-0000-0000-0000-000000000001', 'SUPPLY', 'Supplies', 'Ice, boxes, and other distribution supplies', true);
+
+-- ============================================================================
+-- SEED DATA: Items
+-- ============================================================================
+
+-- Get UoM IDs (we'll use the created ones)
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_uom_pcs UUID;
+    v_uom_kg UUID;
+    v_uom_l UUID;
+    v_uom_box UUID;
+    v_uom_sack UUID;
+    v_cat_whole UUID;
+    v_cat_parts UUID;
+    v_cat_offal UUID;
+    v_cat_proc UUID;
+    v_cat_pack UUID;
+    v_cat_supply UUID;
+BEGIN
+    -- Get UoM IDs
+    SELECT id INTO v_uom_pcs FROM units_of_measure WHERE code = 'PCS' AND company_id = v_company_id;
+    SELECT id INTO v_uom_kg FROM units_of_measure WHERE code = 'KG' AND company_id = v_company_id;
+    SELECT id INTO v_uom_l FROM units_of_measure WHERE code = 'L' AND company_id = v_company_id;
+    SELECT id INTO v_uom_box FROM units_of_measure WHERE code = 'BOX' AND company_id = v_company_id;
+    SELECT id INTO v_uom_sack FROM units_of_measure WHERE code = 'SACK' AND company_id = v_company_id;
+
+    -- Get Category IDs
+    SELECT id INTO v_cat_whole FROM item_categories WHERE code = 'WHOLE' AND company_id = v_company_id;
+    SELECT id INTO v_cat_parts FROM item_categories WHERE code = 'PARTS' AND company_id = v_company_id;
+    SELECT id INTO v_cat_offal FROM item_categories WHERE code = 'OFFAL' AND company_id = v_company_id;
+    SELECT id INTO v_cat_proc FROM item_categories WHERE code = 'PROC' AND company_id = v_company_id;
+    SELECT id INTO v_cat_pack FROM item_categories WHERE code = 'PACK' AND company_id = v_company_id;
+    SELECT id INTO v_cat_supply FROM item_categories WHERE code = 'SUPPLY' AND company_id = v_company_id;
+
+    -- Insert sample items
+    INSERT INTO items (company_id, item_code, item_name, description, category_id, uom_id, item_type, purchase_price, sales_price, cost_price, is_stock_item, is_active)
+    VALUES
+        -- Whole Chicken
+        (v_company_id, 'CHK-WHOLE-S', 'Whole Chicken Small', 'Whole dressed chicken 0.8-1.0kg', v_cat_whole, v_uom_kg, 'finished_good', 135.00, 165.00, 130.00, true, true),
+        (v_company_id, 'CHK-WHOLE-M', 'Whole Chicken Medium', 'Whole dressed chicken 1.0-1.2kg', v_cat_whole, v_uom_kg, 'finished_good', 130.00, 160.00, 125.00, true, true),
+        (v_company_id, 'CHK-WHOLE-L', 'Whole Chicken Large', 'Whole dressed chicken 1.2-1.5kg', v_cat_whole, v_uom_kg, 'finished_good', 125.00, 155.00, 120.00, true, true),
+        (v_company_id, 'CHK-WHOLE-XL', 'Whole Chicken Extra Large', 'Whole dressed chicken 1.5kg+', v_cat_whole, v_uom_kg, 'finished_good', 120.00, 150.00, 115.00, true, true),
+
+        -- Chicken Parts
+        (v_company_id, 'CHK-BREAST', 'Chicken Breast', 'Fresh chicken breast fillet per kg', v_cat_parts, v_uom_kg, 'finished_good', 185.00, 230.00, 180.00, true, true),
+        (v_company_id, 'CHK-THIGH', 'Chicken Thigh', 'Fresh chicken thigh per kg', v_cat_parts, v_uom_kg, 'finished_good', 145.00, 180.00, 140.00, true, true),
+        (v_company_id, 'CHK-DRUMSTICK', 'Chicken Drumstick', 'Fresh chicken drumstick per kg', v_cat_parts, v_uom_kg, 'finished_good', 140.00, 175.00, 135.00, true, true),
+        (v_company_id, 'CHK-WING', 'Chicken Wings', 'Fresh chicken wings per kg', v_cat_parts, v_uom_kg, 'finished_good', 150.00, 190.00, 145.00, true, true),
+        (v_company_id, 'CHK-LEG', 'Chicken Leg Quarters', 'Fresh chicken leg quarters per kg', v_cat_parts, v_uom_kg, 'finished_good', 125.00, 160.00, 120.00, true, true),
+        (v_company_id, 'CHK-BACK', 'Chicken Backs', 'Chicken backs for soup per kg', v_cat_parts, v_uom_kg, 'finished_good', 55.00, 75.00, 50.00, true, true),
+        (v_company_id, 'CHK-NECK', 'Chicken Necks', 'Chicken necks per kg', v_cat_parts, v_uom_kg, 'finished_good', 45.00, 65.00, 40.00, true, true),
+
+        -- Chicken Offal
+        (v_company_id, 'CHK-LIVER', 'Chicken Liver', 'Fresh chicken liver per kg', v_cat_offal, v_uom_kg, 'finished_good', 85.00, 120.00, 80.00, true, true),
+        (v_company_id, 'CHK-GIZZARD', 'Chicken Gizzard', 'Fresh chicken gizzard per kg', v_cat_offal, v_uom_kg, 'finished_good', 95.00, 130.00, 90.00, true, true),
+        (v_company_id, 'CHK-HEART', 'Chicken Hearts', 'Fresh chicken hearts per kg', v_cat_offal, v_uom_kg, 'finished_good', 75.00, 110.00, 70.00, true, true),
+        (v_company_id, 'CHK-FEET', 'Chicken Feet', 'Cleaned chicken feet per kg', v_cat_offal, v_uom_kg, 'finished_good', 65.00, 95.00, 60.00, true, true),
+        (v_company_id, 'CHK-HEAD', 'Chicken Heads', 'Chicken heads per kg', v_cat_offal, v_uom_kg, 'finished_good', 35.00, 55.00, 30.00, true, true),
+        (v_company_id, 'CHK-INTESTINE', 'Chicken Intestines', 'Cleaned chicken intestines per kg', v_cat_offal, v_uom_kg, 'finished_good', 55.00, 85.00, 50.00, true, true),
+
+        -- Processed Chicken
+        (v_company_id, 'CHK-PROC-NUGGETS', 'Chicken Nuggets', 'Breaded chicken nuggets 1kg pack', v_cat_proc, v_uom_kg, 'finished_good', 185.00, 250.00, 180.00, true, true),
+        (v_company_id, 'CHK-PROC-HOTDOG', 'Chicken Hotdog', 'Chicken hotdog per kg', v_cat_proc, v_uom_kg, 'finished_good', 145.00, 195.00, 140.00, true, true),
+        (v_company_id, 'CHK-PROC-LONGANISA', 'Chicken Longanisa', 'Chicken longanisa per kg', v_cat_proc, v_uom_kg, 'finished_good', 155.00, 210.00, 150.00, true, true),
+        (v_company_id, 'CHK-PROC-BURGER', 'Chicken Burger Patty', 'Frozen chicken burger patties per kg', v_cat_proc, v_uom_kg, 'finished_good', 165.00, 220.00, 160.00, true, true),
+
+        -- Packaging Materials
+        (v_company_id, 'PACK-STYRO-S', 'Styrofoam Box Small', 'Small styrofoam box for 2-3kg', v_cat_pack, v_uom_pcs, 'finished_good', 8.00, 15.00, 7.50, true, true),
+        (v_company_id, 'PACK-STYRO-M', 'Styrofoam Box Medium', 'Medium styrofoam box for 5-7kg', v_cat_pack, v_uom_pcs, 'finished_good', 12.00, 22.00, 11.00, true, true),
+        (v_company_id, 'PACK-STYRO-L', 'Styrofoam Box Large', 'Large styrofoam box for 10-15kg', v_cat_pack, v_uom_pcs, 'finished_good', 18.00, 32.00, 17.00, true, true),
+        (v_company_id, 'PACK-PLASTIC-S', 'Plastic Bags Small', 'Small plastic bags 1kg capacity (100pcs)', v_cat_pack, v_uom_box, 'finished_good', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'PACK-PLASTIC-M', 'Plastic Bags Medium', 'Medium plastic bags 3kg capacity (100pcs)', v_cat_pack, v_uom_box, 'finished_good', 65.00, 105.00, 62.00, true, true),
+        (v_company_id, 'PACK-PLASTIC-L', 'Plastic Bags Large', 'Large plastic bags 5kg capacity (100pcs)', v_cat_pack, v_uom_box, 'finished_good', 85.00, 135.00, 82.00, true, true),
+
+        -- Supplies
+        (v_company_id, 'SUPPLY-ICE', 'Ice Blocks', 'Ice blocks for cooling per kg', v_cat_supply, v_uom_kg, 'finished_good', 8.00, 15.00, 7.00, true, true),
+        (v_company_id, 'SUPPLY-TAPE', 'Packing Tape', 'Packing tape 2" x 100yards', v_cat_supply, v_uom_pcs, 'finished_good', 35.00, 55.00, 32.00, true, true),
+        (v_company_id, 'SUPPLY-LABEL', 'Price Labels', 'Price label stickers (1000pcs)', v_cat_supply, v_uom_box, 'finished_good', 85.00, 135.00, 80.00, true, true);
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Warehouses
+-- ============================================================================
+
+INSERT INTO warehouses (company_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active)
+VALUES
+    ('00000000-0000-0000-0000-000000000001', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true),
+    ('00000000-0000-0000-0000-000000000001', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true),
+    ('00000000-0000-0000-0000-000000000001', 'WH-GEN-01', 'General Santos Warehouse', 'main', 'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Pedro Gonzales', '+63-917-333-4444', 'gensan.wh@democompany.com', true),
+    ('00000000-0000-0000-0000-000000000001', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true),
+    ('00000000-0000-0000-0000-000000000001', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true);
+
+-- ============================================================================
+-- SEED DATA: Customers
+-- ============================================================================
+
+-- We need to use a user_id for created_by and updated_by
+-- Using NULL for created_by/updated_by since user will be created via Auth API
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_user_id UUID := NULL;
+BEGIN
+    -- Insert sample customers
+    INSERT INTO customers (
+        company_id, customer_code, customer_name, customer_type, tax_id, email, phone, website,
+        billing_address_line1, billing_address_line2, billing_city, billing_state, billing_country, billing_postal_code,
+        shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_country, shipping_postal_code,
+        payment_terms, credit_limit, credit_days,
+        contact_person, contact_phone, contact_email,
+        is_active, created_by, updated_by
+    )
+    VALUES
+        -- Company Customers
+        (
+            v_company_id, 'CUST-001', 'SM Retail Corporation', 'company', '123-456-789-000',
+            'purchasing@smretail.com.ph', '+63-82-227-1234', 'www.smretail.com.ph',
+            'SM City Davao', 'J.P. Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'SM City Davao', 'J.P. Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 500000.00, 30,
+            'Maria Santos', '+63-917-123-4567', 'maria.santos@smretail.com.ph',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-002', 'Gaisano Capital', 'company', '234-567-890-000',
+            'procurement@gaisano.com', '+63-88-856-7890', 'www.gaisano.com',
+            'Gaisano Mall of Davao', 'JP Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Gaisano Mall of Davao', 'JP Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_60', 800000.00, 60,
+            'Juan Dela Cruz', '+63-917-234-5678', 'juan.delacruz@gaisano.com',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-003', 'NCCC Mall', 'company', '345-678-901-000',
+            'buyer@nccc.com.ph', '+63-82-305-5000', 'www.nccc.com.ph',
+            'NCCC Mall Davao', 'Ma-a Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'NCCC Mall Davao', 'Ma-a Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 600000.00, 30,
+            'Ana Reyes', '+63-917-345-6789', 'ana.reyes@nccc.com.ph',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-004', 'Robinsons Supermarket', 'company', '456-789-012-000',
+            'supply@robinsons.com.ph', '+63-82-221-2000', 'www.robinsons.com.ph',
+            'Robinsons Place Davao', 'Roxas Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Robinsons Place Davao', 'Roxas Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_45', 700000.00, 45,
+            'Carlos Ramos', '+63-917-456-7890', 'carlos.ramos@robinsons.com.ph',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-005', 'Puregold Price Club', 'company', '567-890-123-000',
+            'orders@puregold.com.ph', '+63-82-234-5000', 'www.puregold.com.ph',
+            'Puregold Davao', 'McArthur Highway', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Puregold Davao', 'McArthur Highway', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 450000.00, 30,
+            'Lisa Garcia', '+63-917-567-8901', 'lisa.garcia@puregold.com.ph',
+            true, v_user_id, v_user_id
+        ),
+
+        -- Government Customers
+        (
+            v_company_id, 'CUST-GOV-001', 'Department of Education - Davao Division', 'government', 'GOV-123-456',
+            'deped.davao@deped.gov.ph', '+63-82-227-6051', 'davao.deped.gov.ph',
+            'DepEd Division Office', 'E. Quirino Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'DepEd Division Office', 'E. Quirino Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_60', 1000000.00, 60,
+            'Dr. Roberto Cruz', '+63-917-678-9012', 'roberto.cruz@deped.gov.ph',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-GOV-002', 'Davao City Government', 'government', 'GOV-234-567',
+            'procurement@davaocity.gov.ph', '+63-82-227-1000', 'www.davaocity.gov.ph',
+            'Davao City Hall', 'San Pedro Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Davao City Hall', 'San Pedro Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_90', 2000000.00, 90,
+            'Engr. Pedro Gonzales', '+63-917-789-0123', 'pedro.gonzales@davaocity.gov.ph',
+            true, v_user_id, v_user_id
+        ),
+
+        -- Individual Customers (Walk-in/Retail)
+        (
+            v_company_id, 'CUST-IND-001', 'John Paul Rivera', 'individual', NULL,
+            'jp.rivera@email.com', '+63-917-890-1234', NULL,
+            'Phase 1, Block 3, Lot 5', 'Ecoland Subdivision', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Phase 1, Block 3, Lot 5', 'Ecoland Subdivision', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'cash', 50000.00, 0,
+            NULL, NULL, NULL,
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-IND-002', 'Sarah Mae Santos', 'individual', NULL,
+            'sarah.santos@email.com', '+63-917-901-2345', NULL,
+            '123 Palma Gil Street', 'Poblacion District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            '123 Palma Gil Street', 'Poblacion District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'due_on_receipt', 30000.00, 0,
+            NULL, NULL, NULL,
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-IND-003', 'Michael Angelo Torres', 'individual', NULL,
+            'miguel.torres@email.com', '+63-917-012-3456', NULL,
+            '456 Quirino Avenue', 'Matina District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            '456 Quirino Avenue', 'Matina District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'cash', 25000.00, 0,
+            NULL, NULL, NULL,
+            true, v_user_id, v_user_id
+        ),
+
+        -- Additional Company Customers (Regional)
+        (
+            v_company_id, 'CUST-006', 'Cagayan de Oro Trading Corp', 'company', '678-901-234-000',
+            'orders@cdotrading.com', '+63-88-858-1234', 'www.cdotrading.com',
+            'Carmen Business Park', 'Corrales Avenue', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000',
+            'Carmen Business Park', 'Corrales Avenue', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000',
+            'net_30', 400000.00, 30,
+            'Dante Villaruel', '+63-918-123-4567', 'dante.v@cdotrading.com',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'CUST-007', 'General Santos Wholesale Center', 'company', '789-012-345-000',
+            'wholesale@gensan.com', '+63-83-552-3456', 'www.gensanwholesale.com',
+            'National Highway', 'Calumpang', 'General Santos', 'South Cotabato', 'Philippines', '9500',
+            'National Highway', 'Calumpang', 'General Santos', 'South Cotabato', 'Philippines', '9500',
+            'net_45', 550000.00, 45,
+            'Gloria Mercado', '+63-918-234-5678', 'gloria.m@gensan.com',
+            true, v_user_id, v_user_id
+        ),
+
+        -- Inactive Customer (for testing)
+        (
+            v_company_id, 'CUST-008', 'Inactive Trading Inc', 'company', '890-123-456-000',
+            'contact@inactive.com', '+63-82-000-0000', NULL,
+            'Old Business District', 'Building 1', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Old Business District', 'Building 1', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 100000.00, 30,
+            'Inactive Contact', '+63-917-000-0000', 'inactive@test.com',
+            false, v_user_id, v_user_id
+        );
+
+    RAISE NOTICE 'Customers seeded: % records', (SELECT COUNT(*) FROM customers WHERE company_id = v_company_id);
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Item Warehouse Stock Levels
+-- ============================================================================
+
+-- Assign random stock levels to items across warehouses
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_user_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_item RECORD;
+    v_warehouse RECORD;
+BEGIN
+    -- For each item, create stock levels in main warehouses
+    FOR v_item IN SELECT id, item_code FROM items WHERE company_id = v_company_id AND is_stock_item = true
+    LOOP
+        FOR v_warehouse IN SELECT id, warehouse_code, warehouse_type FROM warehouses WHERE company_id = v_company_id AND warehouse_type IN ('main', 'retail')
+        LOOP
+            INSERT INTO item_warehouse (
+                company_id,
+                item_id,
+                warehouse_id,
+                current_stock,
+                reorder_level,
+                reorder_quantity,
+                max_quantity,
+                reserved_stock,
+                is_active
+            )
+            VALUES (
+                v_company_id,
+                v_item.id,
+                v_warehouse.id,
+                CASE
+                    WHEN v_warehouse.warehouse_type = 'main' THEN (RANDOM() * 500 + 100)::DECIMAL(20,4)
+                    ELSE (RANDOM() * 100 + 20)::DECIMAL(20,4)
+                END,
+                CASE
+                    WHEN v_warehouse.warehouse_type = 'main' THEN 50.0000
+                    ELSE 20.0000
+                END,
+                CASE
+                    WHEN v_warehouse.warehouse_type = 'main' THEN 200.0000
+                    ELSE 50.0000
+                END,
+                CASE
+                    WHEN v_warehouse.warehouse_type = 'main' THEN 1000.0000
+                    ELSE 300.0000
+                END,
+                0.0000,
+                true
+            );
+        END LOOP;
+    END LOOP;
+END $$;
+
+-- ============================================================================
+-- COMPLETION MESSAGE
+-- ============================================================================
+
+DO $$
+BEGIN
+    RAISE NOTICE '===============================================';
+    RAISE NOTICE 'Seed data inserted successfully!';
+    RAISE NOTICE '===============================================';
+    RAISE NOTICE 'Company: Demo Company Inc. (ID: 00000000-0000-0000-0000-000000000001)';
+    RAISE NOTICE 'Units of Measure: % records', (SELECT COUNT(*) FROM units_of_measure);
+    RAISE NOTICE 'Item Categories: % records', (SELECT COUNT(*) FROM item_categories);
+    RAISE NOTICE 'Items: % records', (SELECT COUNT(*) FROM items);
+    RAISE NOTICE 'Warehouses: % records', (SELECT COUNT(*) FROM warehouses);
+    RAISE NOTICE 'Customers: % records', (SELECT COUNT(*) FROM customers);
+    RAISE NOTICE 'Suppliers: % records', (SELECT COUNT(*) FROM suppliers);
+    RAISE NOTICE 'Purchase Orders: % records', (SELECT COUNT(*) FROM purchase_orders);
+    RAISE NOTICE 'Item-Warehouse Stock: % records', (SELECT COUNT(*) FROM item_warehouse);
+    RAISE NOTICE '===============================================';
+    RAISE NOTICE 'NOTE: You need to create a user via Supabase Auth';
+    RAISE NOTICE 'and then update the users table manually.';
+    RAISE NOTICE '===============================================';
+END $$;
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','5745e13c-ab07-48b7-9db7-24372b16f5a9','authenticated','authenticated','demo@pragmatica.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5745e13c-ab07-48b7-9db7-24372b16f5a9", "email": "demo@pragmatica.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+
+INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at")
+VALUES
+('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL);
+
+-- ============================================================================
+-- SEED DATA: Suppliers
+-- ============================================================================
+
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_user_id UUID := '5745e13c-ab07-48b7-9db7-24372b16f5a9';
+BEGIN
+    INSERT INTO suppliers (
+        company_id, supplier_code, supplier_name, contact_person, email, phone, mobile, website, tax_id,
+        billing_address_line1, billing_city, billing_state, billing_country, billing_postal_code,
+        payment_terms, credit_limit, current_balance, status, notes,
+        created_by, updated_by
+    ) VALUES
+        -- Poultry Suppliers
+        (
+            v_company_id, 'SUP-001', 'Davao Poultry Farms Inc.', 'Roberto Santos', 'roberto@davaopoltryfarms.ph', '+63-82-234-5678', '+63-917-234-5678', 'www.davaopoltryfarms.ph', '123-456-789-001',
+            'Toril District, Davao City', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 2000000.00, 0, 'active', 'Main supplier for fresh dressed chicken and chicken parts',
+            v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'SUP-002', 'San Miguel Foods Mindanao', 'Maria Gonzales', 'maria@sanmiguelfoods.ph', '+63-82-345-6789', '+63-917-345-6789', 'www.sanmiguelfoods.ph', '234-567-890-002',
+            'Km 10, Sasa Wharf', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_45', 3000000.00, 0, 'active', 'Major poultry supplier - whole chicken and processed products',
+            v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'SUP-003', 'Bounty Fresh Chicken Mindanao', 'Juan Dela Cruz', 'juan@bountyfresh.ph', '+63-82-456-7890', '+63-917-456-7890', 'www.bountyfresh.ph', '345-678-901-003',
+            'MacArthur Highway, Matina', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 2500000.00, 0, 'active', 'Premium chicken products and offal',
+            v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'SUP-004', 'Gensan Poultry Cooperative', 'Pedro Mercado', 'pedro@gensanpoultry.ph', '+63-83-552-3456', '+63-918-567-8901', 'www.gensanpoultry.coop', '456-789-012-004',
+            'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500',
+            'net_60', 1500000.00, 0, 'active', 'Chicken supplier from General Santos area',
+            v_user_id, v_user_id
+        ),
+        -- Packaging and Supplies
+        (
+            v_company_id, 'SUP-005', 'Packaging Solutions Davao', 'Ana Reyes', 'ana@packagingsolutions.ph', '+63-82-678-9012', '+63-917-678-9012', 'www.packagingsolutions.ph', '567-890-123-005',
+            'Panacan Industrial Area', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_15', 300000.00, 0, 'active', 'Styrofoam boxes, plastic bags, and packaging materials',
+            v_user_id, v_user_id
+        ),
+        (
+            v_company_id, 'SUP-006', 'Ice Plant Davao', 'Carlos Ramos', 'carlos@iceplantdavao.ph', '+63-82-789-0123', '+63-917-789-0123', 'www.iceplantdavao.ph', '678-901-234-006',
+            'Sasa Wharf Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'cod', 100000.00, 0, 'active', 'Ice blocks and cooling supplies',
+            v_user_id, v_user_id
+        ),
+        -- Inactive Supplier
+        (
+            v_company_id, 'SUP-007', 'Old Poultry Trading Co.', 'Miguel Torres', 'miguel@oldpoultry.ph', '+63-82-000-0000', NULL, NULL, '789-012-345-007',
+            '456 Old Market Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'cod', NULL, 0, 'inactive', 'No longer active - switched to other suppliers',
+            v_user_id, v_user_id
+        );
+
+    RAISE NOTICE 'Suppliers seeded: % records', (SELECT COUNT(*) FROM suppliers);
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Purchase Orders
+-- ============================================================================
+
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_user_id UUID := '5745e13c-ab07-48b7-9db7-24372b16f5a9';
+    v_supplier_davao UUID;
+    v_supplier_sanmiguel UUID;
+    v_supplier_bounty UUID;
+    v_supplier_packaging UUID;
+    v_item_whole_m UUID;
+    v_item_breast UUID;
+    v_item_thigh UUID;
+    v_item_liver UUID;
+    v_item_gizzard UUID;
+    v_item_feet UUID;
+    v_item_styro_m UUID;
+    v_item_plastic_m UUID;
+    v_uom_kg UUID;
+    v_uom_pcs UUID;
+    v_uom_box UUID;
+    v_warehouse_main UUID;
+    v_po_1 UUID;
+    v_po_2 UUID;
+    v_po_3 UUID;
+BEGIN
+    -- Get supplier IDs
+    SELECT id INTO v_supplier_davao FROM suppliers WHERE supplier_code = 'SUP-001' AND company_id = v_company_id;
+    SELECT id INTO v_supplier_sanmiguel FROM suppliers WHERE supplier_code = 'SUP-002' AND company_id = v_company_id;
+    SELECT id INTO v_supplier_bounty FROM suppliers WHERE supplier_code = 'SUP-003' AND company_id = v_company_id;
+    SELECT id INTO v_supplier_packaging FROM suppliers WHERE supplier_code = 'SUP-005' AND company_id = v_company_id;
+
+    -- Get item IDs
+    SELECT id INTO v_item_whole_m FROM items WHERE item_code = 'CHK-WHOLE-M' AND company_id = v_company_id;
+    SELECT id INTO v_item_breast FROM items WHERE item_code = 'CHK-BREAST' AND company_id = v_company_id;
+    SELECT id INTO v_item_thigh FROM items WHERE item_code = 'CHK-THIGH' AND company_id = v_company_id;
+    SELECT id INTO v_item_liver FROM items WHERE item_code = 'CHK-LIVER' AND company_id = v_company_id;
+    SELECT id INTO v_item_gizzard FROM items WHERE item_code = 'CHK-GIZZARD' AND company_id = v_company_id;
+    SELECT id INTO v_item_feet FROM items WHERE item_code = 'CHK-FEET' AND company_id = v_company_id;
+    SELECT id INTO v_item_styro_m FROM items WHERE item_code = 'PACK-STYRO-M' AND company_id = v_company_id;
+    SELECT id INTO v_item_plastic_m FROM items WHERE item_code = 'PACK-PLASTIC-M' AND company_id = v_company_id;
+
+    -- Get UoM IDs
+    SELECT id INTO v_uom_kg FROM units_of_measure WHERE code = 'KG' AND company_id = v_company_id;
+    SELECT id INTO v_uom_pcs FROM units_of_measure WHERE code = 'PCS' AND company_id = v_company_id;
+    SELECT id INTO v_uom_box FROM units_of_measure WHERE code = 'BOX' AND company_id = v_company_id;
+
+    -- Get warehouse ID
+    SELECT id INTO v_warehouse_main FROM warehouses WHERE warehouse_code = 'WH-DAVAO-01' AND company_id = v_company_id;
+
+    -- PO 1: Draft - Fresh chicken order
+    INSERT INTO purchase_orders (
+        company_id, order_code, supplier_id, order_date, expected_delivery_date,
+        subtotal, discount_amount, tax_amount, total_amount, status,
+        delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
+        payment_terms, notes, created_by, updated_by
+    ) VALUES (
+        v_company_id, 'PO-2025-0001', v_supplier_davao, '2025-11-01', '2025-11-05',
+        0, 0, 0, 0, 'draft',
+        'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+        'Net 30 days', 'Fresh chicken order for November', v_user_id, v_user_id
+    ) RETURNING id INTO v_po_1;
+
+    -- PO 1 Items
+    INSERT INTO purchase_order_items (
+        company_id, purchase_order_id, item_id, item_description, quantity, uom_id,
+        rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
+        sort_order, created_by, updated_by
+    ) VALUES
+        (v_company_id, v_po_1, v_item_whole_m, 'Whole Chicken Medium 1.0-1.2kg', 500.0000, v_uom_kg,
+         130.00, 2.00, 1300.00, 0.00, 0.00, 63700.00, 0, v_user_id, v_user_id),
+        (v_company_id, v_po_1, v_item_breast, 'Chicken Breast fillet', 200.0000, v_uom_kg,
+         185.00, 0.00, 0.00, 0.00, 0.00, 37000.00, 1, v_user_id, v_user_id),
+        (v_company_id, v_po_1, v_item_thigh, 'Chicken Thigh', 150.0000, v_uom_kg,
+         145.00, 0.00, 0.00, 0.00, 0.00, 21750.00, 2, v_user_id, v_user_id);
+
+    -- Update PO 1 totals
+    UPDATE purchase_orders SET
+        subtotal = 123750.00,
+        discount_amount = 1300.00,
+        tax_amount = 0.00,
+        total_amount = 122450.00
+    WHERE id = v_po_1;
+
+    -- PO 2: Approved - Offal order (ready to receive)
+    INSERT INTO purchase_orders (
+        company_id, order_code, supplier_id, order_date, expected_delivery_date,
+        subtotal, discount_amount, tax_amount, total_amount, status,
+        delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
+        payment_terms, notes, approved_by, approved_at, created_by, updated_by
+    ) VALUES (
+        v_company_id, 'PO-2025-0002', v_supplier_bounty, '2025-10-25', '2025-11-02',
+        0, 0, 0, 0, 'approved',
+        'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+        'Net 30 days', 'Chicken offal order', v_user_id, '2025-10-26 10:00:00', v_user_id, v_user_id
+    ) RETURNING id INTO v_po_2;
+
+    -- PO 2 Items
+    INSERT INTO purchase_order_items (
+        company_id, purchase_order_id, item_id, item_description, quantity, uom_id,
+        rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
+        sort_order, created_by, updated_by
+    ) VALUES
+        (v_company_id, v_po_2, v_item_liver, 'Chicken Liver', 80.0000, v_uom_kg,
+         85.00, 0.00, 0.00, 0.00, 0.00, 6800.00, 0, v_user_id, v_user_id),
+        (v_company_id, v_po_2, v_item_gizzard, 'Chicken Gizzard', 100.0000, v_uom_kg,
+         95.00, 0.00, 0.00, 0.00, 0.00, 9500.00, 1, v_user_id, v_user_id),
+        (v_company_id, v_po_2, v_item_feet, 'Chicken Feet', 120.0000, v_uom_kg,
+         65.00, 0.00, 0.00, 0.00, 0.00, 7800.00, 2, v_user_id, v_user_id);
+
+    -- Update PO 2 totals
+    UPDATE purchase_orders SET
+        subtotal = 24100.00,
+        discount_amount = 0.00,
+        tax_amount = 0.00,
+        total_amount = 24100.00
+    WHERE id = v_po_2;
+
+    -- PO 3: Partially Received - Packaging supplies
+    INSERT INTO purchase_orders (
+        company_id, order_code, supplier_id, order_date, expected_delivery_date,
+        subtotal, discount_amount, tax_amount, total_amount, status,
+        delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
+        payment_terms, notes, approved_by, approved_at, created_by, updated_by
+    ) VALUES (
+        v_company_id, 'PO-2025-0003', v_supplier_packaging, '2025-10-20', '2025-11-05',
+        0, 0, 0, 0, 'partially_received',
+        'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+        'Net 15 days', 'Monthly packaging supplies', v_user_id, '2025-10-21 09:00:00', v_user_id, v_user_id
+    ) RETURNING id INTO v_po_3;
+
+    -- PO 3 Items
+    INSERT INTO purchase_order_items (
+        company_id, purchase_order_id, item_id, item_description, quantity, uom_id,
+        rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
+        quantity_received, sort_order, created_by, updated_by
+    ) VALUES
+        (v_company_id, v_po_3, v_item_styro_m, 'Styrofoam Box Medium', 200.0000, v_uom_pcs,
+         12.00, 5.00, 120.00, 12.00, 265.20, 2777.20, 100.0000, 0, v_user_id, v_user_id),
+        (v_company_id, v_po_3, v_item_plastic_m, 'Plastic Bags Medium (100pcs)', 50.0000, v_uom_box,
+         65.00, 0.00, 0.00, 12.00, 390.00, 3640.00, 0.0000, 1, v_user_id, v_user_id);
+
+    -- Update PO 3 totals
+    UPDATE purchase_orders SET
+        subtotal = 5650.00,
+        discount_amount = 120.00,
+        tax_amount = 655.20,
+        total_amount = 6185.20
+    WHERE id = v_po_3;
+
+    RAISE NOTICE 'Purchase Orders seeded: % records', (SELECT COUNT(*) FROM purchase_orders);
+    RAISE NOTICE 'Purchase Order Items seeded: % records', (SELECT COUNT(*) FROM purchase_order_items);
+END $$;

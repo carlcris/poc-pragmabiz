@@ -1,0 +1,261 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+// POST /api/invoices/[id]/send
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const supabase = await createClient()
+
+    // Check authentication
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user's company
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData?.company_id) {
+      return NextResponse.json({ error: 'User company not found' }, { status: 400 })
+    }
+
+    // Fetch invoice with items
+    const { data: invoice, error: fetchError } = await supabase
+      .from('sales_invoices')
+      .select(
+        `
+        *,
+        items:sales_invoice_items(
+          id,
+          item_id,
+          quantity,
+          uom_id,
+          rate
+        )
+      `
+      )
+      .eq('id', id)
+      .eq('company_id', userData.company_id)
+      .is('deleted_at', null)
+      .single()
+
+    if (fetchError || !invoice) {
+      return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
+    }
+
+    // Only draft invoices can be sent
+    if (invoice.status !== 'draft') {
+      return NextResponse.json(
+        { error: 'Only draft invoices can be sent' },
+        { status: 400 }
+      )
+    }
+
+    // Stock validation and deduction (only if warehouse is assigned)
+    let stockTransactionCode: string | null = null
+
+    if (invoice.warehouse_id) {
+      console.log(`Invoice has warehouse assigned: ${invoice.warehouse_id}. Performing stock validation...`)
+
+      // Check stock availability before sending
+      for (const item of invoice.items || []) {
+        const { data: lastLedgerEntry } = await supabase
+        .from('stock_ledger')
+        .select('qty_after_trans')
+        .eq('company_id', userData.company_id)
+        .eq('item_id', item.item_id)
+        .eq('warehouse_id', invoice.warehouse_id)
+        .order('posting_date', { ascending: false })
+        .order('posting_time', { ascending: false })
+        .limit(1)
+
+        const currentStock = lastLedgerEntry && lastLedgerEntry.length > 0
+          ? parseFloat(lastLedgerEntry[0].qty_after_trans)
+          : 0
+
+        console.log(`Stock check for item ${item.item_id}: Available=${currentStock}, Required=${item.quantity}`)
+
+        if (currentStock < parseFloat(item.quantity)) {
+          console.error(`Insufficient stock for item ${item.item_id}`)
+          return NextResponse.json(
+            {
+              error: `Insufficient stock for item. Available: ${currentStock}, Required: ${item.quantity}`
+            },
+            { status: 400 }
+          )
+        }
+      }
+
+      // Generate stock transaction code (ST-YYYY-NNNN)
+      const currentYear = new Date().getFullYear()
+      const { data: lastStockTx } = await supabase
+      .from('stock_transactions')
+      .select('transaction_code')
+      .eq('company_id', userData.company_id)
+      .like('transaction_code', `ST-${currentYear}-%`)
+      .order('transaction_code', { ascending: false })
+      .limit(1)
+
+      let nextStockTxNum = 1
+      if (lastStockTx && lastStockTx.length > 0) {
+        const match = lastStockTx[0].transaction_code.match(/ST-\d+-(\d+)/)
+        if (match) {
+          nextStockTxNum = parseInt(match[1]) + 1
+        }
+      }
+      const stockTxCode = `ST-${currentYear}-${String(nextStockTxNum).padStart(4, '0')}`
+
+      // Create stock OUT transaction
+      const { data: stockTransaction, error: stockTxError } = await supabase
+      .from('stock_transactions')
+      .insert({
+        company_id: userData.company_id,
+        transaction_code: stockTxCode,
+        transaction_type: 'out',
+        transaction_date: invoice.invoice_date,
+        warehouse_id: invoice.warehouse_id,
+        reference_type: 'sales_invoice',
+        reference_id: invoice.id,
+        status: 'posted',
+        notes: `Stock OUT for invoice ${invoice.invoice_number}`,
+        created_by: user.id,
+        updated_by: user.id,
+      })
+      .select()
+      .single()
+
+      if (stockTxError) {
+        console.error('Error creating stock transaction:', stockTxError)
+        return NextResponse.json(
+          { error: stockTxError.message || 'Failed to create stock transaction' },
+          { status: 500 }
+        )
+      }
+
+      stockTransactionCode = stockTxCode
+
+      // Create stock transaction items and update stock ledger
+      for (const item of invoice.items || []) {
+        // Create stock transaction item
+        const { data: stockTxItem, error: stockTxItemError } = await supabase
+        .from('stock_transaction_items')
+        .insert({
+          company_id: userData.company_id,
+          transaction_id: stockTransaction.id,
+          item_id: item.item_id,
+          quantity: parseFloat(item.quantity),
+          uom_id: item.uom_id,
+          unit_cost: parseFloat(item.rate),
+          total_cost: parseFloat(item.quantity) * parseFloat(item.rate),
+          notes: `From invoice ${invoice.invoice_number}`,
+          created_by: user.id,
+          updated_by: user.id,
+        })
+        .select()
+        .single()
+
+        if (stockTxItemError) {
+          console.error('Error creating stock transaction item:', stockTxItemError)
+          // Rollback stock transaction
+          await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
+          return NextResponse.json(
+            { error: 'Failed to create stock transaction items' },
+            { status: 500 }
+          )
+        }
+
+        // Get current stock balance
+        const { data: lastLedgerEntry } = await supabase
+        .from('stock_ledger')
+        .select('qty_after_trans')
+        .eq('company_id', userData.company_id)
+        .eq('item_id', item.item_id)
+        .eq('warehouse_id', invoice.warehouse_id)
+        .order('posting_date', { ascending: false })
+        .order('posting_time', { ascending: false })
+        .limit(1)
+
+        const currentBalance = lastLedgerEntry && lastLedgerEntry.length > 0
+          ? parseFloat(lastLedgerEntry[0].qty_after_trans)
+          : 0
+
+        const newBalance = currentBalance - parseFloat(item.quantity)
+
+        // Create stock ledger entry (negative quantity for OUT)
+        await supabase.from('stock_ledger').insert({
+        company_id: userData.company_id,
+        transaction_id: stockTransaction.id,
+        transaction_item_id: stockTxItem.id,
+        item_id: item.item_id,
+        warehouse_id: invoice.warehouse_id,
+        posting_date: invoice.invoice_date,
+        posting_time: new Date().toTimeString().split(' ')[0],
+        voucher_type: 'Sales Invoice',
+        voucher_no: invoice.invoice_number,
+        actual_qty: -parseFloat(item.quantity), // Negative for OUT
+        qty_after_trans: newBalance,
+        incoming_rate: 0,
+        valuation_rate: parseFloat(item.rate),
+        stock_value: newBalance * parseFloat(item.rate),
+        stock_value_diff: -parseFloat(item.quantity) * parseFloat(item.rate),
+        })
+      }
+    } else {
+      console.log('Invoice has no warehouse assigned. Skipping stock validation and deduction.')
+    }
+
+    // Update invoice status to sent
+    const { error: updateError } = await supabase
+      .from('sales_invoices')
+      .update({
+        status: 'sent',
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+
+    if (updateError) {
+      console.error('Error sending invoice:', updateError)
+      // Rollback stock transactions if they were created
+      if (invoice.warehouse_id && stockTransactionCode) {
+        const { data: stockTx } = await supabase
+          .from('stock_transactions')
+          .select('id')
+          .eq('transaction_code', stockTransactionCode)
+          .single()
+
+        if (stockTx) {
+          await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTx.id)
+          await supabase.from('stock_ledger').delete().eq('transaction_id', stockTx.id)
+          await supabase.from('stock_transactions').delete().eq('id', stockTx.id)
+        }
+      }
+      return NextResponse.json({ error: 'Failed to send invoice' }, { status: 500 })
+    }
+
+    const responseMessage = invoice.warehouse_id
+      ? 'Invoice sent successfully. Stock levels updated.'
+      : 'Invoice sent successfully. No stock deduction (no warehouse assigned).'
+
+    return NextResponse.json({
+      success: true,
+      message: responseMessage,
+      stockTransactionCode: stockTransactionCode
+    })
+  } catch (error) {
+    console.error('Unexpected error in POST /api/invoices/[id]/send:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}

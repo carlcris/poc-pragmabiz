@@ -1,0 +1,253 @@
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+// GET /api/reports/stock-movement
+// Returns aggregated stock movement report
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { searchParams } = new URL(request.url)
+
+    // Check authentication
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user's company
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData?.company_id) {
+      return NextResponse.json({ error: 'User company not found' }, { status: 400 })
+    }
+
+    // Extract query parameters
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
+    const warehouseId = searchParams.get('warehouseId')
+    const itemId = searchParams.get('itemId')
+    const groupBy = searchParams.get('groupBy') || 'item' // item, warehouse, item-warehouse
+
+    // Build query for stock ledger
+    let query = supabase
+      .from('stock_ledger')
+      .select(
+        `
+        id,
+        posting_date,
+        actual_qty,
+        item_id,
+        warehouse_id,
+        valuation_rate,
+        stock_value_diff,
+        item:items!inner(
+          id,
+          item_code,
+          item_name,
+          uom:units_of_measure(id, code, name)
+        ),
+        warehouse:warehouses!inner(
+          id,
+          warehouse_code,
+          warehouse_name
+        )
+      `
+      )
+      .eq('company_id', userData.company_id)
+
+    // Apply filters
+    if (startDate) {
+      query = query.gte('posting_date', startDate)
+    }
+
+    if (endDate) {
+      query = query.lte('posting_date', endDate)
+    }
+
+    if (warehouseId) {
+      query = query.eq('warehouse_id', warehouseId)
+    }
+
+    if (itemId) {
+      query = query.eq('item_id', itemId)
+    }
+
+    const { data: ledgerEntries, error } = await query
+
+    if (error) {
+      console.error('Error fetching stock movement data:', error)
+      return NextResponse.json({ error: 'Failed to fetch stock movement data' }, { status: 500 })
+    }
+
+    // Aggregate data based on groupBy parameter
+    const movementMap = new Map<string, any>()
+
+    for (const entry of ledgerEntries || []) {
+      let key: string
+
+      if (groupBy === 'item') {
+        key = entry.item_id
+      } else if (groupBy === 'warehouse') {
+        key = entry.warehouse_id
+      } else {
+        // item-warehouse
+        key = `${entry.item_id}_${entry.warehouse_id}`
+      }
+
+      if (!movementMap.has(key)) {
+        movementMap.set(key, {
+          itemId: entry.item_id,
+          itemCode: entry.item?.item_code,
+          itemName: entry.item?.item_name,
+          warehouseId: entry.warehouse_id,
+          warehouseCode: entry.warehouse?.warehouse_code,
+          warehouseName: entry.warehouse?.warehouse_name,
+          uom: entry.item?.uom?.code || '',
+          totalIn: 0,
+          totalOut: 0,
+          netMovement: 0,
+          totalInValue: 0,
+          totalOutValue: 0,
+          netValue: 0,
+          transactionCount: 0,
+        })
+      }
+
+      const movement = movementMap.get(key)!
+      const qty = parseFloat(entry.actual_qty)
+      const value = parseFloat(entry.stock_value_diff || 0)
+
+      if (qty > 0) {
+        movement.totalIn += qty
+        movement.totalInValue += value
+      } else {
+        movement.totalOut += Math.abs(qty)
+        movement.totalOutValue += Math.abs(value)
+      }
+
+      movement.netMovement = movement.totalIn - movement.totalOut
+      movement.netValue = movement.totalInValue - movement.totalOutValue
+      movement.transactionCount++
+    }
+
+    // Convert map to array and sort by net movement (descending)
+    const movements = Array.from(movementMap.values()).sort(
+      (a, b) => Math.abs(b.netMovement) - Math.abs(a.netMovement)
+    )
+
+    // Calculate overall summary
+    const summary = {
+      totalIn: movements.reduce((sum, m) => sum + m.totalIn, 0),
+      totalOut: movements.reduce((sum, m) => sum + m.totalOut, 0),
+      netMovement: movements.reduce((sum, m) => sum + m.netMovement, 0),
+      totalInValue: movements.reduce((sum, m) => sum + m.totalInValue, 0),
+      totalOutValue: movements.reduce((sum, m) => sum + m.totalOutValue, 0),
+      netValue: movements.reduce((sum, m) => sum + m.netValue, 0),
+      totalTransactions: movements.reduce((sum, m) => sum + m.transactionCount, 0),
+      itemCount: new Set(movements.map((m) => m.itemId)).size,
+      warehouseCount: new Set(movements.map((m) => m.warehouseId)).size,
+    }
+
+    // Get period comparison if dates are provided
+    let periodComparison = null
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+
+      const prevStartDate = new Date(start)
+      prevStartDate.setDate(prevStartDate.getDate() - daysDiff)
+      const prevEndDate = new Date(start)
+      prevEndDate.setDate(prevEndDate.getDate() - 1)
+
+      // Query previous period
+      let prevQuery = supabase
+        .from('stock_ledger')
+        .select('actual_qty, stock_value_diff')
+        .eq('company_id', userData.company_id)
+        .gte('posting_date', prevStartDate.toISOString().split('T')[0])
+        .lte('posting_date', prevEndDate.toISOString().split('T')[0])
+
+      if (warehouseId) {
+        prevQuery = prevQuery.eq('warehouse_id', warehouseId)
+      }
+
+      if (itemId) {
+        prevQuery = prevQuery.eq('item_id', itemId)
+      }
+
+      const { data: prevLedgerEntries } = await prevQuery
+
+      if (prevLedgerEntries) {
+        const prevTotalIn = prevLedgerEntries
+          .filter((e: any) => parseFloat(e.actual_qty) > 0)
+          .reduce((sum: number, e: any) => sum + parseFloat(e.actual_qty), 0)
+
+        const prevTotalOut = prevLedgerEntries
+          .filter((e: any) => parseFloat(e.actual_qty) < 0)
+          .reduce((sum: number, e: any) => sum + Math.abs(parseFloat(e.actual_qty)), 0)
+
+        const prevTotalInValue = prevLedgerEntries
+          .filter((e: any) => parseFloat(e.stock_value_diff || 0) > 0)
+          .reduce((sum: number, e: any) => sum + parseFloat(e.stock_value_diff), 0)
+
+        const prevTotalOutValue = prevLedgerEntries
+          .filter((e: any) => parseFloat(e.stock_value_diff || 0) < 0)
+          .reduce((sum: number, e: any) => sum + Math.abs(parseFloat(e.stock_value_diff)), 0)
+
+        periodComparison = {
+          previousPeriod: {
+            startDate: prevStartDate.toISOString().split('T')[0],
+            endDate: prevEndDate.toISOString().split('T')[0],
+            totalIn: prevTotalIn,
+            totalOut: prevTotalOut,
+            totalInValue: prevTotalInValue,
+            totalOutValue: prevTotalOutValue,
+          },
+          changes: {
+            totalInChange: summary.totalIn - prevTotalIn,
+            totalInChangePercent:
+              prevTotalIn > 0 ? ((summary.totalIn - prevTotalIn) / prevTotalIn) * 100 : 0,
+            totalOutChange: summary.totalOut - prevTotalOut,
+            totalOutChangePercent:
+              prevTotalOut > 0 ? ((summary.totalOut - prevTotalOut) / prevTotalOut) * 100 : 0,
+            totalInValueChange: summary.totalInValue - prevTotalInValue,
+            totalInValueChangePercent:
+              prevTotalInValue > 0
+                ? ((summary.totalInValue - prevTotalInValue) / prevTotalInValue) * 100
+                : 0,
+            totalOutValueChange: summary.totalOutValue - prevTotalOutValue,
+            totalOutValueChangePercent:
+              prevTotalOutValue > 0
+                ? ((summary.totalOutValue - prevTotalOutValue) / prevTotalOutValue) * 100
+                : 0,
+          },
+        }
+      }
+    }
+
+    return NextResponse.json({
+      data: movements,
+      summary,
+      periodComparison,
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        warehouseId: warehouseId || null,
+        itemId: itemId || null,
+        groupBy,
+      },
+    })
+  } catch (error) {
+    console.error('Unexpected error in GET /api/reports/stock-movement:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
