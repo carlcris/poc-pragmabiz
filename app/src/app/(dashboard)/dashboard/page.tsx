@@ -11,7 +11,6 @@ import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useInvoices } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useSuppliers } from "@/hooks/useSuppliers";
-import { useStockLevels } from "@/hooks/useReorder";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -29,10 +28,9 @@ export default function DashboardPage() {
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices();
   const { data: customersData, isLoading: customersLoading } = useCustomers();
   const { data: suppliersData, isLoading: suppliersLoading } = useSuppliers();
-  const { data: stockLevelsData, isLoading: stockLevelsLoading } = useStockLevels();
 
   const isLoading = itemsLoading || salesOrdersLoading || purchaseOrdersLoading ||
-                    invoicesLoading || customersLoading || suppliersLoading || stockLevelsLoading;
+                    invoicesLoading || customersLoading || suppliersLoading;
 
   const items = itemsData?.data || [];
   const salesOrders = salesOrdersData?.data || [];
@@ -40,7 +38,6 @@ export default function DashboardPage() {
   const invoices = invoicesData?.data || [];
   const customers = customersData?.data || [];
   const suppliers = suppliersData?.data || [];
-  const stockLevels = stockLevelsData?.data || [];
 
   // Calculate statistics
   const totalRevenue = invoices
@@ -72,24 +69,25 @@ export default function DashboardPage() {
 
   const todaysTotalSales = todaysSales.reduce((sum, order) => sum + order.totalAmount, 0);
 
-  // Reorder point alerts - Use actual stock levels data
+  // Reorder point alerts - Calculate from items
   const reorderAlerts = useMemo(() => {
-    // Filter for items that are low_stock, critical, or out_of_stock
-    return stockLevels
-      .filter(level =>
-        level.status === "low_stock" ||
-        level.status === "critical" ||
-        level.status === "out_of_stock"
+    // Filter for items where current stock is below reorder point
+    return items
+      .filter(item =>
+        item.reorderPoint &&
+        item.currentStock !== undefined &&
+        item.currentStock <= item.reorderPoint
       )
-      .map(level => ({
-        id: level.itemId,
-        code: level.itemCode,
-        name: level.itemName,
-        currentStock: level.currentStock,
-        reorderPoint: level.reorderPoint,
+      .map(item => ({
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        currentStock: item.currentStock || 0,
+        reorderPoint: item.reorderPoint || 0,
       }))
+      .sort((a, b) => a.currentStock - b.currentStock) // Sort by most urgent
       .slice(0, 5);
-  }, [stockLevels]);
+  }, [items]);
 
   // Calculate product movement from sales orders
   const productMovement = useMemo(() => {
@@ -113,11 +111,17 @@ export default function DashboardPage() {
     return Array.from(movement.values()).sort((a, b) => b.totalQuantity - a.totalQuantity);
   }, [salesOrders]);
 
-  // Fast moving products (top 5)
+  // Fast moving products (top 5 by highest quantity)
   const fastMovingProducts = productMovement.slice(0, 5);
 
-  // Slow moving products (bottom 5, excluding zero movement)
-  const slowMovingProducts = productMovement.filter(p => p.totalQuantity > 0).slice(-5).reverse();
+  // Slow moving products (products with LOWEST sales, excluding those with zero sales)
+  // We need to reverse the sort to get lowest quantities, but exclude items already in fast movers
+  const slowMovingProducts = productMovement.length > 5
+    ? [...productMovement]
+        .reverse() // Reverse to get lowest quantities first
+        .filter(p => p.totalQuantity > 0)
+        .slice(0, 5) // Take bottom 5
+    : [];
 
   const stats = [
     {

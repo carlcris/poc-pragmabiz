@@ -300,7 +300,7 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = subtotal - totalDiscount + totalTax
 
-    // Create order header
+    // Create order header (status will default to 'draft' from database)
     const { data: order, error: orderError } = await supabase
       .from('sales_orders')
       .insert({
@@ -314,7 +314,6 @@ export async function POST(request: NextRequest) {
         discount_amount: totalDiscount.toFixed(4),
         tax_amount: totalTax.toFixed(4),
         total_amount: totalAmount.toFixed(4),
-        status: 'draft',
         shipping_address: orderData.shippingAddress,
         shipping_city: orderData.shippingCity,
         shipping_state: orderData.shippingState,

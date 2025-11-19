@@ -1,6 +1,8 @@
 "use client";
 
-import { Printer, DollarSign } from "lucide-react";
+import { Printer, DollarSign, Download } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
+import QRCode from "qrcode";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useInvoicePayments } from "@/hooks/useInvoices";
+import { InvoicePDF } from "./InvoicePDF";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
+import { useState, useEffect } from "react";
 
 interface InvoiceViewDialogProps {
   open: boolean;
@@ -22,16 +26,101 @@ interface InvoiceViewDialogProps {
 }
 
 export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDialogProps) {
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, symbol } = useCurrency();
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
 
   // Fetch payments for this invoice
   const { data: paymentsData } = useInvoicePayments(invoice?.id || "");
   const payments = paymentsData?.data || [];
 
+  // Generate QR code when invoice changes
+  useEffect(() => {
+    if (invoice) {
+      const generateQRCode = async () => {
+        try {
+          // Generate URL to invoice details page
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+          const invoiceUrl = `${baseUrl}/sales/invoices?id=${invoice.id}`;
+
+          // Generate QR code as data URL
+          const qrDataUrl = await QRCode.toDataURL(invoiceUrl, {
+            width: 200,
+            margin: 1,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF',
+            },
+          });
+
+          setQrCodeDataUrl(qrDataUrl);
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+        }
+      };
+
+      generateQRCode();
+    }
+  }, [invoice]);
+
   if (!invoice) return null;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    try {
+      setIsPrinting(true);
+
+      // Generate PDF blob
+      const blob = await pdf(
+        <InvoicePDF invoice={invoice} currencySymbol={symbol} qrCodeDataUrl={qrCodeDataUrl} />
+      ).toBlob();
+
+      // Create URL for the blob
+      const url = URL.createObjectURL(blob);
+
+      // Open the PDF in a new window and trigger print
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+          // Cleanup after a delay to ensure print dialog has opened
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 1000);
+        };
+      }
+    } catch (error) {
+      console.error('Error printing PDF:', error);
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+
+      // Generate PDF blob
+      const blob = await pdf(
+        <InvoicePDF invoice={invoice} currencySymbol={symbol} qrCodeDataUrl={qrCodeDataUrl} />
+      ).toBlob();
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Invoice-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const getStatusBadge = (status: InvoiceStatus) => {
@@ -61,7 +150,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto print:max-h-none">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-4">
             <DialogTitle>Invoice Details</DialogTitle>
@@ -305,69 +394,17 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
           )}
         </div>
 
-        <DialogFooter className="print:hidden">
-          <Button onClick={handlePrint} variant="outline">
+        <DialogFooter>
+          <Button onClick={handleDownloadPDF} variant="default" disabled={isGeneratingPDF || isPrinting}>
+            <Download className="h-4 w-4 mr-2" />
+            {isGeneratingPDF ? "Generating PDF..." : "Download PDF"}
+          </Button>
+          <Button onClick={handlePrint} variant="outline" disabled={isGeneratingPDF || isPrinting}>
             <Printer className="h-4 w-4 mr-2" />
-            Print Invoice
+            {isPrinting ? "Preparing Print..." : "Print Invoice"}
           </Button>
         </DialogFooter>
       </DialogContent>
-
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-
-          .print\\:max-h-none,
-          .print\\:max-h-none * {
-            visibility: visible;
-          }
-
-          .print\\:max-h-none {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100%;
-            max-height: none !important;
-            overflow: visible !important;
-          }
-
-          .print\\:hidden {
-            display: none !important;
-          }
-
-          @page {
-            size: A4;
-            margin: 1cm;
-          }
-
-          table {
-            page-break-inside: avoid;
-          }
-
-          h1, h2, h3, h4, h5, h6 {
-            page-break-after: avoid;
-          }
-
-          /* Remove shadows and backgrounds for print */
-          * {
-            box-shadow: none !important;
-            background: white !important;
-            color: black !important;
-          }
-
-          /* Keep table borders visible */
-          table, th, td {
-            border: 1px solid #000 !important;
-          }
-
-          /* Ensure borders are visible */
-          .border, .border-t {
-            border-color: #000 !important;
-          }
-        }
-      `}</style>
     </Dialog>
   );
 }

@@ -4,6 +4,7 @@ export type SalesOrderStatus =
   | "in_progress"
   | "shipped"
   | "delivered"
+  | "invoiced"
   | "cancelled";
 
 export interface SalesOrderLineItem {

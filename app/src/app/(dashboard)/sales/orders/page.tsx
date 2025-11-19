@@ -110,6 +110,8 @@ export default function SalesOrdersPage() {
         return <Truck className="h-4 w-4 text-purple-600" />;
       case "delivered":
         return <Package className="h-4 w-4 text-green-600" />;
+      case "invoiced":
+        return <Receipt className="h-4 w-4 text-indigo-600" />;
       case "cancelled":
         return <XCircle className="h-4 w-4 text-red-600" />;
     }
@@ -141,6 +143,12 @@ export default function SalesOrdersPage() {
         return (
           <Badge variant="default" className="bg-green-600">
             Delivered
+          </Badge>
+        );
+      case "invoiced":
+        return (
+          <Badge variant="default" className="bg-indigo-600">
+            Invoiced
           </Badge>
         );
       case "cancelled":
@@ -244,6 +252,7 @@ export default function SalesOrdersPage() {
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="shipped">Shipped</SelectItem>
                 <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="invoiced">Invoiced</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
