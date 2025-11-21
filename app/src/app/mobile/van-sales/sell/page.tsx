@@ -5,6 +5,7 @@ import { MobileHeader } from "@/components/mobile/MobileHeader";
 import { CustomerSearchDialog } from "@/components/mobile/CustomerSearchDialog";
 import { QuickCustomerForm } from "@/components/mobile/QuickCustomerForm";
 import { MobileItemCard } from "@/components/mobile/MobileItemCard";
+import { MobileAlert } from "@/components/mobile/MobileAlert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,17 @@ export default function SellPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [alertState, setAlertState] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    variant: "default" | "destructive" | "warning" | "success";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    variant: "default",
+  });
 
   const vanName = vanData?.vanWarehouse?.name || "No Van Assigned";
   const driverName = vanData?.fullName || "Driver";
@@ -86,7 +98,12 @@ export default function SellPage() {
     if (!item) return;
 
     if (newQuantity > item.availableStock) {
-      alert(`Only ${item.availableStock} ${item.uomName} available in stock`);
+      setAlertState({
+        open: true,
+        title: "Insufficient Stock",
+        description: `Only ${item.availableStock} ${item.uomName} available in stock`,
+        variant: "warning",
+      });
       return;
     }
 
@@ -105,15 +122,30 @@ export default function SellPage() {
 
   const handleCheckout = async () => {
     if (!selectedCustomer) {
-      alert("Please select a customer");
+      setAlertState({
+        open: true,
+        title: "Customer Required",
+        description: "Please select a customer before checking out",
+        variant: "warning",
+      });
       return;
     }
     if (cart.length === 0) {
-      alert("Cart is empty");
+      setAlertState({
+        open: true,
+        title: "Empty Cart",
+        description: "Please add items to cart before checking out",
+        variant: "warning",
+      });
       return;
     }
     if (!vanData?.vanWarehouseId) {
-      alert("No van warehouse assigned");
+      setAlertState({
+        open: true,
+        title: "No Van Assigned",
+        description: "No van warehouse assigned to your account",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -158,16 +190,20 @@ export default function SellPage() {
       setSelectedCustomer(null);
       setSearchTerm("");
 
-      alert(
-        `Payment processed successfully!\n\n` +
-        `Order: ${result.data.orderNumber}\n` +
-        `Invoice: ${result.data.invoiceNumber}\n` +
-        `Payment: ${result.data.paymentCode}\n` +
-        `Amount: ₱${result.data.totalAmount.toFixed(2)}`
-      );
+      setAlertState({
+        open: true,
+        title: "Payment Successful!",
+        description: `Order: ${result.data.orderNumber}\nInvoice: ${result.data.invoiceNumber}\nPayment: ${result.data.paymentCode}\nAmount: ₱${result.data.totalAmount.toFixed(2)}`,
+        variant: "success",
+      });
     } catch (error) {
       console.error("Error processing payment:", error);
-      alert(`Failed to process payment: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setAlertState({
+        open: true,
+        title: "Payment Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
     }
   };
 
@@ -389,6 +425,15 @@ export default function SellPage() {
           setSelectedCustomer(customer);
           setShowCustomerForm(false);
         }}
+      />
+
+      <MobileAlert
+        open={alertState.open}
+        onOpenChange={(open) => setAlertState({ ...alertState, open })}
+        title={alertState.title}
+        description={alertState.description}
+        variant={alertState.variant}
+        duration={alertState.variant === "success" ? 5000 : 4000}
       />
     </div>
   );

@@ -165,7 +165,7 @@ export default function SalesOrdersPage() {
   };
 
   const isOverdue = (expectedDeliveryDate: string, status: SalesOrderStatus) => {
-    if (status === "delivered" || status === "cancelled") return false;
+    if (status === "delivered" || status === "cancelled" || status === "invoiced") return false;
     return new Date(expectedDeliveryDate) < new Date();
   };
 

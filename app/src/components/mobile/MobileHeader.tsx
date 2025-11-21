@@ -4,7 +4,9 @@ import { format } from "date-fns";
 import { ChevronLeft, User, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { MobileConfirmDialog } from "./MobileConfirmDialog";
+import { MobileAlert } from "./MobileAlert";
 
 interface MobileHeaderProps {
   title: string;
@@ -25,12 +27,48 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showErrorAlert, setShowErrorAlert] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleLogout = async () => {
+  // Get user email
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    };
+    getUser();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDropdown]);
+
+  const handleLogoutClick = () => {
+    setShowDropdown(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const handleLogoutConfirm = async () => {
     if (isLoggingOut) return;
-
-    const confirmed = window.confirm("Are you sure you want to logout?");
-    if (!confirmed) return;
 
     setIsLoggingOut(true);
     try {
@@ -38,7 +76,8 @@ export function MobileHeader({
       router.push("/mobile/login");
     } catch (error) {
       console.error("Logout error:", error);
-      alert("Failed to logout. Please try again.");
+      setErrorMessage("Failed to logout. Please try again.");
+      setShowErrorAlert(true);
       setIsLoggingOut(false);
     }
   };
@@ -65,34 +104,73 @@ export function MobileHeader({
           </div>
         </div>
 
-        {/* User/Van info indicator with logout */}
-        <div className="flex items-center gap-2">
-          {(driverName || vanName) && (
-            <div className="flex items-center gap-2 text-xs">
-              <User className="h-4 w-4 text-gray-400" />
-              <div className="text-right">
-                {driverName && (
-                  <div className="font-medium text-gray-700">{driverName}</div>
-                )}
-                {vanName && (
-                  <div className="text-gray-500">{vanName}</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {showLogout && (
+        {/* User Profile Dropdown */}
+        {showLogout && (
+          <div className="relative" ref={dropdownRef}>
             <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="p-2 hover:bg-red-50 rounded-full transition-colors disabled:opacity-50"
-              aria-label="Logout"
-              title="Logout"
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="User menu"
             >
-              <LogOut className="h-5 w-5 text-red-600" />
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full">
+                <User className="h-5 w-5 text-white" />
+              </div>
             </button>
-          )}
-        </div>
+
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50">
+                {/* User Info Section */}
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  <div className="text-sm font-medium text-gray-900 truncate">
+                    {userEmail}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {userEmail}
+                  </div>
+                </div>
+
+                {/* Van/Driver Info if available */}
+                {(driverName || vanName) && (
+                  <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
+                    {driverName && (
+                      <div className="text-xs font-medium text-gray-700">
+                        {driverName}
+                      </div>
+                    )}
+                    {vanName && (
+                      <div className="text-xs text-gray-500">
+                        {vanName}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Menu Items */}
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      // Navigate to profile if needed
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <User className="h-5 w-5 text-gray-600" />
+                    <span>Profile</span>
+                  </button>
+
+                  <button
+                    onClick={handleLogoutClick}
+                    disabled={isLoggingOut}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Date banner */}
@@ -101,6 +179,29 @@ export function MobileHeader({
           📅 {format(new Date(), "EEEE, MMMM d, yyyy")}
         </p>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      <MobileConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        title="Logout Confirmation"
+        description="Are you sure you want to logout? Any unsaved changes will be lost."
+        confirmText="Yes, Logout"
+        cancelText="Cancel"
+        onConfirm={handleLogoutConfirm}
+        variant="destructive"
+        isLoading={isLoggingOut}
+      />
+
+      {/* Error Alert */}
+      <MobileAlert
+        open={showErrorAlert}
+        onOpenChange={setShowErrorAlert}
+        title="Logout Failed"
+        description={errorMessage}
+        variant="destructive"
+        duration={4000}
+      />
     </header>
   );
 }

@@ -283,11 +283,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update invoice status' }, { status: 500 });
     }
 
-    // Update sales order status to 'completed'
+    // Update sales order status to 'delivered'
     await supabase
       .from('sales_orders')
       .update({
-        status: 'completed',
+        status: 'delivered',
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       })

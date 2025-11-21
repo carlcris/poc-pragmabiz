@@ -32,7 +32,10 @@
       "Bash(npx next build:*)",
       "Bash(xargs kill:*)",
       "Bash(npx tsc:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(ipconfig getifaddr:*)",
+      "Bash(cp:*)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "ask": []

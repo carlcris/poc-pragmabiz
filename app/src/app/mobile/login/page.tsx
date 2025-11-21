@@ -104,7 +104,6 @@ export default function MobileLoginPage() {
                     required
                     disabled={isLoading}
                     autoComplete="email"
-                    autoFocus
                   />
                 </div>
               </div>
