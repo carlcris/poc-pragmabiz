@@ -14,9 +14,11 @@ export const quotationLineItemSchema = z.object({
 });
 
 export const quotationFormSchema = z.object({
+  companyId: z.string().optional(),
   customerId: z.string().min(1, "Customer is required"),
   quotationDate: z.string().min(1, "Quotation date is required"),
   validUntil: z.string().min(1, "Valid until date is required"),
+  lineItems: z.array(quotationLineItemSchema).min(1, "At least one line item is required"),
   terms: z.string().default(""),
   notes: z.string().default(""),
 }).refine(

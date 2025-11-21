@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { QuotationFormDialogV2 } from "@/components/quotations/QuotationFormDialogV2";
+import { QuotationFormDialog } from "@/components/quotations/QuotationFormDialog";
 import { QuotationViewDialog } from "@/components/quotations/QuotationViewDialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRouter } from "next/navigation";
@@ -391,7 +391,7 @@ export default function QuotationsPage() {
           )}
       </div>
 
-      <QuotationFormDialogV2
+      <QuotationFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         quotation={selectedQuotation}
@@ -410,18 +410,17 @@ export default function QuotationsPage() {
             <AlertDialogDescription>
               Are you sure you want to convert quotation{" "}
               <strong>{quotationToConvert?.quotationNumber}</strong> to a sales order?
-              <br />
-              <br />
-              This will:
-              <ul className="list-disc list-inside mt-2 space-y-1">
+            </AlertDialogDescription>
+            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+              <p>This will:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>Create a new sales order with all quotation details</li>
                 <li>Copy all line items to the sales order</li>
                 <li>Update the quotation status to "Ordered"</li>
                 <li>Link the quotation to the new sales order</li>
               </ul>
-              <br />
-              This action cannot be undone.
-            </AlertDialogDescription>
+              <p className="font-medium">This action cannot be undone.</p>
+            </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
