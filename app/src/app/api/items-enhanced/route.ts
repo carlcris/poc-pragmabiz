@@ -133,55 +133,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get current stock levels (On Hand) from stock_ledger
+    // Get current stock levels (On Hand) and reorder levels from item_warehouse
     let stockQuery = supabase
-      .from('stock_ledger')
-      .select('item_id, warehouse_id, qty_after_trans')
-      .eq('company_id', userData.company_id)
-      .in('item_id', itemIds)
-      .order('posting_date', { ascending: false })
-      .order('posting_time', { ascending: false })
-
-    if (warehouseId) {
-      stockQuery = stockQuery.eq('warehouse_id', warehouseId)
-    }
-
-    const { data: stockLedger } = await stockQuery
-
-    // Get reorder levels from item_warehouse
-    let reorderQuery = supabase
       .from('item_warehouse')
-      .select('item_id, warehouse_id, reorder_level')
+      .select('item_id, warehouse_id, current_stock, reorder_level')
       .eq('company_id', userData.company_id)
       .in('item_id', itemIds)
       .is('deleted_at', null)
 
     if (warehouseId) {
-      reorderQuery = reorderQuery.eq('warehouse_id', warehouseId)
+      stockQuery = stockQuery.eq('warehouse_id', warehouseId)
     }
 
-    const { data: itemWarehouseData } = await reorderQuery
+    const { data: itemWarehouseData } = await stockQuery
 
-    // Calculate On Hand per item (sum latest balance across warehouses)
+    // Calculate On Hand per item (sum current_stock across warehouses)
     const onHandMap = new Map<string, number>()
     const reorderPointMap = new Map<string, number>()
 
-    if (stockLedger) {
-      // Group by item_id and warehouse_id, take the latest balance
-      const warehouseStockMap = new Map<string, number>()
-
-      for (const entry of stockLedger) {
-        const key = `${entry.item_id}_${entry.warehouse_id}`
-        if (!warehouseStockMap.has(key)) {
-          warehouseStockMap.set(key, parseFloat(entry.qty_after_trans))
-        }
-      }
-
-      // Sum across warehouses for each item
-      for (const [key, qty] of warehouseStockMap.entries()) {
-        const itemId = key.split('_')[0]
+    if (itemWarehouseData) {
+      // Sum current_stock across warehouses for each item
+      for (const entry of itemWarehouseData) {
+        const itemId = entry.item_id
         const currentQty = onHandMap.get(itemId) || 0
-        onHandMap.set(itemId, currentQty + qty)
+        onHandMap.set(itemId, currentQty + parseFloat(entry.current_stock))
       }
     }
 

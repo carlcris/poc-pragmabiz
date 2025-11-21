@@ -61,6 +61,33 @@ npm run build
 npm start
 ```
 
+## Development Guidelines
+
+### TypeScript
+
+•⁠  ⁠*ALWAYS ⁠ type ⁠* (never ⁠ interface ⁠)
+•⁠  ⁠*NEVER ⁠ any ⁠* (use ⁠ unknown ⁠)
+•⁠  ⁠Strict generics: ⁠ <T extends SomeType> ⁠
+•⁠  ⁠Unions over enums: ⁠ type Status = 'pending' | 'completed' ⁠
+
+### React Components
+
+•⁠  ⁠Arrow functions for non-page components/hooks
+•⁠  ⁠Named exports (except pages use default export)
+•⁠  ⁠Destructure props, TypeScript all props
+
+⁠ typescript
+type ButtonProps = {
+  children: React.ReactNode;
+  variant?: "primary" | "secondary";
+};
+
+export const Button = ({ children, variant = "primary" }: ButtonProps) => (
+  <button className={variant === "primary" ? "btn-primary" : "btn-secondary"}>
+    {children}
+  </button>
+);
+
 ### Database (Supabase)
 
 From the `app/` directory:
@@ -146,6 +173,85 @@ Each migration file should include:
 -- ============================================================================
 -- ... SQL here ...
 ```
+
+## Database Schema Verification Rule
+
+**CRITICAL: Always refer to the database schema in migration files when creating APIs that involve database calls.**
+
+### Why This Rule Exists
+- Prevents errors from incorrect column names, table names, or relationships
+- Ensures type safety and correct data handling
+- Avoids multiple debugging iterations
+- Saves time by verifying schema upfront rather than through trial-and-error
+
+### How to Follow This Rule
+
+1. **Before writing any API endpoint that queries or modifies the database:**
+   - Locate the relevant migration files in the `app/supabase/migrations/` directory
+   - Read the table schema to verify:
+     - Exact table names (e.g., `item_warehouse` not `item_warehouse_stock`)
+     - Exact column names (e.g., `sales_price` not `sell_price`)
+     - Column data types (e.g., `DECIMAL`, `VARCHAR`, `UUID`)
+     - Foreign key relationships and their names
+     - Constraints and defaults
+     - NULL vs NOT NULL columns
+
+2. **When working with Supabase queries:**
+   - Verify foreign key relationship names for nested queries
+   - Check for multiple foreign keys that might cause PostgREST suffix issues (`_2`, `_3`)
+   - Use the exact column names from the schema in SELECT queries
+   - Match the data types when inserting or updating
+
+3. **Common pitfalls to avoid:**
+   - ❌ Assuming column names without verification
+   - ❌ Using incorrect plural/singular forms (e.g., `unit_of_measures` vs `units_of_measure`)
+   - ❌ Mixing up similar field names (e.g., `sell_price` vs `sales_price`)
+   - ❌ Guessing relationship names for nested Supabase queries
+   - ❌ Not checking if a table uses snake_case or camelCase
+
+### Example Workflow
+
+**BAD - Guessing field names:**
+```typescript
+// ❌ WRONG - Writing code without checking schema
+const { data } = await supabase
+  .from('items')
+  .select('sell_price, uom_name')  // These might not exist!
+```
+
+**GOOD - Verifying schema first:**
+```typescript
+// 1. First, check app/supabase/migrations/00001_db_schema_up.sql
+// 2. Find the items table definition:
+//    CREATE TABLE items (
+//      id UUID PRIMARY KEY,
+//      item_code VARCHAR(50),
+//      sales_price DECIMAL(15,2),  -- ✅ It's sales_price not sell_price
+//      uom_id UUID,                 -- ✅ It's uom_id not uom_name
+//      ...
+//    );
+//
+// 3. Then write the correct query:
+const { data } = await supabase
+  .from('items')
+  .select('sales_price, uom_id')  // ✅ CORRECT - verified from schema
+```
+
+### Migration File Location
+
+Database migrations are located in: `app/supabase/migrations/`
+
+Common tables to reference:
+- `items` - Product/inventory items
+- `item_warehouse` - Stock levels per warehouse
+- `warehouses` - Warehouse locations
+- `units_of_measure` - Units of measurement
+- `stock_transfers` - Warehouse transfers
+- `stock_transfer_items` - Transfer line items
+- `customers` - Customer records
+- `sales_orders` - Sales order headers
+- `sales_order_items` - Sales order line items
+
 gipabuhat nako prompt si claude para malikayan ning iyang mali2.  pero testingan pa pud nako ni.
 
 ```
@@ -187,3 +293,118 @@ Prompt to Prevent These Mistakes
 
   If you cannot verify your understanding through code analysis, you MUST ask the user before proceeding.
 ```
+
+## TypeScript Type Verification Rule - CRITICAL
+
+**CRITICAL: Always verify TypeScript types and return values before writing code. STOP GUESSING!**
+
+This is a repetitive mistake that wastes time. You must follow this protocol strictly:
+
+### The Problem
+
+You frequently:
+- ❌ Assume data structure without checking the actual return type
+- ❌ Guess whether data is wrapped in `{ data: T }` or returned as `T` directly
+- ❌ Write code based on assumptions instead of reading the actual types
+- ❌ Access properties that don't exist on the TypeScript interface
+- ❌ Miss implicit `any` type errors on parameters
+
+### The Solution - MANDATORY CHECKS
+
+**Before writing ANY code that uses a hook, API call, or function:**
+
+1. **READ THE SOURCE - Don't Guess**
+   ```typescript
+   // ❌ WRONG - Guessing the structure
+   const { data } = useMyHook()
+   return data?.items  // Is it data.items or data.data.items?
+
+   // ✅ CORRECT - Read the hook first to see what it returns
+   // Check: Does the hook return response.data or response.data.data?
+   // Check: What is the TypeScript interface?
+   ```
+
+2. **Check the Hook/Function Implementation**
+   - Open the hook file (e.g., `src/hooks/useVanInventory.ts`)
+   - Look at the return statement: `return response.data` or `return response.data.data`?
+   - Look at the TypeScript generic: `apiClient.get<{ data: T }>` means response has structure `{ data: T }`
+   - Verify what the function actually returns, not what you think it returns
+
+3. **Check the TypeScript Interface**
+   ```typescript
+   // If the interface is:
+   interface VanInventoryData {
+     warehouse: {...}
+     inventory: []
+     summary: {...}
+   }
+
+   // And hook returns: response.data.data
+   // Then: inventoryData is VanInventoryData (NOT { data: VanInventoryData })
+   // Access as: inventoryData.summary (NOT inventoryData.data.summary)
+   ```
+
+4. **Verify Parameter Types**
+   - Always add explicit types to callback parameters
+   - ❌ `.filter(item => ...)` - implicit any
+   - ✅ `.filter((item: MyType) => ...)` - explicit type
+
+5. **Check API Response Structure**
+   - Read the API route to see the response format
+   - Example: `NextResponse.json({ data: { warehouse, inventory, summary } })`
+   - This means: axios gets `{ data: { warehouse, inventory, summary } }`
+   - So: `response.data` = `{ data: { warehouse, inventory, summary } }`
+   - And: `response.data.data` = `{ warehouse, inventory, summary }`
+
+### Common Patterns to Check
+
+| Pattern | What to Check |
+|---------|---------------|
+| `useQuery()` hook | What does `queryFn` return? |
+| `apiClient.get<T>()` | Is T the full response or wrapped in `{ data: T }`? |
+| `response.data` | Is this the final data or is there another `.data`? |
+| `.map(item => ...)` | Add type: `.map((item: Type) => ...)` |
+| `.filter(x => ...)` | Add type: `.filter((x: Type) => ...)` |
+
+### Example of Correct Verification Process
+
+```typescript
+// Task: Use data from useVanInventory hook
+
+// STEP 1: Read the hook file
+// File: src/hooks/useVanInventory.ts
+// Line 42: apiClient.get<{ data: VanInventoryData }>
+// Line 45: return response.data.data
+// Conclusion: Returns VanInventoryData directly
+
+// STEP 2: Read the interface
+// Lines 23-32: interface VanInventoryData { warehouse, inventory, summary }
+// Conclusion: Has summary property at root level
+
+// STEP 3: Write correct code
+const { data: inventoryData } = useVanInventory(id)
+const itemsInStock = inventoryData?.summary?.itemsInStock  // ✅ CORRECT
+// NOT: inventoryData?.data?.summary?.itemsInStock  // ❌ WRONG
+```
+
+### Red Flags - Stop and Verify
+
+- 🚩 TypeScript error: "Property 'data' does not exist"
+- 🚩 TypeScript error: "Parameter implicitly has 'any' type"
+- 🚩 Runtime error: "Cannot read property of undefined"
+- 🚩 You're writing `?.data?.data` (double data access)
+- 🚩 You're accessing a property without checking the interface first
+- 🚩 You haven't opened the hook/function file to read the implementation
+
+### Mandatory Checklist
+
+Before writing code that uses external data:
+
+- [ ] I have READ the hook/function source code
+- [ ] I have READ the TypeScript interface definition
+- [ ] I know exactly what the return type is (not guessing)
+- [ ] I have verified the data structure (wrapped or unwrapped)
+- [ ] I have added explicit types to all callback parameters
+- [ ] I have checked for TypeScript errors before declaring it fixed
+
+**If you cannot check all boxes above, you MUST NOT write the code. Read the source files first.**

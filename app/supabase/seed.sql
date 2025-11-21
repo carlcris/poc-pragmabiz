@@ -140,13 +140,14 @@ END $$;
 -- SEED DATA: Warehouses
 -- ============================================================================
 
-INSERT INTO warehouses (company_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active)
+INSERT INTO warehouses (id, company_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active, is_van)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true),
-    ('00000000-0000-0000-0000-000000000001', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true),
-    ('00000000-0000-0000-0000-000000000001', 'WH-GEN-01', 'General Santos Warehouse', 'main', 'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Pedro Gonzales', '+63-917-333-4444', 'gensan.wh@democompany.com', true),
-    ('00000000-0000-0000-0000-000000000001', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true),
-    ('00000000-0000-0000-0000-000000000001', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true);
+    ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', 'WH-GEN-01', 'General Santos Warehouse', 'main', 'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Pedro Gonzales', '+63-917-333-4444', 'gensan.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000001', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000001', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000001', 'VAN-001', 'Demo Van 001', 'main', 'Mobile Unit', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Demo User', '+63-917-777-8888', 'van001@democompany.com', true, true);
 
 -- ============================================================================
 -- SEED DATA: Customers
@@ -381,9 +382,9 @@ INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_pa
 VALUES
 ('00000000-0000-0000-0000-000000000000','5745e13c-ab07-48b7-9db7-24372b16f5a9','authenticated','authenticated','demo@pragmatica.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5745e13c-ab07-48b7-9db7-24372b16f5a9", "email": "demo@pragmatica.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 
-INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at")
+INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
-('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL);
+('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021');
 
 -- ============================================================================
 -- SEED DATA: Suppliers
@@ -603,4 +604,55 @@ BEGIN
 
     RAISE NOTICE 'Purchase Orders seeded: % records', (SELECT COUNT(*) FROM purchase_orders);
     RAISE NOTICE 'Purchase Order Items seeded: % records', (SELECT COUNT(*) FROM purchase_order_items);
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Van Warehouse Inventory
+-- ============================================================================
+-- Add initial inventory to Demo Van 001 for testing
+DO $$
+DECLARE
+    v_van_id UUID := '00000000-0000-0000-0000-000000000021';
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_item_chicken UUID;
+    v_item_pork UUID;
+    v_item_eggs UUID;
+    v_item_rice UUID;
+BEGIN
+    -- Get item IDs (using items that should exist from previous seeds)
+    SELECT id INTO v_item_chicken FROM items WHERE item_code = 'CHK-WHL-01' LIMIT 1;
+    SELECT id INTO v_item_pork FROM items WHERE item_code = 'PRK-BLY-01' LIMIT 1;
+    SELECT id INTO v_item_eggs FROM items WHERE item_code = 'EGG-FRH-01' LIMIT 1;
+    SELECT id INTO v_item_rice FROM items WHERE item_code = 'RIC-WHT-01' LIMIT 1;
+
+    -- Insert van warehouse stock (only if items exist)
+    IF v_item_chicken IS NOT NULL THEN
+        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
+        VALUES (v_company_id, v_item_chicken, v_van_id, 15.0000)
+        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
+        SET current_stock = EXCLUDED.current_stock;
+    END IF;
+
+    IF v_item_pork IS NOT NULL THEN
+        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
+        VALUES (v_company_id, v_item_pork, v_van_id, 8.0000)
+        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
+        SET current_stock = EXCLUDED.current_stock;
+    END IF;
+
+    IF v_item_eggs IS NOT NULL THEN
+        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
+        VALUES (v_company_id, v_item_eggs, v_van_id, 3.0000)
+        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
+        SET current_stock = EXCLUDED.current_stock;
+    END IF;
+
+    IF v_item_rice IS NOT NULL THEN
+        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
+        VALUES (v_company_id, v_item_rice, v_van_id, 25.0000)
+        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
+        SET current_stock = EXCLUDED.current_stock;
+    END IF;
+
+    RAISE NOTICE 'Van warehouse inventory seeded for VAN-001';
 END $$;

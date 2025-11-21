@@ -183,7 +183,7 @@ export default function ItemsPage() {
       "Item Code",
       "Item Name",
       "Category",
-      "Supplier",
+      "UOM",
       "On Hand",
       "Allocated",
       "Available",
@@ -191,7 +191,6 @@ export default function ItemsPage() {
       "On PO",
       "On SO",
       "Status",
-      "UOM",
       "Std Cost",
       "List Price",
     ];
@@ -201,7 +200,7 @@ export default function ItemsPage() {
       item.code,
       item.name,
       item.category,
-      item.supplier || "",
+      item.uom || "",
       item.onHand,
       item.allocated,
       item.available,
@@ -209,7 +208,6 @@ export default function ItemsPage() {
       item.onPO,
       item.onSO,
       item.status,
-      item.uom,
       item.standardCost,
       item.listPrice,
     ]);
@@ -367,7 +365,7 @@ export default function ItemsPage() {
                   <TableHead>Item Code</TableHead>
                   <TableHead>Item Name</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>Supplier</TableHead>
+                  <TableHead>UOM</TableHead>
                   <TableHead className="text-right">On Hand</TableHead>
                   <TableHead className="text-right">Allocated</TableHead>
                   <TableHead className="text-right">Available</TableHead>
@@ -424,7 +422,7 @@ export default function ItemsPage() {
                     <TableHead>Item Code</TableHead>
                     <TableHead>Item Name</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Supplier</TableHead>
+                    <TableHead>UOM</TableHead>
                     <TableHead className="text-right">On Hand</TableHead>
                     <TableHead className="text-right">Allocated</TableHead>
                     <TableHead className="text-right">Available</TableHead>
@@ -441,7 +439,7 @@ export default function ItemsPage() {
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.category}</TableCell>
-                      <TableCell className="text-muted-foreground">{item.supplier || '-'}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.uom || '-'}</TableCell>
                       <TableCell className="text-right">{item.onHand.toFixed(2)}</TableCell>
                       <TableCell className="text-right text-orange-600">{item.allocated.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold">

@@ -31,7 +31,8 @@
       "Bash(kill:*)",
       "Bash(npx next build:*)",
       "Bash(xargs kill:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(docker ps:*)"
     ],
     "deny": [],
     "ask": []

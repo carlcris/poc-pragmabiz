@@ -137,11 +137,25 @@ export async function POST(request: NextRequest) {
 
     const body: CreateCustomerRequest = await request.json()
 
+    // Get user's company_id
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (userError || !userData?.company_id) {
+      console.error('Error getting user company:', userError)
+      return NextResponse.json({ error: 'User company not found' }, { status: 400 })
+    }
+
+    const companyId = userData.company_id
+
     // Check for duplicate customer code
     const { data: existing } = await supabase
       .from('customers')
       .select('id')
-      .eq('company_id', body.companyId)
+      .eq('company_id', companyId)
       .eq('customer_code', body.code)
       .is('deleted_at', null)
       .single()
@@ -173,7 +187,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('customers')
       .insert({
-        company_id: body.companyId,
+        company_id: companyId,
         customer_code: body.code,
         customer_name: body.name,
         customer_type: body.customerType,
