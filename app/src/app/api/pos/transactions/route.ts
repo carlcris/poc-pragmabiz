@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { postPOSSale, calculatePOSCOGS, postPOSCOGS } from '@/services/accounting/posPosting';
+import { createPOSStockTransaction } from '@/services/inventory/posStockService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -190,10 +192,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user details
+    // Get user details including van_warehouse_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('company_id, first_name, last_name')
+      .select('company_id, first_name, last_name, van_warehouse_id')
       .eq('id', user.id)
       .single();
 
@@ -203,6 +205,11 @@ export async function POST(request: NextRequest) {
         { error: 'User not found' },
         { status: 404 }
       );
+    }
+
+    // Check if user has a warehouse assigned (required for stock transactions)
+    if (!userData.van_warehouse_id) {
+      console.warn(`User ${user.id} has no warehouse assigned. Stock transaction will be skipped.`);
     }
 
     const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Unknown';
@@ -364,6 +371,130 @@ export async function POST(request: NextRequest) {
       .eq('id', transaction.id)
       .single();
 
+    // ============================================================================
+    // POST-TRANSACTION PROCESSING: Stock & Accounting Integration
+    // ============================================================================
+
+    const warnings: string[] = [];
+    let stockTransactionId: string | undefined;
+    let saleJournalEntryId: string | undefined;
+    let cogsJournalEntryId: string | undefined;
+
+    // 1. Create stock transaction (if warehouse assigned)
+    if (userData.van_warehouse_id) {
+      try {
+        // Get items with UOM data
+        const { data: itemsWithUom } = await supabase
+          .from('items')
+          .select('id, uom_id')
+          .in('id', processedItems.map((item: any) => item.itemId))
+          .eq('company_id', userData.company_id);
+
+        const itemsMap = new Map(itemsWithUom?.map(item => [item.id, item.uom_id]) || []);
+
+        const stockResult = await createPOSStockTransaction(
+          userData.company_id,
+          user.id,
+          {
+            transactionId: transaction.id,
+            transactionCode: transaction.transaction_code,
+            transactionDate: transaction.transaction_date,
+            warehouseId: userData.van_warehouse_id,
+            items: processedItems.map((item: any) => ({
+              itemId: item.itemId,
+              quantity: parseFloat(item.quantity),
+              uomId: itemsMap.get(item.itemId) || '',
+              rate: parseFloat(item.unitPrice),
+            })),
+          }
+        );
+
+        if (stockResult.success) {
+          stockTransactionId = stockResult.stockTransactionId;
+          console.log(`Stock transaction created: ${stockTransactionId}`);
+        } else {
+          console.error('Stock transaction failed:', stockResult.error);
+          warnings.push(`Stock transaction failed: ${stockResult.error}`);
+        }
+      } catch (error) {
+        console.error('Error creating stock transaction:', error);
+        warnings.push('Stock transaction creation failed');
+      }
+    } else {
+      warnings.push('No warehouse assigned - stock transaction skipped');
+    }
+
+    // 2. Post sale to general ledger
+    try {
+      const saleResult = await postPOSSale(
+        userData.company_id,
+        user.id,
+        {
+          transactionId: transaction.id,
+          transactionCode: transaction.transaction_code,
+          transactionDate: transaction.transaction_date,
+          subtotal: parseFloat(transaction.subtotal),
+          totalDiscount: parseFloat(transaction.total_discount),
+          totalTax: parseFloat(transaction.total_tax),
+          totalAmount: parseFloat(transaction.total_amount),
+          amountPaid: parseFloat(transaction.amount_paid),
+          description: `POS Sale - ${transaction.transaction_code}`,
+        }
+      );
+
+      if (saleResult.success) {
+        saleJournalEntryId = saleResult.journalEntryId;
+        console.log(`Sale journal entry created: ${saleJournalEntryId}`);
+      } else {
+        console.error('Sale GL posting failed:', saleResult.error);
+        warnings.push(`Sale GL posting failed: ${saleResult.error}`);
+      }
+    } catch (error) {
+      console.error('Error posting sale to GL:', error);
+      warnings.push('Sale GL posting failed');
+    }
+
+    // 3. Calculate and post COGS to general ledger
+    try {
+      const cogsCalculation = await calculatePOSCOGS(
+        userData.company_id,
+        transaction.id
+      );
+
+      if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
+        const cogsResult = await postPOSCOGS(
+          userData.company_id,
+          user.id,
+          {
+            transactionId: transaction.id,
+            transactionCode: transaction.transaction_code,
+            transactionDate: transaction.transaction_date,
+            items: cogsCalculation.items,
+            totalCOGS: cogsCalculation.totalCOGS,
+            description: `COGS - POS Sale ${transaction.transaction_code}`,
+          }
+        );
+
+        if (cogsResult.success) {
+          cogsJournalEntryId = cogsResult.journalEntryId;
+          console.log(`COGS journal entry created: ${cogsJournalEntryId}`);
+        } else {
+          console.error('COGS GL posting failed:', cogsResult.error);
+          warnings.push(`COGS GL posting failed: ${cogsResult.error}`);
+        }
+      } else {
+        console.error('COGS calculation failed:', cogsCalculation.error);
+        warnings.push(`COGS calculation failed: ${cogsCalculation.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error posting COGS to GL:', error);
+      warnings.push('COGS GL posting failed');
+    }
+
+    // ============================================================================
+    // RETURN RESPONSE
+    // ============================================================================
+
     return NextResponse.json({
       data: {
         id: completeTransaction.id,
@@ -400,6 +531,12 @@ export async function POST(request: NextRequest) {
         notes: completeTransaction.notes,
         createdAt: completeTransaction.created_at,
         updatedAt: completeTransaction.updated_at,
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
+      integrations: {
+        stockTransactionId,
+        saleJournalEntryId,
+        cogsJournalEntryId,
       },
     }, { status: 201 });
 

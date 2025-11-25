@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { reversePOSTransaction } from '@/services/accounting/posPosting';
+import { reversePOSStockTransaction } from '@/services/inventory/posStockService';
 
 export async function POST(
   request: NextRequest,
@@ -18,10 +20,10 @@ export async function POST(
       );
     }
 
-    // Get user details
+    // Get user details including van_warehouse_id
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('company_id')
+      .select('company_id, van_warehouse_id')
       .eq('id', user.id)
       .single();
 
@@ -35,7 +37,7 @@ export async function POST(
     // Get the transaction to verify it exists and belongs to the company
     const { data: transaction, error: fetchError } = await supabase
       .from('pos_transactions')
-      .select('id, status, company_id')
+      .select('id, status, company_id, transaction_code')
       .eq('id', id)
       .eq('company_id', userData.company_id)
       .single();
@@ -110,6 +112,60 @@ export async function POST(
       );
     }
 
+    // ============================================================================
+    // POST-VOID PROCESSING: Reverse Stock & Accounting Entries
+    // ============================================================================
+
+    const warnings: string[] = [];
+
+    // 1. Reverse stock transaction (if warehouse assigned)
+    if (userData.van_warehouse_id) {
+      try {
+        const stockReversalResult = await reversePOSStockTransaction(
+          userData.company_id,
+          user.id,
+          id,
+          transaction.transaction_code,
+          userData.van_warehouse_id
+        );
+
+        if (stockReversalResult.success) {
+          console.log(`Stock transaction reversed for ${transaction.transaction_code}`);
+        } else {
+          console.error('Stock reversal failed:', stockReversalResult.error);
+          warnings.push(`Stock reversal failed: ${stockReversalResult.error}`);
+        }
+      } catch (error) {
+        console.error('Error reversing stock transaction:', error);
+        warnings.push('Stock reversal failed');
+      }
+    } else {
+      warnings.push('No warehouse assigned - stock reversal skipped');
+    }
+
+    // 2. Reverse GL entries (both sale and COGS)
+    try {
+      const glReversalResult = await reversePOSTransaction(
+        userData.company_id,
+        user.id,
+        id
+      );
+
+      if (glReversalResult.success) {
+        console.log(`GL entries reversed for ${transaction.transaction_code}`);
+      } else {
+        console.error('GL reversal failed:', glReversalResult.error);
+        warnings.push(`GL reversal failed: ${glReversalResult.error}`);
+      }
+    } catch (error) {
+      console.error('Error reversing GL entries:', error);
+      warnings.push('GL reversal failed');
+    }
+
+    // ============================================================================
+    // RETURN RESPONSE
+    // ============================================================================
+
     // Transform data to match POSTransaction type
     const transformedTransaction = {
       id: voidedTransaction.id,
@@ -150,6 +206,7 @@ export async function POST(
 
     return NextResponse.json({
       data: transformedTransaction,
+      warnings: warnings.length > 0 ? warnings : undefined,
     });
 
   } catch (error) {
