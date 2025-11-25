@@ -42,6 +42,7 @@ const menuItems = [
     href: "/sales",
     children: [
       { title: "Point of Sale", href: "/sales/pos" },
+      { title: "POS Transactions", href: "/sales/pos/transactions" },
       { title: "Customers", href: "/sales/customers" },
       { title: "Quotations", href: "/sales/quotations" },
       { title: "Sales Orders", href: "/sales/orders" },

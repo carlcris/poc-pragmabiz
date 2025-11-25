@@ -9,7 +9,7 @@ export const posApi = {
     const response = await apiClient.get<PaginatedResponse<POSTransaction>>("/api/pos/transactions", {
       params,
     });
-    return response.data;
+    return response;
   },
 
   // Get single transaction

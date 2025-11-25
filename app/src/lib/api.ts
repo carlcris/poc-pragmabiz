@@ -22,8 +22,24 @@ export class ApiClient {
     return headers;
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
+  async get<T>(endpoint: string, options?: { params?: Record<string, string | number | undefined> }): Promise<T> {
+    let url = `${this.baseURL}${endpoint}`;
+
+    // Add query parameters if provided
+    if (options?.params) {
+      const params = new URLSearchParams();
+      Object.entries(options.params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params.append(key, String(value));
+        }
+      });
+      const queryString = params.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+    }
+
+    const response = await fetch(url, {
       method: "GET",
       headers: this.getHeaders(),
     });

@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const status = searchParams.get('status');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
+    const cashierId = searchParams.get('cashierId');
 
     // Build query
     let query = supabase
@@ -84,6 +87,21 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (dateFrom) {
+      query = query.gte('transaction_date', dateFrom);
+    }
+
+    if (dateTo) {
+      // Add one day to include the entire end date
+      const endDate = new Date(dateTo);
+      endDate.setDate(endDate.getDate() + 1);
+      query = query.lt('transaction_date', endDate.toISOString().split('T')[0]);
+    }
+
+    if (cashierId) {
+      query = query.eq('cashier_id', cashierId);
     }
 
     // Apply pagination
