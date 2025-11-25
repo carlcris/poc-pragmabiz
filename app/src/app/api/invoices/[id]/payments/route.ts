@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { postARPayment } from '@/services/accounting/arPosting'
 
 // GET /api/invoices/[id]/payments
 export async function GET(
@@ -152,7 +153,7 @@ export async function POST(
     const paymentCode = `PAY-${year}-${String(nextNum).padStart(4, '0')}`
 
     // Record payment
-    const { error: paymentError } = await supabase
+    const { data: payment, error: paymentError } = await supabase
       .from('invoice_payments')
       .insert({
         company_id: userData.company_id,
@@ -166,8 +167,10 @@ export async function POST(
         created_by: user.id,
         updated_by: user.id,
       })
+      .select()
+      .single()
 
-    if (paymentError) {
+    if (paymentError || !payment) {
       console.error('Error recording payment:', paymentError)
       return NextResponse.json({ error: 'Failed to record payment' }, { status: 500 })
     }
@@ -201,6 +204,26 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 })
     }
 
+    // Post AR payment to general ledger
+    const arPaymentResult = await postARPayment(userData.company_id, user.id, {
+      paymentId: payment.id,
+      invoiceId: invoice.id,
+      invoiceCode: invoice.invoice_code,
+      customerId: invoice.customer_id,
+      paymentDate: body.paymentDate,
+      paymentAmount: paymentAmount,
+      paymentMethod: body.paymentMethod,
+      description: `Payment received for Invoice ${invoice.invoice_code}`,
+    })
+
+    if (!arPaymentResult.success) {
+      console.error('Error posting AR payment to GL:', arPaymentResult.error)
+      // Log warning but don't fail the payment
+      console.warn(
+        `Payment ${paymentCode} recorded successfully but AR GL posting failed: ${arPaymentResult.error}`
+      )
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Payment recorded successfully',
@@ -209,6 +232,8 @@ export async function POST(
         amountDue: newAmountDue,
         status: newStatus,
       },
+      journalEntryId: arPaymentResult.journalEntryId,
+      arPostingSuccess: arPaymentResult.success,
     })
   } catch (error) {
     console.error('Unexpected error in POST /api/invoices/[id]/payments:', error)

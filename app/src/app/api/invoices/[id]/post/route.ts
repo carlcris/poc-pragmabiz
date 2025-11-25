@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { postARInvoice } from '@/services/accounting/arPosting'
+import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
 
 // POST /api/invoices/[id]/post - Post an invoice and create stock transactions
 export async function POST(
@@ -199,10 +201,70 @@ export async function POST(
       )
     }
 
+    // Post AR transaction to general ledger
+    const arResult = await postARInvoice(userData.company_id, user.id, {
+      invoiceId: invoice.id,
+      invoiceCode: invoice.invoice_code,
+      customerId: invoice.customer_id,
+      invoiceDate: invoice.invoice_date,
+      totalAmount: parseFloat(invoice.total_amount),
+      description: `Sales invoice ${invoice.invoice_code}`,
+    })
+
+    if (!arResult.success) {
+      console.error('Error posting AR invoice to GL:', arResult.error)
+      // Log warning but don't fail the invoice posting
+      // The invoice is already posted with stock transactions
+      console.warn(
+        `Invoice ${invoice.invoice_code} posted successfully but AR GL posting failed: ${arResult.error}`
+      )
+    }
+
+    // Calculate and post COGS to general ledger
+    const cogsCalculation = await calculateCOGS(
+      userData.company_id,
+      invoice.warehouse_id,
+      invoiceItems.map((item) => ({
+        itemId: item.item_id,
+        quantity: parseFloat(item.quantity),
+      }))
+    )
+
+    let cogsResult = { success: true, journalEntryId: undefined as string | undefined }
+
+    if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
+      cogsResult = await postCOGS(userData.company_id, user.id, {
+        invoiceId: invoice.id,
+        invoiceCode: invoice.invoice_code,
+        warehouseId: invoice.warehouse_id,
+        invoiceDate: invoice.invoice_date,
+        items: cogsCalculation.items,
+        totalCOGS: cogsCalculation.totalCOGS,
+        description: `COGS for invoice ${invoice.invoice_code}`,
+      })
+
+      if (!cogsResult.success) {
+        console.error('Error posting COGS to GL:', cogsResult.error)
+        console.warn(
+          `Invoice ${invoice.invoice_code} posted successfully but COGS GL posting failed: ${cogsResult.error}`
+        )
+      }
+    } else {
+      console.error('Error calculating COGS:', cogsCalculation.error)
+      console.warn(
+        `Invoice ${invoice.invoice_code} posted successfully but COGS calculation failed: ${cogsCalculation.error}`
+      )
+    }
+
     return NextResponse.json({
       success: true,
       transactionId: stockTransaction.id,
       transactionCode: stockTransaction.transaction_code,
+      arJournalEntryId: arResult.journalEntryId,
+      arPostingSuccess: arResult.success,
+      cogsJournalEntryId: cogsResult.journalEntryId,
+      cogsPostingSuccess: cogsResult.success,
+      cogsTotalAmount: cogsCalculation.totalCOGS,
     }, { status: 200 })
   } catch (error) {
     console.error('Unexpected error in POST /api/invoices/[id]/post:', error)

@@ -159,6 +159,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('=== POS POST HANDLER CALLED ===');
   try {
     const supabase = await createClient();
 
@@ -174,16 +175,19 @@ export async function POST(request: NextRequest) {
     // Get user details
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('company_id, full_name')
+      .select('company_id, first_name, last_name')
       .eq('id', user.id)
       .single();
 
     if (userError || !userData) {
+      console.error('Error fetching user data:', userError);
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
     }
+
+    const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Unknown';
 
     const body = await request.json();
     const { customerId, items, payments, notes } = body;
@@ -267,7 +271,7 @@ export async function POST(request: NextRequest) {
         change_amount: changeAmount.toFixed(4),
         status: 'completed',
         cashier_id: user.id,
-        cashier_name: userData.full_name,
+        cashier_name: fullName,
         notes,
         created_by: user.id,
         updated_by: user.id,

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { postAPBill } from '@/services/accounting/apPosting'
 
 // GET /api/purchase-receipts/[id]
 export async function GET(
@@ -232,6 +233,49 @@ export async function PUT(
           return NextResponse.json(
             { error: itemsError.message || 'Failed to update receipt items' },
             { status: 500 }
+          )
+        }
+      }
+    }
+
+    // Post AP transaction to general ledger if status changed to 'received'
+    if (body.status === 'received' && existingReceipt.status !== 'received') {
+      // Get receipt details for AP posting
+      const { data: receiptData } = await supabase
+        .from('purchase_receipts')
+        .select(`
+          id,
+          receipt_code,
+          supplier_id,
+          receipt_date,
+          purchase_receipt_items(quantity_received, rate)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (receiptData) {
+        // Calculate total amount from items
+        const items = receiptData.purchase_receipt_items as Array<{
+          quantity_received: string
+          rate: string
+        }>
+        const totalAmount = items.reduce((sum, item) => {
+          return sum + parseFloat(item.quantity_received) * parseFloat(item.rate)
+        }, 0)
+
+        const apResult = await postAPBill(userData.company_id, user.id, {
+          purchaseReceiptId: receiptData.id,
+          purchaseReceiptCode: receiptData.receipt_code,
+          supplierId: receiptData.supplier_id,
+          receiptDate: receiptData.receipt_date,
+          totalAmount,
+          description: `Purchase receipt ${receiptData.receipt_code}`,
+        })
+
+        if (!apResult.success) {
+          console.error('Error posting AP bill to GL:', apResult.error)
+          console.warn(
+            `Purchase receipt ${receiptData.receipt_code} updated but AP GL posting failed: ${apResult.error}`
           )
         }
       }

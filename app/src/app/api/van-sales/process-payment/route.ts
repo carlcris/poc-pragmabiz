@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { postARInvoice, postARPayment } from '@/services/accounting/arPosting';
+import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting';
 
 interface ProcessPaymentRequest {
   customerId: string;
@@ -292,6 +294,82 @@ export async function POST(request: NextRequest) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', salesOrder.id);
+
+    // ========================================================================
+    // STEP 4: Post to General Ledger (AR)
+    // ========================================================================
+
+    // Post AR Invoice (DR AR, CR Revenue)
+    const arInvoiceResult = await postARInvoice(userData.company_id, user.id, {
+      invoiceId: invoice.id,
+      invoiceCode: invoiceNumber,
+      customerId: body.customerId,
+      invoiceDate: today,
+      totalAmount: totalAmount,
+      description: `Van sales invoice ${invoiceNumber}`,
+    });
+
+    if (!arInvoiceResult.success) {
+      console.error('Error posting AR invoice to GL:', arInvoiceResult.error);
+      console.warn(
+        `Van sale invoice ${invoiceNumber} completed but AR GL posting failed: ${arInvoiceResult.error}`
+      );
+    }
+
+    // Post AR Payment (DR Cash, CR AR)
+    const arPaymentResult = await postARPayment(userData.company_id, user.id, {
+      paymentId: payment.id,
+      invoiceId: invoice.id,
+      invoiceCode: invoiceNumber,
+      customerId: body.customerId,
+      paymentDate: today,
+      paymentAmount: totalAmount,
+      paymentMethod: body.paymentMethod,
+      description: `Van sales payment for ${invoiceNumber}`,
+    });
+
+    if (!arPaymentResult.success) {
+      console.error('Error posting AR payment to GL:', arPaymentResult.error);
+      console.warn(
+        `Van sale payment for ${invoiceNumber} completed but AR payment GL posting failed: ${arPaymentResult.error}`
+      );
+    }
+
+    // Calculate and post COGS to general ledger
+    const cogsCalculation = await calculateCOGS(
+      userData.company_id,
+      body.warehouseId,
+      body.lineItems.map((item) => ({
+        itemId: item.itemId,
+        quantity: item.quantity,
+      }))
+    );
+
+    let cogsResult = { success: true, journalEntryId: undefined as string | undefined };
+
+    if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
+      cogsResult = await postCOGS(userData.company_id, user.id, {
+        invoiceId: invoice.id,
+        invoiceCode: invoiceNumber,
+        warehouseId: body.warehouseId,
+        invoiceDate: today,
+        items: cogsCalculation.items,
+        totalCOGS: cogsCalculation.totalCOGS,
+        description: `COGS for van sales invoice ${invoiceNumber}`,
+      });
+
+      if (!cogsResult.success) {
+        console.error('Error posting COGS to GL:', cogsResult.error);
+        console.warn(
+          `Van sale ${invoiceNumber} completed but COGS GL posting failed: ${cogsResult.error}`
+        );
+      }
+    } else {
+      console.error('Error calculating COGS:', cogsCalculation.error);
+      console.warn(
+        `Van sale ${invoiceNumber} completed but COGS calculation failed: ${cogsCalculation.error}`
+      );
+    }
 
     // ========================================================================
     // Return Success Response

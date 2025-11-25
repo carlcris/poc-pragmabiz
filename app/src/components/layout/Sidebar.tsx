@@ -13,6 +13,7 @@ import {
   Warehouse,
   ChevronRight,
   BarChart3,
+  Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +56,16 @@ const menuItems = [
       { title: "Suppliers", href: "/purchasing/suppliers" },
       { title: "Purchase Orders", href: "/purchasing/orders" },
       { title: "Purchase Receipts", href: "/purchasing/receipts" },
+    ],
+  },
+  {
+    title: "Accounting",
+    icon: Calculator,
+    href: "/accounting",
+    children: [
+      { title: "Chart of Accounts", href: "/accounting/chart-of-accounts" },
+      { title: "Journal Entries", href: "/accounting/journals" },
+      { title: "General Ledger", href: "/accounting/ledger" },
     ],
   },
   {
