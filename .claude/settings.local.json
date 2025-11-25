@@ -35,7 +35,8 @@
       "Bash(docker ps:*)",
       "Bash(ipconfig getifaddr:*)",
       "Bash(cp:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Read(//dev/**)"
     ],
     "deny": [],
     "ask": []

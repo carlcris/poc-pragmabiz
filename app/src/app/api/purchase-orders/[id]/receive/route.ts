@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { postAPBill } from '@/services/accounting/apPosting'
 
 // POST /api/purchase-orders/[id]/receive
 // Creates a purchase receipt from an approved purchase order
@@ -351,11 +352,50 @@ export async function POST(
       }
     }
 
+    // ============================================================================
+    // POST-RECEIPT PROCESSING: Accounting Integration
+    // ============================================================================
+
+    const warnings: string[] = []
+
+    // Post AP Bill to General Ledger
+    try {
+      // Calculate total amount from received items
+      const totalAmount = itemsToReceive.reduce(
+        (sum: number, item: any) => sum + (item.quantityReceived * item.rate),
+        0
+      )
+
+      const apResult = await postAPBill(
+        userData.company_id,
+        user.id,
+        {
+          purchaseReceiptId: receipt.id,
+          purchaseReceiptCode: receipt.receipt_code,
+          supplierId: po.supplier_id,
+          receiptDate: body.receiptDate || new Date().toISOString().split('T')[0],
+          totalAmount,
+          description: `Purchase from PO ${po.order_code} - ${receipt.receipt_code}`,
+        }
+      )
+
+      if (apResult.success) {
+        console.log(`AP journal entry created: ${apResult.journalEntryId}`)
+      } else {
+        console.error('AP GL posting failed:', apResult.error)
+        warnings.push(`GL posting failed: ${apResult.error}`)
+      }
+    } catch (error) {
+      console.error('Error posting AP to GL:', error)
+      warnings.push('GL posting failed')
+    }
+
     return NextResponse.json(
       {
         id: receipt.id,
         receiptCode: receipt.receipt_code,
         message: 'Goods received successfully. Stock levels updated.',
+        warnings: warnings.length > 0 ? warnings : undefined,
       },
       { status: 201 }
     )

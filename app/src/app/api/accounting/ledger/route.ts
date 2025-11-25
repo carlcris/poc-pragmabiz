@@ -174,9 +174,9 @@ export async function GET(request: NextRequest) {
       // For debit-normal accounts (asset, expense, cogs): debit increases, credit decreases
       // For credit-normal accounts (liability, equity, revenue): credit increases, debit decreases
       if (
-        account.account_type === "asset" ||
-        account.account_type === "expense" ||
-        account.account_type === "cogs"
+        account.accountType === "asset" ||
+        account.accountType === "expense" ||
+        account.accountType === "cogs"
       ) {
         openingBalance = totalDebits - totalCredits;
       } else {
@@ -247,9 +247,9 @@ export async function GET(request: NextRequest) {
 
         // Update running balance
         if (
-          account.account_type === "asset" ||
-          account.account_type === "expense" ||
-          account.account_type === "cogs"
+          account.accountType === "asset" ||
+          account.accountType === "expense" ||
+          account.accountType === "cogs"
         ) {
           // Debit-normal accounts
           runningBalance += debit - credit;
