@@ -62,7 +62,7 @@ export default function MobileLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
@@ -75,7 +75,7 @@ export default function MobileLoginPage() {
               className="object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Van Sales</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">Van Sales</h1>
           <p className="text-gray-600">Mobile Point of Sale</p>
         </div>
 

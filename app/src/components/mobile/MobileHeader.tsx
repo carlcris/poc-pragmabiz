@@ -112,8 +112,8 @@ export function MobileHeader({
               className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
               aria-label="User menu"
             >
-              <div className="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full">
-                <User className="h-5 w-5 text-white" />
+              <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-full">
+                <User className="h-5 w-5 text-primary-foreground" />
               </div>
             </button>
 
@@ -131,7 +131,7 @@ export function MobileHeader({
 
                 {/* Van/Driver Info if available */}
                 {(driverName || vanName) && (
-                  <div className="px-4 py-2 bg-blue-50 border-b border-gray-200">
+                  <div className="px-4 py-2 bg-primary/5 border-b border-gray-200">
                     {driverName && (
                       <div className="text-xs font-medium text-gray-700">
                         {driverName}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import {
   LayoutDashboard,
   Package,
@@ -10,9 +11,7 @@ import {
   ShoppingBag,
   FileText,
   Settings,
-  Warehouse,
   ChevronRight,
-  BarChart3,
   Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -98,17 +97,29 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-gray-900 border-r border-gray-800 min-h-screen flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold text-white">ERP System</h1>
-        <p className="text-sm text-gray-400">Complete Business Solution</p>
+    <aside className="w-64 border-r border-gray-800 min-h-screen flex flex-col" style={{ backgroundColor: '#240032' }}>
+      <div className="p-6 flex items-center gap-3 border-b border-white/10">
+        <div className="w-12 h-12 relative flex-shrink-0">
+          <Image
+            src="/erp.png"
+            alt="ERP Logo"
+            fill
+            className="object-contain"
+          />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-white">ERP System</h1>
+          <p className="text-xs text-gray-400">Business Solution</p>
+        </div>
       </div>
 
       <nav className="px-3 space-y-1 overflow-y-auto flex-1 pb-6">
         {menuItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname?.startsWith(item.href.replace("/items", "") + "/");
-          const isOpen = openMenus[item.title] ?? isActive;
+          // Only highlight parent if it's an exact match (no children) or if it's a page without children
+          const isParentActive = !item.children && pathname === item.href;
+          const hasActiveChild = item.children?.some(child => pathname === child.href);
+          const isOpen = openMenus[item.title] ?? hasActiveChild;
 
           return (
             <div key={item.href}>
@@ -116,12 +127,7 @@ export function Sidebar() {
                 <div>
                   <button
                     onClick={() => toggleMenu(item.title)}
-                    className={cn(
-                      "w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-gray-400 hover:bg-gray-800 hover:text-white"
-                    )}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-300 hover:bg-white/10 hover:text-white"
                   >
                     <div className="flex items-center gap-3">
                       <Icon className="h-5 w-5" />
@@ -144,8 +150,8 @@ export function Sidebar() {
                           className={cn(
                             "block px-3 py-2 rounded-md text-sm transition-colors",
                             pathname === child.href
-                              ? "bg-gray-800 text-white font-medium"
-                              : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                              ? "bg-white/20 text-white font-medium"
+                              : "text-gray-300 hover:bg-white/10 hover:text-white"
                           )}
                         >
                           {child.title}
@@ -159,9 +165,9 @@ export function Sidebar() {
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                    isParentActive
+                      ? "bg-white/20 text-white font-medium"
+                      : "text-gray-300 hover:bg-white/10 hover:text-white"
                   )}
                 >
                   <Icon className="h-5 w-5" />
