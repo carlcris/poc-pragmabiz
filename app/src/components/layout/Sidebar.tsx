@@ -67,6 +67,7 @@ const menuItems = [
       { title: "Chart of Accounts", href: "/accounting/chart-of-accounts" },
       { title: "Journal Entries", href: "/accounting/journals" },
       { title: "General Ledger", href: "/accounting/ledger" },
+      { title: "Trial Balance", href: "/accounting/trial-balance" },
     ],
   },
   {
@@ -97,13 +98,13 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-64 bg-gray-900 border-r border-gray-800 min-h-screen">
+    <aside className="w-64 bg-gray-900 border-r border-gray-800 min-h-screen flex flex-col">
       <div className="p-6">
         <h1 className="text-2xl font-bold text-white">ERP System</h1>
         <p className="text-sm text-gray-400">Complete Business Solution</p>
       </div>
 
-      <nav className="px-3 space-y-1">
+      <nav className="px-3 space-y-1 overflow-y-auto flex-1 pb-6">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname?.startsWith(item.href.replace("/items", "") + "/");

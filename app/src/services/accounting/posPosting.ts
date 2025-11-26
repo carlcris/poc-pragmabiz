@@ -155,6 +155,7 @@ export async function postPOSSale(
     const netRevenue = data.subtotal - data.totalDiscount;
 
     // Create journal entry header
+    // Note: Use totalAmount (not amountPaid) - we don't track change given to customers
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
@@ -167,8 +168,8 @@ export async function postPOSSale(
         description: data.description || `POS Sale - ${data.transactionCode}`,
         status: "posted", // Auto-post POS entries
         source_module: "POS",
-        total_debit: data.amountPaid,
-        total_credit: data.amountPaid,
+        total_debit: data.totalAmount,
+        total_credit: data.totalAmount,
         posted_at: new Date().toISOString(),
         posted_by: userId,
         created_by: userId,
@@ -189,12 +190,12 @@ export async function postPOSSale(
     const journalLines = [];
     let lineNumber = 1;
 
-    // DR Cash/Bank
+    // DR Cash/Bank (use totalAmount - we don't track change given back)
     journalLines.push({
       company_id: companyId,
       journal_entry_id: journalEntry.id,
       account_id: cashAccount.id,
-      debit: data.amountPaid,
+      debit: data.totalAmount,
       credit: 0,
       description: `Cash received - POS ${data.transactionCode}`,
       line_number: lineNumber++,
@@ -691,6 +692,7 @@ async function postPOSSaleReversal(
     const netRevenue = data.subtotal - data.totalDiscount;
 
     // Create journal entry with reversed amounts
+    // Note: Use totalAmount (not amountPaid) - we don't track change
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
@@ -703,8 +705,8 @@ async function postPOSSaleReversal(
         description: data.description,
         status: "posted",
         source_module: "POS",
-        total_debit: Math.abs(data.amountPaid),
-        total_credit: Math.abs(data.amountPaid),
+        total_debit: Math.abs(data.totalAmount),
+        total_credit: Math.abs(data.totalAmount),
         posted_at: new Date().toISOString(),
         posted_by: userId,
         created_by: userId,
@@ -722,12 +724,13 @@ async function postPOSSaleReversal(
     let lineNumber = 1;
 
     // CR Cash/Bank (opposite of debit in original)
+    // Note: Use totalAmount (not amountPaid) - we don't track change given to customers
     journalLines.push({
       company_id: companyId,
       journal_entry_id: journalEntry.id,
       account_id: cashAccount.id,
       debit: 0,
-      credit: Math.abs(data.amountPaid),
+      credit: Math.abs(data.totalAmount),
       description: `Void - Cash reversal - POS ${data.transactionCode}`,
       line_number: lineNumber++,
       created_by: userId,
