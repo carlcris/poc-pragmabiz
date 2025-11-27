@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Search, Pencil, Trash2, Filter, Download, Package, AlertTriangle, AlertCircle, TrendingUp } from "lucide-react";
 import { useDeleteItem } from "@/hooks/useItems";
 import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
@@ -30,17 +31,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ItemFormDialog } from "@/components/items/ItemFormDialog";
+import { ItemDetailsDialog } from "@/components/items/ItemDetailsDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Item } from "@/types/item";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 
 export default function ItemsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
@@ -131,9 +136,14 @@ export default function ItemsPage() {
     setDialogOpen(true);
   };
 
-  const handleEditItem = (item: ItemWithStock) => {
-    // Convert ItemWithStock to Item type
-    const itemData: Item = {
+  const handleViewItem = (itemId: string) => {
+    setSelectedItemId(itemId);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleEditItem = (item: ItemWithStock | Item) => {
+    // Convert ItemWithStock to Item type if needed
+    const itemData: Item = 'onHand' in item ? {
       id: item.id,
       companyId: '',
       code: item.code,
@@ -150,7 +160,7 @@ export default function ItemsPage() {
       isActive: item.isActive,
       createdAt: '',
       updatedAt: '',
-    };
+    } : item;
     setSelectedItem(itemData);
     setDialogOpen(true);
   };
@@ -435,9 +445,9 @@ export default function ItemsPage() {
                 </TableHeader>
                 <TableBody>
                   {items.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewItem(item.id)}>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="font-medium text-primary hover:underline">{item.name}</TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell className="text-muted-foreground">{item.uom || '-'}</TableCell>
                       <TableCell className="text-right">{item.onHand.toFixed(2)}</TableCell>
@@ -452,7 +462,7 @@ export default function ItemsPage() {
                       <TableCell className="text-right text-purple-600">{item.onSO.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -497,6 +507,15 @@ export default function ItemsPage() {
         onOpenChange={setDialogOpen}
         item={selectedItem}
       />
+
+      {selectedItemId && (
+        <ItemDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          itemId={selectedItemId}
+          onEdit={handleEditItem}
+        />
+      )}
 
       <ConfirmDialog
         open={deleteDialogOpen}

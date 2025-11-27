@@ -36,7 +36,11 @@
       "Bash(ipconfig getifaddr:*)",
       "Bash(cp:*)",
       "Bash(sed:*)",
-      "Read(//dev/**)"
+      "Read(//dev/**)",
+      "Bash(echo:*)",
+      "Read(//opt/homebrew/Caskroom/claude-code/2.0.27/**)",
+      "Bash(claude config set:*)",
+      "Bash(claude doctor:*)"
     ],
     "deny": [],
     "ask": []

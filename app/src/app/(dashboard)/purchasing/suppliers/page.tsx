@@ -80,7 +80,7 @@ export default function SuppliersPage() {
   const getStatusBadge = (status: Supplier["status"]) => {
     switch (status) {
       case "active":
-        return <Badge variant="default">Active</Badge>;
+        return <Badge variant="outline" className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400">Active</Badge>;
       case "inactive":
         return <Badge variant="secondary">Inactive</Badge>;
       case "blacklisted":

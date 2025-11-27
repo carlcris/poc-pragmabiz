@@ -721,3 +721,123 @@ BEGIN
 
     RAISE NOTICE 'Chart of Accounts seeded: % records', (SELECT COUNT(*) FROM accounts WHERE company_id = v_company_id);
 END $$;
+
+-- ============================================================================
+-- SEED DATA: Item Variants, Packaging, and Prices Migration
+-- ============================================================================
+-- This executes the Phase 2 migration logic for seeded items
+-- Creates default variants, packaging, and migrates prices
+
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_user_id UUID;
+    variants_created INTEGER;
+    packaging_created INTEGER;
+    fc_prices INTEGER;
+    ws_prices INTEGER;
+    srp_prices INTEGER;
+BEGIN
+    -- Get first user for the company
+    SELECT id INTO v_user_id FROM users WHERE company_id = v_company_id LIMIT 1;
+
+    -- Create DEFAULT variant for all seeded items
+    INSERT INTO item_variants (
+        company_id, item_id, variant_code, variant_name, description,
+        attributes, is_active, is_default,
+        created_at, created_by, updated_at, updated_by
+    )
+    SELECT
+        i.company_id, i.id, 'DEFAULT', 'Default',
+        'Auto-generated default variant',
+        '{}'::jsonb, true, true,
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.created_by),
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.updated_by)
+    FROM items i
+    WHERE i.deleted_at IS NULL AND i.company_id = v_company_id
+    ON CONFLICT (company_id, item_id, variant_code) DO NOTHING;
+
+    GET DIAGNOSTICS variants_created = ROW_COUNT;
+
+    -- Create DEFAULT packaging for all variants
+    INSERT INTO item_packaging (
+        company_id, variant_id, pack_type, pack_name, qty_per_pack,
+        barcode, is_default, is_active,
+        created_at, created_by, updated_at, updated_by
+    )
+    SELECT
+        v.company_id, v.id, 'each', 'Each', 1,
+        NULL, true, true,
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.created_by),
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.updated_by)
+    FROM item_variants v
+    INNER JOIN items i ON v.item_id = i.id
+    WHERE v.deleted_at IS NULL AND v.is_default = true AND v.company_id = v_company_id
+    ON CONFLICT (company_id, variant_id, pack_type) DO NOTHING;
+
+    GET DIAGNOSTICS packaging_created = ROW_COUNT;
+
+    -- Migrate Factory Cost (fc) from purchase_price
+    INSERT INTO item_prices (
+        company_id, variant_id, price_tier, price_tier_name, price,
+        currency_code, effective_from, effective_to, is_active,
+        created_at, created_by, updated_at, updated_by
+    )
+    SELECT
+        v.company_id, v.id, 'fc', 'Factory Cost', COALESCE(i.purchase_price, 0),
+        'PHP', CURRENT_DATE, NULL, true,
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.created_by),
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.updated_by)
+    FROM item_variants v
+    INNER JOIN items i ON v.item_id = i.id
+    WHERE v.deleted_at IS NULL AND v.is_default = true
+      AND i.purchase_price IS NOT NULL AND v.company_id = v_company_id
+    ON CONFLICT (company_id, variant_id, price_tier, effective_from) DO NOTHING;
+
+    GET DIAGNOSTICS fc_prices = ROW_COUNT;
+
+    -- Migrate Wholesale (ws) from cost_price
+    INSERT INTO item_prices (
+        company_id, variant_id, price_tier, price_tier_name, price,
+        currency_code, effective_from, effective_to, is_active,
+        created_at, created_by, updated_at, updated_by
+    )
+    SELECT
+        v.company_id, v.id, 'ws', 'Wholesale', COALESCE(i.cost_price, 0),
+        'PHP', CURRENT_DATE, NULL, true,
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.created_by),
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.updated_by)
+    FROM item_variants v
+    INNER JOIN items i ON v.item_id = i.id
+    WHERE v.deleted_at IS NULL AND v.is_default = true
+      AND i.cost_price IS NOT NULL AND v.company_id = v_company_id
+    ON CONFLICT (company_id, variant_id, price_tier, effective_from) DO NOTHING;
+
+    GET DIAGNOSTICS ws_prices = ROW_COUNT;
+
+    -- Migrate SRP from sales_price
+    INSERT INTO item_prices (
+        company_id, variant_id, price_tier, price_tier_name, price,
+        currency_code, effective_from, effective_to, is_active,
+        created_at, created_by, updated_at, updated_by
+    )
+    SELECT
+        v.company_id, v.id, 'srp', 'SRP', COALESCE(i.sales_price, 0),
+        'PHP', CURRENT_DATE, NULL, true,
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.created_by),
+        CURRENT_TIMESTAMP, COALESCE(v_user_id, i.updated_by)
+    FROM item_variants v
+    INNER JOIN items i ON v.item_id = i.id
+    WHERE v.deleted_at IS NULL AND v.is_default = true
+      AND i.sales_price IS NOT NULL AND v.company_id = v_company_id
+    ON CONFLICT (company_id, variant_id, price_tier, effective_from) DO NOTHING;
+
+    GET DIAGNOSTICS srp_prices = ROW_COUNT;
+
+    RAISE NOTICE 'Variant/Packaging/Price migration complete:';
+    RAISE NOTICE '  - Variants created: %', variants_created;
+    RAISE NOTICE '  - Packaging created: %', packaging_created;
+    RAISE NOTICE '  - FC prices: %', fc_prices;
+    RAISE NOTICE '  - WS prices: %', ws_prices;
+    RAISE NOTICE '  - SRP prices: %', srp_prices;
+END $$;

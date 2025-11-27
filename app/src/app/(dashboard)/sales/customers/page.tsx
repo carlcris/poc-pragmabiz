@@ -297,7 +297,7 @@ export default function CustomersPage() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={customer.isActive ? "default" : "secondary"}>
+                          <Badge variant={customer.isActive ? "outline" : "secondary"} className={customer.isActive ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400" : ""}>
                             {customer.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>

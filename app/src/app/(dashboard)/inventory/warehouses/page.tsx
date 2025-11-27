@@ -226,7 +226,7 @@ export default function WarehousesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={warehouse.isActive ? "default" : "secondary"}>
+                          <Badge variant={warehouse.isActive ? "outline" : "secondary"} className={warehouse.isActive ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400" : ""}>
                             {warehouse.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
