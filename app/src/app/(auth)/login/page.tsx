@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import Image from "next/image";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,11 +57,31 @@ export default function LoginPage() {
 
   return (
     <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-        <CardDescription>
-          Enter your credentials to access your account
-        </CardDescription>
+      <CardHeader className="space-y-6">
+        <div className="flex flex-col items-center space-y-3">
+          <Image
+            src="/erp.png"
+            alt="ERP Logo"
+            width={120}
+            height={120}
+            priority
+            className="object-contain"
+          />
+          <div className="text-center space-y-1">
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              PragmaERP
+            </h1>
+            <p className="text-sm text-muted-foreground font-medium">
+              Enterprise Resource Planning System
+            </p>
+          </div>
+        </div>
+        <div className="space-y-1 text-center pt-2">
+          <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
+          <CardDescription>
+            Enter your credentials to access your account
+          </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>

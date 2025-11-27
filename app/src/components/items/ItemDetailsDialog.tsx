@@ -49,7 +49,7 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
           <DialogHeader>
             <DialogTitle>Loading Item...</DialogTitle>
             <DialogDescription>
-              <Skeleton className="h-4 w-96" />
+              Please wait while we load the item details...
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
