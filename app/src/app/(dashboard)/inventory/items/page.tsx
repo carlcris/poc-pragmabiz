@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Search, Pencil, Trash2, Filter, Download, Package, AlertTriangle, AlertCircle, TrendingUp } from "lucide-react";
 import { useDeleteItem, useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
@@ -37,7 +36,6 @@ import type { Item } from "@/types/item";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 
 export default function ItemsPage() {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -79,7 +77,7 @@ export default function ItemsPage() {
   const { data: suppliersData } = useSuppliers({ limit: 1000 });
   const suppliers = suppliersData?.data?.filter(s => s.status === 'active') || [];
 
-  const items = data?.data || [];
+  const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
 
   // Calculate statistics
@@ -145,21 +143,21 @@ export default function ItemsPage() {
     // Convert ItemWithStock to Item type if needed
     const itemData: Item = 'onHand' in item ? {
       id: item.id,
-      companyId: '',
+      companyId: '', // Will be loaded from API when editing
       code: item.code,
       name: item.name,
-      description: '',
-      itemType: (item.itemType || 'stock') as 'stock' | 'service' | 'non_stock',
+      description: '', // Will be loaded from API when editing
+      itemType: 'raw_material' as const, // Default to raw_material, will be fetched from API
       uom: item.uom,
-      uomId: '',
+      uomId: '', // Will be loaded from API when editing
       category: item.category,
       standardCost: item.standardCost,
       listPrice: item.listPrice,
-      reorderLevel: item.reorderPoint,
+      reorderLevel: item.reorderPoint || 0,
       reorderQty: 0,
       isActive: item.isActive,
-      createdAt: '',
-      updatedAt: '',
+      createdAt: '', // Will be loaded from API when editing
+      updatedAt: '', // Will be loaded from API when editing
     } : item;
     setSelectedItem(itemData);
     setDialogOpen(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { useCreateItem, useUpdateItem } from "@/hooks/useItems";
 import { useAuthStore } from "@/stores/authStore";
 import { itemFormSchema, type ItemFormValues } from "@/lib/validations/item";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
@@ -33,6 +40,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { VariantsTab } from "@/components/items/variants/VariantsTab";
+import { PackagingTab } from "@/components/items/packaging/PackagingTab";
+import { PricesTab } from "@/components/items/prices/PricesTab";
 import type { Item } from "@/types/item";
 
 interface ItemFormDialogProps {
@@ -76,6 +86,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
   const { user } = useAuthStore();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
+  const [activeTab, setActiveTab] = useState("general");
+  const [createdItemId, setCreatedItemId] = useState<string | null>(null);
+  const [isEditingExisting, setIsEditingExisting] = useState(false);
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
@@ -96,6 +109,8 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
 
   useEffect(() => {
     if (item) {
+      setIsEditingExisting(true);
+      setCreatedItemId(item.id);
       form.reset({
         code: item.code,
         name: item.name,
@@ -110,6 +125,8 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
         isActive: item.isActive,
       });
     } else {
+      setIsEditingExisting(false);
+      setCreatedItemId(null);
       form.reset({
         code: "",
         name: "",
@@ -123,8 +140,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
         reorderQty: 0,
         isActive: true,
       });
+      setActiveTab("general");
     }
-  }, [item, form]);
+  }, [item, form, open]);
 
   const onSubmit = async (values: ItemFormValues) => {
     try {
@@ -136,142 +154,414 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
         });
         toast.success("Item updated successfully");
       } else {
-        // Create new item - requires companyId
+        // Create new item
         if (!user?.companyId) {
           toast.error("User company information not available");
           return;
         }
 
-        await createItem.mutateAsync({
+        const result = await createItem.mutateAsync({
           ...values,
           companyId: user.companyId,
         });
-        toast.success("Item created successfully");
+
+        const itemId = result?.data?.id;
+
+        if (itemId) {
+          setCreatedItemId(itemId);
+          toast.success("Item created successfully!", {
+            description: "You can now add variants, packaging, and price tiers",
+          });
+          // Switch to variants tab to continue adding details
+          setActiveTab("variants");
+        }
       }
-      onOpenChange(false);
-      form.reset();
     } catch (error) {
       toast.error(item ? "Failed to update item" : "Failed to create item");
     }
   };
 
+  const handleClose = () => {
+    form.reset();
+    setCreatedItemId(null);
+    setIsEditingExisting(false);
+    setActiveTab("general");
+    onOpenChange(false);
+  };
+
+  // Determine if we're in "view mode with tabs" (item exists or just created)
+  const showTabs = isEditingExisting || createdItemId !== null;
+  const currentItemId = item?.id || createdItemId;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{item ? "Edit Item" : "Create New Item"}</DialogTitle>
+          <DialogTitle>
+            {item ? "Edit Item" : createdItemId ? "Add Item Details" : "Create New Item"}
+          </DialogTitle>
           <DialogDescription>
             {item
-              ? "Update the item information below"
+              ? "Update the item information and manage variants, packaging, and pricing"
+              : createdItemId
+              ? "Item created successfully. Now add variants, packaging, and price tiers."
               : "Fill in the item details below to create a new item"}
           </DialogDescription>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Item Code *</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="ITEM-001"
-                        {...field}
-                        disabled={!!item}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        {showTabs ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="variants">Variants</TabsTrigger>
+              <TabsTrigger value="packaging">Packaging</TabsTrigger>
+              <TabsTrigger value="prices">Prices</TabsTrigger>
+            </TabsList>
 
-              <FormField
-                control={form.control}
-                name="itemType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Item Type *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
+            {/* General Tab */}
+            <TabsContent value="general" className="space-y-4 mt-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Basic Information */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-4">Basic Information</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="code"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Item Code *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="ITEM-001"
+                                  {...field}
+                                  disabled={!!item || !!createdItemId}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="itemType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Item Type *</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select item type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {ITEM_TYPES.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                      {type.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="mt-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Item Name *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter item name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="mt-4">
+                        <FormField
+                          control={form.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter description" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-4">
+                        <FormField
+                          control={form.control}
+                          name="category"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Category *</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select category" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {CATEGORIES.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                      {category}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="uom"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit of Measure *</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select UOM" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {UNITS_OF_MEASURE.map((uom) => (
+                                    <SelectItem key={uom.value} value={uom.value}>
+                                      {uom.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Pricing */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium mb-4">Pricing Information</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="standardCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Standard Cost</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="listPrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>List Price *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Inventory Management */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-sm font-medium mb-4">Inventory Management</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="reorderLevel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Reorder Level</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Alert when stock falls below this level
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="reorderQty"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Reorder Quantity</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  placeholder="0"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Suggested quantity to reorder
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleClose}
                     >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select item type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {ITEM_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            {type.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Item Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter item name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter description" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
+                      {createdItemId ? "Close" : "Cancel"}
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createItem.isPending || updateItem.isPending}
                     >
+                      {createItem.isPending || updateItem.isPending
+                        ? "Saving..."
+                        : item
+                        ? "Update Item"
+                        : "Save & Continue"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </TabsContent>
+
+            {/* Variants Tab */}
+            <TabsContent value="variants" className="mt-4">
+              {currentItemId && <VariantsTab itemId={currentItemId} />}
+            </TabsContent>
+
+            {/* Packaging Tab */}
+            <TabsContent value="packaging" className="mt-4">
+              {currentItemId && <PackagingTab itemId={currentItemId} />}
+            </TabsContent>
+
+            {/* Prices Tab */}
+            <TabsContent value="prices" className="mt-4">
+              {currentItemId && <PricesTab itemId={currentItemId} />}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="code"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Item Code *</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
+                        <Input
+                          placeholder="ITEM-001"
+                          {...field}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {CATEGORIES.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="itemType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Item Type *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select item type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {ITEM_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Item Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter item name" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -279,142 +569,184 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
 
               <FormField
                 control={form.control}
-                name="uom"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Unit of Measure *</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter description" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {CATEGORIES.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="uom"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit of Measure *</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select UOM" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {UNITS_OF_MEASURE.map((uom) => (
+                            <SelectItem key={uom.value} value={uom.value}>
+                              {uom.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="standardCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Standard Cost</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select UOM" />
-                        </SelectTrigger>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {UNITS_OF_MEASURE.map((uom) => (
-                          <SelectItem key={uom.value} value={uom.value}>
-                            {uom.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="standardCost"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Standard Cost</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="listPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>List Price *</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="listPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>List Price *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="0.00"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="reorderLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reorder Level</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Alert when stock falls below this level
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="reorderLevel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reorder Level</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Alert when stock falls below this level
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="reorderQty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reorder Quantity</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Suggested quantity to reorder
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="reorderQty"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reorder Quantity</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Suggested quantity to reorder
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={createItem.isPending || updateItem.isPending}
-              >
-                {createItem.isPending || updateItem.isPending
-                  ? "Saving..."
-                  : item
-                  ? "Update Item"
-                  : "Create Item"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createItem.isPending || updateItem.isPending}
+                >
+                  {createItem.isPending || updateItem.isPending
+                    ? "Saving..."
+                    : "Save & Continue"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
   );
