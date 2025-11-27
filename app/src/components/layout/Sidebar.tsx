@@ -108,7 +108,7 @@ export function Sidebar() {
           />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-white">ERP System</h1>
+          <h1 className="text-xl font-bold text-white">PragmaERP</h1>
           <p className="text-xs text-gray-400">Business Solution</p>
         </div>
       </div>

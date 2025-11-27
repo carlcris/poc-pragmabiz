@@ -19,7 +19,10 @@ import {
   Trash2,
   AlertCircle,
   UserPlus,
-  DollarSign
+  DollarSign,
+  User,
+  Phone,
+  ChevronRight
 } from "lucide-react";
 import { useUserVanWarehouse, useVanItems } from "@/hooks/useVanWarehouse";
 import { Customer } from "@/types/customer";
@@ -234,29 +237,60 @@ export default function SellPage() {
       />
 
       <div className="p-4 space-y-4">
-        {/* Customer Selection */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Customer</CardTitle>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowCustomerDialog(true)}
-              >
-                <UserPlus className="h-4 w-4 mr-1" />
-                {selectedCustomer ? "Change" : "Select"}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
+        {/* Customer Selection - Redesigned */}
+        <Card
+          className={`cursor-pointer transition-all duration-200 ${
+            selectedCustomer
+              ? 'border-primary bg-primary/5'
+              : 'border-dashed border-2 hover:border-primary hover:bg-primary/5'
+          }`}
+          onClick={() => setShowCustomerDialog(true)}
+        >
+          <CardContent className="p-4">
             {selectedCustomer ? (
-              <div>
-                <p className="font-medium">{selectedCustomer.name}</p>
-                <p className="text-sm text-gray-500">{selectedCustomer.phone}</p>
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-7 w-7 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-primary uppercase tracking-wide">
+                      Customer
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-lg truncate">{selectedCustomer.name}</h3>
+                  {selectedCustomer.phone && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>{selectedCustomer.phone}</span>
+                    </div>
+                  )}
+                  {selectedCustomer.address && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      {selectedCustomer.address}
+                    </p>
+                  )}
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="flex flex-col items-center gap-1">
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xs text-primary font-medium">Change</span>
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No customer selected</p>
+              <div className="flex items-center gap-4 py-3">
+                <div className="flex-shrink-0 h-14 w-14 rounded-full bg-gray-100 flex items-center justify-center">
+                  <UserPlus className="h-7 w-7 text-gray-400" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-gray-700">Select Customer</h3>
+                  <p className="text-sm text-muted-foreground">Tap to choose or create customer</p>
+                </div>
+                <div className="flex-shrink-0">
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

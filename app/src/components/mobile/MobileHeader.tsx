@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { ChevronLeft, User, LogOut } from "lucide-react";
+import { ChevronLeft, User, LogOut, Truck, UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect, useRef } from "react";
@@ -86,27 +86,27 @@ export function MobileHeader({
     <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
       {/* Top bar with back button and user info */}
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           {showBack && (
             <button
               onClick={() => router.back()}
-              className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
               aria-label="Go back"
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
           )}
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">{title}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-gray-900 truncate">{title}</h1>
             {subtitle && (
-              <p className="text-xs text-gray-500">{subtitle}</p>
+              <p className="text-xs text-gray-500 truncate">{subtitle}</p>
             )}
           </div>
         </div>
 
         {/* User Profile Dropdown */}
         {showLogout && (
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative flex-shrink-0" ref={dropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
               className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -128,22 +128,6 @@ export function MobileHeader({
                     {userEmail}
                   </div>
                 </div>
-
-                {/* Van/Driver Info if available */}
-                {(driverName || vanName) && (
-                  <div className="px-4 py-2 bg-primary/5 border-b border-gray-200">
-                    {driverName && (
-                      <div className="text-xs font-medium text-gray-700">
-                        {driverName}
-                      </div>
-                    )}
-                    {vanName && (
-                      <div className="text-xs text-gray-500">
-                        {vanName}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Menu Items */}
                 <div className="py-1">
@@ -172,6 +156,33 @@ export function MobileHeader({
           </div>
         )}
       </div>
+
+      {/* Van & Driver Info Banner - Redesigned */}
+      {(vanName || driverName) && (
+        <div className="px-4 py-2.5 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-t border-primary/20">
+          <div className="flex items-center justify-center gap-4 text-sm">
+            {vanName && (
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20">
+                  <Truck className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="font-semibold text-gray-700">{vanName}</span>
+              </div>
+            )}
+            {vanName && driverName && (
+              <span className="text-gray-400">•</span>
+            )}
+            {driverName && (
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20">
+                  <UserCircle className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="font-medium text-gray-600">{driverName}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Date banner */}
       <div className="px-4 py-2 bg-gray-50 border-t">
