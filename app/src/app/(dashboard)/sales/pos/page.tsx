@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Trash2, CreditCard, Banknote, Smartphone, X, Plus } from "lucide-react";
+import { Search, Trash2, CreditCard, Banknote, Smartphone, X, Plus, AlertCircle } from "lucide-react";
 import { useItems } from "@/hooks/useItems";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
 import { useCurrency } from "@/hooks/useCurrency";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import type { Item } from "@/types/item";
+import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
 
 export default function POSPage() {
@@ -51,12 +52,21 @@ export default function POSPage() {
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
 
   const { formatCurrency } = useCurrency();
-  const { data: itemsData, isLoading: itemsLoading } = useItems({ search, page: 1, limit: 100 });
+  const { data: itemsData, isLoading: itemsLoading } = useItems({ search, page: 1, limit: 100, includeStock: true });
   const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, limit: 1000 });
   const createTransaction = useCreatePOSTransaction();
 
   const items = itemsData?.data || [];
   const customers = customersData?.data || [];
+
+  // Create a map of item stock for quick lookup
+  const itemStockMap = useMemo(() => {
+    const map = new Map<string, number>();
+    items.forEach(item => {
+      map.set(item.id, item.available);
+    });
+    return map;
+  }, [items]);
 
   // Calculate cart totals
   const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -67,15 +77,36 @@ export default function POSPage() {
   const received = parseFloat(amountReceived) || 0;
   const changeAmount = received - totalAmount;
 
-  const addToCart = (item: Item) => {
+  const addToCart = (item: ItemWithStock) => {
+    // Strict validation: Check if item is out of stock
+    if (item.available <= 0) {
+      toast.error(`${item.name} is out of stock`, {
+        description: "Cannot add items with zero or negative stock",
+        icon: <AlertCircle className="h-4 w-4" />,
+      });
+      return;
+    }
+
     const existingItemIndex = cart.findIndex((c) => c.itemId === item.id);
 
     if (existingItemIndex >= 0) {
+      const currentQty = cart[existingItemIndex].quantity;
+      const newQty = currentQty + 1;
+
+      // Strict validation: Check if new quantity exceeds available stock
+      if (newQty > item.available) {
+        toast.error(`Insufficient stock for ${item.name}`, {
+          description: `Only ${item.available} units available. Currently in cart: ${currentQty}`,
+          icon: <AlertCircle className="h-4 w-4" />,
+        });
+        return;
+      }
+
       const newCart = [...cart];
       newCart[existingItemIndex] = {
         ...newCart[existingItemIndex],
-        quantity: newCart[existingItemIndex].quantity + 1,
-        lineTotal: (newCart[existingItemIndex].quantity + 1) * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
+        quantity: newQty,
+        lineTotal: newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
       };
       setCart(newCart);
     } else {
@@ -100,6 +131,19 @@ export default function POSPage() {
       removeFromCart(index);
       return;
     }
+
+    const cartItem = cart[index];
+    const availableStock = itemStockMap.get(cartItem.itemId) || 0;
+
+    // Strict validation: Check if new quantity exceeds available stock
+    if (newQuantity > availableStock) {
+      toast.error(`Insufficient stock for ${cartItem.itemName}`, {
+        description: `Only ${availableStock} units available`,
+        icon: <AlertCircle className="h-4 w-4" />,
+      });
+      return;
+    }
+
     const newCart = [...cart];
     newCart[index] = {
       ...newCart[index],
@@ -125,6 +169,24 @@ export default function POSPage() {
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+
+    // Final validation: Check all items have sufficient stock before checkout
+    const stockIssues: string[] = [];
+    for (const cartItem of cart) {
+      const availableStock = itemStockMap.get(cartItem.itemId) || 0;
+      if (cartItem.quantity > availableStock) {
+        stockIssues.push(`${cartItem.itemName}: Need ${cartItem.quantity}, only ${availableStock} available`);
+      }
+    }
+
+    if (stockIssues.length > 0) {
+      toast.error("Cannot complete checkout - Insufficient stock", {
+        description: stockIssues.join("; "),
+        icon: <AlertCircle className="h-4 w-4" />,
+        duration: 5000,
+      });
+      return;
+    }
 
     const payment: POSPayment = {
       method: paymentMethod,
@@ -210,24 +272,42 @@ export default function POSPage() {
                         {items
                           .filter((item) => item.isActive)
                           .slice(0, 20)
-                          .map((item) => (
-                            <CommandItem
-                              key={item.id}
-                              value={item.name}
-                              onSelect={() => addToCart(item)}
-                              className="cursor-pointer"
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <div className="flex-1">
-                                  <div className="font-medium">{item.name}</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {item.code} • {item.uom}
+                          .map((item) => {
+                            const isOutOfStock = item.available <= 0;
+                            const isLowStock = item.available > 0 && item.available <= item.reorderPoint;
+
+                            return (
+                              <CommandItem
+                                key={item.id}
+                                value={item.name}
+                                onSelect={() => addToCart(item)}
+                                disabled={isOutOfStock}
+                                className={isOutOfStock ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{item.name}</span>
+                                      {isOutOfStock && (
+                                        <span className="text-xs bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 px-2 py-0.5 rounded">
+                                          Out of Stock
+                                        </span>
+                                      )}
+                                      {isLowStock && (
+                                        <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400 px-2 py-0.5 rounded">
+                                          Low Stock
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {item.code} • {item.uom} • Stock: {item.available}
+                                    </div>
                                   </div>
+                                  <div className="text-sm font-medium">{formatCurrency(item.listPrice)}</div>
                                 </div>
-                                <div className="text-sm font-medium">{formatCurrency(item.listPrice)}</div>
-                              </div>
-                            </CommandItem>
-                          ))}
+                              </CommandItem>
+                            );
+                          })}
                       </CommandGroup>
                     </>
                   )}

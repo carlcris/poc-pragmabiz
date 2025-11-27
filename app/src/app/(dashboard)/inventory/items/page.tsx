@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Pencil, Trash2, Filter, Download, Package, AlertTriangle, AlertCircle, TrendingUp } from "lucide-react";
-import { useDeleteItem } from "@/hooks/useItems";
-import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
+import { useDeleteItem, useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useSuppliers } from "@/hooks/useSuppliers";
@@ -56,8 +55,8 @@ export default function ItemsPage() {
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
 
-  // Fetch enhanced items with stock data
-  const { data, isLoading, error } = useItemsEnhanced({
+  // Fetch items with stock data
+  const { data, isLoading, error } = useItems({
     search,
     page,
     limit: pageSize,
@@ -65,6 +64,7 @@ export default function ItemsPage() {
     supplierId: supplierFilter !== "all" ? supplierFilter : undefined,
     warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
     status: statusFilter !== 'all' ? (statusFilter as 'normal' | 'low_stock' | 'out_of_stock' | 'overstock' | 'discontinued') : 'all',
+    includeStock: true,
   });
 
   // Fetch warehouses for filter

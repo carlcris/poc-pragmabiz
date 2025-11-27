@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Search, Eye, FileText } from 'lucide-react'
 import type { JournalEntryWithLines, JournalEntryStatus, JournalSourceModule } from '@/types/accounting'
 import { format } from 'date-fns'
+import { JournalEntryFormDialog } from '@/components/accounting/JournalEntryFormDialog'
+import { JournalEntryViewDialog } from '@/components/accounting/JournalEntryViewDialog'
 
 export default function JournalsPage() {
   const [journals, setJournals] = useState<JournalEntryWithLines[]>([])
@@ -29,6 +31,9 @@ export default function JournalsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<JournalEntryStatus | 'all'>('all')
   const [sourceModuleFilter, setSourceModuleFilter] = useState<JournalSourceModule | 'all'>('all')
+  const [showFormDialog, setShowFormDialog] = useState(false)
+  const [showViewDialog, setShowViewDialog] = useState(false)
+  const [selectedJournal, setSelectedJournal] = useState<JournalEntryWithLines | null>(null)
 
   useEffect(() => {
     fetchJournals()
@@ -111,6 +116,11 @@ export default function JournalsPage() {
     }).format(amount)
   }
 
+  const handleViewJournal = (journal: JournalEntryWithLines) => {
+    setSelectedJournal(journal)
+    setShowViewDialog(true)
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -119,7 +129,7 @@ export default function JournalsPage() {
           <h1 className="text-3xl font-bold">Journal Entries</h1>
           <p className="text-muted-foreground">View and manage general ledger journal entries</p>
         </div>
-        <Button>
+        <Button onClick={() => setShowFormDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
           New Journal Entry
         </Button>
@@ -236,10 +246,19 @@ export default function JournalsPage() {
                   <TableCell>{getStatusBadge(journal.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewJournal(journal)}
+                        title="View journal entry"
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Print journal entry"
+                      >
                         <FileText className="h-4 w-4" />
                       </Button>
                     </div>
@@ -250,6 +269,21 @@ export default function JournalsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Journal Entry Form Dialog */}
+      <JournalEntryFormDialog
+        open={showFormDialog}
+        onOpenChange={setShowFormDialog}
+        onSuccess={fetchJournals}
+      />
+
+      {/* Journal Entry View Dialog */}
+      <JournalEntryViewDialog
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+        journal={selectedJournal}
+        onSuccess={fetchJournals}
+      />
     </div>
   )
 }
