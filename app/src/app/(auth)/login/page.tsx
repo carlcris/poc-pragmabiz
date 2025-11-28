@@ -69,7 +69,7 @@ export default function LoginPage() {
           />
           <div className="text-center space-y-1">
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              PragmaERP
+              PragmaBiz
             </h1>
             <p className="text-sm text-muted-foreground font-medium">
               Enterprise Resource Planning System

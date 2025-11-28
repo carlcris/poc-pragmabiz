@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Search, Trash2, CreditCard, Banknote, Smartphone, X, Plus, AlertCircle } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Search, Trash2, CreditCard, Banknote, Smartphone, X, AlertCircle } from "lucide-react";
 import { useItems } from "@/hooks/useItems";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
@@ -56,7 +56,7 @@ export default function POSPage() {
   const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, limit: 1000 });
   const createTransaction = useCreatePOSTransaction();
 
-  const items = itemsData?.data || [];
+  const items = (itemsData?.data || []) as ItemWithStock[];
   const customers = customersData?.data || [];
 
   // Create a map of item stock for quick lookup
@@ -76,6 +76,43 @@ export default function POSPage() {
   const totalAmount = subtotal - totalDiscount + totalTax;
   const received = parseFloat(amountReceived) || 0;
   const changeAmount = received - totalAmount;
+
+  // Sync cart to localStorage for customer display
+  useEffect(() => {
+    const cartData = cart.map(item => ({
+      id: item.id,
+      name: item.itemName,
+      quantity: item.quantity,
+      price: item.unitPrice,
+      total: item.lineTotal,
+    }));
+
+    localStorage.setItem("pos_cart", JSON.stringify(cartData));
+
+    // Dispatch custom event for same-window updates
+    window.dispatchEvent(new CustomEvent("pos_update", {
+      detail: { cart: cartData }
+    }));
+  }, [cart]);
+
+  // Sync totals to localStorage for customer display
+  useEffect(() => {
+    const totals = {
+      subtotal,
+      discount: totalDiscount,
+      tax: totalTax,
+      total: totalAmount,
+      paid: received,
+      change: changeAmount,
+    };
+
+    localStorage.setItem("pos_totals", JSON.stringify(totals));
+
+    // Dispatch custom event for same-window updates
+    window.dispatchEvent(new CustomEvent("pos_update", {
+      detail: { totals }
+    }));
+  }, [subtotal, totalDiscount, totalTax, totalAmount, received, changeAmount]);
 
   const addToCart = (item: ItemWithStock) => {
     // Strict validation: Check if item is out of stock
@@ -206,6 +243,10 @@ export default function POSPage() {
     setSelectedCustomerId("walk-in");
     setAmountReceived("");
     setShowCheckout(false);
+
+    // Clear customer display
+    localStorage.removeItem("pos_cart");
+    localStorage.removeItem("pos_totals");
   };
 
   const clearCart = () => {
@@ -441,7 +482,7 @@ export default function POSPage() {
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax (12%):</span>
+                <span className="text-muted-foreground">VAT (12%):</span>
                 <span className="font-medium">{formatCurrency(totalTax)}</span>
               </div>
               <div className="flex justify-between text-xl font-bold pt-2 border-t">
