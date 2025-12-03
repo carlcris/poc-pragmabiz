@@ -14,7 +14,7 @@ export async function GET() {
       );
     }
 
-    // Get user's van warehouse assignment
+    // Get user's van warehouse assignment and employee ID
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select(`
@@ -23,6 +23,7 @@ export async function GET() {
         last_name,
         email,
         van_warehouse_id,
+        employee_id,
         warehouses!van_warehouse_id (
           id,
           warehouse_code,
@@ -46,12 +47,13 @@ export async function GET() {
       .filter(Boolean)
       .join(' ') || 'User';
 
-    // Return user data with van warehouse info
+    // Return user data with van warehouse info and employee ID
     return NextResponse.json({
       data: {
         userId: userData.id,
         fullName,
         email: userData.email,
+        employeeId: userData.employee_id,
         vanWarehouseId: userData.van_warehouse_id,
         vanWarehouse: userData.warehouses ? {
           id: userData.warehouses.id,

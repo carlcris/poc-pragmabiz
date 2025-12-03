@@ -18,7 +18,7 @@ export default function EndOfDayPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <CheckCircle className="h-16 w-16 mx-auto text-gray-400" />
+              <CheckCircle className="h-16 w-16 mx-auto text-primary" />
               <div>
                 <h3 className="font-bold text-lg mb-2">End-of-Day Count</h3>
                 <p className="text-sm text-gray-600 mb-4">

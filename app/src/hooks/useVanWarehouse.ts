@@ -13,6 +13,7 @@ interface UserVanWarehouseData {
   userId: string;
   fullName: string;
   email: string;
+  employeeId: string | null;
   vanWarehouseId: string | null;
   vanWarehouse: VanWarehouse | null;
 }

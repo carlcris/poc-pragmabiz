@@ -12,6 +12,7 @@ interface MobileHeaderProps {
   title: string;
   subtitle?: string;
   showBack?: boolean;
+  backHref?: string;
   vanName?: string;
   driverName?: string;
   showLogout?: boolean;
@@ -21,9 +22,10 @@ export function MobileHeader({
   title,
   subtitle,
   showBack = false,
+  backHref,
   vanName,
   driverName,
-  showLogout = false,
+  showLogout = true,
 }: MobileHeaderProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -89,7 +91,7 @@ export function MobileHeader({
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {showBack && (
             <button
-              onClick={() => router.back()}
+              onClick={() => backHref ? router.push(backHref) : router.back()}
               className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
               aria-label="Go back"
             >
@@ -195,9 +197,9 @@ export function MobileHeader({
       <MobileConfirmDialog
         open={showLogoutConfirm}
         onOpenChange={setShowLogoutConfirm}
-        title="Logout Confirmation"
-        description="Are you sure you want to logout? Any unsaved changes will be lost."
-        confirmText="Yes, Logout"
+        title="Confirm Logout"
+        description="Are you sure you want to logout?"
+        confirmText="Logout"
         cancelText="Cancel"
         onConfirm={handleLogoutConfirm}
         variant="destructive"

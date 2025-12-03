@@ -70,7 +70,7 @@ export default function LoadPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-3">
-                <TruckIcon className="h-16 w-16 mx-auto text-gray-300" />
+                <TruckIcon className="h-16 w-16 mx-auto text-primary" />
                 <h3 className="font-semibold text-lg text-gray-700">No Pending Transfers</h3>
                 <p className="text-sm text-gray-500">
                   There are no pending stock transfers to your van at the moment.

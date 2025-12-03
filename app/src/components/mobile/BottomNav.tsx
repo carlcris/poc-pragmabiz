@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Package, ShoppingCart, CheckCircle, BarChart3 } from "lucide-react";
+import { Package, ShoppingCart, CheckCircle, BarChart3, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -32,6 +32,11 @@ const navItems: NavItem[] = [
     label: "Load",
     icon: Package,
   },
+  {
+    href: "/mobile/more",
+    label: "More",
+    icon: Menu,
+  },
 ];
 
 export function BottomNav() {
@@ -48,7 +53,8 @@ export function BottomNav() {
         <div className="flex justify-around items-center py-2">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            // Check if current path matches or is a child of this nav item
+            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
               <Link
