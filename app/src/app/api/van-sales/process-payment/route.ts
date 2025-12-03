@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { postARInvoice, postARPayment } from '@/services/accounting/arPosting';
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting';
+import { calculateInvoiceCommission } from '@/services/commission/commissionService';
 
 interface ProcessPaymentRequest {
   customerId: string;
@@ -30,16 +31,19 @@ export async function POST(request: NextRequest) {
 
     const body: ProcessPaymentRequest = await request.json();
 
-    // Get user's company
+    // Get user's company and employee_id
     const { data: userData } = await supabase
       .from('users')
-      .select('company_id')
+      .select('company_id, employee_id')
       .eq('id', user.id)
       .single();
 
     if (!userData?.company_id) {
       return NextResponse.json({ error: 'User company not found' }, { status: 400 });
     }
+
+    // Get employee_id directly from user data (faster than joining employees table)
+    const employeeId = userData.employee_id || null;
 
     // Validate required fields
     if (!body.customerId || !body.lineItems || body.lineItems.length === 0) {
@@ -186,7 +190,7 @@ export async function POST(request: NextRequest) {
         amount_due: totalAmount.toFixed(4),
         payment_terms: 'Cash',
         notes: body.notes || 'Van sales invoice',
-        primary_employee_id: user.id,
+        primary_employee_id: employeeId, // Linked to logged-in user's employee record
         created_by: user.id,
         updated_by: user.id,
       })
@@ -283,6 +287,23 @@ export async function POST(request: NextRequest) {
     if (updateInvoiceError) {
       console.error('Error updating invoice status:', updateInvoiceError);
       return NextResponse.json({ error: 'Failed to update invoice status' }, { status: 500 });
+    }
+
+    // Calculate commission for the invoice
+    try {
+      const commissionResult = await calculateInvoiceCommission(
+        invoice.id,
+        employeeId || undefined
+      );
+
+      if (!commissionResult.success) {
+        console.warn(
+          `Invoice ${invoice.invoice_code} paid but commission calculation failed: ${commissionResult.error}`
+        );
+      }
+    } catch (commissionError) {
+      console.error('Error calculating commission:', commissionError);
+      // Don't fail payment if commission calculation fails
     }
 
     // Update sales order status to 'delivered'

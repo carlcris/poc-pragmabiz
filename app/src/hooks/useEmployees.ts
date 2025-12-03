@@ -44,8 +44,10 @@ export function useUpdateEmployee() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateEmployeeRequest }) =>
-      employeesApi.updateEmployee(id, data),
+    mutationFn: (payload: { id: string } & UpdateEmployeeRequest) => {
+      const { id, ...data } = payload;
+      return employeesApi.updateEmployee(id, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [EMPLOYEES_QUERY_KEY] });
     },
@@ -76,8 +78,10 @@ export function useCreateTerritory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ employeeId, data }: { employeeId: string; data: CreateTerritoryRequest }) =>
-      employeesApi.createTerritory(employeeId, data),
+    mutationFn: (payload: { employeeId: string } & CreateTerritoryRequest) => {
+      const { employeeId, ...data } = payload;
+      return employeesApi.createTerritory(employeeId, data);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [TERRITORIES_QUERY_KEY, variables.employeeId] });
       queryClient.invalidateQueries({ queryKey: [EMPLOYEES_QUERY_KEY] });
@@ -89,15 +93,10 @@ export function useUpdateTerritory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      employeeId,
-      territoryId,
-      data,
-    }: {
-      employeeId: string;
-      territoryId: string;
-      data: UpdateTerritoryRequest;
-    }) => employeesApi.updateTerritory(employeeId, territoryId, data),
+    mutationFn: (payload: { employeeId: string; territoryId: string } & UpdateTerritoryRequest) => {
+      const { employeeId, territoryId, ...data } = payload;
+      return employeesApi.updateTerritory(employeeId, territoryId, data);
+    },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [TERRITORIES_QUERY_KEY, variables.employeeId] });
       queryClient.invalidateQueries({ queryKey: [EMPLOYEES_QUERY_KEY] });
@@ -117,6 +116,12 @@ export function useDeleteTerritory() {
     },
   });
 }
+
+// Territory management hook aliases (for component compatibility)
+export const useEmployeeTerritories = useTerritories;
+export const useAddEmployeeTerritory = useCreateTerritory;
+export const useRemoveEmployeeTerritory = useDeleteTerritory;
+export const useUpdateEmployeeTerritory = useUpdateTerritory;
 
 // Performance hooks
 export function useEmployeePerformance(

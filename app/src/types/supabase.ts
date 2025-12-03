@@ -1,3 +1,4 @@
+Connecting to db 5432
 export type Json =
   | string
   | number
@@ -446,6 +447,7 @@ export type Database = {
           termination_date: string | null
           updated_at: string
           updated_by: string | null
+          user_id: string | null
           version: number
         }
         Insert: {
@@ -477,6 +479,7 @@ export type Database = {
           termination_date?: string | null
           updated_at?: string
           updated_by?: string | null
+          user_id?: string | null
           version?: number
         }
         Update: {
@@ -508,6 +511,7 @@ export type Database = {
           termination_date?: string | null
           updated_at?: string
           updated_by?: string | null
+          user_id?: string | null
           version?: number
         }
         Relationships: [
@@ -528,6 +532,13 @@ export type Database = {
           {
             foreignKeyName: "employees_updated_by_fkey"
             columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -4597,3 +4608,5 @@ export const Constants = {
   },
 } as const
 
+A new version of Supabase CLI is available: v2.62.10 (currently installed v2.54.11)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

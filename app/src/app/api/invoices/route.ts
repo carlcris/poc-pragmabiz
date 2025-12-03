@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { calculateInvoiceCommission } from '@/services/commission/commissionService'
 
 // GET /api/invoices
 export async function GET(request: NextRequest) {
@@ -325,6 +326,23 @@ export async function POST(request: NextRequest) {
         { error: itemsError.message || 'Failed to create invoice items' },
         { status: 500 }
       )
+    }
+
+    // Calculate commission for the invoice (if employee is assigned)
+    try {
+      const commissionResult = await calculateInvoiceCommission(
+        invoice.id,
+        body.primaryEmployeeId
+      )
+
+      if (!commissionResult.success) {
+        console.warn(
+          `Invoice ${invoice.invoice_code} created but commission calculation failed: ${commissionResult.error}`
+        )
+      }
+    } catch (commissionError) {
+      console.error('Error calculating commission:', commissionError)
+      // Don't fail invoice creation if commission calculation fails
     }
 
     return NextResponse.json(

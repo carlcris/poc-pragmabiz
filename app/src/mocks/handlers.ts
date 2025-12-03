@@ -11,8 +11,8 @@ import { supplierHandlers } from "./handlers/suppliers";
 import { purchaseOrderHandlers } from "./handlers/purchase-orders";
 import { posHandlers } from "./handlers/pos";
 import { reorderHandlers } from "./handlers/reorder";
-import { employeeHandlers } from "./handlers/employees";
-import { analyticsHandlers } from "./handlers/analytics";
+// import { employeeHandlers } from "./handlers/employees"; // Disabled - using real API
+// import { analyticsHandlers } from "./handlers/analytics"; // Disabled - using real API
 
 export const handlers = [
   ...authHandlers,
@@ -27,8 +27,8 @@ export const handlers = [
   ...purchaseOrderHandlers,
   ...posHandlers,
   ...reorderHandlers,
-  ...employeeHandlers,
-  ...analyticsHandlers,
+  // ...employeeHandlers, // Disabled - using real API
+  // ...analyticsHandlers, // Disabled - using real API
 
   // Health check endpoint
   http.get("/api/health", () => {

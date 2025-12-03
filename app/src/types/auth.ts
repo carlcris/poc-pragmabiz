@@ -4,6 +4,7 @@ export interface User {
   name: string;
   role: string;
   companyId: string;
+  employeeId?: string | null;  // Link to employee record for commission tracking
 }
 
 export interface LoginCredentials {

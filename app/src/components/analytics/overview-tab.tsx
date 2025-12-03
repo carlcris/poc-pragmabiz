@@ -32,6 +32,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
     return timeData.data.map((item) => ({
       date: format(parseISO(item.date), "MMM dd"),
       sales: item.sales,
+      commission: item.commission,
       transactions: item.transactions,
     }));
   }, [timeData]);
@@ -141,6 +142,14 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                   strokeWidth={2}
                   name="Sales"
                   dot={{ fill: "#3b82f6" }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="commission"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  name="Commission"
+                  dot={{ fill: "#10b981" }}
                 />
               </LineChart>
             </ResponsiveContainer>

@@ -24,6 +24,9 @@ export interface Employee {
   // Sales commission
   commissionRate: number; // Percentage (e.g., 5.00 = 5%)
 
+  // Territories (optional, loaded from API)
+  territories?: string[];
+
   // Address
   addressLine1?: string;
   addressLine2?: string;

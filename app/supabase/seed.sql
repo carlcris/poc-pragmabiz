@@ -144,7 +144,7 @@ INSERT INTO warehouses (id, company_id, warehouse_code, warehouse_name, warehous
 VALUES
     ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true, false),
     ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', 'WH-GEN-01', 'General Santos Warehouse', 'main', 'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Pedro Gonzales', '+63-917-333-4444', 'gensan.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', 'VAN-002', 'Demo Van 002', 'retail', 'Mobile Unit', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'van002@democompany.com', true, false),
     ('00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000001', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true, false),
     ('00000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000001', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true, false),
     ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000001', 'VAN-001', 'Demo Van 001', 'main', 'Mobile Unit', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Demo User', '+63-917-777-8888', 'van001@democompany.com', true, true);
@@ -378,13 +378,20 @@ BEGIN
     RAISE NOTICE 'and then update the users table manually.';
     RAISE NOTICE '===============================================';
 END $$;
+
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
 ('00000000-0000-0000-0000-000000000000','5745e13c-ab07-48b7-9db7-24372b16f5a9','authenticated','authenticated','demo@pragmatica.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5745e13c-ab07-48b7-9db7-24372b16f5a9", "email": "demo@pragmatica.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
-
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
 ('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021');
+
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','bcb8f5df-b678-4c22-ba71-59b33ba06227','authenticated','authenticated','mflores@pragmatica.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "bcb8f5df-b678-4c22-ba71-59b33ba06227", "email": "mflores@pragmatica.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
+VALUES
+('bcb8f5df-b678-4c22-ba71-59b33ba06227','00000000-0000-0000-0000-000000000001','Miguel','mflores@pragmatica.com','Miguel','Flores',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013');
 
 -- ============================================================================
 -- SEED DATA: Suppliers
@@ -841,3 +848,176 @@ BEGIN
     RAISE NOTICE '  - WS prices: %', ws_prices;
     RAISE NOTICE '  - SRP prices: %', srp_prices;
 END $$;
+
+
+-- ============================================================================
+-- SEED DATA: Sample Employees (Philippines - Mindanao)
+-- ============================================================================
+
+-- Note: This assumes a company exists. Adjust company_id and created_by as needed.
+-- Get the first company and user for seeding
+DO $$
+DECLARE
+    v_company_id UUID;
+    v_user_id UUID;
+BEGIN
+    -- Get first company
+    SELECT id INTO v_company_id FROM companies LIMIT 1;
+
+    -- Get first user
+    SELECT id INTO v_user_id FROM users LIMIT 1;
+
+    -- Only insert if company exists
+    IF v_company_id IS NOT NULL AND v_user_id IS NOT NULL THEN
+
+        -- Insert sample employees
+        INSERT INTO employees (
+            company_id, employee_code, first_name, last_name, email, phone,
+            role, department, hire_date, commission_rate,
+            city, region_state, is_active, created_by, updated_by, user_id
+        ) VALUES
+        -- Admin
+        (v_company_id, 'EMP-001', 'Juan', 'Dela Cruz', 'juan.delacruz@example.com', '+63-917-1234567',
+         'admin', 'Management', '2024-01-01', 5.00,
+         'Davao City', 'Davao Region', true, v_user_id, v_user_id, '5745e13c-ab07-48b7-9db7-24372b16f5a9'),
+
+        -- Managers
+        (v_company_id, 'EMP-002', 'Maria', 'Santos', 'maria.santos@example.com', '+63-917-2345678',
+         'manager', 'Sales', '2024-01-15', 3.00,
+         'Cagayan de Oro City', 'Northern Mindanao', true, v_user_id, v_user_id, NULL),
+
+        (v_company_id, 'EMP-003', 'Pedro', 'Reyes', 'pedro.reyes@example.com', '+63-917-3456789',
+         'manager', 'Sales', '2024-02-01', 3.00,
+         'General Santos City', 'SOCCSKSARGEN', true, v_user_id, v_user_id, NULL),
+        -- Sales Agents
+        (v_company_id, 'EMP-004', 'Ana', 'Garcia', 'ana.garcia@example.com', '+63-917-4567890',
+         'sales_agent', 'Sales', '2024-03-01', 5.00,
+         'Davao City', 'Davao Region', true, v_user_id, v_user_id, NULL),
+        (v_company_id, 'EMP-005', 'Roberto', 'Cruz', 'roberto.cruz@example.com', '+63-917-5678901',
+         'sales_agent', 'Sales', '2024-03-01', 5.00,
+         'Tagum City', 'Davao Region', true, v_user_id, v_user_id, NULL),
+
+        (v_company_id, 'EMP-006', 'Linda', 'Ramos', 'linda.ramos@example.com', '+63-917-6789012',
+         'sales_agent', 'Sales', '2024-03-15', 6.00,
+         'Cagayan de Oro City', 'Northern Mindanao', true, v_user_id, v_user_id, NULL),
+
+        (v_company_id, 'EMP-007', 'Carlos', 'Mendoza', 'carlos.mendoza@example.com', '+63-917-7890123',
+         'sales_agent', 'Sales', '2024-04-01', 5.50,
+         'Iligan City', 'Northern Mindanao', true, v_user_id, v_user_id, NULL),
+
+        (v_company_id, 'EMP-008', 'Sofia', 'Torres', 'sofia.torres@example.com', '+63-917-8901234',
+         'sales_agent', 'Sales', '2024-04-01', 7.00,
+         'General Santos City', 'SOCCSKSARGEN', true, v_user_id, v_user_id, NULL),
+
+        (v_company_id, 'EMP-009', 'Miguel', 'Flores', 'miguel.flores@example.com', '+63-917-9012345',
+         'sales_agent', 'Sales', '2024-04-15', 5.00,
+         'Zamboanga City', 'Zamboanga Peninsula', true, v_user_id, v_user_id, 'bcb8f5df-b678-4c22-ba71-59b33ba06227'),
+
+        (v_company_id, 'EMP-010', 'Elena', 'Diaz', 'elena.diaz@example.com', '+63-917-0123456',
+         'sales_agent', 'Sales', '2024-05-01', 6.50,
+         'Butuan City', 'Caraga', true, v_user_id, v_user_id, NULL);
+
+        RAISE NOTICE 'Sample employees created successfully';
+    ELSE
+        RAISE NOTICE 'No company or user found. Skipping employee seed data.';
+    END IF;
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Sample Territory Assignments
+-- ============================================================================
+
+DO $$
+DECLARE
+    v_company_id UUID;
+    v_user_id UUID;
+    v_emp_004 UUID;
+    v_emp_005 UUID;
+    v_emp_006 UUID;
+    v_emp_007 UUID;
+    v_emp_008 UUID;
+    v_emp_009 UUID;
+    v_emp_010 UUID;
+BEGIN
+    SELECT id INTO v_company_id FROM companies LIMIT 1;
+    SELECT id INTO v_user_id FROM users LIMIT 1;
+
+    IF v_company_id IS NOT NULL AND v_user_id IS NOT NULL THEN
+        -- Get employee IDs
+        SELECT id INTO v_emp_004 FROM employees WHERE employee_code = 'EMP-004' AND company_id = v_company_id;
+        SELECT id INTO v_emp_005 FROM employees WHERE employee_code = 'EMP-005' AND company_id = v_company_id;
+        SELECT id INTO v_emp_006 FROM employees WHERE employee_code = 'EMP-006' AND company_id = v_company_id;
+        SELECT id INTO v_emp_007 FROM employees WHERE employee_code = 'EMP-007' AND company_id = v_company_id;
+        SELECT id INTO v_emp_008 FROM employees WHERE employee_code = 'EMP-008' AND company_id = v_company_id;
+        SELECT id INTO v_emp_009 FROM employees WHERE employee_code = 'EMP-009' AND company_id = v_company_id;
+        SELECT id INTO v_emp_010 FROM employees WHERE employee_code = 'EMP-010' AND company_id = v_company_id;
+
+        -- Assign territories
+        INSERT INTO employee_distribution_locations (
+            company_id, employee_id, city, region_state, is_primary, created_by, updated_by
+        ) VALUES
+        -- Ana Garcia - Davao Region
+        (v_company_id, v_emp_004, 'Davao City', 'Davao Region', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_004, 'Digos City', 'Davao Region', false, v_user_id, v_user_id),
+
+        -- Roberto Cruz - Davao Region
+        (v_company_id, v_emp_005, 'Tagum City', 'Davao Region', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_005, 'Panabo City', 'Davao Region', false, v_user_id, v_user_id),
+
+        -- Linda Ramos - Northern Mindanao
+        (v_company_id, v_emp_006, 'Cagayan de Oro City', 'Northern Mindanao', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_006, 'Valencia City', 'Northern Mindanao', false, v_user_id, v_user_id),
+
+        -- Carlos Mendoza - Northern Mindanao
+        (v_company_id, v_emp_007, 'Iligan City', 'Northern Mindanao', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_007, 'Malaybalay City', 'Northern Mindanao', false, v_user_id, v_user_id),
+
+        -- Sofia Torres - SOCCSKSARGEN
+        (v_company_id, v_emp_008, 'General Santos City', 'SOCCSKSARGEN', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_008, 'Koronadal City', 'SOCCSKSARGEN', false, v_user_id, v_user_id),
+
+        -- Miguel Flores - Zamboanga Peninsula
+        (v_company_id, v_emp_009, 'Zamboanga City', 'Zamboanga Peninsula', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_009, 'Pagadian City', 'Zamboanga Peninsula', false, v_user_id, v_user_id),
+
+        -- Elena Diaz - Caraga
+        (v_company_id, v_emp_010, 'Butuan City', 'Caraga', true, v_user_id, v_user_id),
+        (v_company_id, v_emp_010, 'Surigao City', 'Caraga', false, v_user_id, v_user_id);
+
+        RAISE NOTICE 'Territory assignments created successfully';
+    END IF;
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Link Admin User to Employee (for testing)
+-- ============================================================================
+    DO $$
+        DECLARE
+            v_user_id1 UUID;
+            v_employee_id1 UUID;
+            v_user_id2 UUID;
+            v_employee_id2 UUID;
+        BEGIN
+            -- Get a sales agent employee (Ana Garcia - EMP-004)
+            SELECT id INTO v_employee_id1 FROM employees WHERE employee_code = 'EMP-001' LIMIT 1;
+            SELECT id INTO v_employee_id2 FROM employees WHERE employee_code = 'EMP-009' LIMIT 1;
+        
+        IF v_employee_id1 IS NOT NULL THEN
+            -- Link user to employee in both directions
+            UPDATE users SET employee_id = v_employee_id1 WHERE id = '5745e13c-ab07-48b7-9db7-24372b16f5a9';
+            UPDATE employees SET user_id = '5745e13c-ab07-48b7-9db7-24372b16f5a9' WHERE id = v_employee_id1;
+        
+            RAISE NOTICE 'Admin user linked to employee EMP-001 (Demo User)';
+        ELSE
+            RAISE NOTICE 'Admin user or employee not found. Skipping user-employee link.';
+        END IF;
+        IF v_employee_id2 IS NOT NULL THEN
+            -- Link user to employee in both directions
+            UPDATE users SET employee_id = v_employee_id2 WHERE id = 'bcb8f5df-b678-4c22-ba71-59b33ba06227';
+            UPDATE employees SET user_id = 'bcb8f5df-b678-4c22-ba71-59b33ba06227' WHERE id = v_employee_id2;
+        
+            RAISE NOTICE 'User linked to employee EMP-009 (Miguel Flores)';
+        ELSE
+            RAISE NOTICE 'User or employee not found. Skipping user-employee link.';
+        END IF;
+    END $$;

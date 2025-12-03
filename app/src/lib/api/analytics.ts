@@ -20,11 +20,11 @@ export const analyticsApi = {
     filters?: SalesAnalyticsFilters
   ): Promise<AnalyticsResponse<SalesOverview>> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
+    if (filters?.startDate) params.append("dateFrom", filters.startDate);
+    if (filters?.endDate) params.append("dateTo", filters.endDate);
     if (filters?.employeeId) params.append("employeeId", filters.employeeId);
     if (filters?.city) params.append("city", filters.city);
-    if (filters?.regionState) params.append("regionState", filters.regionState);
+    if (filters?.regionState) params.append("region", filters.regionState);
 
     const response = await fetch(
       `${API_BASE_URL}/analytics/sales/overview?${params.toString()}`
@@ -35,17 +35,18 @@ export const analyticsApi = {
 
   // Sales by time
   async getSalesByTime(
-    filters?: SalesAnalyticsFilters
-  ): Promise<PaginatedAnalyticsResponse<SalesByTime>> {
+    filters?: SalesAnalyticsFilters & { granularity?: string }
+  ): Promise<{ data: SalesByTime[]; granularity: string }> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
+    if (filters?.startDate) params.append("dateFrom", filters.startDate);
+    if (filters?.endDate) params.append("dateTo", filters.endDate);
     if (filters?.employeeId) params.append("employeeId", filters.employeeId);
     if (filters?.city) params.append("city", filters.city);
-    if (filters?.regionState) params.append("regionState", filters.regionState);
+    if (filters?.regionState) params.append("region", filters.regionState);
+    if (filters?.granularity) params.append("granularity", filters.granularity);
 
     const response = await fetch(
-      `${API_BASE_URL}/analytics/sales/by-day?${params.toString()}`
+      `${API_BASE_URL}/analytics/sales/by-time?${params.toString()}`
     );
     if (!response.ok) throw new Error("Failed to fetch sales by time");
     return response.json();
@@ -56,13 +57,12 @@ export const analyticsApi = {
     filters?: SalesAnalyticsFilters
   ): Promise<PaginatedAnalyticsResponse<SalesByEmployee>> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
-    if (filters?.employeeIds) {
-      filters.employeeIds.forEach((id) => params.append("employeeIds[]", id));
-    }
+    if (filters?.startDate) params.append("dateFrom", filters.startDate);
+    if (filters?.endDate) params.append("dateTo", filters.endDate);
     if (filters?.city) params.append("city", filters.city);
-    if (filters?.regionState) params.append("regionState", filters.regionState);
+    if (filters?.regionState) params.append("region", filters.regionState);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
 
     const response = await fetch(
       `${API_BASE_URL}/analytics/sales/by-employee?${params.toString()}`
@@ -73,17 +73,15 @@ export const analyticsApi = {
 
   // Sales by location
   async getSalesByLocation(
-    filters?: SalesAnalyticsFilters
-  ): Promise<PaginatedAnalyticsResponse<SalesByLocation>> {
+    filters?: SalesAnalyticsFilters & { groupBy?: string }
+  ): Promise<{ data: SalesByLocation[]; pagination: { page: number; limit: number; total: number; totalPages: number }; groupBy: string }> {
     const params = new URLSearchParams();
-    if (filters?.startDate) params.append("startDate", filters.startDate);
-    if (filters?.endDate) params.append("endDate", filters.endDate);
-    if (filters?.cities) {
-      filters.cities.forEach((city) => params.append("cities[]", city));
-    }
-    if (filters?.regions) {
-      filters.regions.forEach((region) => params.append("regions[]", region));
-    }
+    if (filters?.startDate) params.append("dateFrom", filters.startDate);
+    if (filters?.endDate) params.append("dateTo", filters.endDate);
+    if (filters?.employeeId) params.append("employeeId", filters.employeeId);
+    if (filters?.groupBy) params.append("groupBy", filters.groupBy);
+    if (filters?.page) params.append("page", String(filters.page));
+    if (filters?.limit) params.append("limit", String(filters.limit));
 
     const response = await fetch(
       `${API_BASE_URL}/analytics/sales/by-location?${params.toString()}`

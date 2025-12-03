@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { postARInvoice } from '@/services/accounting/arPosting'
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
+import { calculateInvoiceCommission } from '@/services/commission/commissionService'
 
 // POST /api/invoices/[id]/post - Post an invoice and create stock transactions
 export async function POST(
@@ -201,6 +202,24 @@ export async function POST(
       )
     }
 
+    // Calculate commission when invoice is posted
+    let commissionResult = { success: true, commissionTotal: 0, employeeId: null as string | null }
+    try {
+      commissionResult = await calculateInvoiceCommission(
+        invoice.id,
+        invoice.primary_employee_id || undefined
+      )
+
+      if (!commissionResult.success) {
+        console.warn(
+          `Invoice ${invoice.invoice_code} posted but commission calculation failed: ${commissionResult.error}`
+        )
+      }
+    } catch (commissionError) {
+      console.error('Error calculating commission:', commissionError)
+      // Don't fail invoice posting if commission calculation fails
+    }
+
     // Post AR transaction to general ledger
     const arResult = await postARInvoice(userData.company_id, user.id, {
       invoiceId: invoice.id,
@@ -265,6 +284,9 @@ export async function POST(
       cogsJournalEntryId: cogsResult.journalEntryId,
       cogsPostingSuccess: cogsResult.success,
       cogsTotalAmount: cogsCalculation.totalCOGS,
+      commissionTotal: commissionResult.commissionTotal,
+      commissionEmployeeId: commissionResult.employeeId,
+      commissionSuccess: commissionResult.success,
     }, { status: 200 })
   } catch (error) {
     console.error('Unexpected error in POST /api/invoices/[id]/post:', error)

@@ -40,7 +40,11 @@
       "Bash(echo:*)",
       "Read(//opt/homebrew/Caskroom/claude-code/2.0.27/**)",
       "Bash(claude config set:*)",
-      "Bash(claude doctor:*)"
+      "Bash(claude doctor:*)",
+      "Bash(for file in /Users/carl/workspace/go/erpplus/app/src/app/api/employees/[id]/route.ts /Users/carl/workspace/go/erpplus/app/src/app/api/employees/[id]/territories/route.ts /Users/carl/workspace/go/erpplus/app/src/app/api/employees/[id]/territories/[territoryId]/route.ts)",
+      "Bash(do)",
+      "Bash(done)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []
