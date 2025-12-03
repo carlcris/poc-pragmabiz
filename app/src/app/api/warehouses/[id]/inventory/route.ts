@@ -62,6 +62,7 @@ export async function GET(
           item_name,
           description,
           sales_price,
+          cost_price,
           category_id,
           uom_id
         )
@@ -98,6 +99,7 @@ export async function GET(
       currentStock: parseFloat(stock.current_stock) || 0,
       availableStock: parseFloat(stock.current_stock) || 0,
       unitPrice: parseFloat(stock.items?.sales_price) || 0,
+      unitCost: parseFloat(stock.items?.cost_price) || 0,
       reorderPoint: parseFloat(stock.reorder_level) || 0,
       categoryId: stock.items?.category_id,
       categoryName: null,

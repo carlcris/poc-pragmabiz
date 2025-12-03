@@ -13,6 +13,7 @@ interface ProcessPaymentRequest {
     quantity: number;
     uomId: string;
     unitPrice: number;
+    discount?: number; // Discount percentage
   }[];
   paymentMethod: 'cash' | 'check' | 'credit_card' | 'bank_transfer' | 'other';
   paymentReference?: string;
@@ -73,26 +74,31 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     let subtotal = 0;
+    let totalDiscount = 0;
     let totalTax = 0;
 
     const itemsWithCalculations = body.lineItems.map((item) => {
       const itemSubtotal = item.quantity * item.unitPrice;
+      const discountAmount = (itemSubtotal * (item.discount || 0)) / 100;
+      const taxableAmount = itemSubtotal - discountAmount;
       const taxRate = 12; // 12% VAT
-      const taxAmount = (itemSubtotal * taxRate) / 100;
-      const lineTotal = itemSubtotal + taxAmount;
+      const taxAmount = (taxableAmount * taxRate) / 100;
+      const lineTotal = taxableAmount + taxAmount;
 
       subtotal += itemSubtotal;
+      totalDiscount += discountAmount;
       totalTax += taxAmount;
 
       return {
         ...item,
+        discountAmount,
         taxRate,
         taxAmount,
         lineTotal,
       };
     });
 
-    const totalAmount = subtotal + totalTax;
+    const totalAmount = subtotal - totalDiscount + totalTax;
 
     // Create sales order
     const { data: salesOrder, error: orderError } = await supabase
@@ -105,7 +111,7 @@ export async function POST(request: NextRequest) {
         expected_delivery_date: today,
         status: 'confirmed', // Auto-confirm for van sales
         subtotal: subtotal.toFixed(4),
-        discount_amount: '0',
+        discount_amount: totalDiscount.toFixed(4),
         tax_amount: totalTax.toFixed(4),
         total_amount: totalAmount.toFixed(4),
         payment_terms: 'Cash',
@@ -130,8 +136,8 @@ export async function POST(request: NextRequest) {
       quantity: item.quantity,
       uom_id: item.uomId,
       rate: item.unitPrice,
-      discount_percent: 0,
-      discount_amount: 0,
+      discount_percent: item.discount || 0,
+      discount_amount: item.discountAmount,
       tax_percent: item.taxRate,
       tax_amount: item.taxAmount,
       line_total: item.lineTotal,
@@ -183,7 +189,7 @@ export async function POST(request: NextRequest) {
         due_date: today, // Due today for van sales (cash)
         status: 'draft', // Will be updated after payment
         subtotal: subtotal.toFixed(4),
-        discount_amount: '0',
+        discount_amount: totalDiscount.toFixed(4),
         tax_amount: totalTax.toFixed(4),
         total_amount: totalAmount.toFixed(4),
         amount_paid: '0', // Will be updated after payment
@@ -211,8 +217,8 @@ export async function POST(request: NextRequest) {
       quantity: item.quantity,
       uom_id: item.uomId,
       rate: item.unitPrice,
-      discount_percent: 0,
-      discount_amount: 0,
+      discount_percent: item.discount || 0,
+      discount_amount: item.discountAmount,
       tax_percent: item.taxRate,
       tax_amount: item.taxAmount,
       line_total: item.lineTotal,

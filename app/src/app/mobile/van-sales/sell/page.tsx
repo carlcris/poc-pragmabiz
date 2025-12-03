@@ -22,7 +22,8 @@ import {
   DollarSign,
   User,
   Phone,
-  ChevronRight
+  ChevronRight,
+  Percent
 } from "lucide-react";
 import { useUserVanWarehouse, useVanItems } from "@/hooks/useVanWarehouse";
 import { Customer } from "@/types/customer";
@@ -37,6 +38,7 @@ interface CartItem {
   uomId: string;
   uomName: string;
   availableStock: number;
+  discount: number; // Discount percentage
 }
 
 export default function SellPage() {
@@ -71,10 +73,15 @@ export default function SellPage() {
       )
     : [];
 
-  // Calculate totals
+  // Calculate totals with discount
   const subtotal = cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-  const tax = subtotal * 0.12; // 12% VAT
-  const total = subtotal + tax;
+  const totalDiscount = cart.reduce((sum, item) => {
+    const itemSubtotal = item.unitPrice * item.quantity;
+    return sum + (itemSubtotal * item.discount / 100);
+  }, 0);
+  const taxableAmount = subtotal - totalDiscount;
+  const tax = taxableAmount * 0.12; // 12% VAT
+  const total = taxableAmount + tax;
 
   const addToCart = (item: any) => {
     const existingItem = cart.find(ci => ci.itemId === item.itemId);
@@ -90,6 +97,7 @@ export default function SellPage() {
         uomId: item.uomId,
         uomName: item.uomName,
         availableStock: item.availableStock || 0,
+        discount: 0,
       }]);
     }
     // Clear search box after adding item
@@ -121,6 +129,13 @@ export default function SellPage() {
 
   const removeFromCart = (itemId: string) => {
     setCart(cart.filter(ci => ci.itemId !== itemId));
+  };
+
+  const updateDiscount = (itemId: string, discount: number) => {
+    const validDiscount = Math.max(0, Math.min(100, discount)); // Clamp between 0-100
+    setCart(cart.map(ci =>
+      ci.itemId === itemId ? { ...ci, discount: validDiscount } : ci
+    ));
   };
 
   const handleCheckout = async () => {
@@ -163,6 +178,7 @@ export default function SellPage() {
           quantity: item.quantity,
           uomId: item.uomId,
           unitPrice: item.unitPrice,
+          discount: item.discount,
         })),
         paymentMethod: "cash" as const,
         paymentReference: `Van Sales - ${new Date().toISOString()}`,
@@ -351,44 +367,81 @@ export default function SellPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {cart.map((item) => (
-                <div key={item.itemId} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{item.itemName}</p>
-                    <p className="text-xs text-gray-500">₱{item.unitPrice.toFixed(2)} / {item.uomName}</p>
+              {cart.map((item) => {
+                const itemSubtotal = item.unitPrice * item.quantity;
+                const discountAmount = (itemSubtotal * item.discount) / 100;
+                const itemTotal = itemSubtotal - discountAmount;
+
+                return (
+                  <div key={item.itemId} className="p-3 bg-gray-50 rounded-lg space-y-2">
+                    {/* Item Header */}
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{item.itemName}</p>
+                        <p className="text-xs text-gray-500">₱{item.unitPrice.toFixed(2)} / {item.uomName}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-red-500 flex-shrink-0"
+                        onClick={() => removeFromCart(item.itemId)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Quantity and Discount Controls */}
+                    <div className="flex items-center gap-2">
+                      {/* Quantity Controls */}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => updateQuantity(item.itemId, item.quantity - 1)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          onClick={() => updateQuantity(item.itemId, item.quantity + 1)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Discount Input */}
+                      <div className="flex items-center gap-1 flex-1">
+                        <Percent className="h-4 w-4 text-gray-400" />
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={item.discount || ""}
+                          onChange={(e) => updateDiscount(item.itemId, parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="h-8 text-center"
+                        />
+                      </div>
+
+                      {/* Line Total */}
+                      <div className="text-right flex-shrink-0">
+                        {item.discount > 0 ? (
+                          <div>
+                            <p className="text-xs text-gray-500 line-through">₱{itemSubtotal.toFixed(2)}</p>
+                            <p className="font-bold text-sm text-green-600">₱{itemTotal.toFixed(2)}</p>
+                          </div>
+                        ) : (
+                          <p className="font-bold text-sm">₱{itemTotal.toFixed(2)}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => updateQuantity(item.itemId, item.quantity - 1)}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
-                    <span className="w-8 text-center font-medium">{item.quantity}</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => updateQuantity(item.itemId, item.quantity + 1)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 text-red-500"
-                      onClick={() => removeFromCart(item.itemId)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">₱{(item.unitPrice * item.quantity).toFixed(2)}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Totals */}
               <div className="border-t pt-3 space-y-2">
@@ -396,11 +449,17 @@ export default function SellPage() {
                   <span>Subtotal</span>
                   <span>₱{subtotal.toFixed(2)}</span>
                 </div>
+                {totalDiscount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount</span>
+                    <span>-₱{totalDiscount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span>Tax (12%)</span>
                   <span>₱{tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-lg font-bold">
+                <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>Total</span>
                   <span>₱{total.toFixed(2)}</span>
                 </div>
