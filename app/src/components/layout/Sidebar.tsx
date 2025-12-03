@@ -76,6 +76,7 @@ const menuItems = [
     children: [
       { title: "Sales Analytics", href: "/reports/sales-analytics" },
       { title: "Stock Reports", href: "/reports/stock" },
+      { title: "Commission Reports", href: "/reports/commission" },
     ],
   },
   {
