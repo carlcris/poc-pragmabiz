@@ -159,38 +159,33 @@ export function MobileHeader({
         )}
       </div>
 
-      {/* Van & Driver Info Banner - Redesigned */}
-      {(vanName || driverName) && (
-        <div className="px-4 py-2.5 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-t border-primary/20">
-          <div className="flex items-center justify-center gap-4 text-sm">
-            {vanName && (
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20">
+      {/* Compact Info Bar */}
+      <div className="px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 border-t border-primary/20">
+        <div className="flex items-center justify-between text-xs">
+          {/* Van & Driver Info - Compact */}
+          {(vanName || driverName) && (
+            <div className="flex items-center gap-3">
+              {vanName && (
+                <div className="flex items-center gap-1.5">
                   <Truck className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-semibold text-gray-700">{vanName}</span>
                 </div>
-                <span className="font-semibold text-gray-700">{vanName}</span>
-              </div>
-            )}
-            {vanName && driverName && (
-              <span className="text-gray-400">•</span>
-            )}
-            {driverName && (
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20">
-                  <UserCircle className="h-3.5 w-3.5 text-primary" />
+              )}
+              {driverName && (
+                <div className="flex items-center gap-1.5">
+                  <UserCircle className="h-3.5 w-3.5 text-green-600" />
+                  <span className="font-medium text-gray-600">{driverName}</span>
                 </div>
-                <span className="font-medium text-gray-600">{driverName}</span>
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
+          {/* Date - Compact */}
+          <div className="flex items-center gap-1 text-gray-600">
+            <span>📅</span>
+            <span className="font-medium">{format(new Date(), "MMM d, yyyy")}</span>
           </div>
         </div>
-      )}
-
-      {/* Date banner */}
-      <div className="px-4 py-2 bg-gray-50 border-t">
-        <p className="text-xs text-gray-600 text-center">
-          📅 {format(new Date(), "EEEE, MMMM d, yyyy")}
-        </p>
       </div>
 
       {/* Logout Confirmation Dialog */}

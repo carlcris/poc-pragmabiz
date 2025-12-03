@@ -51,6 +51,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    if (!body.warehouseId) {
+      return NextResponse.json({ error: 'Warehouse ID is required' }, { status: 400 });
+    }
+
+    // Validate stock availability for all items
+    const itemIds = body.lineItems.map(item => item.itemId);
+    const { data: stockData, error: stockError } = await supabase
+      .from('item_warehouse')
+      .select('item_id, current_stock')
+      .eq('warehouse_id', body.warehouseId)
+      .in('item_id', itemIds);
+
+    if (stockError) {
+      console.error('Error checking stock availability:', stockError);
+      return NextResponse.json({ error: 'Failed to check stock availability' }, { status: 500 });
+    }
+
+    // Create a map of item_id to current_stock
+    const stockMap = new Map(stockData?.map(s => [s.item_id, parseFloat(s.current_stock) || 0]) || []);
+
+    // Check each item's availability
+    for (const item of body.lineItems) {
+      const availableStock = stockMap.get(item.itemId) || 0;
+      if (item.quantity > availableStock) {
+        return NextResponse.json({
+          error: `Insufficient stock for item ${item.description}. Available: ${availableStock}, Requested: ${item.quantity}`
+        }, { status: 400 });
+      }
+    }
+
     const today = new Date().toISOString().split('T')[0];
 
     // ========================================================================

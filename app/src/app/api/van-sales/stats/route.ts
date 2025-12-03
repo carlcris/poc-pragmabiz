@@ -11,10 +11,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's van warehouse
+    // Get user's van warehouse and employee_id
     const { data: userData } = await supabase
       .from('users')
-      .select('van_warehouse_id')
+      .select('van_warehouse_id, employee_id')
       .eq('id', user.id)
       .single();
 
@@ -25,13 +25,20 @@ export async function GET(request: NextRequest) {
     const today = new Date().toISOString().split('T')[0];
 
     // Get today's sales invoices for this van warehouse
-    const { data: invoices, error: invoicesError } = await supabase
+    // Filter by employee_id if available, otherwise by warehouse
+    let query = supabase
       .from('sales_invoices')
       .select('id, total_amount, invoice_date, status')
       .eq('warehouse_id', userData.van_warehouse_id)
-      .eq('primary_employee_id', user.id) // Sales by this user
       .gte('invoice_date', today)
       .lte('invoice_date', today);
+
+    // Only filter by employee if user has an employee_id
+    if (userData.employee_id) {
+      query = query.eq('primary_employee_id', userData.employee_id);
+    }
+
+    const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
       console.error('Error fetching invoices:', invoicesError);

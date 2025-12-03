@@ -65,12 +65,14 @@ export default function SellPage() {
   const vanName = vanData?.vanWarehouse?.name || "No Van Assigned";
   const driverName = vanData?.fullName || "Driver";
 
-  const items = itemsData?.inventory || [];
+  const items = (itemsData as any)?.inventory || [];
   const filteredItems = searchTerm
-    ? items.filter((item: any) =>
-        item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.itemCode.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    ? items.filter((item: any) => {
+        const matchesSearch = item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
+        const hasStock = item.availableStock > 0;
+        return matchesSearch && hasStock;
+      })
     : [];
 
   // Calculate totals with discount
@@ -84,8 +86,29 @@ export default function SellPage() {
   const total = taxableAmount + tax;
 
   const addToCart = (item: any) => {
+    // Check if item has stock available
+    if (!item.availableStock || item.availableStock <= 0) {
+      setAlertState({
+        open: true,
+        title: "Out of Stock",
+        description: `${item.itemName} is currently out of stock`,
+        variant: "warning",
+      });
+      return;
+    }
+
     const existingItem = cart.find(ci => ci.itemId === item.itemId);
     if (existingItem) {
+      // Check if we can add one more
+      if (existingItem.quantity + 1 > item.availableStock) {
+        setAlertState({
+          open: true,
+          title: "Insufficient Stock",
+          description: `Only ${item.availableStock} ${item.uomName} available in stock`,
+          variant: "warning",
+        });
+        return;
+      }
       updateQuantity(item.itemId, existingItem.quantity + 1);
     } else {
       setCart([...cart, {
@@ -281,9 +304,9 @@ export default function SellPage() {
                       <span>{selectedCustomer.phone}</span>
                     </div>
                   )}
-                  {selectedCustomer.address && (
+                  {(selectedCustomer as any).address && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                      {selectedCustomer.address}
+                      {(selectedCustomer as any).address}
                     </p>
                   )}
                 </div>
@@ -379,6 +402,9 @@ export default function SellPage() {
                       <div className="flex-1">
                         <p className="font-medium text-sm">{item.itemName}</p>
                         <p className="text-xs text-gray-500">₱{item.unitPrice.toFixed(2)} / {item.uomName}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          Stock: {item.availableStock} {item.uomName}
+                        </p>
                       </div>
                       <Button
                         size="sm"
@@ -402,12 +428,20 @@ export default function SellPage() {
                         >
                           <Minus className="h-4 w-4" />
                         </Button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          max={item.availableStock}
+                          value={item.quantity}
+                          onChange={(e) => updateQuantity(item.itemId, parseInt(e.target.value) || 0)}
+                          className="w-16 text-center font-medium h-8 p-0"
+                        />
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
                           onClick={() => updateQuantity(item.itemId, item.quantity + 1)}
+                          disabled={item.quantity >= item.availableStock}
                         >
                           <Plus className="h-4 w-4" />
                         </Button>
