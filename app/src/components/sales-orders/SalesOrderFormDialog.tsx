@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
+import { Plus, Pencil, Trash2, Calculator, Check, ChevronsUpDown } from "lucide-react";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 import { useCreateSalesOrder, useUpdateSalesOrder } from "@/hooks/useSalesOrders";
 import { useCustomers } from "@/hooks/useCustomers";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -88,6 +102,9 @@ export function SalesOrderFormDialog({
     index: number;
     item: LineItemFormValues;
   } | null>(null);
+
+  // Customer combobox state
+  const [customerOpen, setCustomerOpen] = useState(false);
 
   // Default values
   const defaultValues: SalesOrderFormValues = {
@@ -271,31 +288,75 @@ export function SalesOrderFormDialog({
                   <FormField
                     control={form.control}
                     name="customerId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Customer *</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a customer" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {customers
-                              .filter((c) => c.isActive)
-                              .map((customer) => (
-                                <SelectItem key={customer.id} value={customer.id}>
-                                  {customer.code} - {customer.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const selectedCustomer = customers.find(
+                        (c) => c.id === field.value
+                      );
+                      return (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Customer *</FormLabel>
+                          <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={customerOpen}
+                                  className={cn(
+                                    "w-full justify-between",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {selectedCustomer
+                                    ? selectedCustomer.name
+                                    : "Search customer..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[400px] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search by code or name..." />
+                                <CommandList className="max-h-[300px] overflow-y-auto">
+                                  <CommandEmpty>No customer found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {customers
+                                      .filter((c) => c.isActive)
+                                      .map((customer) => (
+                                        <CommandItem
+                                          key={customer.id}
+                                          value={`${customer.code} ${customer.name}`}
+                                          onSelect={() => {
+                                            field.onChange(customer.id);
+                                            setCustomerOpen(false);
+                                          }}
+                                          className="flex items-start py-2"
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4 flex-shrink-0 mt-1",
+                                              field.value === customer.id
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="font-medium">{customer.name}</div>
+                                            <div className="text-xs text-muted-foreground mt-0.5">
+                                              {customer.code}
+                                            </div>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <div className="grid grid-cols-2 gap-4">
