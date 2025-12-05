@@ -191,19 +191,28 @@ export async function POST(request: NextRequest) {
     // STEP 2: Create Sales Invoice from Order
     // ========================================================================
 
-    // Generate invoice number
-    const { data: lastInvoice } = await supabase
+    // Generate invoice number (using same format as sales orders: INV-YYYY-NNNN)
+    const { data: invoices } = await supabase
       .from('sales_invoices')
       .select('invoice_code')
       .eq('company_id', userData.company_id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
 
-    let invoiceNumber = 'INV-00001';
-    if (lastInvoice?.invoice_code) {
-      const lastNumber = parseInt(lastInvoice.invoice_code.split('-')[1] || '0');
-      invoiceNumber = `INV-${String(lastNumber + 1).padStart(5, '0')}`;
+    let invoiceNumber = 'INV-2025-0001';
+    if (invoices && invoices.length > 0 && invoices[0].invoice_code) {
+      const parts = invoices[0].invoice_code.split('-');
+      if (parts.length === 3) {
+        // Format: INV-YYYY-NNNN
+        const lastNum = parseInt(parts[2]);
+        const nextNum = lastNum + 1;
+        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, '0')}`;
+      } else if (parts.length === 2) {
+        // Old format: INV-NNNNN - convert to new format starting from that number
+        const lastNum = parseInt(parts[1]);
+        const nextNum = lastNum + 1;
+        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, '0')}`;
+      }
     }
 
     // Create invoice
@@ -402,7 +411,10 @@ export async function POST(request: NextRequest) {
       }))
     );
 
-    let cogsResult = { success: true, journalEntryId: undefined as string | undefined };
+    let cogsResult: { success: boolean; journalEntryId?: string; error?: string } = {
+      success: true,
+      journalEntryId: undefined
+    };
 
     if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
       cogsResult = await postCOGS(userData.company_id, user.id, {
@@ -415,7 +427,7 @@ export async function POST(request: NextRequest) {
         description: `COGS for van sales invoice ${invoiceNumber}`,
       });
 
-      if (!cogsResult.success) {
+      if (!cogsResult.success && cogsResult.error) {
         console.error('Error posting COGS to GL:', cogsResult.error);
         console.warn(
           `Van sale ${invoiceNumber} completed but COGS GL posting failed: ${cogsResult.error}`

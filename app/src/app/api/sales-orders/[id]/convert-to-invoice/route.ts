@@ -111,20 +111,28 @@ export async function POST(
       )
     }
 
-    // Step 3: Generate invoice number
-    const { data: lastInvoice } = await supabase
+    // Step 3: Generate invoice number (handle both old INV-NNNNN and new INV-YYYY-NNNN formats)
+    const { data: invoices } = await supabase
       .from('sales_invoices')
       .select('invoice_code')
       .eq('company_id', salesOrder.company_id)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single()
 
     let invoiceNumber = 'INV-2025-0001'
-    if (lastInvoice?.invoice_code) {
-      const lastNum = parseInt(lastInvoice.invoice_code.split('-')[2])
-      const nextNum = lastNum + 1
-      invoiceNumber = `INV-2025-${String(nextNum).padStart(4, '0')}`
+    if (invoices && invoices.length > 0 && invoices[0].invoice_code) {
+      const parts = invoices[0].invoice_code.split('-')
+      if (parts.length === 3) {
+        // New format: INV-YYYY-NNNN
+        const lastNum = parseInt(parts[2])
+        const nextNum = lastNum + 1
+        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, '0')}`
+      } else if (parts.length === 2) {
+        // Old format: INV-NNNNN - convert to new format starting from that number
+        const lastNum = parseInt(parts[1])
+        const nextNum = lastNum + 1
+        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, '0')}`
+      }
     }
 
     // Step 4: Calculate due date (default: 30 days from now)
@@ -404,7 +412,10 @@ export async function POST(
       }))
     )
 
-    let cogsResult = { success: true, journalEntryId: undefined as string | undefined }
+    let cogsResult: { success: boolean; journalEntryId?: string; error?: string } = {
+      success: true,
+      journalEntryId: undefined
+    }
 
     if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
       cogsResult = await postCOGS(salesOrder.company_id, user.id, {
@@ -417,7 +428,7 @@ export async function POST(
         description: `COGS for invoice ${invoice.invoice_code} (from SO ${salesOrder.order_code})`,
       })
 
-      if (!cogsResult.success) {
+      if (!cogsResult.success && cogsResult.error) {
         console.error('Error posting COGS to GL:', cogsResult.error)
         console.warn(
           `Invoice ${invoice.invoice_code} created successfully but COGS GL posting failed: ${cogsResult.error}`

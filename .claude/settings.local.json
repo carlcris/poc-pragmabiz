@@ -44,7 +44,8 @@
       "Bash(for file in /Users/carl/workspace/go/erpplus/app/src/app/api/employees/[id]/route.ts /Users/carl/workspace/go/erpplus/app/src/app/api/employees/[id]/territories/route.ts /Users/carl/workspace/go/erpplus/app/src/app/api/employees/[id]/territories/[territoryId]/route.ts)",
       "Bash(do)",
       "Bash(done)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Read(//Users/carl/.npm/_logs/**)"
     ],
     "deny": [],
     "ask": []

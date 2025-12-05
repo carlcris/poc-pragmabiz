@@ -170,6 +170,19 @@ export interface DashboardWidgetData {
     agent: string;
     location: string;
   }>;
+  reorderAlerts?: Array<{
+    id: string;
+    code: string;
+    name: string;
+    currentStock: number;
+    reorderPoint: number;
+    warehouseId: string;
+  }>;
+  stats?: {
+    activeSalesOrders: number;
+    activePurchaseOrders: number;
+    lowStockCount: number;
+  };
 }
 
 // Chart data formats

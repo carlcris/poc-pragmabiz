@@ -75,8 +75,7 @@ export default function MobileLoginPage() {
               className="object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold text-primary mb-2">Van Sales</h1>
-          <p className="text-gray-600">Mobile Point of Sale</p>
+          <h1 className="text-3xl font-bold text-primary mb-2">PragmaBiz</h1>
         </div>
 
         {/* Login Card */}

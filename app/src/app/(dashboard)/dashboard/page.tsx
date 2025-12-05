@@ -5,57 +5,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { TrendingUp, AlertTriangle, FileText, ArrowUp, ArrowDown, ShoppingBag } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useItems } from "@/hooks/useItems";
 import { useSalesOrders } from "@/hooks/useSalesOrders";
-import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 import { useInvoices } from "@/hooks/useInvoices";
-import { useCustomers } from "@/hooks/useCustomers";
-import { useSuppliers } from "@/hooks/useSuppliers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { format } from "date-fns";
 import { TopAgentWidget } from "@/components/dashboard/top-agent-widget";
 import { RecentActivityWidget } from "@/components/dashboard/recent-activity-widget";
+import { useDashboardWidgets } from "@/hooks/useAnalytics";
 
 export default function DashboardPage() {
   const { formatCurrency } = useCurrency();
 
-  // Fetch data from all modules
-  const { data: itemsData, isLoading: itemsLoading } = useItems();
+  // Fetch dashboard widget data from single API (shared hook to avoid duplicate calls)
+  const { data: widgetData, isLoading: widgetLoading } = useDashboardWidgets();
+
+  // Fetch additional data still needed for calculations
   const { data: salesOrdersData, isLoading: salesOrdersLoading } = useSalesOrders();
-  const { data: purchaseOrdersData, isLoading: purchaseOrdersLoading } = usePurchaseOrders();
   const { data: invoicesData, isLoading: invoicesLoading } = useInvoices();
-  const { data: customersData, isLoading: customersLoading } = useCustomers();
-  const { data: suppliersData, isLoading: suppliersLoading } = useSuppliers();
 
-  const isLoading = itemsLoading || salesOrdersLoading || purchaseOrdersLoading ||
-                    invoicesLoading || customersLoading || suppliersLoading;
+  const isLoading = widgetLoading || salesOrdersLoading || invoicesLoading;
 
-  const items = itemsData?.data || [];
   const salesOrders = salesOrdersData?.data || [];
-  const purchaseOrders = purchaseOrdersData?.data || [];
   const invoices = invoicesData?.data || [];
-  const customers = customersData?.data || [];
-  const suppliers = suppliersData?.data || [];
 
-  // Calculate statistics
+  // Extract data from widgets API
+  const reorderAlerts = widgetData?.reorderAlerts || [];
+  const activePurchaseOrders = widgetData?.stats?.activePurchaseOrders || 0;
+  const todaysTotalSales = widgetData?.todaysSales?.amount || 0;
+
+  // Calculate revenue from invoices (still needed for display)
   const totalRevenue = invoices
     .filter(inv => inv.status === "paid" || inv.status === "partially_paid")
     .reduce((sum, inv) => sum + inv.totalAmount, 0);
 
-  const activeSalesOrders = salesOrders.filter(
-    order => order.status !== "delivered" && order.status !== "cancelled"
-  ).length;
-
-  const activePurchaseOrders = purchaseOrders.filter(
-    order => order.status !== "received" && order.status !== "cancelled"
-  ).length;
-
-  const activeCustomers = customers.filter(c => c.isActive).length;
-  const activeSuppliers = suppliers.filter(s => s.status === "active").length;
-
-  // Today's sales
+  // Today's sales orders (for detailed list)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const todaysSales = salesOrders
@@ -66,28 +51,6 @@ export default function DashboardPage() {
     })
     .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
     .slice(0, 5);
-
-  const todaysTotalSales = todaysSales.reduce((sum, order) => sum + order.totalAmount, 0);
-
-  // Reorder point alerts - Calculate from items
-  const reorderAlerts = useMemo(() => {
-    // Filter for items where current stock is below reorder point
-    return items
-      .filter(item =>
-        item.reorderPoint &&
-        item.currentStock !== undefined &&
-        item.currentStock <= item.reorderPoint
-      )
-      .map(item => ({
-        id: item.id,
-        code: item.code,
-        name: item.name,
-        currentStock: item.currentStock || 0,
-        reorderPoint: item.reorderPoint || 0,
-      }))
-      .sort((a, b) => a.currentStock - b.currentStock) // Sort by most urgent
-      .slice(0, 5);
-  }, [items]);
 
   // Calculate product movement from sales orders
   const productMovement = useMemo(() => {
@@ -140,7 +103,7 @@ export default function DashboardPage() {
     },
     {
       title: "Pending Invoices",
-      value: invoices.filter(inv => inv.status === "pending").length.toString(),
+      value: invoices.filter(inv => inv.status === "sent").length.toString(),
       description: "Awaiting payment",
       icon: FileText,
       color: "text-yellow-600",
@@ -227,10 +190,6 @@ export default function DashboardPage() {
       {/* Sales Analytics Widgets */}
       <div className="grid gap-4 md:grid-cols-2">
         <TopAgentWidget />
-        <RecentActivityWidget />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
         {/* Today's Sales */}
         <Card>
           <CardHeader>
@@ -288,7 +247,11 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+
+        <RecentActivityWidget />
         {/* Reorder Point Alerts */}
         <Card>
           <CardHeader>
@@ -323,8 +286,8 @@ export default function DashboardPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {reorderAlerts.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
+                {reorderAlerts.map((item: any) => (
+                  <div key={`${item.id}-${item.warehouseId}`} className="flex items-center gap-3">
                     <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{item.name}</p>

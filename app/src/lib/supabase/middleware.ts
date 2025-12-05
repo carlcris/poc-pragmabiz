@@ -66,7 +66,8 @@ export async function updateSession(request: NextRequest) {
   // Route protection logic
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                      request.nextUrl.pathname.startsWith('/auth')
-  const isPublicPage = request.nextUrl.pathname.startsWith('/mobile')
+  const isMobileRoute = request.nextUrl.pathname.startsWith('/mobile')
+  const isMobileLoginPage = request.nextUrl.pathname === '/mobile/login'
 
   // Redirect authenticated users away from login page
   if (user && isAuthPage) {
@@ -80,10 +81,23 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse
   }
 
-  // Redirect unauthenticated users to login (except for public pages)
-  if (!user && !isAuthPage && !isPublicPage) {
+  // Redirect authenticated users away from mobile login page
+  if (user && isMobileLoginPage) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/mobile'
+    const redirectResponse = NextResponse.redirect(url)
+    // Copy cookies from supabaseResponse
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie)
+    })
+    return redirectResponse
+  }
+
+  // Redirect unauthenticated users to appropriate login page
+  if (!user && !isAuthPage && !isMobileLoginPage) {
+    const url = request.nextUrl.clone()
+    // Mobile routes redirect to mobile login, others to desktop login
+    url.pathname = isMobileRoute ? '/mobile/login' : '/login'
     const redirectResponse = NextResponse.redirect(url)
     // Copy cookies from supabaseResponse
     supabaseResponse.cookies.getAll().forEach((cookie) => {
