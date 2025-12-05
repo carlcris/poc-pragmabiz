@@ -28,103 +28,108 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User company not found' }, { status: 400 })
     }
 
-    // Build query - Get transaction items with related data
-    let query = supabase
-      .from('stock_transaction_items')
-      .select(
-        `
-        id,
-        quantity,
-        unit_cost,
-        total_cost,
-        batch_no,
-        serial_no,
-        expiry_date,
-        notes,
-        created_at,
-        transaction:stock_transactions!inner(
-          id,
-          transaction_code,
-          transaction_type,
-          transaction_date,
-          warehouse_id,
-          to_warehouse_id,
-          reference_type,
-          reference_id,
-          status,
-          notes,
-          created_by,
-          created_at
-        ),
-        item:items!inner(
-          id,
-          item_code,
-          item_name,
-          uom:units_of_measure(id, code, name)
-        )
-      `,
-        { count: 'exact' }
-      )
-      .eq('transaction.company_id', userData.company_id)
-      .is('deleted_at', null)
-      .is('transaction.deleted_at', null)
-
-    // Apply filters
-    const transactionType = searchParams.get('transactionType')
-    if (transactionType && transactionType !== 'all') {
-      query = query.eq('transaction.transaction_type', transactionType)
-    }
-
-    const itemId = searchParams.get('itemId')
-    if (itemId) {
-      query = query.eq('item_id', itemId)
-    }
-
-    const warehouseId = searchParams.get('warehouseId')
-    if (warehouseId) {
-      query = query.eq('transaction.warehouse_id', warehouseId)
-    }
-
-    const startDate = searchParams.get('startDate')
-    if (startDate) {
-      query = query.gte('transaction.transaction_date', startDate)
-    }
-
-    const endDate = searchParams.get('endDate')
-    if (endDate) {
-      query = query.lte('transaction.transaction_date', endDate)
-    }
-
-    const search = searchParams.get('search')
-    if (search) {
-      query = query.or(
-        `transaction.transaction_code.ilike.%${search}%,item.item_name.ilike.%${search}%,item.item_code.ilike.%${search}%`
-      )
-    }
-
-    // Pagination
+    // Pagination params
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
-    const from = (page - 1) * limit
-    const to = from + limit - 1
 
-    query = query.range(from, to).order('created_at', { ascending: false })
+    // Fetch BOTH stock transactions AND stock transfers
+    const [transactionsResult, transfersResult] = await Promise.all([
+      // Get stock transaction items
+      supabase
+        .from('stock_transaction_items')
+        .select(
+          `
+          id,
+          quantity,
+          unit_cost,
+          total_cost,
+          batch_no,
+          serial_no,
+          expiry_date,
+          notes,
+          created_at,
+          transaction:stock_transactions!inner(
+            id,
+            transaction_code,
+            transaction_type,
+            transaction_date,
+            warehouse_id,
+            to_warehouse_id,
+            reference_type,
+            reference_id,
+            status,
+            notes,
+            created_by,
+            created_at
+          ),
+          item:items!inner(
+            id,
+            item_code,
+            item_name,
+            uom:units_of_measure(id, code, name)
+          )
+        `
+        )
+        .eq('transaction.company_id', userData.company_id)
+        .is('deleted_at', null)
+        .is('transaction.deleted_at', null),
 
-    const { data: transactionItems, error, count } = await query
+      // Get confirmed stock transfers (status = 'received')
+      supabase
+        .from('stock_transfer_items')
+        .select(
+          `
+          id,
+          quantity,
+          created_at,
+          transfer:stock_transfers!inner(
+            id,
+            transfer_code,
+            transfer_date,
+            from_warehouse_id,
+            to_warehouse_id,
+            status,
+            notes,
+            requested_by,
+            confirmed_at
+          ),
+          item:items!inner(
+            id,
+            item_code,
+            item_name
+          ),
+          uom:units_of_measure!uom_id(id, code, name)
+        `
+        )
+        .eq('transfer.company_id', userData.company_id)
+        .eq('transfer.status', 'received')
+        .is('deleted_at', null)
+    ])
 
-    if (error) {
-      console.error('Error fetching stock transactions:', error)
-      return NextResponse.json({ error: 'Failed to fetch stock transactions' }, { status: 500 })
+    if (transactionsResult.error) {
+      console.error('Error fetching transactions:', transactionsResult.error)
+    }
+    if (transfersResult.error) {
+      console.error('Error fetching transfers:', transfersResult.error)
     }
 
-    // Get unique warehouse IDs and user IDs
+    const transactionItems = transactionsResult.data || []
+    const transferItems = transfersResult.data || []
+
+    // Collect warehouse and user IDs
     const warehouseIds = new Set<string>()
     const userIds = new Set<string>()
 
-    transactionItems?.forEach((item: any) => {
+    transactionItems.forEach((item: any) => {
       if (item.transaction.warehouse_id) warehouseIds.add(item.transaction.warehouse_id)
       if (item.transaction.to_warehouse_id) warehouseIds.add(item.transaction.to_warehouse_id)
       if (item.transaction.created_by) userIds.add(item.transaction.created_by)
+    })
+
+    transferItems.forEach((item: any) => {
+      if (item.transfer.from_warehouse_id) warehouseIds.add(item.transfer.from_warehouse_id)
+      if (item.transfer.to_warehouse_id) warehouseIds.add(item.transfer.to_warehouse_id)
+      if (item.transfer.requested_by) userIds.add(item.transfer.requested_by)
     })
 
     // Fetch warehouses and users
@@ -146,8 +151,8 @@ export async function GET(request: NextRequest) {
     const warehousesMap = new Map(warehousesData.data?.map((w: any) => [w.id, w]) || [])
     const usersMap = new Map(usersData.data?.map((u: any) => [u.id, u]) || [])
 
-    // Format response - flatten the nested structure
-    const formattedTransactions = transactionItems?.map((item: any) => {
+    // Format stock transactions
+    const formattedTransactions = transactionItems.map((item: any) => {
       const warehouse = warehousesMap.get(item.transaction.warehouse_id)
       const toWarehouse = warehousesMap.get(item.transaction.to_warehouse_id)
       const creator = usersMap.get(item.transaction.created_by)
@@ -186,13 +191,64 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Format stock transfers as transfer type transactions
+    const formattedTransfers = transferItems.map((item: any) => {
+      const fromWarehouse = warehousesMap.get(item.transfer.from_warehouse_id)
+      const toWarehouse = warehousesMap.get(item.transfer.to_warehouse_id)
+      const creator = usersMap.get(item.transfer.requested_by)
+
+      return {
+        id: item.id,
+        companyId: userData.company_id,
+        transactionCode: item.transfer.transfer_code,
+        transactionDate: item.transfer.transfer_date,
+        transactionType: 'transfer',
+        itemId: item.item.id,
+        itemCode: item.item.item_code,
+        itemName: item.item.item_name,
+        warehouseId: item.transfer.from_warehouse_id,
+        warehouseCode: fromWarehouse?.warehouse_code || '',
+        warehouseName: fromWarehouse?.warehouse_name || '',
+        toWarehouseId: item.transfer.to_warehouse_id,
+        toWarehouseCode: toWarehouse?.warehouse_code || '',
+        toWarehouseName: toWarehouse?.warehouse_name || '',
+        quantity: parseFloat(item.quantity),
+        uom: item.uom?.code || '',
+        unitCost: 0,
+        totalCost: 0,
+        batchNo: null,
+        serialNo: null,
+        expiryDate: null,
+        referenceType: 'Stock Transfer',
+        referenceId: item.transfer.id,
+        referenceNumber: item.transfer.transfer_code,
+        reason: item.transfer.notes || 'Stock Transfer',
+        notes: `Confirmed at: ${item.transfer.confirmed_at}`,
+        createdBy: item.transfer.requested_by,
+        createdByName: creator ? `${creator.first_name || ''} ${creator.last_name || ''}`.trim() : 'Unknown',
+        createdAt: item.transfer.confirmed_at || item.created_at,
+        updatedAt: item.created_at,
+      }
+    })
+
+    // Merge and sort by date (most recent first)
+    const allTransactions = [...formattedTransactions, ...formattedTransfers].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+
+    // Apply pagination
+    const total = allTransactions.length
+    const from = (page - 1) * limit
+    const to = from + limit
+    const paginatedTransactions = allTransactions.slice(from, to)
+
     return NextResponse.json({
-      data: formattedTransactions,
+      data: paginatedTransactions,
       pagination: {
-        total: count || 0,
+        total,
         page,
         limit,
-        totalPages: Math.ceil((count || 0) / limit),
+        totalPages: Math.ceil(total / limit),
       },
     })
   } catch (error) {

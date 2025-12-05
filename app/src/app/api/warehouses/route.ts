@@ -22,6 +22,7 @@ function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
     email: dbWarehouse.email || '',
     managerName: dbWarehouse.contact_person || undefined,
     isActive: dbWarehouse.is_active ?? true,
+    isVan: dbWarehouse.is_van ?? false,
     createdAt: dbWarehouse.created_at,
     updatedAt: dbWarehouse.updated_at,
   }

@@ -99,10 +99,45 @@ export async function POST(
         .eq('id', itemUpdate.id);
     }
 
-    // Update stock levels for destination warehouse (van)
+    // Update stock levels and create ledger entries
+    const postingDate = new Date().toISOString().split('T')[0];
+    const postingTime = new Date().toISOString().split('T')[1].substring(0, 8);
+
     for (const item of transfer.stock_transfer_items) {
-      // Check if stock record exists
-      const { data: existingStock } = await supabase
+      // OUT from source warehouse
+      const { data: sourceStock } = await supabase
+        .from('item_warehouse')
+        .select('id, current_stock')
+        .eq('company_id', userData.company_id)
+        .eq('item_id', item.item_id)
+        .eq('warehouse_id', transfer.from_warehouse_id)
+        .single();
+
+      if (sourceStock) {
+        const newSourceStock = Math.max(0, parseFloat(sourceStock.current_stock) - parseFloat(item.quantity));
+        await supabase
+          .from('item_warehouse')
+          .update({ current_stock: newSourceStock })
+          .eq('id', sourceStock.id);
+
+        // Create OUT ledger entry for source warehouse
+        await supabase.from('stock_ledger').insert({
+          company_id: userData.company_id,
+          posting_date: postingDate,
+          posting_time: postingTime,
+          voucher_type: 'Stock Transfer',
+          voucher_no: transfer.transfer_code,
+          item_id: item.item_id,
+          warehouse_id: transfer.from_warehouse_id,
+          actual_qty: -parseFloat(item.quantity),
+          qty_after_trans: newSourceStock,
+          stock_uom: item.uom_id,
+          created_by: user.id,
+        });
+      }
+
+      // IN to destination warehouse (van)
+      const { data: destStock } = await supabase
         .from('item_warehouse')
         .select('id, current_stock')
         .eq('company_id', userData.company_id)
@@ -110,13 +145,28 @@ export async function POST(
         .eq('warehouse_id', transfer.to_warehouse_id)
         .single();
 
-      if (existingStock) {
+      if (destStock) {
         // Update existing stock
-        const newStock = parseFloat(existingStock.current_stock) + parseFloat(item.quantity);
+        const newDestStock = parseFloat(destStock.current_stock) + parseFloat(item.quantity);
         await supabase
           .from('item_warehouse')
-          .update({ current_stock: newStock })
-          .eq('id', existingStock.id);
+          .update({ current_stock: newDestStock })
+          .eq('id', destStock.id);
+
+        // Create IN ledger entry for destination warehouse
+        await supabase.from('stock_ledger').insert({
+          company_id: userData.company_id,
+          posting_date: postingDate,
+          posting_time: postingTime,
+          voucher_type: 'Stock Transfer',
+          voucher_no: transfer.transfer_code,
+          item_id: item.item_id,
+          warehouse_id: transfer.to_warehouse_id,
+          actual_qty: parseFloat(item.quantity),
+          qty_after_trans: newDestStock,
+          stock_uom: item.uom_id,
+          created_by: user.id,
+        });
       } else {
         // Create new stock record
         await supabase
@@ -127,23 +177,21 @@ export async function POST(
             warehouse_id: transfer.to_warehouse_id,
             current_stock: item.quantity,
           });
-      }
 
-      // Decrease stock from source warehouse
-      const { data: sourceStock } = await supabase
-        .from('item_warehouse')
-        .select('id, current_stock')
-        .eq('company_id', userData.company_id)
-        .eq('item_id', item.item_id)
-        .eq('warehouse_id', transfer.from_warehouse_id)
-        .single();
-
-      if (sourceStock) {
-        const newStock = Math.max(0, parseFloat(sourceStock.current_stock) - parseFloat(item.quantity));
-        await supabase
-          .from('item_warehouse')
-          .update({ current_stock: newStock })
-          .eq('id', sourceStock.id);
+        // Create IN ledger entry for new stock record
+        await supabase.from('stock_ledger').insert({
+          company_id: userData.company_id,
+          posting_date: postingDate,
+          posting_time: postingTime,
+          voucher_type: 'Stock Transfer',
+          voucher_no: transfer.transfer_code,
+          item_id: item.item_id,
+          warehouse_id: transfer.to_warehouse_id,
+          actual_qty: parseFloat(item.quantity),
+          qty_after_trans: parseFloat(item.quantity),
+          stock_uom: item.uom_id,
+          created_by: user.id,
+        });
       }
     }
 

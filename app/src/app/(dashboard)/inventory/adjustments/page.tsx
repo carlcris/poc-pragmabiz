@@ -341,23 +341,21 @@ export default function StockAdjustmentsPage() {
 
   const handleFetchStockQty = async (itemId: string, warehouseId: string): Promise<number> => {
     try {
-      // Get latest stock ledger entry for this item and warehouse
+      // Get current stock from item_warehouse table
       const { data, error } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
+        .from('item_warehouse')
+        .select('current_stock')
         .eq('item_id', itemId)
         .eq('warehouse_id', warehouseId)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
-        .single();
+        .eq('company_id', companyId)
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error) {
         console.error('Error fetching stock quantity:', error);
         return 0;
       }
 
-      return data ? parseFloat(data.qty_after_trans) : 0;
+      return data ? parseFloat(data.current_stock) : 0;
     } catch (error) {
       console.error('Error fetching stock quantity:', error);
       return 0;

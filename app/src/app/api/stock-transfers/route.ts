@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
         requested_by: user.id,
         requested_at: new Date().toISOString(),
         created_by: user.id,
+        updated_by: user.id,
       })
       .select()
       .single();
@@ -203,7 +204,8 @@ export async function POST(request: NextRequest) {
 
     // Create stock transfer items
     const transferItems = items.map((item: any, index: number) => ({
-      stock_transfer_id: transfer.id,
+      company_id: userData.company_id,
+      transfer_id: transfer.id,
       item_id: item.itemId,
       item_code: item.code,
       item_name: item.name,
@@ -212,6 +214,8 @@ export async function POST(request: NextRequest) {
       uom_id: item.uomId,
       uom_name: item.uomName,
       sort_order: index + 1,
+      created_by: user.id,
+      updated_by: user.id,
     }));
 
     const { error: itemsError } = await supabase

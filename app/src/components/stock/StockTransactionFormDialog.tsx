@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCreateStockTransaction } from "@/hooks/useStockTransactions";
+import { useCreateStockTransfer } from "@/hooks/useStockTransfers";
 import { useItems } from "@/hooks/useItems";
+import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { useCurrency } from "@/hooks/useCurrency";
 import { stockTransactionFormSchema, type StockTransactionFormValues } from "@/lib/validations/stock-transaction";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +38,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 interface StockTransactionFormDialogProps {
   open: boolean;
@@ -75,12 +93,19 @@ const REASONS = {
 
 export function StockTransactionFormDialog({ open, onOpenChange }: StockTransactionFormDialogProps) {
   const createTransaction = useCreateStockTransaction();
+  const createTransfer = useCreateStockTransfer();
 
-  const { data: itemsData } = useItems({ limit: 1000 });
+  // Fetch basic items (for uomId)
+  const { data: basicItemsData } = useItems({ limit: 1000 });
+  const basicItems = basicItemsData?.data || [];
+
   const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { formatCurrency } = useCurrency();
 
-  const items = itemsData?.data || [];
   const warehouses = warehousesData?.data?.filter(wh => wh.isActive) || [];
+
+  // Item combobox state
+  const [itemOpen, setItemOpen] = useState(false);
 
   const form = useForm<StockTransactionFormValues>({
     resolver: zodResolver(stockTransactionFormSchema),
@@ -100,7 +125,15 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
   });
 
   const transactionType = form.watch("transactionType");
+  const selectedWarehouseId = form.watch("warehouseId");
   const selectedItemId = form.watch("itemId");
+
+  // Fetch items with stock information filtered by selected warehouse
+  const { data: enhancedItemsData } = useItemsEnhanced({
+    limit: 1000,
+    warehouseId: selectedWarehouseId || undefined,
+  });
+  const enhancedItems = enhancedItemsData?.data || [];
 
   useEffect(() => {
     // Reset destination warehouse when transaction type changes
@@ -109,37 +142,73 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
     }
   }, [transactionType, form]);
 
+  useEffect(() => {
+    // Clear selected item when warehouse changes
+    if (selectedWarehouseId) {
+      form.setValue("itemId", "");
+    }
+  }, [selectedWarehouseId, form]);
+
   const onSubmit = async (values: StockTransactionFormValues) => {
     try {
       // Find the selected item to get its UOM
-      const selectedItem = items.find((item) => item.id === values.itemId);
+      const selectedItem = basicItems.find((item) => item.id === values.itemId);
       if (!selectedItem || !selectedItem.uomId) {
         toast.error("Invalid item selected or item has no unit of measure");
         return;
       }
 
-      // Transform form data to API request format
-      const requestData = {
-        transactionDate: values.transactionDate,
-        transactionType: values.transactionType,
-        warehouseId: values.warehouseId,
-        toWarehouseId: values.toWarehouseId || undefined,
-        referenceType: values.referenceType || undefined,
-        referenceId: values.referenceId || undefined,
-        referenceNumber: values.referenceNumber || undefined,
-        notes: values.reason, // Use reason as transaction notes
-        items: [
-          {
-            itemId: values.itemId,
-            quantity: values.quantity,
-            uomId: selectedItem.uomId,
-            notes: values.notes || undefined,
-          },
-        ],
-      };
+      // Check if this is a transfer to a van warehouse
+      const isTransferToVan = values.transactionType === "transfer" &&
+                             values.toWarehouseId &&
+                             warehouses.find(w => w.id === values.toWarehouseId)?.isVan;
 
-      await createTransaction.mutateAsync(requestData);
-      toast.success("Stock transaction created successfully");
+      if (isTransferToVan) {
+        // Create a pending stock transfer for van (requires driver confirmation)
+        const transferData = {
+          fromWarehouseId: values.warehouseId,
+          toWarehouseId: values.toWarehouseId!,
+          transferDate: values.transactionDate,
+          notes: values.reason,
+          items: [
+            {
+              itemId: values.itemId,
+              code: selectedItem.code,
+              name: selectedItem.name,
+              quantity: values.quantity,
+              uomId: selectedItem.uomId,
+              uomName: selectedItem.uom,
+            },
+          ],
+        };
+
+        await createTransfer.mutateAsync(transferData);
+        toast.success("Stock transfer created successfully. Driver must confirm receipt.");
+      } else {
+        // Create immediate stock transaction (non-van transfer or other transaction types)
+        const requestData = {
+          transactionDate: values.transactionDate,
+          transactionType: values.transactionType,
+          warehouseId: values.warehouseId,
+          toWarehouseId: values.toWarehouseId || undefined,
+          referenceType: values.referenceType || undefined,
+          referenceId: values.referenceId || undefined,
+          referenceNumber: values.referenceNumber || undefined,
+          notes: values.reason, // Use reason as transaction notes
+          items: [
+            {
+              itemId: values.itemId,
+              quantity: values.quantity,
+              uomId: selectedItem.uomId,
+              notes: values.notes || undefined,
+            },
+          ],
+        };
+
+        await createTransaction.mutateAsync(requestData);
+        toast.success("Stock transaction created successfully");
+      }
+
       onOpenChange(false);
       form.reset();
     } catch (error) {
@@ -204,34 +273,6 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="itemId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Item *</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select item" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {items.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.code} - {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -293,6 +334,104 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
                 />
               )}
             </div>
+            
+            <FormField
+              control={form.control}
+              name="itemId"
+              render={({ field }) => {
+                const selectedItem = basicItems.find((i) => i.id === field.value);
+                const isDisabled = !selectedWarehouseId;
+                return (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Item *</FormLabel>
+                    <Popover open={itemOpen} onOpenChange={(open) => !isDisabled && setItemOpen(open)}>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={itemOpen}
+                            disabled={isDisabled}
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {isDisabled
+                              ? "Select warehouse first..."
+                              : selectedItem
+                              ? `${selectedItem.code} - ${selectedItem.name}`
+                              : "Search item..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[600px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search by code or name..." />
+                          <CommandList className="max-h-[300px] overflow-y-auto">
+                            <CommandEmpty>No item found.</CommandEmpty>
+                            <CommandGroup>
+                              {enhancedItems
+                                .filter((i) => i.isActive)
+                                .map((item) => (
+                                  <CommandItem
+                                    key={item.id}
+                                    value={`${item.code} ${item.name}`}
+                                    onSelect={() => {
+                                      field.onChange(item.id);
+                                      setItemOpen(false);
+                                    }}
+                                    className="flex items-center justify-between py-2"
+                                  >
+                                    <div className="flex items-start flex-1 min-w-0">
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4 flex-shrink-0 mt-1",
+                                          field.value === item.id
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium">{item.code}</span>
+                                          <span className="text-sm truncate">
+                                            {item.name}
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-0.5">
+                                          <span
+                                            className={cn(
+                                              item.available <= 0
+                                                ? "text-red-600 font-medium"
+                                                : item.available <= item.reorderPoint
+                                                ? "text-orange-600"
+                                                : ""
+                                            )}
+                                          >
+                                            Stock: {item.available.toFixed(2)} {item.uom}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="ml-4 flex-shrink-0">
+                                      <span className="text-sm font-semibold">
+                                        {formatCurrency(item.listPrice)}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
 
             <FormField
               control={form.control}

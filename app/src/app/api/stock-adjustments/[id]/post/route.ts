@@ -172,6 +172,34 @@ export async function POST(
 
       const newBalance = currentBalance + difference
 
+      // Update or create item_warehouse record
+      const { data: existingStock } = await supabase
+        .from('item_warehouse')
+        .select('id, current_stock')
+        .eq('company_id', userData.company_id)
+        .eq('item_id', item.item_id)
+        .eq('warehouse_id', adjustment.warehouse_id)
+        .maybeSingle()
+
+      if (existingStock) {
+        // Update existing stock record
+        const newStock = parseFloat(existingStock.current_stock) + difference
+        await supabase
+          .from('item_warehouse')
+          .update({ current_stock: Math.max(0, newStock) })
+          .eq('id', existingStock.id)
+      } else {
+        // Create new stock record
+        await supabase
+          .from('item_warehouse')
+          .insert({
+            company_id: userData.company_id,
+            item_id: item.item_id,
+            warehouse_id: adjustment.warehouse_id,
+            current_stock: Math.max(0, difference),
+          })
+      }
+
       // Create stock ledger entry
       await supabase.from('stock_ledger').insert({
         company_id: userData.company_id,

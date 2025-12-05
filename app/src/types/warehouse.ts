@@ -14,6 +14,7 @@ export interface Warehouse {
   managerId?: string;
   managerName?: string;
   isActive: boolean;
+  isVan: boolean;
   createdAt: string;
   updatedAt: string;
 }
