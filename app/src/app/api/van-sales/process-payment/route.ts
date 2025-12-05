@@ -15,8 +15,11 @@ interface ProcessPaymentRequest {
     unitPrice: number;
     discount?: number; // Discount percentage
   }[];
-  paymentMethod: 'cash' | 'check' | 'credit_card' | 'bank_transfer' | 'other';
-  paymentReference?: string;
+  payments: {
+    paymentMethod: 'cash' | 'check' | 'credit_card' | 'bank_transfer' | 'gcash' | 'paymaya' | 'other';
+    amount: number;
+    reference?: string;
+  }[];
   notes?: string;
 }
 
@@ -54,6 +57,13 @@ export async function POST(request: NextRequest) {
     if (!body.warehouseId) {
       return NextResponse.json({ error: 'Warehouse ID is required' }, { status: 400 });
     }
+
+    if (!body.payments || body.payments.length === 0) {
+      return NextResponse.json({ error: 'At least one payment method is required' }, { status: 400 });
+    }
+
+    // Validate payment amounts sum up to total
+    const totalPaymentAmount = body.payments.reduce((sum, payment) => sum + payment.amount, 0);
 
     // Validate stock availability for all items
     const itemIds = body.lineItems.map(item => item.itemId);
@@ -129,6 +139,16 @@ export async function POST(request: NextRequest) {
     });
 
     const totalAmount = subtotal - totalDiscount + totalTax;
+
+    // Validate payment amounts match total
+    const roundedTotal = Math.round(totalAmount * 100) / 100;
+    const roundedPayments = Math.round(totalPaymentAmount * 100) / 100;
+
+    if (Math.abs(roundedPayments - roundedTotal) > 0.01) {
+      return NextResponse.json({
+        error: `Payment amounts (₱${roundedPayments.toFixed(2)}) do not match invoice total (₱${roundedTotal.toFixed(2)})`
+      }, { status: 400 });
+    }
 
     // Create sales order
     const { data: salesOrder, error: orderError } = await supabase
@@ -276,10 +296,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ========================================================================
-    // STEP 3: Record Full Payment
+    // STEP 3: Record Multiple Payments
     // ========================================================================
 
-    // Generate payment code
+    // Get the last payment code to generate new ones
     const { data: lastPayment } = await supabase
       .from('invoice_payments')
       .select('payment_code')
@@ -288,33 +308,44 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .single();
 
-    let paymentCode = 'PAY-00001';
+    let lastPaymentNumber = 0;
     if (lastPayment?.payment_code) {
-      const lastNumber = parseInt(lastPayment.payment_code.split('-')[1] || '0');
-      paymentCode = `PAY-${String(lastNumber + 1).padStart(5, '0')}`;
+      lastPaymentNumber = parseInt(lastPayment.payment_code.split('-')[1] || '0');
     }
 
-    // Create payment record
-    const { data: payment, error: paymentError } = await supabase
-      .from('invoice_payments')
-      .insert({
-        company_id: userData.company_id,
-        invoice_id: invoice.id,
-        payment_code: paymentCode,
-        payment_date: today,
-        amount: totalAmount.toFixed(4),
-        payment_method: body.paymentMethod,
-        reference: body.paymentReference || `Van Sales - ${invoiceNumber}`,
-        notes: body.notes || 'Van sales payment',
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single();
+    // Create payment records for each payment method
+    const paymentRecords = [];
+    const paymentCodes = [];
 
-    if (paymentError || !payment) {
-      console.error('Error creating payment:', paymentError);
-      return NextResponse.json({ error: 'Failed to record payment' }, { status: 500 });
+    for (let i = 0; i < body.payments.length; i++) {
+      const paymentMethod = body.payments[i];
+      const paymentNumber = lastPaymentNumber + i + 1;
+      const paymentCode = `PAY-${String(paymentNumber).padStart(5, '0')}`;
+      paymentCodes.push(paymentCode);
+
+      const { data: payment, error: paymentError } = await supabase
+        .from('invoice_payments')
+        .insert({
+          company_id: userData.company_id,
+          invoice_id: invoice.id,
+          payment_code: paymentCode,
+          payment_date: today,
+          amount: paymentMethod.amount.toFixed(4),
+          payment_method: paymentMethod.paymentMethod,
+          reference: paymentMethod.reference || `Van Sales - ${invoiceNumber} - ${paymentMethod.paymentMethod}`,
+          notes: body.notes || `Van sales payment via ${paymentMethod.paymentMethod}`,
+          created_by: user.id,
+          updated_by: user.id,
+        })
+        .select()
+        .single();
+
+      if (paymentError || !payment) {
+        console.error('Error creating payment:', paymentError);
+        return NextResponse.json({ error: `Failed to record payment for ${paymentMethod.paymentMethod}` }, { status: 500 });
+      }
+
+      paymentRecords.push(payment);
     }
 
     // Update invoice status to 'paid'
@@ -382,23 +413,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Post AR Payment (DR Cash, CR AR)
-    const arPaymentResult = await postARPayment(userData.company_id, user.id, {
-      paymentId: payment.id,
-      invoiceId: invoice.id,
-      invoiceCode: invoiceNumber,
-      customerId: body.customerId,
-      paymentDate: today,
-      paymentAmount: totalAmount,
-      paymentMethod: body.paymentMethod,
-      description: `Van sales payment for ${invoiceNumber}`,
-    });
+    // Post AR Payments (DR Cash, CR AR) - for each payment
+    for (const payment of paymentRecords) {
+      const arPaymentResult = await postARPayment(userData.company_id, user.id, {
+        paymentId: payment.id,
+        invoiceId: invoice.id,
+        invoiceCode: invoiceNumber,
+        customerId: body.customerId,
+        paymentDate: today,
+        paymentAmount: parseFloat(payment.amount),
+        paymentMethod: payment.payment_method,
+        description: `Van sales payment for ${invoiceNumber} via ${payment.payment_method}`,
+      });
 
-    if (!arPaymentResult.success) {
-      console.error('Error posting AR payment to GL:', arPaymentResult.error);
-      console.warn(
-        `Van sale payment for ${invoiceNumber} completed but AR payment GL posting failed: ${arPaymentResult.error}`
-      );
+      if (!arPaymentResult.success) {
+        console.error('Error posting AR payment to GL:', arPaymentResult.error);
+        console.warn(
+          `Van sale payment for ${invoiceNumber} (${payment.payment_method}) completed but AR payment GL posting failed: ${arPaymentResult.error}`
+        );
+      }
     }
 
     // Calculate and post COGS to general ledger
@@ -449,11 +482,16 @@ export async function POST(request: NextRequest) {
       data: {
         orderNumber: salesOrder.order_code,
         invoiceNumber: invoice.invoice_code,
-        paymentCode: payment.payment_code,
+        paymentCodes: paymentCodes,
+        payments: paymentRecords.map(p => ({
+          paymentCode: p.payment_code,
+          method: p.payment_method,
+          amount: parseFloat(p.amount),
+        })),
         totalAmount: parseFloat(totalAmount.toFixed(2)),
         orderId: salesOrder.id,
         invoiceId: invoice.id,
-        paymentId: payment.id,
+        paymentIds: paymentRecords.map(p => p.id),
       },
     }, { status: 201 });
 

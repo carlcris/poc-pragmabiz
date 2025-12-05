@@ -6,6 +6,7 @@ import { CustomerSearchDialog } from "@/components/mobile/CustomerSearchDialog";
 import { QuickCustomerForm } from "@/components/mobile/QuickCustomerForm";
 import { MobileItemCard } from "@/components/mobile/MobileItemCard";
 import { MobileAlert } from "@/components/mobile/MobileAlert";
+import { MobilePaymentDialog } from "@/components/mobile/MobilePaymentDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,8 @@ export default function SellPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCustomerDialog, setShowCustomerDialog] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [alertState, setAlertState] = useState<{
     open: boolean;
     title: string;
@@ -161,7 +164,7 @@ export default function SellPage() {
     ));
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!selectedCustomer) {
       setAlertState({
         open: true,
@@ -190,6 +193,15 @@ export default function SellPage() {
       return;
     }
 
+    // Open payment dialog
+    setShowPaymentDialog(true);
+  };
+
+  const handleProcessPayment = async (payments: Array<{ method: string; amount: number; reference: string }>) => {
+    if (!selectedCustomer || !vanData?.vanWarehouseId) return;
+
+    setIsProcessingPayment(true);
+
     try {
       // Prepare payment data for complete workflow
       const paymentData = {
@@ -203,8 +215,11 @@ export default function SellPage() {
           unitPrice: item.unitPrice,
           discount: item.discount,
         })),
-        paymentMethod: "cash" as const,
-        paymentReference: `Van Sales - ${new Date().toISOString()}`,
+        payments: payments.map(p => ({
+          paymentMethod: p.method,
+          amount: p.amount,
+          reference: p.reference || undefined,
+        })),
         notes: "Van sales transaction",
       };
 
@@ -231,11 +246,16 @@ export default function SellPage() {
       setCart([]);
       setSelectedCustomer(null);
       setSearchTerm("");
+      setShowPaymentDialog(false);
+
+      const paymentSummary = result.data.payments
+        .map((p: any) => `${p.method}: ₱${p.amount.toFixed(2)}`)
+        .join("\n");
 
       setAlertState({
         open: true,
         title: "Payment Successful!",
-        description: `Order: ${result.data.orderNumber}\nInvoice: ${result.data.invoiceNumber}\nPayment: ${result.data.paymentCode}\nAmount: ₱${result.data.totalAmount.toFixed(2)}`,
+        description: `Order: ${result.data.orderNumber}\nInvoice: ${result.data.invoiceNumber}\n\nPayments:\n${paymentSummary}\n\nTotal: ₱${result.data.totalAmount.toFixed(2)}`,
         variant: "success",
       });
     } catch (error) {
@@ -246,6 +266,8 @@ export default function SellPage() {
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -507,7 +529,7 @@ export default function SellPage() {
                 disabled={!selectedCustomer || cart.length === 0}
               >
                 <DollarSign className="h-5 w-5 mr-2" />
-                Process Payment
+                Proceed to Payment
               </Button>
             </CardContent>
           </Card>
@@ -552,6 +574,14 @@ export default function SellPage() {
           setSelectedCustomer(customer);
           setShowCustomerForm(false);
         }}
+      />
+
+      <MobilePaymentDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        totalAmount={total}
+        onConfirm={handleProcessPayment}
+        isProcessing={isProcessingPayment}
       />
 
       <MobileAlert

@@ -140,7 +140,7 @@ CREATE TABLE invoice_payments (
     deleted_at TIMESTAMP,
 
     CONSTRAINT chk_payment_amount CHECK (amount > 0),
-    CONSTRAINT chk_payment_method CHECK (payment_method IN ('cash', 'check', 'credit_card', 'bank_transfer', 'other'))
+    CONSTRAINT chk_payment_method CHECK (payment_method IN ('maya', 'gcash','cash', 'check', 'credit_card', 'bank_transfer', 'other'))
 );
 
 -- Indexes for invoice_payments
