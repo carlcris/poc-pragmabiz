@@ -23,9 +23,9 @@ const navItems: NavItem[] = [
     icon: ShoppingCart,
   },
   {
-    href: "/mobile/van-sales/end-of-day",
-    label: "EOD",
-    icon: CheckCircle,
+    href: "/mobile/view/loaded-items",
+    label: "Inventory",
+    icon: Package,
   },
   {
     href: "/mobile/van-sales/load",

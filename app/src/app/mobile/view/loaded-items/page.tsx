@@ -16,6 +16,8 @@ interface LoadedItem {
   itemCode: string;
   itemName: string;
   currentStock: number;
+  availableStock: number;
+  unitPrice: number;
   uomCode: string;
   uomName: string;
 }
@@ -135,19 +137,18 @@ export default function MobileLoadedItemsPage() {
           filteredItems.map((item) => (
             <Card key={item.itemId} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <div className="font-semibold text-base mb-1">{item.itemName}</div>
-                    <div className="text-sm text-gray-500">{item.itemCode}</div>
+                    <div className="text-sm text-gray-500 mb-1">{item.itemCode}</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span>Stock: {item.currentStock.toFixed(2)} {item.uomName}</span>
+                    </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <Badge
-                      variant={item.currentStock > 0 ? "default" : "secondary"}
-                      className="text-base px-3 py-1"
-                    >
-                      {item.currentStock}
-                    </Badge>
-                    <span className="text-xs text-gray-500">{item.uomName}</span>
+                  <div className="flex-shrink-0">
+                    <div className="text-xl font-bold text-black">
+                      ₱{item.unitPrice.toFixed(2)}
+                    </div>
                   </div>
                 </div>
               </CardContent>
