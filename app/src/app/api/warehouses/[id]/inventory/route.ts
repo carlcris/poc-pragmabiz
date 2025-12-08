@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await createClient();
@@ -31,7 +31,8 @@ export async function GET(
       );
     }
 
-    const { id: warehouseId } = await params;
+    // params is provided directly by Next.js (not a Promise)
+    const { id: warehouseId } = params;
 
     // Verify warehouse belongs to user's company
     const { data: warehouse, error: warehouseError } = await supabase
@@ -69,18 +70,7 @@ export async function GET(
       `)
       .eq('warehouse_id', warehouseId);
 
-    // Get UOM names separately to avoid relationship conflicts
-    const uomIds = [...new Set(inventoryData?.map((stock: any) => stock.items?.uom_id).filter(Boolean))];
-    console.log('UOM IDs to fetch:', uomIds);
-
-    const { data: uomsData, error: uomError } = await supabase
-      .from('units_of_measure')
-      .select('id, name')
-      .in('id', uomIds);
-
-    console.log('UOMs fetched:', uomsData?.length, 'Error:', uomError);
-    const uomMap = new Map(uomsData?.map((uom: any) => [uom.id, uom.name]));
-
+    // Fail early if inventory fetch failed
     if (inventoryError) {
       console.error('Error fetching inventory:', inventoryError);
       return NextResponse.json(
@@ -88,6 +78,28 @@ export async function GET(
         { status: 500 }
       );
     }
+
+    // Get UOM names separately to avoid relationship conflicts
+    const uomIds = inventoryData && inventoryData.length > 0
+      ? [...new Set(inventoryData.map((stock: any) => stock.items?.uom_id).filter(Boolean))]
+      : [];
+      
+    let uomsData: any[] = [];
+    let uomError: any = null;
+    if (uomIds.length > 0) {
+      const uomRes = await supabase
+        .from('units_of_measure')
+        .select('id, name')
+        .in('id', uomIds);
+      uomsData = uomRes.data || [];
+      uomError = uomRes.error;
+    }
+
+    if (uomError) {
+      console.warn('UOM fetch error (continuing):', uomError);
+    }
+
+    const uomMap = new Map((uomsData || []).map((uom: any) => [uom.id, uom.name]));
 
     // Transform data
     const inventory = inventoryData?.map((stock: any) => ({
@@ -106,6 +118,12 @@ export async function GET(
       uomId: stock.items?.uom_id,
       uomName: uomMap.get(stock.items?.uom_id) || '',
     })) || [];
+
+    // Sort client-side by itemName to emulate previous ordering
+    inventory.sort((a: any, b: any) => {
+      const an = (a.itemName || '').toString().localeCompare((b.itemName || '').toString());
+      return an;
+    });
 
     console.log('Inventory data count:', inventory.length);
     console.log('Sample item:', inventory[0]);
