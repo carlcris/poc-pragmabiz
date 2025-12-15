@@ -99,7 +99,7 @@ export async function POST(
         .eq('id', itemUpdate.id);
     }
 
-    // Update stock levels and create ledger entries
+    // Update stock levels for transfer
     const postingDate = new Date().toISOString().split('T')[0];
     const postingTime = new Date().toISOString().split('T')[1].substring(0, 8);
 
@@ -113,30 +113,23 @@ export async function POST(
         .eq('warehouse_id', transfer.from_warehouse_id)
         .single();
 
+      const sourceCurrentStock = sourceStock
+        ? parseFloat(String(sourceStock.current_stock))
+        : 0;
+      const newSourceStock = Math.max(0, sourceCurrentStock - parseFloat(item.quantity));
+
       if (sourceStock) {
-        const newSourceStock = Math.max(0, parseFloat(sourceStock.current_stock) - parseFloat(item.quantity));
         await supabase
           .from('item_warehouse')
-          .update({ current_stock: newSourceStock })
+          .update({
+            current_stock: newSourceStock,
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', sourceStock.id);
-
-        // Create OUT ledger entry for source warehouse
-        await supabase.from('stock_ledger').insert({
-          company_id: userData.company_id,
-          posting_date: postingDate,
-          posting_time: postingTime,
-          voucher_type: 'Stock Transfer',
-          voucher_no: transfer.transfer_code,
-          item_id: item.item_id,
-          warehouse_id: transfer.from_warehouse_id,
-          actual_qty: -parseFloat(item.quantity),
-          qty_after_trans: newSourceStock,
-          stock_uom: item.uom_id,
-          created_by: user.id,
-        });
       }
 
-      // IN to destination warehouse (van)
+      // IN to destination warehouse
       const { data: destStock } = await supabase
         .from('item_warehouse')
         .select('id, current_stock')
@@ -145,28 +138,21 @@ export async function POST(
         .eq('warehouse_id', transfer.to_warehouse_id)
         .single();
 
+      const destCurrentStock = destStock
+        ? parseFloat(String(destStock.current_stock))
+        : 0;
+      const newDestStock = destCurrentStock + parseFloat(item.quantity);
+
       if (destStock) {
         // Update existing stock
-        const newDestStock = parseFloat(destStock.current_stock) + parseFloat(item.quantity);
         await supabase
           .from('item_warehouse')
-          .update({ current_stock: newDestStock })
+          .update({
+            current_stock: newDestStock,
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', destStock.id);
-
-        // Create IN ledger entry for destination warehouse
-        await supabase.from('stock_ledger').insert({
-          company_id: userData.company_id,
-          posting_date: postingDate,
-          posting_time: postingTime,
-          voucher_type: 'Stock Transfer',
-          voucher_no: transfer.transfer_code,
-          item_id: item.item_id,
-          warehouse_id: transfer.to_warehouse_id,
-          actual_qty: parseFloat(item.quantity),
-          qty_after_trans: newDestStock,
-          stock_uom: item.uom_id,
-          created_by: user.id,
-        });
       } else {
         // Create new stock record
         await supabase
@@ -175,23 +161,10 @@ export async function POST(
             company_id: userData.company_id,
             item_id: item.item_id,
             warehouse_id: transfer.to_warehouse_id,
-            current_stock: item.quantity,
+            current_stock: newDestStock,
+            created_by: user.id,
+            updated_by: user.id,
           });
-
-        // Create IN ledger entry for new stock record
-        await supabase.from('stock_ledger').insert({
-          company_id: userData.company_id,
-          posting_date: postingDate,
-          posting_time: postingTime,
-          voucher_type: 'Stock Transfer',
-          voucher_no: transfer.transfer_code,
-          item_id: item.item_id,
-          warehouse_id: transfer.to_warehouse_id,
-          actual_qty: parseFloat(item.quantity),
-          qty_after_trans: parseFloat(item.quantity),
-          stock_uom: item.uom_id,
-          created_by: user.id,
-        });
       }
     }
 

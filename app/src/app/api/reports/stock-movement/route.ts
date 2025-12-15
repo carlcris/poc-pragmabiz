@@ -36,32 +36,34 @@ export async function GET(request: NextRequest) {
     const itemId = searchParams.get('itemId')
     const groupBy = searchParams.get('groupBy') || 'item' // item, warehouse, item-warehouse
 
-    // Build query for stock ledger
+    // Build query for stock transaction items
     let query = supabase
-      .from('stock_ledger')
+      .from('stock_transaction_items')
       .select(
         `
         id,
         posting_date,
-        actual_qty,
+        quantity,
         item_id,
-        warehouse_id,
         valuation_rate,
-        stock_value_diff,
+        stock_value_before,
+        stock_value_after,
+        transaction:stock_transactions!inner(
+          id,
+          warehouse_id,
+          transaction_type,
+          transaction_date
+        ),
         item:items!inner(
           id,
           item_code,
           item_name,
           uom:units_of_measure(id, code, name)
-        ),
-        warehouse:warehouses!inner(
-          id,
-          warehouse_code,
-          warehouse_name
         )
       `
       )
-      .eq('company_id', userData.company_id)
+      .eq('transaction.company_id', userData.company_id)
+      .is('deleted_at', null)
 
     // Apply filters
     if (startDate) {
@@ -73,43 +75,56 @@ export async function GET(request: NextRequest) {
     }
 
     if (warehouseId) {
-      query = query.eq('warehouse_id', warehouseId)
+      query = query.eq('transaction.warehouse_id', warehouseId)
     }
 
     if (itemId) {
       query = query.eq('item_id', itemId)
     }
 
-    const { data: ledgerEntries, error } = await query
+    const { data: transactionItems, error } = await query
 
     if (error) {
       console.error('Error fetching stock movement data:', error)
       return NextResponse.json({ error: 'Failed to fetch stock movement data' }, { status: 500 })
     }
 
+    // Need to fetch warehouse details separately since we're joining through transaction
+    const warehouseIds = [...new Set(transactionItems?.map(item => item.transaction?.warehouse_id) || [])]
+    const { data: warehouses } = await supabase
+      .from('warehouses')
+      .select('id, warehouse_code, warehouse_name')
+      .in('id', warehouseIds)
+
+    const warehouseMap = new Map(warehouses?.map(w => [w.id, w]) || [])
+
     // Aggregate data based on groupBy parameter
     const movementMap = new Map<string, any>()
 
-    for (const entry of ledgerEntries || []) {
+    for (const entry of transactionItems || []) {
+      const warehouseId = entry.transaction?.warehouse_id
+      const transactionType = entry.transaction?.transaction_type
+
       let key: string
 
       if (groupBy === 'item') {
         key = entry.item_id
       } else if (groupBy === 'warehouse') {
-        key = entry.warehouse_id
+        key = warehouseId
       } else {
         // item-warehouse
-        key = `${entry.item_id}_${entry.warehouse_id}`
+        key = `${entry.item_id}_${warehouseId}`
       }
 
       if (!movementMap.has(key)) {
+        const warehouse = warehouseMap.get(warehouseId)
         movementMap.set(key, {
           itemId: entry.item_id,
           itemCode: entry.item?.item_code,
           itemName: entry.item?.item_name,
-          warehouseId: entry.warehouse_id,
-          warehouseCode: entry.warehouse?.warehouse_code,
-          warehouseName: entry.warehouse?.warehouse_name,
+          warehouseId: warehouseId,
+          warehouseCode: warehouse?.warehouse_code,
+          warehouseName: warehouse?.warehouse_name,
           uom: entry.item?.uom?.code || '',
           totalIn: 0,
           totalOut: 0,
@@ -122,15 +137,16 @@ export async function GET(request: NextRequest) {
       }
 
       const movement = movementMap.get(key)!
-      const qty = parseFloat(entry.actual_qty)
-      const value = parseFloat(entry.stock_value_diff || 0)
+      const qty = parseFloat(String(entry.quantity))
+      const valueDiff = parseFloat(String(entry.stock_value_after)) - parseFloat(String(entry.stock_value_before))
 
-      if (qty > 0) {
+      // IN transactions have positive quantity, OUT have negative (based on transaction_type)
+      if (transactionType === 'in' || transactionType === 'adjustment') {
         movement.totalIn += qty
-        movement.totalInValue += value
-      } else {
-        movement.totalOut += Math.abs(qty)
-        movement.totalOutValue += Math.abs(value)
+        movement.totalInValue += Math.abs(valueDiff)
+      } else if (transactionType === 'out') {
+        movement.totalOut += qty
+        movement.totalOutValue += Math.abs(valueDiff)
       }
 
       movement.netMovement = movement.totalIn - movement.totalOut
@@ -170,38 +186,39 @@ export async function GET(request: NextRequest) {
 
       // Query previous period
       let prevQuery = supabase
-        .from('stock_ledger')
-        .select('actual_qty, stock_value_diff')
-        .eq('company_id', userData.company_id)
+        .from('stock_transaction_items')
+        .select('quantity, stock_value_before, stock_value_after, transaction:stock_transactions!inner(transaction_type)')
+        .eq('transaction.company_id', userData.company_id)
         .gte('posting_date', prevStartDate.toISOString().split('T')[0])
         .lte('posting_date', prevEndDate.toISOString().split('T')[0])
+        .is('deleted_at', null)
 
       if (warehouseId) {
-        prevQuery = prevQuery.eq('warehouse_id', warehouseId)
+        prevQuery = prevQuery.eq('transaction.warehouse_id', warehouseId)
       }
 
       if (itemId) {
         prevQuery = prevQuery.eq('item_id', itemId)
       }
 
-      const { data: prevLedgerEntries } = await prevQuery
+      const { data: prevTransactionItems } = await prevQuery
 
-      if (prevLedgerEntries) {
-        const prevTotalIn = prevLedgerEntries
-          .filter((e: any) => parseFloat(e.actual_qty) > 0)
-          .reduce((sum: number, e: any) => sum + parseFloat(e.actual_qty), 0)
+      if (prevTransactionItems) {
+        const prevTotalIn = prevTransactionItems
+          .filter((e: any) => e.transaction?.transaction_type === 'in')
+          .reduce((sum: number, e: any) => sum + parseFloat(e.quantity), 0)
 
-        const prevTotalOut = prevLedgerEntries
-          .filter((e: any) => parseFloat(e.actual_qty) < 0)
-          .reduce((sum: number, e: any) => sum + Math.abs(parseFloat(e.actual_qty)), 0)
+        const prevTotalOut = prevTransactionItems
+          .filter((e: any) => e.transaction?.transaction_type === 'out')
+          .reduce((sum: number, e: any) => sum + parseFloat(e.quantity), 0)
 
-        const prevTotalInValue = prevLedgerEntries
-          .filter((e: any) => parseFloat(e.stock_value_diff || 0) > 0)
-          .reduce((sum: number, e: any) => sum + parseFloat(e.stock_value_diff), 0)
+        const prevTotalInValue = prevTransactionItems
+          .filter((e: any) => e.transaction?.transaction_type === 'in')
+          .reduce((sum: number, e: any) => sum + (parseFloat(e.stock_value_after) - parseFloat(e.stock_value_before)), 0)
 
-        const prevTotalOutValue = prevLedgerEntries
-          .filter((e: any) => parseFloat(e.stock_value_diff || 0) < 0)
-          .reduce((sum: number, e: any) => sum + Math.abs(parseFloat(e.stock_value_diff)), 0)
+        const prevTotalOutValue = prevTransactionItems
+          .filter((e: any) => e.transaction?.transaction_type === 'out')
+          .reduce((sum: number, e: any) => sum + Math.abs(parseFloat(e.stock_value_after) - parseFloat(e.stock_value_before)), 0)
 
         periodComparison = {
           previousPeriod: {

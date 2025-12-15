@@ -155,24 +155,7 @@ export async function POST(
         )
       }
 
-      // Get current stock balance
-      const { data: lastLedgerEntry } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
-        .eq('company_id', userData.company_id)
-        .eq('item_id', item.item_id)
-        .eq('warehouse_id', adjustment.warehouse_id)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
-
-      const currentBalance = lastLedgerEntry && lastLedgerEntry.length > 0
-        ? parseFloat(lastLedgerEntry[0].qty_after_trans)
-        : 0
-
-      const newBalance = currentBalance + difference
-
-      // Update or create item_warehouse record
+      // Get current stock from item_warehouse (source of truth)
       const { data: existingStock } = await supabase
         .from('item_warehouse')
         .select('id, current_stock')
@@ -181,12 +164,39 @@ export async function POST(
         .eq('warehouse_id', adjustment.warehouse_id)
         .maybeSingle()
 
+      const currentBalance = existingStock
+        ? parseFloat(String(existingStock.current_stock))
+        : 0
+
+      const newBalance = currentBalance + difference
+
+      const postingDate = adjustment.adjustment_date
+      const postingTime = new Date().toTimeString().split(' ')[0]
+
+      // Update stock_transaction_items with before/after quantities
+      await supabase
+        .from('stock_transaction_items')
+        .update({
+          qty_before: currentBalance,
+          qty_after: newBalance,
+          valuation_rate: parseFloat(item.unit_cost),
+          stock_value_before: currentBalance * parseFloat(item.unit_cost),
+          stock_value_after: newBalance * parseFloat(item.unit_cost),
+          posting_date: postingDate,
+          posting_time: postingTime,
+        })
+        .eq('id', stockTxItem.id)
+
+      // Update or create item_warehouse record
       if (existingStock) {
         // Update existing stock record
-        const newStock = parseFloat(existingStock.current_stock) + difference
         await supabase
           .from('item_warehouse')
-          .update({ current_stock: Math.max(0, newStock) })
+          .update({
+            current_stock: Math.max(0, newBalance),
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', existingStock.id)
       } else {
         // Create new stock record
@@ -196,28 +206,11 @@ export async function POST(
             company_id: userData.company_id,
             item_id: item.item_id,
             warehouse_id: adjustment.warehouse_id,
-            current_stock: Math.max(0, difference),
+            current_stock: Math.max(0, newBalance),
+            created_by: user.id,
+            updated_by: user.id,
           })
       }
-
-      // Create stock ledger entry
-      await supabase.from('stock_ledger').insert({
-        company_id: userData.company_id,
-        transaction_id: stockTransaction.id,
-        transaction_item_id: stockTxItem.id,
-        item_id: item.item_id,
-        warehouse_id: adjustment.warehouse_id,
-        posting_date: adjustment.adjustment_date,
-        posting_time: new Date().toTimeString().split(' ')[0],
-        voucher_type: 'Stock Adjustment',
-        voucher_no: adjustment.adjustment_code,
-        actual_qty: difference,
-        qty_after_trans: newBalance,
-        incoming_rate: difference > 0 ? parseFloat(item.unit_cost) : 0,
-        valuation_rate: parseFloat(item.unit_cost),
-        stock_value: newBalance * parseFloat(item.unit_cost),
-        stock_value_diff: difference * parseFloat(item.unit_cost),
-      })
     }
 
     // Update adjustment status to posted
@@ -239,7 +232,6 @@ export async function POST(
       console.error('Error updating adjustment status:', updateError)
       // Rollback stock transactions
       await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTransaction.id)
-      await supabase.from('stock_ledger').delete().eq('transaction_id', stockTransaction.id)
       await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
       return NextResponse.json({ error: 'Failed to update adjustment status' }, { status: 500 })
     }

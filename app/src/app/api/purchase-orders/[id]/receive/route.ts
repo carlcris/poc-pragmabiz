@@ -227,41 +227,62 @@ export async function POST(
         continue
       }
 
-      // Get current stock balance from ledger
-      const { data: lastLedgerEntry } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
-        .eq('company_id', userData.company_id)
+      // Get current stock balance from item_warehouse (source of truth)
+      const { data: warehouseStock } = await supabase
+        .from('item_warehouse')
+        .select('current_stock')
         .eq('item_id', item.itemId)
         .eq('warehouse_id', body.warehouseId)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
+        .single()
 
-      const currentBalance = lastLedgerEntry && lastLedgerEntry.length > 0
-        ? parseFloat(lastLedgerEntry[0].qty_after_trans)
+      const currentBalance = warehouseStock
+        ? parseFloat(String(warehouseStock.current_stock))
         : 0
 
       const newBalance = currentBalance + item.quantityReceived
 
-      // Create stock ledger entry
-      await supabase.from('stock_ledger').insert({
-        company_id: userData.company_id,
-        transaction_id: stockTransaction.id,
-        transaction_item_id: stockTxItem.id,
-        item_id: item.itemId,
-        warehouse_id: body.warehouseId,
-        posting_date: body.receiptDate || new Date().toISOString().split('T')[0],
-        posting_time: new Date().toTimeString().split(' ')[0],
-        voucher_type: 'Purchase Receipt',
-        voucher_no: receiptCode,
-        actual_qty: item.quantityReceived, // Positive for IN
-        qty_after_trans: newBalance,
-        incoming_rate: item.rate,
-        valuation_rate: item.rate,
-        stock_value: newBalance * item.rate,
-        stock_value_diff: item.quantityReceived * item.rate,
-      })
+      const postingDate = body.receiptDate || new Date().toISOString().split('T')[0]
+      const postingTime = new Date().toTimeString().split(' ')[0]
+
+      // Update stock_transaction_items with before/after quantities
+      await supabase
+        .from('stock_transaction_items')
+        .update({
+          qty_before: currentBalance,
+          qty_after: newBalance,
+          valuation_rate: item.rate,
+          stock_value_before: currentBalance * item.rate,
+          stock_value_after: newBalance * item.rate,
+          posting_date: postingDate,
+          posting_time: postingTime,
+        })
+        .eq('id', stockTxItem.id)
+
+      // Update item_warehouse current_stock
+      if (warehouseStock) {
+        // Update existing record
+        await supabase
+          .from('item_warehouse')
+          .update({
+            current_stock: newBalance,
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('item_id', item.itemId)
+          .eq('warehouse_id', body.warehouseId)
+      } else {
+        // Create new item_warehouse record if doesn't exist
+        await supabase
+          .from('item_warehouse')
+          .insert({
+            company_id: userData.company_id,
+            item_id: item.itemId,
+            warehouse_id: body.warehouseId,
+            current_stock: newBalance,
+            created_by: user.id,
+            updated_by: user.id,
+          })
+      }
     }
 
     // Update quantity_received in purchase_order_items

@@ -3,7 +3,7 @@
  *
  * Handles automatic GL posting for COGS when items are sold:
  * - COGS posting: DR COGS, CR Inventory
- * - Uses valuation from stock_ledger (weighted average cost)
+ * - Uses valuation from stock_transaction_items (weighted average cost)
  */
 
 import { createClient } from "@/lib/supabase/server";
@@ -28,7 +28,7 @@ export type COGSPostingData = {
 };
 
 /**
- * Calculate COGS for invoice items from stock ledger
+ * Calculate COGS for invoice items from stock transaction items
  * Uses the most recent valuation_rate for each item in the warehouse
  */
 export async function calculateCOGS(
@@ -43,21 +43,25 @@ export async function calculateCOGS(
     let totalCOGS = 0;
 
     for (const item of items) {
-      // Get the most recent valuation rate from stock ledger
-      const { data: ledgerEntry, error: ledgerError } = await supabase
-        .from("stock_ledger")
-        .select("valuation_rate, item_id, items(item_code, item_name)")
+      // Get the most recent valuation rate from stock_transaction_items
+      const { data: transactionItem, error: txItemError } = await supabase
+        .from("stock_transaction_items")
+        .select(`
+          valuation_rate,
+          item_id,
+          item:items(item_code, item_name),
+          transaction:stock_transactions!inner(warehouse_id)
+        `)
         .eq("company_id", companyId)
         .eq("item_id", item.itemId)
-        .eq("warehouse_id", warehouseId)
-        .eq("is_cancelled", false)
+        .eq("transaction.warehouse_id", warehouseId)
         .not("valuation_rate", "is", null)
         .order("posting_date", { ascending: false })
         .order("posting_time", { ascending: false })
         .limit(1)
         .single();
 
-      if (ledgerError || !ledgerEntry) {
+      if (txItemError || !transactionItem) {
         // If no stock ledger entry exists, try to get from items table (purchase_price)
         const { data: itemData, error: itemError } = await supabase
           .from("items")
@@ -89,13 +93,13 @@ export async function calculateCOGS(
 
         totalCOGS += totalCost;
       } else {
-        const valuationRate = parseFloat(ledgerEntry.valuation_rate || "0");
+        const valuationRate = parseFloat(transactionItem.valuation_rate || "0");
         const totalCost = item.quantity * valuationRate;
 
         cogsItems.push({
           itemId: item.itemId,
-          itemCode: (ledgerEntry.items as { item_code: string })?.item_code,
-          itemName: (ledgerEntry.items as { item_name: string })?.item_name,
+          itemCode: (transactionItem.item as { item_code: string })?.item_code,
+          itemName: (transactionItem.item as { item_name: string })?.item_name,
           quantity: item.quantity,
           valuationRate,
           totalCost,

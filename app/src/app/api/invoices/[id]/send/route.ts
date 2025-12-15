@@ -71,18 +71,15 @@ export async function POST(
 
       // Check stock availability before sending
       for (const item of invoice.items || []) {
-        const { data: lastLedgerEntry } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
-        .eq('company_id', userData.company_id)
+        const { data: warehouseStock } = await supabase
+        .from('item_warehouse')
+        .select('current_stock')
         .eq('item_id', item.item_id)
         .eq('warehouse_id', invoice.warehouse_id)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
+        .single()
 
-        const currentStock = lastLedgerEntry && lastLedgerEntry.length > 0
-          ? parseFloat(lastLedgerEntry[0].qty_after_trans)
+        const currentStock = warehouseStock
+          ? parseFloat(String(warehouseStock.current_stock))
           : 0
 
         console.log(`Stock check for item ${item.item_id}: Available=${currentStock}, Required=${item.quantity}`)
@@ -176,41 +173,47 @@ export async function POST(
           )
         }
 
-        // Get current stock balance
-        const { data: lastLedgerEntry } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
-        .eq('company_id', userData.company_id)
+        // Get current stock balance from item_warehouse
+        const { data: warehouseStock } = await supabase
+        .from('item_warehouse')
+        .select('current_stock')
         .eq('item_id', item.item_id)
         .eq('warehouse_id', invoice.warehouse_id)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
+        .single()
 
-        const currentBalance = lastLedgerEntry && lastLedgerEntry.length > 0
-          ? parseFloat(lastLedgerEntry[0].qty_after_trans)
+        const currentBalance = warehouseStock
+          ? parseFloat(String(warehouseStock.current_stock))
           : 0
 
         const newBalance = currentBalance - parseFloat(item.quantity)
 
-        // Create stock ledger entry (negative quantity for OUT)
-        await supabase.from('stock_ledger').insert({
-        company_id: userData.company_id,
-        transaction_id: stockTransaction.id,
-        transaction_item_id: stockTxItem.id,
-        item_id: item.item_id,
-        warehouse_id: invoice.warehouse_id,
-        posting_date: invoice.invoice_date,
-        posting_time: new Date().toTimeString().split(' ')[0],
-        voucher_type: 'Sales Invoice',
-        voucher_no: invoice.invoice_number,
-        actual_qty: -parseFloat(item.quantity), // Negative for OUT
-        qty_after_trans: newBalance,
-        incoming_rate: 0,
-        valuation_rate: parseFloat(item.rate),
-        stock_value: newBalance * parseFloat(item.rate),
-        stock_value_diff: -parseFloat(item.quantity) * parseFloat(item.rate),
+        const postingDate = invoice.invoice_date
+        const postingTime = new Date().toTimeString().split(' ')[0]
+
+        // Update stock_transaction_items with before/after quantities
+        await supabase
+        .from('stock_transaction_items')
+        .update({
+          qty_before: currentBalance,
+          qty_after: newBalance,
+          valuation_rate: parseFloat(item.rate),
+          stock_value_before: currentBalance * parseFloat(item.rate),
+          stock_value_after: newBalance * parseFloat(item.rate),
+          posting_date: postingDate,
+          posting_time: postingTime,
         })
+        .eq('id', stockTxItem.id)
+
+        // Update item_warehouse current_stock
+        await supabase
+        .from('item_warehouse')
+        .update({
+          current_stock: newBalance,
+          updated_by: user.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('item_id', item.item_id)
+        .eq('warehouse_id', invoice.warehouse_id)
       }
     } else {
       console.log('Invoice has no warehouse assigned. Skipping stock validation and deduction.')
@@ -238,7 +241,6 @@ export async function POST(
 
         if (stockTx) {
           await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTx.id)
-          await supabase.from('stock_ledger').delete().eq('transaction_id', stockTx.id)
           await supabase.from('stock_transactions').delete().eq('id', stockTx.id)
         }
       }

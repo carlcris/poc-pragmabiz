@@ -454,74 +454,72 @@ export async function POST(request: NextRequest) {
           )
         }
 
-        // Get current stock balance
-        const { data: lastLedgerEntry } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
-        .eq('company_id', userData.company_id)
-        .eq('item_id', item.item_id)
-        .eq('warehouse_id', invoice.warehouse_id)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
+        // Get current stock from item_warehouse (source of truth)
+        const { data: warehouseStock } = await supabase
+          .from('item_warehouse')
+          .select('current_stock')
+          .eq('item_id', item.item_id)
+          .eq('warehouse_id', invoice.warehouse_id)
+          .single()
 
-        const currentBalance = lastLedgerEntry && lastLedgerEntry.length > 0
-          ? parseFloat(lastLedgerEntry[0].qty_after_trans)
+        const currentBalance = warehouseStock
+          ? parseFloat(String(warehouseStock.current_stock))
           : 0
 
         const newBalance = currentBalance - parseFloat(String(item.quantity))
 
-        // Create stock ledger entry (negative quantity for OUT)
-        const { error: ledgerError } = await supabase.from('stock_ledger').insert({
-         company_id: userData.company_id,
-         transaction_id: stockTransaction.id,
-         transaction_item_id: stockTxItem.id,
-         item_id: item.item_id,
-         warehouse_id: invoice.warehouse_id,
-         posting_date: invoice.invoice_date,
-         posting_time: new Date().toTimeString().split(' ')[0],
-         voucher_type: 'Sales Invoice',
-         voucher_no: invoice.invoice_code,
-         actual_qty: -Math.abs(parseFloat(String(item.quantity)) || 0), // Negative for OUT
-         qty_after_trans: newBalance,
-         incoming_rate: 0,
-         valuation_rate: parseFloat(item.rate),
-         stock_value: newBalance * parseFloat(item.rate),
-         stock_value_diff: -parseFloat(item.quantity) * parseFloat(item.rate),
-        })
+        const postingDate = invoice.invoice_date
+        const postingTime = new Date().toTimeString().split(' ')[0]
 
-        if (ledgerError) {
-          console.error('Error creating stock ledger entry:', ledgerError)
-          // Rollback created transaction items and header if needed
+        // Update stock_transaction_items with before/after quantities
+        const { error: updateTxItemError } = await supabase
+          .from('stock_transaction_items')
+          .update({
+            qty_before: currentBalance,
+            qty_after: newBalance,
+            valuation_rate: parseFloat(item.rate),
+            stock_value_before: currentBalance * parseFloat(item.rate),
+            stock_value_after: newBalance * parseFloat(item.rate),
+            posting_date: postingDate,
+            posting_time: postingTime,
+          })
+          .eq('id', stockTxItem.id)
+
+        if (updateTxItemError) {
+          console.error('Error updating stock transaction item:', updateTxItemError)
+          // Rollback
           await supabase.from('stock_transaction_items').delete().eq('id', stockTxItem.id)
           await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
           return NextResponse.json(
-            { error: 'Failed to create stock ledger entry' },
+            { error: 'Failed to update stock transaction items' },
+            { status: 500 }
+          )
+        }
+
+        // Update item_warehouse current_stock
+        const { error: updateWarehouseError } = await supabase
+          .from('item_warehouse')
+          .update({
+            current_stock: newBalance,
+            updated_by: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('item_id', item.item_id)
+          .eq('warehouse_id', invoice.warehouse_id)
+
+        if (updateWarehouseError) {
+          console.error('Error updating item_warehouse stock:', updateWarehouseError)
+          // Rollback
+          await supabase.from('stock_transaction_items').delete().eq('id', stockTxItem.id)
+          await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
+          return NextResponse.json(
+            { error: 'Failed to update warehouse inventory' },
             { status: 500 }
           )
         }
        }
 
-    // Get current stock levels for each item
-    const invItemIds = invoiceItems.map((item) => item.item_id)
-
-    // Get latest stock balance for each item in this warehouse
-    const stockBalances = new Map<string, number>()
-
-    for (const itemId of invItemIds) {
-      const { data: latestLedger } = await supabase
-        .from('stock_ledger')
-        .select('qty_after_trans')
-        .eq('company_id', userData.company_id)
-        .eq('item_id', itemId)
-        .eq('warehouse_id', invoice.warehouse_id)
-        .order('posting_date', { ascending: false })
-        .order('posting_time', { ascending: false })
-        .limit(1)
-        .single()
-
-      stockBalances.set(itemId, latestLedger ? parseFloat(latestLedger.qty_after_trans) : 0)
-    }
+    // Stock has already been updated in item_warehouse above, no additional processing needed
 
 
     // Calculate commission for the invoice

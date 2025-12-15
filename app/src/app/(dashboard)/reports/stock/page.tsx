@@ -47,14 +47,14 @@ export default function StockReportsPage() {
   const [movementEndDate, setMovementEndDate] = useState<string>(
     new Date().toISOString().split("T")[0]
   );
-  const [movementWarehouseId, setMovementWarehouseId] = useState<string>("");
-  const [movementItemId, setMovementItemId] = useState<string>("");
+  const [movementWarehouseId, setMovementWarehouseId] = useState<string>("all");
+  const [movementItemId, setMovementItemId] = useState<string>("all");
   const [movementGroupBy, setMovementGroupBy] = useState<string>("item");
 
   // Valuation report filters
-  const [valuationWarehouseId, setValuationWarehouseId] = useState<string>("");
-  const [valuationItemId, setValuationItemId] = useState<string>("");
-  const [valuationCategory, setValuationCategory] = useState<string>("");
+  const [valuationWarehouseId, setValuationWarehouseId] = useState<string>("all");
+  const [valuationItemId, setValuationItemId] = useState<string>("all");
+  const [valuationCategory, setValuationCategory] = useState<string>("all");
   const [valuationGroupBy, setValuationGroupBy] = useState<string>("item");
 
   // Fetch dropdown data
@@ -71,16 +71,16 @@ export default function StockReportsPage() {
   const movementQuery = useStockMovement({
     startDate: movementStartDate,
     endDate: movementEndDate,
-    warehouseId: movementWarehouseId || undefined,
-    itemId: movementItemId || undefined,
+    warehouseId: movementWarehouseId === "all" ? undefined : movementWarehouseId,
+    itemId: movementItemId === "all" ? undefined : movementItemId,
     groupBy: movementGroupBy as any,
   });
 
   // Fetch valuation report
   const valuationQuery = useStockValuation({
-    warehouseId: valuationWarehouseId || undefined,
-    itemId: valuationItemId || undefined,
-    category: valuationCategory || undefined,
+    warehouseId: valuationWarehouseId === "all" ? undefined : valuationWarehouseId,
+    itemId: valuationItemId === "all" ? undefined : valuationItemId,
+    category: valuationCategory === "all" ? undefined : valuationCategory,
     groupBy: valuationGroupBy as any,
   });
 
@@ -153,7 +153,7 @@ export default function StockReportsPage() {
                       <SelectValue placeholder="All Warehouses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Warehouses</SelectItem>
+                      <SelectItem value="all">All Warehouses</SelectItem>
                       {warehouses.map((warehouse) => (
                         <SelectItem key={warehouse.id} value={warehouse.id}>
                           {warehouse.code} - {warehouse.name}
@@ -170,7 +170,7 @@ export default function StockReportsPage() {
                       <SelectValue placeholder="All Items" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Items</SelectItem>
+                      <SelectItem value="all">All Items</SelectItem>
                       {items.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
                           {item.code} - {item.name}
@@ -451,7 +451,7 @@ export default function StockReportsPage() {
                       <SelectValue placeholder="All Warehouses" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Warehouses</SelectItem>
+                      <SelectItem value="all">All Warehouses</SelectItem>
                       {warehouses.map((warehouse) => (
                         <SelectItem key={warehouse.id} value={warehouse.id}>
                           {warehouse.code} - {warehouse.name}
@@ -468,7 +468,7 @@ export default function StockReportsPage() {
                       <SelectValue placeholder="All Items" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Items</SelectItem>
+                      <SelectItem value="all">All Items</SelectItem>
                       {items.map((item) => (
                         <SelectItem key={item.id} value={item.id}>
                           {item.code} - {item.name}
@@ -485,7 +485,7 @@ export default function StockReportsPage() {
                       <SelectValue placeholder="All Categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Categories</SelectItem>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category} value={category}>
                           {category}

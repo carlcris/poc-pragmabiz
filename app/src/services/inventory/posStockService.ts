@@ -3,7 +3,7 @@
  *
  * Handles stock transactions for POS sales:
  * - Creates outbound stock transactions when items are sold
- * - Updates stock ledger with item movements
+ * - Updates stock_transaction_items with before/after quantities
  * - Reduces inventory quantities in item_warehouse
  * - Creates reversal transactions for voided sales
  */
@@ -26,7 +26,7 @@ export type POSStockTransactionData = {
 /**
  * Create stock transaction for POS sale
  * - Creates stock_transactions record (type: 'out')
- * - Creates stock_ledger entries for each item
+ * - Creates stock_transaction_items with before/after quantities
  * - Updates item_warehouse quantities (reduces stock)
  */
 export async function createPOSStockTransaction(
@@ -68,171 +68,106 @@ export async function createPOSStockTransaction(
       };
     }
 
-    // Get current stock levels for each item in this warehouse
-    const stockBalances = new Map<string, number>();
-
-    for (const item of data.items) {
-      const { data: latestLedger } = await supabase
-        .from("stock_ledger")
-        .select("qty_after_trans")
-        .eq("company_id", companyId)
-        .eq("item_id", item.itemId)
-        .eq("warehouse_id", data.warehouseId)
-        .order("posting_date", { ascending: false })
-        .order("posting_time", { ascending: false })
-        .limit(1)
-        .single();
-
-      stockBalances.set(
-        item.itemId,
-        latestLedger ? parseFloat(latestLedger.qty_after_trans) : 0
-      );
-    }
-
-    // Create stock_transaction_items records
-    const transactionItems = data.items.map((item) => ({
-      company_id: companyId,
-      transaction_id: stockTransaction.id,
-      item_id: item.itemId,
-      quantity: item.quantity,
-      uom_id: item.uomId,
-      unit_cost: item.rate,
-      total_cost: item.quantity * item.rate,
-      created_by: userId,
-      updated_by: userId,
-    }));
-
-    const { data: createdTransactionItems, error: itemsError } = await supabase
-      .from("stock_transaction_items")
-      .insert(transactionItems)
-      .select();
-
-    if (itemsError || !createdTransactionItems) {
-      console.error("Error creating stock transaction items:", itemsError);
-      // Rollback: delete transaction
-      await supabase
-        .from("stock_transactions")
-        .delete()
-        .eq("id", stockTransaction.id);
-      return {
-        success: false,
-        error: "Failed to create stock transaction items",
-      };
-    }
-
-    // Create stock ledger entries for each item
+    // Create stock transaction items and update warehouse inventory
     const now = new Date();
     const postingDate = now.toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
-    const ledgerEntries = data.items.map((item, index) => {
-      const currentBalance = stockBalances.get(item.itemId) || 0;
-      const newBalance = currentBalance - item.quantity;
-      const transactionItem = createdTransactionItems[index];
-
-      return {
-        company_id: companyId,
-        item_id: item.itemId,
-        warehouse_id: data.warehouseId,
-        transaction_id: stockTransaction.id,
-        transaction_item_id: transactionItem.id,
-        transaction_type: "pos_sale",
-        posting_date: postingDate,
-        posting_time: postingTime,
-        voucher_type: "POS Sale",
-        voucher_no: data.transactionCode,
-        actual_qty: -item.quantity, // Negative for outgoing
-        qty_after_trans: newBalance,
-        qty_change: -item.quantity,
-        uom_id: item.uomId,
-        rate: item.rate,
-        incoming_rate: item.rate,
-        valuation_rate: item.rate,
-        stock_value: newBalance * item.rate,
-        stock_value_diff: -item.quantity * item.rate,
-        value_change: -item.quantity * item.rate,
-        reference_type: "pos_transaction",
-        reference_id: data.transactionId,
-        reference_code: data.transactionCode,
-        is_cancelled: false,
-        created_by: userId,
-      };
-    });
-
-    const { error: ledgerError } = await supabase
-      .from("stock_ledger")
-      .insert(ledgerEntries);
-
-    if (ledgerError) {
-      console.error("Error creating stock ledger entries:", ledgerError);
-      // Rollback: delete transaction items and transaction
-      await supabase
-        .from("stock_transaction_items")
-        .delete()
-        .in("id", createdTransactionItems.map((item) => item.id));
-      await supabase
-        .from("stock_transactions")
-        .delete()
-        .eq("id", stockTransaction.id);
-      return {
-        success: false,
-        error: "Failed to create stock ledger entries",
-      };
-    }
-
-    // Update item_warehouse quantities (reduce stock)
     for (const item of data.items) {
-      const currentBalance = stockBalances.get(item.itemId) || 0;
-      const newBalance = currentBalance - item.quantity;
-
-      // Check if item_warehouse record exists
-      const { data: existingItemWarehouse } = await supabase
+      // Get current stock from item_warehouse (source of truth)
+      const { data: warehouseStock } = await supabase
         .from("item_warehouse")
-        .select("id, current_stock")
-        .eq("company_id", companyId)
+        .select("current_stock")
         .eq("item_id", item.itemId)
         .eq("warehouse_id", data.warehouseId)
-        .is("deleted_at", null)
         .single();
 
-      if (existingItemWarehouse) {
-        // Update existing record
-        const { error: updateError } = await supabase
-          .from("item_warehouse")
-          .update({
-            current_stock: newBalance,
-            updated_by: userId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingItemWarehouse.id);
+      const currentBalance = warehouseStock
+        ? parseFloat(String(warehouseStock.current_stock))
+        : 0;
 
-        if (updateError) {
-          console.error("Error updating item_warehouse:", updateError);
-          // Log warning but continue - stock ledger is source of truth
-        }
-      } else {
-        // Create new record (shouldn't normally happen, but handle gracefully)
-        const { error: insertError } = await supabase
-          .from("item_warehouse")
-          .insert({
-            company_id: companyId,
-            item_id: item.itemId,
-            warehouse_id: data.warehouseId,
-            current_stock: newBalance,
-            reserved_stock: 0,
-            reorder_level: 0,
-            reorder_quantity: 0,
-            is_active: true,
-            created_by: userId,
-            updated_by: userId,
-          });
+      const newBalance = currentBalance - item.quantity;
 
-        if (insertError) {
-          console.error("Error creating item_warehouse:", insertError);
-          // Log warning but continue
-        }
+      // Validate sufficient stock
+      if (newBalance < 0) {
+        // Rollback: delete transaction
+        await supabase
+          .from("stock_transactions")
+          .delete()
+          .eq("id", stockTransaction.id);
+        return {
+          success: false,
+          error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${item.quantity}`,
+        };
+      }
+
+      // Create stock transaction item with before/after quantities
+      const { data: stockTxItem, error: itemError } = await supabase
+        .from("stock_transaction_items")
+        .insert({
+          company_id: companyId,
+          transaction_id: stockTransaction.id,
+          item_id: item.itemId,
+          quantity: item.quantity,
+          uom_id: item.uomId,
+          unit_cost: item.rate,
+          total_cost: item.quantity * item.rate,
+          qty_before: currentBalance,
+          qty_after: newBalance,
+          valuation_rate: item.rate,
+          stock_value_before: currentBalance * item.rate,
+          stock_value_after: newBalance * item.rate,
+          posting_date: postingDate,
+          posting_time: postingTime,
+          created_by: userId,
+          updated_by: userId,
+        })
+        .select()
+        .single();
+
+      if (itemError || !stockTxItem) {
+        console.error("Error creating stock transaction item:", itemError);
+        // Rollback: delete transaction
+        await supabase
+          .from("stock_transactions")
+          .delete()
+          .eq("id", stockTransaction.id);
+        return {
+          success: false,
+          error: "Failed to create stock transaction items",
+        };
+      }
+
+      // Update item_warehouse current_stock
+      const { error: warehouseUpdateError } = await supabase
+        .from("item_warehouse")
+        .update({
+          current_stock: newBalance,
+          updated_by: userId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("item_id", item.itemId)
+        .eq("warehouse_id", data.warehouseId);
+
+      if (warehouseUpdateError) {
+        console.error("Error updating item_warehouse stock:", warehouseUpdateError);
+        // Rollback - delete transaction items created so far and transaction
+        await supabase
+          .from("stock_transaction_items")
+          .delete()
+          .eq("transaction_id", stockTransaction.id);
+        await supabase
+          .from("stock_transactions")
+          .delete()
+          .eq("id", stockTransaction.id);
+        return {
+          success: false,
+          error: "Failed to update warehouse inventory",
+        };
       }
     }
+
+    // All items processed successfully
 
     return {
       success: true,
@@ -250,7 +185,7 @@ export async function createPOSStockTransaction(
 /**
  * Reverse POS stock transaction (for voided sales)
  * - Creates reversing stock_transactions record (type: 'in')
- * - Creates reversing stock_ledger entries (add back stock)
+ * - Creates reversing stock_transaction_items (add back stock)
  * - Updates item_warehouse quantities (restore stock)
  */
 export async function reversePOSStockTransaction(
@@ -329,31 +264,34 @@ export async function reversePOSStockTransaction(
 
     const itemsMap = new Map(itemsData.map((item) => [item.id, item]));
 
-    // Get current stock levels for each item
+    // Get current stock levels for each item from item_warehouse (source of truth)
     const stockBalances = new Map<string, number>();
 
     for (const item of posTransactionItems) {
-      const { data: latestLedger } = await supabase
-        .from("stock_ledger")
-        .select("qty_after_trans")
+      const { data: warehouseStock } = await supabase
+        .from("item_warehouse")
+        .select("current_stock")
         .eq("company_id", companyId)
         .eq("item_id", item.item_id)
         .eq("warehouse_id", warehouseId)
-        .order("posting_date", { ascending: false })
-        .order("posting_time", { ascending: false })
-        .limit(1)
         .single();
 
       stockBalances.set(
         item.item_id,
-        latestLedger ? parseFloat(latestLedger.qty_after_trans) : 0
+        warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0
       );
     }
 
-    // Create reversal stock_transaction_items
+    // Create reversal stock_transaction_items with before/after quantities
+    const now = new Date();
+    const postingDate = now.toISOString().split("T")[0];
+    const postingTime = now.toTimeString().split(" ")[0];
+
     const reversalItems = posTransactionItems.map((item) => {
       const itemData = itemsMap.get(item.item_id);
       const rate = parseFloat(itemData?.purchase_price || "0");
+      const currentBalance = stockBalances.get(item.item_id) || 0;
+      const newBalance = currentBalance + item.quantity;
 
       return {
         company_id: companyId,
@@ -363,6 +301,13 @@ export async function reversePOSStockTransaction(
         uom_id: itemData?.uom_id || "",
         unit_cost: rate,
         total_cost: item.quantity * rate,
+        qty_before: currentBalance,
+        qty_after: newBalance,
+        valuation_rate: rate,
+        stock_value_before: currentBalance * rate,
+        stock_value_after: newBalance * rate,
+        posting_date: postingDate,
+        posting_time: postingTime,
         created_by: userId,
         updated_by: userId,
       };
@@ -379,65 +324,6 @@ export async function reversePOSStockTransaction(
       return {
         success: false,
         error: "Failed to create reversal items",
-      };
-    }
-
-    // Create reversal stock ledger entries (positive quantities)
-    const now = new Date();
-    const postingDate = now.toISOString().split("T")[0];
-    const postingTime = now.toTimeString().split(" ")[0];
-
-    const reversalLedgerEntries = posTransactionItems.map((item, index) => {
-      const currentBalance = stockBalances.get(item.item_id) || 0;
-      const newBalance = currentBalance + item.quantity; // Add back
-      const itemData = itemsMap.get(item.item_id);
-      const rate = parseFloat(itemData?.purchase_price || "0");
-      const reversalItem = createdReversalItems[index];
-
-      return {
-        company_id: companyId,
-        item_id: item.item_id,
-        warehouse_id: warehouseId,
-        transaction_id: reversalTransaction.id,
-        transaction_item_id: reversalItem.id,
-        transaction_type: "pos_void",
-        posting_date: postingDate,
-        posting_time: postingTime,
-        voucher_type: "POS Void",
-        voucher_no: transactionCode,
-        actual_qty: item.quantity, // Positive for returning
-        qty_after_trans: newBalance,
-        qty_change: item.quantity,
-        uom_id: itemData?.uom_id,
-        rate: rate,
-        incoming_rate: rate,
-        valuation_rate: rate,
-        stock_value: newBalance * rate,
-        stock_value_diff: item.quantity * rate,
-        value_change: item.quantity * rate,
-        reference_type: "pos_transaction",
-        reference_id: transactionId,
-        reference_code: transactionCode,
-        is_cancelled: false,
-        created_by: userId,
-      };
-    });
-
-    const { error: reversalLedgerError } = await supabase
-      .from("stock_ledger")
-      .insert(reversalLedgerEntries);
-
-    if (reversalLedgerError) {
-      console.error("Error creating reversal ledger entries:", reversalLedgerError);
-      // Rollback
-      await supabase
-        .from("stock_transaction_items")
-        .delete()
-        .in("id", createdReversalItems.map((item) => item.id));
-      await supabase.from("stock_transactions").delete().eq("id", reversalTransaction.id);
-      return {
-        success: false,
-        error: "Failed to create reversal ledger entries",
       };
     }
 

@@ -35,23 +35,20 @@ export async function GET(request: NextRequest) {
     const categoryFilter = searchParams.get('category')
     const groupBy = searchParams.get('groupBy') || 'item' // item, warehouse, category
 
-    // Get latest stock balances from stock_ledger
+    // Get current stock from item_warehouse (source of truth)
     let query = supabase
-      .from('stock_ledger')
+      .from('item_warehouse')
       .select(
         `
         item_id,
         warehouse_id,
-        qty_after_trans,
-        valuation_rate,
-        stock_value,
-        posting_date,
-        posting_time,
+        current_stock,
         item:items!inner(
           id,
           item_code,
           item_name,
-          category,
+          category_id,
+          category:item_categories(id, category_name),
           uom:units_of_measure(id, code, name)
         ),
         warehouse:warehouses!inner(
@@ -62,8 +59,7 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq('company_id', userData.company_id)
-      .order('posting_date', { ascending: false })
-      .order('posting_time', { ascending: false })
+      .is('deleted_at', null)
 
     if (warehouseId) {
       query = query.eq('warehouse_id', warehouseId)
@@ -74,35 +70,57 @@ export async function GET(request: NextRequest) {
     }
 
     if (categoryFilter) {
-      query = query.eq('item.category', categoryFilter)
+      query = query.eq('item.category_id', categoryFilter)
     }
 
-    const { data: ledgerEntries, error } = await query
+    const { data: inventoryData, error } = await query
 
     if (error) {
       console.error('Error fetching stock valuation data:', error)
       return NextResponse.json({ error: 'Failed to fetch stock valuation data' }, { status: 500 })
     }
 
-    // Get latest balance for each item-warehouse combination
+    // Get latest valuation rates from stock_transaction_items for each item-warehouse
+    const itemWarehousePairs = inventoryData?.map(inv => ({ item_id: inv.item_id, warehouse_id: inv.warehouse_id })) || []
+
+    const valuationRates = new Map<string, number>()
+    for (const pair of itemWarehousePairs) {
+      const { data: latestTx } = await supabase
+        .from('stock_transaction_items')
+        .select('valuation_rate')
+        .eq('item_id', pair.item_id)
+        .order('posting_date', { ascending: false })
+        .order('posting_time', { ascending: false })
+        .limit(1)
+        .single()
+
+      const key = `${pair.item_id}_${pair.warehouse_id}`
+      valuationRates.set(key, latestTx?.valuation_rate ? parseFloat(String(latestTx.valuation_rate)) : 0)
+    }
+
+    // Build valuation map
     const balancesMap = new Map<string, any>()
 
-    for (const entry of ledgerEntries || []) {
+    for (const entry of inventoryData || []) {
       const key = `${entry.item_id}_${entry.warehouse_id}`
 
-      // Only keep the first (most recent) entry for each item-warehouse combination
       if (!balancesMap.has(key)) {
+        const currentStock = parseFloat(String(entry.current_stock || 0))
+        const valuationRate = valuationRates.get(key) || 0
+        const stockValue = currentStock * valuationRate
+
         balancesMap.set(key, {
           itemId: entry.item_id,
           itemCode: entry.item?.item_code,
           itemName: entry.item?.item_name,
-          category: entry.item?.category,
+          categoryId: entry.item?.category_id,
+          category: entry.item?.category?.category_name || 'Uncategorized',
           warehouseId: entry.warehouse_id,
           warehouseCode: entry.warehouse?.warehouse_code,
           warehouseName: entry.warehouse?.warehouse_name,
-          quantity: parseFloat(entry.qty_after_trans),
-          valuationRate: parseFloat(entry.valuation_rate || 0),
-          stockValue: parseFloat(entry.stock_value || 0),
+          quantity: currentStock,
+          valuationRate: valuationRate,
+          stockValue: stockValue,
           uom: entry.item?.uom?.code || '',
         })
       }

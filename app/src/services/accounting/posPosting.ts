@@ -301,14 +301,12 @@ export async function calculatePOSCOGS(
     let totalCOGS = 0;
 
     for (const item of transactionItems) {
-      // Get the most recent valuation rate from stock ledger
-      // Note: POS doesn't specify warehouse, so we query all warehouses
-      const { data: ledgerEntry, error: ledgerError } = await supabase
-        .from("stock_ledger")
+      // Get the most recent valuation rate from stock_transaction_items
+      const { data: transactionItem, error: txItemError } = await supabase
+        .from("stock_transaction_items")
         .select("valuation_rate")
         .eq("company_id", companyId)
         .eq("item_id", item.item_id)
-        .eq("is_cancelled", false)
         .not("valuation_rate", "is", null)
         .order("posting_date", { ascending: false })
         .order("posting_time", { ascending: false })
@@ -317,7 +315,7 @@ export async function calculatePOSCOGS(
 
       let valuationRate = 0;
 
-      if (ledgerError || !ledgerEntry) {
+      if (txItemError || !transactionItem) {
         // Fallback to purchase_price from items table
         const { data: itemData, error: itemError } = await supabase
           .from("items")
@@ -334,7 +332,7 @@ export async function calculatePOSCOGS(
           valuationRate = parseFloat(itemData.purchase_price || "0");
         }
       } else {
-        valuationRate = parseFloat(ledgerEntry.valuation_rate || "0");
+        valuationRate = parseFloat(transactionItem.valuation_rate || "0");
       }
 
       const totalCost = item.quantity * valuationRate;
