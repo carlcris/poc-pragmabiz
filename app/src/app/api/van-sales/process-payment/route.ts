@@ -543,7 +543,7 @@ export async function POST(request: NextRequest) {
     await supabase
       .from('sales_orders')
       .update({
-        status: 'delivered',
+        status: 'invoiced',
         updated_by: user.id,
         updated_at: new Date().toISOString(),
       })

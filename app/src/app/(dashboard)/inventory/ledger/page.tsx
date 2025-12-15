@@ -261,7 +261,7 @@ export default function StockLedgerPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                +{totalIn.toFixed(2)}
+                {totalIn > 0 ? `+${totalIn.toFixed(2)}` : totalIn.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">
                 Stock received
@@ -276,7 +276,7 @@ export default function StockLedgerPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                -{totalOut.toFixed(2)}
+                {totalOut > 0 ? `-${totalOut.toFixed(2)}` : totalOut.toFixed(2)}
               </div>
               <p className="text-xs text-muted-foreground">Stock issued</p>
             </CardContent>

@@ -41,15 +41,21 @@ export default function DashboardPage() {
     .reduce((sum, inv) => sum + inv.totalAmount, 0);
 
   // Today's sales orders (for detailed list)
-  const today = new Date();
+  const now = new Date();
+
+  const utcYear = now.getUTCFullYear();
+  const utcMonth = now.getUTCMonth();
+  const utcDay = now.getUTCDate();
+  const today = new Date(utcYear, utcMonth, utcDay);
+  const PH_TZ_OFFSET_MS = 8 * 60 * 60 * 1000; // Philippines (UTC+8)
   today.setHours(0, 0, 0, 0);
   const todaysSales = salesOrders
     .filter(order => {
-      const orderDate = new Date(order.orderDate);
+      const orderDate = new Date(Date.parse(order.createdAt) + PH_TZ_OFFSET_MS);
       orderDate.setHours(0, 0, 0, 0);
       return orderDate.getTime() === today.getTime();
     })
-    .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
   // Calculate product movement from sales orders

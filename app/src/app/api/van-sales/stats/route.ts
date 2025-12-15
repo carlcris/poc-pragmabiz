@@ -22,16 +22,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'No van warehouse assigned' }, { status: 400 });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Get date from query params or default to today
+    const searchParams = request.nextUrl.searchParams;
+    const targetDate = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
-    // Get today's sales invoices for this van warehouse
+    // Get sales invoices for this van warehouse on the specified date
     // Filter by employee_id if available, otherwise by warehouse
     let query = supabase
       .from('sales_invoices')
       .select('id, total_amount, invoice_date, status')
       .eq('warehouse_id', userData.van_warehouse_id)
-      .gte('invoice_date', today)
-      .lte('invoice_date', today);
+      .gte('invoice_date', targetDate)
+      .lte('invoice_date', targetDate);
 
     // Only filter by employee if user has an employee_id
     if (userData.employee_id) {
@@ -45,12 +47,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: invoicesError.message }, { status: 500 });
     }
 
-    // Calculate total sales amount for today
+    // Calculate total sales amount for the date
     const totalSales = (invoices || []).reduce((sum, invoice) => {
       return sum + parseFloat(invoice.total_amount || '0');
     }, 0);
 
-    // Get items sold today
+    // Get items sold on the date
     const invoiceIds = (invoices || []).map(inv => inv.id);
     let itemsSold = 0;
 
