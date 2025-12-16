@@ -53,7 +53,7 @@ export async function createPOSStockTransaction(
         reference_id: data.transactionId,
         reference_code: data.transactionCode,
         notes: `POS Sale - ${data.transactionCode}`,
-        status: "draft",
+        status: "posted",
         created_by: userId,
         updated_by: userId,
       })
@@ -231,7 +231,7 @@ export async function reversePOSStockTransaction(
         reference_id: transactionId,
         reference_code: transactionCode,
         notes: `Void/Reversal - POS Sale ${transactionCode}`,
-        status: "draft",
+        status: "posted",
         created_by: userId,
         updated_by: userId,
       })

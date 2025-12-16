@@ -32,89 +32,50 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    // Fetch BOTH stock transactions AND stock transfers
-    const [transactionsResult, transfersResult] = await Promise.all([
-      // Get stock transaction items
-      supabase
-        .from('stock_transaction_items')
-        .select(
-          `
+    // Fetch stock transaction items
+    const { data: transactionItems, error: txError } = await supabase
+      .from('stock_transaction_items')
+      .select(
+        `
+        id,
+        quantity,
+        unit_cost,
+        total_cost,
+        batch_no,
+        serial_no,
+        expiry_date,
+        notes,
+        created_at,
+        transaction:stock_transactions!inner(
           id,
-          quantity,
-          unit_cost,
-          total_cost,
-          batch_no,
-          serial_no,
-          expiry_date,
+          transaction_code,
+          transaction_type,
+          transaction_date,
+          warehouse_id,
+          to_warehouse_id,
+          reference_type,
+          reference_id,
+          status,
           notes,
-          created_at,
-          transaction:stock_transactions!inner(
-            id,
-            transaction_code,
-            transaction_type,
-            transaction_date,
-            warehouse_id,
-            to_warehouse_id,
-            reference_type,
-            reference_id,
-            status,
-            notes,
-            created_by,
-            created_at
-          ),
-          item:items!inner(
-            id,
-            item_code,
-            item_name,
-            uom:units_of_measure(id, code, name)
-          )
-        `
-        )
-        .eq('transaction.company_id', userData.company_id)
-        .is('deleted_at', null)
-        .is('transaction.deleted_at', null),
-
-      // Get confirmed stock transfers (status = 'received')
-      supabase
-        .from('stock_transfer_items')
-        .select(
-          `
+          created_by,
+          created_at
+        ),
+        item:items!inner(
           id,
-          quantity,
-          created_at,
-          transfer:stock_transfers!inner(
-            id,
-            transfer_code,
-            transfer_date,
-            from_warehouse_id,
-            to_warehouse_id,
-            status,
-            notes,
-            requested_by,
-            confirmed_at
-          ),
-          item:items!inner(
-            id,
-            item_code,
-            item_name
-          ),
-          uom:units_of_measure!uom_id(id, code, name)
-        `
+          item_code,
+          item_name,
+          uom:units_of_measure(id, code, name)
         )
-        .eq('transfer.company_id', userData.company_id)
-        .eq('transfer.status', 'received')
-        .is('deleted_at', null)
-    ])
+      `
+      )
+      .eq('transaction.company_id', userData.company_id)
+      .is('deleted_at', null)
+      .is('transaction.deleted_at', null)
 
-    if (transactionsResult.error) {
-      console.error('Error fetching transactions:', transactionsResult.error)
+    if (txError) {
+      console.error('Error fetching transactions:', txError)
+      return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 })
     }
-    if (transfersResult.error) {
-      console.error('Error fetching transfers:', transfersResult.error)
-    }
-
-    const transactionItems = transactionsResult.data || []
-    const transferItems = transfersResult.data || []
 
     // Collect warehouse and user IDs
     const warehouseIds = new Set<string>()
@@ -124,12 +85,6 @@ export async function GET(request: NextRequest) {
       if (item.transaction.warehouse_id) warehouseIds.add(item.transaction.warehouse_id)
       if (item.transaction.to_warehouse_id) warehouseIds.add(item.transaction.to_warehouse_id)
       if (item.transaction.created_by) userIds.add(item.transaction.created_by)
-    })
-
-    transferItems.forEach((item: any) => {
-      if (item.transfer.from_warehouse_id) warehouseIds.add(item.transfer.from_warehouse_id)
-      if (item.transfer.to_warehouse_id) warehouseIds.add(item.transfer.to_warehouse_id)
-      if (item.transfer.requested_by) userIds.add(item.transfer.requested_by)
     })
 
     // Fetch warehouses and users
@@ -158,7 +113,8 @@ export async function GET(request: NextRequest) {
       const creator = usersMap.get(item.transaction.created_by)
 
       return {
-        id: item.id,
+        id: item.transaction.id,
+        itemTransactionId: item.id,
         companyId: userData.company_id,
         transactionCode: item.transaction.transaction_code,
         transactionDate: item.transaction.transaction_date,
@@ -191,48 +147,8 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Format stock transfers as transfer type transactions
-    const formattedTransfers = transferItems.map((item: any) => {
-      const fromWarehouse = warehousesMap.get(item.transfer.from_warehouse_id)
-      const toWarehouse = warehousesMap.get(item.transfer.to_warehouse_id)
-      const creator = usersMap.get(item.transfer.requested_by)
-
-      return {
-        id: item.id,
-        companyId: userData.company_id,
-        transactionCode: item.transfer.transfer_code,
-        transactionDate: item.transfer.transfer_date,
-        transactionType: 'transfer',
-        itemId: item.item.id,
-        itemCode: item.item.item_code,
-        itemName: item.item.item_name,
-        warehouseId: item.transfer.from_warehouse_id,
-        warehouseCode: fromWarehouse?.warehouse_code || '',
-        warehouseName: fromWarehouse?.warehouse_name || '',
-        toWarehouseId: item.transfer.to_warehouse_id,
-        toWarehouseCode: toWarehouse?.warehouse_code || '',
-        toWarehouseName: toWarehouse?.warehouse_name || '',
-        quantity: parseFloat(item.quantity),
-        uom: item.uom?.code || '',
-        unitCost: 0,
-        totalCost: 0,
-        batchNo: null,
-        serialNo: null,
-        expiryDate: null,
-        referenceType: 'Stock Transfer',
-        referenceId: item.transfer.id,
-        referenceNumber: item.transfer.transfer_code,
-        reason: item.transfer.notes || 'Stock Transfer',
-        notes: `Confirmed at: ${item.transfer.confirmed_at}`,
-        createdBy: item.transfer.requested_by,
-        createdByName: creator ? `${creator.first_name || ''} ${creator.last_name || ''}`.trim() : 'Unknown',
-        createdAt: item.transfer.confirmed_at || item.created_at,
-        updatedAt: item.created_at,
-      }
-    })
-
-    // Merge and sort by date (most recent first)
-    const allTransactions = [...formattedTransactions, ...formattedTransfers].sort(
+    // Sort by date (most recent first)
+    const allTransactions = formattedTransactions.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
 

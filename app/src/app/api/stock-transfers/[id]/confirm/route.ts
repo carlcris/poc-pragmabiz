@@ -99,6 +99,53 @@ export async function POST(
         .eq('id', itemUpdate.id);
     }
 
+    // Create stock transaction for the transfer
+    const currentYear = new Date().getFullYear();
+    const { data: lastTransaction } = await supabase
+      .from('stock_transactions')
+      .select('transaction_code')
+      .eq('company_id', userData.company_id)
+      .like('transaction_code', `ST-${currentYear}-%`)
+      .order('transaction_code', { ascending: false })
+      .limit(1);
+
+    let nextNum = 1;
+    if (lastTransaction && lastTransaction.length > 0) {
+      const match = lastTransaction[0].transaction_code.match(/ST-\d+-(\d+)/);
+      if (match) {
+        nextNum = parseInt(match[1]) + 1;
+      }
+    }
+    const transactionCode = `ST-${currentYear}-${String(nextNum).padStart(4, '0')}`;
+
+    // Create the stock transaction header
+    const { data: stockTransaction, error: transactionError } = await supabase
+      .from('stock_transactions')
+      .insert({
+        company_id: userData.company_id,
+        transaction_code: transactionCode,
+        transaction_type: 'transfer',
+        transaction_date: new Date().toISOString().split('T')[0],
+        warehouse_id: transfer.from_warehouse_id,
+        to_warehouse_id: transfer.to_warehouse_id,
+        reference_type: 'Stock Transfer',
+        reference_id: transferId,
+        status: 'posted',
+        notes: `Transfer from ${transfer.from_warehouse_id} to ${transfer.to_warehouse_id}`,
+        created_by: user.id,
+        updated_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (transactionError) {
+      console.error('Error creating stock transaction:', transactionError);
+      return NextResponse.json(
+        { error: 'Failed to create stock transaction' },
+        { status: 500 }
+      );
+    }
+
     // Update stock levels for transfer
     const postingDate = new Date().toISOString().split('T')[0];
     const postingTime = new Date().toISOString().split('T')[1].substring(0, 8);
@@ -166,6 +213,25 @@ export async function POST(
             updated_by: user.id,
           });
       }
+
+      // Create stock transaction item with qty_before and qty_after
+      await supabase
+        .from('stock_transaction_items')
+        .insert({
+          company_id: userData.company_id,
+          transaction_id: stockTransaction.id,
+          item_id: item.item_id,
+          quantity: parseFloat(item.quantity),
+          uom_id: item.uom_id,
+          unit_cost: 0,
+          total_cost: 0,
+          qty_before: sourceCurrentStock,
+          qty_after: newSourceStock,
+          posting_date: postingDate,
+          posting_time: postingTime,
+          created_by: user.id,
+          updated_by: user.id,
+        });
     }
 
     return NextResponse.json({

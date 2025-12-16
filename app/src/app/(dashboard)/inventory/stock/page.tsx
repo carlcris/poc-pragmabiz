@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StockTransactionFormDialog } from "@/components/stock/StockTransactionFormDialog";
+import { StockTransactionDetailDialog } from "@/components/stock/StockTransactionDetailDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import type { StockTransaction, TransactionType } from "@/types/stock-transaction";
 
@@ -30,6 +31,8 @@ export default function StockTransactionsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const { data, isLoading, error } = useStockTransactions({
@@ -181,7 +184,14 @@ export default function StockTransactionsPage() {
                   </TableHeader>
                   <TableBody>
                     {transactions.map((transaction) => (
-                      <TableRow key={transaction.id}>
+                      <TableRow
+                        key={transaction.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          setSelectedTransactionId(transaction.id);
+                          setDetailDialogOpen(true);
+                        }}
+                      >
                         <TableCell className="font-medium">
                           {formatDate(transaction.transactionDate)}
                         </TableCell>
@@ -252,6 +262,12 @@ export default function StockTransactionsPage() {
       <StockTransactionFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+      />
+
+      <StockTransactionDetailDialog
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+        transactionId={selectedTransactionId}
       />
     </div>
   );
