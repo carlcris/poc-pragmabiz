@@ -28,6 +28,7 @@ function transformDbItem(
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0, // Will come from item_warehouse table
     reorderQty: 0, // Will come from item_warehouse table
+    imageUrl: dbItem.image_url || undefined,
     isActive: dbItem.is_active ?? true,
     createdAt: dbItem.created_at,
     updatedAt: dbItem.updated_at,
@@ -47,6 +48,17 @@ export async function GET(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get user's company
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData?.company_id) {
+      return NextResponse.json({ error: 'User company not found' }, { status: 400 })
     }
 
     // Get query parameters
@@ -77,6 +89,7 @@ export async function GET(request: NextRequest) {
       `,
         { count: 'exact' }
       )
+      .eq('company_id', userData.company_id)
       .is('deleted_at', null)
 
     // Apply filters
@@ -233,6 +246,7 @@ export async function POST(request: NextRequest) {
         cost_price: body.standardCost?.toString(),
         sales_price: body.listPrice?.toString(),
         purchase_price: body.standardCost?.toString(),
+        image_url: body.imageUrl || null,
         is_stock_item: body.itemType !== 'service',
         is_active: body.isActive ?? true,
         created_by: user.id,

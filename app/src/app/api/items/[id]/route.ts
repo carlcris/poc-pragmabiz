@@ -22,11 +22,13 @@ function transformDbItem(
     description: dbItem.description || '',
     itemType: dbItem.item_type as Item['itemType'],
     uom: dbItem.units_of_measure?.code || '',
+    uomId: dbItem.uom_id,
     category: dbItem.item_categories?.name || '',
     standardCost: Number(dbItem.cost_price) || 0,
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0,
     reorderQty: 0,
+    imageUrl: dbItem.image_url || undefined,
     isActive: dbItem.is_active ?? true,
     createdAt: dbItem.created_at,
     updatedAt: dbItem.updated_at,
@@ -154,6 +156,7 @@ export async function PUT(
     }
     if (body.listPrice !== undefined)
       updateData.sales_price = body.listPrice.toString()
+    if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl
     if (body.isActive !== undefined) updateData.is_active = body.isActive
 
     // Get UoM ID if provided

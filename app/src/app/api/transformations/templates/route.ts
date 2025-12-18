@@ -1,0 +1,303 @@
+import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createTransformationTemplateSchema } from '@/lib/validations/transformation-template';
+import { checkTemplateLock } from '@/services/inventory/transformationService';
+
+// GET /api/transformations/templates - List transformation templates
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const searchParams = request.nextUrl.searchParams;
+
+    // Check authentication
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!userData?.company_id) {
+      return NextResponse.json({ error: 'User company not found' }, { status: 400 });
+    }
+
+    // Parse query parameters
+    const search = searchParams.get('search') || '';
+    const isActive = searchParams.get('isActive');
+    const itemId = searchParams.get('itemId') || '';
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const offset = (page - 1) * limit;
+
+    // Build query
+    let query = supabase
+      .from('transformation_templates')
+      .select(
+        `
+        id,
+        company_id,
+        template_code,
+        template_name,
+        description,
+        is_active,
+        usage_count,
+        created_by,
+        created_at,
+        updated_by,
+        updated_at,
+        deleted_at,
+        inputs:transformation_template_inputs(
+          id,
+          item_id,
+          quantity,
+          uom_id,
+          sequence,
+          notes,
+          items:items(
+            id,
+            item_code,
+            item_name
+          ),
+          uom:units_of_measure(
+            id,
+            code,
+            name
+          )
+        ),
+        outputs:transformation_template_outputs(
+          id,
+          item_id,
+          quantity,
+          uom_id,
+          sequence,
+          is_scrap,
+          notes,
+          items:items(
+            id,
+            item_code,
+            item_name
+          ),
+          uom:units_of_measure(
+            id,
+            code,
+            name
+          )
+        )
+      `,
+        { count: 'exact' }
+      )
+      .eq('company_id', userData.company_id)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (search) {
+      query = query.or(
+        `template_code.ilike.%${search}%,template_name.ilike.%${search}%,description.ilike.%${search}%`
+      );
+    }
+    if (isActive !== null && isActive !== undefined) {
+      query = query.eq('is_active', isActive === 'true');
+    }
+
+    // Execute query
+    const { data: templates, error, count } = await query.range(offset, offset + limit - 1);
+
+    if (error) {
+      console.error('Error fetching transformation templates:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      data: templates || [],
+      total: count || 0,
+      page,
+      limit,
+    });
+  } catch (error) {
+    console.error('Error in GET /api/transformations/templates:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// POST /api/transformations/templates - Create transformation template
+export async function POST(request: NextRequest) {
+  console.log('=== POST /api/transformations/templates called ===');
+  try {
+    const supabase = await createClient();
+
+    // Check authentication
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get user's company
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!userData?.company_id) {
+      return NextResponse.json({ error: 'User company not found' }, { status: 400 });
+    }
+
+    // Parse and validate request body
+    const body = await request.json();
+    console.log('Received body:', JSON.stringify(body, null, 2));
+
+    const dataToValidate = {
+      ...body,
+      companyId: userData.company_id,
+    };
+    console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
+
+    const validationResult = createTransformationTemplateSchema.safeParse(dataToValidate);
+
+    console.log('Validation result success:', validationResult.success);
+
+    if (!validationResult.success) {
+      console.error('Validation errors:', JSON.stringify(validationResult.error, null, 2));
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationResult.error.errors },
+        { status: 400 }
+      );
+    }
+
+    console.log('Validation passed successfully!');
+    const data = validationResult.data;
+    console.log('Validated data:', JSON.stringify(data, null, 2));
+
+    // Check if template code already exists
+    const { data: existingTemplate } = await supabase
+      .from('transformation_templates')
+      .select('id')
+      .eq('company_id', userData.company_id)
+      .eq('template_code', data.templateCode)
+      .is('deleted_at', null)
+      .single();
+
+    if (existingTemplate) {
+      console.log('Template code already exists:', data.templateCode);
+      return NextResponse.json(
+        { error: 'Template code already exists' },
+        { status: 400 }
+      );
+    }
+
+    console.log('Template code is unique, proceeding with creation...');
+
+    // Create template header
+    const { data: template, error: templateError } = await supabase
+      .from('transformation_templates')
+      .insert({
+        company_id: userData.company_id,
+        template_code: data.templateCode,
+        template_name: data.templateName,
+        description: data.description,
+        is_active: true,
+        usage_count: 0,
+        created_by: user.id,
+        updated_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (templateError || !template) {
+      console.error('Error creating template:', templateError);
+      return NextResponse.json(
+        { error: 'Failed to create template' },
+        { status: 500 }
+      );
+    }
+
+    // Create template inputs
+    const inputsData = data.inputs.map((input, index) => ({
+      template_id: template.id,
+      item_id: input.itemId,
+      quantity: input.quantity,
+      uom_id: input.uomId,
+      sequence: input.sequence || index + 1,
+      notes: input.notes,
+      created_by: user.id,
+      updated_by: user.id,
+    }));
+
+    const { error: inputsError } = await supabase
+      .from('transformation_template_inputs')
+      .insert(inputsData);
+
+    if (inputsError) {
+      // Rollback: delete template
+      await supabase.from('transformation_templates').delete().eq('id', template.id);
+      console.error('Error creating template inputs:', inputsError);
+      return NextResponse.json(
+        { error: 'Failed to create template inputs' },
+        { status: 500 }
+      );
+    }
+
+    // Create template outputs
+    const outputsData = data.outputs.map((output, index) => ({
+      template_id: template.id,
+      item_id: output.itemId,
+      quantity: output.quantity,
+      uom_id: output.uomId,
+      sequence: output.sequence || index + 1,
+      is_scrap: output.isScrap || false,
+      notes: output.notes,
+      created_by: user.id,
+      updated_by: user.id,
+    }));
+
+    const { error: outputsError } = await supabase
+      .from('transformation_template_outputs')
+      .insert(outputsData);
+
+    if (outputsError) {
+      // Rollback: delete template and inputs
+      await supabase.from('transformation_template_inputs').delete().eq('template_id', template.id);
+      await supabase.from('transformation_templates').delete().eq('id', template.id);
+      console.error('Error creating template outputs:', outputsError);
+      return NextResponse.json(
+        { error: 'Failed to create template outputs' },
+        { status: 500 }
+      );
+    }
+
+    // Fetch complete template with inputs/outputs
+    const { data: completeTemplate } = await supabase
+      .from('transformation_templates')
+      .select(
+        `
+        *,
+        inputs:transformation_template_inputs(*),
+        outputs:transformation_template_outputs(*)
+      `
+      )
+      .eq('id', template.id)
+      .single();
+
+    return NextResponse.json(
+      { data: completeTemplate },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Error in POST /api/transformations/templates:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Pencil, Trash2, Filter, Download, Package, AlertTriangle, AlertCircle, TrendingUp } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Filter, Download, Package, AlertTriangle, AlertCircle, TrendingUp, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 import { useDeleteItem, useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
@@ -155,6 +156,7 @@ export default function ItemsPage() {
       listPrice: item.listPrice,
       reorderLevel: item.reorderPoint || 0,
       reorderQty: 0,
+      imageUrl: item.imageUrl,
       isActive: item.isActive,
       createdAt: '', // Will be loaded from API when editing
       updatedAt: '', // Will be loaded from API when editing
@@ -370,6 +372,7 @@ export default function ItemsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[80px]">Image</TableHead>
                   <TableHead>Item Code</TableHead>
                   <TableHead>Item Name</TableHead>
                   <TableHead>Category</TableHead>
@@ -387,6 +390,7 @@ export default function ItemsPage() {
               <TableBody>
                 {[...Array(10)].map((_, i) => (
                   <TableRow key={i}>
+                    <TableCell><Skeleton className="h-12 w-12 rounded" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-28" /></TableCell>
@@ -427,6 +431,7 @@ export default function ItemsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[80px]">Image</TableHead>
                     <TableHead>Item Code</TableHead>
                     <TableHead>Item Name</TableHead>
                     <TableHead>Category</TableHead>
@@ -444,6 +449,23 @@ export default function ItemsPage() {
                 <TableBody>
                   {items.map((item) => (
                     <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewItem(item.id)}>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {item.imageUrl ? (
+                          <div className="relative w-12 h-12 rounded border overflow-hidden bg-muted">
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-12 h-12 rounded border bg-muted flex items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
                       <TableCell className="font-medium text-primary hover:underline">{item.name}</TableCell>
                       <TableCell>{item.category}</TableCell>

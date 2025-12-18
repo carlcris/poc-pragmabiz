@@ -45,7 +45,8 @@
       "Bash(do)",
       "Bash(done)",
       "Bash(npx eslint:*)",
-      "Read(//Users/carl/.npm/_logs/**)"
+      "Read(//Users/carl/.npm/_logs/**)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

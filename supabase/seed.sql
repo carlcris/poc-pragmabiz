@@ -25,19 +25,19 @@ VALUES
 -- SEED DATA: Units of Measure
 -- ============================================================================
 
--- Common units for Philippines market
+-- Common units for picture frame business
 INSERT INTO units_of_measure (company_id, code, name, symbol, is_base_unit, is_active)
 VALUES
     ('00000000-0000-0000-0000-000000000001', 'PCS', 'Pieces', 'pcs', true, true),
     ('00000000-0000-0000-0000-000000000001', 'BOX', 'Box', 'box', false, true),
-    ('00000000-0000-0000-0000-000000000001', 'KG', 'Kilogram', 'kg', true, true),
-    ('00000000-0000-0000-0000-000000000001', 'G', 'Gram', 'g', false, true),
-    ('00000000-0000-0000-0000-000000000001', 'L', 'Liter', 'L', true, true),
-    ('00000000-0000-0000-0000-000000000001', 'ML', 'Milliliter', 'ml', false, true),
-    ('00000000-0000-0000-0000-000000000001', 'SACK', 'Sack', 'sack', false, true),
-    ('00000000-0000-0000-0000-000000000001', 'CAVAN', 'Cavan', 'cavan', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'FT', 'Feet', 'ft', true, true),
+    ('00000000-0000-0000-0000-000000000001', 'IN', 'Inch', 'in', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'SQF', 'Square Feet', 'sqft', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'SHEET', 'Sheet', 'sheet', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'ROLL', 'Roll', 'roll', false, true),
     ('00000000-0000-0000-0000-000000000001', 'PACK', 'Pack', 'pack', false, true),
-    ('00000000-0000-0000-0000-000000000001', 'SET', 'Set', 'set', false, true);
+    ('00000000-0000-0000-0000-000000000001', 'SET', 'Set', 'set', false, true),
+    ('00000000-0000-0000-0000-000000000001', 'BUNDLE', 'Bundle', 'bundle', false, true);
 
 -- ============================================================================
 -- SEED DATA: Item Categories
@@ -45,15 +45,15 @@ VALUES
 
 INSERT INTO item_categories (company_id, code, name, description, is_active)
 VALUES
-    -- Chicken Distribution Categories
-    ('00000000-0000-0000-0000-000000000001', 'WHOLE', 'Whole Chicken', 'Whole dressed chicken products', true),
-    ('00000000-0000-0000-0000-000000000001', 'PARTS', 'Chicken Parts', 'Individual chicken parts and cuts', true),
-    ('00000000-0000-0000-0000-000000000001', 'OFFAL', 'Chicken Offal', 'Chicken internal organs and by-products', true),
-    ('00000000-0000-0000-0000-000000000001', 'PROC', 'Processed Chicken', 'Processed and value-added chicken products', true),
-    ('00000000-0000-0000-0000-000000000001', 'FROZEN', 'Frozen Products', 'Frozen chicken items', true),
-    ('00000000-0000-0000-0000-000000000001', 'FRESH', 'Fresh Products', 'Fresh chilled chicken items', true),
-    ('00000000-0000-0000-0000-000000000001', 'PACK', 'Packaging Materials', 'Packaging and supplies for distribution', true),
-    ('00000000-0000-0000-0000-000000000001', 'SUPPLY', 'Supplies', 'Ice, boxes, and other distribution supplies', true);
+    -- Picture Frame Categories
+    ('00000000-0000-0000-0000-000000000001', 'MOLD', 'Moldings', 'Frame moldings and profiles', true),
+    ('00000000-0000-0000-0000-000000000001', 'GLASS', 'Glass', 'Glass sheets for picture frames', true),
+    ('00000000-0000-0000-0000-000000000001', 'MAT', 'Matboard', 'Matboards and mounting boards', true),
+    ('00000000-0000-0000-0000-000000000001', 'BACK', 'Backing', 'Backing boards and materials', true),
+    ('00000000-0000-0000-0000-000000000001', 'HARD', 'Hardware', 'Frame hardware and accessories', true),
+    ('00000000-0000-0000-0000-000000000001', 'FIN', 'Finished Frames', 'Complete assembled frames', true),
+    ('00000000-0000-0000-0000-000000000001', 'SUPPLY', 'Supplies', 'Tools and supplies for frame assembly', true),
+    ('00000000-0000-0000-0000-000000000001', 'PACK', 'Packaging Materials', 'Packaging materials for frames', true);
 
 -- ============================================================================
 -- SEED DATA: Items
@@ -64,76 +64,83 @@ DO $$
 DECLARE
     v_company_id UUID := '00000000-0000-0000-0000-000000000001';
     v_uom_pcs UUID;
-    v_uom_kg UUID;
-    v_uom_l UUID;
+    v_uom_ft UUID;
+    v_uom_sheet UUID;
     v_uom_box UUID;
-    v_uom_sack UUID;
-    v_cat_whole UUID;
-    v_cat_parts UUID;
-    v_cat_offal UUID;
-    v_cat_proc UUID;
+    v_uom_bundle UUID;
+    v_cat_mold UUID;
+    v_cat_glass UUID;
+    v_cat_mat UUID;
+    v_cat_back UUID;
+    v_cat_hard UUID;
+    v_cat_fin UUID;
     v_cat_pack UUID;
     v_cat_supply UUID;
 BEGIN
     -- Get UoM IDs
     SELECT id INTO v_uom_pcs FROM units_of_measure WHERE code = 'PCS' AND company_id = v_company_id;
-    SELECT id INTO v_uom_kg FROM units_of_measure WHERE code = 'KG' AND company_id = v_company_id;
-    SELECT id INTO v_uom_l FROM units_of_measure WHERE code = 'L' AND company_id = v_company_id;
+    SELECT id INTO v_uom_ft FROM units_of_measure WHERE code = 'FT' AND company_id = v_company_id;
+    SELECT id INTO v_uom_sheet FROM units_of_measure WHERE code = 'SHEET' AND company_id = v_company_id;
     SELECT id INTO v_uom_box FROM units_of_measure WHERE code = 'BOX' AND company_id = v_company_id;
-    SELECT id INTO v_uom_sack FROM units_of_measure WHERE code = 'SACK' AND company_id = v_company_id;
+    SELECT id INTO v_uom_bundle FROM units_of_measure WHERE code = 'BUNDLE' AND company_id = v_company_id;
 
     -- Get Category IDs
-    SELECT id INTO v_cat_whole FROM item_categories WHERE code = 'WHOLE' AND company_id = v_company_id;
-    SELECT id INTO v_cat_parts FROM item_categories WHERE code = 'PARTS' AND company_id = v_company_id;
-    SELECT id INTO v_cat_offal FROM item_categories WHERE code = 'OFFAL' AND company_id = v_company_id;
-    SELECT id INTO v_cat_proc FROM item_categories WHERE code = 'PROC' AND company_id = v_company_id;
+    SELECT id INTO v_cat_mold FROM item_categories WHERE code = 'MOLD' AND company_id = v_company_id;
+    SELECT id INTO v_cat_glass FROM item_categories WHERE code = 'GLASS' AND company_id = v_company_id;
+    SELECT id INTO v_cat_mat FROM item_categories WHERE code = 'MAT' AND company_id = v_company_id;
+    SELECT id INTO v_cat_back FROM item_categories WHERE code = 'BACK' AND company_id = v_company_id;
+    SELECT id INTO v_cat_hard FROM item_categories WHERE code = 'HARD' AND company_id = v_company_id;
+    SELECT id INTO v_cat_fin FROM item_categories WHERE code = 'FIN' AND company_id = v_company_id;
     SELECT id INTO v_cat_pack FROM item_categories WHERE code = 'PACK' AND company_id = v_company_id;
     SELECT id INTO v_cat_supply FROM item_categories WHERE code = 'SUPPLY' AND company_id = v_company_id;
 
     -- Insert sample items
     INSERT INTO items (company_id, item_code, item_name, description, category_id, uom_id, item_type, purchase_price, sales_price, cost_price, is_stock_item, is_active)
     VALUES
-        -- Whole Chicken
-        (v_company_id, 'CHK-WHOLE-S', 'Whole Chicken Small', 'Whole dressed chicken 0.8-1.0kg', v_cat_whole, v_uom_kg, 'finished_good', 135.00, 165.00, 130.00, true, true),
-        (v_company_id, 'CHK-WHOLE-M', 'Whole Chicken Medium', 'Whole dressed chicken 1.0-1.2kg', v_cat_whole, v_uom_kg, 'finished_good', 130.00, 160.00, 125.00, true, true),
-        (v_company_id, 'CHK-WHOLE-L', 'Whole Chicken Large', 'Whole dressed chicken 1.2-1.5kg', v_cat_whole, v_uom_kg, 'finished_good', 125.00, 155.00, 120.00, true, true),
-        (v_company_id, 'CHK-WHOLE-XL', 'Whole Chicken Extra Large', 'Whole dressed chicken 1.5kg+', v_cat_whole, v_uom_kg, 'finished_good', 120.00, 150.00, 115.00, true, true),
+        -- Moldings (Wood Frame Moldings)
+        (v_company_id, 'MOLD-W-001', 'Oak Molding 1"', 'Natural oak molding 1 inch width', v_cat_mold, v_uom_ft, 'raw_material', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'MOLD-W-002', 'Walnut Molding 1.5"', 'Dark walnut molding 1.5 inch width', v_cat_mold, v_uom_ft, 'raw_material', 65.00, 105.00, 62.00, true, true),
+        (v_company_id, 'MOLD-W-003', 'Cherry Molding 2"', 'Cherry wood molding 2 inch width', v_cat_mold, v_uom_ft, 'raw_material', 75.00, 125.00, 72.00, true, true),
+        (v_company_id, 'MOLD-M-001', 'Gold Metal Molding 0.75"', 'Gold finish metal molding 0.75 inch', v_cat_mold, v_uom_ft, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'MOLD-M-002', 'Silver Metal Molding 1"', 'Silver finish metal molding 1 inch', v_cat_mold, v_uom_ft, 'raw_material', 40.00, 68.00, 37.00, true, true),
+        (v_company_id, 'MOLD-M-003', 'Black Metal Molding 1.25"', 'Matte black metal molding 1.25 inch', v_cat_mold, v_uom_ft, 'raw_material', 42.00, 70.00, 39.00, true, true),
 
-        -- Chicken Parts
-        (v_company_id, 'CHK-BREAST', 'Chicken Breast', 'Fresh chicken breast fillet per kg', v_cat_parts, v_uom_kg, 'finished_good', 185.00, 230.00, 180.00, true, true),
-        (v_company_id, 'CHK-THIGH', 'Chicken Thigh', 'Fresh chicken thigh per kg', v_cat_parts, v_uom_kg, 'finished_good', 145.00, 180.00, 140.00, true, true),
-        (v_company_id, 'CHK-DRUMSTICK', 'Chicken Drumstick', 'Fresh chicken drumstick per kg', v_cat_parts, v_uom_kg, 'finished_good', 140.00, 175.00, 135.00, true, true),
-        (v_company_id, 'CHK-WING', 'Chicken Wings', 'Fresh chicken wings per kg', v_cat_parts, v_uom_kg, 'finished_good', 150.00, 190.00, 145.00, true, true),
-        (v_company_id, 'CHK-LEG', 'Chicken Leg Quarters', 'Fresh chicken leg quarters per kg', v_cat_parts, v_uom_kg, 'finished_good', 125.00, 160.00, 120.00, true, true),
-        (v_company_id, 'CHK-BACK', 'Chicken Backs', 'Chicken backs for soup per kg', v_cat_parts, v_uom_kg, 'finished_good', 55.00, 75.00, 50.00, true, true),
-        (v_company_id, 'CHK-NECK', 'Chicken Necks', 'Chicken necks per kg', v_cat_parts, v_uom_kg, 'finished_good', 45.00, 65.00, 40.00, true, true),
+        -- Glass Sheets (Various Sizes in Inches)
+        (v_company_id, 'GLASS-8X10', 'Glass Sheet 8x10"', 'Clear glass sheet 8 x 10 inches', v_cat_glass, v_uom_sheet, 'raw_material', 25.00, 45.00, 23.00, true, true),
+        (v_company_id, 'GLASS-11X14', 'Glass Sheet 11x14"', 'Clear glass sheet 11 x 14 inches', v_cat_glass, v_uom_sheet, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'GLASS-16X20', 'Glass Sheet 16x20"', 'Clear glass sheet 16 x 20 inches', v_cat_glass, v_uom_sheet, 'raw_material', 55.00, 95.00, 52.00, true, true),
+        (v_company_id, 'GLASS-18X24', 'Glass Sheet 18x24"', 'Clear glass sheet 18 x 24 inches', v_cat_glass, v_uom_sheet, 'raw_material', 65.00, 110.00, 62.00, true, true),
+        (v_company_id, 'GLASS-24X36', 'Glass Sheet 24x36"', 'Clear glass sheet 24 x 36 inches', v_cat_glass, v_uom_sheet, 'raw_material', 95.00, 160.00, 92.00, true, true),
+        (v_company_id, 'GLASS-UV-16X20', 'UV Glass 16x20"', 'UV protection glass 16 x 20 inches', v_cat_glass, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'GLASS-UV-24X36', 'UV Glass 24x36"', 'UV protection glass 24 x 36 inches', v_cat_glass, v_uom_sheet, 'raw_material', 135.00, 225.00, 132.00, true, true),
 
-        -- Chicken Offal
-        (v_company_id, 'CHK-LIVER', 'Chicken Liver', 'Fresh chicken liver per kg', v_cat_offal, v_uom_kg, 'finished_good', 85.00, 120.00, 80.00, true, true),
-        (v_company_id, 'CHK-GIZZARD', 'Chicken Gizzard', 'Fresh chicken gizzard per kg', v_cat_offal, v_uom_kg, 'finished_good', 95.00, 130.00, 90.00, true, true),
-        (v_company_id, 'CHK-HEART', 'Chicken Hearts', 'Fresh chicken hearts per kg', v_cat_offal, v_uom_kg, 'finished_good', 75.00, 110.00, 70.00, true, true),
-        (v_company_id, 'CHK-FEET', 'Chicken Feet', 'Cleaned chicken feet per kg', v_cat_offal, v_uom_kg, 'finished_good', 65.00, 95.00, 60.00, true, true),
-        (v_company_id, 'CHK-HEAD', 'Chicken Heads', 'Chicken heads per kg', v_cat_offal, v_uom_kg, 'finished_good', 35.00, 55.00, 30.00, true, true),
-        (v_company_id, 'CHK-INTESTINE', 'Chicken Intestines', 'Cleaned chicken intestines per kg', v_cat_offal, v_uom_kg, 'finished_good', 55.00, 85.00, 50.00, true, true),
+        -- Matboards
+        (v_company_id, 'MAT-WHT-32X40', 'White Matboard 32x40"', 'White matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-BLK-32X40', 'Black Matboard 32x40"', 'Black matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-CRM-32X40', 'Cream Matboard 32x40"', 'Cream matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-GRY-32X40', 'Gray Matboard 32x40"', 'Gray matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
 
-        -- Processed Chicken
-        (v_company_id, 'CHK-PROC-NUGGETS', 'Chicken Nuggets', 'Breaded chicken nuggets 1kg pack', v_cat_proc, v_uom_kg, 'finished_good', 185.00, 250.00, 180.00, true, true),
-        (v_company_id, 'CHK-PROC-HOTDOG', 'Chicken Hotdog', 'Chicken hotdog per kg', v_cat_proc, v_uom_kg, 'finished_good', 145.00, 195.00, 140.00, true, true),
-        (v_company_id, 'CHK-PROC-LONGANISA', 'Chicken Longanisa', 'Chicken longanisa per kg', v_cat_proc, v_uom_kg, 'finished_good', 155.00, 210.00, 150.00, true, true),
-        (v_company_id, 'CHK-PROC-BURGER', 'Chicken Burger Patty', 'Frozen chicken burger patties per kg', v_cat_proc, v_uom_kg, 'finished_good', 165.00, 220.00, 160.00, true, true),
+        -- Backing Boards
+        (v_company_id, 'BACK-8X10', 'Backing Board 8x10"', 'Foam core backing 8 x 10 inches', v_cat_back, v_uom_sheet, 'raw_material', 15.00, 28.00, 14.00, true, true),
+        (v_company_id, 'BACK-11X14', 'Backing Board 11x14"', 'Foam core backing 11 x 14 inches', v_cat_back, v_uom_sheet, 'raw_material', 20.00, 35.00, 18.00, true, true),
+        (v_company_id, 'BACK-16X20', 'Backing Board 16x20"', 'Foam core backing 16 x 20 inches', v_cat_back, v_uom_sheet, 'raw_material', 30.00, 52.00, 28.00, true, true),
+        (v_company_id, 'BACK-24X36', 'Backing Board 24x36"', 'Foam core backing 24 x 36 inches', v_cat_back, v_uom_sheet, 'raw_material', 50.00, 85.00, 48.00, true, true),
+
+        -- Hardware & Accessories
+        (v_company_id, 'HARD-HANG-WIRE', 'Hanging Wire', 'Frame hanging wire 50ft roll', v_cat_hard, v_uom_pcs, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'HARD-D-RINGS', 'D-Rings', 'Metal D-rings for hanging (100pcs)', v_cat_hard, v_uom_box, 'raw_material', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'HARD-SPRINGS', 'Frame Springs', 'Metal frame springs (500pcs)', v_cat_hard, v_uom_box, 'raw_material', 55.00, 95.00, 52.00, true, true),
+        (v_company_id, 'HARD-CORNERS', 'Corner Brackets', 'Metal corner brackets (100pcs)', v_cat_hard, v_uom_box, 'raw_material', 65.00, 110.00, 62.00, true, true),
 
         -- Packaging Materials
-        (v_company_id, 'PACK-STYRO-S', 'Styrofoam Box Small', 'Small styrofoam box for 2-3kg', v_cat_pack, v_uom_pcs, 'finished_good', 8.00, 15.00, 7.50, true, true),
-        (v_company_id, 'PACK-STYRO-M', 'Styrofoam Box Medium', 'Medium styrofoam box for 5-7kg', v_cat_pack, v_uom_pcs, 'finished_good', 12.00, 22.00, 11.00, true, true),
-        (v_company_id, 'PACK-STYRO-L', 'Styrofoam Box Large', 'Large styrofoam box for 10-15kg', v_cat_pack, v_uom_pcs, 'finished_good', 18.00, 32.00, 17.00, true, true),
-        (v_company_id, 'PACK-PLASTIC-S', 'Plastic Bags Small', 'Small plastic bags 1kg capacity (100pcs)', v_cat_pack, v_uom_box, 'finished_good', 45.00, 75.00, 42.00, true, true),
-        (v_company_id, 'PACK-PLASTIC-M', 'Plastic Bags Medium', 'Medium plastic bags 3kg capacity (100pcs)', v_cat_pack, v_uom_box, 'finished_good', 65.00, 105.00, 62.00, true, true),
-        (v_company_id, 'PACK-PLASTIC-L', 'Plastic Bags Large', 'Large plastic bags 5kg capacity (100pcs)', v_cat_pack, v_uom_box, 'finished_good', 85.00, 135.00, 82.00, true, true),
+        (v_company_id, 'PACK-CORNER', 'Corner Protectors', 'Foam corner protectors (100pcs)', v_cat_pack, v_uom_box, 'raw_material', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'PACK-BUBBLE', 'Bubble Wrap', 'Bubble wrap 12" x 100ft roll', v_cat_pack, v_uom_pcs, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'PACK-KRAFT', 'Kraft Paper', 'Brown kraft paper 36" x 200ft', v_cat_pack, v_uom_pcs, 'raw_material', 95.00, 160.00, 92.00, true, true),
 
         -- Supplies
-        (v_company_id, 'SUPPLY-ICE', 'Ice Blocks', 'Ice blocks for cooling per kg', v_cat_supply, v_uom_kg, 'finished_good', 8.00, 15.00, 7.00, true, true),
-        (v_company_id, 'SUPPLY-TAPE', 'Packing Tape', 'Packing tape 2" x 100yards', v_cat_supply, v_uom_pcs, 'finished_good', 35.00, 55.00, 32.00, true, true),
-        (v_company_id, 'SUPPLY-LABEL', 'Price Labels', 'Price label stickers (1000pcs)', v_cat_supply, v_uom_box, 'finished_good', 85.00, 135.00, 80.00, true, true);
+        (v_company_id, 'SUPPLY-GLUE', 'Wood Glue', 'Wood glue for frame assembly 16oz', v_cat_supply, v_uom_pcs, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'SUPPLY-TAPE', 'Framing Tape', 'Double-sided framing tape 1" x 50ft', v_cat_supply, v_uom_pcs, 'raw_material', 25.00, 45.00, 23.00, true, true),
+        (v_company_id, 'SUPPLY-POINTS', 'Glazier Points', 'Metal glazier points (1000pcs)', v_cat_supply, v_uom_box, 'raw_material', 40.00, 68.00, 37.00, true, true);
 END $$;
 
 -- ============================================================================
@@ -408,47 +415,47 @@ BEGIN
         payment_terms, credit_limit, current_balance, status, notes,
         created_by, updated_by
     ) VALUES
-        -- Poultry Suppliers
+        -- Frame Material Suppliers
         (
-            v_company_id, 'SUP-001', 'Davao Poultry Farms Inc.', 'Roberto Santos', 'roberto@davaopoltryfarms.ph', '+63-82-234-5678', '+63-917-234-5678', 'www.davaopoltryfarms.ph', '123-456-789-001',
-            'Toril District, Davao City', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-            'net_30', 2000000.00, 0, 'active', 'Main supplier for fresh dressed chicken and chicken parts',
+            v_company_id, 'SUP-001', 'Philippine Wood Products Inc.', 'Roberto Santos', 'roberto@philwoodproducts.ph', '+63-82-234-5678', '+63-917-234-5678', 'www.philwoodproducts.ph', '123-456-789-001',
+            'Toril Industrial Area', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 2000000.00, 0, 'active', 'Main supplier for wood moldings and profiles',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-002', 'San Miguel Foods Mindanao', 'Maria Gonzales', 'maria@sanmiguelfoods.ph', '+63-82-345-6789', '+63-917-345-6789', 'www.sanmiguelfoods.ph', '234-567-890-002',
-            'Km 10, Sasa Wharf', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-            'net_45', 3000000.00, 0, 'active', 'Major poultry supplier - whole chicken and processed products',
+            v_company_id, 'SUP-002', 'Mindanao Glass & Glazing Corp', 'Maria Gonzales', 'maria@mindanaoglass.ph', '+63-82-345-6789', '+63-917-345-6789', 'www.mindanaoglass.ph', '234-567-890-002',
+            'Km 10, Sasa Industrial Park', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_45', 3000000.00, 0, 'active', 'Glass sheets and UV protection glass supplier',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-003', 'Bounty Fresh Chicken Mindanao', 'Juan Dela Cruz', 'juan@bountyfresh.ph', '+63-82-456-7890', '+63-917-456-7890', 'www.bountyfresh.ph', '345-678-901-003',
+            v_company_id, 'SUP-003', 'Artboard Supplies Mindanao', 'Juan Dela Cruz', 'juan@artboardsupplies.ph', '+63-82-456-7890', '+63-917-456-7890', 'www.artboardsupplies.ph', '345-678-901-003',
             'MacArthur Highway, Matina', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-            'net_30', 2500000.00, 0, 'active', 'Premium chicken products and offal',
+            'net_30', 2500000.00, 0, 'active', 'Matboards, backing boards, and mounting supplies',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-004', 'Gensan Poultry Cooperative', 'Pedro Mercado', 'pedro@gensanpoultry.ph', '+63-83-552-3456', '+63-918-567-8901', 'www.gensanpoultry.coop', '456-789-012-004',
+            v_company_id, 'SUP-004', 'Metal Frames Philippines', 'Pedro Mercado', 'pedro@metalframes.ph', '+63-83-552-3456', '+63-918-567-8901', 'www.metalframes.ph', '456-789-012-004',
             'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500',
-            'net_60', 1500000.00, 0, 'active', 'Chicken supplier from General Santos area',
+            'net_60', 1500000.00, 0, 'active', 'Metal moldings and frame hardware supplier',
             v_user_id, v_user_id
         ),
-        -- Packaging and Supplies
+        -- Packaging and Hardware
         (
             v_company_id, 'SUP-005', 'Packaging Solutions Davao', 'Ana Reyes', 'ana@packagingsolutions.ph', '+63-82-678-9012', '+63-917-678-9012', 'www.packagingsolutions.ph', '567-890-123-005',
             'Panacan Industrial Area', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-            'net_15', 300000.00, 0, 'active', 'Styrofoam boxes, plastic bags, and packaging materials',
+            'net_15', 300000.00, 0, 'active', 'Bubble wrap, corner protectors, and packaging materials',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-006', 'Ice Plant Davao', 'Carlos Ramos', 'carlos@iceplantdavao.ph', '+63-82-789-0123', '+63-917-789-0123', 'www.iceplantdavao.ph', '678-901-234-006',
-            'Sasa Wharf Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-            'cod', 100000.00, 0, 'active', 'Ice blocks and cooling supplies',
+            v_company_id, 'SUP-006', 'Frame Hardware Depot', 'Carlos Ramos', 'carlos@framehardware.ph', '+63-82-789-0123', '+63-917-789-0123', 'www.framehardware.ph', '678-901-234-006',
+            'Sasa Industrial Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'cod', 100000.00, 0, 'active', 'D-rings, springs, hanging wire, and frame accessories',
             v_user_id, v_user_id
         ),
         -- Inactive Supplier
         (
-            v_company_id, 'SUP-007', 'Old Poultry Trading Co.', 'Miguel Torres', 'miguel@oldpoultry.ph', '+63-82-000-0000', NULL, NULL, '789-012-345-007',
+            v_company_id, 'SUP-007', 'Old Frame Trading Co.', 'Miguel Torres', 'miguel@oldframes.ph', '+63-82-000-0000', NULL, NULL, '789-012-345-007',
             '456 Old Market Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'cod', NULL, 0, 'inactive', 'No longer active - switched to other suppliers',
             v_user_id, v_user_id
@@ -492,24 +499,24 @@ BEGIN
     SELECT id INTO v_supplier_packaging FROM suppliers WHERE supplier_code = 'SUP-005' AND company_id = v_company_id;
 
     -- Get item IDs
-    SELECT id INTO v_item_whole_m FROM items WHERE item_code = 'CHK-WHOLE-M' AND company_id = v_company_id;
-    SELECT id INTO v_item_breast FROM items WHERE item_code = 'CHK-BREAST' AND company_id = v_company_id;
-    SELECT id INTO v_item_thigh FROM items WHERE item_code = 'CHK-THIGH' AND company_id = v_company_id;
-    SELECT id INTO v_item_liver FROM items WHERE item_code = 'CHK-LIVER' AND company_id = v_company_id;
-    SELECT id INTO v_item_gizzard FROM items WHERE item_code = 'CHK-GIZZARD' AND company_id = v_company_id;
-    SELECT id INTO v_item_feet FROM items WHERE item_code = 'CHK-FEET' AND company_id = v_company_id;
-    SELECT id INTO v_item_styro_m FROM items WHERE item_code = 'PACK-STYRO-M' AND company_id = v_company_id;
-    SELECT id INTO v_item_plastic_m FROM items WHERE item_code = 'PACK-PLASTIC-M' AND company_id = v_company_id;
+    SELECT id INTO v_item_whole_m FROM items WHERE item_code = 'MOLD-W-002' AND company_id = v_company_id;
+    SELECT id INTO v_item_breast FROM items WHERE item_code = 'MOLD-W-003' AND company_id = v_company_id;
+    SELECT id INTO v_item_thigh FROM items WHERE item_code = 'MOLD-M-001' AND company_id = v_company_id;
+    SELECT id INTO v_item_liver FROM items WHERE item_code = 'GLASS-16X20' AND company_id = v_company_id;
+    SELECT id INTO v_item_gizzard FROM items WHERE item_code = 'GLASS-24X36' AND company_id = v_company_id;
+    SELECT id INTO v_item_feet FROM items WHERE item_code = 'MAT-WHT-32X40' AND company_id = v_company_id;
+    SELECT id INTO v_item_styro_m FROM items WHERE item_code = 'PACK-BUBBLE' AND company_id = v_company_id;
+    SELECT id INTO v_item_plastic_m FROM items WHERE item_code = 'PACK-CORNER' AND company_id = v_company_id;
 
     -- Get UoM IDs
-    SELECT id INTO v_uom_kg FROM units_of_measure WHERE code = 'KG' AND company_id = v_company_id;
+    SELECT id INTO v_uom_kg FROM units_of_measure WHERE code = 'FT' AND company_id = v_company_id;
     SELECT id INTO v_uom_pcs FROM units_of_measure WHERE code = 'PCS' AND company_id = v_company_id;
     SELECT id INTO v_uom_box FROM units_of_measure WHERE code = 'BOX' AND company_id = v_company_id;
 
     -- Get warehouse ID
     SELECT id INTO v_warehouse_main FROM warehouses WHERE warehouse_code = 'WH-DAVAO-01' AND company_id = v_company_id;
 
-    -- PO 1: Draft - Fresh chicken order
+    -- PO 1: Draft - Wood moldings order
     INSERT INTO purchase_orders (
         company_id, order_code, supplier_id, order_date, expected_delivery_date,
         subtotal, discount_amount, tax_amount, total_amount, status,
@@ -519,7 +526,7 @@ BEGIN
         v_company_id, 'PO-2025-0001', v_supplier_davao, '2025-11-01', '2025-11-05',
         0, 0, 0, 0, 'draft',
         'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-        'Net 30 days', 'Fresh chicken order for November', v_user_id, v_user_id
+        'Net 30 days', 'Wood moldings order for November', v_user_id, v_user_id
     ) RETURNING id INTO v_po_1;
 
     -- PO 1 Items
@@ -528,22 +535,22 @@ BEGIN
         rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
         sort_order, created_by, updated_by
     ) VALUES
-        (v_company_id, v_po_1, v_item_whole_m, 'Whole Chicken Medium 1.0-1.2kg', 500.0000, v_uom_kg,
-         130.00, 2.00, 1300.00, 0.00, 0.00, 63700.00, 0, v_user_id, v_user_id),
-        (v_company_id, v_po_1, v_item_breast, 'Chicken Breast fillet', 200.0000, v_uom_kg,
-         185.00, 0.00, 0.00, 0.00, 0.00, 37000.00, 1, v_user_id, v_user_id),
-        (v_company_id, v_po_1, v_item_thigh, 'Chicken Thigh', 150.0000, v_uom_kg,
-         145.00, 0.00, 0.00, 0.00, 0.00, 21750.00, 2, v_user_id, v_user_id);
+        (v_company_id, v_po_1, v_item_whole_m, 'Walnut Molding 1.5 inch', 500.0000, v_uom_kg,
+         65.00, 2.00, 650.00, 0.00, 0.00, 31850.00, 0, v_user_id, v_user_id),
+        (v_company_id, v_po_1, v_item_breast, 'Cherry Molding 2 inch', 300.0000, v_uom_kg,
+         75.00, 0.00, 0.00, 0.00, 0.00, 22500.00, 1, v_user_id, v_user_id),
+        (v_company_id, v_po_1, v_item_thigh, 'Gold Metal Molding 0.75 inch', 400.0000, v_uom_kg,
+         35.00, 0.00, 0.00, 0.00, 0.00, 14000.00, 2, v_user_id, v_user_id);
 
     -- Update PO 1 totals
     UPDATE purchase_orders SET
-        subtotal = 123750.00,
-        discount_amount = 1300.00,
+        subtotal = 68350.00,
+        discount_amount = 650.00,
         tax_amount = 0.00,
-        total_amount = 122450.00
+        total_amount = 67700.00
     WHERE id = v_po_1;
 
-    -- PO 2: Approved - Offal order (ready to receive)
+    -- PO 2: Approved - Glass sheets order (ready to receive)
     INSERT INTO purchase_orders (
         company_id, order_code, supplier_id, order_date, expected_delivery_date,
         subtotal, discount_amount, tax_amount, total_amount, status,
@@ -553,7 +560,7 @@ BEGIN
         v_company_id, 'PO-2025-0002', v_supplier_bounty, '2025-10-25', '2025-11-02',
         0, 0, 0, 0, 'approved',
         'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-        'Net 30 days', 'Chicken offal order', v_user_id, '2025-10-26 10:00:00', v_user_id, v_user_id
+        'Net 30 days', 'Glass sheets and matboards order', v_user_id, '2025-10-26 10:00:00', v_user_id, v_user_id
     ) RETURNING id INTO v_po_2;
 
     -- PO 2 Items
@@ -562,19 +569,19 @@ BEGIN
         rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
         sort_order, created_by, updated_by
     ) VALUES
-        (v_company_id, v_po_2, v_item_liver, 'Chicken Liver', 80.0000, v_uom_kg,
-         85.00, 0.00, 0.00, 0.00, 0.00, 6800.00, 0, v_user_id, v_user_id),
-        (v_company_id, v_po_2, v_item_gizzard, 'Chicken Gizzard', 100.0000, v_uom_kg,
-         95.00, 0.00, 0.00, 0.00, 0.00, 9500.00, 1, v_user_id, v_user_id),
-        (v_company_id, v_po_2, v_item_feet, 'Chicken Feet', 120.0000, v_uom_kg,
-         65.00, 0.00, 0.00, 0.00, 0.00, 7800.00, 2, v_user_id, v_user_id);
+        (v_company_id, v_po_2, v_item_liver, 'Glass Sheet 16x20 inches', 100.0000, v_uom_pcs,
+         55.00, 0.00, 0.00, 0.00, 0.00, 5500.00, 0, v_user_id, v_user_id),
+        (v_company_id, v_po_2, v_item_gizzard, 'Glass Sheet 24x36 inches', 50.0000, v_uom_pcs,
+         95.00, 0.00, 0.00, 0.00, 0.00, 4750.00, 1, v_user_id, v_user_id),
+        (v_company_id, v_po_2, v_item_feet, 'White Matboard 32x40 inches', 75.0000, v_uom_pcs,
+         85.00, 0.00, 0.00, 0.00, 0.00, 6375.00, 2, v_user_id, v_user_id);
 
     -- Update PO 2 totals
     UPDATE purchase_orders SET
-        subtotal = 24100.00,
+        subtotal = 16625.00,
         discount_amount = 0.00,
         tax_amount = 0.00,
-        total_amount = 24100.00
+        total_amount = 16625.00
     WHERE id = v_po_2;
 
     -- PO 3: Partially Received - Packaging supplies
@@ -587,7 +594,7 @@ BEGIN
         v_company_id, 'PO-2025-0003', v_supplier_packaging, '2025-10-20', '2025-11-05',
         0, 0, 0, 0, 'partially_received',
         'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-        'Net 15 days', 'Monthly packaging supplies', v_user_id, '2025-10-21 09:00:00', v_user_id, v_user_id
+        'Net 15 days', 'Monthly packaging supplies for frames', v_user_id, '2025-10-21 09:00:00', v_user_id, v_user_id
     ) RETURNING id INTO v_po_3;
 
     -- PO 3 Items
@@ -596,17 +603,17 @@ BEGIN
         rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
         quantity_received, sort_order, created_by, updated_by
     ) VALUES
-        (v_company_id, v_po_3, v_item_styro_m, 'Styrofoam Box Medium', 200.0000, v_uom_pcs,
-         12.00, 5.00, 120.00, 12.00, 265.20, 2777.20, 100.0000, 0, v_user_id, v_user_id),
-        (v_company_id, v_po_3, v_item_plastic_m, 'Plastic Bags Medium (100pcs)', 50.0000, v_uom_box,
-         65.00, 0.00, 0.00, 12.00, 390.00, 3640.00, 0.0000, 1, v_user_id, v_user_id);
+        (v_company_id, v_po_3, v_item_styro_m, 'Bubble Wrap 12" x 100ft roll', 20.0000, v_uom_pcs,
+         85.00, 5.00, 85.00, 12.00, 189.00, 1764.00, 10.0000, 0, v_user_id, v_user_id),
+        (v_company_id, v_po_3, v_item_plastic_m, 'Corner Protectors (100pcs)', 30.0000, v_uom_box,
+         45.00, 0.00, 0.00, 12.00, 162.00, 1512.00, 0.0000, 1, v_user_id, v_user_id);
 
     -- Update PO 3 totals
     UPDATE purchase_orders SET
-        subtotal = 5650.00,
-        discount_amount = 120.00,
-        tax_amount = 655.20,
-        total_amount = 6185.20
+        subtotal = 3276.00,
+        discount_amount = 85.00,
+        tax_amount = 351.00,
+        total_amount = 3542.00
     WHERE id = v_po_3;
 
     RAISE NOTICE 'Purchase Orders seeded: % records', (SELECT COUNT(*) FROM purchase_orders);

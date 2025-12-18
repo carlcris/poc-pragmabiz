@@ -43,6 +43,7 @@ import {
 import { VariantsTab } from "@/components/items/variants/VariantsTab";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
+import { ImageUpload } from "@/components/ui/image-upload";
 import type { Item } from "@/types/item";
 
 interface ItemFormDialogProps {
@@ -122,6 +123,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
         listPrice: item.listPrice,
         reorderLevel: item.reorderLevel,
         reorderQty: item.reorderQty,
+        imageUrl: item.imageUrl,
         isActive: item.isActive,
       });
     } else {
@@ -138,6 +140,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
         listPrice: 0,
         reorderLevel: 0,
         reorderQty: 0,
+        imageUrl: undefined,
         isActive: true,
       });
       setActiveTab("general");
@@ -153,6 +156,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
           data: values,
         });
         toast.success("Item updated successfully");
+        handleClose();
       } else {
         // Create new item
         if (!user?.companyId) {
@@ -226,90 +230,118 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <div className="space-y-6">
-                    {/* Basic Information */}
+                    {/* Basic Information with Image */}
                     <div>
                       <h4 className="text-sm font-medium mb-4">Basic Information</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="code"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Item Code *</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="ITEM-001"
-                                  {...field}
-                                  disabled={!!item || !!createdItemId}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
 
-                        <FormField
-                          control={form.control}
-                          name="itemType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Item Type *</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
+                      {/* Two Column Layout: Form Fields | Image Upload */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Left Column - Form Fields (2/3 width) */}
+                        <div className="lg:col-span-2 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="code"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Item Code *</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="ITEM-001"
+                                      {...field}
+                                      disabled={!!item || !!createdItemId}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="itemType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Item Type *</FormLabel>
+                                  <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select item type" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {ITEM_TYPES.map((type) => (
+                                        <SelectItem key={type.value} value={type.value}>
+                                          {type.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Item Name *</FormLabel>
                                 <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select item type" />
-                                  </SelectTrigger>
+                                  <Input placeholder="Enter item name" {...field} />
                                 </FormControl>
-                                <SelectContent>
-                                  {ITEM_TYPES.map((type) => (
-                                    <SelectItem key={type.value} value={type.value}>
-                                      {type.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
 
-                      <div className="mt-4">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Item Name *</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Enter item name" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                          <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Enter description" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
-                      <div className="mt-4">
-                        <FormField
-                          control={form.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Description</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Enter description" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                        {/* Right Column - Image Upload (1/3 width) */}
+                        <div className="lg:col-span-1">
+                          <FormField
+                            control={form.control}
+                            name="imageUrl"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Item Image</FormLabel>
+                                <FormControl>
+                                  <ImageUpload
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    itemId={currentItemId}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-2 gap-4 mt-4">
+                    {/* Divider */}
+                    <div className="border-t pt-6">
+                      <h4 className="text-sm font-medium mb-4">Classification & Pricing</h4>
+                      <div className="grid grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
                           name="category"

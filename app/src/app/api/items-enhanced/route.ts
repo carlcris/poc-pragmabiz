@@ -17,10 +17,12 @@ export interface ItemWithStock {
   onSO: number
   status: 'normal' | 'low_stock' | 'out_of_stock' | 'overstock' | 'discontinued'
   uom: string
+  uomId: string
   standardCost: number
   listPrice: number
   itemType: string
   isActive: boolean
+  imageUrl?: string
 }
 
 export async function GET(request: NextRequest) {
@@ -202,7 +204,6 @@ export async function GET(request: NextRequest) {
         onSOMap.set(itemId, currentOnSO + parseFloat(item.quantity))
       }
     }
-
     // Get On PO (from purchase_order_items where order not yet fully received)
     const { data: poItems } = await supabase
       .from('purchase_order_items')
@@ -256,7 +257,7 @@ export async function GET(request: NextRequest) {
       // Get category_id and supplier_id from the actual database columns
       const categoryId = (item.category_id || item.item_category_id || '') as string
       const supplierId = (item.supplier_id || '') as string
-
+      console.log('available', item.item_name, { onHand, allocated, available, reorderPoint })
       return {
         id: item.id,
         code: item.item_code,
@@ -273,10 +274,12 @@ export async function GET(request: NextRequest) {
         onSO,
         status,
         uom: item.units_of_measure?.code || '',
+        uomId: item.uom_id || '',
         standardCost: parseFloat(item.cost_price) || 0,
         listPrice: parseFloat(item.sales_price) || 0,
         itemType: item.item_type,
         isActive: item.is_active ?? true,
+        imageUrl: item.image_url || undefined,
       }
     })
 

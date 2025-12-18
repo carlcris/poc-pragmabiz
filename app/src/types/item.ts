@@ -14,6 +14,7 @@ export interface Item {
   listPrice: number;
   reorderLevel: number;
   reorderQty: number;
+  imageUrl?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -31,6 +32,7 @@ export interface CreateItemRequest {
   listPrice: number;
   reorderLevel: number;
   reorderQty: number;
+  imageUrl?: string;
   isActive: boolean;
 }
 
@@ -44,6 +46,7 @@ export interface UpdateItemRequest {
   listPrice?: number;
   reorderLevel?: number;
   reorderQty?: number;
+  imageUrl?: string;
   isActive?: boolean;
 }
 

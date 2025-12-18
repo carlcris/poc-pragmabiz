@@ -1,6 +1,7 @@
 "use client";
 
-import { Edit } from "lucide-react";
+import { Edit, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,35 +118,63 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
           {/* General Tab */}
           <TabsContent value="general" className="space-y-4 mt-4">
             <div className="space-y-6">
-              {/* Basic Information */}
+              {/* Basic Information with Image */}
               <div>
                 <h4 className="text-sm font-medium mb-4">Basic Information</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Item Code</label>
-                    <p className="text-base font-mono font-semibold">{item.code}</p>
+
+                {/* Two Column Layout: Form Fields | Image */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column - Item Details (2/3 width) */}
+                  <div className="lg:col-span-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Item Code</label>
+                        <p className="text-base font-mono font-semibold">{item.code}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Item Name</label>
+                        <p className="text-base font-semibold">{item.name}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Category</label>
+                        <p className="text-base">{item.category || "-"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Item Type</label>
+                        <p className="text-base capitalize">{item.itemType.replace(/_/g, ' ')}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Base UOM</label>
+                        <p className="text-base">{item.uom || "-"}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Status</label>
+                        <Badge variant={item.isActive ? "outline" : "secondary"} className={item.isActive ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400" : ""}>
+                          {item.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Item Name</label>
-                    <p className="text-base font-semibold">{item.name}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Category</label>
-                    <p className="text-base">{item.category || "-"}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Item Type</label>
-                    <p className="text-base capitalize">{item.itemType.replace(/_/g, ' ')}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Base UOM</label>
-                    <p className="text-base">{item.uom || "-"}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Status </label>
-                    <Badge variant={item.isActive ? "outline" : "secondary"} className={item.isActive ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400" : ""}>
-                      {item.isActive ? "Active" : "Inactive"}
-                    </Badge>
+
+                  {/* Right Column - Image (1/3 width) */}
+                  <div className="lg:col-span-1">
+                    <label className="text-sm text-muted-foreground mb-2 block">Item Image</label>
+                    {item.imageUrl ? (
+                      <div className="relative w-full max-w-[250px] h-[215px] rounded-lg border bg-muted overflow-hidden">
+                        <Image
+                          src={item.imageUrl}
+                          alt={item.name}
+                          fill
+                          className="object-contain p-2"
+                          unoptimized
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full max-w-[250px] h-[215px] rounded-lg border border-dashed bg-muted flex flex-col items-center justify-center gap-2">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">No image</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

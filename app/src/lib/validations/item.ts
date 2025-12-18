@@ -42,6 +42,7 @@ export const itemFormSchema = z.object({
     .int()
     .min(0, "Reorder quantity must be 0 or greater")
     .optional(),
+  imageUrl: z.string().optional(),
   isActive: z.boolean().default(true),
 });
 
