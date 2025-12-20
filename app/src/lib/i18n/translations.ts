@@ -113,6 +113,16 @@ export type TranslationKeys = {
     plannedExecutionDate: string;
     pickDate: string;
     createFromTemplate: string;
+    executeTransformation: string;
+    actualConsumed: string;
+    actualProduced: string;
+    enterActualQuantities: string;
+    difference: string;
+    exceedsPlanned: string;
+    wastedQuantity: string;
+    wasteReason: string;
+    enterWasteDetails: string;
+    optional: string;
   };
 };
 
@@ -224,6 +234,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: 'Planned Execution Date',
       pickDate: 'Pick a date',
       createFromTemplate: 'Create from Template',
+      executeTransformation: 'Execute Transformation',
+      actualConsumed: 'Actual Consumed',
+      actualProduced: 'Actual Produced',
+      enterActualQuantities: 'Enter actual quantities for inputs consumed and outputs produced',
+      difference: 'Difference',
+      exceedsPlanned: 'Cannot exceed planned quantity',
+      wastedQuantity: 'Wasted Quantity',
+      wasteReason: 'Waste Reason',
+      enterWasteDetails: 'Enter waste details if applicable',
+      optional: 'Optional',
     },
   },
   es: {
@@ -333,6 +353,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: 'Fecha de Ejecución Planificada',
       pickDate: 'Seleccionar una fecha',
       createFromTemplate: 'Crear desde Plantilla',
+      executeTransformation: 'Ejecutar Transformación',
+      actualConsumed: 'Consumido Real',
+      actualProduced: 'Producido Real',
+      enterActualQuantities: 'Ingrese las cantidades reales de insumos consumidos y productos producidos',
+      difference: 'Diferencia',
+      exceedsPlanned: 'No puede exceder la cantidad planificada',
+      wastedQuantity: 'Cantidad Desperdiciada',
+      wasteReason: 'Razón del Desperdicio',
+      enterWasteDetails: 'Ingrese detalles del desperdicio si corresponde',
+      optional: 'Opcional',
     },
   },
   fr: {
@@ -442,6 +472,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: 'Date d\'Exécution Prévue',
       pickDate: 'Choisir une date',
       createFromTemplate: 'Créer à partir du Modèle',
+      executeTransformation: 'Exécuter la Transformation',
+      actualConsumed: 'Consommé Réel',
+      actualProduced: 'Produit Réel',
+      enterActualQuantities: 'Entrez les quantités réelles des intrants consommés et des produits fabriqués',
+      difference: 'Différence',
+      exceedsPlanned: 'Ne peut pas dépasser la quantité prévue',
+      wastedQuantity: 'Quantité Gaspillée',
+      wasteReason: 'Raison du Gaspillage',
+      enterWasteDetails: 'Entrez les détails du gaspillage si applicable',
+      optional: 'Facultatif',
     },
   },
   de: {
@@ -551,6 +591,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: 'Geplantes Ausführungsdatum',
       pickDate: 'Datum auswählen',
       createFromTemplate: 'Aus Vorlage Erstellen',
+      executeTransformation: 'Transformation Ausführen',
+      actualConsumed: 'Tatsächlich Verbraucht',
+      actualProduced: 'Tatsächlich Produziert',
+      enterActualQuantities: 'Geben Sie die tatsächlichen Mengen für verbrauchte Eingänge und produzierte Ausgänge ein',
+      difference: 'Differenz',
+      exceedsPlanned: 'Kann die geplante Menge nicht überschreiten',
+      wastedQuantity: 'Verschwendete Menge',
+      wasteReason: 'Grund für Verschwendung',
+      enterWasteDetails: 'Geben Sie Details zur Verschwendung ein, falls zutreffend',
+      optional: 'Optional',
     },
   },
   zh: {
@@ -660,6 +710,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: '计划执行日期',
       pickDate: '选择日期',
       createFromTemplate: '从模板创建',
+      executeTransformation: '执行转换',
+      actualConsumed: '实际消耗',
+      actualProduced: '实际生产',
+      enterActualQuantities: '输入实际消耗的输入和生产的输出数量',
+      difference: '差异',
+      exceedsPlanned: '不能超过计划数量',
+      wastedQuantity: '浪费数量',
+      wasteReason: '浪费原因',
+      enterWasteDetails: '如适用，请输入浪费详情',
+      optional: '可选',
     },
   },
   ja: {
@@ -769,6 +829,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       plannedExecutionDate: '予定実行日',
       pickDate: '日付を選択',
       createFromTemplate: 'テンプレートから作成',
+      executeTransformation: '変換を実行',
+      actualConsumed: '実際の消費',
+      actualProduced: '実際の生産',
+      enterActualQuantities: '消費された入力と生産された出力の実際の数量を入力してください',
+      difference: '差異',
+      exceedsPlanned: '計画数量を超えることはできません',
+      wastedQuantity: '無駄にした数量',
+      wasteReason: '無駄の理由',
+      enterWasteDetails: '該当する場合、無駄の詳細を入力してください',
+      optional: 'オプション',
     },
   },
 };
