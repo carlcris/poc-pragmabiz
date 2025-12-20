@@ -9,6 +9,7 @@ import {
   useActivateTransformationTemplate,
   useDeactivateTransformationTemplate,
 } from "@/hooks/useTransformationTemplates";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +38,7 @@ import type { TransformationTemplate } from "@/types/transformation-template";
 
 export default function TransformationTemplatesPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -86,15 +88,15 @@ export default function TransformationTemplatesPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-3xl font-bold">Transformation Templates</h1>
+            <h1 className="text-3xl font-bold">{t.transformation.templates}</h1>
           </div>
           <p className="text-muted-foreground ml-10">
-            Manage reusable transformation recipes
+            {t.transformation.manageTemplates}
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          New Template
+          {t.transformation.newTransformation}
         </Button>
       </div>
 
@@ -102,7 +104,7 @@ export default function TransformationTemplatesPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Search by template code or name..."
+          placeholder={t.common.search_}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -114,27 +116,27 @@ export default function TransformationTemplatesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Template Code</TableHead>
-              <TableHead>Template Name</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Inputs</TableHead>
-              <TableHead>Outputs</TableHead>
+              <TableHead>{t.common.code}</TableHead>
+              <TableHead>{t.common.name}</TableHead>
+              <TableHead>{t.common.status}</TableHead>
+              <TableHead>{t.transformation.inputMaterials}</TableHead>
+              <TableHead>{t.transformation.outputProducts}</TableHead>
               <TableHead>Usage Count</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t.common.date}</TableHead>
+              <TableHead className="text-right">{t.common.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-8">
-                  Loading...
+                  {t.common.loading}
                 </TableCell>
               </TableRow>
             ) : templatesData?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-8">
-                  No transformation templates found
+                  {t.forms.noDataFound}
                 </TableCell>
               </TableRow>
             ) : (
@@ -250,15 +252,14 @@ export default function TransformationTemplatesPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Transformation Template?</AlertDialogTitle>
+            <AlertDialogTitle>{t.common.delete} {t.transformation.transformationTemplate}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              transformation template.
+              {t.forms.deleteConfirm}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t.common.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

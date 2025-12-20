@@ -13,6 +13,7 @@ import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Form,
   FormControl,
@@ -53,6 +54,7 @@ type CreateOrderFormValues = z.infer<typeof createOrderSchema>;
 export default function NewTransformationOrderPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
   const companyId = user?.companyId;
 
   const createOrder = useCreateTransformationOrder();
@@ -114,16 +116,16 @@ export default function NewTransformationOrderPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">New Transformation Order</h1>
+          <h1 className="text-3xl font-bold">{t.transformation.newTransformation}</h1>
           <p className="text-muted-foreground">
-            Create a new transformation order from a template
+            {t.transformation.createNewOrder}
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Order Details</CardTitle>
+          <CardTitle>{t.transformation.orderDetails}</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -134,11 +136,11 @@ export default function NewTransformationOrderPage() {
                 name="templateId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Transformation Template *</FormLabel>
+                    <FormLabel>{t.transformation.transformationTemplate} *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a template" />
+                          <SelectValue placeholder={t.transformation.selectTemplate} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -160,11 +162,11 @@ export default function NewTransformationOrderPage() {
                 name="warehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Warehouse *</FormLabel>
+                    <FormLabel>{t.common.warehouse} *</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select warehouse" />
+                          <SelectValue placeholder={t.transformation.selectWarehouse} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -187,7 +189,7 @@ export default function NewTransformationOrderPage() {
                   name="plannedQuantity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Planned Quantity *</FormLabel>
+                      <FormLabel>{t.transformation.plannedQuantity} *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -206,7 +208,7 @@ export default function NewTransformationOrderPage() {
                   name="orderDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Order Date *</FormLabel>
+                      <FormLabel>{t.transformation.orderDate} *</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -220,7 +222,7 @@ export default function NewTransformationOrderPage() {
                               {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
-                                <span>Pick a date</span>
+                                <span>{t.transformation.pickDate}</span>
                               )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -245,7 +247,7 @@ export default function NewTransformationOrderPage() {
                   name="plannedDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Planned Execution Date</FormLabel>
+                      <FormLabel>{t.transformation.plannedExecutionDate}</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -259,7 +261,7 @@ export default function NewTransformationOrderPage() {
                               {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
-                                <span>Pick a date</span>
+                                <span>{t.transformation.pickDate}</span>
                               )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -286,10 +288,10 @@ export default function NewTransformationOrderPage() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel>{t.common.notes}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Optional notes..."
+                        placeholder={`${t.common.notes}...`}
                         rows={3}
                         {...field}
                       />
@@ -311,10 +313,10 @@ export default function NewTransformationOrderPage() {
                   variant="outline"
                   onClick={() => router.push("/inventory/transformations")}
                 >
-                  Cancel
+                  {t.common.cancel}
                 </Button>
                 <Button type="submit" disabled={createOrder.isPending}>
-                  {createOrder.isPending ? "Creating..." : "Create Order"}
+                  {createOrder.isPending ? `${t.common.create}...` : t.transformation.createFromTemplate}
                 </Button>
               </div>
             </form>

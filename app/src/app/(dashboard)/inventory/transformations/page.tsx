@@ -38,6 +38,7 @@ import {
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import type { TransformationOrderStatus } from "@/types/transformation-order";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const statusColors: Record<TransformationOrderStatus, string> = {
   DRAFT: "bg-gray-500",
@@ -48,6 +49,7 @@ const statusColors: Record<TransformationOrderStatus, string> = {
 
 export default function TransformationOrdersPage() {
   const { formatCurrency } = useCurrency();
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(1);
@@ -77,21 +79,21 @@ export default function TransformationOrdersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Transformation Orders</h1>
+          <h1 className="text-3xl font-bold">{t.transformation.transformationOrder}s</h1>
           <p className="text-muted-foreground">
-            Manage material and product transformations
+            {t.transformation.manageMaterialTransformations}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href="/inventory/transformations/templates">
-              Manage Templates
+              {t.transformation.manageTemplates}
             </Link>
           </Button>
           <Button asChild>
             <Link href="/inventory/transformations/new">
               <Plus className="mr-2 h-4 w-4" />
-              New Transformation
+              {t.transformation.newTransformation}
             </Link>
           </Button>
         </div>
@@ -102,7 +104,7 @@ export default function TransformationOrdersPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by order code or notes..."
+            placeholder={t.transformation.searchOrdersPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -110,14 +112,14 @@ export default function TransformationOrdersPage() {
         </div>
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Statuses" />
+            <SelectValue placeholder={t.common.allStatuses} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ALL">All Statuses</SelectItem>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="PREPARING">Preparing</SelectItem>
-            <SelectItem value="COMPLETED">Completed</SelectItem>
-            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            <SelectItem value="ALL">{t.common.allStatuses}</SelectItem>
+            <SelectItem value="DRAFT">{t.common.draft}</SelectItem>
+            <SelectItem value="PREPARING">{t.common.preparing}</SelectItem>
+            <SelectItem value="COMPLETED">{t.common.completed}</SelectItem>
+            <SelectItem value="CANCELLED">{t.common.cancelled}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -127,28 +129,28 @@ export default function TransformationOrdersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Order Code</TableHead>
-              <TableHead>Template</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Order Date</TableHead>
-              <TableHead>Warehouse</TableHead>
-              <TableHead>Planned Qty</TableHead>
-              <TableHead className="text-right">Input Cost</TableHead>
-              <TableHead className="text-right">Output Cost</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t.transformation.orderCode}</TableHead>
+              <TableHead>{t.transformation.template}</TableHead>
+              <TableHead>{t.common.status}</TableHead>
+              <TableHead>{t.transformation.orderDate}</TableHead>
+              <TableHead>{t.common.warehouse}</TableHead>
+              <TableHead>{t.transformation.plannedQuantity}</TableHead>
+              <TableHead className="text-right">{t.transformation.totalInputCost}</TableHead>
+              <TableHead className="text-right">{t.transformation.totalOutputCost}</TableHead>
+              <TableHead className="text-right">{t.common.actions}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
-                  Loading...
+                  {t.common.loading}
                 </TableCell>
               </TableRow>
             ) : ordersData?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center py-8">
-                  No transformation orders found
+                  {t.transformation.noOrdersFound}
                 </TableCell>
               </TableRow>
             ) : (
@@ -214,15 +216,14 @@ export default function TransformationOrdersPage() {
       <AlertDialog open={!!deleteOrderId} onOpenChange={() => setDeleteOrderId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Transformation Order?</AlertDialogTitle>
+            <AlertDialogTitle>{t.common.delete} {t.transformation.transformationOrder}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the transformation
-              order.
+              {t.forms.deleteConfirm}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{t.common.delete}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

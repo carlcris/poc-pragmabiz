@@ -8,14 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,6 +20,7 @@ import {
 import { useCurrency } from "@/hooks/useCurrency";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const statusColors: Record<string, string> = {
   DRAFT: "bg-gray-500",
@@ -40,9 +33,9 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
-export default function TransformationOrderDetailPage({ params }: Props) {
-  const { id } = use(params);
+function TransformationOrderContent({ id }: { id: string }) {
   const { formatCurrency } = useCurrency();
+  const { t } = useLanguage();
   const [actionDialog, setActionDialog] = useState<{
     open: boolean;
     action: "prepare" | "complete" | "cancel" | null;
@@ -50,8 +43,9 @@ export default function TransformationOrderDetailPage({ params }: Props) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: orderResponse, isLoading, refetch } = useTransformationOrder(id);
+  // @ts-ignore - API returns snake_case fields, will be fixed with API transformation layer
   const order = orderResponse?.data;
-
+  console.log("orderResponse", orderResponse);
   const handleAction = async () => {
     if (!actionDialog.action || !order) return;
 
@@ -60,27 +54,27 @@ export default function TransformationOrderDetailPage({ params }: Props) {
       switch (actionDialog.action) {
         case "prepare":
           await transformationOrdersApi.prepare(order.id);
-          toast.success("Order prepared successfully");
+          toast.success(t.transformation.orderPrepared);
           break;
         case "complete":
           // For now, auto-execute with planned quantities
           const executeData = {
-            inputs: order.inputs.map((input) => ({
+            inputs: order.inputs.map((input: any) => ({
               inputLineId: input.id,
               consumedQuantity: input.planned_quantity,
             })),
-            outputs: order.outputs.map((output) => ({
+            outputs: order.outputs.map((output: any) => ({
               outputLineId: output.id,
               producedQuantity: output.planned_quantity,
             })),
           };
           console.log('Completing transformation with data:', executeData);
           await transformationOrdersApi.execute(order.id, executeData);
-          toast.success("Order completed successfully");
+          toast.success(t.transformation.orderCompleted);
           break;
         case "cancel":
           await transformationOrdersApi.cancel(order.id);
-          toast.success("Order cancelled successfully");
+          toast.success(t.transformation.orderCancelled);
           break;
       }
       refetch();
@@ -97,7 +91,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{t.common.loading}</p>
       </div>
     );
   }
@@ -105,7 +99,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
   if (!order) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Order not found</p>
+        <p className="text-muted-foreground">{t.transformation.order} {t.transformation.notFound}</p>
       </div>
     );
   }
@@ -124,9 +118,11 @@ export default function TransformationOrderDetailPage({ params }: Props) {
           </Link>
         </Button>
         <div>
+          {/* @ts-ignore - API returns snake_case until transformation is implemented */}
           <h1 className="text-3xl font-bold tracking-tight">{order.order_code}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Template: {" "}
+            {t.transformation.template}:{" "}
+            {/* @ts-ignore - API returns snake_case until transformation is implemented */}
             {"template" in order && order.template && typeof order.template === "object" && "template_code" in order.template
               ? String(order.template.template_code)
               : "N/A"}
@@ -139,11 +135,11 @@ export default function TransformationOrderDetailPage({ params }: Props) {
         <CardContent className="pt-6">
           <div className="grid grid-cols-5 gap-6">
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.common.status}</p>
               <Badge className={`${statusColors[order.status]} text-sm px-3 py-1`}>{order.status}</Badge>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Warehouse</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.common.warehouse}</p>
               <p className="text-sm font-semibold">
                 {"source_warehouse" in order && order.source_warehouse && typeof order.source_warehouse === "object" && "warehouse_name" in order.source_warehouse
                   ? String(order.source_warehouse.warehouse_name)
@@ -151,17 +147,17 @@ export default function TransformationOrderDetailPage({ params }: Props) {
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Order Date</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.transformation.orderDate}</p>
               <p className="text-sm font-semibold">
                 {new Date(order.order_date).toLocaleDateString()}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Planned Quantity</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.transformation.plannedQuantity}</p>
               <p className="text-sm font-semibold">{order.planned_quantity}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Actual Quantity</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.transformation.actualQuantity}</p>
               <p className="text-sm font-semibold">
                 {"actual_quantity" in order && order.actual_quantity ? order.actual_quantity : "-"}
               </p>
@@ -175,7 +171,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
         <Card className="border-l-4 border-l-blue-500">
           <CardContent className="pt-6">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Total Input Cost</p>
+              <p className="text-sm font-medium text-muted-foreground">{t.transformation.totalInputCost}</p>
               <p className="text-3xl font-bold tracking-tight">
                 {formatCurrency(order.total_input_cost || 0)}
               </p>
@@ -185,7 +181,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
         <Card className="border-l-4 border-l-green-500">
           <CardContent className="pt-6">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Total Output Cost</p>
+              <p className="text-sm font-medium text-muted-foreground">{t.transformation.totalOutputCost}</p>
               <p className="text-3xl font-bold tracking-tight">
                 {formatCurrency(order.total_output_cost || 0)}
               </p>
@@ -195,7 +191,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
         <Card className={`border-l-4 ${(order.cost_variance || 0) < 0 ? "border-l-red-500" : "border-l-gray-500"}`}>
           <CardContent className="pt-6">
             <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">Cost Variance</p>
+              <p className="text-sm font-medium text-muted-foreground">{t.transformation.costVariance}</p>
               <p className={`text-3xl font-bold tracking-tight ${
                 (order.cost_variance || 0) < 0 ? "text-red-500" : ""
               }`}>
@@ -213,12 +209,12 @@ export default function TransformationOrderDetailPage({ params }: Props) {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <div className="h-8 w-1 bg-orange-500 rounded-full" />
-              Input Materials
+              {t.transformation.inputMaterials}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {"inputs" in order && Array.isArray(order.inputs) && order.inputs.map((input) => (
+              {"inputs" in order && Array.isArray(order.inputs) && order.inputs.map((input: any) => (
                 <div key={input.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -239,17 +235,17 @@ export default function TransformationOrderDetailPage({ params }: Props) {
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-muted-foreground">Planned</p>
+                      <p className="text-muted-foreground">{t.transformation.planned}</p>
                       <p className="font-semibold">{input.planned_quantity}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Consumed</p>
+                      <p className="text-muted-foreground">{t.transformation.consumed}</p>
                       <p className="font-semibold text-orange-600">
                         {"consumed_quantity" in input && input.consumed_quantity ? input.consumed_quantity : "-"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Total Cost</p>
+                      <p className="text-muted-foreground">{t.transformation.totalCost}</p>
                       <p className="font-semibold">
                         {formatCurrency("total_cost" in input && input.total_cost ? Number(input.total_cost) : 0)}
                       </p>
@@ -266,12 +262,12 @@ export default function TransformationOrderDetailPage({ params }: Props) {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
               <div className="h-8 w-1 bg-green-500 rounded-full" />
-              Output Products
+              {t.transformation.outputProducts}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {"outputs" in order && Array.isArray(order.outputs) && order.outputs.map((output) => (
+              {"outputs" in order && Array.isArray(order.outputs) && order.outputs.map((output: any) => (
                 <div key={output.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -288,7 +284,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
                     </div>
                     <div className="flex gap-2">
                       {"is_scrap" in output && output.is_scrap && (
-                        <Badge variant="outline" className="text-xs">Scrap</Badge>
+                        <Badge variant="outline" className="text-xs">{t.transformation.scrap}</Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
                         {formatCurrency("allocated_cost_per_unit" in output && output.allocated_cost_per_unit ? Number(output.allocated_cost_per_unit) : 0)}/unit
@@ -297,17 +293,17 @@ export default function TransformationOrderDetailPage({ params }: Props) {
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-muted-foreground">Planned</p>
+                      <p className="text-muted-foreground">{t.transformation.planned}</p>
                       <p className="font-semibold">{output.planned_quantity}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Produced</p>
+                      <p className="text-muted-foreground">{t.transformation.produced}</p>
                       <p className="font-semibold text-green-600">
                         {"produced_quantity" in output && output.produced_quantity ? output.produced_quantity : "-"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Total Cost</p>
+                      <p className="text-muted-foreground">{t.transformation.totalCost}</p>
                       <p className="font-semibold">
                         {formatCurrency("total_allocated_cost" in output && output.total_allocated_cost ? Number(output.total_allocated_cost) : 0)}
                       </p>
@@ -327,7 +323,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
             onClick={() => setActionDialog({ open: true, action: "prepare" })}
           >
             <PlayCircle className="mr-2 h-4 w-4" />
-            Prepare
+            {t.transformation.prepare}
           </Button>
         )}
         {canComplete && (
@@ -335,7 +331,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
             onClick={() => setActionDialog({ open: true, action: "complete" })}
           >
             <CheckCircle className="mr-2 h-4 w-4" />
-            Complete
+            {t.transformation.complete}
           </Button>
         )}
         {canCancel && (
@@ -344,7 +340,7 @@ export default function TransformationOrderDetailPage({ params }: Props) {
             onClick={() => setActionDialog({ open: true, action: "cancel" })}
           >
             <XCircle className="mr-2 h-4 w-4" />
-            Cancel Order
+            {t.transformation.cancelOrder}
           </Button>
         )}
       </div>
@@ -357,29 +353,31 @@ export default function TransformationOrderDetailPage({ params }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {actionDialog.action === "prepare" && "Prepare Order?"}
-              {actionDialog.action === "complete" && "Complete Order?"}
-              {actionDialog.action === "cancel" && "Cancel Order?"}
+              {actionDialog.action === "prepare" && t.transformation.prepareOrder}
+              {actionDialog.action === "complete" && t.transformation.completeOrder}
+              {actionDialog.action === "cancel" && t.transformation.cancelOrder}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {actionDialog.action === "prepare" &&
-                "This will prepare the order and make it ready for completion."}
-              {actionDialog.action === "complete" &&
-                "This will complete the transformation, consuming input materials and producing output products."}
-              {actionDialog.action === "cancel" &&
-                "This will cancel the order. This action cannot be undone."}
+              {actionDialog.action === "prepare" && t.transformation.prepareConfirmation}
+              {actionDialog.action === "complete" && t.transformation.completeConfirmation}
+              {actionDialog.action === "cancel" && t.transformation.cancelConfirmation}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>
-              {actionDialog.action === "cancel" ? "No, keep it" : "Cancel"}
+              {actionDialog.action === "cancel" ? t.common.no : t.common.cancel}
             </AlertDialogCancel>
             <AlertDialogAction onClick={handleAction} disabled={isProcessing}>
-              {isProcessing ? "Processing..." : actionDialog.action === "cancel" ? "Yes, cancel order" : "Confirm"}
+              {isProcessing ? `${t.transformation.preparing}...` : actionDialog.action === "cancel" ? t.common.yes : t.common.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+}
+
+export default function TransformationOrderDetailPage({ params }: Props) {
+  const { id } = use(params);
+  return <TransformationOrderContent id={id} />;
 }
