@@ -73,7 +73,17 @@ export const executeTransformationOrderOutputSchema = z.object({
   outputLineId: uuidSchema,
   producedQuantity: z
     .number()
-    .min(0.0001, "Produced quantity must be greater than 0"),
+    .min(0, "Produced quantity must be at least 0"),
+  wastedQuantity: z
+    .number()
+    .min(0, "Wasted quantity must be at least 0")
+    .optional()
+    .default(0),
+  wasteReason: z
+    .string()
+    .max(500, "Waste reason must be at most 500 characters")
+    .optional()
+    .nullable(),
 });
 
 export const executeTransformationOrderSchema = z.object({

@@ -208,7 +208,11 @@ function TransformationOrderContent({ id }: { id: string }) {
             </div>
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.transformation.plannedQuantity}</p>
-              <p className="text-sm font-semibold">{order.planned_quantity}</p>
+              <p className="text-sm font-semibold">
+                {("outputs" in order && Array.isArray(order.outputs))
+                  ? order.outputs.reduce((sum: number, output: any) => sum + (output.planned_quantity || 0), 0)
+                  : order.planned_quantity}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.transformation.actualQuantity}</p>
@@ -345,7 +349,7 @@ function TransformationOrderContent({ id }: { id: string }) {
                       </Badge>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="grid grid-cols-4 gap-2 text-xs">
                     <div>
                       <p className="text-muted-foreground">{t.transformation.planned}</p>
                       <p className="font-semibold">{output.planned_quantity}</p>
@@ -357,12 +361,27 @@ function TransformationOrderContent({ id }: { id: string }) {
                       </p>
                     </div>
                     <div>
+                      <p className="text-muted-foreground">{t.transformation.wastedQuantity}</p>
+                      <p className="font-semibold text-orange-600">
+                        {"wasted_quantity" in output && output.wasted_quantity ? output.wasted_quantity : "0"}
+                      </p>
+                    </div>
+                    <div>
                       <p className="text-muted-foreground">{t.transformation.totalCost}</p>
                       <p className="font-semibold">
                         {formatCurrency("total_allocated_cost" in output && output.total_allocated_cost ? Number(output.total_allocated_cost) : 0)}
                       </p>
                     </div>
                   </div>
+                  {/* Show waste reason if there is waste */}
+                  {"wasted_quantity" in output && output.wasted_quantity && output.wasted_quantity > 0 && (
+                    <div className="mt-2 pt-2 border-t text-xs">
+                      <p className="text-muted-foreground">{t.transformation.wasteReason}:</p>
+                      <p className="text-orange-600 italic">
+                        {"waste_reason" in output && output.waste_reason ? output.waste_reason : "No reason provided"}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

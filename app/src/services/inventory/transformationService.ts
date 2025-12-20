@@ -230,6 +230,7 @@ export async function executeTransformation(
   stockTransactionIds?: {
     inputs: string[];
     outputs: string[];
+    waste: string[];
   };
 }> {
   try {
@@ -461,19 +462,23 @@ export async function executeTransformation(
 
     // 7. Produce outputs (create stock transactions type='in')
     const outputTransactionIds: string[] = [];
+    const wasteTransactionIds: string[] = [];
+
+    // Calculate total quantity (produced + wasted) for cost allocation
     const totalOutputQuantity = executionData.outputs.reduce(
-      (sum, o) => sum + o.producedQuantity,
+      (sum, o) => sum + o.producedQuantity + (o.wastedQuantity || 0),
       0
     );
 
-    // Cost allocation strategy: quantity-based
+    // Cost allocation strategy: quantity-based (across produced + wasted)
     let outputIndex = 0;
     for (const outputData of executionData.outputs) {
       outputIndex++;
       const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
       if (!outputLine) continue;
 
-      // Allocate cost based on quantity proportion
+      // Allocate cost based on total quantity (produced + wasted)
+      // This ensures cost per unit is consistent whether item was good or wasted
       const costPerUnit = totalOutputQuantity > 0
         ? totalInputCost / totalOutputQuantity
         : 0;
@@ -577,12 +582,84 @@ export async function executeTransformation(
         .from("transformation_order_outputs")
         .update({
           produced_quantity: outputData.producedQuantity,
+          wasted_quantity: outputData.wastedQuantity || 0,
+          waste_reason: outputData.wasteReason || null,
           allocated_cost_per_unit: costPerUnit,
           total_allocated_cost: allocatedCost,
           stock_transaction_id: stockTransaction.id,
           updated_by: userId,
         })
         .eq("id", outputData.outputLineId);
+
+      // 7b. Create waste transaction if waste quantity > 0
+      if (outputData.wastedQuantity && outputData.wastedQuantity > 0) {
+        const wasteCostPerUnit = costPerUnit; // Same cost allocation as good output
+        const wasteTotalCost = wasteCostPerUnit * outputData.wastedQuantity;
+
+        // Create waste stock transaction (type='waste' or 'out' with waste notes)
+        const { data: wasteTransaction, error: wasteTransactionError } = await supabase
+          .from("stock_transactions")
+          .insert({
+            company_id: order.company_id,
+            transaction_code: `ST-TRANS-WASTE-${order.order_code}-${outputIndex}`,
+            transaction_type: "out", // Waste is recorded as outbound from a "virtual" waste location
+            transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
+            warehouse_id: order.source_warehouse_id,
+            reference_type: "transformation_order",
+            reference_id: orderId,
+            reference_code: order.order_code,
+            notes: `Transformation waste - ${outputData.wasteReason || 'No reason provided'} - ${order.order_code}`,
+            status: "posted",
+            created_by: userId,
+            updated_by: userId,
+          })
+          .select()
+          .single();
+
+        if (wasteTransactionError || !wasteTransaction) {
+          console.error("Failed to create waste stock transaction:", wasteTransactionError);
+          // Don't fail the entire transformation for waste tracking issues, but log it
+        } else {
+          wasteTransactionIds.push(wasteTransaction.id);
+
+          // Create waste stock transaction item
+          const now = new Date();
+          const postingDate = now.toISOString().split("T")[0];
+          const postingTime = now.toTimeString().split(" ")[0];
+
+          // Note: Waste doesn't physically exist in inventory, so we don't update qty_before/after
+          // This is purely for cost accounting purposes
+          await supabase.from("stock_transaction_items").insert({
+            company_id: order.company_id,
+            transaction_id: wasteTransaction.id,
+            item_id: outputLine.item_id,
+            quantity: outputData.wastedQuantity,
+            uom_id: outputLine.uom_id,
+            unit_cost: wasteCostPerUnit,
+            total_cost: wasteTotalCost,
+            qty_before: 0, // Waste doesn't affect physical inventory
+            qty_after: 0,
+            valuation_rate: wasteCostPerUnit,
+            stock_value_before: 0,
+            stock_value_after: 0,
+            posting_date: postingDate,
+            posting_time: postingTime,
+            created_by: userId,
+            updated_by: userId,
+          });
+
+          console.log(`[Waste Transaction Created] Item ${outputLine.item_id}: ${outputData.wastedQuantity} units, Cost: ${wasteTotalCost}, Reason: ${outputData.wasteReason}`);
+
+          // Update output record with waste transaction reference
+          await supabase
+            .from("transformation_order_outputs")
+            .update({
+              stock_transaction_waste_id: wasteTransaction.id,
+              updated_by: userId,
+            })
+            .eq("id", outputData.outputLineId);
+        }
+      }
 
       // 8. Record lineage (N→M relationships)
       for (const inputCost of inputCosts) {
@@ -599,16 +676,28 @@ export async function executeTransformation(
       }
     }
 
-    // 9. Calculate actual total output cost
-    const totalOutputCost = executionData.outputs.reduce((sum, output) => {
+    // 9. Calculate actual total output cost and waste cost
+    let totalOutputCost = 0;
+    let totalWasteCost = 0;
+
+    for (const output of executionData.outputs) {
       const outputLine = order.outputs.find((o: any) => o.id === output.outputLineId);
-      if (outputLine?.is_scrap) return sum;
+      if (outputLine?.is_scrap) continue; // Skip scrap items from cost calculation
+
       const costPerUnit = totalOutputQuantity > 0 ? totalInputCost / totalOutputQuantity : 0;
-      return sum + costPerUnit * output.producedQuantity;
-    }, 0);
+
+      // Cost of good output produced
+      totalOutputCost += costPerUnit * output.producedQuantity;
+
+      // Cost of waste (this is the variance/loss)
+      if (output.wastedQuantity && output.wastedQuantity > 0) {
+        totalWasteCost += costPerUnit * output.wastedQuantity;
+      }
+    }
 
     // 10. Update order with costs and status
-    const costVariance = totalInputCost - totalOutputCost;
+    // Cost variance = waste cost (you spent money on inputs that became waste)
+    const costVariance = totalWasteCost;
 
     await supabase
       .from("transformation_orders")
@@ -625,6 +714,7 @@ export async function executeTransformation(
       stockTransactionIds: {
         inputs: inputTransactionIds,
         outputs: outputTransactionIds,
+        waste: wasteTransactionIds,
       },
     };
   } catch (error) {

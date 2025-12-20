@@ -123,6 +123,8 @@ export interface ExecuteTransformationOrderRequest {
   outputs: {
     outputLineId: string;
     producedQuantity: number;
+    wastedQuantity?: number;
+    wasteReason?: string | null;
   }[];
   executionDate?: string;
   notes?: string;
