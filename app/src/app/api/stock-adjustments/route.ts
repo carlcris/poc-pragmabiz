@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/stock-adjustments - List stock adjustments
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
     const searchParams = request.nextUrl.searchParams
 
     // Check authentication
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
 // POST /api/stock-adjustments - Create new stock adjustment
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication
@@ -249,6 +249,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User company not found' }, { status: 400 })
     }
 
+    // Validate business unit context
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
+    }
+
     // Validate required fields
     if (!body.warehouseId || !body.adjustmentType || !body.adjustmentDate || !body.reason) {
       return NextResponse.json(
@@ -261,24 +269,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'At least one item is required' }, { status: 400 })
     }
 
-    // Generate adjustment code (ADJ-YYYY-NNNN)
-    const currentYear = new Date().getFullYear()
-    const { data: lastAdjustment } = await supabase
-      .from('stock_adjustments')
-      .select('adjustment_code')
-      .eq('company_id', userData.company_id)
-      .like('adjustment_code', `ADJ-${currentYear}-%`)
-      .order('adjustment_code', { ascending: false })
-      .limit(1)
-
-    let nextAdjustmentNum = 1
-    if (lastAdjustment && lastAdjustment.length > 0) {
-      const match = lastAdjustment[0].adjustment_code.match(/ADJ-\d+-(\d+)/)
-      if (match) {
-        nextAdjustmentNum = parseInt(match[1]) + 1
-      }
-    }
-    const adjustmentCode = `ADJ-${currentYear}-${String(nextAdjustmentNum).padStart(4, '0')}`
+    // Generate adjustment code with timestamp to avoid duplicates
+    const now = new Date()
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
+    const milliseconds = now.getTime().toString().slice(-4)
+    const adjustmentCode = `ADJ-${dateStr}${milliseconds}`
 
     // Calculate total value
     const totalValue = body.items.reduce((sum: number, item: any) => {
@@ -291,6 +286,7 @@ export async function POST(request: NextRequest) {
       .from('stock_adjustments')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         adjustment_code: adjustmentCode,
         adjustment_type: body.adjustmentType,
         adjustment_date: body.adjustmentDate,

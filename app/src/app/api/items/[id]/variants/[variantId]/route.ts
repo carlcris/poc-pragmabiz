@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { ItemVariant, UpdateItemVariantInput } from "@/types/item-variant";
 
 type RouteContext = {
@@ -24,7 +24,7 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { id: itemId, variantId } = await context.params;
     const body: UpdateItemVariantInput = await request.json();
 
@@ -158,7 +158,7 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { id: itemId, variantId } = await context.params;
 
     // Get current user and company

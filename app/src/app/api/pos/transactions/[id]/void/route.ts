@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { reversePOSTransaction } from '@/services/accounting/posPosting';
 import { reversePOSStockTransaction } from '@/services/inventory/posStockService';
 
@@ -8,7 +8,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { id } = await params;
 
     // Check authentication
@@ -123,6 +123,7 @@ export async function POST(
       try {
         const stockReversalResult = await reversePOSStockTransaction(
           userData.company_id,
+          currentBusinessUnitId!,
           user.id,
           id,
           transaction.transaction_code,

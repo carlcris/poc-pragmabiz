@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // PATCH /api/quotations/[id]/status
@@ -19,7 +19,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {

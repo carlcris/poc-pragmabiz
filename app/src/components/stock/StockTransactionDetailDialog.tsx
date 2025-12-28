@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowDownCircle, ArrowUpCircle, ArrowRightLeft, Settings2, Calendar, User, FileText, Package, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toProperCase } from "@/lib/string";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -149,12 +150,7 @@ export function StockTransactionDetailDialog({
 
   const formatReferenceType = (referenceType: string | null) => {
     if (!referenceType) return null;
-
-    // Convert snake_case and other formats to Title Case
-    return referenceType
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+    return toProperCase(referenceType);
   };
 
   if (isLoading || !transaction) {

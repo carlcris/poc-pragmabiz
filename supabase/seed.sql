@@ -10,6 +10,43 @@ VALUES
     ('00000000-0000-0000-0000-000000000001', 'DEMO', 'Demo Company Inc.', 'Demo Company Incorporated', '123-456-789', 'contact@democompany.com', '+63-917-123-4567', '123 Business St', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'PHP', true);
 
 -- ============================================================================
+-- SEED DATA: Default Business Unit
+-- ============================================================================
+
+INSERT INTO business_units (id, company_id, code, name, type, is_active, created_at, updated_at)
+VALUES
+  (
+    '00000000-0000-0000-0000-000000000100',
+    '00000000-0000-0000-0000-000000000001',
+    'MAIN',
+    'Main Office',
+    'primary',
+    true,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000101',
+    '00000000-0000-0000-0000-000000000001',
+    'DTN',
+    'Downtown Branch',
+    'branch',
+    true,
+    now(),
+    now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000102',
+    '00000000-0000-0000-0000-000000000001',
+    'WHS',
+    'Warehouse',
+    'warehouse',
+    true,
+    now(),
+    now()
+  );
+
+-- ============================================================================
 -- SEED DATA: Demo User
 -- ============================================================================
 -- NOTE: Demo user must be created via Supabase Auth API after seeding
@@ -147,14 +184,24 @@ END $$;
 -- SEED DATA: Warehouses
 -- ============================================================================
 
-INSERT INTO warehouses (id, company_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active, is_van)
+INSERT INTO warehouses (id, company_id, business_unit_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active, is_van)
 VALUES
-    ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', 'VAN-002', 'Demo Van 002', 'retail', 'Mobile Unit', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'van002@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000001', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000001', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000001', 'VAN-001', 'Demo Van 001', 'main', 'Mobile Unit', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Demo User', '+63-917-777-8888', 'van001@democompany.com', true, true);
+    -- Main Office Warehouses
+    ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'VAN-002', 'Demo Van 002', 'retail', 'Mobile Unit', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'van002@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'VAN-001', 'Demo Van 001', 'main', 'Mobile Unit', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Demo User', '+63-917-777-8888', 'van001@democompany.com', true, true),
+
+    -- Downtown Branch Warehouses
+    ('00000000-0000-0000-0000-000000000016', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'WH-DTN-01', 'Downtown Storage Facility', 'retail', 'Rizal Avenue, Downtown', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Rosa Martinez', '+63-917-111-9999', 'downtown.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000017', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'WH-DTN-02', 'City Center Warehouse', 'transit', 'C.M. Recto Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Pedro Gonzales', '+63-917-222-8888', 'citycenter.wh@democompany.com', true, false),
+
+    -- Warehouse Business Unit Warehouses (Large Distribution Centers)
+    ('00000000-0000-0000-0000-000000000018', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-MAIN-DIST', 'Main Distribution Center', 'main', 'Industrial Park, Warehouse Complex A', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Roberto Santos', '+63-917-555-1111', 'maindist.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000019', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-PORT-DIST', 'Port Distribution Center', 'transit', 'Port Area, Building 5', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Carmen Lopez', '+63-917-666-2222', 'port.wh@democompany.com', true, false),
+    ('00000000-0000-0000-0000-000000000020', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-LOGISTICS', 'Central Logistics Hub', 'main', 'Logistics Hub, Bay 12', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Sandra Villanueva', '+63-917-777-3333', 'logistics.wh@democompany.com', true, false);
 
 -- ============================================================================
 -- SEED DATA: Customers
@@ -169,7 +216,7 @@ DECLARE
 BEGIN
     -- Insert sample customers
     INSERT INTO customers (
-        company_id, customer_code, customer_name, customer_type, tax_id, email, phone, website,
+        company_id, business_unit_id, customer_code, customer_name, customer_type, tax_id, email, phone, website,
         billing_address_line1, billing_address_line2, billing_city, billing_state, billing_country, billing_postal_code,
         shipping_address_line1, shipping_address_line2, shipping_city, shipping_state, shipping_country, shipping_postal_code,
         payment_terms, credit_limit, credit_days,
@@ -179,7 +226,7 @@ BEGIN
     VALUES
         -- Company Customers
         (
-            v_company_id, 'CUST-001', 'SM Retail Corporation', 'company', '123-456-789-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-001', 'SM Retail Corporation', 'company', '123-456-789-000',
             'purchasing@smretail.com.ph', '+63-82-227-1234', 'www.smretail.com.ph',
             'SM City Davao', 'J.P. Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'SM City Davao', 'J.P. Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -188,7 +235,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-002', 'Gaisano Capital', 'company', '234-567-890-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-002', 'Gaisano Capital', 'company', '234-567-890-000',
             'procurement@gaisano.com', '+63-88-856-7890', 'www.gaisano.com',
             'Gaisano Mall of Davao', 'JP Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'Gaisano Mall of Davao', 'JP Laurel Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -197,7 +244,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-003', 'NCCC Mall', 'company', '345-678-901-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-003', 'NCCC Mall', 'company', '345-678-901-000',
             'buyer@nccc.com.ph', '+63-82-305-5000', 'www.nccc.com.ph',
             'NCCC Mall Davao', 'Ma-a Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'NCCC Mall Davao', 'Ma-a Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -206,7 +253,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-004', 'Robinsons Supermarket', 'company', '456-789-012-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-004', 'Robinsons Supermarket', 'company', '456-789-012-000',
             'supply@robinsons.com.ph', '+63-82-221-2000', 'www.robinsons.com.ph',
             'Robinsons Place Davao', 'Roxas Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'Robinsons Place Davao', 'Roxas Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -215,7 +262,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-005', 'Puregold Price Club', 'company', '567-890-123-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-005', 'Puregold Price Club', 'company', '567-890-123-000',
             'orders@puregold.com.ph', '+63-82-234-5000', 'www.puregold.com.ph',
             'Puregold Davao', 'McArthur Highway', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'Puregold Davao', 'McArthur Highway', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -226,7 +273,7 @@ BEGIN
 
         -- Government Customers
         (
-            v_company_id, 'CUST-GOV-001', 'Department of Education - Davao Division', 'government', 'GOV-123-456',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-GOV-001', 'Department of Education - Davao Division', 'government', 'GOV-123-456',
             'deped.davao@deped.gov.ph', '+63-82-227-6051', 'davao.deped.gov.ph',
             'DepEd Division Office', 'E. Quirino Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'DepEd Division Office', 'E. Quirino Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -235,7 +282,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-GOV-002', 'Davao City Government', 'government', 'GOV-234-567',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-GOV-002', 'Davao City Government', 'government', 'GOV-234-567',
             'procurement@davaocity.gov.ph', '+63-82-227-1000', 'www.davaocity.gov.ph',
             'Davao City Hall', 'San Pedro Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'Davao City Hall', 'San Pedro Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -246,7 +293,7 @@ BEGIN
 
         -- Individual Customers (Walk-in/Retail)
         (
-            v_company_id, 'CUST-IND-001', 'John Paul Rivera', 'individual', NULL,
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-IND-001', 'John Paul Rivera', 'individual', NULL,
             'jp.rivera@email.com', '+63-917-890-1234', NULL,
             'Phase 1, Block 3, Lot 5', 'Ecoland Subdivision', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'Phase 1, Block 3, Lot 5', 'Ecoland Subdivision', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -255,7 +302,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-IND-002', 'Sarah Mae Santos', 'individual', NULL,
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-IND-002', 'Sarah Mae Santos', 'individual', NULL,
             'sarah.santos@email.com', '+63-917-901-2345', NULL,
             '123 Palma Gil Street', 'Poblacion District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             '123 Palma Gil Street', 'Poblacion District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -264,7 +311,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-IND-003', 'Michael Angelo Torres', 'individual', NULL,
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-IND-003', 'Michael Angelo Torres', 'individual', NULL,
             'miguel.torres@email.com', '+63-917-012-3456', NULL,
             '456 Quirino Avenue', 'Matina District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             '456 Quirino Avenue', 'Matina District', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
@@ -275,7 +322,7 @@ BEGIN
 
         -- Additional Company Customers (Regional)
         (
-            v_company_id, 'CUST-006', 'Cagayan de Oro Trading Corp', 'company', '678-901-234-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-006', 'Cagayan de Oro Trading Corp', 'company', '678-901-234-000',
             'orders@cdotrading.com', '+63-88-858-1234', 'www.cdotrading.com',
             'Carmen Business Park', 'Corrales Avenue', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000',
             'Carmen Business Park', 'Corrales Avenue', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000',
@@ -284,7 +331,7 @@ BEGIN
             true, v_user_id, v_user_id
         ),
         (
-            v_company_id, 'CUST-007', 'General Santos Wholesale Center', 'company', '789-012-345-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-007', 'General Santos Wholesale Center', 'company', '789-012-345-000',
             'wholesale@gensan.com', '+63-83-552-3456', 'www.gensanwholesale.com',
             'National Highway', 'Calumpang', 'General Santos', 'South Cotabato', 'Philippines', '9500',
             'National Highway', 'Calumpang', 'General Santos', 'South Cotabato', 'Philippines', '9500',
@@ -295,13 +342,89 @@ BEGIN
 
         -- Inactive Customer (for testing)
         (
-            v_company_id, 'CUST-008', 'Inactive Trading Inc', 'company', '890-123-456-000',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'CUST-008', 'Inactive Trading Inc', 'company', '890-123-456-000',
             'contact@inactive.com', '+63-82-000-0000', NULL,
             'Old Business District', 'Building 1', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'Old Business District', 'Building 1', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'net_30', 100000.00, 30,
             'Inactive Contact', '+63-917-000-0000', 'inactive@test.com',
             false, v_user_id, v_user_id
+        ),
+
+        -- Downtown Branch Customers
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000101', 'CUST-DTN-001', 'Metro Department Store', 'company', '111-222-333-000',
+            'sales@metrodept.com', '+63-82-301-2345', 'www.metrodept.com',
+            'Downtown Plaza', 'Rizal Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Downtown Plaza', 'Rizal Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 300000.00, 30,
+            'Rosa Martinez', '+63-917-111-2222', 'rosa.martinez@metrodept.com',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000101', 'CUST-DTN-002', 'City Mall Retail', 'company', '222-333-444-000',
+            'procurement@citymall.ph', '+63-82-302-3456', 'www.citymall.ph',
+            'City Center', 'C.M. Recto Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'City Center', 'C.M. Recto Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_60', 450000.00, 60,
+            'Pedro Gonzales', '+63-917-222-3333', 'pedro.gonzales@citymall.ph',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000101', 'CUST-DTN-003', 'Urban Boutique', 'retail', '333-444-555-000',
+            'orders@urbanboutique.com', '+63-82-303-4567', NULL,
+            'Fashion District', '2nd Floor, Edificio Building', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Fashion District', '2nd Floor, Edificio Building', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_15', 150000.00, 15,
+            'Linda Cruz', '+63-917-333-4444', 'linda.cruz@urbanboutique.com',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000101', 'CUST-DTN-004', 'Downtown General Store', 'retail', '444-555-666-000',
+            'manager@dtgenstore.com', '+63-82-304-5678', NULL,
+            'Main Street', 'Corner Quezon Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Main Street', 'Corner Quezon Avenue', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_30', 200000.00, 30,
+            'Anna Reyes', '+63-917-444-5555', 'anna.reyes@dtgenstore.com',
+            true, v_user_id, v_user_id
+        ),
+
+        -- Warehouse Business Unit Customers (Wholesale/Distributors)
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000102', 'CUST-WHS-001', 'Mindanao Wholesale Distributors', 'wholesale', '555-666-777-000',
+            'orders@mindanaowholesale.com', '+63-82-401-2345', 'www.mindanaowholesale.com',
+            'Industrial Park', 'Warehouse Complex A', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Industrial Park', 'Warehouse Complex A', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_90', 1000000.00, 90,
+            'Roberto Santos', '+63-917-555-6666', 'roberto.santos@mindanaowholesale.com',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000102', 'CUST-WHS-002', 'Southern Philippines Trading', 'wholesale', '666-777-888-000',
+            'purchasing@southernph.com', '+63-82-402-3456', 'www.southernph.com',
+            'Port Area', 'Building 5', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Port Area', 'Building 5', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_60', 750000.00, 60,
+            'Carmen Lopez', '+63-917-666-7777', 'carmen.lopez@southernph.com',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000102', 'CUST-WHS-003', 'Pacific Rim Importers', 'wholesale', '777-888-999-000',
+            'sales@pacificrim.ph', '+63-82-403-4567', 'www.pacificrim.ph',
+            'Free Trade Zone', 'Gate 3', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Free Trade Zone', 'Gate 3', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_90', 1200000.00, 90,
+            'Michael Tan', '+63-917-777-8888', 'michael.tan@pacificrim.ph',
+            true, v_user_id, v_user_id
+        ),
+        (
+            v_company_id, '00000000-0000-0000-0000-000000000102', 'CUST-WHS-004', 'Visayas-Mindanao Supply Chain', 'wholesale', '888-999-000-111',
+            'procurement@visminsupply.com', '+63-82-404-5678', NULL,
+            'Logistics Hub', 'Bay 12', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'Logistics Hub', 'Bay 12', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
+            'net_60', 850000.00, 60,
+            'Sandra Villanueva', '+63-917-888-9999', 'sandra.v@visminsupply.com',
+            true, v_user_id, v_user_id
         );
 
     RAISE NOTICE 'Customers seeded: % records', (SELECT COUNT(*) FROM customers WHERE company_id = v_company_id);
@@ -401,6 +524,21 @@ VALUES
 ('bcb8f5df-b678-4c22-ba71-59b33ba06227','00000000-0000-0000-0000-000000000001','Miguel','mflores@pragmatica.com','Miguel','Flores',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013');
 
 -- ============================================================================
+-- SEED DATA: Grant Default BU Access to Users
+-- ============================================================================
+
+INSERT INTO user_business_unit_access (user_id, business_unit_id, role, is_default, granted_at)
+VALUES
+  -- Admin user access to all three business units
+  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000100', 'admin', true, now()),
+  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000101', 'admin', false, now()),
+  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000102', 'admin', false, now()),
+  -- Regular user access to all three business units
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000100', 'admin', true, now()),
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000101', 'admin', false, now()),
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000102', 'admin', false, now());
+
+-- ============================================================================
 -- SEED DATA: Suppliers
 -- ============================================================================
 
@@ -410,52 +548,52 @@ DECLARE
     v_user_id UUID := '5745e13c-ab07-48b7-9db7-24372b16f5a9';
 BEGIN
     INSERT INTO suppliers (
-        company_id, supplier_code, supplier_name, contact_person, email, phone, mobile, website, tax_id,
+        company_id, business_unit_id, supplier_code, supplier_name, contact_person, email, phone, mobile, website, tax_id,
         billing_address_line1, billing_city, billing_state, billing_country, billing_postal_code,
         payment_terms, credit_limit, current_balance, status, notes,
         created_by, updated_by
     ) VALUES
         -- Frame Material Suppliers
         (
-            v_company_id, 'SUP-001', 'Philippine Wood Products Inc.', 'Roberto Santos', 'roberto@philwoodproducts.ph', '+63-82-234-5678', '+63-917-234-5678', 'www.philwoodproducts.ph', '123-456-789-001',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-001', 'Philippine Wood Products Inc.', 'Roberto Santos', 'roberto@philwoodproducts.ph', '+63-82-234-5678', '+63-917-234-5678', 'www.philwoodproducts.ph', '123-456-789-001',
             'Toril Industrial Area', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'net_30', 2000000.00, 0, 'active', 'Main supplier for wood moldings and profiles',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-002', 'Mindanao Glass & Glazing Corp', 'Maria Gonzales', 'maria@mindanaoglass.ph', '+63-82-345-6789', '+63-917-345-6789', 'www.mindanaoglass.ph', '234-567-890-002',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-002', 'Mindanao Glass & Glazing Corp', 'Maria Gonzales', 'maria@mindanaoglass.ph', '+63-82-345-6789', '+63-917-345-6789', 'www.mindanaoglass.ph', '234-567-890-002',
             'Km 10, Sasa Industrial Park', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'net_45', 3000000.00, 0, 'active', 'Glass sheets and UV protection glass supplier',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-003', 'Artboard Supplies Mindanao', 'Juan Dela Cruz', 'juan@artboardsupplies.ph', '+63-82-456-7890', '+63-917-456-7890', 'www.artboardsupplies.ph', '345-678-901-003',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-003', 'Artboard Supplies Mindanao', 'Juan Dela Cruz', 'juan@artboardsupplies.ph', '+63-82-456-7890', '+63-917-456-7890', 'www.artboardsupplies.ph', '345-678-901-003',
             'MacArthur Highway, Matina', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'net_30', 2500000.00, 0, 'active', 'Matboards, backing boards, and mounting supplies',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-004', 'Metal Frames Philippines', 'Pedro Mercado', 'pedro@metalframes.ph', '+63-83-552-3456', '+63-918-567-8901', 'www.metalframes.ph', '456-789-012-004',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-004', 'Metal Frames Philippines', 'Pedro Mercado', 'pedro@metalframes.ph', '+63-83-552-3456', '+63-918-567-8901', 'www.metalframes.ph', '456-789-012-004',
             'National Highway, Calumpang', 'General Santos City', 'South Cotabato', 'Philippines', '9500',
             'net_60', 1500000.00, 0, 'active', 'Metal moldings and frame hardware supplier',
             v_user_id, v_user_id
         ),
         -- Packaging and Hardware
         (
-            v_company_id, 'SUP-005', 'Packaging Solutions Davao', 'Ana Reyes', 'ana@packagingsolutions.ph', '+63-82-678-9012', '+63-917-678-9012', 'www.packagingsolutions.ph', '567-890-123-005',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-005', 'Packaging Solutions Davao', 'Ana Reyes', 'ana@packagingsolutions.ph', '+63-82-678-9012', '+63-917-678-9012', 'www.packagingsolutions.ph', '567-890-123-005',
             'Panacan Industrial Area', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'net_15', 300000.00, 0, 'active', 'Bubble wrap, corner protectors, and packaging materials',
             v_user_id, v_user_id
         ),
         (
-            v_company_id, 'SUP-006', 'Frame Hardware Depot', 'Carlos Ramos', 'carlos@framehardware.ph', '+63-82-789-0123', '+63-917-789-0123', 'www.framehardware.ph', '678-901-234-006',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-006', 'Frame Hardware Depot', 'Carlos Ramos', 'carlos@framehardware.ph', '+63-82-789-0123', '+63-917-789-0123', 'www.framehardware.ph', '678-901-234-006',
             'Sasa Industrial Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'cod', 100000.00, 0, 'active', 'D-rings, springs, hanging wire, and frame accessories',
             v_user_id, v_user_id
         ),
         -- Inactive Supplier
         (
-            v_company_id, 'SUP-007', 'Old Frame Trading Co.', 'Miguel Torres', 'miguel@oldframes.ph', '+63-82-000-0000', NULL, NULL, '789-012-345-007',
+            v_company_id, '00000000-0000-0000-0000-000000000100', 'SUP-007', 'Old Frame Trading Co.', 'Miguel Torres', 'miguel@oldframes.ph', '+63-82-000-0000', NULL, NULL, '789-012-345-007',
             '456 Old Market Road', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
             'cod', NULL, 0, 'inactive', 'No longer active - switched to other suppliers',
             v_user_id, v_user_id
@@ -518,12 +656,12 @@ BEGIN
 
     -- PO 1: Draft - Wood moldings order
     INSERT INTO purchase_orders (
-        company_id, order_code, supplier_id, order_date, expected_delivery_date,
+        company_id, business_unit_id, order_code, supplier_id, order_date, expected_delivery_date,
         subtotal, discount_amount, tax_amount, total_amount, status,
         delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
         payment_terms, notes, created_by, updated_by
     ) VALUES (
-        v_company_id, 'PO-2025-0001', v_supplier_davao, '2025-11-01', '2025-11-05',
+        v_company_id, '00000000-0000-0000-0000-000000000100', 'PO-2025-0001', v_supplier_davao, '2025-11-01', '2025-11-05',
         0, 0, 0, 0, 'draft',
         'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
         'Net 30 days', 'Wood moldings order for November', v_user_id, v_user_id
@@ -552,12 +690,12 @@ BEGIN
 
     -- PO 2: Approved - Glass sheets order (ready to receive)
     INSERT INTO purchase_orders (
-        company_id, order_code, supplier_id, order_date, expected_delivery_date,
+        company_id, business_unit_id, order_code, supplier_id, order_date, expected_delivery_date,
         subtotal, discount_amount, tax_amount, total_amount, status,
         delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
         payment_terms, notes, approved_by, approved_at, created_by, updated_by
     ) VALUES (
-        v_company_id, 'PO-2025-0002', v_supplier_bounty, '2025-10-25', '2025-11-02',
+        v_company_id, '00000000-0000-0000-0000-000000000100', 'PO-2025-0002', v_supplier_bounty, '2025-10-25', '2025-11-02',
         0, 0, 0, 0, 'approved',
         'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
         'Net 30 days', 'Glass sheets and matboards order', v_user_id, '2025-10-26 10:00:00', v_user_id, v_user_id
@@ -586,12 +724,12 @@ BEGIN
 
     -- PO 3: Partially Received - Packaging supplies
     INSERT INTO purchase_orders (
-        company_id, order_code, supplier_id, order_date, expected_delivery_date,
+        company_id, business_unit_id, order_code, supplier_id, order_date, expected_delivery_date,
         subtotal, discount_amount, tax_amount, total_amount, status,
         delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
         payment_terms, notes, approved_by, approved_at, created_by, updated_by
     ) VALUES (
-        v_company_id, 'PO-2025-0003', v_supplier_packaging, '2025-10-20', '2025-11-05',
+        v_company_id, '00000000-0000-0000-0000-000000000100', 'PO-2025-0003', v_supplier_packaging, '2025-10-20', '2025-11-05',
         0, 0, 0, 0, 'partially_received',
         'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
         'Net 15 days', 'Monthly packaging supplies for frames', v_user_id, '2025-10-21 09:00:00', v_user_id, v_user_id
@@ -879,48 +1017,48 @@ BEGIN
 
         -- Insert sample employees
         INSERT INTO employees (
-            company_id, employee_code, first_name, last_name, email, phone,
+            company_id, business_unit_id, employee_code, first_name, last_name, email, phone,
             role, department, hire_date, commission_rate,
             city, region_state, is_active, created_by, updated_by, user_id
         ) VALUES
         -- Admin
-        (v_company_id, 'EMP-001', 'Juan', 'Dela Cruz', 'juan.delacruz@example.com', '+63-917-1234567',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-001', 'Juan', 'Dela Cruz', 'juan.delacruz@example.com', '+63-917-1234567',
          'admin', 'Management', '2024-01-01', 5.00,
          'Davao City', 'Davao Region', true, v_user_id, v_user_id, '5745e13c-ab07-48b7-9db7-24372b16f5a9'),
 
         -- Managers
-        (v_company_id, 'EMP-002', 'Maria', 'Santos', 'maria.santos@example.com', '+63-917-2345678',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-002', 'Maria', 'Santos', 'maria.santos@example.com', '+63-917-2345678',
          'manager', 'Sales', '2024-01-15', 3.00,
          'Cagayan de Oro City', 'Northern Mindanao', true, v_user_id, v_user_id, NULL),
 
-        (v_company_id, 'EMP-003', 'Pedro', 'Reyes', 'pedro.reyes@example.com', '+63-917-3456789',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-003', 'Pedro', 'Reyes', 'pedro.reyes@example.com', '+63-917-3456789',
          'manager', 'Sales', '2024-02-01', 3.00,
          'General Santos City', 'SOCCSKSARGEN', true, v_user_id, v_user_id, NULL),
         -- Sales Agents
-        (v_company_id, 'EMP-004', 'Ana', 'Garcia', 'ana.garcia@example.com', '+63-917-4567890',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-004', 'Ana', 'Garcia', 'ana.garcia@example.com', '+63-917-4567890',
          'sales_agent', 'Sales', '2024-03-01', 5.00,
          'Davao City', 'Davao Region', true, v_user_id, v_user_id, NULL),
-        (v_company_id, 'EMP-005', 'Roberto', 'Cruz', 'roberto.cruz@example.com', '+63-917-5678901',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-005', 'Roberto', 'Cruz', 'roberto.cruz@example.com', '+63-917-5678901',
          'sales_agent', 'Sales', '2024-03-01', 5.00,
          'Tagum City', 'Davao Region', true, v_user_id, v_user_id, NULL),
 
-        (v_company_id, 'EMP-006', 'Linda', 'Ramos', 'linda.ramos@example.com', '+63-917-6789012',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-006', 'Linda', 'Ramos', 'linda.ramos@example.com', '+63-917-6789012',
          'sales_agent', 'Sales', '2024-03-15', 6.00,
          'Cagayan de Oro City', 'Northern Mindanao', true, v_user_id, v_user_id, NULL),
 
-        (v_company_id, 'EMP-007', 'Carlos', 'Mendoza', 'carlos.mendoza@example.com', '+63-917-7890123',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-007', 'Carlos', 'Mendoza', 'carlos.mendoza@example.com', '+63-917-7890123',
          'sales_agent', 'Sales', '2024-04-01', 5.50,
          'Iligan City', 'Northern Mindanao', true, v_user_id, v_user_id, NULL),
 
-        (v_company_id, 'EMP-008', 'Sofia', 'Torres', 'sofia.torres@example.com', '+63-917-8901234',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-008', 'Sofia', 'Torres', 'sofia.torres@example.com', '+63-917-8901234',
          'sales_agent', 'Sales', '2024-04-01', 7.00,
          'General Santos City', 'SOCCSKSARGEN', true, v_user_id, v_user_id, NULL),
 
-        (v_company_id, 'EMP-009', 'Miguel', 'Flores', 'miguel.flores@example.com', '+63-917-9012345',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-009', 'Miguel', 'Flores', 'miguel.flores@example.com', '+63-917-9012345',
          'sales_agent', 'Sales', '2024-04-15', 5.00,
          'Zamboanga City', 'Zamboanga Peninsula', true, v_user_id, v_user_id, 'bcb8f5df-b678-4c22-ba71-59b33ba06227'),
 
-        (v_company_id, 'EMP-010', 'Elena', 'Diaz', 'elena.diaz@example.com', '+63-917-0123456',
+        (v_company_id, '00000000-0000-0000-0000-000000000100', 'EMP-010', 'Elena', 'Diaz', 'elena.diaz@example.com', '+63-917-0123456',
          'sales_agent', 'Sales', '2024-05-01', 6.50,
          'Butuan City', 'Caraga', true, v_user_id, v_user_id, NULL);
 

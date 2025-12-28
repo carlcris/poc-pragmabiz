@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postAPBill } from '@/services/accounting/apPosting'
 
@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     const { id: purchaseOrderId } = await params
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication
@@ -21,6 +21,13 @@ export async function POST(
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Get user's company
@@ -91,6 +98,7 @@ export async function POST(
       .from('purchase_receipts')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         receipt_code: receiptCode,
         purchase_order_id: po.id,
         supplier_id: po.supplier_id,
@@ -153,29 +161,18 @@ export async function POST(
     }
 
     // Create stock IN transaction
-    // Generate stock transaction code (ST-YYYY-NNNN)
-    const { data: lastStockTx } = await supabase
-      .from('stock_transactions')
-      .select('transaction_code')
-      .eq('company_id', userData.company_id)
-      .like('transaction_code', `ST-${currentYear}-%`)
-      .order('transaction_code', { ascending: false })
-      .limit(1)
-
-    let nextStockTxNum = 1
-    if (lastStockTx && lastStockTx.length > 0) {
-      const match = lastStockTx[0].transaction_code.match(/ST-\d+-(\d+)/)
-      if (match) {
-        nextStockTxNum = parseInt(match[1]) + 1
-      }
-    }
-    const stockTxCode = `ST-${currentYear}-${String(nextStockTxNum).padStart(4, '0')}`
+    // Generate stock transaction code with timestamp to avoid duplicates
+    const now = new Date()
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
+    const milliseconds = now.getTime().toString().slice(-4)
+    const stockTxCode = `ST-${dateStr}${milliseconds}`
 
     // Create stock transaction header
     const { data: stockTransaction, error: stockTxError } = await supabase
       .from('stock_transactions')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         transaction_code: stockTxCode,
         transaction_type: 'in',
         transaction_date: body.receiptDate || new Date().toISOString().split('T')[0],

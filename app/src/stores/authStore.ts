@@ -111,10 +111,11 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         try {
           set({ isLoading: true });
 
-          // Check Supabase session instead of custom token
-          const { data: { session }, error } = await supabase.auth.getSession();
+          // SECURITY: Use getUser() to verify JWT authenticity with Supabase Auth server
+          // Do NOT use getSession() as it reads from cookies without verification
+          const { data: { user }, error } = await supabase.auth.getUser();
 
-          if (error || !session) {
+          if (error || !user) {
             set({
               user: null,
               token: null,
@@ -129,25 +130,28 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('company_id')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
           if (userError) {
             console.error('Error fetching user data:', userError);
           }
 
+          // Get session to access the access token (safe to use for token only)
+          const { data: { session } } = await supabase.auth.getSession();
+
           // Map Supabase user to our User type
-          const user: User = {
-            id: session.user.id,
-            email: session.user.email!,
-            name: session.user.user_metadata?.full_name || session.user.email!,
-            role: session.user.user_metadata?.role || "user",
+          const mappedUser: User = {
+            id: user.id,
+            email: user.email!,
+            name: user.user_metadata?.full_name || user.email!,
+            role: user.user_metadata?.role || "user",
             companyId: userData?.company_id || "",
           };
 
           set({
-            user,
-            token: session.access_token,
+            user: mappedUser,
+            token: session?.access_token || null,
             isAuthenticated: true,
             isLoading: false,
             error: null,

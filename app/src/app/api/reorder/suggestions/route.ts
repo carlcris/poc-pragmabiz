@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/reorder/suggestions
@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // NOTE: This feature requires reorder management tables that haven't been set up yet
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {

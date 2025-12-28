@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postARInvoice } from '@/services/accounting/arPosting'
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
@@ -10,7 +10,7 @@ export async function POST(
 ) {
   try {
     const { id: salesOrderId } = await params
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication
@@ -21,6 +21,13 @@ export async function POST(
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Validate warehouse_id from request body
@@ -145,6 +152,7 @@ export async function POST(
       .from('sales_invoices')
       .insert({
         company_id: salesOrder.company_id,
+        business_unit_id: currentBusinessUnitId,
         invoice_code: invoiceNumber,
         customer_id: salesOrder.customer_id,
         warehouse_id: body.warehouseId,
@@ -240,6 +248,7 @@ export async function POST(
       .from('stock_transactions')
       .insert({
         company_id: salesOrder.company_id,
+        business_unit_id: currentBusinessUnitId,
         transaction_code: transactionCode,
         transaction_type: 'out',
         transaction_date: today.toISOString().split('T')[0],

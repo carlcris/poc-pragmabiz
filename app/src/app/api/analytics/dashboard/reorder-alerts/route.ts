@@ -6,11 +6,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user and company
     const {

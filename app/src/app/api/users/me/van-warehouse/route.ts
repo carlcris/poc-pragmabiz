@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -76,7 +76,7 @@ export async function GET() {
 // Endpoint to assign/unassign van warehouse to user
 export async function PATCH(request: Request) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();

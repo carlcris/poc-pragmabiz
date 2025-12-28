@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/quotations/[id]/convert-to-sales-order
@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id: quotationId } = await params
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -18,6 +18,13 @@ export async function POST(
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Step 1: Fetch quotation details with items
@@ -102,6 +109,7 @@ export async function POST(
       .from('sales_orders')
       .insert({
         company_id: quotation.company_id,
+        business_unit_id: currentBusinessUnitId,
         order_code: orderNumber,
         customer_id: quotation.customer_id,
         quotation_id: quotationId,

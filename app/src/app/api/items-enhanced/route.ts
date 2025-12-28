@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 export interface ItemWithStock {
@@ -27,7 +27,7 @@ export interface ItemWithStock {
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {

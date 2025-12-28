@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/invoices/[id]
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -127,7 +127,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -271,7 +271,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {

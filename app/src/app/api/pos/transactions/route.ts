@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { postPOSSale, calculatePOSCOGS, postPOSCOGS } from '@/services/accounting/posPosting';
 import { createPOSStockTransaction } from '@/services/inventory/posStockService';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log('=== POS POST HANDLER CALLED ===');
   try {
-    const supabase = await createClient();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -204,6 +204,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
+      );
+    }
+
+    // Check business unit context
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
       );
     }
 
@@ -283,6 +291,7 @@ export async function POST(request: NextRequest) {
       .from('pos_transactions')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         transaction_code: transactionCode,
         transaction_date: new Date().toISOString(),
         customer_id: customerId,
@@ -394,6 +403,7 @@ export async function POST(request: NextRequest) {
 
         const stockResult = await createPOSStockTransaction(
           userData.company_id,
+          currentBusinessUnitId,
           user.id,
           {
             transactionId: transaction.id,

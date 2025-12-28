@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { SalesOrder, SalesOrderLineItem, CreateSalesOrderRequest } from '@/types/sales-order'
 import type { Database } from '@/types/database.types'
@@ -76,7 +76,7 @@ function transformDbSalesOrderItem(
 // GET /api/sales-orders - List sales orders with filters
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -228,7 +228,7 @@ export async function GET(request: NextRequest) {
 // POST /api/sales-orders - Create new sales order
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -238,6 +238,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     const body = await request.json()
@@ -300,11 +307,13 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = subtotal - totalDiscount + totalTax
 
+    // business_unit_id from JWT - set by auth hook
     // Create order header (status will default to 'draft' from database)
     const { data: order, error: orderError } = await supabase
       .from('sales_orders')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         order_code: orderNumber,
         order_date: orderData.orderDate,
         customer_id: orderData.customerId,

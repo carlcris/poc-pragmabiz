@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/purchase-orders
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
     // Check authentication
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
 // POST /api/purchase-orders
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication
@@ -182,6 +182,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Get user's company
@@ -249,6 +256,7 @@ export async function POST(request: NextRequest) {
       .from('purchase_orders')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         order_code: orderCode,
         supplier_id: body.supplierId,
         order_date: body.orderDate || new Date().toISOString().split('T')[0],

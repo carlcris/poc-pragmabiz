@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
@@ -8,7 +8,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -29,6 +29,14 @@ export async function POST(
 
     if (!userData?.company_id) {
       return NextResponse.json({ error: 'User company not found' }, { status: 400 })
+    }
+
+    // Validate business unit context
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Fetch adjustment with items
@@ -62,24 +70,11 @@ export async function POST(
       return NextResponse.json({ error: 'No items found for this adjustment' }, { status: 400 })
     }
 
-    // Generate stock transaction code (ST-YYYY-NNNN)
-    const currentYear = new Date().getFullYear()
-    const { data: lastStockTx } = await supabase
-      .from('stock_transactions')
-      .select('transaction_code')
-      .eq('company_id', userData.company_id)
-      .like('transaction_code', `ST-${currentYear}-%`)
-      .order('transaction_code', { ascending: false })
-      .limit(1)
-
-    let nextStockTxNum = 1
-    if (lastStockTx && lastStockTx.length > 0) {
-      const match = lastStockTx[0].transaction_code.match(/ST-\d+-(\d+)/)
-      if (match) {
-        nextStockTxNum = parseInt(match[1]) + 1
-      }
-    }
-    const stockTxCode = `ST-${currentYear}-${String(nextStockTxNum).padStart(4, '0')}`
+    // Generate stock transaction code with timestamp to avoid duplicates
+    const now = new Date()
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
+    const milliseconds = now.getTime().toString().slice(-4)
+    const stockTxCode = `ST-${dateStr}${milliseconds}`
 
     // Determine transaction type based on adjustment type
     let transactionType: 'in' | 'out'
@@ -98,6 +93,7 @@ export async function POST(
       .from('stock_transactions')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         transaction_code: stockTxCode,
         transaction_type: transactionType,
         transaction_date: adjustment.adjustment_date,

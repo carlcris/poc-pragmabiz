@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/suppliers
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
     // Check authentication
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
 // POST /api/suppliers
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication
@@ -127,6 +127,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Get user's company
@@ -159,11 +166,13 @@ export async function POST(request: NextRequest) {
       supplierCode = `SUP-${String(nextNum).padStart(3, '0')}`
     }
 
+    // business_unit_id from JWT - set by auth hook
     // Create supplier
     const { data: supplier, error: supplierError } = await supabase
       .from('suppliers')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         supplier_code: supplierCode,
         supplier_name: body.name,
         contact_person: body.contactPerson,

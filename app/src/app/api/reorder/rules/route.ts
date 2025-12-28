@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/reorder/rules
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
     // Check authentication
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
 // POST /api/reorder/rules
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication

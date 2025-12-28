@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { AccountLedger, LedgerEntry, Account } from "@/types/accounting";
 
 /**
@@ -20,7 +20,7 @@ import type { AccountLedger, LedgerEntry, Account } from "@/types/accounting";
  */
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user's company
     const {

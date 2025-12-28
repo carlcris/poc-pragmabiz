@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postARPayment } from '@/services/accounting/arPosting'
 
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { id: invoiceId } = await params
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -75,7 +75,7 @@ export async function POST(
   try {
     const { id: invoiceId } = await params
     const body = await request.json()
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {

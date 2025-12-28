@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { postARInvoice, postARPayment } from '@/services/accounting/arPosting';
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting';
@@ -25,12 +25,19 @@ interface ProcessPaymentRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     const body: ProcessPaymentRequest = await request.json();
@@ -155,6 +162,7 @@ export async function POST(request: NextRequest) {
       .from('sales_orders')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         order_code: orderNumber,
         order_date: today,
         customer_id: body.customerId,
@@ -240,6 +248,7 @@ export async function POST(request: NextRequest) {
       .from('sales_invoices')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         invoice_code: invoiceNumber,
         customer_id: body.customerId,
         sales_order_id: salesOrder.id,
@@ -327,6 +336,7 @@ export async function POST(request: NextRequest) {
         .from('invoice_payments')
         .insert({
           company_id: userData.company_id,
+          business_unit_id: currentBusinessUnitId,
           invoice_id: invoice.id,
           payment_code: paymentCode,
           payment_date: today,
@@ -401,6 +411,7 @@ export async function POST(request: NextRequest) {
       .from('stock_transactions')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         transaction_code: transactionCode,
         transaction_type: 'out',
         transaction_date: invoice.invoice_date,

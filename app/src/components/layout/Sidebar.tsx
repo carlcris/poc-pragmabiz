@@ -15,6 +15,7 @@ import {
   Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
 
 const menuItems = [
   {
@@ -40,8 +41,8 @@ const menuItems = [
     icon: ShoppingCart,
     href: "/sales",
     children: [
-      //{ title: "Point of Sale", href: "/sales/pos" },
-      //{ title: "POS Transactions", href: "/sales/pos/transactions" },
+      { title: "Point of Sale", href: "/sales/pos" },
+      { title: "POS Transactions", href: "/sales/pos/transactions" },
       { title: "Customers", href: "/sales/customers" },
       { title: "Quotations", href: "/sales/quotations" },
       { title: "Sales Orders", href: "/sales/orders" },
@@ -58,17 +59,17 @@ const menuItems = [
       { title: "Purchase Receipts", href: "/purchasing/receipts" },
     ],
   },
-  // {
-  //   title: "Accounting",
-  //   icon: Calculator,
-  //   href: "/accounting",
-  //   children: [
-  //     { title: "Chart of Accounts", href: "/accounting/chart-of-accounts" },
-  //     { title: "Journal Entries", href: "/accounting/journals" },
-  //     { title: "General Ledger", href: "/accounting/ledger" },
-  //     { title: "Trial Balance", href: "/accounting/trial-balance" },
-  //   ],
-  // },
+  {
+    title: "Accounting",
+    icon: Calculator,
+    href: "/accounting",
+    children: [
+      { title: "Chart of Accounts", href: "/accounting/chart-of-accounts" },
+      { title: "Journal Entries", href: "/accounting/journals" },
+      { title: "General Ledger", href: "/accounting/ledger" },
+      { title: "Trial Balance", href: "/accounting/trial-balance" },
+    ],
+  },
   {
     title: "Reports",
     icon: FileText,
@@ -112,6 +113,11 @@ export function Sidebar() {
           <h1 className="text-xl font-bold text-white">PragmaBiz</h1>
           <p className="text-xs text-gray-400">Business Solution</p>
         </div>
+      </div>
+
+      {/* Business Unit Switcher */}
+      <div className="p-3 border-b border-white/10">
+        <BusinessUnitSwitcher />
       </div>
 
       <nav className="px-3 space-y-1 overflow-y-auto flex-1 pb-6">

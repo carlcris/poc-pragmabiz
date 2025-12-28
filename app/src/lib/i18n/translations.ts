@@ -72,6 +72,7 @@ export type TranslationKeys = {
     order: string;
     orders: string;
     newTransformation: string;
+    newTemplate: string;
     transformationOrder: string;
     transformationTemplate: string;
     inputMaterials: string;
@@ -193,6 +194,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       order: 'Order',
       orders: 'Orders',
       newTransformation: 'New Transformation',
+      newTemplate: 'New Template',
       transformationOrder: 'Transformation Order',
       transformationTemplate: 'Transformation Template',
       inputMaterials: 'Input Materials',
@@ -312,6 +314,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       order: 'Orden',
       orders: 'Órdenes',
       newTransformation: 'Nueva Transformación',
+      newTemplate: 'Nueva Plantilla',
       transformationOrder: 'Orden de Transformación',
       transformationTemplate: 'Plantilla de Transformación',
       inputMaterials: 'Materiales de Entrada',
@@ -431,6 +434,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       order: 'Commande',
       orders: 'Commandes',
       newTransformation: 'Nouvelle Transformation',
+      newTemplate: 'Nouveau Modèle',
       transformationOrder: 'Ordre de Transformation',
       transformationTemplate: 'Modèle de Transformation',
       inputMaterials: 'Matériaux d\'Entrée',
@@ -550,6 +554,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       order: 'Auftrag',
       orders: 'Aufträge',
       newTransformation: 'Neue Transformation',
+      newTemplate: 'Neue Vorlage',
       transformationOrder: 'Transformationsauftrag',
       transformationTemplate: 'Transformationsvorlage',
       inputMaterials: 'Eingangsmaterialien',
@@ -669,6 +674,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       order: '订单',
       orders: '订单',
       newTransformation: '新转换',
+      newTemplate: '新模板',
       transformationOrder: '转换订单',
       transformationTemplate: '转换模板',
       inputMaterials: '输入材料',
@@ -788,6 +794,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       order: '注文',
       orders: '注文',
       newTransformation: '新しい変換',
+      newTemplate: '新しいテンプレート',
       transformationOrder: '変換注文',
       transformationTemplate: '変換テンプレート',
       inputMaterials: '入力材料',

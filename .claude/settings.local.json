@@ -46,7 +46,14 @@
       "Bash(done)",
       "Bash(npx eslint:*)",
       "Read(//Users/carl/.npm/_logs/**)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(while read file)",
+      "Bash(do if grep -q \"import { createClient } from ''''@/lib/supabase/server''''\" \"$file\")",
+      "Bash(then sed -i '' \"s|import { createClient } from ''''@/lib/supabase/server''''|import { createServerClientWithBU } from ''''@/lib/supabase/server-with-bu''''|g\" \"$file\" echo \"Updated import in: $file\" fi done)",
+      "Bash(/Users/carl/workspace/react-app/poc-pragmabiz/app/update_imports.sh)",
+      "Bash(/Users/carl/workspace/react-app/poc-pragmabiz/app/update_function_calls.sh)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run:*)"
     ],
     "deny": [],
     "ask": []

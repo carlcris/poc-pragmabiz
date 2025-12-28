@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransformationOrderSchema } from '@/lib/validations/transformation-order';
 import { validateTemplate } from '@/services/inventory/transformationService';
@@ -6,7 +6,7 @@ import { validateTemplate } from '@/services/inventory/transformationService';
 // GET /api/transformations/orders - List transformation orders
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const searchParams = request.nextUrl.searchParams;
 
     // Check authentication
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log('=== POST /api/transformations/orders called ===');
   try {
-    const supabase = await createClient();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -130,6 +130,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Get user's company
@@ -205,6 +212,7 @@ export async function POST(request: NextRequest) {
       .from('transformation_orders')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         order_code: orderCode,
         template_id: data.templateId,
         source_warehouse_id: data.warehouseId,

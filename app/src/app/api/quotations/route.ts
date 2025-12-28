@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Quotation, QuotationLineItem, CreateQuotationRequest } from '@/types/quotation'
 import type { Database } from '@/types/database.types'
@@ -71,7 +71,7 @@ function transformDbQuotationItem(
 // GET /api/quotations - List quotations with filters
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
 // POST /api/quotations - Create new quotation
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -230,6 +230,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Get user's company_id from users table
@@ -317,11 +324,13 @@ export async function POST(request: NextRequest) {
 
     const totalAmount = subtotal - totalDiscount + totalTax
 
+    // business_unit_id from JWT - set by auth hook
     // Create quotation header
     const { data: quotation, error: quotationError } = await supabase
       .from('sales_quotations')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         quotation_code: quotationCode,
         quotation_date: body.quotationDate,
         customer_id: body.customerId,

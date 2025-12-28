@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postARInvoice } from '@/services/accounting/arPosting'
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
@@ -10,7 +10,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
     const { id } = await params
 
     // Check authentication

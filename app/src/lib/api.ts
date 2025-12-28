@@ -11,6 +11,7 @@ export class ApiClient {
 
   private getHeaders(): HeadersInit {
     const token = useAuthStore.getState().token;
+
     const headers: HeadersInit = {
       "Content-Type": "application/json",
     };

@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { ItemPrice, CreateItemPriceInput } from "@/types/item-variant";
 
 type RouteContext = {
@@ -24,7 +24,7 @@ export async function GET(
   context: RouteContext
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { variantId } = await context.params;
 
     // Get current user and company
@@ -122,7 +122,7 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { variantId } = await context.params;
     const body: CreateItemPriceInput = await request.json();
 

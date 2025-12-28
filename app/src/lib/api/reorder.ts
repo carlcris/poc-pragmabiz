@@ -94,7 +94,7 @@ export const reorderApi = {
   getReorderAlerts: async (params?: ApiQueryParams) => {
     const queryString = params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : '';
     const response = await apiClient.get<PaginatedResponse<ReorderAlert>>(`/api/reorder/alerts${queryString}`);
-    return response.data;
+    return response;
   },
 
   acknowledgeAlerts: async (data: AcknowledgeAlertInput) => {
@@ -105,7 +105,7 @@ export const reorderApi = {
   // Statistics
   getReorderStatistics: async () => {
     const response = await apiClient.get<ReorderStatistics>("/api/reorder/statistics");
-    return response.data;
+    return response;
   },
 
   // Generate suggestions manually

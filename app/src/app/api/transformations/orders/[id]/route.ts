@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateTransformationOrderSchema } from '@/lib/validations/transformation-order';
 
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
     // Check authentication
@@ -85,7 +85,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
     // Check authentication
@@ -184,7 +184,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
     // Check authentication

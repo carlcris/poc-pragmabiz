@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransformationTemplateSchema } from '@/lib/validations/transformation-template';
 import { checkTemplateLock } from '@/services/inventory/transformationService';
@@ -6,7 +6,7 @@ import { checkTemplateLock } from '@/services/inventory/transformationService';
 // GET /api/transformations/templates - List transformation templates
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
     const searchParams = request.nextUrl.searchParams;
 
     // Check authentication
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log('=== POST /api/transformations/templates called ===');
   try {
-    const supabase = await createClient();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -154,6 +154,14 @@ export async function POST(request: NextRequest) {
 
     if (!userData?.company_id) {
       return NextResponse.json({ error: 'User company not found' }, { status: 400 });
+    }
+
+    // Validate business unit context
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      );
     }
 
     // Parse and validate request body
@@ -206,6 +214,7 @@ export async function POST(request: NextRequest) {
       .from('transformation_templates')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         template_code: data.templateCode,
         template_name: data.templateName,
         description: data.description,

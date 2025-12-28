@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 
 type RouteContext = {
   params: Promise<{
@@ -15,7 +15,7 @@ export const DELETE = async (
 ) => {
   try {
     const { id, territoryId } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user
     const {
@@ -85,7 +85,7 @@ export const PUT = async (
 ) => {
   try {
     const { id, territoryId } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user
     const {

@@ -96,7 +96,7 @@ export default function TransformationTemplatesPage() {
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          {t.transformation.newTransformation}
+          {t.transformation.newTemplate}
         </Button>
       </div>
 

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 
 // GET /api/analytics/sales/by-location - Location breakdown
 export const GET = async (req: NextRequest) => {
   try {
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;

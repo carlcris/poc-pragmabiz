@@ -31,6 +31,7 @@ export type POSStockTransactionData = {
  */
 export async function createPOSStockTransaction(
   companyId: string,
+  businessUnitId: string,
   userId: string,
   data: POSStockTransactionData
 ): Promise<{ success: boolean; stockTransactionId?: string; error?: string }> {
@@ -45,6 +46,7 @@ export async function createPOSStockTransaction(
       .from("stock_transactions")
       .insert({
         company_id: companyId,
+        business_unit_id: businessUnitId,
         transaction_code: stockTransactionCode,
         transaction_type: "out",
         transaction_date: data.transactionDate.split("T")[0], // Extract date only
@@ -190,6 +192,7 @@ export async function createPOSStockTransaction(
  */
 export async function reversePOSStockTransaction(
   companyId: string,
+  businessUnitId: string,
   userId: string,
   transactionId: string,
   transactionCode: string,
@@ -223,6 +226,7 @@ export async function reversePOSStockTransaction(
       .from("stock_transactions")
       .insert({
         company_id: companyId,
+        business_unit_id: businessUnitId,
         transaction_code: reversalCode,
         transaction_type: "in", // Opposite of 'out'
         transaction_date: new Date().toISOString().split("T")[0], // Current date for reversal

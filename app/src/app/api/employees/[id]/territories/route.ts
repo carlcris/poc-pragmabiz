@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 
 type RouteContext = {
   params: Promise<{
@@ -14,7 +14,7 @@ export const GET = async (
 ) => {
   try {
     const { id } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     const { data, error } = await supabase
       .from("employee_distribution_locations")
@@ -49,7 +49,7 @@ export const POST = async (
 ) => {
   try {
     const { id } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user
     const {

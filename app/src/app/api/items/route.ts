@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Item, CreateItemRequest } from '@/types/item'
 import type { Database } from '@/types/database.types'
@@ -38,7 +38,7 @@ function transformDbItem(
 // GET /api/items - List items with filters
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
 // POST /api/items - Create new item
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {

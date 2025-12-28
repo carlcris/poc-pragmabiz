@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { UpdateAccountRequest } from "@/types/accounting";
 
 type RouteContext = {
@@ -25,7 +25,7 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user's company
     const {
@@ -90,7 +90,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user
     const {
@@ -232,7 +232,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params;
-    const supabase = await createClient();
+    const { supabase } = await createServerClientWithBU();
 
     // Get current user
     const {
