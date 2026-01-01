@@ -1,7 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { setQueryClient } from "@/stores/authStore";
 
 export function ReactQueryProvider({
   children,
@@ -21,6 +22,11 @@ export function ReactQueryProvider({
         },
       })
   );
+
+  // Register query client with auth store for logout cleanup
+  useEffect(() => {
+    setQueryClient(queryClient);
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>

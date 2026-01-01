@@ -73,7 +73,7 @@ export function ImageUpload({
       onChange(data.imageUrl);
       setPreview(data.imageUrl);
     } catch (error) {
-      console.error("Upload error:", error);
+
       alert(error instanceof Error ? error.message : "Failed to upload image");
       setPreview(value);
     } finally {
@@ -96,7 +96,7 @@ export function ImageUpload({
         });
       }
     } catch (error) {
-      console.error("Delete error:", error);
+
     }
 
     setPreview(undefined);

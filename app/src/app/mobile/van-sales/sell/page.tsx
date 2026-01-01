@@ -259,7 +259,7 @@ export default function SellPage() {
         variant: "success",
       });
     } catch (error) {
-      console.error("Error processing payment:", error);
+
       setAlertState({
         open: true,
         title: "Payment Failed",

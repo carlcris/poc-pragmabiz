@@ -10,6 +10,7 @@ import type { BusinessUnitWithAccess } from '@/types/business-unit';
 
 export async function GET(request: NextRequest) {
   try {
+    // Note: No permission check - all authenticated users need to see their business units
     const supabase = await createClient();
 
     // Get current user
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id);
 
     if (accessError) {
-      console.error('Error fetching business units:', accessError);
+
       return NextResponse.json(
         { error: 'Failed to fetch business units' },
         { status: 500 }
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
       data: businessUnits,
     });
   } catch (error) {
-    console.error('Unexpected error in business units API:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

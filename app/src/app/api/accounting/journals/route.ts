@@ -19,6 +19,8 @@ import {
   validateJournalEntry,
   calculateJournalTotals,
 } from "@/services/accounting/journalValidation";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // Helper function to transform database records to TypeScript types
 function transformJournalEntry(entry: any): JournalEntryWithLines {
@@ -85,6 +87,9 @@ function transformJournalEntry(entry: any): JournalEntryWithLines {
  */
 export async function GET(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Get current user's company
@@ -179,7 +184,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error("Error fetching journal entries:", error);
+
       return NextResponse.json(
         { error: "Failed to fetch journal entries" },
         { status: 500 }
@@ -214,7 +219,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Unexpected error in GET /api/accounting/journals:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -228,6 +233,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Get current user
@@ -330,7 +338,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (codeError || !journalCodeResult) {
-      console.error("Error getting next journal code:", codeError);
+
       return NextResponse.json(
         { error: "Failed to generate journal code" },
         { status: 500 }
@@ -361,7 +369,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating journal entry:", journalError);
+
       return NextResponse.json(
         { error: "Failed to create journal entry" },
         { status: 500 }
@@ -392,7 +400,6 @@ export async function POST(request: NextRequest) {
         .delete()
         .eq("id", journalEntry.id);
 
-      console.error("Error creating journal lines:", linesError);
       return NextResponse.json(
         { error: "Failed to create journal lines" },
         { status: 500 }
@@ -415,7 +422,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (fetchError) {
-      console.error("Error fetching complete journal entry:", fetchError);
+
       return NextResponse.json(
         { error: "Journal created but failed to fetch complete data" },
         { status: 500 }
@@ -427,7 +434,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: transformedEntry }, { status: 201 });
   } catch (error) {
-    console.error("Unexpected error in POST /api/accounting/journals:", error);
 
     // Check if error is our custom account resolution error
     if (error instanceof Error && error.message.includes("Account not found")) {

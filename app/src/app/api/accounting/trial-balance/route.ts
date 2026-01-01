@@ -11,6 +11,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { TrialBalance, TrialBalanceRow, Account } from "@/types/accounting";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 /**
  * GET /api/accounting/trial-balance
@@ -18,6 +20,9 @@ import type { TrialBalance, TrialBalanceRow, Account } from "@/types/accounting"
  */
 export async function GET(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.GENERAL_LEDGER, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Get current user's company
@@ -65,7 +70,7 @@ export async function GET(request: NextRequest) {
       .order("sort_order", { ascending: true });
 
     if (accountsError) {
-      console.error("Error fetching accounts:", accountsError);
+
       return NextResponse.json(
         { error: "Failed to fetch accounts" },
         { status: 500 }
@@ -126,7 +131,7 @@ export async function GET(request: NextRequest) {
         .is("journal_entries.deleted_at", null);
 
       if (linesError) {
-        console.error("Error fetching journal lines:", linesError);
+
         continue; // Skip this account if there's an error
       }
 
@@ -217,7 +222,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: trialBalance });
   } catch (error) {
-    console.error("Unexpected error in GET /api/accounting/trial-balance:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -351,13 +351,13 @@ export default function StockAdjustmentsPage() {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching stock quantity:', error);
+
         return 0;
       }
 
       return data ? parseFloat(data.current_stock) : 0;
     } catch (error) {
-      console.error('Error fetching stock quantity:', error);
+
       return 0;
     }
   };
@@ -393,7 +393,7 @@ export default function StockAdjustmentsPage() {
       setLineItems([]);
       form.reset();
     } catch (error) {
-      console.error("Error saving adjustment:", error);
+
     }
   };
 

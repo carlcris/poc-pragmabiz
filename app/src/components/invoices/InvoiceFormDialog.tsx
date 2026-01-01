@@ -169,7 +169,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
       }
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to save invoice:", error);
+
     }
   };
 

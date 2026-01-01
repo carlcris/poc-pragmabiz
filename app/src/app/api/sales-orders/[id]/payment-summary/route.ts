@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/sales-orders/[id]/payment-summary
 export async function GET(
@@ -7,6 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'view')
+    if (unauthorized) return unauthorized
+
     const { id: salesOrderId } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -40,7 +46,7 @@ export async function GET(
       .is('deleted_at', null)
 
     if (invoicesError) {
-      console.error('Error fetching invoices:', invoicesError)
+
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
@@ -66,7 +72,7 @@ export async function GET(
       .order('payment_date', { ascending: false })
 
     if (paymentsError) {
-      console.error('Error fetching payments:', paymentsError)
+
       return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 })
     }
 
@@ -107,7 +113,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/sales-orders/[id]/payment-summary:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

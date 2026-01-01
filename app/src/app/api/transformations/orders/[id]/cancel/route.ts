@@ -1,6 +1,8 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateStateTransition } from '@/services/inventory/transformationService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // POST /api/transformations/orders/[id]/cancel - Cancel order (DRAFT or PREPARING → CANCELLED)
 export async function POST(
@@ -8,6 +10,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -55,7 +60,7 @@ export async function POST(
       .single();
 
     if (updateError || !order) {
-      console.error('Error cancelling order:', updateError);
+
       return NextResponse.json(
         { error: updateError?.message || 'Failed to cancel order' },
         { status: 500 }
@@ -67,7 +72,7 @@ export async function POST(
       message: 'Order cancelled successfully',
     });
   } catch (error) {
-    console.error('Error in POST /api/transformations/orders/[id]/cancel:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

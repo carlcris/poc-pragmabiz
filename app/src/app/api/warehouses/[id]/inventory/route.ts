@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
+import { requireLookupDataAccess } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'warehouses' view permission, OR
+    // 2. Permission to a feature that depends on warehouses (van_sales, stock_transfers, etc.)
+    const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES);
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -72,7 +81,7 @@ export async function GET(
 
     // Fail early if inventory fetch failed
     if (inventoryError) {
-      console.error('Error fetching inventory:', inventoryError);
+
       return NextResponse.json(
         { error: 'Failed to fetch inventory' },
         { status: 500 }
@@ -96,7 +105,6 @@ export async function GET(
     }
 
     if (uomError) {
-      console.warn('UOM fetch error (continuing):', uomError);
     }
 
     const uomMap = new Map((uomsData || []).map((uom: any) => [uom.id, uom.name]));
@@ -125,9 +133,6 @@ export async function GET(
       return an;
     });
 
-    console.log('Inventory data count:', inventory.length);
-    console.log('Sample item:', inventory[0]);
-
     return NextResponse.json({
       data: {
         warehouse: {
@@ -149,7 +154,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

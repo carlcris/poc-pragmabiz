@@ -9,6 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from "@/lib/auth";
+import { RESOURCES } from "@/constants/resources";
 import type { ItemPackaging, UpdateItemPackagingInput } from "@/types/item-variant";
 
 type RouteContext = {
@@ -24,6 +26,10 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { variantId, packagingId } = await context.params;
     const body: UpdateItemPackagingInput = await request.json();
@@ -121,7 +127,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error("Error updating packaging:", updateError);
+
       return NextResponse.json(
         { error: "Failed to update packaging" },
         { status: 500 }
@@ -149,7 +155,7 @@ export async function PUT(
 
     return NextResponse.json({ data: transformedPackaging });
   } catch (error) {
-    console.error("Unexpected error in PUT /api/items/[id]/variants/[variantId]/packaging/[packagingId]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -166,6 +172,10 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'delete');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { variantId, packagingId } = await context.params;
 
@@ -223,7 +233,7 @@ export async function DELETE(
       .eq("id", packagingId);
 
     if (deleteError) {
-      console.error("Error deleting packaging:", deleteError);
+
       return NextResponse.json(
         { error: "Failed to delete packaging" },
         { status: 500 }
@@ -232,7 +242,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Packaging deleted successfully" });
   } catch (error) {
-    console.error("Unexpected error in DELETE /api/items/[id]/variants/[variantId]/packaging/[packagingId]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

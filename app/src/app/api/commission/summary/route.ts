@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // GET /api/commission/summary - Get commission summary statistics
 export const GET = async (req: NextRequest) => {
   try {
+    await requirePermission(RESOURCES.COMMISSIONS, 'view');
+
     const { supabase } = await createServerClientWithBU();
 
     // Get query parameters
@@ -52,7 +56,7 @@ export const GET = async (req: NextRequest) => {
     const { data: commissions, error } = await query;
 
     if (error) {
-      console.error("Error fetching commissions:", error);
+
       return NextResponse.json(
         { error: "Failed to fetch commission data", details: error.message },
         { status: 500 }
@@ -106,7 +110,7 @@ export const GET = async (req: NextRequest) => {
       })) || [],
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

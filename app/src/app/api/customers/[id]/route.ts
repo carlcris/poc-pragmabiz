@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Customer, UpdateCustomerRequest } from '@/types/customer'
 import type { Database } from '@/types/database.types'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbCustomer = Database['public']['Tables']['customers']['Row']
 
@@ -47,6 +49,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.CUSTOMERS, 'view')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const supabase = await createClient()
 
@@ -71,13 +77,13 @@ export async function GET(
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Customer not found' }, { status: 404 })
       }
-      console.error('Error fetching customer:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(transformDbCustomer(data))
   } catch (error) {
-    console.error('Error in GET /api/customers/[id]:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -91,6 +97,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.CUSTOMERS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const supabase = await createClient()
 
@@ -188,13 +198,13 @@ export async function PUT(
       .single()
 
     if (error) {
-      console.error('Error updating customer:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(transformDbCustomer(data))
   } catch (error) {
-    console.error('Error in PUT /api/customers/[id]:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -208,6 +218,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.CUSTOMERS, 'delete')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const supabase = await createClient()
 
@@ -244,13 +258,13 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      console.error('Error deleting customer:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error in DELETE /api/customers/[id]:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

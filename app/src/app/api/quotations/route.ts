@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Quotation, QuotationLineItem, CreateQuotationRequest } from '@/types/quotation'
 import type { Database } from '@/types/database.types'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbQuotation = Database['public']['Tables']['sales_quotations']['Row']
 type DbQuotationItem = Database['public']['Tables']['sales_quotation_items']['Row']
@@ -71,6 +73,8 @@ function transformDbQuotationItem(
 // GET /api/quotations - List quotations with filters
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'view')
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -145,7 +149,7 @@ export async function GET(request: NextRequest) {
     const { data: quotations, error, count } = await query
 
     if (error) {
-      console.error('Error fetching quotations:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -185,7 +189,7 @@ export async function GET(request: NextRequest) {
       .order('sort_order', { ascending: true })
 
     if (itemsError) {
-      console.error('Error fetching quotation items:', itemsError)
+
     }
 
     // Group items by quotation
@@ -212,7 +216,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -220,6 +224,8 @@ export async function GET(request: NextRequest) {
 // POST /api/quotations - Create new quotation
 export async function POST(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'create')
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
@@ -254,12 +260,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.customerId || !body.quotationDate || !body.items || body.items.length === 0) {
-      console.error('Validation failed:', {
-        hasCustomerId: !!body.customerId,
-        hasQuotationDate: !!body.quotationDate,
-        hasItems: !!body.items,
-        itemsLength: body.items?.length || 0
-      })
+
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -350,7 +351,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (quotationError || !quotation) {
-      console.error('Error creating quotation:', quotationError)
+
       return NextResponse.json(
         { error: quotationError?.message || 'Failed to create quotation' },
         { status: 500 }
@@ -382,7 +383,7 @@ export async function POST(request: NextRequest) {
       .insert(itemsToInsert)
 
     if (itemsError) {
-      console.error('Error creating quotation items:', itemsError)
+
       // Rollback: delete the quotation
       await supabase.from('sales_quotations').delete().eq('id', quotation.id)
       return NextResponse.json(
@@ -437,7 +438,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

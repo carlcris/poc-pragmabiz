@@ -66,7 +66,6 @@ export async function postPOSSale(
       .single();
 
     if (cashError || !cashAccount) {
-      console.error("Cash/Bank account (A-1000) not found:", cashError);
       return {
         success: false,
         error: "Cash/Bank account (A-1000) not found",
@@ -84,7 +83,6 @@ export async function postPOSSale(
       .single();
 
     if (revenueError || !revenueAccount) {
-      console.error("Sales Revenue account (R-4000) not found:", revenueError);
       return {
         success: false,
         error: "Sales Revenue account (R-4000) not found",
@@ -104,7 +102,6 @@ export async function postPOSSale(
         .single();
 
       if (discountError || !discountAcct) {
-        console.error("Sales Discounts account (R-4010) not found:", discountError);
         return {
           success: false,
           error: "Sales Discounts account (R-4010) not found",
@@ -126,7 +123,6 @@ export async function postPOSSale(
         .single();
 
       if (taxError || !taxAcct) {
-        console.error("Sales Tax Payable account (L-2100) not found:", taxError);
         return {
           success: false,
           error: "Sales Tax Payable account (L-2100) not found",
@@ -142,7 +138,7 @@ export async function postPOSSale(
     );
 
     if (codeError || !journalCodeResult) {
-      console.error("Failed to generate journal code:", codeError);
+
       return {
         success: false,
         error: "Failed to generate journal code",
@@ -179,7 +175,7 @@ export async function postPOSSale(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating POS sale journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -251,7 +247,6 @@ export async function postPOSSale(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating POS sale journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -263,7 +258,7 @@ export async function postPOSSale(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postPOSSale:", error);
+
     return {
       success: false,
       error: "Internal error posting POS sale",
@@ -290,7 +285,7 @@ export async function calculatePOSCOGS(
       .eq("pos_transaction_id", transactionId);
 
     if (itemsError || !transactionItems) {
-      console.error("Error fetching POS transaction items:", itemsError);
+
       return {
         success: false,
         error: "Failed to fetch transaction items",
@@ -325,7 +320,7 @@ export async function calculatePOSCOGS(
           .single();
 
         if (itemError || !itemData) {
-          console.error(`Item not found: ${item.item_id}`, itemError);
+
           // Continue with zero cost rather than failing
           valuationRate = 0;
         } else {
@@ -355,7 +350,7 @@ export async function calculatePOSCOGS(
       totalCOGS,
     };
   } catch (error) {
-    console.error("Error calculating POS COGS:", error);
+
     return {
       success: false,
       error: "Failed to calculate COGS",
@@ -396,7 +391,6 @@ export async function postPOSCOGS(
       .single();
 
     if (cogsError || !cogsAccount) {
-      console.error("COGS account (C-5000) not found:", cogsError);
       return {
         success: false,
         error: "Cost of Goods Sold account (C-5000) not found",
@@ -414,7 +408,6 @@ export async function postPOSCOGS(
       .single();
 
     if (inventoryError || !inventoryAccount) {
-      console.error("Inventory account (A-1200) not found:", inventoryError);
       return {
         success: false,
         error: "Inventory account (A-1200) not found",
@@ -428,7 +421,7 @@ export async function postPOSCOGS(
     );
 
     if (codeError || !journalCodeResult) {
-      console.error("Failed to generate journal code:", codeError);
+
       return {
         success: false,
         error: "Failed to generate journal code",
@@ -463,7 +456,7 @@ export async function postPOSCOGS(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating POS COGS journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -502,7 +495,6 @@ export async function postPOSCOGS(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating POS COGS journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -514,7 +506,7 @@ export async function postPOSCOGS(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postPOSCOGS:", error);
+
     return {
       success: false,
       error: "Internal error posting POS COGS",
@@ -543,7 +535,7 @@ export async function reversePOSTransaction(
       .single();
 
     if (transactionError || !transaction) {
-      console.error("POS transaction not found:", transactionError);
+
       return {
         success: false,
         error: "Transaction not found",
@@ -570,7 +562,7 @@ export async function reversePOSTransaction(
     );
 
     if (!saleReversalResult.success) {
-      console.error("Failed to post sale reversal:", saleReversalResult.error);
+
       // Continue anyway - log as warning
     }
 
@@ -597,7 +589,7 @@ export async function reversePOSTransaction(
       );
 
       if (!cogsReversalResult.success) {
-        console.error("Failed to post COGS reversal:", cogsReversalResult.error);
+
         // Continue anyway - log as warning
       }
     }
@@ -606,7 +598,7 @@ export async function reversePOSTransaction(
       success: true,
     };
   } catch (error) {
-    console.error("Unexpected error in reversePOSTransaction:", error);
+
     return {
       success: false,
       error: "Internal error reversing POS transaction",
@@ -785,7 +777,7 @@ async function postPOSSaleReversal(
 
     return { success: true, journalEntryId: journalEntry.id };
   } catch (error) {
-    console.error("Error in postPOSSaleReversal:", error);
+
     return { success: false, error: "Internal error" };
   }
 }
@@ -902,7 +894,7 @@ async function postPOSCOGSReversal(
 
     return { success: true, journalEntryId: journalEntry.id };
   } catch (error) {
-    console.error("Error in postPOSCOGSReversal:", error);
+
     return { success: false, error: "Internal error" };
   }
 }

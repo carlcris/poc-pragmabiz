@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Quotation, QuotationLineItem, UpdateQuotationRequest } from '@/types/quotation'
 import type { Database } from '@/types/database.types'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbQuotation = Database['public']['Tables']['sales_quotations']['Row']
 type DbQuotationItem = Database['public']['Tables']['sales_quotation_items']['Row']
@@ -74,6 +76,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'view')
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -110,7 +114,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching quotation:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -141,7 +145,7 @@ export async function GET(
       .order('sort_order', { ascending: true })
 
     if (itemsError) {
-      console.error('Error fetching quotation items:', itemsError)
+
       return NextResponse.json({ error: itemsError.message }, { status: 500 })
     }
 
@@ -150,7 +154,7 @@ export async function GET(
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -161,6 +165,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'edit')
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -257,7 +263,7 @@ export async function PUT(
         .eq('id', id)
 
       if (updateError) {
-        console.error('Error updating quotation:', updateError)
+
         return NextResponse.json({ error: updateError.message }, { status: 500 })
       }
 
@@ -268,7 +274,7 @@ export async function PUT(
         .eq('quotation_id', id)
 
       if (deleteError) {
-        console.error('Error deleting old items:', deleteError)
+
         return NextResponse.json({ error: deleteError.message }, { status: 500 })
       }
 
@@ -297,7 +303,7 @@ export async function PUT(
         .insert(itemsToInsert)
 
       if (insertError) {
-        console.error('Error inserting new items:', insertError)
+
         return NextResponse.json({ error: insertError.message }, { status: 500 })
       }
     } else {
@@ -308,7 +314,7 @@ export async function PUT(
         .eq('id', id)
 
       if (updateError) {
-        console.error('Error updating quotation:', updateError)
+
         return NextResponse.json({ error: updateError.message }, { status: 500 })
       }
     }
@@ -360,7 +366,7 @@ export async function PUT(
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -371,6 +377,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'delete')
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -414,7 +422,7 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Error deleting quotation:', deleteError)
+
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
 
@@ -425,13 +433,13 @@ export async function DELETE(
       .eq('quotation_id', id)
 
     if (itemsDeleteError) {
-      console.error('Error deleting quotation items:', itemsDeleteError)
+
       return NextResponse.json({ error: itemsDeleteError.message }, { status: 500 })
     }
 
     return NextResponse.json({ message: 'Quotation deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

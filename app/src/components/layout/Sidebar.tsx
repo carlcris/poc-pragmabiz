@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode, Children, isValidElement } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -13,27 +13,33 @@ import {
   Settings,
   ChevronRight,
   Calculator,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
+import { ViewGuard } from "@/components/permissions/PermissionGuard";
+import { usePermissions } from "@/hooks/usePermissions";
+import { RESOURCES } from "@/constants/resources";
+import type { Resource } from "@/constants/resources";
 
 const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/dashboard",
+    resource: RESOURCES.DASHBOARD as Resource,
   },
   {
     title: "Inventory",
     icon: Package,
     href: "/inventory/items",
     children: [
-      { title: "Item Master", href: "/inventory/items" },
-      { title: "Warehouses", href: "/inventory/warehouses" },
-      { title: "Stock Transactions", href: "/inventory/stock" },
-      { title: "Stock Adjustments", href: "/inventory/adjustments" },
-      { title: "Stock Transformations", href: "/inventory/transformations" },
-      { title: "Reorder Management", href: "/inventory/reorder" },
+      { title: "Item Master", href: "/inventory/items", resource: RESOURCES.ITEMS as Resource },
+      { title: "Warehouses", href: "/inventory/warehouses", resource: RESOURCES.WAREHOUSES as Resource },
+      { title: "Stock Transactions", href: "/inventory/stock", resource: RESOURCES.STOCK_TRANSFERS as Resource },
+      { title: "Stock Adjustments", href: "/inventory/adjustments", resource: RESOURCES.STOCK_ADJUSTMENTS as Resource },
+      { title: "Stock Transformations", href: "/inventory/transformations", resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource },
+      { title: "Reorder Management", href: "/inventory/reorder", resource: RESOURCES.REORDER_MANAGEMENT as Resource },
     ],
   },
   {
@@ -41,12 +47,12 @@ const menuItems = [
     icon: ShoppingCart,
     href: "/sales",
     children: [
-      { title: "Point of Sale", href: "/sales/pos" },
-      { title: "POS Transactions", href: "/sales/pos/transactions" },
-      { title: "Customers", href: "/sales/customers" },
-      { title: "Quotations", href: "/sales/quotations" },
-      { title: "Sales Orders", href: "/sales/orders" },
-      { title: "Invoices", href: "/sales/invoices" },
+      { title: "Point of Sale", href: "/sales/pos", resource: RESOURCES.POS as Resource },
+      { title: "POS Transactions", href: "/sales/pos/transactions", resource: RESOURCES.POS as Resource },
+      { title: "Customers", href: "/sales/customers", resource: RESOURCES.CUSTOMERS as Resource },
+      { title: "Quotations", href: "/sales/quotations", resource: RESOURCES.SALES_QUOTATIONS as Resource },
+      { title: "Sales Orders", href: "/sales/orders", resource: RESOURCES.SALES_ORDERS as Resource },
+      { title: "Invoices", href: "/sales/invoices", resource: RESOURCES.SALES_INVOICES as Resource },
     ],
   },
   {
@@ -54,9 +60,9 @@ const menuItems = [
     icon: ShoppingBag,
     href: "/purchasing",
     children: [
-      { title: "Suppliers", href: "/purchasing/suppliers" },
-      { title: "Purchase Orders", href: "/purchasing/orders" },
-      { title: "Purchase Receipts", href: "/purchasing/receipts" },
+      { title: "Suppliers", href: "/purchasing/suppliers", resource: RESOURCES.SUPPLIERS as Resource },
+      { title: "Purchase Orders", href: "/purchasing/orders", resource: RESOURCES.PURCHASE_ORDERS as Resource },
+      { title: "Purchase Receipts", href: "/purchasing/receipts", resource: RESOURCES.PURCHASE_RECEIPTS as Resource },
     ],
   },
   {
@@ -64,10 +70,10 @@ const menuItems = [
     icon: Calculator,
     href: "/accounting",
     children: [
-      { title: "Chart of Accounts", href: "/accounting/chart-of-accounts" },
-      { title: "Journal Entries", href: "/accounting/journals" },
-      { title: "General Ledger", href: "/accounting/ledger" },
-      { title: "Trial Balance", href: "/accounting/trial-balance" },
+      { title: "Chart of Accounts", href: "/accounting/chart-of-accounts", resource: RESOURCES.CHART_OF_ACCOUNTS as Resource },
+      { title: "Journal Entries", href: "/accounting/journals", resource: RESOURCES.JOURNAL_ENTRIES as Resource },
+      { title: "General Ledger", href: "/accounting/ledger", resource: RESOURCES.GENERAL_LEDGER as Resource },
+      { title: "Trial Balance", href: "/accounting/trial-balance", resource: RESOURCES.GENERAL_LEDGER as Resource },
     ],
   },
   {
@@ -75,21 +81,28 @@ const menuItems = [
     icon: FileText,
     href: "/reports",
     children: [
-      { title: "Sales Analytics", href: "/reports/sales-analytics" },
-      { title: "Stock Reports", href: "/reports/stock" },
-      { title: "Commission Reports", href: "/reports/commission" },
+      { title: "Sales Analytics", href: "/reports/sales-analytics", resource: RESOURCES.REPORTS as Resource },
+      { title: "Stock Reports", href: "/reports/stock", resource: RESOURCES.REPORTS as Resource },
+      { title: "Commission Reports", href: "/reports/commission", resource: RESOURCES.REPORTS as Resource },
     ],
   },
   {
-    title: "Settings",
-    icon: Settings,
-    href: "/settings",
+    title: "Admin",
+    icon: Shield,
+    href: "/admin",
+    children: [
+      { title: "Users", href: "/admin/users", resource: RESOURCES.USERS as Resource },
+      { title: "Roles", href: "/admin/roles", resource: RESOURCES.ROLES as Resource },
+      { title: "Company Settings", href: "/admin/settings", resource: RESOURCES.COMPANY_SETTINGS as Resource },
+      { title: "Business Units", href: "/admin/business-units", resource: RESOURCES.BUSINESS_UNITS as Resource },
+    ],
   },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const { can, isLoading: permissionsLoading, permissions } = usePermissions();
 
   const toggleMenu = (title: string) => {
     setOpenMenus(prev => ({
@@ -97,6 +110,10 @@ export function Sidebar() {
       [title]: !prev[title]
     }));
   };
+
+  // Don't render menu items until permissions are loaded
+  // This prevents flickering where unauthorized items briefly appear
+  const shouldShowMenu = !permissionsLoading && permissions !== null;
 
   return (
     <aside className="w-64 border-r border-gray-800 min-h-screen flex flex-col" style={{ backgroundColor: '#240032' }}>
@@ -121,16 +138,38 @@ export function Sidebar() {
       </div>
 
       <nav className="px-3 space-y-1 overflow-y-auto flex-1 pb-6">
-        {menuItems.map((item) => {
+        {!shouldShowMenu ? (
+          <div className="space-y-2 py-4 animate-pulse">
+            {/* Skeleton loader for menu items */}
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="space-y-2">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-md">
+                  <div className="h-5 w-5 bg-white/10 rounded"></div>
+                  <div className="h-4 bg-white/10 rounded flex-1 max-w-[120px]"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          menuItems.map((item) => {
           const Icon = item.icon;
           // Only highlight parent if it's an exact match (no children) or if it's a page without children
           const isParentActive = !item.children && pathname === item.href;
           const hasActiveChild = item.children?.some(child => pathname === child.href);
           const isOpen = openMenus[item.title] ?? hasActiveChild;
 
-          return (
-            <div key={item.href}>
-              {item.children ? (
+          // For parent items with children, only show if user has access to at least one child
+          if (item.children) {
+            // Check if user has access to any child
+            const hasAccessToAnyChild = item.children.some(child => can(child.resource, 'view'));
+
+            // Don't render parent if user has no access to any children
+            if (!hasAccessToAnyChild) {
+              return null;
+            }
+
+            return (
+              <div key={item.href}>
                 <div>
                   <button
                     onClick={() => toggleMenu(item.title)}
@@ -150,40 +189,55 @@ export function Sidebar() {
 
                   {isOpen && (
                     <div className="ml-8 mt-1 space-y-1">
-                      {item.children.map((child) => (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={cn(
-                            "block px-3 py-2 rounded-md text-sm transition-colors",
-                            pathname === child.href
-                              ? "bg-white/20 text-white font-medium"
-                              : "text-gray-300 hover:bg-white/10 hover:text-white"
-                          )}
-                        >
-                          {child.title}
-                        </Link>
-                      ))}
+                      {item.children.map((child) => {
+                        // Only show child if user has permission
+                        if (can(child.resource, 'view')) {
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                "block px-3 py-2 rounded-md text-sm transition-colors",
+                                pathname === child.href
+                                  ? "bg-white/20 text-white font-medium"
+                                  : "text-gray-300 hover:bg-white/10 hover:text-white"
+                              )}
+                            >
+                              {child.title}
+                            </Link>
+                          );
+                        }
+                        return null;
+                      })}
                     </div>
                   )}
                 </div>
-              ) : (
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    isParentActive
-                      ? "bg-white/20 text-white font-medium"
-                      : "text-gray-300 hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.title}
-                </Link>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          }
+
+          // For items without children, only show if user has permission
+          if (can(item.resource!, 'view')) {
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isParentActive
+                    ? "bg-white/20 text-white font-medium"
+                    : "text-gray-300 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                <Icon className="h-5 w-5" />
+                {item.title}
+              </Link>
+            );
+          }
+
+          return null;
+        })
+        )}
       </nav>
     </aside>
   );

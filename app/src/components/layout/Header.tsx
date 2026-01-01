@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { CurrencySwitcher } from "@/components/shared/CurrencySwitcher";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Settings, KeyRound } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +53,7 @@ export function Header() {
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">{user?.name}</p>
@@ -63,10 +63,19 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/profile')}>
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>My Profile</span>
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/profile/preferences')}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>My Preferences</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/profile/change-password')}>
+              <KeyRound className="mr-2 h-4 w-4" />
+              <span>Change Password</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>

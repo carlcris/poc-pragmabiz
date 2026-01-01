@@ -53,7 +53,7 @@ export default function GeneralLedgerPage() {
       const result = await response.json()
       setAccounts(result.data || [])
     } catch (error) {
-      console.error('Error fetching accounts:', error)
+
     }
   }
 
@@ -79,7 +79,7 @@ export default function GeneralLedgerPage() {
       const result = await response.json()
       setLedger(result.data)
     } catch (error) {
-      console.error('Error fetching ledger:', error)
+
     } finally {
       setLoading(false)
     }

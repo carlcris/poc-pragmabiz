@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/sales-orders/[id]/confirm - Confirm a sales order
 export async function POST(
@@ -7,6 +9,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
     const { id } = await params
 
@@ -64,13 +70,13 @@ export async function POST(
       .single()
 
     if (updateError) {
-      console.error('Error confirming sales order:', updateError)
+
       return NextResponse.json({ error: 'Failed to confirm sales order' }, { status: 500 })
     }
 
     return NextResponse.json(updatedOrder, { status: 200 })
   } catch (error) {
-    console.error('Unexpected error in POST /api/sales-orders/[id]/confirm:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

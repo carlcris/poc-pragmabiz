@@ -61,7 +61,7 @@ export default function JournalsPage() {
       const result = await response.json()
       setJournals(result.data || [])
     } catch (error) {
-      console.error('Error fetching journals:', error)
+
     } finally {
       setLoading(false)
     }

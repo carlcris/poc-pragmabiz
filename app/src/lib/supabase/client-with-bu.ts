@@ -28,9 +28,7 @@ export function createClientWithBU(): SupabaseClientWithBU {
   const currentBU = useBusinessUnitStore.getState().currentBusinessUnit;
 
   if (!currentBU) {
-    console.warn(
-      'No business unit selected. Queries may return empty results due to RLS policies.'
-    );
+
     return client;
   }
 

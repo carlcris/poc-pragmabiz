@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // PATCH /api/quotations/[id]/status
 export async function PATCH(
@@ -7,6 +9,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'edit')
+
     const { id: quotationId } = await params
     const { status } = await request.json()
 
@@ -102,7 +106,7 @@ export async function PATCH(
       .single()
 
     if (updateError) {
-      console.error('Error updating quotation status:', updateError)
+
       return NextResponse.json(
         { error: 'Failed to update quotation status' },
         { status: 500 }
@@ -135,7 +139,7 @@ export async function PATCH(
 
     return NextResponse.json(formattedQuotation)
   } catch (error) {
-    console.error('Unexpected error changing quotation status:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

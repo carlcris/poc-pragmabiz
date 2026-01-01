@@ -43,7 +43,7 @@ export function useBusinessUnits() {
 
       // Validate response structure
       if (!response.data) {
-        console.error('Invalid response structure:', response);
+
         throw new Error('Invalid response from business units API');
       }
 
@@ -61,11 +61,12 @@ export function useBusinessUnits() {
  * 1. Validates access via API (calls update_current_business_unit DB function)
  * 2. Updates Zustand store
  * 3. Refreshes Supabase session to get new JWT with current_business_unit_id claim
- * 4. Invalidates queries to refetch with new BU context
+ * 4. Invalidates queries to refetch with new BU context (optional - can be silenced for initial load)
  */
-export function useSetBusinessUnitContext() {
+export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
   const queryClient = useQueryClient();
   const { setCurrentBusinessUnit } = useBusinessUnitStore();
+  const silent = options?.silent ?? false;
 
   return useMutation({
     mutationFn: async (businessUnitId: string) => {
@@ -89,19 +90,22 @@ export function useSetBusinessUnitContext() {
       return response;
     },
     onSuccess: (response) => {
-      // SECURITY: Clear ALL cached data FIRST to prevent data leakage from previous BU
-      // This must happen before updating the store to avoid race conditions
-      queryClient.clear();
-
-      // Update current business unit in store
-      // This will cause the API client to send the new BU ID in subsequent requests
+      // Update current business unit in store first
       if (response.business_unit) {
         setCurrentBusinessUnit(response.business_unit as BusinessUnitWithAccess);
       }
 
-      // Force immediate refetch of all queries with new BU context from JWT
-      // resetQueries forces all queries back to fetching state
-      queryClient.resetQueries();
+      // Only clear and refetch queries if not in silent mode
+      // Silent mode is used during initial load to prevent flickering
+      if (!silent) {
+        // SECURITY: Clear ALL cached data FIRST to prevent data leakage from previous BU
+        // This must happen before updating the store to avoid race conditions
+        queryClient.clear();
+
+        // Force immediate refetch of all queries with new BU context from JWT
+        // resetQueries forces all queries back to fetching state
+        queryClient.resetQueries();
+      }
     },
   });
 }

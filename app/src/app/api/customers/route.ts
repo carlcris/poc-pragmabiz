@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Customer, CreateCustomerRequest } from '@/types/customer'
 import type { Database } from '@/types/database.types'
+import { requirePermission, requireLookupDataAccess } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbCustomer = Database['public']['Tables']['customers']['Row']
 
@@ -44,6 +46,13 @@ function transformDbCustomer(dbCustomer: DbCustomer): Customer {
 // GET /api/customers - List customers with filters
 export async function GET(request: NextRequest) {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'customers' view permission, OR
+    // 2. Permission to a feature that depends on customers (pos, sales_orders, van_sales, etc.)
+    const unauthorized = await requireLookupDataAccess(RESOURCES.CUSTOMERS)
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -96,7 +105,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
-      console.error('Error fetching customers:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -112,7 +121,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Error in GET /api/customers:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -123,6 +132,10 @@ export async function GET(request: NextRequest) {
 // POST /api/customers - Create new customer
 export async function POST(request: NextRequest) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.CUSTOMERS, 'create')
+    if (unauthorized) return unauthorized
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
@@ -152,7 +165,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !userData?.company_id) {
-      console.error('Error getting user company:', userError)
+
       return NextResponse.json({ error: 'User company not found' }, { status: 400 })
     }
 
@@ -230,13 +243,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating customer:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json(transformDbCustomer(data), { status: 201 })
   } catch (error) {
-    console.error('Error in POST /api/customers:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

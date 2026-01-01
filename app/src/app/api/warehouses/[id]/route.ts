@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 import type { Warehouse, UpdateWarehouseRequest } from '@/types/warehouse'
 import type { Database } from '@/types/database.types'
 
@@ -33,6 +35,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'warehouses' view permission
+    const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, 'view')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -56,7 +62,7 @@ export async function GET(
       .maybeSingle()
 
     if (error) {
-      console.error('Database error:', error)
+
       return NextResponse.json(
         { error: 'Failed to fetch warehouse', details: error.message },
         { status: 500 }
@@ -71,7 +77,7 @@ export async function GET(
     const warehouse = transformDbWarehouse(data)
     return NextResponse.json({ data: warehouse })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -85,6 +91,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'warehouses' edit permission
+    const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, 'edit')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -109,7 +119,7 @@ export async function PUT(
       .maybeSingle()
 
     if (existError) {
-      console.error('Database error:', existError)
+
       return NextResponse.json(
         { error: 'Failed to check warehouse', details: existError.message },
         { status: 500 }
@@ -145,7 +155,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Update error:', updateError)
+
       return NextResponse.json(
         { error: 'Failed to update warehouse', details: updateError.message },
         { status: 500 }
@@ -156,7 +166,7 @@ export async function PUT(
     const warehouse = transformDbWarehouse(updatedWarehouse)
     return NextResponse.json({ data: warehouse })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -170,6 +180,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'warehouses' delete permission
+    const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, 'delete')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -206,7 +220,7 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Delete error:', deleteError)
+
       return NextResponse.json(
         { error: 'Failed to delete warehouse', details: deleteError.message },
         { status: 500 }
@@ -215,7 +229,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Warehouse deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

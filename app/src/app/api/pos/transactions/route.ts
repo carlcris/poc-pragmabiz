@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { postPOSSale, calculatePOSCOGS, postPOSCOGS } from '@/services/accounting/posPosting';
 import { createPOSStockTransaction } from '@/services/inventory/posStockService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.POS, 'view');
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -114,7 +118,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('Error fetching POS transactions:', error);
+
       return NextResponse.json(
         { error: 'Failed to fetch POS transactions' },
         { status: 500 }
@@ -170,7 +174,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -179,8 +183,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('=== POS POST HANDLER CALLED ===');
   try {
+    await requirePermission(RESOURCES.POS, 'create');
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
@@ -200,7 +205,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError || !userData) {
-      console.error('Error fetching user data:', userError);
+
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -217,7 +222,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user has a warehouse assigned (required for stock transactions)
     if (!userData.van_warehouse_id) {
-      console.warn(`User ${user.id} has no warehouse assigned. Stock transaction will be skipped.`);
+
     }
 
     const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Unknown';
@@ -314,7 +319,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (transactionError) {
-      console.error('Error creating transaction:', transactionError);
+
       return NextResponse.json(
         { error: 'Failed to create transaction' },
         { status: 500 }
@@ -338,7 +343,7 @@ export async function POST(request: NextRequest) {
       .insert(itemsToInsert);
 
     if (itemsError) {
-      console.error('Error creating transaction items:', itemsError);
+
       // Rollback transaction
       await supabase.from('pos_transactions').delete().eq('id', transaction.id);
       return NextResponse.json(
@@ -360,7 +365,7 @@ export async function POST(request: NextRequest) {
       .insert(paymentsToInsert);
 
     if (paymentsError) {
-      console.error('Error creating transaction payments:', paymentsError);
+
       // Rollback transaction
       await supabase.from('pos_transactions').delete().eq('id', transaction.id);
       return NextResponse.json(
@@ -421,13 +426,12 @@ export async function POST(request: NextRequest) {
 
         if (stockResult.success) {
           stockTransactionId = stockResult.stockTransactionId;
-          console.log(`Stock transaction created: ${stockTransactionId}`);
         } else {
-          console.error('Stock transaction failed:', stockResult.error);
+
           warnings.push(`Stock transaction failed: ${stockResult.error}`);
         }
       } catch (error) {
-        console.error('Error creating stock transaction:', error);
+
         warnings.push('Stock transaction creation failed');
       }
     } else {
@@ -454,13 +458,12 @@ export async function POST(request: NextRequest) {
 
       if (saleResult.success) {
         saleJournalEntryId = saleResult.journalEntryId;
-        console.log(`Sale journal entry created: ${saleJournalEntryId}`);
       } else {
-        console.error('Sale GL posting failed:', saleResult.error);
+
         warnings.push(`Sale GL posting failed: ${saleResult.error}`);
       }
     } catch (error) {
-      console.error('Error posting sale to GL:', error);
+
       warnings.push('Sale GL posting failed');
     }
 
@@ -487,17 +490,16 @@ export async function POST(request: NextRequest) {
 
         if (cogsResult.success) {
           cogsJournalEntryId = cogsResult.journalEntryId;
-          console.log(`COGS journal entry created: ${cogsJournalEntryId}`);
         } else {
-          console.error('COGS GL posting failed:', cogsResult.error);
+
           warnings.push(`COGS GL posting failed: ${cogsResult.error}`);
         }
       } else {
-        console.error('COGS calculation failed:', cogsCalculation.error);
+
         warnings.push(`COGS calculation failed: ${cogsCalculation.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error posting COGS to GL:', error);
+
       warnings.push('COGS GL posting failed');
     }
 
@@ -551,7 +553,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

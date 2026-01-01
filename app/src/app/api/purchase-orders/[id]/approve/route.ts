@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/purchase-orders/[id]/approve
 export async function POST(
@@ -7,6 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'edit')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -66,7 +69,7 @@ export async function POST(
       .eq('company_id', userData.company_id)
 
     if (updateError) {
-      console.error('Error approving purchase order:', updateError)
+
       return NextResponse.json({ error: 'Failed to approve purchase order' }, { status: 500 })
     }
 
@@ -75,7 +78,7 @@ export async function POST(
       message: `Purchase order ${purchaseOrder.order_code} approved successfully`,
     })
   } catch (error) {
-    console.error('Unexpected error in POST /api/purchase-orders/[id]/approve:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

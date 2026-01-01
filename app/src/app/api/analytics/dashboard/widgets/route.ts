@@ -8,6 +8,8 @@
 import { NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { DashboardWidgetData } from "@/types/analytics";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 /**
  * GET /api/analytics/dashboard/widgets
@@ -15,6 +17,7 @@ import type { DashboardWidgetData } from "@/types/analytics";
  */
 export async function GET() {
   try {
+    await requirePermission(RESOURCES.REPORTS, 'view');
     const { supabase } = await createServerClientWithBU();
 
     // Get current user and company
@@ -333,7 +336,7 @@ export async function GET() {
       .limit(100);
 
     if (reorderAlertsError) {
-      console.error("Error fetching reorder alerts:", reorderAlertsError);
+
     }
 
     // Filter alerts where current stock is below reorder level and sort
@@ -397,7 +400,7 @@ export async function GET() {
 
     return NextResponse.json(widgetData);
   } catch (error) {
-    console.error("Unexpected error in GET /api/analytics/dashboard/widgets:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

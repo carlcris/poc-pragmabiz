@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/invoices/[id]
 export async function GET(
@@ -7,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'view')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -114,7 +117,7 @@ export async function GET(
 
     return NextResponse.json(formattedInvoice)
   } catch (error) {
-    console.error('Unexpected error in GET /api/invoices/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -125,6 +128,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'edit')
     const { id } = await params
     const body = await request.json()
     const { supabase } = await createServerClientWithBU()
@@ -219,7 +223,7 @@ export async function PUT(
         .insert(processedItems)
 
       if (itemsError) {
-        console.error('Error updating invoice items:', itemsError)
+
         return NextResponse.json(
           { error: 'Failed to update invoice items' },
           { status: 500 }
@@ -253,13 +257,13 @@ export async function PUT(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error updating invoice:', updateError)
+
       return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error in PUT /api/invoices/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -270,6 +274,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'delete')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -315,7 +320,7 @@ export async function DELETE(
         .eq('id', invoice.sales_order_id)
 
       if (orderUpdateError) {
-        console.error('Error updating sales order:', orderUpdateError)
+
         return NextResponse.json(
           { error: 'Failed to update related sales order' },
           { status: 500 }
@@ -333,7 +338,7 @@ export async function DELETE(
       .eq('invoice_id', id)
 
     if (itemsDeleteError) {
-      console.error('Error deleting invoice items:', itemsDeleteError)
+
       return NextResponse.json(
         { error: 'Failed to delete invoice items' },
         { status: 500 }
@@ -350,7 +355,7 @@ export async function DELETE(
       .eq('invoice_id', id)
 
     if (paymentsDeleteError) {
-      console.error('Error deleting invoice payments:', paymentsDeleteError)
+
       // Don't fail the request if there are no payments
     }
 
@@ -364,7 +369,7 @@ export async function DELETE(
       .eq('invoice_id', id)
 
     if (commissionsDeleteError) {
-      console.error('Error deleting commission records:', commissionsDeleteError)
+
       // Don't fail the request if there are no commissions
     }
 
@@ -378,13 +383,13 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      console.error('Error deleting invoice:', error)
+
       return NextResponse.json({ error: 'Failed to delete invoice' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/invoices/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

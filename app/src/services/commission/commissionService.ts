@@ -124,7 +124,7 @@ export const calculateInvoiceCommission = async (
       employeeId: targetEmployeeId,
     };
   } catch (error) {
-    console.error("Error calculating commission:", error);
+
     return {
       success: false,
       commissionTotal: 0,
@@ -216,7 +216,7 @@ const autoAssignEmployeeToInvoice = async (
     // Calculate commission for the assigned employee
     return await calculateInvoiceCommission(invoiceId, territories[0].employee_id);
   } catch (error) {
-    console.error("Error auto-assigning employee:", error);
+
     return {
       success: false,
       commissionTotal: 0,
@@ -319,7 +319,7 @@ export const splitCommission = async (
       employeeId: splits[0].employeeId,
     };
   } catch (error) {
-    console.error("Error splitting commission:", error);
+
     return {
       success: false,
       commissionTotal: 0,

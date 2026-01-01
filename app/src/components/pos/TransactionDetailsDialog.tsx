@@ -61,7 +61,6 @@ export function TransactionDetailsDialog({
 
   const handlePrint = () => {
     // TODO: Implement print functionality
-    console.log('Print receipt for transaction:', transaction.id)
   }
 
   return (

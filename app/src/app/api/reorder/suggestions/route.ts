@@ -1,11 +1,14 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/reorder/suggestions
 // Generates purchase suggestions based on stock levels
 // NOTE: This feature requires reorder management tables that haven't been set up yet
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'view')
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
     // For now, return empty array
     return NextResponse.json([])
   } catch (error) {
-    console.error('Unexpected error in GET /api/reorder/suggestions:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

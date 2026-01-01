@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Login error:', error)
+
       return NextResponse.json(
         { message: error.message || 'Invalid credentials' },
         { status: 401 }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       if (!createError) {
         userRecord = newUser
       } else {
-        console.error('Error creating user record:', createError)
+
       }
     }
 
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       token: data.session.access_token,
     })
   } catch (error) {
-    console.error('Unexpected login error:', error)
+
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/invoices/[id]/send
 export async function POST(
@@ -7,6 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'edit')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -67,7 +70,6 @@ export async function POST(
     let stockTransactionCode: string | null = null
 
     if (invoice.warehouse_id) {
-      console.log(`Invoice has warehouse assigned: ${invoice.warehouse_id}. Performing stock validation...`)
 
       // Check stock availability before sending
       for (const item of invoice.items || []) {
@@ -82,10 +84,8 @@ export async function POST(
           ? parseFloat(String(warehouseStock.current_stock))
           : 0
 
-        console.log(`Stock check for item ${item.item_id}: Available=${currentStock}, Required=${item.quantity}`)
-
         if (currentStock < parseFloat(item.quantity)) {
-          console.error(`Insufficient stock for item ${item.item_id}`)
+
           return NextResponse.json(
             {
               error: `Insufficient stock for item. Available: ${currentStock}, Required: ${item.quantity}`
@@ -134,7 +134,7 @@ export async function POST(
       .single()
 
       if (stockTxError) {
-        console.error('Error creating stock transaction:', stockTxError)
+
         return NextResponse.json(
           { error: stockTxError.message || 'Failed to create stock transaction' },
           { status: 500 }
@@ -164,7 +164,7 @@ export async function POST(
         .single()
 
         if (stockTxItemError) {
-          console.error('Error creating stock transaction item:', stockTxItemError)
+
           // Rollback stock transaction
           await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
           return NextResponse.json(
@@ -216,7 +216,6 @@ export async function POST(
         .eq('warehouse_id', invoice.warehouse_id)
       }
     } else {
-      console.log('Invoice has no warehouse assigned. Skipping stock validation and deduction.')
     }
 
     // Update invoice status to sent
@@ -230,7 +229,7 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error sending invoice:', updateError)
+
       // Rollback stock transactions if they were created
       if (invoice.warehouse_id && stockTransactionCode) {
         const { data: stockTx } = await supabase
@@ -257,7 +256,7 @@ export async function POST(
       stockTransactionCode: stockTransactionCode
     })
   } catch (error) {
-    console.error('Unexpected error in POST /api/invoices/[id]/send:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (signUpError) {
-      console.error('Registration error:', signUpError)
+
       return NextResponse.json(
         { message: signUpError.message || 'Registration failed' },
         { status: 400 }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (profileError) {
-      console.error('Profile creation error:', profileError)
+
       // Continue anyway as auth user is created
     }
 
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected registration error:', error)
+
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }

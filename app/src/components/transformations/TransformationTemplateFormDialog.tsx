@@ -236,7 +236,7 @@ export function TransformationTemplateFormDialog({
       setInputs([]);
       setOutputs([]);
     } catch (error: any) {
-      console.error('Form submission error:', error);
+
       const errorMessage = error.message || "Failed to save template. Please try again.";
       form.setError("root", {
         type: "manual",

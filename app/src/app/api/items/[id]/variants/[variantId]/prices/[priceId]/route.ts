@@ -9,6 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from "@/lib/auth";
+import { RESOURCES } from "@/constants/resources";
 import type { ItemPrice, UpdateItemPriceInput } from "@/types/item-variant";
 
 type RouteContext = {
@@ -24,6 +26,10 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { variantId, priceId } = await context.params;
     const body: UpdateItemPriceInput = await request.json();
@@ -134,7 +140,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error("Error updating price:", updateError);
+
       return NextResponse.json(
         { error: "Failed to update price" },
         { status: 500 }
@@ -163,7 +169,7 @@ export async function PUT(
 
     return NextResponse.json({ data: transformedPrice });
   } catch (error) {
-    console.error("Unexpected error in PUT /api/items/[id]/variants/[variantId]/prices/[priceId]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -180,6 +186,10 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'delete');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { variantId, priceId } = await context.params;
 
@@ -229,7 +239,7 @@ export async function DELETE(
       .eq("id", priceId);
 
     if (deleteError) {
-      console.error("Error deleting price:", deleteError);
+
       return NextResponse.json(
         { error: "Failed to delete price" },
         { status: 500 }
@@ -238,7 +248,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: "Price deleted successfully" });
   } catch (error) {
-    console.error("Unexpected error in DELETE /api/items/[id]/variants/[variantId]/prices/[priceId]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

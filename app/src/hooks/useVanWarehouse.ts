@@ -106,7 +106,7 @@ export function useVanSalesStats() {
           invoices: [],
         };
       } catch (error) {
-        console.error("Error fetching van sales stats:", error);
+
         // Return default values on error
         return {
           todaySales: 0,

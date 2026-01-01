@@ -1,6 +1,8 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postARPayment } from '@/services/accounting/arPosting'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/invoices/[id]/payments
 export async function GET(
@@ -8,6 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'view')
     const { id: invoiceId } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -42,7 +45,7 @@ export async function GET(
       .order('payment_date', { ascending: false })
 
     if (error) {
-      console.error('Error fetching payments:', error)
+
       return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 })
     }
 
@@ -62,7 +65,7 @@ export async function GET(
 
     return NextResponse.json({ data: formattedPayments || [] })
   } catch (error) {
-    console.error('Unexpected error in GET /api/invoices/[id]/payments:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -73,6 +76,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'edit')
     const { id: invoiceId } = await params
     const body = await request.json()
     const { supabase } = await createServerClientWithBU()
@@ -171,7 +175,7 @@ export async function POST(
       .single()
 
     if (paymentError || !payment) {
-      console.error('Error recording payment:', paymentError)
+
       return NextResponse.json({ error: 'Failed to record payment' }, { status: 500 })
     }
 
@@ -200,7 +204,7 @@ export async function POST(
       .eq('id', invoiceId)
 
     if (updateError) {
-      console.error('Error updating invoice:', updateError)
+
       return NextResponse.json({ error: 'Failed to update invoice' }, { status: 500 })
     }
 
@@ -217,11 +221,9 @@ export async function POST(
     })
 
     if (!arPaymentResult.success) {
-      console.error('Error posting AR payment to GL:', arPaymentResult.error)
+
       // Log warning but don't fail the payment
-      console.warn(
-        `Payment ${paymentCode} recorded successfully but AR GL posting failed: ${arPaymentResult.error}`
-      )
+
     }
 
     return NextResponse.json({
@@ -236,7 +238,7 @@ export async function POST(
       arPostingSuccess: arPaymentResult.success,
     })
   } catch (error) {
-    console.error('Unexpected error in POST /api/invoices/[id]/payments:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

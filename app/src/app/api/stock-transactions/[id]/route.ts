@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/stock-transactions/[id]
 export async function GET(
@@ -7,6 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_transactions' view permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, 'view')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -117,7 +123,7 @@ export async function GET(
 
     return NextResponse.json(formattedTransaction)
   } catch (error) {
-    console.error('Unexpected error in GET /api/stock-transactions/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -128,6 +134,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_transactions' delete permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, 'delete')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -185,13 +195,13 @@ export async function DELETE(
       .eq('id', id)
 
     if (error) {
-      console.error('Error deleting stock transaction:', error)
+
       return NextResponse.json({ error: 'Failed to delete stock transaction' }, { status: 500 })
     }
 
     return NextResponse.json({ message: 'Stock transaction deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/stock-transactions/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

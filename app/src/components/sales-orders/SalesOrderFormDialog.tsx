@@ -253,7 +253,7 @@ export function SalesOrderFormDialog({
       }
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving sales order:", error);
+
     }
   };
 

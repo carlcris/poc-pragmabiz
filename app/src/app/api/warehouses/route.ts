@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission, requireLookupDataAccess } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 import type { Warehouse, CreateWarehouseRequest } from '@/types/warehouse'
 import type { Database } from '@/types/database.types'
 
@@ -31,6 +33,13 @@ function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
 // GET /api/warehouses - List warehouses with filters
 export async function GET(request: NextRequest) {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'warehouses' view permission, OR
+    // 2. Permission to a feature that depends on warehouses (van_sales, purchase_orders, stock_transfers, etc.)
+    const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES)
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -79,7 +88,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
 
     if (error) {
-      console.error('Database error:', error)
+
       return NextResponse.json(
         { error: 'Failed to fetch warehouses', details: error.message },
         { status: 500 }
@@ -103,7 +112,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -114,6 +123,10 @@ export async function GET(request: NextRequest) {
 // POST /api/warehouses - Create new warehouse
 export async function POST(request: NextRequest) {
   try {
+    // Require 'warehouses' create permission
+    const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, 'create')
+    if (unauthorized) return unauthorized
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
@@ -191,7 +204,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) {
-      console.error('Insert error:', insertError)
+
       return NextResponse.json(
         { error: 'Failed to create warehouse', details: insertError.message },
         { status: 500 }
@@ -203,7 +216,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: warehouse }, { status: 201 })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

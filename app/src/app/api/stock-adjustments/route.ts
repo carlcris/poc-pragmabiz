@@ -1,9 +1,15 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/stock-adjustments - List stock adjustments
 export async function GET(request: NextRequest) {
   try {
+    // Require 'stock_adjustments' view permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, 'view')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
     const searchParams = request.nextUrl.searchParams
 
@@ -96,7 +102,7 @@ export async function GET(request: NextRequest) {
     const { data: adjustments, error, count } = await query.range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('Error fetching stock adjustments:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -217,7 +223,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/stock-adjustments:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -225,6 +231,10 @@ export async function GET(request: NextRequest) {
 // POST /api/stock-adjustments - Create new stock adjustment
 export async function POST(request: NextRequest) {
   try {
+    // Require 'stock_adjustments' create permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, 'create')
+    if (unauthorized) return unauthorized
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -302,7 +312,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (adjustmentError) {
-      console.error('Error creating stock adjustment:', adjustmentError)
+
       return NextResponse.json({ error: adjustmentError.message }, { status: 500 })
     }
 
@@ -355,7 +365,7 @@ export async function POST(request: NextRequest) {
       .insert(adjustmentItems)
 
     if (itemsError) {
-      console.error('Error creating adjustment items:', itemsError)
+
       // Rollback adjustment
       await supabase.from('stock_adjustments').delete().eq('id', adjustment.id)
       return NextResponse.json({ error: 'Failed to create adjustment items' }, { status: 500 })
@@ -407,7 +417,7 @@ export async function POST(request: NextRequest) {
       })) || [],
     })
   } catch (error) {
-    console.error('Unexpected error in POST /api/stock-adjustments:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -5,6 +5,8 @@ import {
   validateStockAvailability,
   validateStateTransition,
 } from '@/services/inventory/transformationService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // POST /api/transformations/orders/[id]/release - Release order (DRAFT → PREPARING)
 export async function POST(
@@ -12,6 +14,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -92,7 +97,7 @@ export async function POST(
       .single();
 
     if (updateError) {
-      console.error('Error preparing order:', updateError);
+
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
@@ -101,7 +106,7 @@ export async function POST(
       message: `Order ${order.order_code} is now being prepared`,
     });
   } catch (error) {
-    console.error('Error in POST /api/transformations/orders/[id]/release:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

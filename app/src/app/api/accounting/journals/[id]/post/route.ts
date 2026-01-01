@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -19,6 +21,9 @@ type RouteContext = {
  */
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -130,7 +135,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .single();
 
     if (postError) {
-      console.error("Error posting journal entry:", postError);
+
       return NextResponse.json(
         { error: "Failed to post journal entry" },
         { status: 500 }
@@ -142,10 +147,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       message: "Journal entry posted successfully",
     });
   } catch (error) {
-    console.error(
-      "Unexpected error in POST /api/accounting/journals/[id]/post:",
-      error
-    );
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

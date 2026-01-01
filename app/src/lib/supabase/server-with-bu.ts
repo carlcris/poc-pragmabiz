@@ -31,11 +31,6 @@ export async function createServerClientWithBU() {
   // Do NOT use getSession() as it reads from cookies without verification
   const { data: { user } } = await supabase.auth.getUser();
 
-  // DEBUG: Log the user object to see what claims are available
-  console.log('[server-with-bu] User object keys:', user ? Object.keys(user) : 'null');
-  console.log('[server-with-bu] User app_metadata:', (user as any)?.app_metadata);
-  console.log('[server-with-bu] User user_metadata:', (user as any)?.user_metadata);
-
   // Custom claims from auth hooks are NOT in the user object from getUser()
   // We need to decode the JWT directly to access custom claims
   // Let's get the session which has the raw JWT
@@ -48,12 +43,10 @@ export async function createServerClientWithBU() {
       const parts = session.access_token.split('.');
       if (parts.length === 3) {
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-        console.log('[server-with-bu] JWT payload keys:', Object.keys(payload));
-        console.log('[server-with-bu] JWT current_business_unit_id:', payload.current_business_unit_id);
         currentBusinessUnitId = payload.current_business_unit_id;
       }
     } catch (e) {
-      console.error('[server-with-bu] Error decoding JWT:', e);
+
     }
   }
 

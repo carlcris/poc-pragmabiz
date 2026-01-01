@@ -7,9 +7,12 @@
 
 import { NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function GET() {
   try {
+    await requirePermission(RESOURCES.REPORTS, 'view');
     const { supabase } = await createServerClientWithBU();
 
     // Get current user and company
@@ -55,7 +58,7 @@ export async function GET() {
       .limit(100);
 
     if (alertsError) {
-      console.error("Error fetching reorder alerts:", alertsError);
+
       return NextResponse.json(
         { error: "Failed to fetch reorder alerts" },
         { status: 500 }
@@ -86,7 +89,7 @@ export async function GET() {
 
     return NextResponse.json(reorderAlerts);
   } catch (error) {
-    console.error("Unexpected error in GET /api/analytics/dashboard/reorder-alerts:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

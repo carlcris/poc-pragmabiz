@@ -225,7 +225,7 @@ export function QuotationFormDialog({
       }
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving quotation:", error);
+
     }
   };
 

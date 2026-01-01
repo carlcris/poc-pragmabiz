@@ -7,7 +7,7 @@
  * Loads available business units and sets default if none selected
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useBusinessUnits, useSetBusinessUnitContext } from '@/hooks/useBusinessUnits';
 import { useBusinessUnitStore } from '@/stores/businessUnitStore';
 import { Loader2 } from 'lucide-react';
@@ -20,28 +20,45 @@ export const BusinessUnitProvider = ({
   children,
 }: BusinessUnitProviderProps) => {
   const { data: businessUnits, isLoading, error } = useBusinessUnits();
-  const { currentBusinessUnit, setAvailableBusinessUnits } =
+  const { currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit } =
     useBusinessUnitStore();
-  const { mutate: setContext } = useSetBusinessUnitContext();
+  const { mutate: setContext } = useSetBusinessUnitContext({ silent: true });
+  const hasInitialized = useRef(false);
 
   // Initialize business unit when data is loaded
   useEffect(() => {
-    if (!isLoading && businessUnits && businessUnits.length > 0) {
+    if (!isLoading && businessUnits && businessUnits.length > 0 && !hasInitialized.current) {
       setAvailableBusinessUnits(businessUnits);
 
-      // Auto-select default BU if none is currently selected
-      if (!currentBusinessUnit) {
-        const defaultBU = businessUnits.find((bu) => bu.access.is_default);
-        if (defaultBU) {
-          // Set context via API to validate and update server-side context
-          setContext(defaultBU.id);
-        } else {
-          // If no default, select the first available
-          setContext(businessUnits[0].id);
+      // Check if current BU is valid for this user
+      const isCurrentBUValid = currentBusinessUnit &&
+        businessUnits.some(bu => bu.id === currentBusinessUnit.id);
+
+      // Auto-select default BU if none is selected OR if current BU is invalid
+      if (!currentBusinessUnit || !isCurrentBUValid) {
+        if (!isCurrentBUValid && currentBusinessUnit) {
+
         }
+
+        const defaultBU = businessUnits.find((bu) => bu.access.is_default);
+        const targetBU = defaultBU || businessUnits[0];
+
+        // Update store directly to avoid triggering query invalidation
+        // This prevents the flickering on initial load
+        setCurrentBusinessUnit(targetBU);
+
+        // Mark as initialized to prevent re-running this logic
+        hasInitialized.current = true;
+
+        // Update server-side context in background (without clearing queries)
+        // We'll modify setContext to not clear queries on silent updates
+        setContext(targetBU.id);
+      } else {
+        // Current BU is valid, just mark as initialized
+        hasInitialized.current = true;
       }
     }
-  }, [businessUnits, isLoading, currentBusinessUnit, setAvailableBusinessUnits, setContext]);
+  }, [businessUnits, isLoading, currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit, setContext]);
 
   // Show loading state while initializing
   if (isLoading) {
@@ -59,14 +76,14 @@ export const BusinessUnitProvider = ({
 
   // Log error but don't block the app
   if (error) {
-    console.error('Error loading business units:', error);
+
     // For now, allow the app to continue even if BU loading fails
     // This prevents complete app failure during development
   }
 
   // Warn if no business units but don't block
   if (!isLoading && (!businessUnits || businessUnits.length === 0)) {
-    console.warn('No business units available for user');
+
     // For now, allow the app to continue
     // In production, you might want to show an error or redirect
   }

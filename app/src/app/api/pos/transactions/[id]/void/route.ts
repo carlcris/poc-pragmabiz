@@ -2,12 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { reversePOSTransaction } from '@/services/accounting/posPosting';
 import { reversePOSStockTransaction } from '@/services/inventory/posStockService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.POS, 'delete');
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -105,7 +109,7 @@ export async function POST(
       .single();
 
     if (voidError) {
-      console.error('Error voiding transaction:', voidError);
+
       return NextResponse.json(
         { error: 'Failed to void transaction' },
         { status: 500 }
@@ -131,13 +135,12 @@ export async function POST(
         );
 
         if (stockReversalResult.success) {
-          console.log(`Stock transaction reversed for ${transaction.transaction_code}`);
         } else {
-          console.error('Stock reversal failed:', stockReversalResult.error);
+
           warnings.push(`Stock reversal failed: ${stockReversalResult.error}`);
         }
       } catch (error) {
-        console.error('Error reversing stock transaction:', error);
+
         warnings.push('Stock reversal failed');
       }
     } else {
@@ -153,13 +156,12 @@ export async function POST(
       );
 
       if (glReversalResult.success) {
-        console.log(`GL entries reversed for ${transaction.transaction_code}`);
       } else {
-        console.error('GL reversal failed:', glReversalResult.error);
+
         warnings.push(`GL reversal failed: ${glReversalResult.error}`);
       }
     } catch (error) {
-      console.error('Error reversing GL entries:', error);
+
       warnings.push('GL reversal failed');
     }
 
@@ -211,7 +213,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

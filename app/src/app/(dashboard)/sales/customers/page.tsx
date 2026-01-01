@@ -26,10 +26,13 @@ import {
 import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
+import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Customer } from "@/types/customer";
 
-export default function CustomersPage() {
+function CustomersPageContent() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -144,10 +147,12 @@ export default function CustomersPage() {
             Manage your customer accounts
           </p>
         </div>
-        <Button onClick={handleCreateCustomer}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Customer
-        </Button>
+        <CreateGuard resource={RESOURCES.CUSTOMERS}>
+          <Button onClick={handleCreateCustomer}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Customer
+          </Button>
+        </CreateGuard>
       </div>
 
       <div className="space-y-4">
@@ -303,21 +308,25 @@ export default function CustomersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditCustomer(customer)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteCustomer(customer)}
-                              disabled={deleteCustomer.isPending}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <EditGuard resource={RESOURCES.CUSTOMERS}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditCustomer(customer)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </EditGuard>
+                            <DeleteGuard resource={RESOURCES.CUSTOMERS}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteCustomer(customer)}
+                                disabled={deleteCustomer.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </DeleteGuard>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -364,5 +373,13 @@ export default function CustomersPage() {
         isLoading={deleteCustomer.isPending}
       />
     </div>
+  );
+}
+
+export default function CustomersPage() {
+  return (
+    <ProtectedRoute resource={RESOURCES.CUSTOMERS}>
+      <CustomersPageContent />
+    </ProtectedRoute>
   );
 }

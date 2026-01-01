@@ -14,6 +14,8 @@ import type {
   AccountFilters,
   AccountsResponse
 } from "@/types/accounting";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 /**
  * GET /api/accounting/accounts
@@ -21,6 +23,9 @@ import type {
  */
 export async function GET(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Get current user's company
@@ -93,7 +98,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error("Error fetching accounts:", error);
+
       return NextResponse.json(
         { error: "Failed to fetch accounts" },
         { status: 500 }
@@ -133,7 +138,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error("Unexpected error in GET /api/accounting/accounts:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -147,6 +152,9 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Get current user
@@ -249,7 +257,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("Error creating account:", insertError);
+
       return NextResponse.json(
         { error: "Failed to create account" },
         { status: 500 }
@@ -282,7 +290,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Unexpected error in POST /api/accounting/accounts:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

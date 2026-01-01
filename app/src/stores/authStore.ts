@@ -1,6 +1,16 @@
 import { create } from "zustand";
 import { User, LoginCredentials, AuthResponse } from "@/types/auth";
 import { supabase } from "@/lib/supabase/client";
+import { useBusinessUnitStore } from "./businessUnitStore";
+import { usePermissionStore } from "./permissionStore";
+import { QueryClient } from "@tanstack/react-query";
+
+// Get the query client instance - will be initialized by provider
+let queryClientInstance: QueryClient | null = null;
+
+export function setQueryClient(queryClient: QueryClient) {
+  queryClientInstance = queryClient;
+}
 
 interface AuthStore {
   user: User | null;
@@ -53,7 +63,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
             .single();
 
           if (userError) {
-            console.error('Error fetching user data:', userError);
+
           }
 
           // Map Supabase user to our User type
@@ -89,14 +99,26 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
           // Sign out from Supabase
           await supabase.auth.signOut();
 
+          // Clear auth state
           set({
             user: null,
             token: null,
             isAuthenticated: false,
             error: null,
           });
+
+          // Clear business unit context from previous user
+          useBusinessUnitStore.getState().clearBusinessUnit();
+
+          // Clear permissions from previous user
+          usePermissionStore.getState().clearPermissions();
+
+          // Clear React Query cache to prevent data from previous user
+          if (queryClientInstance) {
+            queryClientInstance.clear();
+          }
         } catch (error) {
-          console.error("Logout error:", error);
+
           // Clear state even if API call fails
           set({
             user: null,
@@ -104,6 +126,15 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
             isAuthenticated: false,
             error: null,
           });
+
+          // Clear business unit and permissions even on error
+          useBusinessUnitStore.getState().clearBusinessUnit();
+          usePermissionStore.getState().clearPermissions();
+
+          // Clear React Query cache even on error
+          if (queryClientInstance) {
+            queryClientInstance.clear();
+          }
         }
       },
 
@@ -134,7 +165,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
             .single();
 
           if (userError) {
-            console.error('Error fetching user data:', userError);
+
           }
 
           // Get session to access the access token (safe to use for token only)

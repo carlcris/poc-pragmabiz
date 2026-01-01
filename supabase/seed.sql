@@ -512,9 +512,14 @@ END $$;
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
 ('00000000-0000-0000-0000-000000000000','5745e13c-ab07-48b7-9db7-24372b16f5a9','authenticated','authenticated','demo@pragmatica.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5745e13c-ab07-48b7-9db7-24372b16f5a9", "email": "demo@pragmatica.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','authenticated','authenticated','cashier@pragmatica.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5fa2a5a4-14ca-4afb-bfeb-abc345335a1f", "email": "cashier@pragmatica.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
-('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021');
+('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021'),
+('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','00000000-0000-0000-0000-000000000001','cashier','cashier@pragmatica.com','Store','Cashier',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021');
 
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
@@ -527,16 +532,141 @@ VALUES
 -- SEED DATA: Grant Default BU Access to Users
 -- ============================================================================
 
-INSERT INTO user_business_unit_access (user_id, business_unit_id, role, is_default, granted_at)
+INSERT INTO user_business_unit_access (user_id, business_unit_id, role, is_default, is_current, granted_at)
 VALUES
   -- Admin user access to all three business units
-  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000100', 'admin', true, now()),
-  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000101', 'admin', false, now()),
-  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000102', 'admin', false, now()),
+  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000100', 'admin', true, true, now()),
+  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000101', 'admin', false, false, now()),
+  ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000102', 'admin', false, false, now()),
+  -- Cashier user access to main business unit
+  ('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f', '00000000-0000-0000-0000-000000000100', 'user', true, true, now()),
   -- Regular user access to all three business units
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000100', 'admin', true, now()),
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000101', 'admin', false, now()),
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000102', 'admin', false, now());
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000100', 'admin', true, true, now()),
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000101', 'admin', false, false, now()),
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000102', 'admin', false, false, now());
+
+-- ============================================================================
+-- SEED DATA: Cashier Role and Permissions
+-- ============================================================================
+-- This creates a cashier role with limited permissions for POS operations
+-- Must be created BEFORE user role assignments
+
+-- 1. Create Cashier Role for Demo Company
+INSERT INTO roles (
+  company_id,
+  name,
+  description,
+  created_at,
+  updated_at
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000001', -- Demo Company
+  'Cashier',
+  'Point of Sale cashier with limited access to POS and inventory viewing',
+  NOW(),
+  NOW()
+)
+ON CONFLICT ON CONSTRAINT uq_role_name_per_company DO NOTHING;
+
+-- 2. Assign Permissions to Cashier Role
+-- Link Cashier role to specific resources (permissions)
+
+-- Dashboard
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Cashier'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND p.resource = 'dashboard'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Items (inventory viewing for POS)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Cashier'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND p.resource = 'items'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Sales Orders (for POS transactions)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Cashier'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND p.resource = 'sales_orders'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Customers (for creating walk-in customers)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Cashier'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND p.resource = 'customers'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Sales Invoices (for POS)
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+CROSS JOIN permissions p
+WHERE r.name = 'Cashier'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND p.resource = 'sales_invoices'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- ============================================================================
+-- SEED DATA: User Role Assignments
+-- ============================================================================
+-- Assign roles to users for RBAC
+-- NOTE: Cashier role must be created above before assigning it to users
+
+-- Assign Super Admin role to demo user (NULL business_unit_id = global access to all BUs)
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  '5745e13c-ab07-48b7-9db7-24372b16f5a9',
+  r.id,
+  NULL,  -- NULL = global role, applies to all business units
+  NOW()
+FROM roles r
+WHERE r.name = 'Super Admin'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND NOT EXISTS (
+    SELECT 1 FROM user_roles ur
+    WHERE ur.user_id = '5745e13c-ab07-48b7-9db7-24372b16f5a9'
+      AND ur.role_id = r.id
+      AND ur.business_unit_id IS NULL
+  );
+
+-- Assign Cashier role to cashier user
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  '5fa2a5a4-14ca-4afb-bfeb-abc345335a1f',
+  r.id,
+  '00000000-0000-0000-0000-000000000100',
+  NOW()
+FROM roles r
+WHERE r.name = 'Cashier'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+ON CONFLICT (user_id, role_id, business_unit_id) DO NOTHING;
+
+-- Assign Admin role to mflores user for Main Office
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  'bcb8f5df-b678-4c22-ba71-59b33ba06227',
+  r.id,
+  '00000000-0000-0000-0000-000000000100',
+  NOW()
+FROM roles r
+WHERE r.name = 'Admin'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+ON CONFLICT (user_id, role_id, business_unit_id) DO NOTHING;
 
 -- ============================================================================
 -- SEED DATA: Suppliers
@@ -1166,3 +1296,22 @@ END $$;
             RAISE NOTICE 'User or employee not found. Skipping user-employee link.';
         END IF;
     END $$;
+
+-- ============================================================================
+-- NOTE: Cashier Role and User Account
+-- ============================================================================
+-- The Cashier role and permissions are created earlier in this file (before User Role Assignments section)
+-- The cashier user account (cashier@pragmatica.com) is created above with:
+--   - auth.users record
+--   - public.users record
+--   - business_unit_access (with is_current = true for JWT)
+--   - user_roles assignment
+--
+-- Login credentials:
+--   Email: cashier@pragmatica.com
+--   Password: password (default bcrypt hash in seed data)
+--
+-- The cashier has access to:
+--   - Dashboard (view only)
+--   - Inventory > Items (view only)
+--   - Sales > Point of Sale, POS Transactions, Customers, Sales Orders, Invoices

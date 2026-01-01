@@ -1,6 +1,8 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateTransformationOrderSchema } from '@/lib/validations/transformation-order';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // GET /api/transformations/orders/[id] - Get order by ID
 export async function GET(
@@ -8,6 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -60,21 +65,12 @@ export async function GET(
       .single();
 
     if (error || !order) {
-      console.error('Error fetching order:', error);
+
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    console.log('Order fetched successfully:', {
-      id: order.id,
-      hasTemplate: !!order.template,
-      hasSourceWarehouse: !!order.source_warehouse,
-      inputsCount: order.inputs?.length || 0,
-      outputsCount: order.outputs?.length || 0,
-    });
-
     return NextResponse.json({ data: order });
   } catch (error) {
-    console.error('Error in GET /api/transformations/orders/[id]:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -85,6 +81,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -167,13 +166,13 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      console.error('Error updating order:', updateError);
+
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     return NextResponse.json({ data: updatedOrder });
   } catch (error) {
-    console.error('Error in PATCH /api/transformations/orders/[id]:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -184,6 +183,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'delete');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -238,13 +240,13 @@ export async function DELETE(
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Error deleting order:', deleteError);
+
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
     return NextResponse.json({ message: 'Order deleted successfully' });
   } catch (error) {
-    console.error('Error in DELETE /api/transformations/orders/[id]:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

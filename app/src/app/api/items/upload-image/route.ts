@@ -1,9 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // POST /api/items/upload-image - Upload item image to Supabase Storage
 export async function POST(request: NextRequest) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const supabase = await createClient();
 
     // Check authentication
@@ -77,7 +83,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
+
       return NextResponse.json(
         { error: 'Failed to upload image', details: uploadError.message },
         { status: 500 }
@@ -95,7 +101,7 @@ export async function POST(request: NextRequest) {
       path: filePath,
     });
   } catch (error) {
-    console.error('Error in POST /api/items/upload-image:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -103,6 +109,10 @@ export async function POST(request: NextRequest) {
 // DELETE /api/items/upload-image - Delete item image from Supabase Storage
 export async function DELETE(request: NextRequest) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'delete');
+    if (unauthorized) return unauthorized;
+
     const supabase = await createClient();
 
     // Check authentication
@@ -129,7 +139,7 @@ export async function DELETE(request: NextRequest) {
       .remove([imagePath]);
 
     if (deleteError) {
-      console.error('Delete error:', deleteError);
+
       return NextResponse.json(
         { error: 'Failed to delete image', details: deleteError.message },
         { status: 500 }
@@ -141,7 +151,7 @@ export async function DELETE(request: NextRequest) {
       message: 'Image deleted successfully',
     });
   } catch (error) {
-    console.error('Error in DELETE /api/items/upload-image:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

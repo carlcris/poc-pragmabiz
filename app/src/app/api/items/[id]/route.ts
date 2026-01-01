@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { Item, UpdateItemRequest } from '@/types/item'
 import type { Database } from '@/types/database.types'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbItem = Database['public']['Tables']['items']['Row']
 type DbItemCategory = Database['public']['Tables']['item_categories']['Row']
@@ -41,6 +43,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'view')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -78,7 +84,7 @@ export async function GET(
       .maybeSingle()
 
     if (error) {
-      console.error('Database error:', error)
+
       return NextResponse.json(
         { error: 'Failed to fetch item', details: error.message },
         { status: 500 }
@@ -93,7 +99,7 @@ export async function GET(
     const item = transformDbItem(data as any)
     return NextResponse.json({ data: item })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -107,6 +113,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -131,7 +141,7 @@ export async function PUT(
       .maybeSingle()
 
     if (existError) {
-      console.error('Database error:', existError)
+
       return NextResponse.json(
         { error: 'Failed to check item', details: existError.message },
         { status: 500 }
@@ -216,7 +226,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Update error:', updateError)
+
       return NextResponse.json(
         { error: 'Failed to update item', details: updateError.message },
         { status: 500 }
@@ -227,7 +237,7 @@ export async function PUT(
     const item = transformDbItem(updatedItem as any)
     return NextResponse.json({ data: item })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -241,6 +251,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'delete')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -277,7 +291,7 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Delete error:', deleteError)
+
       return NextResponse.json(
         { error: 'Failed to delete item', details: deleteError.message },
         { status: 500 }
@@ -286,7 +300,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Item deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // PATCH /api/reorder/rules/[id]
 export async function PATCH(
@@ -7,6 +9,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'edit')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
@@ -68,7 +71,7 @@ export async function PATCH(
       .single()
 
     if (updateError) {
-      console.error('Error updating reorder rule:', updateError)
+
       return NextResponse.json(
         { error: updateError.message || 'Failed to update reorder rule' },
         { status: 500 }
@@ -77,7 +80,7 @@ export async function PATCH(
 
     return NextResponse.json(rule)
   } catch (error) {
-    console.error('Unexpected error in PATCH /api/reorder/rules/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -88,6 +91,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'delete')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -134,13 +138,13 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Error deleting reorder rule:', deleteError)
+
       return NextResponse.json({ error: 'Failed to delete reorder rule' }, { status: 500 })
     }
 
     return NextResponse.json({ message: 'Reorder rule deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/reorder/rules/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

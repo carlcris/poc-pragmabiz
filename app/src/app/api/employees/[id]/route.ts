@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 type RouteContext = {
   params: Promise<{
@@ -49,6 +51,7 @@ export const GET = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'view');
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -60,7 +63,7 @@ export const GET = async (
       .single();
 
     if (error) {
-      console.error("Error fetching employee:", error);
+
       return NextResponse.json(
         { error: "Employee not found" },
         { status: 404 }
@@ -69,7 +72,7 @@ export const GET = async (
 
     return NextResponse.json({ data: transformEmployee(data) });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -83,6 +86,7 @@ export const PUT = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'edit');
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -145,7 +149,7 @@ export const PUT = async (
       .single();
 
     if (error) {
-      console.error("Error updating employee:", error);
+
       return NextResponse.json(
         { error: "Failed to update employee", details: error.message },
         { status: 500 }
@@ -161,7 +165,7 @@ export const PUT = async (
 
     return NextResponse.json({ data: transformEmployee(data) });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -175,6 +179,7 @@ export const DELETE = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'delete');
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -201,7 +206,7 @@ export const DELETE = async (
       .single();
 
     if (error) {
-      console.error("Error deleting employee:", error);
+
       return NextResponse.json(
         { error: "Failed to delete employee", details: error.message },
         { status: 500 }
@@ -217,7 +222,7 @@ export const DELETE = async (
 
     return NextResponse.json({ data: transformEmployee(data) });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

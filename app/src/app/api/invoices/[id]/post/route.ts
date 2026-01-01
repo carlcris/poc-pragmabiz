@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { postARInvoice } from '@/services/accounting/arPosting'
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
 import { calculateInvoiceCommission } from '@/services/commission/commissionService'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/invoices/[id]/post - Post an invoice and create stock transactions
 export async function POST(
@@ -10,6 +12,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'edit')
     const { supabase } = await createServerClientWithBU()
     const { id } = await params
 
@@ -112,7 +115,7 @@ export async function POST(
       .single()
 
     if (transactionError || !stockTransaction) {
-      console.error('Error creating stock transaction:', transactionError)
+
       return NextResponse.json(
         { error: 'Failed to create stock transaction' },
         { status: 500 }
@@ -178,7 +181,7 @@ export async function POST(
         .single()
 
       if (stockTxItemError) {
-        console.error('Error creating stock transaction item:', stockTxItemError)
+
         // Rollback
         await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
         return NextResponse.json(
@@ -199,7 +202,7 @@ export async function POST(
         .eq('warehouse_id', invoice.warehouse_id)
 
       if (warehouseUpdateError) {
-        console.error('Error updating item_warehouse stock:', warehouseUpdateError)
+
         // Rollback
         await supabase.from('stock_transaction_items').delete().eq('id', stockTxItem.id)
         await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -221,7 +224,7 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error updating invoice status:', updateError)
+
       return NextResponse.json(
         { error: 'Failed to update invoice status' },
         { status: 500 }
@@ -237,12 +240,10 @@ export async function POST(
       )
 
       if (!commissionResult.success) {
-        console.warn(
-          `Invoice ${invoice.invoice_code} posted but commission calculation failed: ${commissionResult.error}`
-        )
+
       }
     } catch (commissionError) {
-      console.error('Error calculating commission:', commissionError)
+
       // Don't fail invoice posting if commission calculation fails
     }
 
@@ -257,12 +258,10 @@ export async function POST(
     })
 
     if (!arResult.success) {
-      console.error('Error posting AR invoice to GL:', arResult.error)
+
       // Log warning but don't fail the invoice posting
       // The invoice is already posted with stock transactions
-      console.warn(
-        `Invoice ${invoice.invoice_code} posted successfully but AR GL posting failed: ${arResult.error}`
-      )
+
     }
 
     // Calculate and post COGS to general ledger
@@ -289,16 +288,10 @@ export async function POST(
       })
 
       if (!cogsResult.success) {
-        console.error('Error posting COGS to GL:', cogsResult.error)
-        console.warn(
-          `Invoice ${invoice.invoice_code} posted successfully but COGS GL posting failed: ${cogsResult.error}`
-        )
+
       }
     } else {
-      console.error('Error calculating COGS:', cogsCalculation.error)
-      console.warn(
-        `Invoice ${invoice.invoice_code} posted successfully but COGS calculation failed: ${cogsCalculation.error}`
-      )
+
     }
 
     return NextResponse.json({
@@ -315,7 +308,7 @@ export async function POST(
       commissionSuccess: commissionResult.success,
     }, { status: 200 })
   } catch (error) {
-    console.error('Unexpected error in POST /api/invoices/[id]/post:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

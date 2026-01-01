@@ -1,10 +1,13 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { calculateInvoiceCommission } from '@/services/commission/commissionService'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/invoices
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'view')
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
     const { data: invoices, error, count } = await query
 
     if (error) {
-      console.error('Error fetching invoices:', error)
+
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
@@ -181,7 +184,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/invoices:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -189,6 +192,7 @@ export async function GET(request: NextRequest) {
 // POST /api/invoices
 export async function POST(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'create')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -315,7 +319,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
+
       return NextResponse.json(
         { error: invoiceError.message || 'Failed to create invoice' },
         { status: 500 }
@@ -333,7 +337,7 @@ export async function POST(request: NextRequest) {
       .insert(itemsToInsert)
 
     if (itemsError) {
-      console.error('Error creating invoice items:', itemsError)
+
       // Rollback: delete the invoice
       await supabase.from('sales_invoices').delete().eq('id', invoice.id)
       return NextResponse.json(
@@ -350,12 +354,10 @@ export async function POST(request: NextRequest) {
       )
 
       if (!commissionResult.success) {
-        console.warn(
-          `Invoice ${invoice.invoice_code} created but commission calculation failed: ${commissionResult.error}`
-        )
+
       }
     } catch (commissionError) {
-      console.error('Error calculating commission:', commissionError)
+
       // Don't fail invoice creation if commission calculation fails
     }
 
@@ -367,7 +369,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Unexpected error in POST /api/invoices:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -5,6 +5,8 @@ import {
   executeTransformation,
   validateStateTransition,
 } from '@/services/inventory/transformationService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // POST /api/transformations/orders/[id]/execute - Execute transformation (PREPARING → COMPLETED)
 export async function POST(
@@ -12,6 +14,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = await params;
 
@@ -38,9 +43,8 @@ export async function POST(
 
     // Validate state transition (must be in PREPARING status)
     const transitionValidation = await validateStateTransition(id, 'COMPLETED');
-    console.log('State transition validation:', transitionValidation);
     if (!transitionValidation.isValid) {
-      console.error('State transition validation failed:', transitionValidation);
+
       return NextResponse.json(
         { error: transitionValidation.error || 'Invalid state transition' },
         { status: 400 }
@@ -53,7 +57,7 @@ export async function POST(
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: 'Validation failed', details: validationResult.error.errors },
+        { error: 'Validation failed', details: validationResult.error.issues },
         { status: 400 }
       );
     }
@@ -62,10 +66,10 @@ export async function POST(
 
     // Execute transformation (consumes inputs, produces outputs, records lineage)
     // Note: executeTransformation now handles status update to COMPLETED
-    const result = await executeTransformation(id, user.id, data);
+    // IMPORTANT: Pass the supabase client so it uses the same session with BU context
+    const result = await executeTransformation(id, user.id, data, supabase);
 
     if (!result.success) {
-      console.error('Transformation execution failed:', result.error);
       return NextResponse.json({ error: result.error || 'Execution failed' }, { status: 500 });
     }
 
@@ -88,7 +92,6 @@ export async function POST(
       stockTransactions: result.stockTransactionIds,
     });
   } catch (error) {
-    console.error('Error in POST /api/transformations/orders/[id]/execute:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

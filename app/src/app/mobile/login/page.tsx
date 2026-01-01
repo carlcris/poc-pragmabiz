@@ -48,13 +48,13 @@ export default function MobileLoginPage() {
         .single();
 
       if (vanError) {
-        console.error("Error checking van assignment:", vanError);
+
       }
 
       // Redirect to van sales dashboard
       router.push("/mobile/van-sales/dashboard");
     } catch (err) {
-      console.error("Login error:", err);
+
       setError(err instanceof Error ? err.message : "Login failed. Please try again.");
     } finally {
       setIsLoading(false);

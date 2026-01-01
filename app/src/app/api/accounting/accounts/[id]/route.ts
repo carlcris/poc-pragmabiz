@@ -10,6 +10,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { UpdateAccountRequest } from "@/types/accounting";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -24,6 +26,9 @@ export async function GET(
   context: RouteContext
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -72,7 +77,7 @@ export async function GET(
 
     return NextResponse.json({ data: account });
   } catch (error) {
-    console.error("Unexpected error in GET /api/accounting/accounts/[id]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -89,6 +94,9 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -205,7 +213,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error("Error updating account:", updateError);
+
       return NextResponse.json(
         { error: "Failed to update account" },
         { status: 500 }
@@ -214,7 +222,7 @@ export async function PUT(
 
     return NextResponse.json({ data: updatedAccount });
   } catch (error) {
-    console.error("Unexpected error in PUT /api/accounting/accounts/[id]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -231,6 +239,9 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, 'delete');
+    if (unauthorized) return unauthorized;
+
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -295,7 +306,7 @@ export async function DELETE(
       .limit(1);
 
     if (journalError) {
-      console.error("Error checking journal lines:", journalError);
+
       return NextResponse.json(
         { error: "Failed to verify account usage" },
         { status: 500 }
@@ -321,7 +332,7 @@ export async function DELETE(
       .eq("company_id", companyId);
 
     if (deleteError) {
-      console.error("Error deleting account:", deleteError);
+
       return NextResponse.json(
         { error: "Failed to delete account" },
         { status: 500 }
@@ -333,7 +344,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Unexpected error in DELETE /api/accounting/accounts/[id]:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

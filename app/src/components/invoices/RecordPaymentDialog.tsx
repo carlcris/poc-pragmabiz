@@ -72,7 +72,7 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
       await recordPayment.mutateAsync(data);
       onOpenChange(false);
     } catch (error) {
-      console.error("Failed to record payment:", error);
+
     }
   };
 

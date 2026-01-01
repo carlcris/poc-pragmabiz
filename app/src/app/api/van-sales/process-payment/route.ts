@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postARInvoice, postARPayment } from '@/services/accounting/arPosting';
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting';
 import { calculateInvoiceCommission } from '@/services/commission/commissionService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 interface ProcessPaymentRequest {
   customerId: string;
@@ -25,6 +27,10 @@ interface ProcessPaymentRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.VAN_SALES, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
@@ -81,7 +87,7 @@ export async function POST(request: NextRequest) {
       .in('item_id', itemIds);
 
     if (stockError) {
-      console.error('Error checking stock availability:', stockError);
+
       return NextResponse.json({ error: 'Failed to check stock availability' }, { status: 500 });
     }
 
@@ -181,7 +187,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError || !salesOrder) {
-      console.error('Error creating sales order:', orderError);
+
       return NextResponse.json({ error: 'Failed to create sales order' }, { status: 500 });
     }
 
@@ -209,7 +215,7 @@ export async function POST(request: NextRequest) {
       .insert(orderItemsToInsert);
 
     if (orderItemsError) {
-      console.error('Error creating sales order items:', orderItemsError);
+
       // Rollback: delete the order
       await supabase.from('sales_orders').delete().eq('id', salesOrder.id);
       return NextResponse.json({ error: 'Failed to create sales order items' }, { status: 500 });
@@ -272,7 +278,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (invoiceError || !invoice) {
-      console.error('Error creating invoice:', invoiceError);
+
       return NextResponse.json({ error: 'Failed to create invoice' }, { status: 500 });
     }
 
@@ -300,7 +306,7 @@ export async function POST(request: NextRequest) {
       .insert(invoiceItemsToInsert);
 
     if (invoiceItemsError) {
-      console.error('Error creating invoice items:', invoiceItemsError);
+
       return NextResponse.json({ error: 'Failed to create invoice items' }, { status: 500 });
     }
 
@@ -351,7 +357,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (paymentError || !payment) {
-        console.error('Error creating payment:', paymentError);
+
         return NextResponse.json({ error: `Failed to record payment for ${paymentMethod.paymentMethod}` }, { status: 500 });
       }
 
@@ -371,7 +377,7 @@ export async function POST(request: NextRequest) {
       .eq('id', invoice.id);
 
     if (updateInvoiceError) {
-      console.error('Error updating invoice status:', updateInvoiceError);
+
       return NextResponse.json({ error: 'Failed to update invoice status' }, { status: 500 });
     }
 
@@ -427,7 +433,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (transactionError || !stockTransaction) {
-      console.error('Error creating stock transaction:', transactionError)
+
       return NextResponse.json(
         { error: 'Failed to create stock transaction' },
         { status: 500 }
@@ -456,7 +462,7 @@ export async function POST(request: NextRequest) {
         .single()
 
         if (stockTxItemError) {
-          console.error('Error creating stock transaction item:', stockTxItemError)
+
           // Rollback stock transaction
           await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
           return NextResponse.json(
@@ -497,7 +503,7 @@ export async function POST(request: NextRequest) {
           .eq('id', stockTxItem.id)
 
         if (updateTxItemError) {
-          console.error('Error updating stock transaction item:', updateTxItemError)
+
           // Rollback
           await supabase.from('stock_transaction_items').delete().eq('id', stockTxItem.id)
           await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -519,7 +525,7 @@ export async function POST(request: NextRequest) {
           .eq('warehouse_id', invoice.warehouse_id)
 
         if (updateWarehouseError) {
-          console.error('Error updating item_warehouse stock:', updateWarehouseError)
+
           // Rollback
           await supabase.from('stock_transaction_items').delete().eq('id', stockTxItem.id)
           await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -532,7 +538,6 @@ export async function POST(request: NextRequest) {
 
     // Stock has already been updated in item_warehouse above, no additional processing needed
 
-
     // Calculate commission for the invoice
     try {
       const commissionResult = await calculateInvoiceCommission(
@@ -541,12 +546,10 @@ export async function POST(request: NextRequest) {
       );
 
       if (!commissionResult.success) {
-        console.warn(
-          `Invoice ${invoice.invoice_code} paid but commission calculation failed: ${commissionResult.error}`
-        );
+
       }
     } catch (commissionError) {
-      console.error('Error calculating commission:', commissionError);
+
       // Don't fail payment if commission calculation fails
     }
 
@@ -575,10 +578,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!arInvoiceResult.success) {
-      console.error('Error posting AR invoice to GL:', arInvoiceResult.error);
-      console.warn(
-        `Van sale invoice ${invoiceNumber} completed but AR GL posting failed: ${arInvoiceResult.error}`
-      );
+
     }
 
     // Post AR Payments (DR Cash, CR AR) - for each payment
@@ -595,10 +595,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!arPaymentResult.success) {
-        console.error('Error posting AR payment to GL:', arPaymentResult.error);
-        console.warn(
-          `Van sale payment for ${invoiceNumber} (${payment.payment_method}) completed but AR payment GL posting failed: ${arPaymentResult.error}`
-        );
+
       }
     }
 
@@ -629,16 +626,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (!cogsResult.success && cogsResult.error) {
-        console.error('Error posting COGS to GL:', cogsResult.error);
-        console.warn(
-          `Van sale ${invoiceNumber} completed but COGS GL posting failed: ${cogsResult.error}`
-        );
+
       }
     } else {
-      console.error('Error calculating COGS:', cogsCalculation.error);
-      console.warn(
-        `Van sale ${invoiceNumber} completed but COGS calculation failed: ${cogsCalculation.error}`
-      );
+
     }
 
     // ========================================================================
@@ -664,7 +655,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Unexpected error in van sales payment:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

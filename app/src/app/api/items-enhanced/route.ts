@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireLookupDataAccess } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 export interface ItemWithStock {
   id: string
@@ -27,6 +29,13 @@ export interface ItemWithStock {
 
 export async function GET(request: NextRequest) {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'items' view permission, OR
+    // 2. Permission to a feature that depends on items (pos, sales_orders, etc.)
+    const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS)
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -96,7 +105,7 @@ export async function GET(request: NextRequest) {
     const { data: items, error: itemsError } = await itemsQuery
 
     if (itemsError) {
-      console.error('Error fetching items:', itemsError)
+
       return NextResponse.json({ error: 'Failed to fetch items' }, { status: 500 })
     }
 
@@ -257,7 +266,6 @@ export async function GET(request: NextRequest) {
       // Get category_id and supplier_id from the actual database columns
       const categoryId = (item.category_id || item.item_category_id || '') as string
       const supplierId = (item.supplier_id || '') as string
-      console.log('available', item.item_name, { onHand, allocated, available, reorderPoint })
       return {
         id: item.id,
         code: item.item_code,
@@ -318,7 +326,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/items-enhanced:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

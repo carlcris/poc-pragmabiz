@@ -55,7 +55,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
 
           setQrCodeDataUrl(qrDataUrl);
         } catch (error) {
-          console.error('Error generating QR code:', error);
+
         }
       };
 
@@ -89,7 +89,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
         };
       }
     } catch (error) {
-      console.error('Error printing PDF:', error);
+
     } finally {
       setIsPrinting(false);
     }
@@ -116,7 +116,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating PDF:', error);
+
     } finally {
       setIsGeneratingPDF(false);
     }

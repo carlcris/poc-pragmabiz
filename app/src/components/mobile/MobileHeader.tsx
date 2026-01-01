@@ -77,7 +77,7 @@ export function MobileHeader({
       await supabase.auth.signOut();
       router.push("/mobile/login");
     } catch (error) {
-      console.error("Logout error:", error);
+
       setErrorMessage("Failed to logout. Please try again.");
       setShowErrorAlert(true);
       setIsLoggingOut(false);

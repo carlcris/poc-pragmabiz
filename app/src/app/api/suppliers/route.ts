@@ -1,9 +1,17 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission, requireLookupDataAccess } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/suppliers
 export async function GET(request: NextRequest) {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'suppliers' view permission, OR
+    // 2. Permission to a feature that depends on suppliers (purchase_orders, purchase_receipts)
+    const unauthorized = await requireLookupDataAccess(RESOURCES.SUPPLIERS)
+    if (unauthorized) return unauthorized
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -57,7 +65,7 @@ export async function GET(request: NextRequest) {
     const { data: suppliers, error, count } = await query
 
     if (error) {
-      console.error('Error fetching suppliers:', error)
+
       return NextResponse.json({ error: 'Failed to fetch suppliers' }, { status: 500 })
     }
 
@@ -108,7 +116,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/suppliers:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -116,6 +124,7 @@ export async function GET(request: NextRequest) {
 // POST /api/suppliers
 export async function POST(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.SUPPLIERS, 'create')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -208,7 +217,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (supplierError) {
-      console.error('Error creating supplier:', supplierError)
+
       return NextResponse.json(
         { error: supplierError.message || 'Failed to create supplier' },
         { status: 500 }
@@ -224,7 +233,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Unexpected error in POST /api/suppliers:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

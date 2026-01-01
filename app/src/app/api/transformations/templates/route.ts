@@ -2,10 +2,15 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransformationTemplateSchema } from '@/lib/validations/transformation-template';
 import { checkTemplateLock } from '@/services/inventory/transformationService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // GET /api/transformations/templates - List transformation templates
 export async function GET(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const searchParams = request.nextUrl.searchParams;
 
@@ -113,7 +118,7 @@ export async function GET(request: NextRequest) {
     const { data: templates, error, count } = await query.range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('Error fetching transformation templates:', error);
+
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -124,15 +129,17 @@ export async function GET(request: NextRequest) {
       limit,
     });
   } catch (error) {
-    console.error('Error in GET /api/transformations/templates:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // POST /api/transformations/templates - Create transformation template
 export async function POST(request: NextRequest) {
-  console.log('=== POST /api/transformations/templates called ===');
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
@@ -166,29 +173,22 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('Received body:', JSON.stringify(body, null, 2));
 
     const dataToValidate = {
       ...body,
       companyId: userData.company_id,
     };
-    console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
 
     const validationResult = createTransformationTemplateSchema.safeParse(dataToValidate);
 
-    console.log('Validation result success:', validationResult.success);
-
     if (!validationResult.success) {
-      console.error('Validation errors:', JSON.stringify(validationResult.error, null, 2));
       return NextResponse.json(
         { error: 'Validation failed', details: validationResult.error.errors },
         { status: 400 }
       );
     }
 
-    console.log('Validation passed successfully!');
     const data = validationResult.data;
-    console.log('Validated data:', JSON.stringify(data, null, 2));
 
     // Check if template code already exists
     const { data: existingTemplate } = await supabase
@@ -200,14 +200,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingTemplate) {
-      console.log('Template code already exists:', data.templateCode);
       return NextResponse.json(
         { error: 'Template code already exists' },
         { status: 400 }
       );
     }
-
-    console.log('Template code is unique, proceeding with creation...');
 
     // Create template header
     const { data: template, error: templateError } = await supabase
@@ -227,7 +224,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (templateError || !template) {
-      console.error('Error creating template:', templateError);
+
       return NextResponse.json(
         { error: 'Failed to create template' },
         { status: 500 }
@@ -253,7 +250,7 @@ export async function POST(request: NextRequest) {
     if (inputsError) {
       // Rollback: delete template
       await supabase.from('transformation_templates').delete().eq('id', template.id);
-      console.error('Error creating template inputs:', inputsError);
+
       return NextResponse.json(
         { error: 'Failed to create template inputs' },
         { status: 500 }
@@ -281,7 +278,7 @@ export async function POST(request: NextRequest) {
       // Rollback: delete template and inputs
       await supabase.from('transformation_template_inputs').delete().eq('template_id', template.id);
       await supabase.from('transformation_templates').delete().eq('id', template.id);
-      console.error('Error creating template outputs:', outputsError);
+
       return NextResponse.json(
         { error: 'Failed to create template outputs' },
         { status: 500 }
@@ -306,7 +303,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error in POST /api/transformations/templates:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

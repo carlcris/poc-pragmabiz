@@ -116,7 +116,7 @@ export async function postAPBill(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating AP bill journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -155,7 +155,6 @@ export async function postAPBill(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating AP bill journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -167,7 +166,7 @@ export async function postAPBill(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postAPBill:", error);
+
     return {
       success: false,
       error: "Internal error posting AP bill",
@@ -264,7 +263,7 @@ export async function postAPPayment(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating AP payment journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -303,7 +302,6 @@ export async function postAPPayment(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating AP payment journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -315,7 +313,7 @@ export async function postAPPayment(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postAPPayment:", error);
+
     return {
       success: false,
       error: "Internal error posting AP payment",

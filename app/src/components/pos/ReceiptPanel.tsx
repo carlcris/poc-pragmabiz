@@ -33,7 +33,7 @@ export function ReceiptPanel({ transaction, open, onClose }: ReceiptPanelProps) 
       const dataUrl = await generateReceiptPDF(transaction)
       setPdfDataUrl(dataUrl)
     } catch (error) {
-      console.error('Error generating receipt:', error)
+
     } finally {
       setIsGenerating(false)
     }

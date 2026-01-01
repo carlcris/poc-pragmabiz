@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // GET /api/analytics/sales/overview - Summary KPIs
 export const GET = async (req: NextRequest) => {
   try {
+    await requirePermission(RESOURCES.REPORTS, 'view');
     const { supabase } = await createServerClientWithBU();
 
     // Get query parameters
@@ -37,7 +40,7 @@ export const GET = async (req: NextRequest) => {
     const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
-      console.error("Error fetching invoices:", invoicesError);
+
       return NextResponse.json(
         { error: "Failed to fetch analytics data", details: invoicesError.message },
         { status: 500 }
@@ -72,7 +75,7 @@ export const GET = async (req: NextRequest) => {
       .order("invoice_date", { ascending: true });
 
     if (trendError) {
-      console.error("Error fetching trend data:", trendError);
+
     }
 
     // Group by date
@@ -96,7 +99,7 @@ export const GET = async (req: NextRequest) => {
       .not("primary_employee_id", "is", null);
 
     if (topEmpError) {
-      console.error("Error fetching top employees:", topEmpError);
+
     }
 
     // Aggregate by employee
@@ -146,7 +149,7 @@ export const GET = async (req: NextRequest) => {
       },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

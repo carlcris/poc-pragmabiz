@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { SalesOrder, SalesOrderLineItem, UpdateSalesOrderRequest } from '@/types/sales-order'
 import type { Database } from '@/types/database.types'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbSalesOrder = Database['public']['Tables']['sales_orders']['Row']
 type DbSalesOrderItem = Database['public']['Tables']['sales_order_items']['Row']
@@ -79,6 +81,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'view')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -145,7 +151,7 @@ export async function GET(
       .order('sort_order', { ascending: true })
 
     if (itemsError) {
-      console.error('Error fetching sales order items:', itemsError)
+
     }
 
     const transformedItems = items?.map(item => transformDbSalesOrderItem(item as any)) || []
@@ -153,7 +159,7 @@ export async function GET(
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -164,6 +170,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -253,7 +263,7 @@ export async function PUT(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error updating sales order:', updateError)
+
       return NextResponse.json(
         { error: updateError.message || 'Failed to update sales order' },
         { status: 500 }
@@ -294,7 +304,7 @@ export async function PUT(
         .insert(itemsToInsert)
 
       if (itemsError) {
-        console.error('Error updating sales order items:', itemsError)
+
         return NextResponse.json(
           { error: itemsError.message || 'Failed to update sales order items' },
           { status: 500 }
@@ -351,7 +361,7 @@ export async function PUT(
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -362,6 +372,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'delete')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -398,7 +412,7 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Error deleting sales order:', deleteError)
+
       return NextResponse.json(
         { error: deleteError.message || 'Failed to delete sales order' },
         { status: 500 }
@@ -416,7 +430,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Sales order deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

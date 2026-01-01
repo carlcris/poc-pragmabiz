@@ -33,10 +33,13 @@ import { ItemFormDialog } from "@/components/items/ItemFormDialog";
 import { ItemDetailsDialog } from "@/components/items/ItemDetailsDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
+import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
 import type { Item } from "@/types/item";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 
-export default function ItemsPage() {
+function ItemsPageContent() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -256,10 +259,12 @@ export default function ItemsPage() {
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
-          <Button onClick={handleCreateItem}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Item
-          </Button>
+          <CreateGuard resource={RESOURCES.ITEMS}>
+            <Button onClick={handleCreateItem}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Item
+            </Button>
+          </CreateGuard>
         </div>
       </div>
 
@@ -483,21 +488,25 @@ export default function ItemsPage() {
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditItem(item)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteItem(item)}
-                            disabled={deleteItem.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <EditGuard resource={RESOURCES.ITEMS}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditItem(item)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </EditGuard>
+                          <DeleteGuard resource={RESOURCES.ITEMS}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteItem(item)}
+                              disabled={deleteItem.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </DeleteGuard>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -553,5 +562,13 @@ export default function ItemsPage() {
         isLoading={deleteItem.isPending}
       />
     </div>
+  );
+}
+
+export default function ItemsPage() {
+  return (
+    <ProtectedRoute resource={RESOURCES.ITEMS}>
+      <ItemsPageContent />
+    </ProtectedRoute>
   );
 }

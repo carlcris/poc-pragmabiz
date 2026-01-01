@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postARInvoice } from '@/services/accounting/arPosting'
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/sales-orders/[id]/convert-to-invoice
 export async function POST(
@@ -9,6 +11,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { id: salesOrderId } = await params
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
@@ -104,7 +110,7 @@ export async function POST(
       .order('sort_order', { ascending: true })
 
     if (itemsError) {
-      console.error('Error fetching sales order items:', itemsError)
+
       return NextResponse.json(
         { error: 'Failed to fetch sales order items' },
         { status: 500 }
@@ -183,7 +189,7 @@ export async function POST(
       .single()
 
     if (invoiceError) {
-      console.error('Error creating invoice:', invoiceError)
+
       return NextResponse.json(
         { error: invoiceError.message || 'Failed to create invoice' },
         { status: 500 }
@@ -214,7 +220,7 @@ export async function POST(
       .insert(invoiceItemsToInsert)
 
     if (invoiceItemsError) {
-      console.error('Error creating invoice items:', invoiceItemsError)
+
       // Rollback: delete the invoice
       await supabase.from('sales_invoices').delete().eq('id', invoice.id)
       return NextResponse.json(
@@ -264,7 +270,7 @@ export async function POST(
       .single()
 
     if (transactionError || !stockTransaction) {
-      console.error('Error creating stock transaction:', transactionError)
+
       // Rollback: delete invoice items and invoice
       await supabase.from('sales_invoice_items').delete().eq('invoice_id', invoice.id)
       await supabase.from('sales_invoices').delete().eq('id', invoice.id)
@@ -293,7 +299,7 @@ export async function POST(
       .select()
 
     if (transactionItemsError || !transactionItems) {
-      console.error('Error creating stock transaction items:', transactionItemsError)
+
       // Rollback: delete transaction, invoice items, and invoice
       await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
       await supabase.from('sales_invoice_items').delete().eq('invoice_id', invoice.id)
@@ -331,7 +337,7 @@ export async function POST(
 
       // Validate sufficient stock
       if (newBalance < 0) {
-        console.error(`Insufficient stock for item ${item.item_id}. Available: ${currentBalance}, Requested: ${quantity}`)
+
         // Rollback: delete transaction items, transaction, invoice items, and invoice
         await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTransaction.id)
         await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -358,7 +364,7 @@ export async function POST(
         .eq('id', transactionItem.id)
 
       if (updateTxItemError) {
-        console.error('Error updating stock transaction item:', updateTxItemError)
+
         // Rollback
         await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTransaction.id)
         await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -382,7 +388,7 @@ export async function POST(
         .eq('warehouse_id', body.warehouseId)
 
       if (updateWarehouseError) {
-        console.error('Error updating item_warehouse stock:', updateWarehouseError)
+
         // Rollback
         await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTransaction.id)
         await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -406,7 +412,7 @@ export async function POST(
       .eq('id', salesOrderId)
 
     if (updateError) {
-      console.error('Error updating sales order:', updateError)
+
       // Note: We don't rollback here as the invoice is already created successfully
     }
 
@@ -421,11 +427,9 @@ export async function POST(
     })
 
     if (!arResult.success) {
-      console.error('Error posting AR invoice to GL:', arResult.error)
+
       // Log warning but don't fail the invoice conversion
-      console.warn(
-        `Invoice ${invoice.invoice_code} created successfully but AR GL posting failed: ${arResult.error}`
-      )
+
     }
 
     // Step 10: Calculate and post COGS to general ledger
@@ -455,16 +459,10 @@ export async function POST(
       })
 
       if (!cogsResult.success && cogsResult.error) {
-        console.error('Error posting COGS to GL:', cogsResult.error)
-        console.warn(
-          `Invoice ${invoice.invoice_code} created successfully but COGS GL posting failed: ${cogsResult.error}`
-        )
+
       }
     } else {
-      console.error('Error calculating COGS:', cogsCalculation.error)
-      console.warn(
-        `Invoice ${invoice.invoice_code} created successfully but COGS calculation failed: ${cogsCalculation.error}`
-      )
+
     }
 
     // Return success with invoice details
@@ -482,7 +480,7 @@ export async function POST(
       cogsTotalAmount: cogsCalculation.totalCOGS,
     })
   } catch (error) {
-    console.error('Unexpected error during conversion:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

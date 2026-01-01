@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission, requireLookupDataAccess } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // Helper function to transform employee data to camelCase
 function transformEmployee(emp: any) {
@@ -40,6 +42,12 @@ function transformEmployee(emp: any) {
 // GET /api/employees - List employees with filters
 export const GET = async (req: NextRequest) => {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'employees' view permission, OR
+    // 2. Permission to a feature that depends on employees (sales_orders, sales_quotations, sales_invoices)
+    const unauthorized = await requireLookupDataAccess(RESOURCES.EMPLOYEES);
+    if (unauthorized) return unauthorized;
     const { supabase } = await createServerClientWithBU();
 
     // Get query parameters
@@ -90,7 +98,7 @@ export const GET = async (req: NextRequest) => {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error("Error fetching employees:", error);
+
       return NextResponse.json(
         { error: "Failed to fetch employees", details: error.message },
         { status: 500 }
@@ -110,7 +118,7 @@ export const GET = async (req: NextRequest) => {
       },
     });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -121,6 +129,7 @@ export const GET = async (req: NextRequest) => {
 // POST /api/employees - Create new employee
 export const POST = async (req: NextRequest) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'create');
     const { supabase } = await createServerClientWithBU();
 
     // Get current user
@@ -220,7 +229,7 @@ export const POST = async (req: NextRequest) => {
       .single();
 
     if (error) {
-      console.error("Error creating employee:", error);
+
       return NextResponse.json(
         { error: "Failed to create employee", details: error.message },
         { status: 500 }
@@ -229,7 +238,7 @@ export const POST = async (req: NextRequest) => {
 
     return NextResponse.json({ data: transformEmployee(data) }, { status: 201 });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

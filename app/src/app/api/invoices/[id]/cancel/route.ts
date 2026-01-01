@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/invoices/[id]/cancel
 export async function POST(
@@ -7,6 +9,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_INVOICES, 'edit')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -58,13 +61,13 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error cancelling invoice:', updateError)
+
       return NextResponse.json({ error: 'Failed to cancel invoice' }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, message: 'Invoice cancelled successfully' })
   } catch (error) {
-    console.error('Unexpected error in POST /api/invoices/[id]/cancel:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

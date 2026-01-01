@@ -57,7 +57,7 @@ export default function ChartOfAccountsPage() {
       const result = await response.json()
       setAccounts(result.data || [])
     } catch (error) {
-      console.error('Error fetching accounts:', error)
+
     } finally {
       setLoading(false)
     }

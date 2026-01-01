@@ -71,7 +71,7 @@ export async function calculateCOGS(
           .single();
 
         if (itemError || !itemData) {
-          console.error(`Item not found: ${item.itemId}`);
+
           return {
             success: false,
             error: `Item not found: ${item.itemId}`,
@@ -115,7 +115,7 @@ export async function calculateCOGS(
       totalCOGS,
     };
   } catch (error) {
-    console.error("Error calculating COGS:", error);
+
     return {
       success: false,
       error: "Failed to calculate COGS",
@@ -220,7 +220,7 @@ export async function postCOGS(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating COGS journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -259,7 +259,6 @@ export async function postCOGS(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating COGS journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -271,7 +270,7 @@ export async function postCOGS(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postCOGS:", error);
+
     return {
       success: false,
       error: "Internal error posting COGS",

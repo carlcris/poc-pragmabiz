@@ -1,9 +1,15 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/stock-transactions
 export async function GET(request: NextRequest) {
   try {
+    // Require 'stock_transactions' view permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, 'view')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -73,7 +79,7 @@ export async function GET(request: NextRequest) {
       .is('transaction.deleted_at', null)
 
     if (txError) {
-      console.error('Error fetching transactions:', txError)
+
       return NextResponse.json({ error: 'Failed to fetch transactions' }, { status: 500 })
     }
 
@@ -168,7 +174,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/stock-transactions:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -176,6 +182,10 @@ export async function GET(request: NextRequest) {
 // POST /api/stock-transactions
 export async function POST(request: NextRequest) {
   try {
+    // Require 'stock_transactions' create permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, 'create')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -248,7 +258,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (transactionError) {
-      console.error('Error creating stock transaction:', transactionError)
+
       return NextResponse.json(
         { error: transactionError.message || 'Failed to create stock transaction' },
         { status: 500 }
@@ -278,7 +288,7 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (itemsError || !createdItems) {
-      console.error('Error creating transaction items:', itemsError)
+
       // Rollback: delete the transaction
       await supabase.from('stock_transactions').delete().eq('id', transaction.id)
       return NextResponse.json(
@@ -340,7 +350,7 @@ export async function POST(request: NextRequest) {
         .eq('id', createdItem.id)
 
       if (updateItemError) {
-        console.error('Error updating stock transaction item:', updateItemError)
+
         return NextResponse.json(
           { error: 'Failed to update transaction item' },
           { status: 500 }
@@ -359,7 +369,7 @@ export async function POST(request: NextRequest) {
         .eq('warehouse_id', body.warehouseId)
 
       if (warehouseUpdateError) {
-        console.error('Error updating item_warehouse stock:', warehouseUpdateError)
+
         return NextResponse.json(
           { error: 'Failed to update warehouse inventory' },
           { status: 500 }
@@ -418,7 +428,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Unexpected error in POST /api/stock-transactions:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

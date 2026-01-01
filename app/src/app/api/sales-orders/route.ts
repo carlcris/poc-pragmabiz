@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import type { SalesOrder, SalesOrderLineItem, CreateSalesOrderRequest } from '@/types/sales-order'
 import type { Database } from '@/types/database.types'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 type DbSalesOrder = Database['public']['Tables']['sales_orders']['Row']
 type DbSalesOrderItem = Database['public']['Tables']['sales_order_items']['Row']
@@ -76,6 +78,10 @@ function transformDbSalesOrderItem(
 // GET /api/sales-orders - List sales orders with filters
 export async function GET(request: NextRequest) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'view')
+    if (unauthorized) return unauthorized
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -153,7 +159,7 @@ export async function GET(request: NextRequest) {
     const { data: orders, error, count } = await query
 
     if (error) {
-      console.error('Error fetching sales orders:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -193,7 +199,7 @@ export async function GET(request: NextRequest) {
       .order('sort_order', { ascending: true })
 
     if (itemsError) {
-      console.error('Error fetching sales order items:', itemsError)
+
     }
 
     // Group items by order
@@ -220,7 +226,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -228,6 +234,10 @@ export async function GET(request: NextRequest) {
 // POST /api/sales-orders - Create new sales order
 export async function POST(request: NextRequest) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'create')
+    if (unauthorized) return unauthorized
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
@@ -337,7 +347,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (orderError || !order) {
-      console.error('Error creating sales order:', orderError)
+
       return NextResponse.json(
         { error: orderError?.message || 'Failed to create sales order' },
         { status: 500 }
@@ -368,7 +378,7 @@ export async function POST(request: NextRequest) {
       .insert(itemsToInsert)
 
     if (itemsError) {
-      console.error('Error creating sales order items:', itemsError)
+
       // Rollback: delete the order
       await supabase.from('sales_orders').delete().eq('id', order.id)
       return NextResponse.json(
@@ -426,7 +436,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/quotations/[id]/convert-to-sales-order
 export async function POST(
@@ -7,6 +9,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SALES_QUOTATIONS, 'edit')
+
     const { id: quotationId } = await params
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
@@ -74,7 +78,7 @@ export async function POST(
       .order('sort_order', { ascending: true })
 
     if (itemsError) {
-      console.error('Error fetching quotation items:', itemsError)
+
       return NextResponse.json(
         { error: 'Failed to fetch quotation items' },
         { status: 500 }
@@ -129,7 +133,7 @@ export async function POST(
       .single()
 
     if (orderError) {
-      console.error('Error creating sales order:', orderError)
+
       return NextResponse.json(
         { error: orderError.message || 'Failed to create sales order' },
         { status: 500 }
@@ -162,7 +166,7 @@ export async function POST(
       .insert(orderItemsToInsert)
 
     if (orderItemsError) {
-      console.error('Error creating sales order items:', orderItemsError)
+
       // Rollback: delete the sales order
       await supabase.from('sales_orders').delete().eq('id', salesOrder.id)
       return NextResponse.json(
@@ -183,7 +187,7 @@ export async function POST(
       .eq('id', quotationId)
 
     if (updateError) {
-      console.error('Error updating quotation:', updateError)
+
       // Note: We don't rollback here as the sales order is already created successfully
     }
 
@@ -197,7 +201,7 @@ export async function POST(
       },
     })
   } catch (error) {
-    console.error('Unexpected error during conversion:', error)
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

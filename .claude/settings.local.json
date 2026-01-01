@@ -53,7 +53,18 @@
       "Bash(/Users/carl/workspace/react-app/poc-pragmabiz/app/update_imports.sh)",
       "Bash(/Users/carl/workspace/react-app/poc-pragmabiz/app/update_function_calls.sh)",
       "Bash(npm run type-check:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(/tmp/remove_console_logs.sh)",
+      "Bash(for file in )",
+      "Bash(\"app/src/app/mobile/reports/stock-levels/page.tsx\" )",
+      "Bash(\"app/src/app/(dashboard)/inventory/transformations/[id]/page.tsx\" )",
+      "Bash(\"app/src/components/purchase-orders/PurchaseOrderFormDialogV2.tsx\" )",
+      "Bash(\"app/src/components/pos/TransactionDetailsDialog.tsx\" )",
+      "Bash(\"app/src/components/purchase-receipts/ReceiveGoodsDialog.tsx\")",
+      "Bash(if [ -f \"$file\" ])",
+      "Bash(then)",
+      "Bash(fi)",
+      "Bash(/tmp/remove_all_console.sh)"
     ],
     "deny": [],
     "ask": []

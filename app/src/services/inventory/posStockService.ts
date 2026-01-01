@@ -63,7 +63,7 @@ export async function createPOSStockTransaction(
       .single();
 
     if (transactionError || !stockTransaction) {
-      console.error("Error creating POS stock transaction:", transactionError);
+
       return {
         success: false,
         error: "Failed to create stock transaction",
@@ -128,7 +128,7 @@ export async function createPOSStockTransaction(
         .single();
 
       if (itemError || !stockTxItem) {
-        console.error("Error creating stock transaction item:", itemError);
+
         // Rollback: delete transaction
         await supabase
           .from("stock_transactions")
@@ -152,7 +152,7 @@ export async function createPOSStockTransaction(
         .eq("warehouse_id", data.warehouseId);
 
       if (warehouseUpdateError) {
-        console.error("Error updating item_warehouse stock:", warehouseUpdateError);
+
         // Rollback - delete transaction items created so far and transaction
         await supabase
           .from("stock_transaction_items")
@@ -176,7 +176,7 @@ export async function createPOSStockTransaction(
       stockTransactionId: stockTransaction.id,
     };
   } catch (error) {
-    console.error("Unexpected error in createPOSStockTransaction:", error);
+
     return {
       success: false,
       error: "Internal error creating stock transaction",
@@ -208,7 +208,7 @@ export async function reversePOSStockTransaction(
       .eq("pos_transaction_id", transactionId);
 
     if (itemsError || !posTransactionItems || posTransactionItems.length === 0) {
-      console.error("Error fetching POS transaction items:", itemsError);
+
       return {
         success: false,
         error: "Failed to fetch transaction items",
@@ -243,7 +243,7 @@ export async function reversePOSStockTransaction(
       .single();
 
     if (transactionError || !reversalTransaction) {
-      console.error("Error creating reversal stock transaction:", transactionError);
+
       return {
         success: false,
         error: "Failed to create reversal transaction",
@@ -258,7 +258,7 @@ export async function reversePOSStockTransaction(
       .eq("company_id", companyId);
 
     if (itemsDataError || !itemsData) {
-      console.error("Error fetching items data:", itemsDataError);
+
       await supabase.from("stock_transactions").delete().eq("id", reversalTransaction.id);
       return {
         success: false,
@@ -323,7 +323,7 @@ export async function reversePOSStockTransaction(
       .select();
 
     if (reversalItemsError || !createdReversalItems) {
-      console.error("Error creating reversal transaction items:", reversalItemsError);
+
       await supabase.from("stock_transactions").delete().eq("id", reversalTransaction.id);
       return {
         success: false,
@@ -356,7 +356,7 @@ export async function reversePOSStockTransaction(
           .eq("id", existingItemWarehouse.id);
 
         if (updateError) {
-          console.error("Error updating item_warehouse:", updateError);
+
           // Log warning but continue
         }
       }
@@ -366,7 +366,7 @@ export async function reversePOSStockTransaction(
       success: true,
     };
   } catch (error) {
-    console.error("Unexpected error in reversePOSStockTransaction:", error);
+
     return {
       success: false,
       error: "Internal error reversing stock transaction",

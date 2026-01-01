@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
+import { useLoadPermissions } from "@/hooks/usePermissions";
 
 export default function DashboardLayout({
   children,
@@ -14,6 +15,9 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const { isAuthenticated, checkAuth, isLoading } = useAuthStore();
+
+  // Load user permissions
+  useLoadPermissions();
 
   useEffect(() => {
     checkAuth();

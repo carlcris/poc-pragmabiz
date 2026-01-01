@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateTransformationTemplateSchema } from '@/lib/validations/transformation-template';
 import { checkTemplateLock } from '@/services/inventory/transformationService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // GET /api/transformations/templates/[id] - Get template by ID
 export async function GET(
@@ -9,6 +11,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = params;
 
@@ -62,7 +67,7 @@ export async function GET(
 
     return NextResponse.json({ data: template });
   } catch (error) {
-    console.error('Error in GET /api/transformations/templates/[id]:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -73,6 +78,9 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = params;
 
@@ -161,13 +169,13 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      console.error('Error updating template:', updateError);
+
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     return NextResponse.json({ data: updatedTemplate });
   } catch (error) {
-    console.error('Error in PATCH /api/transformations/templates/[id]:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -178,6 +186,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'delete');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id } = params;
 
@@ -234,13 +245,13 @@ export async function DELETE(
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Error deleting template:', deleteError);
+
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
     return NextResponse.json({ message: 'Template deleted successfully' });
   } catch (error) {
-    console.error('Error in DELETE /api/transformations/templates/[id]:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

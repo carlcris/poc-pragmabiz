@@ -96,21 +96,12 @@ export function ReceiveGoodsDialog({
   // Initialize items from purchase order
   useEffect(() => {
     if (purchaseOrder && open) {
-      console.log("Purchase Order Items:", purchaseOrder.items);
 
       const items = (purchaseOrder.items || []).map((item: any) => {
         const remainingQty = item.quantity - (item.quantityReceived || 0);
 
         // Get uomId from either direct property or nested uom object
         const uomId = item.uomId || item.uom?.id || "";
-
-        console.log("Item data:", {
-          id: item.id,
-          itemId: item.itemId,
-          uomId,
-          rate: item.rate,
-          uom: item.uom
-        });
 
         return {
           purchaseOrderItemId: item.id,
@@ -136,13 +127,8 @@ export function ReceiveGoodsDialog({
   const onSubmit = async (data: ReceiveGoodsFormValues) => {
     if (!purchaseOrder) return;
 
-    console.log("Form data submitted:", data);
-    console.log("Form errors:", form.formState.errors);
-
     // Filter out items with 0 quantity
     const itemsToReceive = data.items.filter(item => item.quantityReceived > 0);
-
-    console.log("Items to receive:", itemsToReceive);
 
     if (itemsToReceive.length === 0) {
       toast.error("Please enter quantities to receive for at least one item");
@@ -162,11 +148,10 @@ export function ReceiveGoodsDialog({
         },
       });
 
-      console.log("Receive goods result:", result);
       toast.success("Goods received successfully! Stock levels updated.");
       onOpenChange(false);
     } catch (error: any) {
-      console.error("Error receiving goods:", error);
+
       toast.error(error.message || "Failed to receive goods");
     }
   };

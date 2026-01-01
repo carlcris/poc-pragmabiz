@@ -1,9 +1,14 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/purchase-receipts
 export async function GET(request: NextRequest) {
   try {
+    // Check permission
+    await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'view')
+
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -103,7 +108,7 @@ export async function GET(request: NextRequest) {
     const { data: receipts, error, count } = await query
 
     if (error) {
-      console.error('Error fetching purchase receipts:', error)
+
       return NextResponse.json({ error: 'Failed to fetch purchase receipts' }, { status: 500 })
     }
 
@@ -171,7 +176,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/purchase-receipts:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -179,6 +184,9 @@ export async function GET(request: NextRequest) {
 // POST /api/purchase-receipts
 export async function POST(request: NextRequest) {
   try {
+    // Check permission
+    await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'create')
+
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -254,7 +262,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (receiptError) {
-      console.error('Error creating receipt:', receiptError)
+
       return NextResponse.json(
         { error: receiptError.message || 'Failed to create receipt' },
         { status: 500 }
@@ -282,7 +290,7 @@ export async function POST(request: NextRequest) {
         .insert(receiptItems)
 
       if (itemsError) {
-        console.error('Error creating receipt items:', itemsError)
+
         // Rollback receipt creation
         await supabase.from('purchase_receipts').delete().eq('id', receipt.id)
         return NextResponse.json(
@@ -300,7 +308,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Unexpected error in POST /api/purchase-receipts:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

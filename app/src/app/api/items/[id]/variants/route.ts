@@ -9,6 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from "@/lib/auth";
+import { RESOURCES } from "@/constants/resources";
 import type { ItemVariant, CreateItemVariantInput } from "@/types/item-variant";
 
 type RouteContext = {
@@ -24,6 +26,10 @@ export async function GET(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id: itemId } = await context.params;
 
@@ -73,7 +79,7 @@ export async function GET(
       .order("variant_code", { ascending: true });
 
     if (variantsError) {
-      console.error("Error fetching variants:", variantsError);
+
       return NextResponse.json(
         { error: "Failed to fetch variants" },
         { status: 500 }
@@ -104,7 +110,7 @@ export async function GET(
       total: transformedVariants.length,
     });
   } catch (error) {
-    console.error("Unexpected error in GET /api/items/[id]/variants:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -121,6 +127,10 @@ export async function POST(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { id: itemId } = await context.params;
     const body: CreateItemVariantInput = await request.json();
@@ -204,7 +214,7 @@ export async function POST(
       .single();
 
     if (createError) {
-      console.error("Error creating variant:", createError);
+
       return NextResponse.json(
         { error: "Failed to create variant" },
         { status: 500 }
@@ -232,7 +242,7 @@ export async function POST(
 
     return NextResponse.json({ data: transformedVariant }, { status: 201 });
   } catch (error) {
-    console.error("Unexpected error in POST /api/items/[id]/variants:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

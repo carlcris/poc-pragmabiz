@@ -116,7 +116,7 @@ export async function postARInvoice(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating AR invoice journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -155,7 +155,6 @@ export async function postARInvoice(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating AR invoice journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -167,7 +166,7 @@ export async function postARInvoice(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postARInvoice:", error);
+
     return {
       success: false,
       error: "Internal error posting AR invoice",
@@ -264,7 +263,7 @@ export async function postARPayment(
       .single();
 
     if (journalError || !journalEntry) {
-      console.error("Error creating AR payment journal entry:", journalError);
+
       return {
         success: false,
         error: "Failed to create journal entry",
@@ -303,7 +302,6 @@ export async function postARPayment(
       // Rollback: Delete journal entry
       await supabase.from("journal_entries").delete().eq("id", journalEntry.id);
 
-      console.error("Error creating AR payment journal lines:", linesError);
       return {
         success: false,
         error: "Failed to create journal lines",
@@ -315,7 +313,7 @@ export async function postARPayment(
       journalEntryId: journalEntry.id,
     };
   } catch (error) {
-    console.error("Unexpected error in postARPayment:", error);
+
     return {
       success: false,
       error: "Internal error posting AR payment",

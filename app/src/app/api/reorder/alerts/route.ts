@@ -1,10 +1,13 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/reorder/alerts
 // Returns low stock alerts based on current stock levels and reorder levels
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'view')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
@@ -87,11 +90,9 @@ export async function GET(request: NextRequest) {
     const { data: stockLevels, error, count } = await query.range(offset, offset + limit - 1)
 
     if (error) {
-      console.error('Error fetching stock levels for alerts:', error)
+
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    console.log('Alerts API - Stock levels fetched:', stockLevels?.length || 0)
 
     // Process alerts - filter by stock level and determine severity
     const alerts = (stockLevels || [])
@@ -148,8 +149,6 @@ export async function GET(request: NextRequest) {
       ? alerts.filter((alert: any) => alert.severity === severity)
       : alerts
 
-    console.log('Alerts API - Filtered alerts:', filteredAlerts.length, 'Total before filter:', alerts.length)
-
     // Note: acknowledged filter not yet implemented (would require reorder_alerts table)
     // For now, all alerts are unacknowledged
 
@@ -163,7 +162,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/reorder/alerts:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

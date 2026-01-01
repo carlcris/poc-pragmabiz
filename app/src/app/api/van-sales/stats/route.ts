@@ -1,8 +1,14 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check permission
+    const unauthorized = await requirePermission(RESOURCES.VAN_SALES, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -43,7 +49,7 @@ export async function GET(request: NextRequest) {
     const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
-      console.error('Error fetching invoices:', invoicesError);
+
       return NextResponse.json({ error: invoicesError.message }, { status: 500 });
     }
 
@@ -75,7 +81,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Unexpected error in van sales stats:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

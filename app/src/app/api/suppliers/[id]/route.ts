@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/suppliers/[id]
 export async function GET(
@@ -7,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SUPPLIERS, 'view')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -41,7 +44,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching supplier:', error)
+
       return NextResponse.json({ error: 'Supplier not found' }, { status: 404 })
     }
 
@@ -84,7 +87,7 @@ export async function GET(
 
     return NextResponse.json(formattedSupplier)
   } catch (error) {
-    console.error('Unexpected error in GET /api/suppliers/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -95,6 +98,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SUPPLIERS, 'edit')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
@@ -172,7 +176,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Error updating supplier:', updateError)
+
       return NextResponse.json(
         { error: updateError.message || 'Failed to update supplier' },
         { status: 500 }
@@ -185,7 +189,7 @@ export async function PUT(
       name: supplier.supplier_name,
     })
   } catch (error) {
-    console.error('Unexpected error in PUT /api/suppliers/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -196,6 +200,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.SUPPLIERS, 'delete')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -242,7 +247,7 @@ export async function DELETE(
       .limit(1)
 
     if (poCheckError) {
-      console.error('Error checking purchase orders:', poCheckError)
+
       return NextResponse.json(
         { error: 'Failed to check supplier dependencies' },
         { status: 500 }
@@ -271,7 +276,7 @@ export async function DELETE(
       .eq('company_id', userData.company_id)
 
     if (deleteError) {
-      console.error('Error deleting supplier:', deleteError)
+
       return NextResponse.json({ error: 'Failed to delete supplier' }, { status: 500 })
     }
 
@@ -280,7 +285,7 @@ export async function DELETE(
       message: `Supplier ${supplier.supplier_code} - ${supplier.supplier_name} deleted successfully`,
     })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/suppliers/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

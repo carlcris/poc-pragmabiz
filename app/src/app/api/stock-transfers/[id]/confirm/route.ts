@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_transfers' edit permission (confirming is a form of editing)
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -79,7 +85,7 @@ export async function POST(
       .eq('id', transferId);
 
     if (updateError) {
-      console.error('Error updating transfer status:', updateError);
+
       return NextResponse.json(
         { error: 'Failed to confirm transfer' },
         { status: 500 }
@@ -139,7 +145,7 @@ export async function POST(
       .single();
 
     if (transactionError) {
-      console.error('Error creating stock transaction:', transactionError);
+
       return NextResponse.json(
         { error: 'Failed to create stock transaction' },
         { status: 500 }
@@ -243,7 +249,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

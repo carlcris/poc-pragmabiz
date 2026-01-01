@@ -28,15 +28,6 @@ export default function StockLevelsPage() {
   const { data: vanData, isLoading: vanLoading } = useUserVanWarehouse();
   const { data: inventoryData, isLoading: inventoryLoading } = useVanInventory(vanData?.vanWarehouseId);
 
-  // Debug: Log warehouse and inventory API data
-  console.log('🚐 Van Warehouse Data:', {
-    warehouseId: vanData?.vanWarehouseId,
-    warehouseName: vanData?.vanWarehouse?.name,
-    isLoading: vanLoading
-  });
-  console.log('📦 Raw Inventory Data:', inventoryData);
-  console.log('🔄 Is Loading:', inventoryLoading);
-
   if (vanLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -74,11 +65,6 @@ export default function StockLevelsPage() {
   }
 
   // Debug: Check the full data structure
-  console.log('🔍 Checking data path...');
-  console.log('  - inventoryData exists?', !!inventoryData);
-  console.log('  - inventoryData.data exists?', !!inventoryData?.data);
-  console.log('  - inventoryData.inventory exists?', !!inventoryData?.inventory);
-  console.log('  - Full inventoryData structure:', JSON.stringify(inventoryData, null, 2));
 
   // FIX: The hook already extracts response.data, so we access directly
   const inventory = inventoryData?.data?.inventory || inventoryData?.inventory || [];
@@ -88,21 +74,6 @@ export default function StockLevelsPage() {
     lowStockItems: 0,
     outOfStockItems: 0,
   };
-
-  // Debug: Log inventory data
-  console.log('📦 Total inventory items:', inventory.length);
-  console.log('📊 Summary:', summary);
-  console.log('🔍 Search query:', searchQuery);
-  if (inventory.length > 0) {
-    console.log('📋 First 3 items:', inventory.slice(0, 3).map((item: any) => ({
-      itemName: item.itemName,
-      itemCode: item.itemCode,
-      currentStock: item.currentStock,
-      reorderPoint: item.reorderPoint
-    })));
-  } else {
-    console.log('⚠️ NO INVENTORY DATA - Van warehouse might be empty or API returned no items');
-  }
 
   // Categorize items by stock status
   const categorizedItems = inventory.map((item: any) => {
@@ -126,13 +97,11 @@ export default function StockLevelsPage() {
 
     // Debug search
     if (searchQuery && matches) {
-      console.log('✅ Match found:', item.itemName, '|', item.itemCode);
     }
 
     return matches;
   });
 
-  console.log('🎯 Filtered items count:', searchFilteredItems.length);
 
   // Then apply status filter
   let filteredItems = searchFilteredItems;

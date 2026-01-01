@@ -1,6 +1,8 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postAPBill } from '@/services/accounting/apPosting'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/purchase-receipts/[id]
 export async function GET(
@@ -8,6 +10,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'view')
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -120,7 +125,7 @@ export async function GET(
 
     return NextResponse.json(formattedReceipt)
   } catch (error) {
-    console.error('Unexpected error in GET /api/purchase-receipts/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -131,6 +136,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'edit')
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
@@ -193,7 +201,7 @@ export async function PUT(
       .eq('company_id', userData.company_id)
 
     if (updateError) {
-      console.error('Error updating receipt:', updateError)
+
       return NextResponse.json(
         { error: updateError.message || 'Failed to update receipt' },
         { status: 500 }
@@ -229,7 +237,7 @@ export async function PUT(
           .insert(receiptItems)
 
         if (itemsError) {
-          console.error('Error updating receipt items:', itemsError)
+
           return NextResponse.json(
             { error: itemsError.message || 'Failed to update receipt items' },
             { status: 500 }
@@ -273,17 +281,14 @@ export async function PUT(
         })
 
         if (!apResult.success) {
-          console.error('Error posting AP bill to GL:', apResult.error)
-          console.warn(
-            `Purchase receipt ${receiptData.receipt_code} updated but AP GL posting failed: ${apResult.error}`
-          )
+
         }
       }
     }
 
     return NextResponse.json({ message: 'Receipt updated successfully' })
   } catch (error) {
-    console.error('Unexpected error in PUT /api/purchase-receipts/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -294,6 +299,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Check permission
+    await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'delete')
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -349,7 +357,7 @@ export async function DELETE(
       .eq('company_id', userData.company_id)
 
     if (deleteError) {
-      console.error('Error deleting receipt:', deleteError)
+
       return NextResponse.json(
         { error: deleteError.message || 'Failed to delete receipt' },
         { status: 500 }
@@ -358,7 +366,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Receipt deleted successfully' })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/purchase-receipts/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

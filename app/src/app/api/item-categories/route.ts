@@ -1,8 +1,17 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireLookupDataAccess } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check permission using Lookup Data Access Pattern
+    // User can access if they have EITHER:
+    // 1. Direct 'item_categories' view permission, OR
+    // 2. Permission to a feature that depends on item categories (pos, sales_orders, etc.)
+    const permissionCheck = await requireLookupDataAccess(RESOURCES.ITEM_CATEGORIES)
+    if (permissionCheck) return permissionCheck
+
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -35,7 +44,7 @@ export async function GET(request: NextRequest) {
       .order('name', { ascending: true })
 
     if (error) {
-      console.error('Error fetching item categories:', error)
+
       return NextResponse.json({ error: 'Failed to fetch item categories' }, { status: 500 })
     }
 
@@ -43,7 +52,7 @@ export async function GET(request: NextRequest) {
       data: categories || [],
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/item-categories:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

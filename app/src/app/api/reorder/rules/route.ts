@@ -1,9 +1,12 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/reorder/rules
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'view')
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
     const { data: rules, error } = await query
 
     if (error) {
-      console.error('Error fetching reorder rules:', error)
+
       return NextResponse.json({ error: 'Failed to fetch reorder rules' }, { status: 500 })
     }
 
@@ -108,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(formattedRules)
   } catch (error) {
-    console.error('Unexpected error in GET /api/reorder/rules:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -116,6 +119,7 @@ export async function GET(request: NextRequest) {
 // POST /api/reorder/rules
 export async function POST(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'create')
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -184,7 +188,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (createError) {
-      console.error('Error creating reorder rule:', createError)
+
       return NextResponse.json(
         { error: createError.message || 'Failed to create reorder rule' },
         { status: 500 }
@@ -193,7 +197,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(rule, { status: 201 })
   } catch (error) {
-    console.error('Unexpected error in POST /api/reorder/rules:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

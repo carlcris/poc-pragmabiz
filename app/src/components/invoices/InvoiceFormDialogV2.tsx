@@ -230,7 +230,7 @@ export function InvoiceFormDialogV2({
       }
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving invoice:", error);
+
     }
   };
 

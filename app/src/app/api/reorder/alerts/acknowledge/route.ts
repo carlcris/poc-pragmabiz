@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/reorder/alerts/acknowledge
 // Acknowledges reorder alerts
@@ -7,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // In a full implementation, this would store acknowledgments in a reorder_alerts table
 export async function POST(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'edit')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
       acknowledgedCount: body.alertIds.length,
     })
   } catch (error) {
-    console.error('Unexpected error in POST /api/reorder/alerts/acknowledge:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

@@ -408,3 +408,222 @@ Before writing code that uses external data:
 - [ ] I have checked for TypeScript errors before declaring it fixed
 
 **If you cannot check all boxes above, you MUST NOT write the code. Read the source files first.**
+
+## Bug Fix and Architecture Rule
+
+**CRITICAL: When implementing bug fixes, always provide proper architectural solutions that address the root cause!**
+
+### The Problem
+
+Quick fixes and "band-aid" solutions that only address symptoms often lead to:
+- ❌ Recurring issues when edge cases are encountered
+- ❌ Technical debt that compounds over time
+- ❌ Inconsistent code patterns across the codebase
+- ❌ Security vulnerabilities from incomplete solutions
+- ❌ Poor maintainability and scalability
+
+### The Solution - Architectural Thinking
+
+**When fixing bugs, always:**
+
+1. **Identify the Root Cause**
+   - Don't just fix the symptom - trace back to WHY the issue exists
+   - Ask: "What fundamental assumption or design is causing this?"
+   - Example: Cached permissions showing stale data → Root cause: caching strategy doesn't account for security-critical data
+
+2. **Design a Production-Ready Solution**
+   - Consider security implications
+   - Consider performance implications
+   - Consider scalability and maintainability
+   - Follow established architectural patterns
+   - Document the reasoning and trade-offs
+
+3. **Implement Comprehensively**
+   - Fix ALL occurrences of the problem, not just the reported one
+   - Update all related code paths
+   - Add proper error handling and edge case coverage
+   - Include migration scripts if database changes are needed
+
+4. **Document the Solution**
+   - Explain the root cause analysis
+   - Document the architectural decision
+   - Provide examples and use cases
+   - Include testing and troubleshooting guides
+
+### Examples of Good vs Bad Fixes
+
+#### ❌ BAD - Band-Aid Fix
+```typescript
+// User reports: "Permissions still show after removal"
+// Band-aid: Clear cache on logout only
+logout: async () => {
+  queryClient.clear();  // Only fixes it on logout, not on permission changes
+}
+```
+
+#### ✅ GOOD - Architectural Solution
+```typescript
+// Root cause: Permissions are security-critical and should NEVER be cached
+// Solution: Zero-caching strategy across all layers
+
+// 1. Server-side: Disable cache
+const CACHE_TTL = 0; // No caching for security
+
+// 2. HTTP layer: Prevent browser caching
+response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+// 3. Client-side: React Query configuration
+useQuery({
+  staleTime: 0,           // Immediately stale
+  gcTime: 0,              // Clear from cache
+  refetchOnMount: true,   // Always refetch
+  refetchOnWindowFocus: true,
+});
+
+// 4. Invalidation: On permission changes
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: ['permissions'] });
+}
+
+// 5. Documentation: /docs/PERMISSION_CACHING_STRATEGY.md
+```
+
+### Real-World Example: Permission-Based Routing
+
+**Problem**: User with no permissions redirected to default page they can't access
+
+**Bad Fix (Band-Aid)**:
+- Check permission only for the default page
+- Redirect to 403 if no access
+- Doesn't handle other pages, doesn't consider priority
+
+**Good Fix (Architectural)**:
+- Created `PAGE_RESOURCE_MAP` - maps all routes to required permissions
+- Created `PAGE_PRIORITY` - ordered list for finding accessible pages
+- Created `getFirstAccessiblePage()` - finds first accessible page or 403
+- Updated login flow to fetch permissions and check accessibility
+- Parallel fetching for performance
+- Fail-safe error handling
+- Comprehensive documentation in `/docs/PERMISSION_BASED_ROUTING.md`
+
+### Checklist for Proper Bug Fixes
+
+Before submitting a bug fix, verify:
+
+- [ ] I have identified the root cause, not just the symptom
+- [ ] The solution addresses the fundamental issue
+- [ ] The fix is production-ready (security, performance, scalability)
+- [ ] All related code paths have been updated
+- [ ] Edge cases and error scenarios are handled
+- [ ] The solution follows established architectural patterns
+- [ ] I have documented the root cause and solution
+- [ ] Testing procedures are documented
+- [ ] The fix prevents the issue from recurring
+
+### Red Flags - Stop and Redesign
+
+- 🚩 Your fix only works for the specific reported case
+- 🚩 You're adding special case handling without addressing the root cause
+- 🚩 The fix introduces inconsistency with other parts of the codebase
+- 🚩 You can't explain WHY the bug happened in the first place
+- 🚩 The fix requires "remembering" to do something manually in the future
+- 🚩 You're thinking "this is temporary, we'll fix it properly later"
+
+**If you see these red flags, STOP and design a proper architectural solution instead.**
+
+## API Client Response Handling Rule
+
+**CRITICAL: The `apiClient` already unwraps one level of `.data` - do NOT double-unwrap!**
+
+### The Pattern
+
+Our `apiClient` (in `src/lib/api.ts`) returns `response.json()` directly, which gives you the API response body.
+
+```typescript
+// In apiClient.get():
+async get<T>(endpoint: string): Promise<T> {
+  const response = await fetch(url, { ... });
+  return response.json();  // Returns the parsed JSON body directly
+}
+```
+
+### The Rule
+
+**In React Query hooks:**
+- ✅ `return response` - Correct (response is already the parsed JSON)
+- ❌ `return response.data` - Wrong (unless the API response has a `.data` wrapper)
+- ❌ `return response.data.data` - Wrong (double unwrapping)
+
+### Examples
+
+```typescript
+// ✅ CORRECT - API returns { data: T[], pagination: {...} }
+export function useItems() {
+  return useQuery({
+    queryKey: ['items'],
+    queryFn: async () => {
+      const response = await apiClient.get<ItemsResponse>('/api/items');
+      return response;  // ✅ Returns ItemsResponse directly
+    },
+  });
+}
+
+// Then in component:
+const { data } = useItems();  // data is ItemsResponse
+const items = data?.data;     // Access the items array
+
+// ✅ CORRECT - API returns { data: T }
+export function useItem(id: string) {
+  return useQuery({
+    queryKey: ['item', id],
+    queryFn: async () => {
+      const response = await apiClient.get<{ data: Item }>(`/api/items/${id}`);
+      return response.data;  // ✅ Unwrap once to get the Item
+    },
+  });
+}
+
+// Then in component:
+const { data: item } = useItem(id);  // data is Item directly
+
+// ❌ WRONG - Double unwrapping
+export function useItems() {
+  return useQuery({
+    queryKey: ['items'],
+    queryFn: async () => {
+      const response = await apiClient.get<ItemsResponse>('/api/items');
+      return response.data;  // ❌ Error: response is already ItemsResponse
+    },
+  });
+}
+```
+
+### How to Verify
+
+1. Check the API route's response format:
+   ```typescript
+   // In /api/items/route.ts
+   return NextResponse.json({
+     data: items,
+     pagination: { ... }
+   });
+   ```
+
+2. Check the hook's generic type:
+   ```typescript
+   apiClient.get<ItemsResponse>('/api/items')
+   // ItemsResponse should match the API response structure
+   ```
+
+3. Return the appropriate level:
+   - If API returns `{ data: T, pagination }`: return `response` (full response)
+   - If API returns `{ data: T }`: return `response.data` (unwrap to T)
+   - NEVER return `response.data.data` (double unwrap)
+
+### Common Mistakes
+
+| Mistake | Why It's Wrong | Fix |
+|---------|----------------|-----|
+| `return response.data` when API returns `{ data: T[] }` | `response` is already `{ data: T[] }`, accessing `.data` again breaks the structure | `return response` |
+| `return response.data.data` | Double unwrapping - `apiClient` already returns parsed JSON | `return response.data` or `return response` |
+| Inconsistent unwrapping across hooks | Some hooks return `response`, others `response.data` for same API pattern | Standardize based on API response structure |

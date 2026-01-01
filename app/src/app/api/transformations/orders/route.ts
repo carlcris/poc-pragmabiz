@@ -2,10 +2,15 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransformationOrderSchema } from '@/lib/validations/transformation-order';
 import { validateTemplate } from '@/services/inventory/transformationService';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 // GET /api/transformations/orders - List transformation orders
 export async function GET(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const searchParams = request.nextUrl.searchParams;
 
@@ -100,7 +105,7 @@ export async function GET(request: NextRequest) {
     const { data: orders, error, count } = await query.range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('Error fetching transformation orders:', error);
+
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -111,15 +116,17 @@ export async function GET(request: NextRequest) {
       limit,
     });
   } catch (error) {
-    console.error('Error in GET /api/transformations/orders:', error);
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 // POST /api/transformations/orders - Create transformation order from template
 export async function POST(request: NextRequest) {
-  console.log('=== POST /api/transformations/orders called ===');
   try {
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
@@ -152,26 +159,20 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('Received body:', JSON.stringify(body, null, 2));
 
     const dataToValidate = {
       ...body,
       companyId: userData.company_id,
     };
-    console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
 
     const validationResult = createTransformationOrderSchema.safeParse(dataToValidate);
 
-    console.log('Validation result success:', validationResult.success);
     if (!validationResult.success) {
-      console.error('Validation errors:', JSON.stringify(validationResult.error, null, 2));
       return NextResponse.json(
         { error: 'Validation failed', details: validationResult.error.errors },
         { status: 400 }
       );
     }
-
-    console.log('Validation passed successfully!');
 
     const data = validationResult.data;
 
@@ -230,13 +231,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (orderError || !order) {
-      console.error('Error creating order:', orderError);
+
       return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
     }
 
     // Get item costs for inputs
     const inputItemIds = template.inputs.map((input: any) => input.item_id);
-    console.log('Input item IDs:', inputItemIds);
 
     const { data: inputItems, error: itemsError } = await supabase
       .from('items')
@@ -244,9 +244,8 @@ export async function POST(request: NextRequest) {
       .in('id', inputItemIds);
 
     if (itemsError) {
-      console.error('Error fetching item costs:', itemsError);
+
     }
-    console.log('Input items with costs:', JSON.stringify(inputItems, null, 2));
 
     const itemCostMap = new Map(inputItems?.map((item: any) => [item.id, parseFloat(item.cost_price || '0')]) || []);
 
@@ -276,14 +275,12 @@ export async function POST(request: NextRequest) {
     if (inputsError) {
       // Rollback: delete order
       await supabase.from('transformation_orders').delete().eq('id', order.id);
-      console.error('Error creating order inputs:', inputsError);
+
       return NextResponse.json({ error: 'Failed to create order inputs' }, { status: 500 });
     }
 
     // Calculate total input cost
     const totalInputCost = inputsData.reduce((sum, input) => sum + input.total_cost, 0);
-    console.log('Inputs data:', JSON.stringify(inputsData, null, 2));
-    console.log('Total input cost:', totalInputCost);
 
     // Create order outputs from template
     // Allocate input costs to outputs proportionally
@@ -322,13 +319,12 @@ export async function POST(request: NextRequest) {
       // Rollback: delete order and inputs
       await supabase.from('transformation_order_inputs').delete().eq('order_id', order.id);
       await supabase.from('transformation_orders').delete().eq('id', order.id);
-      console.error('Error creating order outputs:', outputsError);
+
       return NextResponse.json({ error: 'Failed to create order outputs' }, { status: 500 });
     }
 
     // Calculate total output cost
     const totalOutputCost = outputsData.reduce((sum, output) => sum + output.total_allocated_cost, 0);
-    console.log('Total output cost:', totalOutputCost);
 
     // Update order with calculated costs
     const { error: updateError } = await supabase
@@ -341,13 +337,7 @@ export async function POST(request: NextRequest) {
       .eq('id', order.id);
 
     if (updateError) {
-      console.error('Error updating order costs:', updateError);
-    } else {
-      console.log('Order costs updated successfully:', {
-        totalInputCost,
-        totalOutputCost,
-        costVariance: totalOutputCost - totalInputCost,
-      });
+
     }
 
     // Fetch complete order with inputs/outputs
@@ -365,7 +355,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ data: completeOrder }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/transformations/orders:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

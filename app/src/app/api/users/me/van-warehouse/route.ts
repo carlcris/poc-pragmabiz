@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function GET() {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -35,7 +41,7 @@ export async function GET() {
       .single();
 
     if (userError) {
-      console.error('Error fetching user van warehouse:', userError);
+
       return NextResponse.json(
         { error: 'Failed to fetch user data' },
         { status: 500 }
@@ -65,7 +71,7 @@ export async function GET() {
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -76,6 +82,10 @@ export async function GET() {
 // Endpoint to assign/unassign van warehouse to user
 export async function PATCH(request: Request) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, 'edit');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -120,7 +130,7 @@ export async function PATCH(request: Request) {
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Error updating van warehouse assignment:', updateError);
+
       return NextResponse.json(
         { error: 'Failed to update van warehouse assignment' },
         { status: 500 }
@@ -134,7 +144,7 @@ export async function PATCH(request: Request) {
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

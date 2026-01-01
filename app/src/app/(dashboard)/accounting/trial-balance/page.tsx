@@ -44,7 +44,7 @@ export default function TrialBalancePage() {
       const result = await response.json()
       setTrialBalance(result.data)
     } catch (error) {
-      console.error('Error fetching trial balance:', error)
+
     } finally {
       setLoading(false)
     }

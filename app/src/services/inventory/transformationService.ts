@@ -12,6 +12,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { validateTransition } from "@/lib/validations/transformation-order";
 import type { ExecuteTransformationOrderRequest } from "@/types/transformation-order";
 
@@ -64,7 +65,7 @@ export async function validateTemplate(templateId: string): Promise<{
 
     return { isValid: true };
   } catch (error) {
-    console.error("Error validating template:", error);
+
     return { isValid: false, error: "Template validation failed" };
   }
 }
@@ -134,14 +135,6 @@ export async function validateStockAvailability(
         : 0;
       const required = input.planned_quantity;
 
-      console.log(`[Stock Validation] Item ${input.item_id}:`, {
-        currentStock,
-        available,
-        required,
-        warehouseId: order.source_warehouse_id,
-        itemCode: input.items?.item_code,
-      });
-
       if (available < required) {
         insufficientItems.push({
           itemCode: input.items?.item_code || "Unknown",
@@ -162,7 +155,7 @@ export async function validateStockAvailability(
 
     return { isAvailable: true };
   } catch (error) {
-    console.error("Error validating stock availability:", error);
+
     return {
       isAvailable: false,
       error: "Stock availability validation failed",
@@ -211,7 +204,7 @@ export async function validateStateTransition(
       };
     }
   } catch (error) {
-    console.error("Error validating state transition:", error);
+
     return { isValid: false, error: "State transition validation failed" };
   }
 }
@@ -223,7 +216,8 @@ export async function validateStateTransition(
 export async function executeTransformation(
   orderId: string,
   userId: string,
-  executionData: ExecuteTransformationOrderRequest
+  executionData: ExecuteTransformationOrderRequest,
+  supabaseClient?: any
 ): Promise<{
   success: boolean;
   error?: string;
@@ -234,7 +228,8 @@ export async function executeTransformation(
   };
 }> {
   try {
-    const supabase = await createClient();
+    // Use provided client (with BU context) or create a new one
+    const supabase = supabaseClient || (await createServerClientWithBU()).supabase;
 
     // 1. Get order details
     const { data: order, error: orderError } = await supabase
@@ -243,6 +238,7 @@ export async function executeTransformation(
         `
         id,
         company_id,
+        business_unit_id,
         order_code,
         source_warehouse_id,
         status,
@@ -307,7 +303,7 @@ export async function executeTransformation(
       .eq("id", orderId);
 
     if (statusError) {
-      console.error("Failed to update order status:", statusError);
+
       return {
         success: false,
         error: `Failed to update order status: ${statusError.message || JSON.stringify(statusError)}`
@@ -347,14 +343,6 @@ export async function executeTransformation(
         : 0;
       const unitCost = itemData?.cost_price ? parseFloat(String(itemData.cost_price)) : 0;
 
-      console.log(`[Transformation Execution] Item ${inputLine.item_id}:`, {
-        currentStock,
-        availableStock,
-        unitCost,
-        consumedQuantity: inputData.consumedQuantity,
-        warehouseId: order.source_warehouse_id,
-      });
-
       const newStock = currentStock - inputData.consumedQuantity;
 
       // Validate sufficient stock
@@ -379,6 +367,7 @@ export async function executeTransformation(
         .from("stock_transactions")
         .insert({
           company_id: order.company_id,
+          business_unit_id: order.business_unit_id,
           transaction_code: `ST-TRANS-IN-${order.order_code}-${inputIndex}`,
           transaction_type: "out",
           transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -396,7 +385,7 @@ export async function executeTransformation(
 
       if (transactionError || !stockTransaction) {
         // Rollback
-        console.error("Failed to create input stock transaction:", transactionError);
+
         await supabase
           .from("transformation_orders")
           .update({ status: "PREPARING", updated_by: userId })
@@ -506,6 +495,7 @@ export async function executeTransformation(
         .from("stock_transactions")
         .insert({
           company_id: order.company_id,
+          business_unit_id: order.business_unit_id,
           transaction_code: `ST-TRANS-OUT-${order.order_code}-${outputIndex}`,
           transaction_type: "in",
           transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -523,7 +513,7 @@ export async function executeTransformation(
 
       if (transactionError || !stockTransaction) {
         // Rollback would be complex here - better to prevent this with validation
-        console.error("Failed to create output stock transaction:", transactionError);
+
         return { success: false, error: `Failed to create output stock transaction: ${transactionError?.message || 'Unknown error'}` };
       }
 
@@ -601,6 +591,7 @@ export async function executeTransformation(
           .from("stock_transactions")
           .insert({
             company_id: order.company_id,
+            business_unit_id: order.business_unit_id,
             transaction_code: `ST-TRANS-WASTE-${order.order_code}-${outputIndex}`,
             transaction_type: "out", // Waste is recorded as outbound from a "virtual" waste location
             transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -617,7 +608,7 @@ export async function executeTransformation(
           .single();
 
         if (wasteTransactionError || !wasteTransaction) {
-          console.error("Failed to create waste stock transaction:", wasteTransactionError);
+
           // Don't fail the entire transformation for waste tracking issues, but log it
         } else {
           wasteTransactionIds.push(wasteTransaction.id);
@@ -647,8 +638,6 @@ export async function executeTransformation(
             created_by: userId,
             updated_by: userId,
           });
-
-          console.log(`[Waste Transaction Created] Item ${outputLine.item_id}: ${outputData.wastedQuantity} units, Cost: ${wasteTotalCost}, Reason: ${outputData.wasteReason}`);
 
           // Update output record with waste transaction reference
           await supabase
@@ -718,7 +707,7 @@ export async function executeTransformation(
       },
     };
   } catch (error) {
-    console.error("Error executing transformation:", error);
+
     return { success: false, error: "Transformation execution failed" };
   }
 }
@@ -750,7 +739,7 @@ export async function checkTemplateLock(templateId: string): Promise<{
       usageCount: template.usage_count,
     };
   } catch (error) {
-    console.error("Error checking template lock:", error);
+
     return { isLocked: false };
   }
 }

@@ -1,0 +1,5 @@
+-- Create Cashier Role and Permissions
+-- This migration is intentionally empty because the Cashier role creation
+-- has been moved to seed.sql to ensure companies exist before role creation.
+--
+-- See supabase/seed.sql for the actual Cashier role implementation.

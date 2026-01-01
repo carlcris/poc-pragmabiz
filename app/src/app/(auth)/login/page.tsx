@@ -49,7 +49,48 @@ export default function LoginPage() {
     try {
       setLoginError(null);
       await login(data);
-      router.push("/dashboard");
+
+      // SECURITY: Fetch user permissions to determine accessible landing page
+      const user = useAuthStore.getState().user;
+      if (user?.id) {
+        try {
+          // Fetch both roles and permissions in parallel
+          const [rolesResponse, permissionsResponse] = await Promise.all([
+            fetch(`/api/rbac/users/${user.id}/roles`),
+            fetch(`/api/rbac/users/${user.id}/permissions`)
+          ]);
+
+          if (rolesResponse.ok && permissionsResponse.ok) {
+            const { data: roles } = await rolesResponse.json();
+            const { data: permissionsData } = await permissionsResponse.json();
+
+            // Transform permissions array to object
+            const permissions: any = {};
+            permissionsData.permissions.forEach((perm: any) => {
+              permissions[perm.resource] = {
+                can_view: perm.can_view,
+                can_create: perm.can_create,
+                can_edit: perm.can_edit,
+                can_delete: perm.can_delete,
+              };
+            });
+
+            // Get first accessible page based on permissions
+            const roleNames = roles.map((r: any) => r.name);
+            const { getFirstAccessiblePage } = await import('@/config/roleDefaultPages');
+            const landingPage = getFirstAccessiblePage(permissions, roleNames);
+
+            router.push(landingPage);
+            return;
+          }
+        } catch (error) {
+
+          // Fall through to 403 redirect
+        }
+      }
+
+      // Fallback to 403 if permission fetch fails
+      router.push("/403");
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Login failed");
     }

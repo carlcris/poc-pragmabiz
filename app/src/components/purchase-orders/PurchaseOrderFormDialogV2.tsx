@@ -212,8 +212,6 @@ export function PurchaseOrderFormDialogV2({
   };
 
   const onSubmit = async (data: PurchaseOrderFormValues) => {
-    console.log("Form submitted with data:", data);
-    console.log("Line items:", lineItems);
 
     if (lineItems.length === 0) {
       toast.error("Please add at least one line item");
@@ -244,8 +242,6 @@ export function PurchaseOrderFormDialogV2({
         taxAmount: totals.totalTax,
       };
 
-      console.log("API Request:", apiRequest);
-
       if (isEditMode && purchaseOrder) {
         await updateMutation.mutateAsync({
           id: purchaseOrder.id,
@@ -262,7 +258,7 @@ export function PurchaseOrderFormDialogV2({
         ? "Failed to update purchase order"
         : "Failed to create purchase order");
       toast.error(errorMessage);
-      console.error("Error saving purchase order:", error);
+
     }
   };
 

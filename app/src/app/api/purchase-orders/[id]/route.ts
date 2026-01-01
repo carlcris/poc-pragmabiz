@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/purchase-orders/[id]
 export async function GET(
@@ -7,6 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'view')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -59,7 +62,7 @@ export async function GET(
       .single()
 
     if (error) {
-      console.error('Error fetching purchase order:', error)
+
       return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 })
     }
 
@@ -127,7 +130,7 @@ export async function GET(
 
     return NextResponse.json(formattedOrder)
   } catch (error) {
-    console.error('Unexpected error in GET /api/purchase-orders/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -138,6 +141,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'edit')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
     const body = await request.json()
@@ -240,7 +244,7 @@ export async function PUT(
       .single()
 
     if (updateError) {
-      console.error('Error updating purchase order:', updateError)
+
       return NextResponse.json(
         { error: updateError.message || 'Failed to update purchase order' },
         { status: 500 }
@@ -254,7 +258,7 @@ export async function PUT(
       .eq('purchase_order_id', id)
 
     if (deleteItemsError) {
-      console.error('Error deleting existing items:', deleteItemsError)
+
       return NextResponse.json(
         { error: 'Failed to update purchase order items' },
         { status: 500 }
@@ -282,7 +286,7 @@ export async function PUT(
       .insert(lineItemsData)
 
     if (itemsError) {
-      console.error('Error creating purchase order items:', itemsError)
+
       return NextResponse.json(
         { error: itemsError.message || 'Failed to update purchase order items' },
         { status: 500 }
@@ -295,7 +299,7 @@ export async function PUT(
       totalAmount: parseFloat(purchaseOrder.total_amount),
     })
   } catch (error) {
-    console.error('Unexpected error in PUT /api/purchase-orders/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -306,6 +310,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'delete')
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -363,7 +368,7 @@ export async function DELETE(
       .eq('company_id', userData.company_id)
 
     if (deleteError) {
-      console.error('Error deleting purchase order:', deleteError)
+
       return NextResponse.json({ error: 'Failed to delete purchase order' }, { status: 500 })
     }
 
@@ -372,7 +377,7 @@ export async function DELETE(
       message: `Purchase order ${purchaseOrder.order_code} deleted successfully`,
     })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/purchase-orders/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

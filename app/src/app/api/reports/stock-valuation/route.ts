@@ -1,10 +1,13 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/reports/stock-valuation
 // Returns current stock valuation report
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REPORTS, 'view')
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -76,7 +79,7 @@ export async function GET(request: NextRequest) {
     const { data: inventoryData, error } = await query
 
     if (error) {
-      console.error('Error fetching stock valuation data:', error)
+
       return NextResponse.json({ error: 'Failed to fetch stock valuation data' }, { status: 500 })
     }
 
@@ -257,7 +260,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/reports/stock-valuation:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

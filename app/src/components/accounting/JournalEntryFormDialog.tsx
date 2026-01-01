@@ -86,7 +86,7 @@ export function JournalEntryFormDialog({
       const result = await response.json();
       setAccounts(result.data || []);
     } catch (error) {
-      console.error("Error fetching accounts:", error);
+
       toast.error("Failed to load accounts");
     }
   };
@@ -205,7 +205,7 @@ export function JournalEntryFormDialog({
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Error creating journal entry:", error);
+
       toast.error(error instanceof Error ? error.message : "Failed to create journal entry");
     } finally {
       setLoading(false);

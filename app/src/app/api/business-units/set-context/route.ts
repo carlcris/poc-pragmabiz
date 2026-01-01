@@ -23,6 +23,8 @@ type SetContextRequest = {
 
 export async function POST(request: NextRequest) {
   try {
+    // Note: No permission check - all authenticated users can switch their BU context
+
     const supabase = await createClient();
 
     // Get current user

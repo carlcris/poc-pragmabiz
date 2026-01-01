@@ -102,13 +102,12 @@ function TransformationOrderContent({ id }: { id: string }) {
           wasteReason: output.wasteReason || null,
         })),
       };
-      console.log('Completing transformation with data:', executeData);
       await transformationOrdersApi.execute(order.id, executeData);
       toast.success(t.transformation.orderCompleted);
       setExecuteDialogOpen(false);
       refetch();
     } catch (error) {
-      console.error('Execute failed:', error);
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to execute transformation';
       toast.error(errorMessage);
     } finally {
@@ -133,7 +132,7 @@ function TransformationOrderContent({ id }: { id: string }) {
       }
       refetch();
     } catch (error) {
-      console.error('Action failed:', error);
+
       const errorMessage = error instanceof Error ? error.message : `Failed to ${actionDialog.action} order`;
       toast.error(errorMessage);
     } finally {

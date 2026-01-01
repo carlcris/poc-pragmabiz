@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 export async function GET(request: NextRequest) {
   try {
+    // Require 'stock_transfers' view permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -82,7 +88,7 @@ export async function GET(request: NextRequest) {
     const { data: transfers, error: transfersError } = await query;
 
     if (transfersError) {
-      console.error('Error fetching stock transfers:', transfersError);
+
       return NextResponse.json(
         { error: 'Failed to fetch stock transfers' },
         { status: 500 }
@@ -125,7 +131,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -135,6 +141,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Require 'stock_transfers' create permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Check authentication
@@ -195,7 +205,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (transferError) {
-      console.error('Error creating stock transfer:', transferError);
+
       return NextResponse.json(
         { error: 'Failed to create stock transfer' },
         { status: 500 }
@@ -223,7 +233,7 @@ export async function POST(request: NextRequest) {
       .insert(transferItems);
 
     if (itemsError) {
-      console.error('Error creating stock transfer items:', itemsError);
+
       // Rollback: delete the transfer
       await supabase.from('stock_transfers').delete().eq('id', transfer.id);
       return NextResponse.json(
@@ -245,7 +255,7 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('Unexpected error:', error);
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

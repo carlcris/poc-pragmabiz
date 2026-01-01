@@ -1,10 +1,13 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/reorder/statistics
 // Returns summary statistics for reorder management
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'view')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest) {
       .is('warehouses.deleted_at', null)
 
     if (stockError) {
-      console.error('Error fetching stock levels:', stockError)
+
       return NextResponse.json({ error: stockError.message }, { status: 500 })
     }
 
@@ -99,7 +102,7 @@ export async function GET(request: NextRequest) {
       totalEstimatedReorderCost,
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/reorder/statistics:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

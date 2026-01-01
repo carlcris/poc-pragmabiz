@@ -56,7 +56,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
 
           setQrCodeDataUrl(qrDataUrl);
         } catch (error) {
-          console.error('Error generating QR code:', error);
+
         }
       };
 
@@ -90,7 +90,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
         };
       }
     } catch (error) {
-      console.error('Error printing PDF:', error);
+
     } finally {
       setIsPrinting(false);
     }
@@ -117,7 +117,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error generating PDF:', error);
+
     } finally {
       setIsGeneratingPDF(false);
     }

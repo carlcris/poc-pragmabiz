@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       .single()
 
     if (dbError) {
-      console.error('Database error:', dbError)
+
       // If user not in database, create basic user object from auth
       return NextResponse.json({
         user: {
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error:', error)
+
     return NextResponse.json(
       { message: 'Internal server error' },
       { status: 500 }

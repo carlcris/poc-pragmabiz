@@ -75,7 +75,7 @@ export function QuickCustomerForm({
         city: "",
       });
     } catch (error) {
-      console.error("Error creating customer:", error);
+
       toast.error("Failed to create customer");
     }
   };

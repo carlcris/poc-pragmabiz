@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
 export async function POST(
@@ -7,6 +9,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_adjustments' edit permission (posting is a form of editing)
+    const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
@@ -109,7 +115,7 @@ export async function POST(
       .single()
 
     if (stockTxError) {
-      console.error('Error creating stock transaction:', stockTxError)
+
       return NextResponse.json(
         { error: stockTxError.message || 'Failed to create stock transaction' },
         { status: 500 }
@@ -142,7 +148,7 @@ export async function POST(
         .single()
 
       if (stockTxItemError) {
-        console.error('Error creating stock transaction item:', stockTxItemError)
+
         // Rollback stock transaction
         await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
         return NextResponse.json(
@@ -225,7 +231,7 @@ export async function POST(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error updating adjustment status:', updateError)
+
       // Rollback stock transactions
       await supabase.from('stock_transaction_items').delete().eq('transaction_id', stockTransaction.id)
       await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
@@ -288,7 +294,7 @@ export async function POST(
       },
     })
   } catch (error) {
-    console.error('Unexpected error in POST /api/stock-adjustments/[id]/post:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

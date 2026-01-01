@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 type RouteContext = {
   params: Promise<{
@@ -13,6 +15,7 @@ export const GET = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'view');
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -25,7 +28,7 @@ export const GET = async (
       .order("city", { ascending: true });
 
     if (error) {
-      console.error("Error fetching territories:", error);
+
       return NextResponse.json(
         { error: "Failed to fetch territories", details: error.message },
         { status: 500 }
@@ -34,7 +37,7 @@ export const GET = async (
 
     return NextResponse.json({ data: data || [] });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -48,6 +51,7 @@ export const POST = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'edit');
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -132,7 +136,7 @@ export const POST = async (
       .single();
 
     if (error) {
-      console.error("Error adding territory:", error);
+
       return NextResponse.json(
         { error: "Failed to add territory", details: error.message },
         { status: 500 }
@@ -141,7 +145,7 @@ export const POST = async (
 
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

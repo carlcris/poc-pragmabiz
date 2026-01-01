@@ -9,6 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from "@/lib/auth";
+import { RESOURCES } from "@/constants/resources";
 import type { ItemPackaging, CreateItemPackagingInput } from "@/types/item-variant";
 
 type RouteContext = {
@@ -24,6 +26,10 @@ export async function GET(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { variantId } = await context.params;
 
@@ -73,7 +79,7 @@ export async function GET(
       .order("pack_type", { ascending: true });
 
     if (packagingError) {
-      console.error("Error fetching packaging:", packagingError);
+
       return NextResponse.json(
         { error: "Failed to fetch packaging" },
         { status: 500 }
@@ -104,7 +110,7 @@ export async function GET(
       total: transformedPackaging.length,
     });
   } catch (error) {
-    console.error("Unexpected error in GET /api/items/[id]/variants/[variantId]/packaging:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -121,6 +127,10 @@ export async function POST(
   context: RouteContext
 ) {
   try {
+    // Check permission first
+    const unauthorized = await requirePermission(RESOURCES.ITEMS, 'create');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { variantId } = await context.params;
     const body: CreateItemPackagingInput = await request.json();
@@ -211,7 +221,7 @@ export async function POST(
       .single();
 
     if (createError) {
-      console.error("Error creating packaging:", createError);
+
       return NextResponse.json(
         { error: "Failed to create packaging" },
         { status: 500 }
@@ -239,7 +249,7 @@ export async function POST(
 
     return NextResponse.json({ data: transformedPackaging }, { status: 201 });
   } catch (error) {
-    console.error("Unexpected error in POST /api/items/[id]/variants/[variantId]/packaging:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

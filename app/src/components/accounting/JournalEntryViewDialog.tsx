@@ -62,7 +62,7 @@ export function JournalEntryViewDialog({
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error("Error posting journal entry:", error);
+
       toast.error(error instanceof Error ? error.message : "Failed to post journal entry");
     } finally {
       setPosting(false);

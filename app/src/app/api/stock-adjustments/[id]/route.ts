@@ -1,5 +1,7 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/stock-adjustments/[id] - Get single stock adjustment
 export async function GET(
@@ -7,6 +9,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_adjustments' view permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, 'view')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -111,7 +117,7 @@ export async function GET(
       })) || [],
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/stock-adjustments/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -122,6 +128,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_adjustments' edit permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, 'edit')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const body = await request.json()
     const { supabase } = await createServerClientWithBU()
@@ -246,7 +256,7 @@ export async function PATCH(
       .eq('id', id)
 
     if (updateError) {
-      console.error('Error updating stock adjustment:', updateError)
+
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
@@ -296,7 +306,7 @@ export async function PATCH(
       })) || [],
     })
   } catch (error) {
-    console.error('Unexpected error in PATCH /api/stock-adjustments/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -307,6 +317,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Require 'stock_adjustments' delete permission
+    const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, 'delete')
+    if (unauthorized) return unauthorized
+
     const { id } = await params
     const { supabase } = await createServerClientWithBU()
 
@@ -361,13 +375,13 @@ export async function DELETE(
       .eq('id', id)
 
     if (deleteError) {
-      console.error('Error deleting stock adjustment:', deleteError)
+
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Unexpected error in DELETE /api/stock-adjustments/[id]:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

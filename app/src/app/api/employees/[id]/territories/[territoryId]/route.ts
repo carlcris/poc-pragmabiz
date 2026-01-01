@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 type RouteContext = {
   params: Promise<{
@@ -14,6 +16,7 @@ export const DELETE = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'delete');
     const { id, territoryId } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -54,7 +57,7 @@ export const DELETE = async (
       .single();
 
     if (error) {
-      console.error("Error deleting territory:", error);
+
       return NextResponse.json(
         { error: "Failed to delete territory", details: error.message },
         { status: 500 }
@@ -70,7 +73,7 @@ export const DELETE = async (
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -84,6 +87,7 @@ export const PUT = async (
   context: RouteContext
 ) => {
   try {
+    await requirePermission(RESOURCES.EMPLOYEES, 'edit');
     const { id, territoryId } = await context.params;
     const { supabase } = await createServerClientWithBU();
 
@@ -131,7 +135,7 @@ export const PUT = async (
       .single();
 
     if (error) {
-      console.error("Error updating territory:", error);
+
       return NextResponse.json(
         { error: "Failed to update territory", details: error.message },
         { status: 500 }
@@ -147,7 +151,7 @@ export const PUT = async (
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Unexpected error:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

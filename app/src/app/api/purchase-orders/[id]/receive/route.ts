@@ -1,6 +1,8 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { postAPBill } from '@/services/accounting/apPosting'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // POST /api/purchase-orders/[id]/receive
 // Creates a purchase receipt from an approved purchase order
@@ -9,6 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'edit')
     const { id: purchaseOrderId } = await params
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
@@ -115,7 +118,7 @@ export async function POST(
       .single()
 
     if (receiptError) {
-      console.error('Error creating receipt:', receiptError)
+
       return NextResponse.json(
         { error: receiptError.message || 'Failed to create receipt' },
         { status: 500 }
@@ -151,7 +154,7 @@ export async function POST(
       .insert(receiptItems)
 
     if (itemsError) {
-      console.error('Error creating receipt items:', itemsError)
+
       // Rollback receipt creation
       await supabase.from('purchase_receipts').delete().eq('id', receipt.id)
       return NextResponse.json(
@@ -188,7 +191,7 @@ export async function POST(
       .single()
 
     if (stockTxError) {
-      console.error('Error creating stock transaction:', stockTxError)
+
       // Rollback receipt and items
       await supabase.from('purchase_receipt_items').delete().eq('receipt_id', receipt.id)
       await supabase.from('purchase_receipts').delete().eq('id', receipt.id)
@@ -219,7 +222,7 @@ export async function POST(
         .single()
 
       if (stockTxItemError) {
-        console.error('Error creating stock transaction item:', stockTxItemError)
+
         // Continue with other items but log the error
         continue
       }
@@ -312,20 +315,12 @@ export async function POST(
       .eq('purchase_order_id', purchaseOrderId)
       .is('deleted_at', null)
 
-    console.log('Fetching PO items for status update:', {
-      purchaseOrderId,
-      itemsCount: allPoItems?.length,
-      items: allPoItems,
-      error: itemsFetchError
-    })
-
     if (allPoItems && allPoItems.length > 0) {
       // Check if all items are fully received
       const allFullyReceived = allPoItems.every((item: any) => {
         const ordered = parseFloat(item.quantity)
         const received = parseFloat(item.quantity_received || 0)
         const isFullyReceived = received >= ordered
-        console.log(`Item check: ordered=${ordered}, received=${received}, fullyReceived=${isFullyReceived}`)
         return isFullyReceived
       })
 
@@ -342,13 +337,6 @@ export async function POST(
         newStatus = 'partially_received'
       }
 
-      console.log('Status calculation:', {
-        currentStatus: po.status,
-        allFullyReceived,
-        anyReceived,
-        newStatus
-      })
-
       // Update PO status if it changed
       if (newStatus !== po.status) {
         const { error: statusUpdateError } = await supabase
@@ -358,15 +346,6 @@ export async function POST(
             updated_by: user.id,
           })
           .eq('id', purchaseOrderId)
-
-        console.log('PO status updated:', {
-          purchaseOrderId,
-          oldStatus: po.status,
-          newStatus,
-          error: statusUpdateError
-        })
-      } else {
-        console.log('Status unchanged, no update needed')
       }
     }
 
@@ -398,13 +377,12 @@ export async function POST(
       )
 
       if (apResult.success) {
-        console.log(`AP journal entry created: ${apResult.journalEntryId}`)
       } else {
-        console.error('AP GL posting failed:', apResult.error)
+
         warnings.push(`GL posting failed: ${apResult.error}`)
       }
     } catch (error) {
-      console.error('Error posting AP to GL:', error)
+
       warnings.push('GL posting failed')
     }
 
@@ -418,7 +396,7 @@ export async function POST(
       { status: 201 }
     )
   } catch (error) {
-    console.error('Unexpected error in POST /api/purchase-orders/[id]/receive:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

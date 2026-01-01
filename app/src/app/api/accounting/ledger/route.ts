@@ -13,6 +13,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { AccountLedger, LedgerEntry, Account } from "@/types/accounting";
+import { requirePermission } from '@/lib/auth';
+import { RESOURCES } from '@/constants/resources';
 
 /**
  * GET /api/accounting/ledger
@@ -20,6 +22,9 @@ import type { AccountLedger, LedgerEntry, Account } from "@/types/accounting";
  */
 export async function GET(request: NextRequest) {
   try {
+    const unauthorized = await requirePermission(RESOURCES.GENERAL_LEDGER, 'view');
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
 
     // Get current user's company
@@ -152,7 +157,7 @@ export async function GET(request: NextRequest) {
       .is("journal_entries.deleted_at", null);
 
     if (openingError) {
-      console.error("Error calculating opening balance:", openingError);
+
       return NextResponse.json(
         { error: "Failed to calculate opening balance" },
         { status: 500 }
@@ -210,7 +215,7 @@ export async function GET(request: NextRequest) {
       .is("journal_entries.deleted_at", null);
 
     if (linesError) {
-      console.error("Error fetching ledger entries:", linesError);
+
       return NextResponse.json(
         { error: "Failed to fetch ledger entries" },
         { status: 500 }
@@ -291,7 +296,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: ledger });
   } catch (error) {
-    console.error("Unexpected error in GET /api/accounting/ledger:", error);
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -1,9 +1,12 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
 
 // GET /api/purchase-orders
 export async function GET(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'view')
     const { supabase } = await createServerClientWithBU()
     const { searchParams } = new URL(request.url)
 
@@ -91,7 +94,7 @@ export async function GET(request: NextRequest) {
     const { data: purchaseOrders, error, count } = await query
 
     if (error) {
-      console.error('Error fetching purchase orders:', error)
+
       return NextResponse.json({ error: 'Failed to fetch purchase orders' }, { status: 500 })
     }
 
@@ -163,7 +166,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Unexpected error in GET /api/purchase-orders:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -171,6 +174,7 @@ export async function GET(request: NextRequest) {
 // POST /api/purchase-orders
 export async function POST(request: NextRequest) {
   try {
+    await requirePermission(RESOURCES.PURCHASE_ORDERS, 'create')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
@@ -280,7 +284,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (orderError) {
-      console.error('Error creating purchase order:', orderError)
+
       return NextResponse.json(
         { error: orderError.message || 'Failed to create purchase order' },
         { status: 500 }
@@ -308,7 +312,7 @@ export async function POST(request: NextRequest) {
       .insert(lineItemsData)
 
     if (itemsError) {
-      console.error('Error creating purchase order items:', itemsError)
+
       // Rollback: delete the order
       await supabase.from('purchase_orders').delete().eq('id', purchaseOrder.id)
       return NextResponse.json(
@@ -326,7 +330,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-    console.error('Unexpected error in POST /api/purchase-orders:', error)
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
