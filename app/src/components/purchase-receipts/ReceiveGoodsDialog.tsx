@@ -7,6 +7,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useReceiveGoodsFromPO } from "@/hooks/usePurchaseReceipts";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { CompactPackageSelector } from "@/components/inventory/PackageSelector";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ const receiveGoodsSchema = z.object({
       itemId: z.string(),
       quantityOrdered: z.number(),
       quantityReceived: z.number().min(0, "Quantity cannot be negative"),
+      packagingId: z.string().nullable().optional(), // null = use base package
       uomId: z.string(),
       rate: z.number(),
     })
@@ -108,6 +110,7 @@ export function ReceiveGoodsDialog({
           itemId: item.itemId,
           quantityOrdered: item.quantity,
           quantityReceived: remainingQty, // Default to receiving remaining quantity
+          packagingId: item.packagingId || null, // Use the package from PO
           uomId,
           rate: item.rate,
         };
@@ -167,6 +170,15 @@ export function ReceiveGoodsDialog({
       quantityReceived: isNaN(quantity) ? 0 : quantity,
     };
     form.setValue("items", currentItems, { shouldValidate: false }); // Don't validate on change
+  };
+
+  const updateItemPackaging = (index: number, packagingId: string | null) => {
+    const currentItems = [...form.getValues("items")];
+    currentItems[index] = {
+      ...currentItems[index],
+      packagingId,
+    };
+    form.setValue("items", currentItems, { shouldValidate: false });
   };
 
   return (
@@ -283,6 +295,7 @@ export function ReceiveGoodsDialog({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
+                      <TableHead>Package</TableHead>
                       <TableHead className="text-right">Ordered</TableHead>
                       <TableHead className="text-right">Already Received</TableHead>
                       <TableHead className="text-right">Remaining</TableHead>
@@ -294,6 +307,7 @@ export function ReceiveGoodsDialog({
                       const alreadyReceived = poItem.quantityReceived || 0;
                       const remaining = poItem.quantity - alreadyReceived;
                       const receivingNow = items[index]?.quantityReceived || 0;
+                      const packagingId = items[index]?.packagingId || null;
 
                       return (
                         <TableRow key={poItem.id}>
@@ -304,6 +318,13 @@ export function ReceiveGoodsDialog({
                                 {poItem.item?.code}
                               </div>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <CompactPackageSelector
+                              itemId={poItem.itemId}
+                              value={packagingId}
+                              onChange={(pkgId) => updateItemPackaging(index, pkgId)}
+                            />
                           </TableCell>
                           <TableCell className="text-right">
                             {poItem.quantity}

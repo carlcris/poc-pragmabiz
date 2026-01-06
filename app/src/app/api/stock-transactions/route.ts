@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // GET /api/stock-transactions
 export async function GET(request: NextRequest) {
@@ -119,8 +121,8 @@ export async function GET(request: NextRequest) {
       const creator = usersMap.get(item.transaction.created_by)
 
       return {
-        id: item.transaction.id,
-        itemTransactionId: item.id,
+        id: item.id, // Use transaction item ID as unique key
+        transactionId: item.transaction.id,
         companyId: userData.company_id,
         transactionCode: item.transaction.transaction_code,
         transactionDate: item.transaction.transaction_date,
@@ -186,7 +188,7 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, 'create')
     if (unauthorized) return unauthorized
 
-    const { supabase } = await createServerClientWithBU()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
 
     // Check authentication
@@ -197,6 +199,13 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      )
     }
 
     // Get user's company
@@ -242,6 +251,7 @@ export async function POST(request: NextRequest) {
       .from('stock_transactions')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         transaction_code: transactionCode,
         transaction_type: body.transactionType,
         transaction_date: body.transactionDate || new Date().toISOString().split('T')[0],
@@ -265,42 +275,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create transaction items
-    const transactionItems = body.items.map((item: any) => ({
-      company_id: userData.company_id,
-      transaction_id: transaction.id,
-      item_id: item.itemId,
-      quantity: item.quantity,
-      uom_id: item.uomId,
-      unit_cost: item.unitCost || 0,
-      total_cost: item.quantity * (item.unitCost || 0),
-      batch_no: item.batchNo || null,
-      serial_no: item.serialNo || null,
-      expiry_date: item.expiryDate || null,
-      notes: item.notes || null,
-      created_by: user.id,
-      updated_by: user.id,
+    // Normalize item quantities from packages to base units
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+      itemId: item.itemId,
+      packagingId: item.packagingId || null,
+      inputQty: item.quantity,
+      unitCost: item.unitCost || 0,
     }))
 
-    const { data: createdItems, error: itemsError } = await supabase
-      .from('stock_transaction_items')
-      .insert(transactionItems)
-      .select()
-
-    if (itemsError || !createdItems) {
-
-      // Rollback: delete the transaction
+    let normalizedItems
+    try {
+      normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
+    } catch (normError) {
       await supabase.from('stock_transactions').delete().eq('id', transaction.id)
       return NextResponse.json(
-        { error: itemsError?.message || 'Failed to create transaction items' },
-        { status: 500 }
+        { error: normError instanceof Error ? normError.message : 'Failed to normalize item quantities' },
+        { status: 400 }
       )
     }
 
-    // Update stock and add before/after quantities to transaction items
-    for (let i = 0; i < body.items.length; i++) {
-      const item = body.items[i]
-      const createdItem = createdItems[i]
+    const postingDate = body.transactionDate || new Date().toISOString().split('T')[0]
+    const postingTime = new Date().toTimeString().split(' ')[0]
+
+    // Update stock and create transaction items with normalization metadata
+    for (let i = 0; i < normalizedItems.length; i++) {
+      const item = normalizedItems[i]
+      const originalItem = body.items[i]
 
       // Get current stock balance from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
@@ -314,12 +314,12 @@ export async function POST(request: NextRequest) {
         ? parseFloat(String(warehouseStock.current_stock))
         : 0
 
-      // Calculate actual quantity change based on transaction type
-      let actualQty = item.quantity
+      // Calculate actual quantity change based on transaction type (use normalized qty)
+      let actualQty = item.normalizedQty
       if (body.transactionType === 'out') {
-        actualQty = -item.quantity
+        actualQty = -item.normalizedQty
       } else if (body.transactionType === 'transfer' && body.warehouseId) {
-        actualQty = -item.quantity // OUT from source warehouse
+        actualQty = -item.normalizedQty
       }
 
       const newBalance = currentBalance + actualQty
@@ -327,32 +327,53 @@ export async function POST(request: NextRequest) {
       // Validate sufficient stock for OUT transactions
       if (newBalance < 0 && body.transactionType === 'out') {
         return NextResponse.json(
-          { error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${item.quantity}` },
+          { error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${item.normalizedQty}` },
           { status: 400 }
         )
       }
 
-      const postingDate = body.transactionDate || new Date().toISOString().split('T')[0]
-      const postingTime = new Date().toTimeString().split(' ')[0]
-
-      // Update stock_transaction_items with before/after quantities
-      const { error: updateItemError } = await supabase
+      // Create stock transaction item with full normalization metadata
+      const { data: stockTxItem, error: stockTxItemError } = await supabase
         .from('stock_transaction_items')
-        .update({
+        .insert({
+          company_id: userData.company_id,
+          transaction_id: transaction.id,
+          item_id: item.itemId,
+          // Normalization fields
+          input_qty: item.inputQty,
+          input_packaging_id: item.inputPackagingId,
+          conversion_factor: item.conversionFactor,
+          normalized_qty: item.normalizedQty,
+          base_package_id: item.basePackageId,
+          // Standard fields
+          quantity: item.normalizedQty,
+          uom_id: item.uomId,
+          unit_cost: item.unitCost,
+          total_cost: item.totalCost,
+          // Audit fields
           qty_before: currentBalance,
           qty_after: newBalance,
-          valuation_rate: item.unitCost || 0,
-          stock_value_before: currentBalance * (item.unitCost || 0),
-          stock_value_after: newBalance * (item.unitCost || 0),
+          valuation_rate: item.unitCost,
+          stock_value_before: currentBalance * item.unitCost,
+          stock_value_after: newBalance * item.unitCost,
           posting_date: postingDate,
           posting_time: postingTime,
+          // Additional fields from original item
+          batch_no: originalItem.batchNo || null,
+          serial_no: originalItem.serialNo || null,
+          expiry_date: originalItem.expiryDate || null,
+          notes: originalItem.notes || null,
+          created_by: user.id,
+          updated_by: user.id,
         })
-        .eq('id', createdItem.id)
+        .select()
+        .single()
 
-      if (updateItemError) {
-
+      if (stockTxItemError) {
+        // Rollback: delete the transaction
+        await supabase.from('stock_transactions').delete().eq('id', transaction.id)
         return NextResponse.json(
-          { error: 'Failed to update transaction item' },
+          { error: stockTxItemError.message || 'Failed to create transaction item' },
           { status: 500 }
         )
       }
@@ -389,7 +410,7 @@ export async function POST(request: NextRequest) {
           ? parseFloat(String(destWarehouseStock.current_stock))
           : 0
 
-        const destNewBalance = destCurrentBalance + item.quantity
+        const destNewBalance = destCurrentBalance + item.normalizedQty
 
         // Update destination warehouse stock
         if (destWarehouseStock) {
@@ -428,7 +449,8 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error) {
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Internal server error'
+    }, { status: 500 })
   }
 }

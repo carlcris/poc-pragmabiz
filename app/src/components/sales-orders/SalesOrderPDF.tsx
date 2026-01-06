@@ -96,6 +96,10 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  unitCol: {
+    flex: 1.2,
+    textAlign: 'center',
+  },
   priceCol: {
     flex: 1.5,
     textAlign: 'right',
@@ -285,6 +289,7 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({ salesOrder, curren
           <View style={styles.tableHeader}>
             <Text style={[styles.tableCell, styles.itemCol]}>Item</Text>
             <Text style={[styles.tableCell, styles.qtyCol]}>Qty</Text>
+            <Text style={[styles.tableCell, styles.unitCol]}>Unit</Text>
             <Text style={[styles.tableCell, styles.priceCol]}>Price</Text>
             <Text style={[styles.tableCell, styles.discountCol]}>Disc%</Text>
             <Text style={[styles.tableCell, styles.taxCol]}>Tax%</Text>
@@ -303,6 +308,9 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({ salesOrder, curren
                 )}
               </View>
               <Text style={[styles.tableCell, styles.qtyCol]}>{item.quantity}</Text>
+              <Text style={[styles.tableCell, styles.unitCol]}>
+                {item.packaging?.name || '-'}
+              </Text>
               <Text style={[styles.tableCell, styles.priceCol]}>{formatCurrency(item.unitPrice)}</Text>
               <Text style={[styles.tableCell, styles.discountCol]}>{item.discount}%</Text>
               <Text style={[styles.tableCell, styles.taxCol]}>{item.taxRate}%</Text>

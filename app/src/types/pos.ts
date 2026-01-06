@@ -7,6 +7,8 @@ export interface POSCartItem {
   itemCode: string;
   itemName: string;
   quantity: number;
+  packagingId?: string | null; // Package selection (null = base package)
+  uom?: string; // UOM name for display (fallback until migration)
   unitPrice: number;
   discount: number;
   lineTotal: number;

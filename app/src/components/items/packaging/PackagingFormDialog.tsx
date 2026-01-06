@@ -18,13 +18,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { ItemPackaging, CreateItemPackagingInput, UpdateItemPackagingInput } from "@/types/item-variant";
+
+type ItemPackaging = {
+  id: string;
+  itemId: string;
+  packType: string;
+  packName: string;
+  qtyPerPack: number;
+  barcode: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  uomId: string;
+  uom?: string;
+};
 
 type PackagingFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemId: string;
-  variantId: string;
   packaging?: ItemPackaging | null;
 };
 
@@ -36,7 +47,7 @@ type FormData = {
   isActive: boolean;
 };
 
-export const PackagingFormDialog = ({ open, onOpenChange, itemId, variantId, packaging }: PackagingFormDialogProps) => {
+export const PackagingFormDialog = ({ open, onOpenChange, itemId, packaging }: PackagingFormDialogProps) => {
   const queryClient = useQueryClient();
   const isEditing = !!packaging;
 
@@ -74,9 +85,9 @@ export const PackagingFormDialog = ({ open, onOpenChange, itemId, variantId, pac
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: CreateItemPackagingInput) => {
+    mutationFn: async (data: FormData) => {
       const response = await apiClient.post<{ data: ItemPackaging }>(
-        `/api/items/${itemId}/variants/${variantId}/packaging`,
+        `/api/items/${itemId}/packages`,
         data
       );
       return response.data;
@@ -95,10 +106,10 @@ export const PackagingFormDialog = ({ open, onOpenChange, itemId, variantId, pac
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: UpdateItemPackagingInput) => {
+    mutationFn: async (data: FormData) => {
       if (!packaging) throw new Error("No packaging selected");
       const response = await apiClient.put<{ data: ItemPackaging }>(
-        `/api/items/${itemId}/variants/${variantId}/packaging/${packaging.id}`,
+        `/api/items/${itemId}/packages/${packaging.id}`,
         data
       );
       return response.data;
@@ -140,7 +151,7 @@ export const PackagingFormDialog = ({ open, onOpenChange, itemId, variantId, pac
           <DialogDescription>
             {isEditing
               ? "Update packaging information"
-              : "Add a new packaging option for this variant"}
+              : "Add a new packaging option for this item"}
           </DialogDescription>
         </DialogHeader>
 
@@ -160,7 +171,7 @@ export const PackagingFormDialog = ({ open, onOpenChange, itemId, variantId, pac
               <p className="text-sm text-destructive">{errors.packType.message}</p>
             )}
             {packaging?.isDefault && (
-              <p className="text-sm text-muted-foreground">Cannot change type of default packaging</p>
+              <p className="text-sm text-muted-foreground">Cannot change type of base packaging</p>
             )}
           </div>
 

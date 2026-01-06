@@ -164,6 +164,7 @@ export function PurchaseOrderViewDialog({
                   <tr>
                     <th className="text-left p-3">Item</th>
                     <th className="text-right p-3">Quantity</th>
+                    <th className="text-center p-3">Unit</th>
                     <th className="text-right p-3">Rate</th>
                     <th className="text-right p-3">Discount</th>
                     <th className="text-right p-3">Tax</th>
@@ -175,11 +176,13 @@ export function PurchaseOrderViewDialog({
                 </thead>
                 <tbody>
                   {purchaseOrder.items?.map((item, index) => {
-                    const subtotal = item.quantity * item.rate;
-                    const discount = (subtotal * item.discountPercent) / 100;
-                    const taxableAmount = subtotal - discount;
-                    const tax = (taxableAmount * item.taxPercent) / 100;
-                    const total = taxableAmount + tax;
+                    const total = item.lineTotal ?? item.quantity * item.rate;
+                    const conversionFactor = item.packaging?.qtyPerPack ?? 1;
+                    const showConversion =
+                      item.packaging?.qtyPerPack &&
+                      item.packaging.qtyPerPack !== 1;
+                    const baseUnitLabel =
+                      item.uom?.code || item.uom?.name || "base units";
 
                     return (
                       <tr key={index} className="border-t">
@@ -191,7 +194,20 @@ export function PurchaseOrderViewDialog({
                             </div>
                           </div>
                         </td>
-                        <td className="text-right p-3">{item.quantity}</td>
+                        <td className="text-right p-3">
+                          {item.quantity}
+                          {showConversion && (
+                            <div className="text-xs text-muted-foreground">
+                              = {(item.quantity * conversionFactor).toFixed(4)}{" "}
+                              {baseUnitLabel}
+                            </div>
+                          )}
+                        </td>
+                        <td className="text-center p-3">
+                          <span className="text-muted-foreground">
+                            {item.packagingName || "—"}
+                          </span>
+                        </td>
                         <td className="text-right p-3">{formatCurrency(item.rate)}</td>
                         <td className="text-right p-3">{item.discountPercent}%</td>
                         <td className="text-right p-3">{item.taxPercent}%</td>
@@ -203,6 +219,12 @@ export function PurchaseOrderViewDialog({
                             <span className={item.quantityReceived === item.quantity ? "text-green-600" : "text-yellow-600"}>
                               {item.quantityReceived} / {item.quantity}
                             </span>
+                            {showConversion && (
+                              <div className="text-xs text-muted-foreground">
+                                = {(item.quantityReceived * conversionFactor).toFixed(4)}{" "}
+                                {baseUnitLabel}
+                              </div>
+                            )}
                           </td>
                         )}
                       </tr>

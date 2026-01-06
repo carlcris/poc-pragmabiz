@@ -4,6 +4,8 @@ import type { SalesOrder, SalesOrderLineItem, UpdateSalesOrderRequest } from '@/
 import type { Database } from '@/types/database.types'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 type DbSalesOrder = Database['public']['Tables']['sales_orders']['Row']
 type DbSalesOrderItem = Database['public']['Tables']['sales_order_items']['Row']
@@ -56,6 +58,7 @@ function transformDbSalesOrderItem(
   dbItem: DbSalesOrderItem & {
     items?: DbItem | null
     units_of_measure?: DbUoM | null
+    item_packaging?: { id: string; pack_name: string; qty_per_pack: number } | null
   }
 ): SalesOrderLineItem {
   return {
@@ -65,6 +68,14 @@ function transformDbSalesOrderItem(
     itemName: dbItem.items?.item_name || '',
     description: dbItem.item_description || '',
     quantity: Number(dbItem.quantity),
+    packagingId: dbItem.packaging_id,
+    packaging: dbItem.item_packaging
+      ? {
+          id: dbItem.item_packaging.id,
+          name: dbItem.item_packaging.pack_name,
+          qtyPerPack: Number(dbItem.item_packaging.qty_per_pack),
+        }
+      : undefined,
     uomId: dbItem.uom_id,
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
@@ -139,6 +150,11 @@ export async function GET(
           item_code,
           item_name
         ),
+        item_packaging (
+          id,
+          pack_name,
+          qty_per_pack
+        ),
         units_of_measure (
           id,
           code,
@@ -193,7 +209,7 @@ export async function PUT(
     // Check if sales order exists
     const { data: existingOrder, error: fetchError } = await supabase
       .from('sales_orders')
-      .select('id, status')
+      .select('id, status, company_id')
       .eq('id', id)
       .is('deleted_at', null)
       .single()
@@ -209,8 +225,18 @@ export async function PUT(
     let itemsWithCalculations: any[] = []
 
     if (updateData.lineItems && updateData.lineItems.length > 0) {
-      itemsWithCalculations = updateData.lineItems.map((item) => {
-        const itemSubtotal = item.quantity * item.unitPrice
+      const itemInputs: StockTransactionItemInput[] = updateData.lineItems.map((item) => ({
+        itemId: item.itemId,
+        packagingId: item.packagingId ?? null,
+        inputQty: item.quantity,
+        unitCost: item.unitPrice,
+      }))
+
+      const normalizedItems = await normalizeTransactionItems(existingOrder.company_id, itemInputs)
+
+      itemsWithCalculations = updateData.lineItems.map((item, index) => {
+        const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity
+        const itemSubtotal = normalizedQty * item.unitPrice
         const discountAmount = (itemSubtotal * (item.discount || 0) / 100)
         const taxableAmount = itemSubtotal - discountAmount
         const taxAmount = (taxableAmount * (item.taxRate || 0) / 100)
@@ -222,6 +248,7 @@ export async function PUT(
 
         return {
           ...item,
+          normalizedQty,
           discountAmount,
           taxAmount,
           lineTotal,
@@ -280,11 +307,12 @@ export async function PUT(
 
       // Insert new items
       const itemsToInsert = itemsWithCalculations.map((item, index) => ({
-        company_id: updateData.companyId || existingOrder.id, // Use existing company_id
+        company_id: existingOrder.company_id,
         order_id: id,
         item_id: item.itemId,
         item_description: item.description,
         quantity: item.quantity,
+        packaging_id: item.packagingId ?? null,
         uom_id: item.uomId,
         rate: item.unitPrice,
         discount_percent: item.discount || 0,

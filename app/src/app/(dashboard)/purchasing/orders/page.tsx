@@ -38,7 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PurchaseOrderFormDialogV2 } from "@/components/purchase-orders/PurchaseOrderFormDialogV2";
+import { PurchaseOrderFormDialog } from "@/components/purchase-orders/PurchaseOrderFormDialog";
 import { PurchaseOrderViewDialog } from "@/components/purchase-orders/PurchaseOrderViewDialog";
 import { ReceiveGoodsDialog } from "@/components/purchase-receipts/ReceiveGoodsDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
@@ -412,7 +412,7 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {/* Form Dialog */}
-      <PurchaseOrderFormDialogV2
+      <PurchaseOrderFormDialog
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         purchaseOrder={selectedOrder}

@@ -148,6 +148,7 @@ export async function POST(
       item_description: item.item_description,
       quantity: item.quantity,
       uom_id: item.uom_id,
+      packaging_id: item.packaging_id ?? null,
       rate: item.rate,
       discount_percent: item.discount_percent || 0,
       discount_amount: item.discount_amount || 0,

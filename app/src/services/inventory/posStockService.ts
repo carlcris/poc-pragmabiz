@@ -1,14 +1,19 @@
 /**
  * POS Stock Transaction Service
  *
- * Handles stock transactions for POS sales:
+ * Handles stock transactions for POS sales with inventory normalization:
  * - Creates outbound stock transactions when items are sold
- * - Updates stock_transaction_items with before/after quantities
- * - Reduces inventory quantities in item_warehouse
+ * - Normalizes quantities from selected packages to base units
+ * - Updates stock_transaction_items with full conversion metadata
+ * - Reduces inventory quantities in item_warehouse (in base units)
  * - Creates reversal transactions for voided sales
+ *
+ * @see /docs/inv-normalization-implementation-plan.md
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeTransactionItems } from "./normalizationService";
+import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 export type POSStockTransactionData = {
   transactionId: string;
@@ -17,17 +22,19 @@ export type POSStockTransactionData = {
   warehouseId: string;
   items: Array<{
     itemId: string;
-    quantity: number;
-    uomId: string;
+    quantity: number; // Input quantity in selected package
+    packagingId?: string | null; // Package selected by user (null = use base package)
+    uomId?: string; // Deprecated: kept for backward compatibility
     rate: number;
   }>;
 };
 
 /**
- * Create stock transaction for POS sale
+ * Create stock transaction for POS sale with inventory normalization
+ * - Normalizes quantities from selected packages to base units
  * - Creates stock_transactions record (type: 'out')
- * - Creates stock_transaction_items with before/after quantities
- * - Updates item_warehouse quantities (reduces stock)
+ * - Creates stock_transaction_items with full conversion metadata
+ * - Updates item_warehouse quantities (in base units)
  */
 export async function createPOSStockTransaction(
   companyId: string,
@@ -38,10 +45,41 @@ export async function createPOSStockTransaction(
   try {
     const supabase = await createClient();
 
-    // Generate stock transaction code: ST-POS-{transaction_code}
+    // STEP 1: Normalize all item quantities from packages to base units
+    const itemInputs: StockTransactionItemInput[] = data.items.map((item) => ({
+      itemId: item.itemId,
+      packagingId: item.packagingId || null, // null = use base package
+      inputQty: item.quantity,
+      unitCost: item.rate,
+    }));
+
+    const normalizedItems = await normalizeTransactionItems(companyId, itemInputs);
+
+    // STEP 2: Validate stock availability (using normalized quantities in base units)
+    for (const item of normalizedItems) {
+      const { data: warehouseStock } = await supabase
+        .from("item_warehouse")
+        .select("current_stock")
+        .eq("item_id", item.itemId)
+        .eq("warehouse_id", data.warehouseId)
+        .is("deleted_at", null)
+        .single();
+
+      const currentBalance = warehouseStock
+        ? parseFloat(String(warehouseStock.current_stock))
+        : 0;
+
+      if (currentBalance < item.normalizedQty) {
+        return {
+          success: false,
+          error: `Insufficient stock. Available: ${currentBalance} (base units), Requested: ${item.normalizedQty} (base units)`,
+        };
+      }
+    }
+
+    // STEP 3: Create stock transaction header
     const stockTransactionCode = `ST-POS-${data.transactionCode}`;
 
-    // Create stock transaction header
     const { data: stockTransaction, error: transactionError } = await supabase
       .from("stock_transactions")
       .insert({
@@ -49,7 +87,7 @@ export async function createPOSStockTransaction(
         business_unit_id: businessUnitId,
         transaction_code: stockTransactionCode,
         transaction_type: "out",
-        transaction_date: data.transactionDate.split("T")[0], // Extract date only
+        transaction_date: data.transactionDate.split("T")[0],
         warehouse_id: data.warehouseId,
         reference_type: "pos_transaction",
         reference_id: data.transactionId,
@@ -63,19 +101,18 @@ export async function createPOSStockTransaction(
       .single();
 
     if (transactionError || !stockTransaction) {
-
       return {
         success: false,
         error: "Failed to create stock transaction",
       };
     }
 
-    // Create stock transaction items and update warehouse inventory
+    // STEP 4: Create stock transaction items with normalization metadata
     const now = new Date();
     const postingDate = now.toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
-    for (const item of data.items) {
+    for (const item of normalizedItems) {
       // Get current stock from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
@@ -88,37 +125,32 @@ export async function createPOSStockTransaction(
         ? parseFloat(String(warehouseStock.current_stock))
         : 0;
 
-      const newBalance = currentBalance - item.quantity;
+      const newBalance = currentBalance - item.normalizedQty;
 
-      // Validate sufficient stock
-      if (newBalance < 0) {
-        // Rollback: delete transaction
-        await supabase
-          .from("stock_transactions")
-          .delete()
-          .eq("id", stockTransaction.id);
-        return {
-          success: false,
-          error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${item.quantity}`,
-        };
-      }
-
-      // Create stock transaction item with before/after quantities
+      // Create transaction item with full normalization metadata
       const { data: stockTxItem, error: itemError } = await supabase
         .from("stock_transaction_items")
         .insert({
           company_id: companyId,
           transaction_id: stockTransaction.id,
           item_id: item.itemId,
-          quantity: item.quantity,
+          // Normalization fields (NEW)
+          input_qty: item.inputQty,
+          input_packaging_id: item.inputPackagingId,
+          conversion_factor: item.conversionFactor,
+          normalized_qty: item.normalizedQty,
+          base_package_id: item.basePackageId,
+          // Standard fields
+          quantity: item.normalizedQty, // Backward compat
           uom_id: item.uomId,
-          unit_cost: item.rate,
-          total_cost: item.quantity * item.rate,
+          unit_cost: item.unitCost,
+          total_cost: item.totalCost,
+          // Audit fields
           qty_before: currentBalance,
           qty_after: newBalance,
-          valuation_rate: item.rate,
-          stock_value_before: currentBalance * item.rate,
-          stock_value_after: newBalance * item.rate,
+          valuation_rate: item.unitCost,
+          stock_value_before: currentBalance * item.unitCost,
+          stock_value_after: newBalance * item.unitCost,
           posting_date: postingDate,
           posting_time: postingTime,
           created_by: userId,
@@ -128,7 +160,6 @@ export async function createPOSStockTransaction(
         .single();
 
       if (itemError || !stockTxItem) {
-
         // Rollback: delete transaction
         await supabase
           .from("stock_transactions")
@@ -140,7 +171,7 @@ export async function createPOSStockTransaction(
         };
       }
 
-      // Update item_warehouse current_stock
+      // STEP 5: Update item_warehouse with normalized quantity (base units)
       const { error: warehouseUpdateError } = await supabase
         .from("item_warehouse")
         .update({
@@ -152,8 +183,7 @@ export async function createPOSStockTransaction(
         .eq("warehouse_id", data.warehouseId);
 
       if (warehouseUpdateError) {
-
-        // Rollback - delete transaction items created so far and transaction
+        // Rollback - delete transaction items and transaction
         await supabase
           .from("stock_transaction_items")
           .delete()
@@ -170,16 +200,15 @@ export async function createPOSStockTransaction(
     }
 
     // All items processed successfully
-
     return {
       success: true,
       stockTransactionId: stockTransaction.id,
     };
   } catch (error) {
-
+    console.error("POS stock transaction error:", error);
     return {
       success: false,
-      error: "Internal error creating stock transaction",
+      error: error instanceof Error ? error.message : "Internal error creating stock transaction",
     };
   }
 }

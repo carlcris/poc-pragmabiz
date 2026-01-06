@@ -78,7 +78,15 @@ export interface PurchaseReceiptItem {
     name: string;
   };
 
+  packagingId?: string | null;
+  packaging?: {
+    id: string;
+    name: string;
+    qtyPerPack: number;
+  };
+
   rate: number;
+  lineTotal?: number;
   notes?: string;
 
   // Audit Fields
@@ -106,6 +114,7 @@ export interface CreatePurchaseReceiptItemRequest {
   itemId: string;
   quantityOrdered: number;
   quantityReceived: number;
+  packagingId?: string | null;
   uomId: string;
   rate: number;
   notes?: string;
@@ -127,6 +136,7 @@ export interface UpdatePurchaseReceiptItemRequest {
   itemId: string;
   quantityOrdered: number;
   quantityReceived: number;
+  packagingId?: string | null;
   uomId: string;
   rate: number;
   notes?: string;

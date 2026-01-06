@@ -19,7 +19,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { VariantsTab } from "@/components/items/variants/VariantsTab";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { useItem } from "@/hooks/useItems";
@@ -108,9 +107,8 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="variants">Variants</TabsTrigger>
             <TabsTrigger value="packaging">Packaging</TabsTrigger>
             <TabsTrigger value="prices">Prices</TabsTrigger>
           </TabsList>
@@ -227,11 +225,6 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
                 </div>
               )}
             </div>
-          </TabsContent>
-
-          {/* Variants Tab */}
-          <TabsContent value="variants" className="mt-4">
-            <VariantsTab itemId={itemId} />
           </TabsContent>
 
           {/* Packaging Tab */}

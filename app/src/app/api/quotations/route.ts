@@ -4,6 +4,8 @@ import type { Quotation, QuotationLineItem, CreateQuotationRequest } from '@/typ
 import type { Database } from '@/types/database.types'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 type DbQuotation = Database['public']['Tables']['sales_quotations']['Row']
 type DbQuotationItem = Database['public']['Tables']['sales_quotation_items']['Row']
@@ -11,6 +13,7 @@ type DbCustomer = Database['public']['Tables']['customers']['Row']
 type DbItem = Database['public']['Tables']['items']['Row']
 type DbUser = Database['public']['Tables']['users']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
+type DbPackaging = Database['public']['Tables']['item_packaging']['Row']
 
 // Transform database quotation to frontend type
 function transformDbQuotation(
@@ -50,6 +53,7 @@ function transformDbQuotationItem(
   dbItem: DbQuotationItem & {
     items?: DbItem | null
     units_of_measure?: DbUoM | null
+    item_packaging?: DbPackaging | null
   }
 ): QuotationLineItem {
   return {
@@ -59,6 +63,8 @@ function transformDbQuotationItem(
     itemName: dbItem.items?.item_name,
     description: dbItem.item_description || '',
     quantity: Number(dbItem.quantity),
+    packagingId: dbItem.packaging_id,
+    packagingName: dbItem.item_packaging?.pack_name,
     uomId: dbItem.uom_id,
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
@@ -176,6 +182,11 @@ export async function GET(request: NextRequest) {
           id,
           item_code,
           item_name
+        ),
+        item_packaging:packaging_id (
+          id,
+          pack_name,
+          qty_per_pack
         ),
         units_of_measure (
           id,
@@ -299,13 +310,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+      itemId: item.itemId,
+      packagingId: item.packagingId ?? null,
+      inputQty: parseFloat(item.quantity),
+      unitCost: parseFloat(item.rate),
+    }))
+
+    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
+
     // Calculate totals
     let subtotal = 0
     let totalDiscount = 0
     let totalTax = 0
 
-    const itemsWithCalculations = body.items.map((item) => {
-      const itemSubtotal = item.quantity * item.rate
+    const itemsWithCalculations = body.items.map((item, index) => {
+      const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity
+      const itemSubtotal = normalizedQty * item.rate
       const discountAmount = item.discountAmount || (itemSubtotal * (item.discountPercent || 0) / 100)
       const taxableAmount = itemSubtotal - discountAmount
       const taxAmount = item.taxAmount || (taxableAmount * (item.taxPercent || 0) / 100)
@@ -366,6 +387,7 @@ export async function POST(request: NextRequest) {
       item_description: item.description,
       quantity: item.quantity,
       uom_id: item.uomId,
+      packaging_id: item.packagingId ?? null,
       rate: item.rate,
       discount_percent: item.discountPercent || 0,
       discount_amount: item.discountAmount,
@@ -422,6 +444,11 @@ export async function POST(request: NextRequest) {
           id,
           item_code,
           item_name
+        ),
+        item_packaging:packaging_id (
+          id,
+          pack_name,
+          qty_per_pack
         ),
         units_of_measure (
           id,

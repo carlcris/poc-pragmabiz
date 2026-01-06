@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/popover";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
+// No need for BasePackageLabel component - we already have UOM in cart item
 
 export default function POSPage() {
   const [search, setSearch] = useState("");
@@ -153,6 +154,8 @@ export default function POSPage() {
         itemCode: item.code,
         itemName: item.name,
         quantity: 1,
+        packagingId: null, // Default to base package
+        uom: item.uom, // Store UOM for display fallback
         unitPrice: item.listPrice,
         discount: 0,
         lineTotal: item.listPrice,
@@ -370,10 +373,11 @@ export default function POSPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">#</TableHead>
-                <TableHead>Item</TableHead>
+                <TableHead className="w-[200px]">Item</TableHead>
+                <TableHead className="w-[250px]">Unit</TableHead>
                 <TableHead className="w-[120px]">Price</TableHead>
-                <TableHead className="w-[100px]">Qty</TableHead>
-                <TableHead className="w-[120px]">Discount</TableHead>
+                <TableHead className="w-[50px]">Qty</TableHead>
+                <TableHead className="w-[80px]">Discount</TableHead>
                 <TableHead className="w-[120px] text-right">Total</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -381,19 +385,23 @@ export default function POSPage() {
             <TableBody>
               {cart.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                     No items in cart. Search and add items to begin.
                   </TableCell>
                 </TableRow>
               ) : (
-                cart.map((item, index) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{item.itemName}</div>
-                      <div className="text-xs text-muted-foreground">{item.itemCode}</div>
-                    </TableCell>
-                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                cart.map((item, index) => {
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{index + 1}</TableCell>
+                      <TableCell>
+                        <div className="font-medium">{item.itemName}</div>
+                        <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{item.uom || "Unit"}</div>
+                      </TableCell>
+                      <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -425,7 +433,8 @@ export default function POSPage() {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

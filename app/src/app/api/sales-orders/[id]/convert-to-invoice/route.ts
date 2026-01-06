@@ -4,6 +4,8 @@ import { postARInvoice } from '@/services/accounting/arPosting'
 import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // POST /api/sales-orders/[id]/convert-to-invoice
 export async function POST(
@@ -124,6 +126,15 @@ export async function POST(
       )
     }
 
+    const itemInputs: StockTransactionItemInput[] = salesOrderItems.map((item) => ({
+      itemId: item.item_id,
+      packagingId: item.packaging_id || null,
+      inputQty: parseFloat(item.quantity),
+      unitCost: parseFloat(item.rate),
+    }))
+
+    const normalizedItems = await normalizeTransactionItems(salesOrder.company_id, itemInputs)
+
     // Step 3: Generate invoice number (handle both old INV-NNNNN and new INV-YYYY-NNNN formats)
     const { data: invoices } = await supabase
       .from('sales_invoices')
@@ -197,23 +208,26 @@ export async function POST(
     }
 
     // Step 6: Copy sales order items to invoice items
-    const invoiceItemsToInsert = salesOrderItems.map((item, index) => ({
-      company_id: salesOrder.company_id,
-      invoice_id: invoice.id,
-      item_id: item.item_id,
-      item_description: item.item_description,
-      quantity: item.quantity,
-      uom_id: item.uom_id,
-      rate: item.rate,
-      discount_percent: item.discount_percent || 0,
-      discount_amount: item.discount_amount || 0,
-      tax_percent: item.tax_percent || 0,
-      tax_amount: item.tax_amount || 0,
-      line_total: item.line_total,
-      sort_order: item.sort_order || index,
-      created_by: user.id,
-      updated_by: user.id,
-    }))
+    const invoiceItemsToInsert = salesOrderItems.map((item, index) => {
+      return {
+        company_id: salesOrder.company_id,
+        invoice_id: invoice.id,
+        item_id: item.item_id,
+        item_description: item.item_description,
+        quantity: parseFloat(item.quantity),
+        packaging_id: item.packaging_id || null,
+        uom_id: item.uom_id,
+        rate: item.rate,
+        discount_percent: item.discount_percent || 0,
+        discount_amount: item.discount_amount || 0,
+        tax_percent: item.tax_percent || 0,
+        tax_amount: item.tax_amount || 0,
+        line_total: item.line_total,
+        sort_order: item.sort_order || index,
+        created_by: user.id,
+        updated_by: user.id,
+      }
+    })
 
     const { error: invoiceItemsError } = await supabase
       .from('sales_invoice_items')
@@ -281,17 +295,27 @@ export async function POST(
     }
 
     // Create stock transaction items
-    const transactionItemsToInsert = salesOrderItems.map((item) => ({
-      company_id: salesOrder.company_id,
-      transaction_id: stockTransaction.id,
-      item_id: item.item_id,
-      quantity: parseFloat(item.quantity),
-      uom_id: item.uom_id,
-      unit_cost: parseFloat(item.rate),
-      total_cost: parseFloat(item.quantity) * parseFloat(item.rate),
-      created_by: user.id,
-      updated_by: user.id,
-    }))
+    const transactionItemsToInsert = salesOrderItems.map((item, index) => {
+      const normalizedItem = normalizedItems[index]
+      const normalizedQty = normalizedItem?.normalizedQty ?? parseFloat(item.quantity)
+
+      return {
+        company_id: salesOrder.company_id,
+        transaction_id: stockTransaction.id,
+        item_id: item.item_id,
+        quantity: normalizedQty,
+        uom_id: normalizedItem?.uomId ?? item.uom_id,
+        unit_cost: parseFloat(item.rate),
+        total_cost: normalizedQty * parseFloat(item.rate),
+        input_qty: normalizedItem?.inputQty ?? parseFloat(item.quantity),
+        input_packaging_id: normalizedItem?.inputPackagingId ?? item.packaging_id ?? null,
+        conversion_factor: normalizedItem?.conversionFactor ?? 1.0,
+        normalized_qty: normalizedQty,
+        base_package_id: normalizedItem?.basePackageId ?? null,
+        created_by: user.id,
+        updated_by: user.id,
+      }
+    })
 
     const { data: transactionItems, error: transactionItemsError } = await supabase
       .from('stock_transaction_items')
@@ -318,7 +342,7 @@ export async function POST(
     for (let i = 0; i < salesOrderItems.length; i++) {
       const item = salesOrderItems[i]
       const transactionItem = transactionItems[i]
-      const quantity = parseFloat(item.quantity)
+      const normalizedQty = normalizedItems[i]?.normalizedQty ?? parseFloat(item.quantity)
       const rate = parseFloat(item.rate)
 
       // Get current stock from item_warehouse (source of truth)
@@ -333,7 +357,7 @@ export async function POST(
         ? parseFloat(String(warehouseStock.current_stock))
         : 0
 
-      const newBalance = currentBalance - quantity
+      const newBalance = currentBalance - normalizedQty
 
       // Validate sufficient stock
       if (newBalance < 0) {
@@ -344,7 +368,7 @@ export async function POST(
         await supabase.from('sales_invoice_items').delete().eq('invoice_id', invoice.id)
         await supabase.from('sales_invoices').delete().eq('id', invoice.id)
         return NextResponse.json(
-          { error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${quantity}` },
+          { error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${normalizedQty}` },
           { status: 400 }
         )
       }
@@ -436,9 +460,9 @@ export async function POST(
     const cogsCalculation = await calculateCOGS(
       salesOrder.company_id,
       body.warehouseId,
-      salesOrderItems.map((item) => ({
+      salesOrderItems.map((item, index) => ({
         itemId: item.item_id,
-        quantity: parseFloat(item.quantity),
+        quantity: normalizedItems[index]?.normalizedQty ?? parseFloat(item.quantity),
       }))
     )
 

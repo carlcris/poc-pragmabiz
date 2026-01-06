@@ -8,6 +8,7 @@ export const quotationLineItemSchema = z.object({
   itemName: z.string().min(1, "Item name is required"),
   description: z.string().default(""),
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+  packagingId: z.string().nullable().optional(),
   unitPrice: z.number().min(0, "Unit price must be non-negative"),
   discount: z.number().min(0, "Discount cannot be negative").max(100, "Discount cannot exceed 100%"),
   taxRate: z.number().min(0, "Tax rate cannot be negative").max(100, "Tax rate cannot exceed 100%"),

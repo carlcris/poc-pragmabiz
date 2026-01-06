@@ -138,13 +138,21 @@ export function PurchaseReceiptViewDialog({
                     <th className="text-left p-3">Item</th>
                     <th className="text-right p-3">Ordered</th>
                     <th className="text-right p-3">Received</th>
+                    <th className="text-center p-3">Unit</th>
                     <th className="text-right p-3">Rate</th>
                     <th className="text-right p-3">Total Value</th>
                   </tr>
                 </thead>
                 <tbody>
                   {receipt.items?.map((item, index) => {
-                    const totalValue = item.quantityReceived * item.rate;
+                    const conversionFactor = item.packaging?.qtyPerPack ?? 1;
+                    const totalValue =
+                      item.quantityReceived * conversionFactor * item.rate;
+                    const showConversion =
+                      item.packaging?.qtyPerPack &&
+                      item.packaging.qtyPerPack !== 1;
+                    const baseUnitLabel =
+                      item.uom?.code || item.uom?.name || "base units";
 
                     return (
                       <tr key={index} className="border-t">
@@ -160,6 +168,17 @@ export function PurchaseReceiptViewDialog({
                         <td className="text-right p-3">
                           <span className="font-medium text-green-600">
                             {item.quantityReceived}
+                          </span>
+                          {showConversion && (
+                            <div className="text-xs text-muted-foreground">
+                              = {(item.quantityReceived * conversionFactor).toFixed(4)}{" "}
+                              {baseUnitLabel}
+                            </div>
+                          )}
+                        </td>
+                        <td className="text-center p-3">
+                          <span className="text-muted-foreground">
+                            {item.packaging?.name || "—"}
                           </span>
                         </td>
                         <td className="text-right p-3">{formatCurrency(item.rate)}</td>
@@ -184,7 +203,10 @@ export function PurchaseReceiptViewDialog({
                 <span>
                   {formatCurrency(
                     receipt.items?.reduce(
-                      (sum, item) => sum + item.quantityReceived * item.rate,
+                      (sum, item) => {
+                        const conversionFactor = item.packaging?.qtyPerPack ?? 1;
+                        return sum + item.quantityReceived * conversionFactor * item.rate;
+                      },
                       0
                     ) || 0
                   )}

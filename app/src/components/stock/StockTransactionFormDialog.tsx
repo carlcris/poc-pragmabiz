@@ -13,6 +13,7 @@ import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
 import { stockTransactionFormSchema, type StockTransactionFormValues } from "@/lib/validations/stock-transaction";
+import { PackageSelector } from "@/components/inventory/PackageSelector";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -116,6 +117,8 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
       warehouseId: "",
       toWarehouseId: "",
       quantity: 1,
+      packagingId: null,
+      uomId: "",
       referenceType: "",
       referenceId: "",
       referenceNumber: "",
@@ -149,6 +152,17 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
     }
   }, [selectedWarehouseId, form]);
 
+  useEffect(() => {
+    // Reset packaging and set uomId when item changes
+    if (selectedItemId) {
+      form.setValue("packagingId", null);
+      const selectedItem = basicItems.find((item) => item.id === selectedItemId);
+      if (selectedItem?.uomId) {
+        form.setValue("uomId", selectedItem.uomId);
+      }
+    }
+  }, [selectedItemId, form, basicItems]);
+
   const onSubmit = async (values: StockTransactionFormValues) => {
     try {
       // Find the selected item to get its UOM
@@ -176,7 +190,8 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
               code: selectedItem.code,
               name: selectedItem.name,
               quantity: values.quantity,
-              uomId: selectedItem.uomId,
+              packagingId: values.packagingId || null,
+              uomId: values.uomId,
               uomName: selectedItem.uom,
             },
           ],
@@ -194,12 +209,13 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
           referenceType: values.referenceType || undefined,
           referenceId: values.referenceId || undefined,
           referenceNumber: values.referenceNumber || undefined,
-          notes: values.reason, // Use reason as transaction notes
+          notes: values.reason,
           items: [
             {
               itemId: values.itemId,
               quantity: values.quantity,
-              uomId: selectedItem.uomId,
+              packagingId: values.packagingId || null,
+              uomId: values.uomId,
               notes: values.notes || undefined,
             },
           ],
@@ -431,6 +447,26 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
                   </FormItem>
                 );
               }}
+            />
+
+            <FormField
+              control={form.control}
+              name="packagingId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <PackageSelector
+                      itemId={selectedItemId}
+                      value={field.value}
+                      onChange={field.onChange}
+                      quantity={form.watch("quantity")}
+                      disabled={!selectedItemId}
+                      label="Package"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
             <FormField

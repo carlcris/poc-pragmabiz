@@ -10,13 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -26,7 +19,23 @@ import {
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PriceFormDialog } from "./PriceFormDialog";
-import type { ItemVariant, VariantsResponse, ItemPrice, PricesResponse } from "@/types/item-variant";
+
+type ItemPrice = {
+  id: string;
+  itemId: string;
+  priceTier: string;
+  priceTierName: string;
+  price: number;
+  currencyCode: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+};
+
+type PricesResponse = {
+  data: ItemPrice[];
+  total: number;
+};
 
 type PricesTabProps = {
   itemId: string;
@@ -34,41 +43,20 @@ type PricesTabProps = {
 
 export const PricesTab = ({ itemId }: PricesTabProps) => {
   const queryClient = useQueryClient();
-  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<ItemPrice | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [priceToDelete, setPriceToDelete] = useState<ItemPrice | null>(null);
 
-  // Fetch variants for selection
-  const { data: variantsData, isLoading: variantsLoading } = useQuery<VariantsResponse>({
-    queryKey: ["item-variants", itemId],
-    queryFn: async () => {
-      const response = await apiClient.get<VariantsResponse>(
-        `/api/items/${itemId}/variants`
-      );
-      return response;
-    },
-  });
-
-  const variants = variantsData?.data || [];
-
-  // Auto-select first variant when variants load
-  if (variants.length > 0 && !selectedVariantId) {
-    setSelectedVariantId(variants[0].id);
-  }
-
-  // Fetch prices for selected variant
+  // Fetch prices for item
   const { data: pricesData, isLoading: pricesLoading } = useQuery<PricesResponse>({
-    queryKey: ["item-prices", itemId, selectedVariantId],
+    queryKey: ["item-prices", itemId],
     queryFn: async () => {
-      if (!selectedVariantId) return { data: [], total: 0 };
       const response = await apiClient.get<PricesResponse>(
-        `/api/items/${itemId}/variants/${selectedVariantId}/prices`
+        `/api/items/${itemId}/prices`
       );
       return response;
     },
-    enabled: !!selectedVariantId,
   });
 
   const prices = pricesData?.data || [];
@@ -76,13 +64,12 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
   // Delete price mutation
   const deleteMutation = useMutation({
     mutationFn: async (priceId: string) => {
-      if (!selectedVariantId) throw new Error("No variant selected");
       await apiClient.delete(
-        `/api/items/${itemId}/variants/${selectedVariantId}/prices/${priceId}`
+        `/api/items/${itemId}/prices/${priceId}`
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["item-prices", itemId, selectedVariantId] });
+      queryClient.invalidateQueries({ queryKey: ["item-prices", itemId] });
       toast.success("Price deleted successfully");
       setDeleteDialogOpen(false);
       setPriceToDelete(null);
@@ -93,13 +80,7 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
     },
   });
 
-  const selectedVariant = variants.find((v) => v.id === selectedVariantId);
-
   const handleCreatePrice = () => {
-    if (!selectedVariantId) {
-      toast.error("Please select a variant first");
-      return;
-    }
     setSelectedPrice(null);
     setFormDialogOpen(true);
   };
@@ -146,47 +127,18 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
             <div>
               <CardTitle>Item Prices</CardTitle>
               <CardDescription>
-                Manage multi-tier pricing for item variants (e.g., Factory Cost, Wholesale, SRP)
+                Manage multi-tier pricing for this item (e.g., Factory Cost, Wholesale, SRP)
               </CardDescription>
             </div>
-            <Button onClick={handleCreatePrice} disabled={!selectedVariantId}>
+            <Button onClick={handleCreatePrice}>
               <Plus className="mr-2 h-4 w-4" />
               Add Price
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Variant Selector */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Select Variant</label>
-            {variantsLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : variants.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                No variants found. Please create a variant first.
-              </div>
-            ) : (
-              <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a variant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {variants.map((variant) => (
-                    <SelectItem key={variant.id} value={variant.id}>
-                      {variant.variantName} ({variant.variantCode})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
           {/* Price List */}
-          {!selectedVariantId ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Select a variant to view its prices
-            </div>
-          ) : pricesLoading ? (
+          {pricesLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 w-full" />
@@ -194,7 +146,7 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
             </div>
           ) : prices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>No prices found for this variant.</p>
+              <p>No prices found for this item.</p>
               <p className="text-sm mt-2">Add your first price tier to get started.</p>
             </div>
           ) : (
@@ -268,15 +220,12 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
         </CardContent>
       </Card>
 
-      {selectedVariantId && (
-        <PriceFormDialog
-          open={formDialogOpen}
-          onOpenChange={setFormDialogOpen}
-          itemId={itemId}
-          variantId={selectedVariantId}
-          price={selectedPrice}
-        />
-      )}
+      <PriceFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        itemId={itemId}
+        price={selectedPrice}
+      />
 
       <ConfirmDialog
         open={deleteDialogOpen}

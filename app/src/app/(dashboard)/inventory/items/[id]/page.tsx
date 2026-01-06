@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { VariantsTab } from "@/components/items/variants/VariantsTab";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 
@@ -165,14 +164,10 @@ export default function ItemDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general" className="gap-2">
             <Package className="h-4 w-4" />
             General
-          </TabsTrigger>
-          <TabsTrigger value="variants" className="gap-2">
-            <Layers className="h-4 w-4" />
-            Variants
           </TabsTrigger>
           <TabsTrigger value="packaging" className="gap-2">
             <Package className="h-4 w-4" />
@@ -267,11 +262,6 @@ export default function ItemDetailPage() {
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-
-        {/* Variants Tab */}
-        <TabsContent value="variants">
-          <VariantsTab itemId={itemId} />
         </TabsContent>
 
         {/* Packaging Tab */}

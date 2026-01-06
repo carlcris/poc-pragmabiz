@@ -40,7 +40,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VariantsTab } from "@/components/items/variants/VariantsTab";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -218,9 +217,8 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
 
         {showTabs ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="variants">Variants</TabsTrigger>
               <TabsTrigger value="packaging">Packaging</TabsTrigger>
               <TabsTrigger value="prices">Prices</TabsTrigger>
             </TabsList>
@@ -518,11 +516,6 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                   </div>
                 </form>
               </Form>
-            </TabsContent>
-
-            {/* Variants Tab */}
-            <TabsContent value="variants" className="mt-4">
-              {currentItemId && <VariantsTab itemId={currentItemId} />}
             </TabsContent>
 
             {/* Packaging Tab */}

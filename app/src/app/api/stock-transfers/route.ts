@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
           item_name,
           quantity,
           received_quantity,
+          packaging_id,
           uom_id,
           uom_name,
           sort_order
@@ -120,6 +121,7 @@ export async function GET(request: NextRequest) {
         name: item.item_name,
         quantity: parseFloat(item.quantity),
         receivedQuantity: parseFloat(item.received_quantity) || 0,
+        packagingId: item.packaging_id,
         uomId: item.uom_id,
         uom: item.uom_name,
         sortOrder: item.sort_order,
@@ -221,6 +223,7 @@ export async function POST(request: NextRequest) {
       item_name: item.name,
       quantity: item.quantity,
       received_quantity: 0,
+      packaging_id: item.packagingId || null,
       uom_id: item.uomId,
       uom_name: item.uomName,
       sort_order: index + 1,

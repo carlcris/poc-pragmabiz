@@ -76,23 +76,35 @@ export async function POST(
       return NextResponse.json({ error: 'No items found for this adjustment' }, { status: 400 })
     }
 
+    // STEP 1: Use already-normalized data from stock_adjustment_items
+    // The adjustment items were normalized when created, so we use that data
+    const itemsWithChanges = items.filter((item: any) => parseFloat(item.difference) !== 0)
+
+    if (itemsWithChanges.length === 0) {
+      return NextResponse.json({ error: 'No net adjustment (all differences are zero)' }, { status: 400 })
+    }
+
+    // Calculate total normalized difference to determine transaction type
+    // The difference is already in normalized (base) units
+    const totalNormalizedDifference = itemsWithChanges.reduce((sum, item: any) => {
+      return sum + parseFloat(item.difference)
+    }, 0)
+
+    // Determine transaction type based on total normalized difference
+    let transactionType: 'in' | 'out'
+    if (totalNormalizedDifference > 0) {
+      transactionType = 'in'
+    } else if (totalNormalizedDifference < 0) {
+      transactionType = 'out'
+    } else {
+      return NextResponse.json({ error: 'No net adjustment (total difference is zero)' }, { status: 400 })
+    }
+
     // Generate stock transaction code with timestamp to avoid duplicates
     const now = new Date()
     const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
     const milliseconds = now.getTime().toString().slice(-4)
     const stockTxCode = `ST-${dateStr}${milliseconds}`
-
-    // Determine transaction type based on adjustment type
-    let transactionType: 'in' | 'out'
-    const totalDifference = items.reduce((sum: number, item: any) => sum + parseFloat(item.difference), 0)
-
-    if (totalDifference > 0) {
-      transactionType = 'in'
-    } else if (totalDifference < 0) {
-      transactionType = 'out'
-    } else {
-      return NextResponse.json({ error: 'No net adjustment (total difference is zero)' }, { status: 400 })
-    }
 
     // Create stock transaction
     const { data: stockTransaction, error: stockTxError } = await supabase
@@ -122,40 +134,15 @@ export async function POST(
       )
     }
 
-    // Create stock transaction items and update stock ledger
+    // STEP 3: Create stock transaction items with normalization metadata and update inventory
+    const postingDate = adjustment.adjustment_date
+    const postingTime = now.toTimeString().split(' ')[0]
+
     for (const item of items) {
-      const difference = parseFloat(item.difference)
+      const normalizedDifference = parseFloat(item.difference)
 
       // Skip items with zero difference
-      if (difference === 0) continue
-
-      // Create stock transaction item
-      const { data: stockTxItem, error: stockTxItemError } = await supabase
-        .from('stock_transaction_items')
-        .insert({
-          company_id: userData.company_id,
-          transaction_id: stockTransaction.id,
-          item_id: item.item_id,
-          quantity: Math.abs(difference),
-          uom_id: item.uom_id,
-          unit_cost: parseFloat(item.unit_cost),
-          total_cost: Math.abs(parseFloat(item.total_cost)),
-          notes: item.reason || `Adjustment: ${adjustment.adjustment_code}`,
-          created_by: user.id,
-          updated_by: user.id,
-        })
-        .select()
-        .single()
-
-      if (stockTxItemError) {
-
-        // Rollback stock transaction
-        await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
-        return NextResponse.json(
-          { error: 'Failed to create stock transaction items' },
-          { status: 500 }
-        )
-      }
+      if (normalizedDifference === 0) continue
 
       // Get current stock from item_warehouse (source of truth)
       const { data: existingStock } = await supabase
@@ -164,32 +151,58 @@ export async function POST(
         .eq('company_id', userData.company_id)
         .eq('item_id', item.item_id)
         .eq('warehouse_id', adjustment.warehouse_id)
+        .is('deleted_at', null)
         .maybeSingle()
 
       const currentBalance = existingStock
         ? parseFloat(String(existingStock.current_stock))
         : 0
 
-      const newBalance = currentBalance + difference
+      const newBalance = currentBalance + normalizedDifference
 
-      const postingDate = adjustment.adjustment_date
-      const postingTime = new Date().toTimeString().split(' ')[0]
-
-      // Update stock_transaction_items with before/after quantities
-      await supabase
+      // Create stock transaction item with normalization metadata from adjustment item
+      const { data: stockTxItem, error: stockTxItemError } = await supabase
         .from('stock_transaction_items')
-        .update({
+        .insert({
+          company_id: userData.company_id,
+          transaction_id: stockTransaction.id,
+          item_id: item.item_id,
+          // Normalization fields (copied from stock_adjustment_items, with fallbacks)
+          input_qty: item.input_qty || Math.abs(normalizedDifference),
+          input_packaging_id: item.input_packaging_id || null,
+          conversion_factor: item.conversion_factor || 1.0,
+          normalized_qty: item.normalized_qty || Math.abs(normalizedDifference),
+          base_package_id: item.base_package_id || null,
+          // Standard fields
+          quantity: Math.abs(normalizedDifference), // Backward compat
+          uom_id: item.uom_id,
+          unit_cost: parseFloat(item.unit_cost || 0),
+          total_cost: Math.abs(normalizedDifference) * parseFloat(item.unit_cost || 0),
+          // Audit fields
           qty_before: currentBalance,
           qty_after: newBalance,
-          valuation_rate: parseFloat(item.unit_cost),
-          stock_value_before: currentBalance * parseFloat(item.unit_cost),
-          stock_value_after: newBalance * parseFloat(item.unit_cost),
+          valuation_rate: parseFloat(item.unit_cost || 0),
+          stock_value_before: currentBalance * parseFloat(item.unit_cost || 0),
+          stock_value_after: newBalance * parseFloat(item.unit_cost || 0),
           posting_date: postingDate,
           posting_time: postingTime,
+          notes: item.reason || `Adjustment: ${adjustment.adjustment_code}`,
+          created_by: user.id,
+          updated_by: user.id,
         })
-        .eq('id', stockTxItem.id)
+        .select()
+        .single()
 
-      // Update or create item_warehouse record
+      if (stockTxItemError) {
+        // Rollback stock transaction
+        await supabase.from('stock_transactions').delete().eq('id', stockTransaction.id)
+        return NextResponse.json(
+          { error: 'Failed to create stock transaction items' },
+          { status: 500 }
+        )
+      }
+
+      // STEP 4: Update item_warehouse with normalized difference (base units)
       if (existingStock) {
         // Update existing stock record
         await supabase
@@ -202,16 +215,14 @@ export async function POST(
           .eq('id', existingStock.id)
       } else {
         // Create new stock record
-        await supabase
-          .from('item_warehouse')
-          .insert({
-            company_id: userData.company_id,
-            item_id: item.item_id,
-            warehouse_id: adjustment.warehouse_id,
-            current_stock: Math.max(0, newBalance),
-            created_by: user.id,
-            updated_by: user.id,
-          })
+        await supabase.from('item_warehouse').insert({
+          company_id: userData.company_id,
+          item_id: item.item_id,
+          warehouse_id: adjustment.warehouse_id,
+          current_stock: Math.max(0, newBalance),
+          created_by: user.id,
+          updated_by: user.id,
+        })
       }
     }
 

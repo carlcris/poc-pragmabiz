@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { calculateInvoiceCommission } from '@/services/commission/commissionService'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // GET /api/invoices
 export async function GET(request: NextRequest) {
@@ -111,6 +113,11 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name
         ),
+        item_packaging:packaging_id (
+          id,
+          pack_name,
+          qty_per_pack
+        ),
         units_of_measure:uom_id (
           code,
           name
@@ -144,6 +151,15 @@ export async function GET(request: NextRequest) {
           itemName: item.items?.item_name || '',
           description: item.item_description || '',
           quantity: parseFloat(item.quantity),
+          packagingId: item.packaging_id,
+          packaging: item.item_packaging
+            ? {
+                id: item.item_packaging.id,
+                name: item.item_packaging.pack_name,
+                qtyPerPack: parseFloat(item.item_packaging.qty_per_pack),
+              }
+            : undefined,
+          uomId: item.uom_id,
           unitPrice: parseFloat(item.rate),
           discount: parseFloat(item.discount_percent),
           taxRate: parseFloat(item.tax_percent),
@@ -246,13 +262,23 @@ export async function POST(request: NextRequest) {
     let totalDiscount = 0
     let totalTax = 0
 
+    const itemInputs: StockTransactionItemInput[] = lineItems.map((item: any) => ({
+      itemId: item.itemId,
+      packagingId: item.packagingId ?? null,
+      inputQty: parseFloat(item.quantity),
+      unitCost: parseFloat(item.unitPrice),
+    }))
+
+    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
+
     const processedItems = lineItems.map((item: any, index: number) => {
       const quantity = parseFloat(item.quantity)
       const rate = parseFloat(item.unitPrice)
       const discountPercent = parseFloat(item.discount || 0)
       const taxPercent = parseFloat(item.taxRate || 0)
 
-      const itemTotal = quantity * rate
+      const normalizedQty = normalizedItems[index]?.normalizedQty ?? quantity
+      const itemTotal = normalizedQty * rate
       const discountAmount = (itemTotal * discountPercent) / 100
       const taxableAmount = itemTotal - discountAmount
       const taxAmount = (taxableAmount * taxPercent) / 100
@@ -267,6 +293,7 @@ export async function POST(request: NextRequest) {
         item_id: item.itemId,
         item_description: item.description || '',
         quantity,
+        packaging_id: item.packagingId ?? null,
         uom_id: item.uomId,
         rate,
         discount_percent: discountPercent,

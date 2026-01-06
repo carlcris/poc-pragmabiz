@@ -84,15 +84,16 @@ export const purchaseReceiptsApi = {
       supplierInvoiceNumber?: string;
       supplierInvoiceDate?: string;
       notes?: string;
-      items?: Array<{
-        purchaseOrderItemId: string;
-        itemId: string;
-        quantityOrdered: number;
-        quantityReceived: number;
-        uomId: string;
-        rate: number;
-        notes?: string;
-      }>;
+        items?: Array<{
+          purchaseOrderItemId: string;
+          itemId: string;
+          quantityOrdered: number;
+          quantityReceived: number;
+          packagingId?: string | null;
+          uomId: string;
+          rate: number;
+          notes?: string;
+        }>;
     }
   ): Promise<{ id: string; receiptCode: string; message: string }> => {
     const response = await fetch(

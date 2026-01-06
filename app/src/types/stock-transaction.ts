@@ -30,6 +30,7 @@ export interface StockTransaction {
 export interface StockTransactionItem {
   itemId: string;
   quantity: number;
+  packagingId?: string | null;
   uomId: string;
   unitCost?: number;
   batchNo?: string;

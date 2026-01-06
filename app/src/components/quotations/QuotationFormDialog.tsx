@@ -105,19 +105,30 @@ export function QuotationFormDialog({
 
   // Calculate totals
   const totals = useMemo(() => {
-    const subtotal = lineItems.reduce(
-      (sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0),
-      0
-    );
+    const subtotal = lineItems.reduce((sum, item) => {
+      const lineTotal = item.lineTotal ?? (item.quantity || 0) * (item.unitPrice || 0);
+      const discountRate = (item.discount || 0) / 100;
+      const taxRate = (item.taxRate || 0) / 100;
+      const denominator = (1 - discountRate) * (1 + taxRate);
+      const itemSubtotal = denominator > 0 ? lineTotal / denominator : 0;
+      return sum + itemSubtotal;
+    }, 0);
     const totalDiscount = lineItems.reduce((sum, item) => {
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
-      return sum + (itemSubtotal * (item.discount || 0)) / 100;
+      const lineTotal = item.lineTotal ?? (item.quantity || 0) * (item.unitPrice || 0);
+      const discountRate = (item.discount || 0) / 100;
+      const taxRate = (item.taxRate || 0) / 100;
+      const denominator = (1 - discountRate) * (1 + taxRate);
+      const itemSubtotal = denominator > 0 ? lineTotal / denominator : 0;
+      return sum + itemSubtotal * discountRate;
     }, 0);
     const totalTax = lineItems.reduce((sum, item) => {
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
-      const itemDiscount = (itemSubtotal * (item.discount || 0)) / 100;
-      const taxableAmount = itemSubtotal - itemDiscount;
-      return sum + (taxableAmount * (item.taxRate || 0)) / 100;
+      const lineTotal = item.lineTotal ?? (item.quantity || 0) * (item.unitPrice || 0);
+      const discountRate = (item.discount || 0) / 100;
+      const taxRate = (item.taxRate || 0) / 100;
+      const denominator = (1 - discountRate) * (1 + taxRate);
+      const itemSubtotal = denominator > 0 ? lineTotal / denominator : 0;
+      const taxableAmount = itemSubtotal * (1 - discountRate);
+      return sum + taxableAmount * taxRate;
     }, 0);
     const totalAmount = subtotal - totalDiscount + totalTax;
 
@@ -143,10 +154,13 @@ export function QuotationFormDialog({
           itemName: item.itemName,
           description: item.description,
           quantity: item.quantity,
+          packagingId: item.packagingId ?? null,
+          packagingName: item.packagingName,
           unitPrice: item.unitPrice,
           uomId: item.uomId,
           discount: item.discount,
           taxRate: item.taxRate,
+          lineTotal: item.lineTotal,
         })
       );
       setLineItems(formLineItems);
@@ -199,6 +213,7 @@ export function QuotationFormDialog({
           itemId: item.itemId,
           description: item.description,
           quantity: item.quantity,
+          packagingId: item.packagingId ?? null,
           uomId: item.uomId, // Should always be set from the item
           rate: item.unitPrice, // Transform unitPrice -> rate
           discountPercent: item.discount, // Transform discount -> discountPercent
@@ -348,6 +363,7 @@ export function QuotationFormDialog({
                             <TableRow>
                               <TableHead>Item</TableHead>
                               <TableHead className="text-right">Qty</TableHead>
+                              <TableHead className="text-center">Unit</TableHead>
                               <TableHead className="text-right">
                                 Price
                               </TableHead>
@@ -363,15 +379,9 @@ export function QuotationFormDialog({
                           </TableHeader>
                           <TableBody>
                             {lineItems.map((item, index) => {
-                              const itemSubtotal =
+                              const lineTotal =
+                                item.lineTotal ??
                                 item.quantity * item.unitPrice;
-                              const discountAmount =
-                                (itemSubtotal * item.discount) / 100;
-                              const taxableAmount =
-                                itemSubtotal - discountAmount;
-                              const taxAmount =
-                                (taxableAmount * item.taxRate) / 100;
-                              const lineTotal = taxableAmount + taxAmount;
 
                               return (
                                 <TableRow key={index}>
@@ -387,6 +397,11 @@ export function QuotationFormDialog({
                                   </TableCell>
                                   <TableCell className="text-right">
                                     {item.quantity}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <span className="text-muted-foreground">
+                                      {item.packagingName || "—"}
+                                    </span>
                                   </TableCell>
                                   <TableCell className="text-right">
                                     {formatCurrency(item.unitPrice)}

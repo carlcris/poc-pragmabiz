@@ -252,6 +252,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
                   <tr>
                     <th className="text-left p-3">Item</th>
                     <th className="text-right p-3">Quantity</th>
+                    <th className="text-center p-3">Unit</th>
                     <th className="text-right p-3">Unit Price</th>
                     <th className="text-right p-3">Discount</th>
                     <th className="text-right p-3">Tax</th>
@@ -260,12 +261,6 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
                 </thead>
                 <tbody>
                   {salesOrder.lineItems.map((item, index) => {
-                    const subtotal = item.quantity * item.unitPrice;
-                    const discount = (subtotal * item.discount) / 100;
-                    const taxableAmount = subtotal - discount;
-                    const tax = (taxableAmount * item.taxRate) / 100;
-                    const lineTotal = taxableAmount + tax;
-
                     return (
                       <tr key={index} className="border-t">
                         <td className="p-3">
@@ -276,10 +271,15 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
                           )}
                         </td>
                         <td className="text-right p-3">{item.quantity}</td>
+                        <td className="text-center p-3">
+                          <span className="text-muted-foreground">
+                            {item.packaging?.name || "—"}
+                          </span>
+                        </td>
                         <td className="text-right p-3">{formatCurrency(item.unitPrice)}</td>
                         <td className="text-right p-3">{item.discount}%</td>
                         <td className="text-right p-3">{item.taxRate}%</td>
-                        <td className="text-right p-3 font-medium">{formatCurrency(lineTotal)}</td>
+                        <td className="text-right p-3 font-medium">{formatCurrency(item.lineTotal)}</td>
                       </tr>
                     );
                   })}

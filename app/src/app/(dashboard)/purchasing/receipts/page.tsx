@@ -184,7 +184,10 @@ export default function PurchaseReceiptsPage() {
                 <TableBody>
                   {receipts.map((receipt) => {
                     const totalValue = receipt.items?.reduce(
-                      (sum, item) => sum + item.quantityReceived * item.rate,
+                      (sum, item) => {
+                        const conversionFactor = item.packaging?.qtyPerPack ?? 1;
+                        return sum + item.quantityReceived * conversionFactor * item.rate;
+                      },
                       0
                     ) || 0;
 

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { postAPBill } from '@/services/accounting/apPosting'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // POST /api/purchase-orders/[id]/receive
 // Creates a purchase receipt from an approved purchase order
@@ -55,6 +57,7 @@ export async function POST(
           item_id,
           quantity,
           quantity_received,
+          packaging_id,
           uom_id,
           rate
         )
@@ -131,17 +134,29 @@ export async function POST(
       itemId: item.item_id,
       quantityOrdered: parseFloat(item.quantity),
       quantityReceived: parseFloat(item.quantity) - parseFloat(item.quantity_received || 0), // Remaining quantity
-      uomId: item.uom_id,
+      packagingId: item.packaging_id || null, // Package selected by user (null = use base package)
+      uomId: item.uom_id, // Deprecated: kept for backward compatibility
       rate: parseFloat(item.rate),
     }))
 
-    const receiptItems = itemsToReceive.map((item: any) => ({
+    // STEP 1: Normalize all item quantities from packages to base units
+    const itemInputs: StockTransactionItemInput[] = itemsToReceive.map((item: any) => ({
+      itemId: item.itemId,
+      packagingId: item.packagingId || null, // null = use base package
+      inputQty: item.quantityReceived,
+      unitCost: item.rate,
+    }))
+
+    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
+
+    const receiptItems = itemsToReceive.map((item: any, index: number) => ({
       company_id: userData.company_id,
       receipt_id: receipt.id,
       purchase_order_item_id: item.purchaseOrderItemId,
       item_id: item.itemId,
       quantity_ordered: item.quantityOrdered,
       quantity_received: item.quantityReceived,
+      packaging_id: normalizedItems[index]?.inputPackagingId || item.packagingId || null,
       uom_id: item.uomId,
       rate: item.rate,
       notes: item.notes,
@@ -163,7 +178,7 @@ export async function POST(
       )
     }
 
-    // Create stock IN transaction
+    // STEP 2: Create stock IN transaction
     // Generate stock transaction code with timestamp to avoid duplicates
     const now = new Date()
     const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
@@ -191,7 +206,6 @@ export async function POST(
       .single()
 
     if (stockTxError) {
-
       // Rollback receipt and items
       await supabase.from('purchase_receipt_items').delete().eq('receipt_id', receipt.id)
       await supabase.from('purchase_receipts').delete().eq('id', receipt.id)
@@ -201,19 +215,55 @@ export async function POST(
       )
     }
 
-    // Create stock transaction items and update stock ledger
-    for (const item of itemsToReceive) {
-      // Create stock transaction item
+    // STEP 3: Create stock transaction items with normalization metadata and update inventory
+    const postingDate = body.receiptDate || new Date().toISOString().split('T')[0]
+    const postingTime = now.toTimeString().split(' ')[0]
+
+    for (let i = 0; i < normalizedItems.length; i++) {
+      const item = normalizedItems[i]
+      const originalItem = itemsToReceive[i]
+
+      // Get current stock balance from item_warehouse (source of truth)
+      const { data: warehouseStock } = await supabase
+        .from('item_warehouse')
+        .select('current_stock')
+        .eq('item_id', item.itemId)
+        .eq('warehouse_id', body.warehouseId)
+        .is('deleted_at', null)
+        .single()
+
+      const currentBalance = warehouseStock
+        ? parseFloat(String(warehouseStock.current_stock))
+        : 0
+
+      const newBalance = currentBalance + item.normalizedQty
+
+      // Create stock transaction item with full normalization metadata
       const { data: stockTxItem, error: stockTxItemError } = await supabase
         .from('stock_transaction_items')
         .insert({
           company_id: userData.company_id,
           transaction_id: stockTransaction.id,
           item_id: item.itemId,
-          quantity: item.quantityReceived,
+          // Normalization fields (NEW)
+          input_qty: item.inputQty,
+          input_packaging_id: item.inputPackagingId,
+          conversion_factor: item.conversionFactor,
+          normalized_qty: item.normalizedQty,
+          base_package_id: item.basePackageId,
+          // Standard fields
+          quantity: item.normalizedQty, // Backward compat
           uom_id: item.uomId,
-          unit_cost: item.rate,
-          total_cost: item.quantityReceived * item.rate,
+          unit_cost: item.unitCost,
+          total_cost: item.totalCost,
+          // Audit fields
+          qty_before: currentBalance,
+          qty_after: newBalance,
+          valuation_rate: item.unitCost,
+          stock_value_before: currentBalance * item.unitCost,
+          stock_value_after: newBalance * item.unitCost,
+          posting_date: postingDate,
+          posting_time: postingTime,
           notes: `From PO ${po.order_code}`,
           created_by: user.id,
           updated_by: user.id,
@@ -222,43 +272,11 @@ export async function POST(
         .single()
 
       if (stockTxItemError) {
-
         // Continue with other items but log the error
         continue
       }
 
-      // Get current stock balance from item_warehouse (source of truth)
-      const { data: warehouseStock } = await supabase
-        .from('item_warehouse')
-        .select('current_stock')
-        .eq('item_id', item.itemId)
-        .eq('warehouse_id', body.warehouseId)
-        .single()
-
-      const currentBalance = warehouseStock
-        ? parseFloat(String(warehouseStock.current_stock))
-        : 0
-
-      const newBalance = currentBalance + item.quantityReceived
-
-      const postingDate = body.receiptDate || new Date().toISOString().split('T')[0]
-      const postingTime = new Date().toTimeString().split(' ')[0]
-
-      // Update stock_transaction_items with before/after quantities
-      await supabase
-        .from('stock_transaction_items')
-        .update({
-          qty_before: currentBalance,
-          qty_after: newBalance,
-          valuation_rate: item.rate,
-          stock_value_before: currentBalance * item.rate,
-          stock_value_after: newBalance * item.rate,
-          posting_date: postingDate,
-          posting_time: postingTime,
-        })
-        .eq('id', stockTxItem.id)
-
-      // Update item_warehouse current_stock
+      // STEP 4: Update item_warehouse with normalized quantity (base units)
       if (warehouseStock) {
         // Update existing record
         await supabase
@@ -272,48 +290,59 @@ export async function POST(
           .eq('warehouse_id', body.warehouseId)
       } else {
         // Create new item_warehouse record if doesn't exist
-        await supabase
-          .from('item_warehouse')
-          .insert({
-            company_id: userData.company_id,
-            item_id: item.itemId,
-            warehouse_id: body.warehouseId,
-            current_stock: newBalance,
-            created_by: user.id,
-            updated_by: user.id,
-          })
+        await supabase.from('item_warehouse').insert({
+          company_id: userData.company_id,
+          item_id: item.itemId,
+          warehouse_id: body.warehouseId,
+          current_stock: newBalance,
+          created_by: user.id,
+          updated_by: user.id,
+        })
       }
     }
 
-    // Update quantity_received in purchase_order_items
-    // This will trigger the PO status update
-    for (const item of itemsToReceive) {
+    // Update quantity_received in purchase_order_items using input units
+    // Keep track of updated quantities for status calculation
+    const updatedItems = []
+
+    for (let i = 0; i < itemsToReceive.length; i++) {
+      const originalItem = itemsToReceive[i]
+      const normalizedItem = normalizedItems[i]
+
       // First get the current quantity_received
       const { data: currentItem } = await supabase
         .from('purchase_order_items')
         .select('quantity_received')
-        .eq('id', item.purchaseOrderItemId)
+        .eq('id', originalItem.purchaseOrderItemId)
         .single()
 
       const currentQtyReceived = parseFloat(currentItem?.quantity_received || 0)
-      const newQtyReceived = currentQtyReceived + item.quantityReceived
+      const newQtyReceived = currentQtyReceived + parseFloat(originalItem.quantityReceived || 0)
 
       await supabase
         .from('purchase_order_items')
         .update({
-          quantity_received: newQtyReceived,
+        quantity_received: newQtyReceived,
           updated_by: user.id,
         })
-        .eq('id', item.purchaseOrderItemId)
+        .eq('id', originalItem.purchaseOrderItemId)
+
+      // Track the updated item
+      updatedItems.push({
+        id: originalItem.purchaseOrderItemId,
+        newQtyReceived
+      })
     }
 
     // Update purchase order status based on received quantities
-    // Fetch all items to check if PO is fully or partially received
-    const { data: allPoItems, error: itemsFetchError } = await supabase
-      .from('purchase_order_items')
-      .select('quantity, quantity_received')
-      .eq('purchase_order_id', purchaseOrderId)
-      .is('deleted_at', null)
+    // Use the original PO items data and apply our updates
+    const allPoItems = po.items.map((item: any) => {
+      const update = updatedItems.find(u => u.id === item.id)
+      return {
+        quantity: item.quantity,
+        quantity_received: update ? update.newQtyReceived : parseFloat(item.quantity_received || 0)
+      }
+    })
 
     if (allPoItems && allPoItems.length > 0) {
       // Check if all items are fully received
@@ -346,6 +375,11 @@ export async function POST(
             updated_by: user.id,
           })
           .eq('id', purchaseOrderId)
+
+        if (statusUpdateError) {
+          console.error('Failed to update PO status:', statusUpdateError)
+          warnings.push(`Failed to update purchase order status: ${statusUpdateError.message}`)
+        }
       }
     }
 
@@ -357,9 +391,9 @@ export async function POST(
 
     // Post AP Bill to General Ledger
     try {
-      // Calculate total amount from received items
-      const totalAmount = itemsToReceive.reduce(
-        (sum: number, item: any) => sum + (item.quantityReceived * item.rate),
+      // Calculate total amount from normalized items (actual cost based on base units)
+      const totalAmount = normalizedItems.reduce(
+        (sum: number, item) => sum + item.totalCost,
         0
       )
 

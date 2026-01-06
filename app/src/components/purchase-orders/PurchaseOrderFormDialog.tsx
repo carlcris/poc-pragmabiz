@@ -5,9 +5,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
 import { z } from "zod";
-import { useCreateInvoice, useUpdateInvoice } from "@/hooks/useInvoices";
-import { useCustomers } from "@/hooks/useCustomers";
-import { useWarehouses } from "@/hooks/useWarehouses";
+import { toast } from "sonner";
+import {
+  useCreatePurchaseOrder,
+  useUpdatePurchaseOrder,
+} from "@/hooks/usePurchaseOrders";
+import { useSuppliers } from "@/hooks/useSuppliers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -44,121 +47,145 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
-import type { Invoice } from "@/types/invoice";
-import { InvoiceLineItemDialog, type LineItemFormValues } from "./InvoiceLineItemDialog";
+import type { PurchaseOrder } from "@/types/purchase-order";
+import {
+  PurchaseOrderLineItemDialog,
+  type PurchaseOrderLineItemFormValues,
+} from "./PurchaseOrderLineItemDialog";
 
-const invoiceFormSchema = z.object({
-  customerId: z.string().min(1, "Customer is required"),
-  warehouseId: z.string().optional(),
-  invoiceDate: z.string().min(1, "Invoice date is required"),
-  dueDate: z.string().min(1, "Valid until date is required"),
-  terms: z.string().default(""),
-  notes: z.string().default(""),
+const purchaseOrderFormSchema = z.object({
+  supplierId: z.string().min(1, "Supplier is required"),
+  orderDate: z.string().min(1, "Order date is required"),
+  expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
+  deliveryAddress: z.string().min(1, "Delivery address is required"),
+  deliveryCity: z.string().min(1, "City is required"),
+  deliveryState: z.string().min(1, "State is required"),
+  deliveryCountry: z.string().min(1, "Country is required"),
+  deliveryPostalCode: z.string().min(1, "Postal code is required"),
+  notes: z.string().optional(),
 });
 
-type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
+type PurchaseOrderFormValues = z.infer<typeof purchaseOrderFormSchema>;
 
-interface InvoiceFormDialogV2Props {
+interface PurchaseOrderFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  invoice?: Invoice | null;
+  purchaseOrder?: PurchaseOrder | null;
 }
 
-export function InvoiceFormDialogV2({
+export function PurchaseOrderFormDialog({
   open,
   onOpenChange,
-  invoice,
-}: InvoiceFormDialogV2Props) {
-  const isEditMode = !!invoice;
+  purchaseOrder,
+}: PurchaseOrderFormDialogProps) {
+  const isEditMode = !!purchaseOrder;
   const { formatCurrency } = useCurrency();
-  const createMutation = useCreateInvoice();
-  const updateMutation = useUpdateInvoice();
+  const createMutation = useCreatePurchaseOrder();
+  const updateMutation = useUpdatePurchaseOrder();
 
-  const { data: customersData } = useCustomers({ limit: 1000 });
-  const customers = customersData?.data || [];
-
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
-  const warehouses = warehousesData?.data || [];
+  const { data: suppliersData } = useSuppliers({ limit: 1000 });
+  const suppliers = suppliersData?.data || [];
 
   // Line items state
-  const [lineItems, setLineItems] = useState<LineItemFormValues[]>([]);
+  const [lineItems, setLineItems] = useState<
+    PurchaseOrderLineItemFormValues[]
+  >([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{
     index: number;
-    item: LineItemFormValues;
+    item: PurchaseOrderLineItemFormValues;
   } | null>(null);
+  const [activeTab, setActiveTab] = useState("general");
 
   // Default values
-  const defaultValues: InvoiceFormValues = {
-    customerId: "",
-    warehouseId: "",
-    invoiceDate: new Date().toISOString().split("T")[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  const defaultValues: PurchaseOrderFormValues = {
+    supplierId: "",
+    orderDate: new Date().toISOString().split("T")[0],
+    expectedDeliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0],
-    terms:
-      "Payment due within 30 days. Delivery within 2 weeks of order confirmation.",
+    deliveryAddress: "",
+    deliveryCity: "",
+    deliveryState: "",
+    deliveryCountry: "Philippines",
+    deliveryPostalCode: "",
     notes: "",
   };
 
-  const form = useForm<InvoiceFormValues>({
-    resolver: zodResolver(invoiceFormSchema),
+  const form = useForm<PurchaseOrderFormValues>({
+    resolver: zodResolver(purchaseOrderFormSchema),
     defaultValues,
   });
 
   // Calculate totals
   const totals = useMemo(() => {
-    const subtotal = lineItems.reduce(
-      (sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0),
-      0
-    );
+    const subtotal = lineItems.reduce((sum, item) => {
+      const lineTotal = item.lineTotal ?? (item.quantity || 0) * (item.rate || 0);
+      const discountRate = (item.discountPercent || 0) / 100;
+      const taxRate = (item.taxPercent || 0) / 100;
+      const denominator = (1 - discountRate) * (1 + taxRate);
+      const itemSubtotal = denominator > 0 ? lineTotal / denominator : 0;
+      return sum + itemSubtotal;
+    }, 0);
     const totalDiscount = lineItems.reduce((sum, item) => {
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
-      return sum + (itemSubtotal * (item.discount || 0)) / 100;
+      const lineTotal = item.lineTotal ?? (item.quantity || 0) * (item.rate || 0);
+      const discountRate = (item.discountPercent || 0) / 100;
+      const taxRate = (item.taxPercent || 0) / 100;
+      const denominator = (1 - discountRate) * (1 + taxRate);
+      const itemSubtotal = denominator > 0 ? lineTotal / denominator : 0;
+      return sum + itemSubtotal * discountRate;
     }, 0);
     const totalTax = lineItems.reduce((sum, item) => {
-      const itemSubtotal = (item.quantity || 0) * (item.unitPrice || 0);
-      const itemDiscount = (itemSubtotal * (item.discount || 0)) / 100;
-      const taxableAmount = itemSubtotal - itemDiscount;
-      return sum + (taxableAmount * (item.taxRate || 0)) / 100;
+      const lineTotal = item.lineTotal ?? (item.quantity || 0) * (item.rate || 0);
+      const discountRate = (item.discountPercent || 0) / 100;
+      const taxRate = (item.taxPercent || 0) / 100;
+      const denominator = (1 - discountRate) * (1 + taxRate);
+      const itemSubtotal = denominator > 0 ? lineTotal / denominator : 0;
+      const taxableAmount = itemSubtotal * (1 - discountRate);
+      return sum + taxableAmount * taxRate;
     }, 0);
     const totalAmount = subtotal - totalDiscount + totalTax;
 
     return { subtotal, totalDiscount, totalTax, totalAmount };
   }, [lineItems]);
 
-  // Reset form when dialog opens/closes or invoice changes
+  // Reset form when dialog opens/closes or purchase order changes
   useEffect(() => {
-    if (open && invoice) {
+    if (open && purchaseOrder) {
       form.reset({
-        companyId: invoice.companyId,
-        customerId: invoice.customerId,
-        warehouseId: invoice.warehouseId || "",
-        invoiceDate: invoice.invoiceDate.split("T")[0],
-        dueDate: invoice.dueDate.split("T")[0],
-        terms: invoice.paymentTerms || "",
-        notes: invoice.notes || "",
+        supplierId: purchaseOrder.supplierId,
+        orderDate: purchaseOrder.orderDate.split("T")[0],
+        expectedDeliveryDate: purchaseOrder.expectedDeliveryDate.split("T")[0],
+        deliveryAddress: purchaseOrder.deliveryAddress || "",
+        deliveryCity: purchaseOrder.deliveryCity || "",
+        deliveryState: purchaseOrder.deliveryState || "",
+        deliveryCountry: purchaseOrder.deliveryCountry || "Philippines",
+        deliveryPostalCode: purchaseOrder.deliveryPostalCode || "",
+        notes: purchaseOrder.notes || "",
       });
-      // Convert invoice line items to form format
-      const formLineItems: LineItemFormValues[] = invoice.lineItems.map(
-        (item) => ({
+      // Convert PO line items to form format
+      const formLineItems: PurchaseOrderLineItemFormValues[] =
+        purchaseOrder.items?.map((item) => ({
           itemId: item.itemId,
-          itemCode: item.itemCode,
-          itemName: item.itemName,
-          description: item.description,
+          itemCode: item.item?.code,
+          itemName: item.item?.name,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
+          packagingId: item.packagingId || null,
+          packagingName: item.packagingName,
+          rate: item.rate,
           uomId: item.uomId,
-          discount: item.discount,
-          taxRate: item.taxRate,
-        })
-      );
+          discountPercent: item.discountPercent,
+          taxPercent: item.taxPercent,
+          lineTotal: item.lineTotal,
+        })) || [];
       setLineItems(formLineItems);
+      setActiveTab("general");
     } else if (open) {
       form.reset(defaultValues);
       setLineItems([]);
+      setActiveTab("general");
     }
-  }, [open, invoice, form]);
+  }, [open, purchaseOrder, form]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -174,7 +201,7 @@ export function InvoiceFormDialogV2({
     setLineItems((items) => items.filter((_, i) => i !== index));
   };
 
-  const handleSaveItem = (item: LineItemFormValues) => {
+  const handleSaveItem = (item: PurchaseOrderLineItemFormValues) => {
     if (editingItem !== null) {
       // Update existing item
       setLineItems((items) =>
@@ -186,50 +213,66 @@ export function InvoiceFormDialogV2({
     }
   };
 
-  const onSubmit = async (data: InvoiceFormValues) => {
+  const handleSupplierChange = (supplierId: string) => {
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (supplier) {
+      // Auto-fill delivery address from supplier's billing address
+      form.setValue("deliveryAddress", supplier.billingAddress);
+      form.setValue("deliveryCity", supplier.billingCity);
+      form.setValue("deliveryState", supplier.billingState);
+      form.setValue("deliveryPostalCode", supplier.billingPostalCode);
+      form.setValue("deliveryCountry", supplier.billingCountry);
+    }
+  };
+
+  const onSubmit = async (data: PurchaseOrderFormValues) => {
+
     if (lineItems.length === 0) {
-      alert("Please add at least one line item");
+      toast.error("Please add at least one line item");
       return;
     }
 
     try {
       // Transform form data to API request format
       const apiRequest = {
-        customerId: data.customerId,
-        warehouseId: data.warehouseId,
-        invoiceDate: data.invoiceDate,
-        dueDate: data.dueDate,
-        lineItems: lineItems.map((item) => ({
+        supplierId: data.supplierId,
+        orderDate: data.orderDate,
+        expectedDeliveryDate: data.expectedDeliveryDate,
+        deliveryAddress: data.deliveryAddress,
+        deliveryCity: data.deliveryCity,
+        deliveryState: data.deliveryState,
+        deliveryCountry: data.deliveryCountry,
+        deliveryPostalCode: data.deliveryPostalCode,
+        items: lineItems.map((item) => ({
           itemId: item.itemId,
-          description: item.description,
           quantity: item.quantity,
+          packagingId: item.packagingId || null,
           uomId: item.uomId,
-          unitPrice: item.unitPrice,
-          discount: item.discount,
-          taxRate: item.taxRate,
+          rate: item.rate,
+          discountPercent: item.discountPercent || 0,
+          taxPercent: item.taxPercent || 0,
         })),
-        paymentTerms: data.terms,
-        notes: data.notes,
+        notes: data.notes || "",
+        discountAmount: totals.totalDiscount,
+        taxAmount: totals.totalTax,
       };
 
-      if (isEditMode && invoice) {
+      if (isEditMode && purchaseOrder) {
         await updateMutation.mutateAsync({
-          id: invoice.id,
-          data: {
-            customerId: apiRequest.customerId,
-            warehouseId: apiRequest.warehouseId,
-            invoiceDate: apiRequest.invoiceDate,
-            dueDate: apiRequest.dueDate,
-            lineItems: apiRequest.lineItems,
-            paymentTerms: apiRequest.paymentTerms,
-            notes: apiRequest.notes,
-          },
+          id: purchaseOrder.id,
+          data: apiRequest,
         });
+        toast.success("Purchase order updated successfully");
       } else {
         await createMutation.mutateAsync(apiRequest);
+        toast.success("Purchase order created successfully");
       }
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      const errorMessage = error?.message || (isEditMode
+        ? "Failed to update purchase order"
+        : "Failed to create purchase order");
+      toast.error(errorMessage);
 
     }
   };
@@ -240,86 +283,61 @@ export function InvoiceFormDialogV2({
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEditMode ? "Edit Invoice" : "Create New Invoice"}
+              {isEditMode ? "Edit Purchase Order" : "Create New Purchase Order"}
             </DialogTitle>
             <DialogDescription>
               {isEditMode
-                ? "Update invoice details and line items."
-                : "Fill in the invoice details and add line items."}
+                ? "Update purchase order details and line items."
+                : "Fill in the purchase order details and add line items."}
             </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <Tabs defaultValue="general" className="w-full">
+            <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              // Switch to general tab if there are validation errors there
+              if (Object.keys(errors).length > 0) {
+                setActiveTab("general");
+                toast.error("Please fill in all required fields in the General tab");
+              }
+            })} className="space-y-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="general">General</TabsTrigger>
                   <TabsTrigger value="items">
                     Line Items ({lineItems.length})
                   </TabsTrigger>
-                  <TabsTrigger value="terms">Terms & Notes</TabsTrigger>
+                  <TabsTrigger value="terms">Notes</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="space-y-4 mt-4">
                   <FormField
                     control={form.control}
-                    name="customerId"
+                    name="supplierId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Customer *</FormLabel>
+                        <FormLabel>Supplier *</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            handleSupplierChange(value);
+                          }}
                           value={field.value}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a customer" />
+                              <SelectValue placeholder="Select a supplier" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {customers
-                              .filter((c) => c.isActive)
-                              .map((customer) => (
-                                <SelectItem key={customer.id} value={customer.id}>
-                                  {customer.code} - {customer.name}
+                            {suppliers
+                              .filter((s) => s.status === "active")
+                              .map((supplier) => (
+                                <SelectItem key={supplier.id} value={supplier.id}>
+                                  {supplier.code} - {supplier.name}
                                 </SelectItem>
                               ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="warehouseId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Warehouse (Optional)</FormLabel>
-                        <Select
-                          onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)}
-                          value={field.value || "__none__"}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a warehouse (for stock validation)" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="__none__">None</SelectItem>
-                            {warehouses
-                              .filter((w) => w.isActive)
-                              .map((warehouse) => (
-                                <SelectItem key={warehouse.id} value={warehouse.id}>
-                                  {warehouse.code} - {warehouse.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <p className="text-sm text-muted-foreground">
-                          Select a warehouse to validate and deduct stock when sending
-                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -328,10 +346,10 @@ export function InvoiceFormDialogV2({
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="invoiceDate"
+                      name="orderDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Invoice Date *</FormLabel>
+                          <FormLabel>Order Date *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -342,12 +360,87 @@ export function InvoiceFormDialogV2({
 
                     <FormField
                       control={form.control}
-                      name="dueDate"
+                      name="expectedDeliveryDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valid Until *</FormLabel>
+                          <FormLabel>Expected Delivery Date *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Delivery Address</h4>
+                    <FormField
+                      control={form.control}
+                      name="deliveryAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Street Address *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Street address" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="deliveryCity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="City" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="deliveryState"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State/Province *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="State" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="deliveryPostalCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Postal Code *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Postal code" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="deliveryCountry"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Country" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -361,14 +454,10 @@ export function InvoiceFormDialogV2({
                     <div>
                       <h3 className="text-lg font-medium">Line Items</h3>
                       <p className="text-sm text-muted-foreground">
-                        Manage products or services in this invoice
+                        Manage items to purchase in this order
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      onClick={handleAddItem}
-                      size="sm"
-                    >
+                    <Button type="button" onClick={handleAddItem} size="sm">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Item
                     </Button>
@@ -387,30 +476,20 @@ export function InvoiceFormDialogV2({
                             <TableRow>
                               <TableHead>Item</TableHead>
                               <TableHead className="text-right">Qty</TableHead>
-                              <TableHead className="text-right">
-                                Price
-                              </TableHead>
+                              <TableHead className="text-center">Unit</TableHead>
+                              <TableHead className="text-right">Rate</TableHead>
                               <TableHead className="text-right">
                                 Disc %
                               </TableHead>
-                              <TableHead className="text-right">
-                                Tax %
-                              </TableHead>
+                              <TableHead className="text-right">Tax %</TableHead>
                               <TableHead className="text-right">Total</TableHead>
                               <TableHead className="w-[100px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {lineItems.map((item, index) => {
-                              const itemSubtotal =
-                                item.quantity * item.unitPrice;
-                              const discountAmount =
-                                (itemSubtotal * item.discount) / 100;
-                              const taxableAmount =
-                                itemSubtotal - discountAmount;
-                              const taxAmount =
-                                (taxableAmount * item.taxRate) / 100;
-                              const lineTotal = taxableAmount + taxAmount;
+                              const lineTotal =
+                                item.lineTotal ?? item.quantity * item.rate;
 
                               return (
                                 <TableRow key={index}>
@@ -427,14 +506,19 @@ export function InvoiceFormDialogV2({
                                   <TableCell className="text-right">
                                     {item.quantity}
                                   </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(item.unitPrice)}
+                                  <TableCell className="text-center">
+                                    <span className="text-muted-foreground">
+                                      {item.packagingName || "—"}
+                                    </span>
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    {item.discount}%
+                                    {formatCurrency(item.rate)}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    {item.taxRate}%
+                                    {item.discountPercent}%
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {item.taxPercent}%
                                   </TableCell>
                                   <TableCell className="text-right font-medium">
                                     {formatCurrency(lineTotal)}
@@ -504,26 +588,12 @@ export function InvoiceFormDialogV2({
                 <TabsContent value="terms" className="space-y-4 mt-4">
                   <FormField
                     control={form.control}
-                    name="terms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Terms & Conditions</FormLabel>
-                        <FormControl>
-                          <Textarea {...field} rows={4} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Internal Notes</FormLabel>
                         <FormControl>
-                          <Textarea {...field} rows={4} />
+                          <Textarea {...field} rows={6} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -547,8 +617,8 @@ export function InvoiceFormDialogV2({
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."
                     : isEditMode
-                    ? "Update Invoice"
-                    : "Create Invoice"}
+                    ? "Update Purchase Order"
+                    : "Create Purchase Order"}
                 </Button>
               </DialogFooter>
             </form>
@@ -557,7 +627,7 @@ export function InvoiceFormDialogV2({
       </Dialog>
 
       {/* Line Item Dialog */}
-      <InvoiceLineItemDialog
+      <PurchaseOrderLineItemDialog
         open={itemDialogOpen}
         onOpenChange={setItemDialogOpen}
         onSave={handleSaveItem}

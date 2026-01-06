@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { InvoiceFormDialogV2 } from "@/components/invoices/InvoiceFormDialogV2";
+import { InvoiceFormDialog } from "@/components/invoices/InvoiceFormDialog";
 import { RecordPaymentDialog } from "@/components/invoices/RecordPaymentDialog";
 import { InvoiceViewDialog } from "@/components/invoices/InvoiceViewDialog";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -441,7 +441,7 @@ export default function InvoicesPage() {
         invoice={selectedInvoice}
       />
 
-      <InvoiceFormDialogV2
+      <InvoiceFormDialog
         open={formDialogOpen}
         onOpenChange={setFormDialogOpen}
         invoice={selectedInvoice}

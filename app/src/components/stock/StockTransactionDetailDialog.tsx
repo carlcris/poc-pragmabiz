@@ -421,7 +421,7 @@ export function StockTransactionDetailDialog({
                           .map((item) => {
                             const valueChange = (item.stockValueAfter || 0) - (item.stockValueBefore || 0);
                             return (
-                              <TableRow key={item.id}>
+                              <TableRow key={`value-${item.id}`}>
                                 <TableCell className="text-xs">
                                   <div>
                                     <div className="font-medium">{item.itemCode}</div>

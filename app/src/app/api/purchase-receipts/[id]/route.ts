@@ -55,6 +55,8 @@ export async function GET(
           quantity_received,
           uom_id,
           uom:units_of_measure(id, code, name),
+          packaging_id,
+          packaging:item_packaging(id, pack_name, qty_per_pack),
           rate,
           notes
         )
@@ -113,6 +115,12 @@ export async function GET(
           code: item.uom.code,
           name: item.uom.name,
         } : undefined,
+        packagingId: item.packaging_id,
+        packaging: item.packaging ? {
+          id: item.packaging.id,
+          name: item.packaging.pack_name,
+          qtyPerPack: item.packaging.qty_per_pack,
+        } : undefined,
         rate: parseFloat(item.rate),
         notes: item.notes,
       })),
@@ -167,7 +175,7 @@ export async function PUT(
     // Check if receipt exists and is in draft status
     const { data: existingReceipt } = await supabase
       .from('purchase_receipts')
-      .select('status')
+      .select('status, purchase_order_id')
       .eq('id', id)
       .eq('company_id', userData.company_id)
       .is('deleted_at', null)
@@ -246,6 +254,80 @@ export async function PUT(
       }
     }
 
+    if (body.status === 'received' && existingReceipt.status === 'draft') {
+      let itemsForUpdate = body.items || []
+
+      if (itemsForUpdate.length === 0) {
+        const { data: receiptItems } = await supabase
+          .from('purchase_receipt_items')
+          .select('purchase_order_item_id, quantity_received')
+          .eq('receipt_id', id)
+
+        itemsForUpdate = (receiptItems || []).map((item: any) => ({
+          purchaseOrderItemId: item.purchase_order_item_id,
+          quantityReceived: item.quantity_received,
+        }))
+      }
+
+      for (const item of itemsForUpdate) {
+        const { data: currentItem } = await supabase
+          .from('purchase_order_items')
+          .select('quantity_received')
+          .eq('id', item.purchaseOrderItemId)
+          .single()
+
+        const currentQty = parseFloat(currentItem?.quantity_received || 0)
+        const newQty = currentQty + parseFloat(item.quantityReceived || 0)
+
+        await supabase
+          .from('purchase_order_items')
+          .update({
+            quantity_received: newQty,
+            updated_by: user.id,
+          })
+          .eq('id', item.purchaseOrderItemId)
+      }
+
+      if (existingReceipt.purchase_order_id) {
+        const { data: poItems } = await supabase
+          .from('purchase_order_items')
+          .select('quantity, quantity_received')
+          .eq('purchase_order_id', existingReceipt.purchase_order_id)
+          .is('deleted_at', null)
+
+        if (poItems && poItems.length > 0) {
+          const allFullyReceived = poItems.every((poItem: any) => {
+            const ordered = parseFloat(poItem.quantity)
+            const received = parseFloat(poItem.quantity_received || 0)
+            return received >= ordered
+          })
+
+          const anyReceived = poItems.some((poItem: any) => {
+            const received = parseFloat(poItem.quantity_received || 0)
+            return received > 0
+          })
+
+          let newStatus: string | null = null
+          if (allFullyReceived) {
+            newStatus = 'received'
+          } else if (anyReceived) {
+            newStatus = 'partially_received'
+          }
+
+          if (newStatus) {
+            await supabase
+              .from('purchase_orders')
+              .update({
+                status: newStatus,
+                updated_by: user.id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existingReceipt.purchase_order_id)
+          }
+        }
+      }
+    }
+
     // Post AP transaction to general ledger if status changed to 'received'
     if (body.status === 'received' && existingReceipt.status !== 'received') {
       // Get receipt details for AP posting
@@ -256,7 +338,11 @@ export async function PUT(
           receipt_code,
           supplier_id,
           receipt_date,
-          purchase_receipt_items(quantity_received, rate)
+          purchase_receipt_items(
+            quantity_received,
+            rate,
+            packaging:item_packaging(qty_per_pack)
+          )
         `)
         .eq('id', id)
         .single()
@@ -266,9 +352,11 @@ export async function PUT(
         const items = receiptData.purchase_receipt_items as Array<{
           quantity_received: string
           rate: string
+          packaging?: { qty_per_pack: number } | null
         }>
         const totalAmount = items.reduce((sum, item) => {
-          return sum + parseFloat(item.quantity_received) * parseFloat(item.rate)
+          const conversionFactor = item.packaging?.qty_per_pack ?? 1
+          return sum + parseFloat(item.quantity_received) * conversionFactor * parseFloat(item.rate)
         }, 0)
 
         const apResult = await postAPBill(userData.company_id, user.id, {

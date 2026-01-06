@@ -10,13 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -26,7 +19,24 @@ import {
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PackagingFormDialog } from "./PackagingFormDialog";
-import type { ItemVariant, VariantsResponse, ItemPackaging, PackagingResponse } from "@/types/item-variant";
+
+type ItemPackaging = {
+  id: string;
+  itemId: string;
+  packType: string;
+  packName: string;
+  qtyPerPack: number;
+  barcode: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  uomId: string;
+  uom?: string;
+};
+
+type PackagingResponse = {
+  data: ItemPackaging[];
+  total: number;
+};
 
 type PackagingTabProps = {
   itemId: string;
@@ -34,41 +44,20 @@ type PackagingTabProps = {
 
 export const PackagingTab = ({ itemId }: PackagingTabProps) => {
   const queryClient = useQueryClient();
-  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedPackaging, setSelectedPackaging] = useState<ItemPackaging | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [packagingToDelete, setPackagingToDelete] = useState<ItemPackaging | null>(null);
 
-  // Fetch variants for selection
-  const { data: variantsData, isLoading: variantsLoading } = useQuery<VariantsResponse>({
-    queryKey: ["item-variants", itemId],
-    queryFn: async () => {
-      const response = await apiClient.get<VariantsResponse>(
-        `/api/items/${itemId}/variants`
-      );
-      return response;
-    },
-  });
-
-  const variants = variantsData?.data || [];
-
-  // Auto-select first variant when variants load
-  if (variants.length > 0 && !selectedVariantId) {
-    setSelectedVariantId(variants[0].id);
-  }
-
-  // Fetch packaging for selected variant
+  // Fetch packaging for item
   const { data: packagingData, isLoading: packagingLoading } = useQuery<PackagingResponse>({
-    queryKey: ["item-packaging", itemId, selectedVariantId],
+    queryKey: ["item-packaging", itemId],
     queryFn: async () => {
-      if (!selectedVariantId) return { data: [], total: 0 };
       const response = await apiClient.get<PackagingResponse>(
-        `/api/items/${itemId}/variants/${selectedVariantId}/packaging`
+        `/api/items/${itemId}/packages`
       );
       return response;
     },
-    enabled: !!selectedVariantId,
   });
 
   const packaging = packagingData?.data || [];
@@ -76,13 +65,12 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
   // Delete packaging mutation
   const deleteMutation = useMutation({
     mutationFn: async (packagingId: string) => {
-      if (!selectedVariantId) throw new Error("No variant selected");
       await apiClient.delete(
-        `/api/items/${itemId}/variants/${selectedVariantId}/packaging/${packagingId}`
+        `/api/items/${itemId}/packages/${packagingId}`
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["item-packaging", itemId, selectedVariantId] });
+      queryClient.invalidateQueries({ queryKey: ["item-packaging", itemId] });
       toast.success("Packaging deleted successfully");
       setDeleteDialogOpen(false);
       setPackagingToDelete(null);
@@ -93,13 +81,7 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
     },
   });
 
-  const selectedVariant = variants.find((v) => v.id === selectedVariantId);
-
   const handleCreatePackaging = () => {
-    if (!selectedVariantId) {
-      toast.error("Please select a variant first");
-      return;
-    }
     setSelectedPackaging(null);
     setFormDialogOpen(true);
   };
@@ -128,52 +110,18 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
             <div>
               <CardTitle>Item Packaging</CardTitle>
               <CardDescription>
-                Manage packaging options for item variants (e.g., carton, box, dozen)
+                Manage packaging options for this item (e.g., carton, box, dozen)
               </CardDescription>
             </div>
-            <Button onClick={handleCreatePackaging} disabled={!selectedVariantId}>
+            <Button onClick={handleCreatePackaging}>
               <Plus className="mr-2 h-4 w-4" />
               Add Packaging
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Variant Selector */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Select Variant</label>
-            {variantsLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : variants.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
-                No variants found. Please create a variant first.
-              </div>
-            ) : (
-              <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a variant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {variants.map((variant) => (
-                    <SelectItem key={variant.id} value={variant.id}>
-                      {variant.variantName} ({variant.variantCode})
-                      {variant.isDefault && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          Default
-                        </Badge>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
           {/* Packaging List */}
-          {!selectedVariantId ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Select a variant to view its packaging options
-            </div>
-          ) : packagingLoading ? (
+          {packagingLoading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-16 w-full" />
@@ -181,7 +129,7 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
             </div>
           ) : packaging.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>No packaging options found for this variant.</p>
+              <p>No packaging options found for this item.</p>
               <p className="text-sm mt-2">Add your first packaging option to get started.</p>
             </div>
           ) : (
@@ -204,7 +152,7 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
                         {pkg.packType}
                         {pkg.isDefault && (
                           <Badge variant="secondary" className="ml-2 text-xs">
-                            Default
+                            Base
                           </Badge>
                         )}
                       </TableCell>
@@ -234,7 +182,7 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
                             size="sm"
                             onClick={() => handleDeletePackaging(pkg)}
                             disabled={pkg.isDefault || deleteMutation.isPending}
-                            title={pkg.isDefault ? "Cannot delete default packaging" : "Delete packaging"}
+                            title={pkg.isDefault ? "Cannot delete base packaging" : "Delete packaging"}
                           >
                             <Trash2 className={`h-4 w-4 ${pkg.isDefault ? 'text-muted-foreground' : 'text-destructive'}`} />
                           </Button>
@@ -249,15 +197,12 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
         </CardContent>
       </Card>
 
-      {selectedVariantId && (
-        <PackagingFormDialog
-          open={formDialogOpen}
-          onOpenChange={setFormDialogOpen}
-          itemId={itemId}
-          variantId={selectedVariantId}
-          packaging={selectedPackaging}
-        />
-      )}
+      <PackagingFormDialog
+        open={formDialogOpen}
+        onOpenChange={setFormDialogOpen}
+        itemId={itemId}
+        packaging={selectedPackaging}
+      />
 
       <ConfirmDialog
         open={deleteDialogOpen}

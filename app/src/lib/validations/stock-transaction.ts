@@ -9,6 +9,8 @@ export const stockTransactionFormSchema = z.object({
   warehouseId: z.string().min(1, "Warehouse is required"),
   toWarehouseId: z.string().optional(),
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+  packagingId: z.string().nullable().optional(),
+  uomId: z.string().min(1, "Unit of measure is required"),
   referenceType: z.string().optional(),
   referenceId: z.string().optional(),
   referenceNumber: z.string().optional(),

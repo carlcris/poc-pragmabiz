@@ -15,6 +15,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { validateTransition } from "@/lib/validations/transformation-order";
 import type { ExecuteTransformationOrderRequest } from "@/types/transformation-order";
+import { normalizeTransactionItems } from "./normalizationService";
+import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 // ============================================================================
 // Template Validation
@@ -310,7 +312,22 @@ export async function executeTransformation(
       };
     }
 
-    // 5. Consume inputs (create stock transactions type='out')
+    // 5. Normalize input quantities from packages to base units
+    const inputItemsToNormalize: StockTransactionItemInput[] = executionData.inputs.map((inputData) => {
+      const inputLine = order.inputs.find((i: any) => i.id === inputData.inputLineId);
+      if (!inputLine) throw new Error(`Input line not found: ${inputData.inputLineId}`);
+
+      return {
+        itemId: inputLine.item_id,
+        packagingId: inputData.packagingId || null, // null = use base package
+        inputQty: inputData.consumedQuantity,
+        unitCost: 0, // Will be fetched from item
+      };
+    });
+
+    const normalizedInputs = await normalizeTransactionItems(order.company_id, inputItemsToNormalize);
+
+    // 6. Consume inputs (create stock transactions type='out')
     const inputTransactionIds: string[] = [];
     const inputCosts: Array<{ inputLineId: string; cost: number }> = [];
 
@@ -319,6 +336,8 @@ export async function executeTransformation(
       inputIndex++;
       const inputLine = order.inputs.find((i: any) => i.id === inputData.inputLineId);
       if (!inputLine) continue;
+
+      const normalizedInput = normalizedInputs[inputIndex - 1];
 
       // Get current stock
       const { data: warehouseStock, error: stockError } = await supabase
@@ -343,9 +362,9 @@ export async function executeTransformation(
         : 0;
       const unitCost = itemData?.cost_price ? parseFloat(String(itemData.cost_price)) : 0;
 
-      const newStock = currentStock - inputData.consumedQuantity;
+      const newStock = currentStock - normalizedInput.normalizedQty;
 
-      // Validate sufficient stock
+      // Validate sufficient stock (using normalized quantity in base units)
       if (newStock < 0) {
         // Rollback: revert order status
         await supabase
@@ -354,12 +373,12 @@ export async function executeTransformation(
           .eq("id", orderId);
         return {
           success: false,
-          error: `Insufficient stock for item. Available: ${currentStock}, Required: ${inputData.consumedQuantity}`,
+          error: `Insufficient stock for item. Available: ${currentStock} (base units), Required: ${normalizedInput.normalizedQty} (base units)`,
         };
       }
 
-      // Calculate costs
-      const totalCost = unitCost * inputData.consumedQuantity;
+      // Calculate costs (based on normalized quantity in base units)
+      const totalCost = unitCost * normalizedInput.normalizedQty;
 
       // Create stock transaction (type='out')
       // Add input index to make transaction code unique for each input
@@ -406,10 +425,18 @@ export async function executeTransformation(
         company_id: order.company_id,
         transaction_id: stockTransaction.id,
         item_id: inputLine.item_id,
-        quantity: inputData.consumedQuantity,
-        uom_id: inputLine.uom_id,
+        // Normalization fields (NEW)
+        input_qty: normalizedInput.inputQty,
+        input_packaging_id: normalizedInput.inputPackagingId,
+        conversion_factor: normalizedInput.conversionFactor,
+        normalized_qty: normalizedInput.normalizedQty,
+        base_package_id: normalizedInput.basePackageId,
+        // Standard fields
+        quantity: normalizedInput.normalizedQty, // Backward compat
+        uom_id: normalizedInput.uomId,
         unit_cost: unitCost,
         total_cost: totalCost,
+        // Audit fields
         qty_before: currentStock,
         qty_after: newStock,
         valuation_rate: unitCost,
@@ -431,11 +458,11 @@ export async function executeTransformation(
         .eq("item_id", inputLine.item_id)
         .eq("warehouse_id", order.source_warehouse_id);
 
-      // Update transformation_order_inputs
+      // Update transformation_order_inputs (store normalized quantity)
       await supabase
         .from("transformation_order_inputs")
         .update({
-          consumed_quantity: inputData.consumedQuantity,
+          consumed_quantity: normalizedInput.normalizedQty, // Use normalized quantity
           unit_cost: unitCost,
           total_cost: totalCost,
           stock_transaction_id: stockTransaction.id,
@@ -449,31 +476,83 @@ export async function executeTransformation(
     // 6. Calculate total input cost
     const totalInputCost = inputCosts.reduce((sum, item) => sum + item.cost, 0);
 
-    // 7. Produce outputs (create stock transactions type='in')
+    // 7. Normalize output quantities from packages to base units
+    const outputItemsToNormalize: StockTransactionItemInput[] = executionData.outputs.map((outputData) => {
+      const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
+      if (!outputLine) throw new Error(`Output line not found: ${outputData.outputLineId}`);
+
+      return {
+        itemId: outputLine.item_id,
+        packagingId: outputData.packagingId || null, // null = use base package
+        inputQty: outputData.producedQuantity,
+        unitCost: 0, // Will be allocated from input costs
+      };
+    });
+
+    const normalizedOutputs = await normalizeTransactionItems(order.company_id, outputItemsToNormalize);
+
+    // 7.5 Normalize waste quantities for cost allocation
+    const wasteItemsToNormalize: StockTransactionItemInput[] = executionData.outputs
+      .filter(output => output.wastedQuantity && output.wastedQuantity > 0)
+      .map((outputData) => {
+        const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
+        if (!outputLine) throw new Error(`Output line not found: ${outputData.outputLineId}`);
+
+        return {
+          itemId: outputLine.item_id,
+          packagingId: outputData.packagingId || null,
+          inputQty: outputData.wastedQuantity || 0,
+          unitCost: 0,
+        };
+      });
+
+    const normalizedWastes = wasteItemsToNormalize.length > 0
+      ? await normalizeTransactionItems(order.company_id, wasteItemsToNormalize)
+      : [];
+
+    // 8. Produce outputs (create stock transactions type='in')
     const outputTransactionIds: string[] = [];
     const wasteTransactionIds: string[] = [];
 
-    // Calculate total quantity (produced + wasted) for cost allocation
-    const totalOutputQuantity = executionData.outputs.reduce(
-      (sum, o) => sum + o.producedQuantity + (o.wastedQuantity || 0),
+    // Calculate total normalized quantity (produced + wasted) for cost allocation
+    let wasteIndex = 0;
+    const totalOutputQuantity = normalizedOutputs.reduce(
+      (sum, output, idx) => {
+        const hasWaste = executionData.outputs[idx].wastedQuantity && executionData.outputs[idx].wastedQuantity > 0;
+        const normalizedWasteQty = hasWaste && normalizedWastes[wasteIndex]
+          ? normalizedWastes[wasteIndex++].normalizedQty
+          : 0;
+        return sum + output.normalizedQty + normalizedWasteQty;
+      },
       0
     );
 
     // Cost allocation strategy: quantity-based (across produced + wasted)
+    // Create map of output line ID to normalized waste
+    const normalizedWasteMap = new Map<string, typeof normalizedWastes[0]>();
+    let wasteMapIndex = 0;
+    for (const outputData of executionData.outputs) {
+      if (outputData.wastedQuantity && outputData.wastedQuantity > 0) {
+        normalizedWasteMap.set(outputData.outputLineId, normalizedWastes[wasteMapIndex++]);
+      }
+    }
+
     let outputIndex = 0;
     for (const outputData of executionData.outputs) {
       outputIndex++;
       const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
       if (!outputLine) continue;
 
-      // Allocate cost based on total quantity (produced + wasted)
+      const normalizedOutput = normalizedOutputs[outputIndex - 1];
+
+      // Allocate cost based on total normalized quantity (produced + wasted)
       // This ensures cost per unit is consistent whether item was good or wasted
       const costPerUnit = totalOutputQuantity > 0
         ? totalInputCost / totalOutputQuantity
         : 0;
       const allocatedCost = outputLine.is_scrap
         ? 0
-        : costPerUnit * outputData.producedQuantity;
+        : costPerUnit * normalizedOutput.normalizedQty;
 
       // Get current stock (same warehouse as inputs)
       const { data: warehouseStock } = await supabase
@@ -481,13 +560,13 @@ export async function executeTransformation(
         .select("current_stock, available_stock")
         .eq("item_id", outputLine.item_id)
         .eq("warehouse_id", order.source_warehouse_id)
-        .single();
+        .maybeSingle();
 
       const currentStock = warehouseStock
         ? parseFloat(String(warehouseStock.current_stock))
         : 0;
 
-      const newStock = currentStock + outputData.producedQuantity;
+      const newStock = currentStock + normalizedOutput.normalizedQty;
 
       // Create stock transaction (type='in') - same warehouse as inputs
       // Add output index to make transaction code unique for each output
@@ -530,10 +609,18 @@ export async function executeTransformation(
         company_id: order.company_id,
         transaction_id: stockTransaction.id,
         item_id: outputLine.item_id,
-        quantity: outputData.producedQuantity,
-        uom_id: outputLine.uom_id,
+        // Normalization fields (NEW)
+        input_qty: normalizedOutput.inputQty,
+        input_packaging_id: normalizedOutput.inputPackagingId,
+        conversion_factor: normalizedOutput.conversionFactor,
+        normalized_qty: normalizedOutput.normalizedQty,
+        base_package_id: normalizedOutput.basePackageId,
+        // Standard fields
+        quantity: normalizedOutput.normalizedQty, // Backward compat
+        uom_id: normalizedOutput.uomId,
         unit_cost: costPerUnit,
         total_cost: allocatedCost,
+        // Audit fields
         qty_before: currentStock,
         qty_after: newStock,
         valuation_rate: costPerUnit,
@@ -583,8 +670,15 @@ export async function executeTransformation(
 
       // 7b. Create waste transaction if waste quantity > 0
       if (outputData.wastedQuantity && outputData.wastedQuantity > 0) {
+        // Get pre-normalized waste quantity
+        const normalizedWaste = normalizedWasteMap.get(outputData.outputLineId);
+        if (!normalizedWaste) {
+          // Should not happen, but skip if missing
+          continue;
+        }
+
         const wasteCostPerUnit = costPerUnit; // Same cost allocation as good output
-        const wasteTotalCost = wasteCostPerUnit * outputData.wastedQuantity;
+        const wasteTotalCost = wasteCostPerUnit * normalizedWaste.normalizedQty;
 
         // Create waste stock transaction (type='waste' or 'out' with waste notes)
         const { data: wasteTransaction, error: wasteTransactionError } = await supabase
@@ -608,12 +702,11 @@ export async function executeTransformation(
           .single();
 
         if (wasteTransactionError || !wasteTransaction) {
-
           // Don't fail the entire transformation for waste tracking issues, but log it
         } else {
           wasteTransactionIds.push(wasteTransaction.id);
 
-          // Create waste stock transaction item
+          // Create waste stock transaction item with normalization metadata
           const now = new Date();
           const postingDate = now.toISOString().split("T")[0];
           const postingTime = now.toTimeString().split(" ")[0];
@@ -624,11 +717,19 @@ export async function executeTransformation(
             company_id: order.company_id,
             transaction_id: wasteTransaction.id,
             item_id: outputLine.item_id,
-            quantity: outputData.wastedQuantity,
-            uom_id: outputLine.uom_id,
+            // Normalization fields
+            input_qty: normalizedWaste.inputQty,
+            input_packaging_id: normalizedWaste.inputPackagingId,
+            conversion_factor: normalizedWaste.conversionFactor,
+            normalized_qty: normalizedWaste.normalizedQty,
+            base_package_id: normalizedWaste.basePackageId,
+            // Standard fields
+            quantity: normalizedWaste.normalizedQty,
+            uom_id: normalizedWaste.uomId,
             unit_cost: wasteCostPerUnit,
             total_cost: wasteTotalCost,
-            qty_before: 0, // Waste doesn't affect physical inventory
+            // Audit fields (waste doesn't affect physical inventory)
+            qty_before: 0,
             qty_after: 0,
             valuation_rate: wasteCostPerUnit,
             stock_value_before: 0,
@@ -665,22 +766,25 @@ export async function executeTransformation(
       }
     }
 
-    // 9. Calculate actual total output cost and waste cost
+    // 9. Calculate actual total output cost and waste cost (using normalized quantities)
     let totalOutputCost = 0;
     let totalWasteCost = 0;
 
-    for (const output of executionData.outputs) {
+    for (let idx = 0; idx < executionData.outputs.length; idx++) {
+      const output = executionData.outputs[idx];
       const outputLine = order.outputs.find((o: any) => o.id === output.outputLineId);
       if (outputLine?.is_scrap) continue; // Skip scrap items from cost calculation
 
       const costPerUnit = totalOutputQuantity > 0 ? totalInputCost / totalOutputQuantity : 0;
 
-      // Cost of good output produced
-      totalOutputCost += costPerUnit * output.producedQuantity;
+      // Cost of good output produced (use normalized quantity)
+      const normalizedProducedQty = normalizedOutputs[idx]?.normalizedQty || 0;
+      totalOutputCost += costPerUnit * normalizedProducedQty;
 
-      // Cost of waste (this is the variance/loss)
-      if (output.wastedQuantity && output.wastedQuantity > 0) {
-        totalWasteCost += costPerUnit * output.wastedQuantity;
+      // Cost of waste (this is the variance/loss) (use normalized quantity)
+      const normalizedWaste = normalizedWasteMap.get(output.outputLineId);
+      if (normalizedWaste) {
+        totalWasteCost += costPerUnit * normalizedWaste.normalizedQty;
       }
     }
 

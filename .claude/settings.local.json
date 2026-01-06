@@ -64,7 +64,12 @@
       "Bash(if [ -f \"$file\" ])",
       "Bash(then)",
       "Bash(fi)",
-      "Bash(/tmp/remove_all_console.sh)"
+      "Bash(/tmp/remove_all_console.sh)",
+      "Bash(supabase migration:*)",
+      "Bash(supabase db psql:*)",
+      "Read(//Users/carl/workspace/react-app/**)",
+      "Bash(supabase start:*)",
+      "Bash(supabase gen:*)"
     ],
     "deny": [],
     "ask": []

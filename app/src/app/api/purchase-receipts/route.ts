@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
           quantity_received,
           uom_id,
           uom:units_of_measure(id, code, name),
+          packaging_id,
+          packaging:item_packaging(id, pack_name, qty_per_pack),
           rate,
           notes
         )
@@ -139,22 +141,28 @@ export async function GET(request: NextRequest) {
       supplierInvoiceDate: receipt.supplier_invoice_date,
       status: receipt.status,
       notes: receipt.notes,
-      items: receipt.items?.map((item: any) => ({
-        id: item.id,
-        purchaseOrderItemId: item.purchase_order_item_id,
-        itemId: item.item_id,
-        item: item.item ? {
-          id: item.item.id,
-          code: item.item.item_code,
-          name: item.item.item_name,
-        } : undefined,
-        quantityOrdered: parseFloat(item.quantity_ordered),
-        quantityReceived: parseFloat(item.quantity_received),
-        uomId: item.uom_id,
-        uom: item.uom ? {
-          id: item.uom.id,
-          code: item.uom.code,
-          name: item.uom.name,
+        items: receipt.items?.map((item: any) => ({
+          id: item.id,
+          purchaseOrderItemId: item.purchase_order_item_id,
+          itemId: item.item_id,
+          item: item.item ? {
+            id: item.item.id,
+            code: item.item.item_code,
+            name: item.item.item_name,
+          } : undefined,
+          quantityOrdered: parseFloat(item.quantity_ordered),
+          quantityReceived: parseFloat(item.quantity_received),
+          uomId: item.uom_id,
+          uom: item.uom ? {
+            id: item.uom.id,
+            code: item.uom.code,
+            name: item.uom.name,
+          } : undefined,
+          packagingId: item.packaging_id,
+        packaging: item.packaging ? {
+          id: item.packaging.id,
+          name: item.packaging.pack_name,
+          qtyPerPack: item.packaging.qty_per_pack,
         } : undefined,
         rate: parseFloat(item.rate),
         notes: item.notes,
@@ -278,6 +286,7 @@ export async function POST(request: NextRequest) {
         item_id: item.itemId,
         quantity_ordered: item.quantityOrdered,
         quantity_received: item.quantityReceived,
+        packaging_id: item.packagingId || null,
         uom_id: item.uomId,
         rate: item.rate,
         notes: item.notes,

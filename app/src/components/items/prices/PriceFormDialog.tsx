@@ -18,13 +18,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { ItemPrice, CreateItemPriceInput, UpdateItemPriceInput } from "@/types/item-variant";
+
+type ItemPrice = {
+  id: string;
+  itemId: string;
+  priceTier: string;
+  priceTierName: string;
+  price: number;
+  currencyCode: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+};
 
 type PriceFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemId: string;
-  variantId: string;
   price?: ItemPrice | null;
 };
 
@@ -38,7 +48,7 @@ type FormData = {
   isActive: boolean;
 };
 
-export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }: PriceFormDialogProps) => {
+export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceFormDialogProps) => {
   const queryClient = useQueryClient();
   const isEditing = !!price;
 
@@ -80,9 +90,9 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: CreateItemPriceInput) => {
+    mutationFn: async (data: FormData) => {
       const response = await apiClient.post<{ data: ItemPrice }>(
-        `/api/items/${itemId}/variants/${variantId}/prices`,
+        `/api/items/${itemId}/prices`,
         data
       );
       return response.data;
@@ -101,10 +111,10 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: UpdateItemPriceInput) => {
+    mutationFn: async (data: FormData) => {
       if (!price) throw new Error("No price selected");
       const response = await apiClient.put<{ data: ItemPrice }>(
-        `/api/items/${itemId}/variants/${variantId}/prices/${price.id}`,
+        `/api/items/${itemId}/prices/${price.id}`,
         data
       );
       return response.data;
@@ -140,6 +150,16 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
+  // Common price tiers for quick selection
+  const commonTiers = [
+    { code: "fc", name: "Factory Cost" },
+    { code: "ws", name: "Wholesale" },
+    { code: "srp", name: "Suggested Retail Price" },
+    { code: "gov", name: "Government" },
+    { code: "reseller", name: "Reseller" },
+    { code: "vip", name: "VIP" },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -147,8 +167,8 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
           <DialogTitle>{isEditing ? "Edit Price" : "Create Price"}</DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update price information"
-              : "Add a new price tier for this variant"}
+              ? "Update price tier information"
+              : "Add a new price tier for this item"}
           </DialogDescription>
         </DialogHeader>
 
@@ -168,7 +188,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
               <p className="text-sm text-destructive">{errors.priceTier.message}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Short code for this price tier (e.g., fc = Factory Cost)
+              Common tiers: {commonTiers.map(t => t.code).join(", ")}
             </p>
           </div>
 
@@ -180,15 +200,12 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
             <Input
               id="priceTierName"
               {...register("priceTierName", { required: "Price tier name is required" })}
-              placeholder="e.g., Factory Cost, Wholesale, SRP"
+              placeholder="e.g., Factory Cost, Wholesale"
               disabled={isPending}
             />
             {errors.priceTierName && (
               <p className="text-sm text-destructive">{errors.priceTierName.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Display name for this price tier
-            </p>
           </div>
 
           {/* Price */}
@@ -202,9 +219,9 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
               step="0.0001"
               {...register("price", {
                 required: "Price is required",
-                min: { value: 0, message: "Price cannot be negative" },
+                min: { value: 0, message: "Price must be 0 or greater" },
               })}
-              placeholder="0.00"
+              placeholder="0.0000"
               disabled={isPending}
             />
             {errors.price && (
@@ -222,7 +239,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
               disabled={isPending}
             />
             <p className="text-xs text-muted-foreground">
-              ISO 4217 currency code (default: PHP)
+              Default: PHP (Philippine Peso)
             </p>
           </div>
 
@@ -252,7 +269,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, variantId, price }
                 disabled={isPending}
               />
               <p className="text-xs text-muted-foreground">
-                Leave blank for no expiry
+                Leave empty for no expiry
               </p>
             </div>
           </div>

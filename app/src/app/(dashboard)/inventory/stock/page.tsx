@@ -188,7 +188,7 @@ export default function StockTransactionsPage() {
                         key={transaction.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => {
-                          setSelectedTransactionId(transaction.id);
+                          setSelectedTransactionId(transaction.transactionId);
                           setDetailDialogOpen(true);
                         }}
                       >

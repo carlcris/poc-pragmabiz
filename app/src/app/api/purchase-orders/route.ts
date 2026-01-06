@@ -2,6 +2,8 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // GET /api/purchase-orders
 export async function GET(request: NextRequest) {
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest) {
           item_id,
           item:items(id, item_code, item_name),
           quantity,
+          packaging_id,
+          packaging:item_packaging(id, pack_name, qty_per_pack),
           uom:units_of_measure(id, code, name),
           rate,
           discount_percent,
@@ -138,6 +142,15 @@ export async function GET(request: NextRequest) {
             }
           : null,
         quantity: parseFloat(item.quantity),
+        packagingId: item.packaging_id,
+        packagingName: item.packaging?.pack_name,
+        packaging: item.packaging
+          ? {
+              id: item.packaging.id,
+              name: item.packaging.pack_name,
+              qtyPerPack: item.packaging.qty_per_pack,
+            }
+          : undefined,
         uom: item.uom
           ? {
               id: item.uom.id,
@@ -234,10 +247,20 @@ export async function POST(request: NextRequest) {
       orderCode = `PO-${year}-${String(nextNum).padStart(4, '0')}`
     }
 
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+      itemId: item.itemId,
+      packagingId: item.packagingId ?? null,
+      inputQty: parseFloat(item.quantity),
+      unitCost: parseFloat(item.rate),
+    }))
+
+    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
+
     // Calculate totals
     let subtotal = 0
-    const items = body.items.map((item: any) => {
-      const itemSubtotal = item.quantity * item.rate
+    const items = body.items.map((item: any, index: number) => {
+      const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity
+      const itemSubtotal = normalizedQty * item.rate
       const discountAmount = itemSubtotal * (item.discountPercent || 0) / 100
       const taxableAmount = itemSubtotal - discountAmount
       const taxAmount = taxableAmount * (item.taxPercent || 0) / 100
@@ -297,6 +320,7 @@ export async function POST(request: NextRequest) {
       purchase_order_id: purchaseOrder.id,
       item_id: item.itemId,
       quantity: item.quantity,
+      packaging_id: item.packagingId || null,
       uom_id: item.uomId,
       rate: item.rate,
       discount_percent: item.discountPercent || 0,

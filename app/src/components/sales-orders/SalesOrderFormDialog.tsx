@@ -174,6 +174,8 @@ export function SalesOrderFormDialog({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           uomId: item.uomId,
+          packagingId: item.packagingId ?? null,
+          packagingName: item.packaging?.name,
           discount: item.discount,
           taxRate: item.taxRate,
         })
@@ -229,6 +231,7 @@ export function SalesOrderFormDialog({
           itemName: item.itemName,
           description: item.description,
           quantity: item.quantity,
+          packagingId: item.packagingId ?? null,
           uomId: item.uomId, // Include unit of measure ID
           unitPrice: item.unitPrice,
           discount: item.discount,
@@ -421,6 +424,7 @@ export function SalesOrderFormDialog({
                             <TableRow>
                               <TableHead>Item</TableHead>
                               <TableHead className="text-right">Qty</TableHead>
+                              <TableHead className="text-center">Unit</TableHead>
                               <TableHead className="text-right">
                                 Price
                               </TableHead>
@@ -458,12 +462,17 @@ export function SalesOrderFormDialog({
                                       </div>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="text-right">
-                                    {item.quantity}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(item.unitPrice)}
-                                  </TableCell>
+                              <TableCell className="text-right">
+                                {item.quantity}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="text-muted-foreground">
+                                  {item.packagingName || "—"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.unitPrice)}
+                              </TableCell>
                                   <TableCell className="text-right">
                                     {item.discount}%
                                   </TableCell>
