@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Key, Loader2, Search } from "lucide-react";
 import { useRole } from "@/hooks/useRoles";
 import { usePermissionsList } from "@/hooks/usePermissionsManagement";
@@ -75,7 +75,10 @@ export function RolePermissionsDialog({
   const [hasChanges, setHasChanges] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const allPermissions = permissionsData?.data || [];
+  const allPermissions = useMemo(
+    () => permissionsData?.data || [],
+    [permissionsData?.data]
+  );
   const rolePermissions: RolePermission[] = roleData?.permissions || [];
 
   // Filter permissions based on search query
@@ -90,6 +93,10 @@ export function RolePermissionsDialog({
 
   // Initialize permission settings when role data loads
   useEffect(() => {
+    if (!roleData?.permissions || allPermissions.length === 0) {
+      return;
+    }
+
     if (roleData?.permissions) {
       const settings = new Map<string, PermissionSettings>();
 

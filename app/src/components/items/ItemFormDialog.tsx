@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useCreateItem, useItem, useUpdateItem } from "@/hooks/useItems";
 import { useItemCategories } from "@/hooks/useItemCategories";
+import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useAuthStore } from "@/stores/authStore";
 import { itemFormSchema, type ItemFormValues } from "@/lib/validations/item";
 import { Button } from "@/components/ui/button";
@@ -64,19 +65,6 @@ const ITEM_TYPES = [
   { value: "service", label: "Service" },
 ] as const;
 
-const UNITS_OF_MEASURE = [
-  { value: "PCS", label: "Pieces (PCS)" },
-  { value: "BOX", label: "Box" },
-  { value: "KG", label: "Kilogram (KG)" },
-  { value: "G", label: "Gram (G)" },
-  { value: "L", label: "Liter (L)" },
-  { value: "ML", label: "Milliliter (ML)" },
-  { value: "SACK", label: "Sack" },
-  { value: "CAVAN", label: "Cavan" },
-  { value: "PACK", label: "Pack" },
-  { value: "SET", label: "Set" },
-];
-
 export function ItemFormDialog({
   open,
   onOpenChange,
@@ -88,6 +76,7 @@ export function ItemFormDialog({
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
   const { data: categoriesData } = useItemCategories();
+  const { data: uomsData } = useUnitsOfMeasure();
   const { data: itemResponse, isLoading: itemLoading, error: itemError } = useItem(itemId ?? "");
   const resolvedItem = itemResponse?.data ?? item ?? null;
   const [activeTab, setActiveTab] = useState("general");
@@ -95,6 +84,7 @@ export function ItemFormDialog({
   const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [dialogMode, setDialogMode] = useState<ItemDialogMode>("create");
   const categories = categoriesData?.data || [];
+  const unitsOfMeasure = (uomsData?.data || []).filter((unit) => unit.isActive !== false);
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
@@ -104,7 +94,7 @@ export function ItemFormDialog({
       chineseName: "",
       description: "",
       itemType: "raw_material",
-      uom: "PCS",
+      uom: "",
       category: "",
       standardCost: 0,
       listPrice: 0,
@@ -148,7 +138,7 @@ export function ItemFormDialog({
         chineseName: "",
         description: "",
         itemType: "raw_material",
-        uom: "PCS",
+        uom: "",
         category: "",
         standardCost: 0,
         listPrice: 0,
@@ -160,6 +150,16 @@ export function ItemFormDialog({
       setActiveTab("general");
     }
   }, [open, mode, resolvedItem, form]);
+
+  useEffect(() => {
+    if (!open || resolvedItem) return;
+    if (unitsOfMeasure.length === 0) return;
+    const currentUom = form.getValues("uom");
+    const hasMatch = unitsOfMeasure.some((unit) => unit.code === currentUom);
+    if (!currentUom || !hasMatch) {
+      form.setValue("uom", unitsOfMeasure[0].code);
+    }
+  }, [open, resolvedItem, unitsOfMeasure, form]);
 
   const onSubmit = async (values: ItemFormValues) => {
     try {
@@ -486,9 +486,9 @@ export function ItemFormDialog({
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {UNITS_OF_MEASURE.map((uom) => (
-                                    <SelectItem key={uom.value} value={uom.value}>
-                                      {uom.label}
+                                  {unitsOfMeasure.map((uom) => (
+                                    <SelectItem key={uom.id} value={uom.code}>
+                                      {uom.name} ({uom.code})
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -790,9 +790,9 @@ export function ItemFormDialog({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {UNITS_OF_MEASURE.map((uom) => (
-                            <SelectItem key={uom.value} value={uom.value}>
-                              {uom.label}
+                          {unitsOfMeasure.map((uom) => (
+                            <SelectItem key={uom.id} value={uom.code}>
+                              {uom.name} ({uom.code})
                             </SelectItem>
                           ))}
                         </SelectContent>

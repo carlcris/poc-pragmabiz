@@ -1,9 +1,12 @@
-export interface UnitOfMeasure {
+export type UnitOfMeasure = {
   id: string;
-  companyId: string;
   code: string;
   name: string;
-  symbol: string;
-  isBaseUnit: boolean;
-  isActive: boolean;
-}
+  symbol?: string | null;
+  isBaseUnit?: boolean;
+  isActive?: boolean;
+};
+
+export type UnitsOfMeasureResponse = {
+  data: UnitOfMeasure[];
+};

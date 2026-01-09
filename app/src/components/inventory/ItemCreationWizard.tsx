@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useCreateItemWithPackages, type CreateItemWithPackagesInput } from '@/hooks/useCreateItemWithPackages';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/ui/input';
 
 type WizardStep = 'basic' | 'base-package' | 'additional-packages' | 'review';
 
@@ -286,7 +287,7 @@ function BasicInfoStep({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Standard Cost
           </label>
-          <input
+          <Input
             type="number"
             step="0.01"
             min="0"
@@ -302,7 +303,7 @@ function BasicInfoStep({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             List Price
           </label>
-          <input
+          <Input
             type="number"
             step="0.01"
             min="0"
@@ -479,7 +480,7 @@ function AdditionalPackagesStep({
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Qty per Pack <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <Input
                     type="number"
                     required
                     step="0.0001"

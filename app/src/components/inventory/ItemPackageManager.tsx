@@ -16,6 +16,7 @@ import {
   type ItemPackage,
   type CreatePackageInput,
 } from '@/hooks/useItemPackages';
+import { Input } from '@/components/ui/input';
 
 type ItemPackageManagerProps = {
   itemId: string;
@@ -323,7 +324,7 @@ function PackageForm({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Quantity per Pack <span className="text-red-500">*</span>
           </label>
-          <input
+          <Input
             type="number"
             required
             step="0.0001"

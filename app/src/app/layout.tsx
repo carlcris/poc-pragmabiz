@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { UserPreferencesProvider } from "@/contexts/UserPreferencesContext";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,10 +22,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <LanguageProvider>
-          <ReactQueryProvider>
-            {children}
-            <Toaster richColors position="top-right" />
-          </ReactQueryProvider>
+          <UserPreferencesProvider>
+            <ReactQueryProvider>
+              {children}
+              <Toaster richColors position="top-right" />
+            </ReactQueryProvider>
+          </UserPreferencesProvider>
         </LanguageProvider>
       </body>
     </html>
