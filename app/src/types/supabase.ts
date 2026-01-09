@@ -1315,6 +1315,7 @@ export type Database = {
           is_stock_item: boolean | null
           item_code: string
           item_name: string
+          item_name_cn: string | null
           item_type: string
           purchase_price: number | null
           sales_price: number | null
@@ -1344,6 +1345,7 @@ export type Database = {
           is_stock_item?: boolean | null
           item_code: string
           item_name: string
+          item_name_cn?: string | null
           item_type: string
           purchase_price?: number | null
           sales_price?: number | null
@@ -1373,6 +1375,7 @@ export type Database = {
           is_stock_item?: boolean | null
           item_code?: string
           item_name?: string
+          item_name_cn?: string | null
           item_type?: string
           purchase_price?: number | null
           sales_price?: number | null
@@ -5434,4 +5437,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

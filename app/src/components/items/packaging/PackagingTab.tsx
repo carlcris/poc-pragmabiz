@@ -40,9 +40,10 @@ type PackagingResponse = {
 
 type PackagingTabProps = {
   itemId: string;
+  readOnly?: boolean;
 };
 
-export const PackagingTab = ({ itemId }: PackagingTabProps) => {
+export const PackagingTab = ({ itemId, readOnly = false }: PackagingTabProps) => {
   const queryClient = useQueryClient();
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedPackaging, setSelectedPackaging] = useState<ItemPackaging | null>(null);
@@ -113,10 +114,12 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
                 Manage packaging options for this item (e.g., carton, box, dozen)
               </CardDescription>
             </div>
-            <Button onClick={handleCreatePackaging}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Packaging
-            </Button>
+            {!readOnly && (
+              <Button onClick={handleCreatePackaging}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Packaging
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -142,7 +145,7 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
                     <TableHead className="text-right">Qty Per Pack</TableHead>
                     <TableHead>Barcode</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {!readOnly && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -168,26 +171,28 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
                           {pkg.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditPackaging(pkg)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeletePackaging(pkg)}
-                            disabled={pkg.isDefault || deleteMutation.isPending}
-                            title={pkg.isDefault ? "Cannot delete base packaging" : "Delete packaging"}
-                          >
-                            <Trash2 className={`h-4 w-4 ${pkg.isDefault ? 'text-muted-foreground' : 'text-destructive'}`} />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {!readOnly && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditPackaging(pkg)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeletePackaging(pkg)}
+                              disabled={pkg.isDefault || deleteMutation.isPending}
+                              title={pkg.isDefault ? "Cannot delete base packaging" : "Delete packaging"}
+                            >
+                              <Trash2 className={`h-4 w-4 ${pkg.isDefault ? 'text-muted-foreground' : 'text-destructive'}`} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -197,28 +202,32 @@ export const PackagingTab = ({ itemId }: PackagingTabProps) => {
         </CardContent>
       </Card>
 
-      <PackagingFormDialog
-        open={formDialogOpen}
-        onOpenChange={setFormDialogOpen}
-        itemId={itemId}
-        packaging={selectedPackaging}
-      />
+      {!readOnly && (
+        <PackagingFormDialog
+          open={formDialogOpen}
+          onOpenChange={setFormDialogOpen}
+          itemId={itemId}
+          packaging={selectedPackaging}
+        />
+      )}
 
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDelete}
-        title="Delete Packaging"
-        description={
-          packagingToDelete
-            ? `Are you sure you want to delete "${packagingToDelete.packName}"? This action cannot be undone.`
-            : "Are you sure you want to delete this packaging?"
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        isLoading={deleteMutation.isPending}
-      />
+      {!readOnly && (
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDelete}
+          title="Delete Packaging"
+          description={
+            packagingToDelete
+              ? `Are you sure you want to delete "${packagingToDelete.packName}"? This action cannot be undone.`
+              : "Are you sure you want to delete this packaging?"
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="destructive"
+          isLoading={deleteMutation.isPending}
+        />
+      )}
     </>
   );
 };

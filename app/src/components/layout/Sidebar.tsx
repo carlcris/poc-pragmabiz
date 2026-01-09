@@ -42,19 +42,19 @@ const menuItems = [
       { title: "Reorder Management", href: "/inventory/reorder", resource: RESOURCES.REORDER_MANAGEMENT as Resource },
     ],
   },
-  {
-    title: "Sales",
-    icon: ShoppingCart,
-    href: "/sales",
-    children: [
-      { title: "Point of Sale", href: "/sales/pos", resource: RESOURCES.POS as Resource },
-      { title: "POS Transactions", href: "/sales/pos/transactions", resource: RESOURCES.POS as Resource },
-      { title: "Customers", href: "/sales/customers", resource: RESOURCES.CUSTOMERS as Resource },
-      { title: "Quotations", href: "/sales/quotations", resource: RESOURCES.SALES_QUOTATIONS as Resource },
-      { title: "Sales Orders", href: "/sales/orders", resource: RESOURCES.SALES_ORDERS as Resource },
-      { title: "Invoices", href: "/sales/invoices", resource: RESOURCES.SALES_INVOICES as Resource },
-    ],
-  },
+  // {
+  //   title: "Sales",
+  //   icon: ShoppingCart,
+  //   href: "/sales",
+  //   children: [
+  //     { title: "Point of Sale", href: "/sales/pos", resource: RESOURCES.POS as Resource },
+  //     { title: "POS Transactions", href: "/sales/pos/transactions", resource: RESOURCES.POS as Resource },
+  //     { title: "Customers", href: "/sales/customers", resource: RESOURCES.CUSTOMERS as Resource },
+  //     { title: "Quotations", href: "/sales/quotations", resource: RESOURCES.SALES_QUOTATIONS as Resource },
+  //     { title: "Sales Orders", href: "/sales/orders", resource: RESOURCES.SALES_ORDERS as Resource },
+  //     { title: "Invoices", href: "/sales/invoices", resource: RESOURCES.SALES_INVOICES as Resource },
+  //   ],
+  // },
   {
     title: "Purchasing",
     icon: ShoppingBag,
@@ -65,25 +65,25 @@ const menuItems = [
       { title: "Purchase Receipts", href: "/purchasing/receipts", resource: RESOURCES.PURCHASE_RECEIPTS as Resource },
     ],
   },
-  {
-    title: "Accounting",
-    icon: Calculator,
-    href: "/accounting",
-    children: [
-      { title: "Chart of Accounts", href: "/accounting/chart-of-accounts", resource: RESOURCES.CHART_OF_ACCOUNTS as Resource },
-      { title: "Journal Entries", href: "/accounting/journals", resource: RESOURCES.JOURNAL_ENTRIES as Resource },
-      { title: "General Ledger", href: "/accounting/ledger", resource: RESOURCES.GENERAL_LEDGER as Resource },
-      { title: "Trial Balance", href: "/accounting/trial-balance", resource: RESOURCES.GENERAL_LEDGER as Resource },
-    ],
-  },
+  // {
+  //   title: "Accounting",
+  //   icon: Calculator,
+  //   href: "/accounting",
+  //   children: [
+  //     { title: "Chart of Accounts", href: "/accounting/chart-of-accounts", resource: RESOURCES.CHART_OF_ACCOUNTS as Resource },
+  //     { title: "Journal Entries", href: "/accounting/journals", resource: RESOURCES.JOURNAL_ENTRIES as Resource },
+  //     { title: "General Ledger", href: "/accounting/ledger", resource: RESOURCES.GENERAL_LEDGER as Resource },
+  //     { title: "Trial Balance", href: "/accounting/trial-balance", resource: RESOURCES.GENERAL_LEDGER as Resource },
+  //   ],
+  // },
   {
     title: "Reports",
     icon: FileText,
     href: "/reports",
     children: [
-      { title: "Sales Analytics", href: "/reports/sales-analytics", resource: RESOURCES.REPORTS as Resource },
+      //{ title: "Sales Analytics", href: "/reports/sales-analytics", resource: RESOURCES.REPORTS as Resource },
       { title: "Stock Reports", href: "/reports/stock", resource: RESOURCES.REPORTS as Resource },
-      { title: "Commission Reports", href: "/reports/commission", resource: RESOURCES.REPORTS as Resource },
+      //{ title: "Commission Reports", href: "/reports/commission", resource: RESOURCES.REPORTS as Resource },
     ],
   },
   {

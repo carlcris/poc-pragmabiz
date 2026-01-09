@@ -104,6 +104,18 @@ export default function StockTransactionsPage() {
     });
   };
 
+  const formatLocationLabel = (transaction: (typeof transactions)[number]) => {
+    if (transaction.transactionType === "transfer") {
+      const fromLabel = transaction.fromLocationCode || "-";
+      const toLabel = transaction.toLocationCode || "-";
+      return `${fromLabel} → ${toLabel}`;
+    }
+    if (transaction.transactionType === "in") {
+      return transaction.toLocationCode || "-";
+    }
+    return transaction.fromLocationCode || "-";
+  };
+
   const handleCreateTransaction = () => {
     setDialogOpen(true);
   };
@@ -176,6 +188,7 @@ export default function StockTransactionsPage() {
                       <TableHead>Type</TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead>Warehouse</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Reason</TableHead>
@@ -212,6 +225,9 @@ export default function StockTransactionsPage() {
                               </div>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{formatLocationLabel(transaction)}</div>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           <span className={

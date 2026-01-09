@@ -57,9 +57,15 @@ export async function GET(
       .eq('adjustment_id', id)
 
     // Fetch related data
-    const warehouse = adjustment.warehouse_id
-      ? await supabase.from('warehouses').select('warehouse_name').eq('id', adjustment.warehouse_id).single()
-      : null
+    const locationId = adjustment.custom_fields?.locationId
+    const [warehouse, location] = await Promise.all([
+      adjustment.warehouse_id
+        ? supabase.from('warehouses').select('warehouse_name').eq('id', adjustment.warehouse_id).single()
+        : Promise.resolve(null),
+      locationId
+        ? supabase.from('warehouse_locations').select('code, name').eq('id', locationId).single()
+        : Promise.resolve(null),
+    ])
 
     const stockTransaction = adjustment.stock_transaction_id
       ? await supabase.from('stock_transactions').select('transaction_code').eq('id', adjustment.stock_transaction_id).single()
@@ -80,6 +86,9 @@ export async function GET(
       adjustmentType: adjustment.adjustment_type,
       adjustmentDate: adjustment.adjustment_date,
       warehouseId: adjustment.warehouse_id,
+      locationId: adjustment.custom_fields?.locationId || null,
+      locationCode: location?.data?.code || null,
+      locationName: location?.data?.name || null,
       warehouseName: warehouse?.data?.warehouse_name || null,
       status: adjustment.status,
       reason: adjustment.reason,
@@ -160,7 +169,7 @@ export async function PATCH(
     // Check adjustment exists and is draft
     const { data: adjustment, error: fetchError } = await supabase
       .from('stock_adjustments')
-      .select('status')
+      .select('status, custom_fields')
       .eq('id', id)
       .eq('company_id', userData.company_id)
       .is('deleted_at', null)
@@ -188,6 +197,16 @@ export async function PATCH(
     if (body.warehouseId) updateData.warehouse_id = body.warehouseId
     if (body.reason) updateData.reason = body.reason
     if (body.notes !== undefined) updateData.notes = body.notes
+    if ('locationId' in body) {
+      const locationValue =
+        typeof body.locationId === 'string' && body.locationId.length > 0
+          ? body.locationId
+          : null
+      updateData.custom_fields = {
+        ...(adjustment.custom_fields || {}),
+        locationId: locationValue,
+      }
+    }
 
     // Update items if provided
     if (body.items) {
@@ -272,6 +291,11 @@ export async function PATCH(
       .select('*')
       .eq('adjustment_id', id)
 
+    const updatedLocationId = updatedAdjustment?.custom_fields?.locationId
+    const location = updatedLocationId
+      ? await supabase.from('warehouse_locations').select('code, name').eq('id', updatedLocationId).single()
+      : null
+
     return NextResponse.json({
       id: updatedAdjustment.id,
       companyId: updatedAdjustment.company_id,
@@ -279,6 +303,9 @@ export async function PATCH(
       adjustmentType: updatedAdjustment.adjustment_type,
       adjustmentDate: updatedAdjustment.adjustment_date,
       warehouseId: updatedAdjustment.warehouse_id,
+      locationId: updatedAdjustment.custom_fields?.locationId || null,
+      locationCode: location?.data?.code || null,
+      locationName: location?.data?.name || null,
       status: updatedAdjustment.status,
       reason: updatedAdjustment.reason,
       notes: updatedAdjustment.notes,

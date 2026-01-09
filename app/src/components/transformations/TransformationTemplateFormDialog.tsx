@@ -237,7 +237,11 @@ export function TransformationTemplateFormDialog({
       setOutputs([]);
     } catch (error: any) {
 
-      const errorMessage = error.message || "Failed to save template. Please try again.";
+      const errorMessage =
+        error?.cause?.error ||
+        error?.cause?.details?.[0]?.message ||
+        error.message ||
+        "Failed to save template. Please try again.";
       form.setError("root", {
         type: "manual",
         message: errorMessage,

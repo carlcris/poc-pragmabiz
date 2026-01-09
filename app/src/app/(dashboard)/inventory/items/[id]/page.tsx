@@ -9,9 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
+import { LocationsTab } from "@/components/items/locations/LocationsTab";
 
 export default function ItemDetailPage() {
   const params = useParams();
@@ -164,7 +164,7 @@ export default function ItemDetailPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general" className="gap-2">
             <Package className="h-4 w-4" />
             General
@@ -176,6 +176,10 @@ export default function ItemDetailPage() {
           <TabsTrigger value="prices" className="gap-2">
             <DollarSign className="h-4 w-4" />
             Prices
+          </TabsTrigger>
+          <TabsTrigger value="locations" className="gap-2">
+            <Layers className="h-4 w-4" />
+            Locations
           </TabsTrigger>
         </TabsList>
 
@@ -272,6 +276,11 @@ export default function ItemDetailPage() {
         {/* Prices Tab */}
         <TabsContent value="prices">
           <PricesTab itemId={itemId} />
+        </TabsContent>
+
+        {/* Locations Tab */}
+        <TabsContent value="locations">
+          <LocationsTab itemId={itemId} />
         </TabsContent>
       </Tabs>
     </div>

@@ -20,6 +20,10 @@ export const itemFormSchema = z.object({
     .string()
     .min(1, "Item name is required")
     .max(200, "Item name must be less than 200 characters"),
+  chineseName: z
+    .string()
+    .max(200, "Chinese name must be less than 200 characters")
+    .optional(),
   description: z
     .string()
     .max(1000, "Description must be less than 1000 characters")

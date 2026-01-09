@@ -4,6 +4,7 @@ import { requirePermission, requireLookupDataAccess } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import type { Warehouse, CreateWarehouseRequest } from '@/types/warehouse'
 import type { Database } from '@/types/database.types'
+import { ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 
 type DbWarehouse = Database['public']['Tables']['warehouses']['Row']
 
@@ -210,6 +211,13 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: newWarehouse.company_id,
+      warehouseId: newWarehouse.id,
+      userId: user.id,
+    })
 
     // Transform and return
     const warehouse = transformDbWarehouse(newWarehouse)

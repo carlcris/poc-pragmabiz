@@ -53,6 +53,16 @@ export async function GET(
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
+    const locationId = invoice.custom_fields?.locationId
+    const [location, warehouse] = await Promise.all([
+      locationId
+        ? supabase.from('warehouse_locations').select('code, name').eq('id', locationId).single()
+        : Promise.resolve(null),
+      invoice.warehouse_id
+        ? supabase.from('warehouses').select('warehouse_name').eq('id', invoice.warehouse_id).single()
+        : Promise.resolve(null),
+    ])
+
     // Fetch line items
     const { data: items } = await supabase
       .from('sales_invoice_items')
@@ -81,6 +91,10 @@ export async function GET(
       customerName: invoice.customers?.customer_name || '',
       customerEmail: invoice.customers?.email || '',
       warehouseId: invoice.warehouse_id || null,
+      warehouseName: warehouse?.data?.warehouse_name || '',
+      locationId: invoice.custom_fields?.locationId || null,
+      locationCode: location?.data?.code || null,
+      locationName: location?.data?.name || null,
       salesOrderId: invoice.sales_order_id,
       salesOrderNumber: invoice.sales_orders?.order_code,
       invoiceDate: invoice.invoice_date,
@@ -259,11 +273,19 @@ export async function PUT(
     }
 
     // Update invoice
+    const nextCustomFields = 'locationId' in body
+      ? {
+          ...(existingInvoice.custom_fields || {}),
+          locationId: body.locationId || null,
+        }
+      : existingInvoice.custom_fields
+
     const { error: updateError } = await supabase
       .from('sales_invoices')
       .update({
         customer_id: body.customerId ?? existingInvoice.customer_id,
         warehouse_id: body.warehouseId ?? existingInvoice.warehouse_id,
+        custom_fields: nextCustomFields,
         invoice_date: body.invoiceDate ?? existingInvoice.invoice_date,
         due_date: body.dueDate ?? existingInvoice.due_date,
         subtotal,

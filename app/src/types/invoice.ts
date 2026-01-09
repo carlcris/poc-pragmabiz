@@ -39,6 +39,9 @@ export interface Invoice {
   salesOrderNumber?: string;
   warehouseId?: string; // Warehouse for stock validation
   warehouseName?: string;
+  locationId?: string;
+  locationCode?: string;
+  locationName?: string;
   invoiceDate: string;
   dueDate: string;
   status: InvoiceStatus;
@@ -73,6 +76,7 @@ export interface CreateInvoiceRequest {
   companyId: string;
   customerId: string;
   warehouseId?: string;
+  locationId?: string;
   salesOrderId?: string;
   invoiceDate: string;
   dueDate: string;

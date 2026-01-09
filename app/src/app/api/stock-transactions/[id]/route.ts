@@ -65,6 +65,8 @@ export async function GET(
         ),
         warehouse:warehouses!stock_transactions_warehouse_id_fkey(id, warehouse_code, warehouse_name),
         toWarehouse:warehouses!stock_transactions_to_warehouse_id_fkey(id, warehouse_code, warehouse_name),
+        fromLocation:warehouse_locations!stock_transactions_from_location_id_fkey(id, code, name),
+        toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, name),
         creator:users!stock_transactions_created_by_fkey(id, first_name, last_name)
       `
       )
@@ -86,9 +88,15 @@ export async function GET(
       warehouseId: transaction.warehouse_id,
       warehouseCode: transaction.warehouse?.warehouse_code,
       warehouseName: transaction.warehouse?.warehouse_name,
+      fromLocationId: transaction.from_location_id,
+      fromLocationCode: transaction.fromLocation?.code,
+      fromLocationName: transaction.fromLocation?.name,
       toWarehouseId: transaction.to_warehouse_id,
       toWarehouseCode: transaction.toWarehouse?.warehouse_code,
       toWarehouseName: transaction.toWarehouse?.warehouse_name,
+      toLocationId: transaction.to_location_id,
+      toLocationCode: transaction.toLocation?.code,
+      toLocationName: transaction.toLocation?.name,
       referenceType: transaction.reference_type,
       referenceId: transaction.reference_id,
       status: transaction.status,

@@ -13,6 +13,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTransactionItems } from "./normalizationService";
+import { consumeItemLocationsFIFO, ensureWarehouseDefaultLocation } from "./locationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 export type POSStockTransactionData = {
@@ -77,6 +78,13 @@ export async function createPOSStockTransaction(
       }
     }
 
+    const defaultLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId,
+      warehouseId: data.warehouseId,
+      userId,
+    });
+
     // STEP 3: Create stock transaction header
     const stockTransactionCode = `ST-POS-${data.transactionCode}`;
 
@@ -89,6 +97,7 @@ export async function createPOSStockTransaction(
         transaction_type: "out",
         transaction_date: data.transactionDate.split("T")[0],
         warehouse_id: data.warehouseId,
+        from_location_id: defaultLocationId,
         reference_type: "pos_transaction",
         reference_id: data.transactionId,
         reference_code: data.transactionCode,
@@ -116,7 +125,7 @@ export async function createPOSStockTransaction(
       // Get current stock from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
-        .select("current_stock")
+        .select("current_stock, default_location_id")
         .eq("item_id", item.itemId)
         .eq("warehouse_id", data.warehouseId)
         .single();
@@ -170,6 +179,15 @@ export async function createPOSStockTransaction(
           error: "Failed to create stock transaction items",
         };
       }
+
+      await consumeItemLocationsFIFO({
+        supabase,
+        companyId,
+        itemId: item.itemId,
+        warehouseId: data.warehouseId,
+        quantity: item.normalizedQty,
+        userId,
+      });
 
       // STEP 5: Update item_warehouse with normalized quantity (base units)
       const { error: warehouseUpdateError } = await supabase
@@ -244,11 +262,15 @@ export async function reversePOSStockTransaction(
       };
     }
 
-    // Get transaction date from first item
-    const transactionDate = (posTransactionItems[0].pos_transactions as { transaction_date: string })?.transaction_date || new Date().toISOString();
-
     // Generate reversal stock transaction code
     const reversalCode = `ST-POS-VOID-${transactionCode}`;
+
+    const defaultLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId,
+      warehouseId,
+      userId,
+    });
 
     // Create reversal stock transaction header
     const { data: reversalTransaction, error: transactionError } = await supabase
@@ -260,6 +282,7 @@ export async function reversePOSStockTransaction(
         transaction_type: "in", // Opposite of 'out'
         transaction_date: new Date().toISOString().split("T")[0], // Current date for reversal
         warehouse_id: warehouseId,
+        to_location_id: defaultLocationId,
         reference_type: "pos_transaction",
         reference_id: transactionId,
         reference_code: transactionCode,
@@ -303,7 +326,7 @@ export async function reversePOSStockTransaction(
     for (const item of posTransactionItems) {
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
-        .select("current_stock")
+        .select("current_stock, default_location_id")
         .eq("company_id", companyId)
         .eq("item_id", item.item_id)
         .eq("warehouse_id", warehouseId)
@@ -374,6 +397,16 @@ export async function reversePOSStockTransaction(
         .is("deleted_at", null)
         .single();
 
+      await adjustItemLocation({
+        supabase,
+        companyId,
+        itemId: item.item_id,
+        warehouseId,
+        locationId: defaultLocationId,
+        userId,
+        qtyOnHandDelta: item.quantity,
+      });
+
       if (existingItemWarehouse) {
         const { error: updateError } = await supabase
           .from("item_warehouse")
@@ -394,8 +427,7 @@ export async function reversePOSStockTransaction(
     return {
       success: true,
     };
-  } catch (error) {
-
+  } catch {
     return {
       success: false,
       error: "Internal error reversing stock transaction",

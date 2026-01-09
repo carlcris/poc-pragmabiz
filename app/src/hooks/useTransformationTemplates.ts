@@ -44,7 +44,12 @@ export function useCreateTransformationTemplate() {
       toast.success('Transformation template created successfully');
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to create transformation template');
+      const message =
+        error?.cause?.error ||
+        error?.cause?.details?.[0]?.message ||
+        error.message ||
+        'Failed to create transformation template';
+      toast.error(message);
     },
   });
 }

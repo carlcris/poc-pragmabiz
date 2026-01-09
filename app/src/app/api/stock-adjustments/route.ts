@@ -67,6 +67,7 @@ export async function GET(request: NextRequest) {
         approved_at,
         posted_by,
         posted_at,
+        custom_fields,
         created_by,
         updated_by,
         created_at,
@@ -110,11 +111,13 @@ export async function GET(request: NextRequest) {
 
     // Collect unique IDs for related data
     const warehouseIds = new Set<string>()
+    const locationIds = new Set<string>()
     const userIds = new Set<string>()
     const stockTransactionIds = new Set<string>()
 
     adjustments.forEach((adj: any) => {
       if (adj.warehouse_id) warehouseIds.add(adj.warehouse_id)
+      if (adj.custom_fields?.locationId) locationIds.add(adj.custom_fields.locationId)
       if (adj.created_by) userIds.add(adj.created_by)
       if (adj.updated_by) userIds.add(adj.updated_by)
       if (adj.approved_by) userIds.add(adj.approved_by)
@@ -123,9 +126,12 @@ export async function GET(request: NextRequest) {
     })
 
     // Fetch related data in parallel
-    const [warehousesData, usersData, stockTransactionsData] = await Promise.all([
+    const [warehousesData, locationsData, usersData, stockTransactionsData] = await Promise.all([
       warehouseIds.size > 0
         ? supabase.from('warehouses').select('id, warehouse_code, warehouse_name').in('id', Array.from(warehouseIds))
+        : Promise.resolve({ data: [] }),
+      locationIds.size > 0
+        ? supabase.from('warehouse_locations').select('id, code, name').in('id', Array.from(locationIds))
         : Promise.resolve({ data: [] }),
       userIds.size > 0
         ? supabase.from('users').select('id, first_name, last_name').in('id', Array.from(userIds))
@@ -137,6 +143,7 @@ export async function GET(request: NextRequest) {
 
     // Create lookup maps
     const warehousesMap = new Map(warehousesData.data?.map((w: any) => [w.id, w]) || [])
+    const locationsMap = new Map(locationsData.data?.map((l: any) => [l.id, l]) || [])
     const usersMap = new Map(usersData.data?.map((u: any) => [u.id, u]) || [])
     const stockTransactionsMap = new Map(stockTransactionsData.data?.map((st: any) => [st.id, st]) || [])
 
@@ -168,6 +175,8 @@ export async function GET(request: NextRequest) {
       const postedBy = usersMap.get(adj.posted_by)
       const stockTransaction = stockTransactionsMap.get(adj.stock_transaction_id)
       const items = itemsByAdjustment.get(adj.id) || []
+      const locationId = adj.custom_fields?.locationId || null
+      const location = locationId ? locationsMap.get(locationId) : null
 
       return {
         id: adj.id,
@@ -176,6 +185,9 @@ export async function GET(request: NextRequest) {
         adjustmentType: adj.adjustment_type,
         adjustmentDate: adj.adjustment_date,
         warehouseId: adj.warehouse_id,
+        locationId,
+        locationCode: location?.code || null,
+        locationName: location?.name || null,
         warehouseName: warehouse?.warehouse_name || null,
         status: adj.status,
         reason: adj.reason,
@@ -327,6 +339,7 @@ export async function POST(request: NextRequest) {
         reason: body.reason,
         notes: body.notes || null,
         total_value: totalValue,
+        custom_fields: body.locationId ? { locationId: body.locationId } : null,
         created_by: user.id,
         updated_by: user.id,
       })

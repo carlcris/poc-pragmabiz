@@ -5,6 +5,7 @@ export interface Item {
   companyId: string;
   code: string;
   name: string;
+  chineseName?: string;
   description: string;
   itemType: ItemType;
   uom: string;
@@ -24,6 +25,7 @@ export interface CreateItemRequest {
   companyId: string;
   code: string;
   name: string;
+  chineseName?: string;
   description: string;
   itemType: ItemType;
   uom: string;
@@ -38,6 +40,7 @@ export interface CreateItemRequest {
 
 export interface UpdateItemRequest {
   name?: string;
+  chineseName?: string;
   description?: string;
   itemType?: ItemType;
   uom?: string;

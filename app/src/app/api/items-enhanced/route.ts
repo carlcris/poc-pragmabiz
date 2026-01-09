@@ -7,6 +7,7 @@ export interface ItemWithStock {
   id: string
   code: string
   name: string
+  chineseName?: string
   category: string
   categoryId: string
   supplier: string
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
     // Apply filters
     if (search) {
       itemsQuery = itemsQuery.or(
-        `item_code.ilike.%${search}%,item_name.ilike.%${search}%`
+        `item_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%`
       )
     }
 
@@ -101,6 +102,9 @@ export async function GET(request: NextRequest) {
     if (itemType) {
       itemsQuery = itemsQuery.eq('item_type', itemType)
     }
+
+    // Order by item_name ascending
+    itemsQuery = itemsQuery.order('item_name', { ascending: true })
 
     const { data: items, error: itemsError } = await itemsQuery
 
@@ -270,6 +274,7 @@ export async function GET(request: NextRequest) {
         id: item.id,
         code: item.item_code,
         name: item.item_name,
+        chineseName: item.item_name_cn || undefined,
         category: item.item_categories?.name || '',
         categoryId,
         supplier: supplierId ? (suppliersMap.get(supplierId) || '') : '',

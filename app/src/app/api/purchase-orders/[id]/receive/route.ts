@@ -4,6 +4,7 @@ import { postAPBill } from '@/services/accounting/apPosting'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // POST /api/purchase-orders/[id]/receive
@@ -185,6 +186,15 @@ export async function POST(
     const milliseconds = now.getTime().toString().slice(-4)
     const stockTxCode = `ST-${dateStr}${milliseconds}`
 
+    const defaultLocationId = body.locationId
+      ? body.locationId
+      : await ensureWarehouseDefaultLocation({
+          supabase,
+          companyId: userData.company_id,
+          warehouseId: body.warehouseId,
+          userId: user.id,
+        })
+
     // Create stock transaction header
     const { data: stockTransaction, error: stockTxError } = await supabase
       .from('stock_transactions')
@@ -195,6 +205,7 @@ export async function POST(
         transaction_type: 'in',
         transaction_date: body.receiptDate || new Date().toISOString().split('T')[0],
         warehouse_id: body.warehouseId,
+        to_location_id: defaultLocationId,
         reference_type: 'purchase_receipt',
         reference_id: receipt.id,
         status: 'posted',
@@ -226,7 +237,7 @@ export async function POST(
       // Get current stock balance from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from('item_warehouse')
-        .select('current_stock')
+        .select('current_stock, default_location_id')
         .eq('item_id', item.itemId)
         .eq('warehouse_id', body.warehouseId)
         .is('deleted_at', null)
@@ -276,6 +287,16 @@ export async function POST(
         continue
       }
 
+      const resolvedLocationId = await adjustItemLocation({
+        supabase,
+        companyId: userData.company_id,
+        itemId: item.itemId,
+        warehouseId: body.warehouseId,
+        locationId: body.locationId || warehouseStock?.default_location_id || null,
+        userId: user.id,
+        qtyOnHandDelta: item.normalizedQty,
+      })
+
       // STEP 4: Update item_warehouse with normalized quantity (base units)
       if (warehouseStock) {
         // Update existing record
@@ -295,6 +316,7 @@ export async function POST(
           item_id: item.itemId,
           warehouse_id: body.warehouseId,
           current_stock: newBalance,
+          default_location_id: resolvedLocationId,
           created_by: user.id,
           updated_by: user.id,
         })

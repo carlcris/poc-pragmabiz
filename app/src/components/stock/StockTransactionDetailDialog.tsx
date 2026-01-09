@@ -61,9 +61,15 @@ interface TransactionDetail {
   warehouseId: string;
   warehouseCode: string;
   warehouseName: string;
+  fromLocationId?: string | null;
+  fromLocationCode?: string | null;
+  fromLocationName?: string | null;
   toWarehouseId: string | null;
   toWarehouseCode: string | null;
   toWarehouseName: string | null;
+  toLocationId?: string | null;
+  toLocationCode?: string | null;
+  toLocationName?: string | null;
   referenceType: string | null;
   referenceId: string | null;
   status: string;
@@ -287,6 +293,12 @@ export function StockTransactionDetailDialog({
                     <p className="font-semibold text-sm">
                       {transaction.warehouseCode} - {transaction.warehouseName}
                     </p>
+                    {(transaction.fromLocationCode || transaction.fromLocationName) && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Location: {transaction.fromLocationCode}
+                        {transaction.fromLocationName ? ` - ${transaction.fromLocationName}` : ""}
+                      </p>
+                    )}
                   </div>
                   {transaction.transactionType === "transfer" && transaction.toWarehouseCode && (
                     <>
@@ -296,6 +308,12 @@ export function StockTransactionDetailDialog({
                         <p className="font-semibold text-sm">
                           {transaction.toWarehouseCode} - {transaction.toWarehouseName}
                         </p>
+                        {(transaction.toLocationCode || transaction.toLocationName) && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Location: {transaction.toLocationCode}
+                            {transaction.toLocationName ? ` - ${transaction.toLocationName}` : ""}
+                          </p>
+                        )}
                       </div>
                     </>
                   )}

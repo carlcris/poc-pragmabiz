@@ -82,5 +82,56 @@ BEGIN
     ON CONFLICT (role_id, permission_id) DO NOTHING;
   END IF;
 
+  -- Warehouse Location Management
+  INSERT INTO permissions (resource, can_view, can_create, can_edit, can_delete, description, created_at)
+  VALUES (
+    'manage_locations',
+    true, true, true, true,
+    'Create and maintain warehouse locations',
+    NOW()
+  )
+  ON CONFLICT (resource) DO NOTHING
+  RETURNING id INTO v_perm_id;
+
+  IF v_perm_id IS NOT NULL AND v_super_admin_role_id IS NOT NULL THEN
+    INSERT INTO role_permissions (role_id, permission_id, created_at)
+    VALUES (v_super_admin_role_id, v_perm_id, NOW())
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
+  END IF;
+
+  -- Location Stock View
+  INSERT INTO permissions (resource, can_view, can_create, can_edit, can_delete, description, created_at)
+  VALUES (
+    'view_location_stock',
+    true, false, false, false,
+    'View stock by warehouse location',
+    NOW()
+  )
+  ON CONFLICT (resource) DO NOTHING
+  RETURNING id INTO v_perm_id;
+
+  IF v_perm_id IS NOT NULL AND v_super_admin_role_id IS NOT NULL THEN
+    INSERT INTO role_permissions (role_id, permission_id, created_at)
+    VALUES (v_super_admin_role_id, v_perm_id, NOW())
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
+  END IF;
+
+  -- Location Transfers
+  INSERT INTO permissions (resource, can_view, can_create, can_edit, can_delete, description, created_at)
+  VALUES (
+    'transfer_between_locations',
+    true, true, true, false,
+    'Transfer stock between locations',
+    NOW()
+  )
+  ON CONFLICT (resource) DO NOTHING
+  RETURNING id INTO v_perm_id;
+
+  IF v_perm_id IS NOT NULL AND v_super_admin_role_id IS NOT NULL THEN
+    INSERT INTO role_permissions (role_id, permission_id, created_at)
+    VALUES (v_super_admin_role_id, v_perm_id, NOW())
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
+  END IF;
+
   RAISE NOTICE 'Missing resources added and assigned to Super Admin role';
 END $$;

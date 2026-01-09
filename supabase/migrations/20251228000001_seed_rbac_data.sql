@@ -21,6 +21,9 @@ VALUES
   ('items', 'Manage inventory items and products', true, true, true, true),
   ('item_categories', 'Manage item categories', true, true, true, true),
   ('warehouses', 'Manage warehouse locations', true, true, true, true),
+  ('manage_locations', 'Create and maintain warehouse locations', true, true, true, true),
+  ('view_location_stock', 'View stock by warehouse location', true, false, false, false),
+  ('transfer_between_locations', 'Transfer stock between locations', true, true, true, false),
   ('stock_adjustments', 'Adjust inventory quantities', true, true, true, true),
   ('stock_transfers', 'Transfer stock between warehouses', true, true, true, true),
   ('stock_transformations', 'Transform items into other items', true, true, true, true),
@@ -141,7 +144,7 @@ BEGIN
   FOR v_permission IN
     SELECT id, resource FROM permissions
     WHERE resource IN (
-      'items', 'customers', 'suppliers',
+      'items', 'customers', 'suppliers', 'view_location_stock',
       'sales_quotations', 'sales_orders', 'sales_invoices',
       'purchase_orders', 'purchase_receipts',
       'stock_adjustments', 'stock_transfers',

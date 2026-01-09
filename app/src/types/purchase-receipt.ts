@@ -102,6 +102,7 @@ export interface PurchaseReceiptItem {
 export interface CreatePurchaseReceiptRequest {
   purchaseOrderId: string;
   warehouseId: string;
+  locationId?: string;
   receiptDate: string;
   supplierInvoiceNumber?: string;
   supplierInvoiceDate?: string;

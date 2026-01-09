@@ -129,8 +129,11 @@ export async function GET(request: NextRequest) {
       limit,
     });
   } catch (error) {
-
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message =
+      error instanceof Error
+        ? error.message
+        : 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -174,6 +177,20 @@ export async function POST(request: NextRequest) {
     // Parse and validate request body
     const body = await request.json();
 
+    // Friendly guard: prevent same item in inputs and outputs
+    if (Array.isArray(body?.inputs) && Array.isArray(body?.outputs)) {
+      const inputIds = new Set(body.inputs.map((input: any) => input?.itemId).filter(Boolean));
+      const hasCircular = body.outputs.some((output: any) => inputIds.has(output?.itemId));
+      if (hasCircular) {
+        return NextResponse.json(
+          {
+            error: 'Input and output items must be different. Please choose a different output item.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const dataToValidate = {
       ...body,
       companyId: userData.company_id,
@@ -182,8 +199,12 @@ export async function POST(request: NextRequest) {
     const validationResult = createTransformationTemplateSchema.safeParse(dataToValidate);
 
     if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
       return NextResponse.json(
-        { error: 'Validation failed', details: validationResult.error.errors },
+        {
+          error: firstError?.message || 'Validation failed',
+          details: validationResult.error.errors,
+        },
         { status: 400 }
       );
     }

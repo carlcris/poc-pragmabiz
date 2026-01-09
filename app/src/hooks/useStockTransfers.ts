@@ -81,6 +81,8 @@ interface CreateStockTransferData {
   toWarehouseId: string;
   transferDate: string;
   notes?: string;
+  fromLocationId?: string;
+  toLocationId?: string;
   items: Array<{
     itemId: string;
     code: string;

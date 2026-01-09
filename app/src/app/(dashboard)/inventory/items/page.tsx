@@ -30,13 +30,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ItemFormDialog } from "@/components/items/ItemFormDialog";
-import { ItemDetailsDialog } from "@/components/items/ItemDetailsDialog";
+import type { ItemDialogMode } from "@/components/items/ItemFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
-import type { Item } from "@/types/item";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 
 function ItemsPageContent() {
@@ -44,9 +43,8 @@ function ItemsPageContent() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [itemDialogMode, setItemDialogMode] = useState<ItemDialogMode>("create");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
@@ -134,37 +132,20 @@ function ItemsPageContent() {
   };
 
   const handleCreateItem = () => {
-    setSelectedItem(null);
+    setSelectedItemId(null);
+    setItemDialogMode("create");
     setDialogOpen(true);
   };
 
   const handleViewItem = (itemId: string) => {
     setSelectedItemId(itemId);
-    setDetailsDialogOpen(true);
+    setItemDialogMode("view");
+    setDialogOpen(true);
   };
 
   const handleEditItem = (item: ItemWithStock | Item) => {
-    // Convert ItemWithStock to Item type if needed
-    const itemData: Item = 'onHand' in item ? {
-      id: item.id,
-      companyId: '', // Will be loaded from API when editing
-      code: item.code,
-      name: item.name,
-      description: '', // Will be loaded from API when editing
-      itemType: 'raw_material' as const, // Default to raw_material, will be fetched from API
-      uom: item.uom,
-      uomId: '', // Will be loaded from API when editing
-      category: item.category,
-      standardCost: item.standardCost,
-      listPrice: item.listPrice,
-      reorderLevel: item.reorderPoint || 0,
-      reorderQty: 0,
-      imageUrl: item.imageUrl,
-      isActive: item.isActive,
-      createdAt: '', // Will be loaded from API when editing
-      updatedAt: '', // Will be loaded from API when editing
-    } : item;
-    setSelectedItem(itemData);
+    setSelectedItemId(item.id);
+    setItemDialogMode("edit");
     setDialogOpen(true);
   };
 
@@ -200,9 +181,6 @@ function ItemsPageContent() {
       "On Hand",
       "Allocated",
       "Available",
-      "Reorder Point",
-      "On PO",
-      "On SO",
       "Status",
       "Std Cost",
       "List Price",
@@ -217,9 +195,6 @@ function ItemsPageContent() {
       item.onHand,
       item.allocated,
       item.available,
-      item.reorderPoint,
-      item.onPO,
-      item.onSO,
       item.status,
       item.standardCost,
       item.listPrice,
@@ -385,9 +360,6 @@ function ItemsPageContent() {
                   <TableHead className="text-right">On Hand</TableHead>
                   <TableHead className="text-right">Allocated</TableHead>
                   <TableHead className="text-right">Available</TableHead>
-                  <TableHead className="text-right">Reorder Point</TableHead>
-                  <TableHead className="text-right">On PO</TableHead>
-                  <TableHead className="text-right">On SO</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -444,9 +416,6 @@ function ItemsPageContent() {
                     <TableHead className="text-right">On Hand</TableHead>
                     <TableHead className="text-right">Allocated</TableHead>
                     <TableHead className="text-right">Available</TableHead>
-                    <TableHead className="text-right">Reorder Point</TableHead>
-                    <TableHead className="text-right">On PO</TableHead>
-                    <TableHead className="text-right">On SO</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -472,7 +441,12 @@ function ItemsPageContent() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
-                      <TableCell className="font-medium text-primary hover:underline">{item.name}</TableCell>
+                      <TableCell className="text-primary">
+                        <div className="font-medium hover:underline">{item.name}</div>
+                        {item.chineseName ? (
+                          <div className="text-xs text-muted-foreground">{item.chineseName}</div>
+                        ) : null}
+                      </TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell className="text-muted-foreground">{item.uom || '-'}</TableCell>
                       <TableCell className="text-right">{item.onHand.toFixed(2)}</TableCell>
@@ -483,8 +457,6 @@ function ItemsPageContent() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">{item.reorderPoint.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-blue-600">{item.onPO.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-purple-600">{item.onSO.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -534,17 +506,9 @@ function ItemsPageContent() {
       <ItemFormDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        item={selectedItem}
+        itemId={selectedItemId}
+        mode={itemDialogMode}
       />
-
-      {selectedItemId && (
-        <ItemDetailsDialog
-          open={detailsDialogOpen}
-          onOpenChange={setDetailsDialogOpen}
-          itemId={selectedItemId}
-          onEdit={handleEditItem}
-        />
-      )}
 
       <ConfirmDialog
         open={deleteDialogOpen}

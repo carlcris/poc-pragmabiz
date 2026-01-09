@@ -12,20 +12,48 @@ const uuidSchema = z.string().regex(
 // Template Input/Output Item Schemas
 // ============================================================================
 
+const numberSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string" && value.trim() !== "") {
+      return Number(value);
+    }
+    return value;
+  },
+  z.number().min(0.0001, "Quantity must be greater than 0")
+);
+
+const sequenceSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string" && value.trim() !== "") {
+      return Number(value);
+    }
+    return value;
+  },
+  z.number().int().min(1)
+);
+
 export const templateInputItemSchema = z.object({
   itemId: uuidSchema,
-  quantity: z.number().min(0.0001, "Quantity must be greater than 0"),
+  quantity: numberSchema,
   uomId: uuidSchema,
-  sequence: z.number().int().min(1).optional(),
+  sequence: sequenceSchema.optional(),
   notes: z.string().optional(),
 });
 
 export const templateOutputItemSchema = z.object({
   itemId: uuidSchema,
-  quantity: z.number().min(0.0001, "Quantity must be greater than 0"),
+  quantity: numberSchema,
   uomId: uuidSchema,
-  sequence: z.number().int().min(1).optional(),
-  isScrap: z.boolean().default(false),
+  sequence: sequenceSchema.optional(),
+  isScrap: z.preprocess(
+    (value) => {
+      if (typeof value === "string") {
+        return value.toLowerCase() === "true";
+      }
+      return value;
+    },
+    z.boolean().default(false)
+  ),
   notes: z.string().optional(),
 });
 
@@ -67,7 +95,7 @@ export const createTransformationTemplateSchema = z
     },
     {
       message:
-        "Circular transformation not allowed: an item cannot be both input and output",
+        "Input and output items must be different. Please choose a different output item.",
       path: ["inputs"],
     }
   )

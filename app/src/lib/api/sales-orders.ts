@@ -103,11 +103,15 @@ export const salesOrdersApi = {
     return response.json();
   },
 
-  async convertToInvoice(id: string, warehouseId: string): Promise<{ success: boolean; message: string; invoice: { id: string; invoiceNumber: string } }> {
+  async convertToInvoice(
+    id: string,
+    warehouseId: string,
+    locationId?: string
+  ): Promise<{ success: boolean; message: string; invoice: { id: string; invoiceNumber: string } }> {
     const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/convert-to-invoice`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ warehouseId }),
+      body: JSON.stringify({ warehouseId, locationId }),
     });
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: "Failed to convert to invoice" }));

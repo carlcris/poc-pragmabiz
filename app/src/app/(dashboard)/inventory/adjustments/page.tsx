@@ -69,9 +69,11 @@ import {
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import type { StockAdjustment, StockAdjustmentType, StockAdjustmentStatus } from "@/types/stock-adjustment";
+import type { WarehouseLocation } from "@/types/inventory-location";
 import { useAuthStore } from "@/stores/authStore";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
@@ -79,6 +81,7 @@ import {
   type StockAdjustmentLineItemFormValues
 } from "@/components/stock-adjustments/StockAdjustmentLineItemDialog";
 import { supabase } from "@/lib/supabase/client";
+import { apiClient } from "@/lib/api";
 
 const adjustmentFormSchema = z.object({
   adjustmentType: z.enum([
@@ -91,6 +94,7 @@ const adjustmentFormSchema = z.object({
   ]),
   adjustmentDate: z.string().min(1, "Adjustment date is required"),
   warehouseId: z.string().min(1, "Warehouse is required"),
+  locationId: z.string().optional(),
   reason: z.string().min(1, "Reason is required"),
   notes: z.string().optional(),
 });
@@ -170,6 +174,7 @@ export default function StockAdjustmentsPage() {
       adjustmentType: "physical_count",
       adjustmentDate: new Date().toISOString().split("T")[0],
       warehouseId: "",
+      locationId: "",
       reason: "",
       notes: "",
     },
@@ -193,6 +198,7 @@ export default function StockAdjustmentsPage() {
         adjustmentType: selectedAdjustment.adjustmentType,
         adjustmentDate: selectedAdjustment.adjustmentDate,
         warehouseId: selectedAdjustment.warehouseId,
+        locationId: selectedAdjustment.locationId || "",
         reason: selectedAdjustment.reason,
         notes: selectedAdjustment.notes || "",
       });
@@ -214,12 +220,32 @@ export default function StockAdjustmentsPage() {
         adjustmentType: "physical_count",
         adjustmentDate: new Date().toISOString().split("T")[0],
         warehouseId: "",
+        locationId: "",
         reason: "",
         notes: "",
       });
       setLineItems([]);
     }
   }, [dialogOpen, selectedAdjustment, form]);
+
+  const selectedWarehouseId = form.watch("warehouseId");
+
+  useEffect(() => {
+    if (!selectedWarehouseId) {
+      form.setValue("locationId", "");
+    }
+  }, [selectedWarehouseId, form]);
+
+  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedWarehouseId],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
+    enabled: !!selectedWarehouseId,
+  });
+
+  const locations = useMemo(
+    () => (locationsData?.data || []).filter((location) => location.isActive),
+    [locationsData]
+  );
 
   const getStatusBadge = (status: StockAdjustmentStatus) => {
     switch (status) {
@@ -339,9 +365,30 @@ export default function StockAdjustmentsPage() {
     }
   };
 
-  const handleFetchStockQty = async (itemId: string, warehouseId: string): Promise<number> => {
+  const handleFetchStockQty = async (
+    itemId: string,
+    warehouseId: string,
+    locationId?: string
+  ): Promise<number> => {
     try {
-      // Get current stock from item_warehouse table
+      if (locationId) {
+        const { data, error } = await supabase
+          .from('item_location')
+          .select('qty_on_hand')
+          .eq('item_id', itemId)
+          .eq('warehouse_id', warehouseId)
+          .eq('location_id', locationId)
+          .eq('company_id', companyId)
+          .maybeSingle();
+
+        if (error) {
+          return 0;
+        }
+
+        return data ? parseFloat(data.qty_on_hand) : 0;
+      }
+
+      // Fallback to warehouse-level stock when location is not selected
       const { data, error } = await supabase
         .from('item_warehouse')
         .select('current_stock')
@@ -487,6 +534,7 @@ export default function StockAdjustmentsPage() {
                       <TableHead>Type</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Warehouse</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead className="text-right">Total Value</TableHead>
                       <TableHead>Status</TableHead>
@@ -509,6 +557,11 @@ export default function StockAdjustmentsPage() {
                         </TableCell>
                         <TableCell>{formatDate(adjustment.adjustmentDate)}</TableCell>
                         <TableCell>{adjustment.warehouseName}</TableCell>
+                        <TableCell>
+                          {adjustment.locationCode && adjustment.locationName
+                            ? `${adjustment.locationCode} - ${adjustment.locationName}`
+                            : adjustment.locationCode || adjustment.locationName || "--"}
+                        </TableCell>
                         <TableCell>
                           <div className="max-w-[200px] truncate">
                             {adjustment.reason}
@@ -657,6 +710,39 @@ export default function StockAdjustmentsPage() {
                               {warehouses.map((warehouse) => (
                                 <SelectItem key={warehouse.id} value={warehouse.id}>
                                   {warehouse.code} - {warehouse.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="locationId"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Location</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!selectedWarehouseId}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue
+                                  placeholder={
+                                    selectedWarehouseId ? "Select location" : "Select warehouse first"
+                                  }
+                                />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {locations.map((location) => (
+                                <SelectItem key={location.id} value={location.id}>
+                                  {location.code} {location.name ? `- ${location.name}` : ""}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -939,6 +1025,7 @@ export default function StockAdjustmentsPage() {
         item={editingItem?.item || null}
         mode={editingItem ? "edit" : "add"}
         warehouseId={form.watch("warehouseId")}
+        locationId={form.watch("locationId")}
         onItemSelect={handleFetchStockQty}
       />
     </>

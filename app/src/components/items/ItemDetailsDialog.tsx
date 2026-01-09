@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, Image as ImageIcon } from "lucide-react";
+import { Edit, Image as ImageIcon, Layers } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tabs";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
+import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { useItem } from "@/hooks/useItems";
 import type { Item } from "@/types/item";
 
@@ -107,10 +108,14 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="packaging">Packaging</TabsTrigger>
             <TabsTrigger value="prices">Prices</TabsTrigger>
+            <TabsTrigger value="locations" className="flex items-center gap-2">
+              <Layers className="h-4 w-4" />
+              Locations
+            </TabsTrigger>
           </TabsList>
 
           {/* General Tab */}
@@ -132,6 +137,10 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
                       <div className="space-y-2">
                         <label className="text-sm text-muted-foreground">Item Name</label>
                         <p className="text-base font-semibold">{item.name}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm text-muted-foreground">Chinese Name</label>
+                        <p className="text-base">{item.chineseName || "-"}</p>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm text-muted-foreground">Category</label>
@@ -235,6 +244,11 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
           {/* Prices Tab */}
           <TabsContent value="prices" className="mt-4">
             <PricesTab itemId={itemId} />
+          </TabsContent>
+
+          {/* Locations Tab */}
+          <TabsContent value="locations" className="mt-4">
+            <LocationsTab itemId={itemId} />
           </TabsContent>
         </Tabs>
 

@@ -4,6 +4,21 @@
 
 ---
 
+## 📍 Inventory Locations (Phase 1 - Warehouse Locations + Item Location)
+
+- [x] ✅ Schema: `warehouse_locations`, `item_location`, default location on `item_warehouse`, stock transaction from/to location columns
+- [x] ✅ Seed/backfill: MAIN locations per warehouse + item_location seeded from existing stock
+- [x] ✅ Location management UI: `/inventory/warehouses/[id]/locations` (create, activate/deactivate)
+- [x] ✅ Item locations view: item detail Locations tab (`/inventory/items/[id]`)
+- [x] ✅ Location selection: stock adjustments, stock transfers, invoices, sales order → invoice conversion
+- [x] ✅ Stock transactions list/detail show from/to locations
+- [x] ✅ POS stock consumption uses FIFO across item locations (automatic, no selection)
+- [ ] ⬜ Guardrails: prevent deactivating locations with stock or warn on deactivate
+- [ ] ⬜ Consistency enforcement: add reconciliation or DB trigger to keep `item_location` totals aligned with `item_warehouse`
+- [ ] ⬜ Audit remaining flows: verify location behavior in mobile end-of-day adjustments and any exports/print views (if added)
+
+---
+
 ## 🚀 CURRENT IMPLEMENTATION: INVENTORY DOMAIN BACKEND (Self-Hosted Supabase)
 
 ### Phase 1: Backend Setup & Supabase Installation

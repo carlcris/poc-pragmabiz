@@ -2,6 +2,7 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 
 // POST /api/invoices/[id]/send
 export async function POST(
@@ -75,7 +76,7 @@ export async function POST(
       for (const item of invoice.items || []) {
         const { data: warehouseStock } = await supabase
         .from('item_warehouse')
-        .select('current_stock')
+        .select('current_stock, default_location_id')
         .eq('item_id', item.item_id)
         .eq('warehouse_id', invoice.warehouse_id)
         .single()
@@ -114,6 +115,14 @@ export async function POST(
       }
       const stockTxCode = `ST-${currentYear}-${String(nextStockTxNum).padStart(4, '0')}`
 
+      const defaultLocationId = await ensureWarehouseDefaultLocation({
+        supabase,
+        companyId: userData.company_id,
+        warehouseId: invoice.warehouse_id,
+        userId: user.id,
+      })
+      const selectedLocationId = invoice.custom_fields?.locationId || defaultLocationId
+
       // Create stock OUT transaction
       const { data: stockTransaction, error: stockTxError } = await supabase
       .from('stock_transactions')
@@ -123,6 +132,7 @@ export async function POST(
         transaction_type: 'out',
         transaction_date: invoice.invoice_date,
         warehouse_id: invoice.warehouse_id,
+        from_location_id: selectedLocationId,
         reference_type: 'sales_invoice',
         reference_id: invoice.id,
         status: 'posted',
@@ -203,6 +213,16 @@ export async function POST(
           posting_time: postingTime,
         })
         .eq('id', stockTxItem.id)
+
+        await adjustItemLocation({
+          supabase,
+          companyId: userData.company_id,
+          itemId: item.item_id,
+          warehouseId: invoice.warehouse_id,
+          locationId: selectedLocationId || warehouseStock?.default_location_id || null,
+          userId: user.id,
+          qtyOnHandDelta: -parseFloat(item.quantity),
+        })
 
         // Update item_warehouse current_stock
         await supabase

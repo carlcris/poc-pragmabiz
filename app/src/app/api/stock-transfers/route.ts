@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'view');
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -133,9 +133,9 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: message },
       { status: 500 }
     );
   }
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'create');
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -173,7 +173,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fromWarehouseId, toWarehouseId, transferDate, notes, items } = body;
+    const { fromWarehouseId, toWarehouseId, transferDate, notes, items, fromLocationId, toLocationId } = body;
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json(
+        { error: 'Business unit context required' },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
     if (!fromWarehouseId || !toWarehouseId || !transferDate || !items || items.length === 0) {
@@ -181,6 +188,35 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    if (!Array.isArray(items)) {
+      return NextResponse.json(
+        { error: 'Items must be an array' },
+        { status: 400 }
+      );
+    }
+
+    if (fromWarehouseId === toWarehouseId) {
+      return NextResponse.json(
+        { error: 'Use stock transactions to transfer within the same warehouse' },
+        { status: 400 }
+      );
+    }
+
+    for (const item of items) {
+      if (!item?.itemId || !item?.quantity || !item?.uomId) {
+        return NextResponse.json(
+          { error: 'Each item requires itemId, quantity, and uomId' },
+          { status: 400 }
+        );
+      }
+      if (Number(item.quantity) <= 0) {
+        return NextResponse.json(
+          { error: 'Item quantity must be greater than 0' },
+          { status: 400 }
+        );
+      }
     }
 
     // Generate transfer code
@@ -191,6 +227,7 @@ export async function POST(request: NextRequest) {
       .from('stock_transfers')
       .insert({
         company_id: userData.company_id,
+        business_unit_id: currentBusinessUnitId,
         transfer_code: transferCode,
         transfer_date: transferDate,
         from_warehouse_id: fromWarehouseId,
@@ -198,6 +235,7 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         notes: notes || null,
         total_items: items.length,
+        custom_fields: fromLocationId || toLocationId ? { fromLocationId, toLocationId } : null,
         requested_by: user.id,
         requested_at: new Date().toISOString(),
         created_by: user.id,
@@ -209,7 +247,7 @@ export async function POST(request: NextRequest) {
     if (transferError) {
 
       return NextResponse.json(
-        { error: 'Failed to create stock transfer' },
+        { error: transferError.message || 'Failed to create stock transfer' },
         { status: 500 }
       );
     }
@@ -240,7 +278,7 @@ export async function POST(request: NextRequest) {
       // Rollback: delete the transfer
       await supabase.from('stock_transfers').delete().eq('id', transfer.id);
       return NextResponse.json(
-        { error: 'Failed to create stock transfer items' },
+        { error: itemsError.message || 'Failed to create stock transfer items' },
         { status: 500 }
       );
     }
@@ -258,9 +296,9 @@ export async function POST(request: NextRequest) {
     );
 
   } catch (error) {
-
+    const message = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: message },
       { status: 500 }
     );
   }

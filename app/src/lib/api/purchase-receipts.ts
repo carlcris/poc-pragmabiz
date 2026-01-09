@@ -80,6 +80,7 @@ export const purchaseReceiptsApi = {
     purchaseOrderId: string,
     data: {
       warehouseId: string;
+      locationId?: string;
       receiptDate?: string;
       supplierInvoiceNumber?: string;
       supplierInvoiceDate?: string;

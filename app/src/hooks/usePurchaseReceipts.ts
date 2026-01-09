@@ -81,6 +81,7 @@ export function useReceiveGoodsFromPO() {
       purchaseOrderId: string;
       data: {
         warehouseId: string;
+        locationId?: string;
         receiptDate?: string;
         supplierInvoiceNumber?: string;
         supplierInvoiceDate?: string;

@@ -3,6 +3,7 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService';
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService';
 import type { StockTransactionItemInput } from '@/types/inventory-normalization';
 
 export async function POST(
@@ -137,6 +138,23 @@ export async function POST(
     const transactionCode = `ST-${currentYear}-${String(nextNum).padStart(4, '0')}`;
 
     // Create the stock transaction header
+    const defaultFromLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: userData.company_id,
+      warehouseId: transfer.from_warehouse_id,
+      userId: user.id,
+    });
+
+    const defaultToLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: userData.company_id,
+      warehouseId: transfer.to_warehouse_id,
+      userId: user.id,
+    });
+
+    const fromLocationId = transfer.custom_fields?.fromLocationId || defaultFromLocationId;
+    const toLocationId = transfer.custom_fields?.toLocationId || defaultToLocationId;
+
     const { data: stockTransaction, error: transactionError } = await supabase
       .from('stock_transactions')
       .insert({
@@ -146,6 +164,8 @@ export async function POST(
         transaction_date: new Date().toISOString().split('T')[0],
         warehouse_id: transfer.from_warehouse_id,
         to_warehouse_id: transfer.to_warehouse_id,
+        from_location_id: fromLocationId,
+        to_location_id: toLocationId,
         reference_type: 'Stock Transfer',
         reference_id: transferId,
         status: 'posted',
@@ -174,7 +194,7 @@ export async function POST(
       // OUT from source warehouse (reduce stock)
       const { data: sourceStock } = await supabase
         .from('item_warehouse')
-        .select('id, current_stock')
+        .select('id, current_stock, default_location_id')
         .eq('company_id', userData.company_id)
         .eq('item_id', item.itemId)
         .eq('warehouse_id', transfer.from_warehouse_id)
@@ -185,6 +205,16 @@ export async function POST(
         ? parseFloat(String(sourceStock.current_stock))
         : 0;
       const newSourceStock = Math.max(0, sourceCurrentStock - item.normalizedQty);
+
+      await adjustItemLocation({
+        supabase,
+        companyId: userData.company_id,
+        itemId: item.itemId,
+        warehouseId: transfer.from_warehouse_id,
+        locationId: fromLocationId || sourceStock?.default_location_id || null,
+        userId: user.id,
+        qtyOnHandDelta: -item.normalizedQty,
+      });
 
       if (sourceStock) {
         await supabase
@@ -200,7 +230,7 @@ export async function POST(
       // IN to destination warehouse (add stock)
       const { data: destStock } = await supabase
         .from('item_warehouse')
-        .select('id, current_stock')
+        .select('id, current_stock, default_location_id')
         .eq('company_id', userData.company_id)
         .eq('item_id', item.itemId)
         .eq('warehouse_id', transfer.to_warehouse_id)
@@ -229,10 +259,21 @@ export async function POST(
           item_id: item.itemId,
           warehouse_id: transfer.to_warehouse_id,
           current_stock: newDestStock,
+          default_location_id: toLocationId,
           created_by: user.id,
           updated_by: user.id,
         });
       }
+
+      await adjustItemLocation({
+        supabase,
+        companyId: userData.company_id,
+        itemId: item.itemId,
+        warehouseId: transfer.to_warehouse_id,
+        locationId: toLocationId || destStock?.default_location_id || null,
+        userId: user.id,
+        qtyOnHandDelta: item.normalizedQty,
+      });
 
       // STEP 4: Create stock transaction item with full normalization metadata
       await supabase

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { postAPBill } from '@/services/accounting/apPosting'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
+import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // GET /api/purchase-receipts/[id]
 export async function GET(
@@ -14,7 +17,7 @@ export async function GET(
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'view')
 
     const { id } = await params
-    const { supabase } = await createServerClientWithBU()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -323,6 +326,172 @@ export async function PUT(
                 updated_at: new Date().toISOString(),
               })
               .eq('id', existingReceipt.purchase_order_id)
+          }
+        }
+      }
+    }
+
+    // Update inventory and create stock transaction when receipt is posted
+    if (body.status === 'received' && existingReceipt.status !== 'received') {
+      const { data: receiptData } = await supabase
+        .from('purchase_receipts')
+        .select(
+          `
+          id,
+          receipt_code,
+          warehouse_id,
+          receipt_date,
+          purchase_receipt_items(
+            item_id,
+            quantity_received,
+            packaging_id,
+            uom_id,
+            rate
+          )
+        `
+        )
+        .eq('id', id)
+        .single()
+
+      if (receiptData?.warehouse_id) {
+        const items = receiptData.purchase_receipt_items as Array<{
+          item_id: string
+          quantity_received: string
+          packaging_id?: string | null
+          uom_id?: string | null
+          rate: string
+        }>
+
+        const itemInputs: StockTransactionItemInput[] = items.map((item) => ({
+          itemId: item.item_id,
+          packagingId: item.packaging_id || null,
+          inputQty: parseFloat(item.quantity_received || '0'),
+          unitCost: parseFloat(item.rate || '0'),
+        }))
+
+        const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
+
+        const now = new Date()
+        const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
+        const milliseconds = now.getTime().toString().slice(-4)
+        const stockTxCode = `ST-${dateStr}${milliseconds}`
+
+        const defaultLocationId = await ensureWarehouseDefaultLocation({
+          supabase,
+          companyId: userData.company_id,
+          warehouseId: receiptData.warehouse_id,
+          userId: user.id,
+        })
+
+        const { data: stockTransaction, error: stockTxError } = await supabase
+          .from('stock_transactions')
+          .insert({
+            company_id: userData.company_id,
+            business_unit_id: currentBusinessUnitId || null,
+            transaction_code: stockTxCode,
+            transaction_type: 'in',
+            transaction_date: receiptData.receipt_date,
+            warehouse_id: receiptData.warehouse_id,
+            to_location_id: defaultLocationId,
+            reference_type: 'purchase_receipt',
+            reference_id: receiptData.id,
+            status: 'posted',
+            notes: `Goods received - ${receiptData.receipt_code}`,
+            created_by: user.id,
+            updated_by: user.id,
+          })
+          .select()
+          .single()
+
+        if (stockTxError) {
+          return NextResponse.json(
+            { error: stockTxError.message || 'Failed to create stock transaction' },
+            { status: 500 }
+          )
+        }
+
+        const postingDate = receiptData.receipt_date
+        const postingTime = now.toTimeString().split(' ')[0]
+
+        for (let i = 0; i < normalizedItems.length; i++) {
+          const item = normalizedItems[i]
+
+          const { data: warehouseStock } = await supabase
+            .from('item_warehouse')
+            .select('current_stock, default_location_id')
+            .eq('item_id', item.itemId)
+            .eq('warehouse_id', receiptData.warehouse_id)
+            .is('deleted_at', null)
+            .single()
+
+          const currentBalance = warehouseStock
+            ? parseFloat(String(warehouseStock.current_stock))
+            : 0
+          const newBalance = currentBalance + item.normalizedQty
+
+          const { error: stockTxItemError } = await supabase
+            .from('stock_transaction_items')
+            .insert({
+              company_id: userData.company_id,
+              transaction_id: stockTransaction.id,
+              item_id: item.itemId,
+              input_qty: item.inputQty,
+              input_packaging_id: item.inputPackagingId,
+              conversion_factor: item.conversionFactor,
+              normalized_qty: item.normalizedQty,
+              base_package_id: item.basePackageId,
+              quantity: item.normalizedQty,
+              uom_id: item.uomId,
+              unit_cost: item.unitCost,
+              total_cost: item.totalCost,
+              qty_before: currentBalance,
+              qty_after: newBalance,
+              valuation_rate: item.unitCost,
+              stock_value_before: currentBalance * item.unitCost,
+              stock_value_after: newBalance * item.unitCost,
+              posting_date: postingDate,
+              posting_time: postingTime,
+              notes: `Receipt ${receiptData.receipt_code}`,
+              created_by: user.id,
+              updated_by: user.id,
+            })
+
+          if (stockTxItemError) {
+            continue
+          }
+
+          const resolvedLocationId = await adjustItemLocation({
+            supabase,
+            companyId: userData.company_id,
+            itemId: item.itemId,
+            warehouseId: receiptData.warehouse_id,
+            locationId: defaultLocationId || warehouseStock?.default_location_id || null,
+            userId: user.id,
+            qtyOnHandDelta: item.normalizedQty,
+          })
+
+          if (warehouseStock) {
+            await supabase
+              .from('item_warehouse')
+              .update({
+                current_stock: newBalance,
+                updated_by: user.id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('item_id', item.itemId)
+              .eq('warehouse_id', receiptData.warehouse_id)
+          } else {
+            await supabase
+              .from('item_warehouse')
+              .insert({
+                company_id: userData.company_id,
+                item_id: item.itemId,
+                warehouse_id: receiptData.warehouse_id,
+                current_stock: newBalance,
+                default_location_id: resolvedLocationId,
+                created_by: user.id,
+                updated_by: user.id,
+              })
           }
         }
       }

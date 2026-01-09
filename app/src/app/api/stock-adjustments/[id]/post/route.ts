@@ -2,6 +2,7 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
 export async function POST(
@@ -106,6 +107,17 @@ export async function POST(
     const milliseconds = now.getTime().toString().slice(-4)
     const stockTxCode = `ST-${dateStr}${milliseconds}`
 
+    const defaultLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: userData.company_id,
+      warehouseId: adjustment.warehouse_id,
+      userId: user.id,
+    })
+
+    const selectedLocationId = adjustment.custom_fields?.locationId || defaultLocationId
+    const fromLocationId = transactionType === 'out' ? selectedLocationId : null
+    const toLocationId = transactionType === 'in' ? selectedLocationId : null
+
     // Create stock transaction
     const { data: stockTransaction, error: stockTxError } = await supabase
       .from('stock_transactions')
@@ -116,6 +128,8 @@ export async function POST(
         transaction_type: transactionType,
         transaction_date: adjustment.adjustment_date,
         warehouse_id: adjustment.warehouse_id,
+        from_location_id: fromLocationId,
+        to_location_id: toLocationId,
         reference_type: 'stock_adjustment',
         reference_id: adjustment.id,
         status: 'posted',
@@ -147,7 +161,7 @@ export async function POST(
       // Get current stock from item_warehouse (source of truth)
       const { data: existingStock } = await supabase
         .from('item_warehouse')
-        .select('id, current_stock')
+        .select('id, current_stock, default_location_id')
         .eq('company_id', userData.company_id)
         .eq('item_id', item.item_id)
         .eq('warehouse_id', adjustment.warehouse_id)
@@ -202,6 +216,16 @@ export async function POST(
         )
       }
 
+      const resolvedLocationId = await adjustItemLocation({
+        supabase,
+        companyId: userData.company_id,
+        itemId: item.item_id,
+        warehouseId: adjustment.warehouse_id,
+        locationId: selectedLocationId || existingStock?.default_location_id || null,
+        userId: user.id,
+        qtyOnHandDelta: normalizedDifference,
+      })
+
       // STEP 4: Update item_warehouse with normalized difference (base units)
       if (existingStock) {
         // Update existing stock record
@@ -220,6 +244,7 @@ export async function POST(
           item_id: item.item_id,
           warehouse_id: adjustment.warehouse_id,
           current_stock: Math.max(0, newBalance),
+          default_location_id: resolvedLocationId,
           created_by: user.id,
           updated_by: user.id,
         })

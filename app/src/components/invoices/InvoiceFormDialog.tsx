@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
 import { useCreateInvoice, useUpdateInvoice } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useWarehouses } from "@/hooks/useWarehouses";
@@ -45,11 +47,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Invoice } from "@/types/invoice";
+import type { WarehouseLocation } from "@/types/inventory-location";
 import { InvoiceLineItemDialog, type LineItemFormValues } from "./InvoiceLineItemDialog";
 
 const invoiceFormSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
   warehouseId: z.string().optional(),
+  locationId: z.string().optional(),
   invoiceDate: z.string().min(1, "Invoice date is required"),
   dueDate: z.string().min(1, "Valid until date is required"),
   terms: z.string().default(""),
@@ -92,6 +96,7 @@ export function InvoiceFormDialog({
   const defaultValues: InvoiceFormValues = {
     customerId: "",
     warehouseId: "",
+    locationId: "",
     invoiceDate: new Date().toISOString().split("T")[0],
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
       .toISOString()
@@ -105,6 +110,19 @@ export function InvoiceFormDialog({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues,
   });
+
+  const selectedWarehouseId = form.watch("warehouseId");
+
+  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedWarehouseId],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
+    enabled: !!selectedWarehouseId,
+  });
+
+  const locations = useMemo(
+    () => (locationsData?.data || []).filter((location) => location.isActive),
+    [locationsData]
+  );
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -145,6 +163,7 @@ export function InvoiceFormDialog({
         companyId: invoice.companyId,
         customerId: invoice.customerId,
         warehouseId: invoice.warehouseId || "",
+        locationId: invoice.locationId || "",
         invoiceDate: invoice.invoiceDate.split("T")[0],
         dueDate: invoice.dueDate.split("T")[0],
         terms: invoice.paymentTerms || "",
@@ -173,6 +192,12 @@ export function InvoiceFormDialog({
       setLineItems([]);
     }
   }, [open, invoice, form]);
+
+  useEffect(() => {
+    if (!selectedWarehouseId) {
+      form.setValue("locationId", "");
+    }
+  }, [selectedWarehouseId, form]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -211,6 +236,7 @@ export function InvoiceFormDialog({
       const apiRequest = {
         customerId: data.customerId,
         warehouseId: data.warehouseId,
+        locationId: data.locationId || undefined,
         invoiceDate: data.invoiceDate,
         dueDate: data.dueDate,
         lineItems: lineItems.map((item) => ({
@@ -234,6 +260,7 @@ export function InvoiceFormDialog({
           data: {
             customerId: apiRequest.customerId,
             warehouseId: apiRequest.warehouseId,
+            locationId: apiRequest.locationId,
             invoiceDate: apiRequest.invoiceDate,
             dueDate: apiRequest.dueDate,
             lineItems: apiRequest.lineItems,
@@ -336,6 +363,40 @@ export function InvoiceFormDialog({
                         <p className="text-sm text-muted-foreground">
                           Select a warehouse to validate and deduct stock when sending
                         </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="locationId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location</FormLabel>
+                        <Select
+                          onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)}
+                          value={field.value || "__none__"}
+                          disabled={!selectedWarehouseId}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue
+                                placeholder={
+                                  selectedWarehouseId ? "Select a location (optional)" : "Select warehouse first"
+                                }
+                              />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="__none__">None</SelectItem>
+                            {locations.map((location) => (
+                              <SelectItem key={location.id} value={location.id}>
+                                {location.code} {location.name ? `- ${location.name}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

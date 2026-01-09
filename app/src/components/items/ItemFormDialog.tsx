@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { useCreateItem, useUpdateItem } from "@/hooks/useItems";
+import { useCreateItem, useItem, useUpdateItem } from "@/hooks/useItems";
+import { useItemCategories } from "@/hooks/useItemCategories";
 import { useAuthStore } from "@/stores/authStore";
 import { itemFormSchema, type ItemFormValues } from "@/lib/validations/item";
 import { Button } from "@/components/ui/button";
@@ -42,13 +43,18 @@ import {
 } from "@/components/ui/select";
 import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
+import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { ImageUpload } from "@/components/ui/image-upload";
 import type { Item } from "@/types/item";
+
+export type ItemDialogMode = "create" | "view" | "edit";
 
 interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Item | null;
+  itemId?: string | null;
+  mode?: ItemDialogMode;
 }
 
 const ITEM_TYPES = [
@@ -71,30 +77,31 @@ const UNITS_OF_MEASURE = [
   { value: "SET", label: "Set" },
 ];
 
-const CATEGORIES = [
-  "Food Products",
-  "Beverages",
-  "Electronics",
-  "Clothing",
-  "Home & Living",
-  "Office Supplies",
-  "Construction Materials",
-  "Raw Materials",
-];
-
-export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps) {
+export function ItemFormDialog({
+  open,
+  onOpenChange,
+  item,
+  itemId,
+  mode,
+}: ItemFormDialogProps) {
   const { user } = useAuthStore();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
+  const { data: categoriesData } = useItemCategories();
+  const { data: itemResponse, isLoading: itemLoading, error: itemError } = useItem(itemId ?? "");
+  const resolvedItem = itemResponse?.data ?? item ?? null;
   const [activeTab, setActiveTab] = useState("general");
   const [createdItemId, setCreatedItemId] = useState<string | null>(null);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
+  const [dialogMode, setDialogMode] = useState<ItemDialogMode>("create");
+  const categories = categoriesData?.data || [];
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
     defaultValues: {
       code: "",
       name: "",
+      chineseName: "",
       description: "",
       itemType: "raw_material",
       uom: "PCS",
@@ -108,22 +115,29 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
   });
 
   useEffect(() => {
-    if (item) {
+    if (!open) return;
+
+    const nextMode: ItemDialogMode =
+      mode ?? (resolvedItem ? "edit" : "create");
+    setDialogMode(nextMode);
+
+    if (resolvedItem) {
       setIsEditingExisting(true);
-      setCreatedItemId(item.id);
+      setCreatedItemId(resolvedItem.id);
       form.reset({
-        code: item.code,
-        name: item.name,
-        description: item.description,
-        itemType: item.itemType,
-        uom: item.uom,
-        category: item.category,
-        standardCost: item.standardCost,
-        listPrice: item.listPrice,
-        reorderLevel: item.reorderLevel,
-        reorderQty: item.reorderQty,
-        imageUrl: item.imageUrl,
-        isActive: item.isActive,
+        code: resolvedItem.code,
+        name: resolvedItem.name,
+        chineseName: resolvedItem.chineseName || "",
+        description: resolvedItem.description,
+        itemType: resolvedItem.itemType,
+        uom: resolvedItem.uom,
+        category: resolvedItem.category,
+        standardCost: resolvedItem.standardCost,
+        listPrice: resolvedItem.listPrice,
+        reorderLevel: resolvedItem.reorderLevel,
+        reorderQty: resolvedItem.reorderQty,
+        imageUrl: resolvedItem.imageUrl,
+        isActive: resolvedItem.isActive,
       });
     } else {
       setIsEditingExisting(false);
@@ -131,6 +145,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
       form.reset({
         code: "",
         name: "",
+        chineseName: "",
         description: "",
         itemType: "raw_material",
         uom: "PCS",
@@ -144,18 +159,36 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
       });
       setActiveTab("general");
     }
-  }, [item, form, open]);
+  }, [open, mode, resolvedItem, form]);
 
   const onSubmit = async (values: ItemFormValues) => {
     try {
-      if (item) {
+      if (resolvedItem) {
         // Update existing item
-        await updateItem.mutateAsync({
-          id: item.id,
+        const updated = await updateItem.mutateAsync({
+          id: resolvedItem.id,
           data: values,
         });
+        const updatedItem = updated?.data;
+        if (updatedItem) {
+          form.reset({
+            code: updatedItem.code,
+            name: updatedItem.name,
+            chineseName: updatedItem.chineseName || "",
+            description: updatedItem.description,
+            itemType: updatedItem.itemType,
+            uom: updatedItem.uom,
+            category: updatedItem.category,
+            standardCost: updatedItem.standardCost,
+            listPrice: updatedItem.listPrice,
+            reorderLevel: updatedItem.reorderLevel,
+            reorderQty: updatedItem.reorderQty,
+            imageUrl: updatedItem.imageUrl,
+            isActive: updatedItem.isActive,
+          });
+        }
+        setDialogMode("view");
         toast.success("Item updated successfully");
-        handleClose();
       } else {
         // Create new item
         if (!user?.companyId) {
@@ -180,7 +213,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
         }
       }
     } catch (error) {
-      toast.error(item ? "Failed to update item" : "Failed to create item");
+      toast.error(resolvedItem ? "Failed to update item" : "Failed to create item");
     }
   };
 
@@ -194,7 +227,45 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
 
   // Determine if we're in "view mode with tabs" (item exists or just created)
   const showTabs = isEditingExisting || createdItemId !== null;
-  const currentItemId = item?.id || createdItemId;
+  const currentItemId = resolvedItem?.id || createdItemId;
+  const isReadOnly = dialogMode === "view";
+
+  if (itemId && itemLoading) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Loading Item...</DialogTitle>
+            <DialogDescription>Please wait while we load the item details...</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+            <div className="h-64 w-full animate-pulse rounded-md bg-muted" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  if (itemId && itemError) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Error Loading Item</DialogTitle>
+            <DialogDescription>
+              {itemError instanceof Error ? itemError.message : "Item not found"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -204,11 +275,19 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
       >
         <DialogHeader>
           <DialogTitle>
-            {item ? "Edit Item" : createdItemId ? "Add Item Details" : "Create New Item"}
+            {resolvedItem
+              ? isReadOnly
+                ? "Item Details"
+                : "Edit Item"
+              : createdItemId
+              ? "Add Item Details"
+              : "Create New Item"}
           </DialogTitle>
           <DialogDescription>
-            {item
-              ? "Update the item information and manage variants, packaging, and pricing"
+            {resolvedItem
+              ? isReadOnly
+                ? "Review item information, packaging, pricing, and locations."
+                : "Update the item information and manage variants, packaging, and pricing"
               : createdItemId
               ? "Item created successfully. Now add variants, packaging, and price tiers."
               : "Fill in the item details below to create a new item"}
@@ -217,17 +296,18 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
 
         {showTabs ? (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="packaging">Packaging</TabsTrigger>
               <TabsTrigger value="prices">Prices</TabsTrigger>
+              <TabsTrigger value="locations">Locations</TabsTrigger>
             </TabsList>
 
             {/* General Tab */}
             <TabsContent value="general" className="space-y-4 mt-4">
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="space-y-6">
+                  <div className={`space-y-6 ${isReadOnly ? "pointer-events-none opacity-90" : ""}`}>
                     {/* Basic Information with Image */}
                     <div>
                       <h4 className="text-sm font-medium mb-4">Basic Information</h4>
@@ -247,7 +327,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                     <Input
                                       placeholder="ITEM-001"
                                       {...field}
-                                      disabled={!!item || !!createdItemId}
+                                      disabled={!!resolvedItem || !!createdItemId || isReadOnly}
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -264,6 +344,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                   <Select
                                     onValueChange={field.onChange}
                                     value={field.value}
+                                    disabled={isReadOnly}
                                   >
                                     <FormControl>
                                       <SelectTrigger>
@@ -290,8 +371,26 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Item Name *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter item name" {...field} disabled={isReadOnly} />
+                              </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="chineseName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Chinese Name</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter item name" {...field} />
+                                  <Input
+                                    placeholder="Optional Chinese name"
+                                    {...field}
+                                    disabled={isReadOnly}
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -304,9 +403,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Description</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Enter description" {...field} />
-                                </FormControl>
+                              <FormControl>
+                                <Input placeholder="Enter description" {...field} disabled={isReadOnly} />
+                              </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -326,6 +425,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                     value={field.value}
                                     onChange={field.onChange}
                                     itemId={currentItemId}
+                                    disabled={isReadOnly}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -349,6 +449,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                               <Select
                                 onValueChange={field.onChange}
                                 value={field.value}
+                                disabled={isReadOnly}
                               >
                                 <FormControl>
                                   <SelectTrigger>
@@ -356,9 +457,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {CATEGORIES.map((category) => (
-                                    <SelectItem key={category} value={category}>
-                                      {category}
+                                  {categories.map((category) => (
+                                    <SelectItem key={category.id} value={category.name}>
+                                      {category.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -377,6 +478,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                               <Select
                                 onValueChange={field.onChange}
                                 value={field.value}
+                                disabled={isReadOnly}
                               >
                                 <FormControl>
                                   <SelectTrigger>
@@ -414,6 +516,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                   step="0.01"
                                   placeholder="0.00"
                                   {...field}
+                                  disabled={isReadOnly}
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                 />
                               </FormControl>
@@ -434,6 +537,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                   step="0.01"
                                   placeholder="0.00"
                                   {...field}
+                                  disabled={isReadOnly}
                                   onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                 />
                               </FormControl>
@@ -459,6 +563,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                   type="number"
                                   placeholder="0"
                                   {...field}
+                                  disabled={isReadOnly}
                                   onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 />
                               </FormControl>
@@ -481,6 +586,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                                   type="number"
                                   placeholder="0"
                                   {...field}
+                                  disabled={isReadOnly}
                                   onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                 />
                               </FormControl>
@@ -495,7 +601,7 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4">
+                  <DialogFooter>
                     <Button
                       type="button"
                       variant="outline"
@@ -503,29 +609,48 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                     >
                       {createdItemId ? "Close" : "Cancel"}
                     </Button>
-                    <Button
-                      type="submit"
-                      disabled={createItem.isPending || updateItem.isPending}
-                    >
-                      {createItem.isPending || updateItem.isPending
-                        ? "Saving..."
-                        : item
-                        ? "Update Item"
-                        : "Save & Continue"}
-                    </Button>
-                  </div>
+                    {isReadOnly ? (
+                      <Button
+                        type="button"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setDialogMode("edit");
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={createItem.isPending || updateItem.isPending}
+                      >
+                        {createItem.isPending || updateItem.isPending
+                          ? "Saving..."
+                          : resolvedItem
+                          ? "Update Item"
+                          : "Save & Continue"}
+                      </Button>
+                    )}
+                  </DialogFooter>
                 </form>
               </Form>
             </TabsContent>
 
             {/* Packaging Tab */}
             <TabsContent value="packaging" className="mt-4">
-              {currentItemId && <PackagingTab itemId={currentItemId} />}
+              {currentItemId ? (
+                <PackagingTab itemId={currentItemId} readOnly={isReadOnly} />
+              ) : null}
             </TabsContent>
 
             {/* Prices Tab */}
             <TabsContent value="prices" className="mt-4">
-              {currentItemId && <PricesTab itemId={currentItemId} />}
+              {currentItemId ? <PricesTab itemId={currentItemId} readOnly={isReadOnly} /> : null}
+            </TabsContent>
+
+            {/* Locations Tab */}
+            <TabsContent value="locations" className="mt-4">
+              {currentItemId ? <LocationsTab itemId={currentItemId} /> : null}
             </TabsContent>
           </Tabs>
         ) : (
@@ -578,19 +703,33 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Item Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter item name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Item Name *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter item name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="chineseName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Chinese Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Optional Chinese name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
               <FormField
                 control={form.control}
@@ -623,9 +762,9 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {CATEGORIES.map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.name}>
+                              {category.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -752,26 +891,35 @@ export function ItemFormDialog({ open, onOpenChange, item }: ItemFormDialogProps
                 />
               </div>
 
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleClose}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={createItem.isPending || updateItem.isPending}
-                >
-                  {createItem.isPending || updateItem.isPending
-                    ? "Saving..."
-                    : "Save & Continue"}
-                </Button>
-              </DialogFooter>
+              {isReadOnly ? (
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={handleClose}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              ) : (
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleClose}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createItem.isPending || updateItem.isPending}
+                  >
+                    {createItem.isPending || updateItem.isPending
+                      ? "Saving..."
+                      : "Save & Continue"}
+                  </Button>
+                </DialogFooter>
+              )}
             </form>
           </Form>
         )}
+
       </DialogContent>
     </Dialog>
   );

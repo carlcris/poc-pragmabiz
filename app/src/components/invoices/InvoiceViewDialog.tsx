@@ -195,6 +195,21 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                   <span className="text-muted-foreground">Due Date:</span>
                   <div className="font-medium">{formatDate(invoice.dueDate)}</div>
                 </div>
+                {invoice.warehouseName && (
+                  <div>
+                    <span className="text-muted-foreground">Warehouse:</span>
+                    <div className="font-medium">{invoice.warehouseName}</div>
+                  </div>
+                )}
+                {(invoice.locationCode || invoice.locationName) && (
+                  <div>
+                    <span className="text-muted-foreground">Location:</span>
+                    <div className="font-medium">
+                      {invoice.locationCode}
+                      {invoice.locationName ? ` - ${invoice.locationName}` : ""}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Payment Terms:</span>
                   <div className="font-medium">{invoice.paymentTerms || "Net 30"}</div>

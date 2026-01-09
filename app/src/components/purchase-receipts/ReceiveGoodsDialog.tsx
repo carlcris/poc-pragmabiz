@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
 import { useReceiveGoodsFromPO } from "@/hooks/usePurchaseReceipts";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { CompactPackageSelector } from "@/components/inventory/PackageSelector";
@@ -44,10 +46,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { PurchaseOrder } from "@/types/purchase-order";
+import type { WarehouseLocation } from "@/types/inventory-location";
 import { format } from "date-fns";
 
 const receiveGoodsSchema = z.object({
   warehouseId: z.string().min(1, "Warehouse is required"),
+  locationId: z.string().optional(),
   receiptDate: z.string().min(1, "Receipt date is required"),
   supplierInvoiceNumber: z.string().optional(),
   supplierInvoiceDate: z.string().optional(),
@@ -87,6 +91,7 @@ export function ReceiveGoodsDialog({
     mode: "onSubmit", // Only validate on submit
     defaultValues: {
       warehouseId: "",
+      locationId: "",
       receiptDate: format(new Date(), "yyyy-MM-dd"),
       supplierInvoiceNumber: "",
       supplierInvoiceDate: "",
@@ -118,6 +123,7 @@ export function ReceiveGoodsDialog({
 
       form.reset({
         warehouseId: "",
+        locationId: "",
         receiptDate: format(new Date(), "yyyy-MM-dd"),
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
@@ -126,6 +132,25 @@ export function ReceiveGoodsDialog({
       });
     }
   }, [purchaseOrder, open, form]);
+
+  const selectedWarehouseId = form.watch("warehouseId");
+
+  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedWarehouseId],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
+    enabled: !!selectedWarehouseId,
+  });
+
+  const locations = useMemo(
+    () => (locationsData?.data || []).filter((location) => location.isActive),
+    [locationsData]
+  );
+
+  useEffect(() => {
+    if (!selectedWarehouseId) {
+      form.setValue("locationId", "");
+    }
+  }, [selectedWarehouseId, form]);
 
   const onSubmit = async (data: ReceiveGoodsFormValues) => {
     if (!purchaseOrder) return;
@@ -143,6 +168,7 @@ export function ReceiveGoodsDialog({
         purchaseOrderId: purchaseOrder.id,
         data: {
           warehouseId: data.warehouseId,
+          locationId: data.locationId || undefined,
           receiptDate: data.receiptDate,
           supplierInvoiceNumber: data.supplierInvoiceNumber,
           supplierInvoiceDate: data.supplierInvoiceDate,
@@ -235,6 +261,39 @@ export function ReceiveGoodsDialog({
                         {warehouses.map((warehouse) => (
                           <SelectItem key={warehouse.id} value={warehouse.id}>
                             {warehouse.code} - {warehouse.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="locationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={!selectedWarehouseId}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              selectedWarehouseId ? "Select location" : "Select warehouse first"
+                            }
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {locations.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.code} {location.name ? `- ${location.name}` : ""}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -11,9 +11,15 @@ export interface StockTransaction {
   warehouseId: string;
   warehouseCode: string;
   warehouseName: string;
+  fromLocationId?: string | null;
+  fromLocationCode?: string | null;
+  fromLocationName?: string | null;
   toWarehouseId?: string;
   toWarehouseCode?: string;
   toWarehouseName?: string;
+  toLocationId?: string | null;
+  toLocationCode?: string | null;
+  toLocationName?: string | null;
   quantity: number;
   uom: string;
   referenceType?: string;
@@ -44,6 +50,8 @@ export interface CreateStockTransactionRequest {
   transactionType: TransactionType;
   warehouseId: string;
   toWarehouseId?: string;
+  fromLocationId?: string;
+  toLocationId?: string;
   referenceType?: string;
   referenceId?: string;
   referenceNumber?: string;

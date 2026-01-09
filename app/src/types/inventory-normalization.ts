@@ -134,6 +134,7 @@ export type CreateItemWithPackagesParams = {
   p_user_id: string;
   p_item_code: string;
   p_item_name: string;
+  p_item_name_cn?: string;
   p_item_description?: string;
   p_item_type?: 'raw_material' | 'finished_good' | 'asset' | 'service';
   p_base_package_name?: string;

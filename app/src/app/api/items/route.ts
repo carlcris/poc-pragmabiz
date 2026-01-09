@@ -21,6 +21,7 @@ function transformDbItem(
     companyId: dbItem.company_id,
     code: dbItem.item_code,
     name: dbItem.item_name,
+    chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || '',
     itemType: dbItem.item_type as Item['itemType'],
     uom: dbItem.units_of_measure?.code || '',
@@ -104,7 +105,7 @@ export async function GET(request: NextRequest) {
     // Apply filters
     if (search) {
       query = query.or(
-        `item_code.ilike.%${search}%,item_name.ilike.%${search}%,description.ilike.%${search}%`
+        `item_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
       )
     }
 
@@ -125,8 +126,8 @@ export async function GET(request: NextRequest) {
     const to = from + limit - 1
     query = query.range(from, to)
 
-    // Order by created_at descending
-    query = query.order('created_at', { ascending: false })
+    // Order by item_name ascending
+    query = query.order('item_name', { ascending: true })
 
     // Execute query
     const { data, error, count } = await query
@@ -240,9 +241,14 @@ export async function POST(request: NextRequest) {
         .is('deleted_at', null)
         .maybeSingle()
 
-      if (categoryData) {
-        categoryId = categoryData.id
+      if (!categoryData) {
+        return NextResponse.json(
+          { error: 'Invalid category', details: `Category "${body.category}" not found` },
+          { status: 400 }
+        )
       }
+
+      categoryId = categoryData.id
     }
 
     // Insert item
@@ -252,6 +258,7 @@ export async function POST(request: NextRequest) {
         company_id: body.companyId,
         item_code: body.code,
         item_name: body.name,
+        item_name_cn: body.chineseName || null,
         description: body.description || null,
         item_type: body.itemType,
         uom_id: uomData.id,

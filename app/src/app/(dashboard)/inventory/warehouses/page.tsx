@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus, Search, Pencil, MapPin, Filter, Trash2 } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
 import { toast } from "sonner";
@@ -25,6 +26,8 @@ import {
 import { WarehouseFormDialog } from "@/components/warehouses/WarehouseFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ViewGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
 import type { Warehouse } from "@/types/warehouse";
 
 export default function WarehousesPage() {
@@ -103,7 +106,7 @@ export default function WarehousesPage() {
       await deleteWarehouse.mutateAsync(warehouseToDelete.id);
       toast.success("Warehouse deleted successfully");
       setWarehouseToDelete(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete warehouse");
     }
   };
@@ -232,6 +235,13 @@ export default function WarehousesPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
+                              <Button variant="ghost" size="sm" asChild>
+                                <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
+                                  Locations
+                                </Link>
+                              </Button>
+                            </ViewGuard>
                             <Button
                               variant="ghost"
                               size="sm"

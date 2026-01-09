@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // GET /api/stock-transactions
@@ -61,6 +62,8 @@ export async function GET(request: NextRequest) {
           transaction_date,
           warehouse_id,
           to_warehouse_id,
+          from_location_id,
+          to_location_id,
           reference_type,
           reference_id,
           status,
@@ -87,21 +90,30 @@ export async function GET(request: NextRequest) {
 
     // Collect warehouse and user IDs
     const warehouseIds = new Set<string>()
+    const locationIds = new Set<string>()
     const userIds = new Set<string>()
 
     transactionItems.forEach((item: any) => {
       if (item.transaction.warehouse_id) warehouseIds.add(item.transaction.warehouse_id)
       if (item.transaction.to_warehouse_id) warehouseIds.add(item.transaction.to_warehouse_id)
+      if (item.transaction.from_location_id) locationIds.add(item.transaction.from_location_id)
+      if (item.transaction.to_location_id) locationIds.add(item.transaction.to_location_id)
       if (item.transaction.created_by) userIds.add(item.transaction.created_by)
     })
 
     // Fetch warehouses and users
-    const [warehousesData, usersData] = await Promise.all([
+    const [warehousesData, locationsData, usersData] = await Promise.all([
       warehouseIds.size > 0
         ? supabase
             .from('warehouses')
             .select('id, warehouse_code, warehouse_name')
             .in('id', Array.from(warehouseIds))
+        : Promise.resolve({ data: [] }),
+      locationIds.size > 0
+        ? supabase
+            .from('warehouse_locations')
+            .select('id, code, name')
+            .in('id', Array.from(locationIds))
         : Promise.resolve({ data: [] }),
       userIds.size > 0
         ? supabase
@@ -112,12 +124,15 @@ export async function GET(request: NextRequest) {
     ])
 
     const warehousesMap = new Map(warehousesData.data?.map((w: any) => [w.id, w]) || [])
+    const locationsMap = new Map(locationsData.data?.map((l: any) => [l.id, l]) || [])
     const usersMap = new Map(usersData.data?.map((u: any) => [u.id, u]) || [])
 
     // Format stock transactions
     const formattedTransactions = transactionItems.map((item: any) => {
       const warehouse = warehousesMap.get(item.transaction.warehouse_id)
       const toWarehouse = warehousesMap.get(item.transaction.to_warehouse_id)
+      const fromLocation = locationsMap.get(item.transaction.from_location_id)
+      const toLocation = locationsMap.get(item.transaction.to_location_id)
       const creator = usersMap.get(item.transaction.created_by)
 
       return {
@@ -133,9 +148,15 @@ export async function GET(request: NextRequest) {
         warehouseId: item.transaction.warehouse_id,
         warehouseCode: warehouse?.warehouse_code || '',
         warehouseName: warehouse?.warehouse_name || '',
+        fromLocationId: item.transaction.from_location_id,
+        fromLocationCode: fromLocation?.code || '',
+        fromLocationName: fromLocation?.name || '',
         toWarehouseId: item.transaction.to_warehouse_id,
         toWarehouseCode: toWarehouse?.warehouse_code || '',
         toWarehouseName: toWarehouse?.warehouse_name || '',
+        toLocationId: item.transaction.to_location_id,
+        toLocationCode: toLocation?.code || '',
+        toLocationName: toLocation?.name || '',
         quantity: parseFloat(item.quantity),
         uom: item.item.uom?.code || '',
         unitCost: item.unit_cost ? parseFloat(item.unit_cost) : 0,
@@ -190,6 +211,17 @@ export async function POST(request: NextRequest) {
 
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
     const body = await request.json()
+
+    if (
+      body.transactionType === 'transfer' &&
+      (!body.toWarehouseId || body.toWarehouseId === body.warehouseId)
+    ) {
+      const locationUnauthorized = await requirePermission(
+        RESOURCES.TRANSFER_BETWEEN_LOCATIONS,
+        'create'
+      )
+      if (locationUnauthorized) return locationUnauthorized
+    }
 
     // Check authentication
     const {
@@ -246,6 +278,30 @@ export async function POST(request: NextRequest) {
     }
     const transactionCode = `ST-${currentYear}-${String(nextNum).padStart(4, '0')}`
 
+    const defaultFromLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: userData.company_id,
+      warehouseId: body.warehouseId,
+      userId: user.id,
+    })
+
+    const defaultToLocationId = body.toWarehouseId
+      ? await ensureWarehouseDefaultLocation({
+          supabase,
+          companyId: userData.company_id,
+          warehouseId: body.toWarehouseId,
+          userId: user.id,
+        })
+      : null
+
+    const fromLocationId =
+      body.fromLocationId ||
+      (body.transactionType === 'in' ? null : defaultFromLocationId)
+
+    const toLocationId =
+      body.toLocationId ||
+      (body.transactionType === 'out' ? null : defaultToLocationId || defaultFromLocationId)
+
     // Create stock transaction header
     const { data: transaction, error: transactionError } = await supabase
       .from('stock_transactions')
@@ -257,6 +313,8 @@ export async function POST(request: NextRequest) {
         transaction_date: body.transactionDate || new Date().toISOString().split('T')[0],
         warehouse_id: body.warehouseId,
         to_warehouse_id: body.toWarehouseId || null,
+        from_location_id: fromLocationId,
+        to_location_id: toLocationId,
         reference_type: body.referenceType || null,
         reference_id: body.referenceId || null,
         status: 'posted', // Manual transactions are posted immediately
@@ -305,7 +363,7 @@ export async function POST(request: NextRequest) {
       // Get current stock balance from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from('item_warehouse')
-        .select('current_stock')
+        .select('current_stock, default_location_id')
         .eq('item_id', item.itemId)
         .eq('warehouse_id', body.warehouseId)
         .single()
@@ -378,6 +436,16 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      await adjustItemLocation({
+        supabase,
+        companyId: userData.company_id,
+        itemId: item.itemId,
+        warehouseId: body.warehouseId,
+        locationId: fromLocationId || warehouseStock?.default_location_id || null,
+        userId: user.id,
+        qtyOnHandDelta: actualQty,
+      })
+
       // Update item_warehouse current_stock
       const { error: warehouseUpdateError } = await supabase
         .from('item_warehouse')
@@ -401,10 +469,10 @@ export async function POST(request: NextRequest) {
       if (body.transactionType === 'transfer' && body.toWarehouseId) {
         const { data: destWarehouseStock } = await supabase
           .from('item_warehouse')
-          .select('current_stock')
-          .eq('item_id', item.itemId)
-          .eq('warehouse_id', body.toWarehouseId)
-          .single()
+        .select('current_stock, default_location_id')
+        .eq('item_id', item.itemId)
+        .eq('warehouse_id', body.toWarehouseId)
+        .single()
 
         const destCurrentBalance = destWarehouseStock
           ? parseFloat(String(destWarehouseStock.current_stock))
@@ -433,10 +501,21 @@ export async function POST(request: NextRequest) {
               item_id: item.itemId,
               warehouse_id: body.toWarehouseId,
               current_stock: destNewBalance,
+              default_location_id: defaultToLocationId,
               created_by: user.id,
               updated_by: user.id,
             })
         }
+
+        await adjustItemLocation({
+          supabase,
+          companyId: userData.company_id,
+          itemId: item.itemId,
+          warehouseId: body.toWarehouseId,
+          locationId: toLocationId || destWarehouseStock?.default_location_id || null,
+          userId: user.id,
+          qtyOnHandDelta: item.normalizedQty,
+        })
       }
     }
 

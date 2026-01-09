@@ -162,6 +162,7 @@ CREATE TABLE items (
     company_id        UUID NOT NULL REFERENCES companies(id),
     item_code         VARCHAR(100) NOT NULL,
     item_name         VARCHAR(200) NOT NULL,
+    item_name_cn      VARCHAR(200),  -- Chinese (Simplified) name
     description       TEXT,
     category_id       UUID REFERENCES item_categories(id),
     uom_id            UUID NOT NULL REFERENCES units_of_measure(id),
@@ -200,6 +201,7 @@ CREATE INDEX idx_items_company ON items(company_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_items_category ON items(category_id) WHERE deleted_at IS NULL;
 CREATE INDEX idx_items_code ON items(item_code) WHERE deleted_at IS NULL;
 CREATE INDEX idx_items_name ON items(item_name) WHERE deleted_at IS NULL;
+CREATE INDEX idx_items_name_cn ON items(item_name_cn) WHERE deleted_at IS NULL;
 CREATE INDEX idx_items_type ON items(item_type) WHERE deleted_at IS NULL;
 
 CREATE TRIGGER trigger_items_updated_at

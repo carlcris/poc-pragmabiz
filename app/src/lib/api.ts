@@ -62,7 +62,7 @@ export class ApiClient {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
 
-      throw new Error(`API Error: ${response.statusText}`, { cause: errorData });
+      throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
 
     return response.json();
@@ -76,7 +76,8 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
 
     return response.json();
@@ -90,7 +91,8 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
 
     return response.json();
@@ -103,7 +105,8 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
 
     return response.json();

@@ -136,8 +136,15 @@ export function useConvertToInvoice() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ orderId, warehouseId }: { orderId: string; warehouseId: string }) =>
-      salesOrdersApi.convertToInvoice(orderId, warehouseId),
+    mutationFn: ({
+      orderId,
+      warehouseId,
+      locationId,
+    }: {
+      orderId: string;
+      warehouseId: string;
+      locationId?: string;
+    }) => salesOrdersApi.convertToInvoice(orderId, warehouseId, locationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ["invoices"] });

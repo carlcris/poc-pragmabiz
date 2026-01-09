@@ -132,52 +132,52 @@ BEGIN
     SELECT id INTO v_cat_supply FROM item_categories WHERE code = 'SUPPLY' AND company_id = v_company_id;
 
     -- Insert sample items
-    INSERT INTO items (company_id, item_code, item_name, description, category_id, uom_id, item_type, purchase_price, sales_price, cost_price, is_stock_item, is_active)
+    INSERT INTO items (company_id, item_code, item_name, item_name_cn, description, category_id, uom_id, item_type, purchase_price, sales_price, cost_price, is_stock_item, is_active)
     VALUES
         -- Moldings (Wood Frame Moldings)
-        (v_company_id, 'MOLD-W-001', 'Oak Molding 1"', 'Natural oak molding 1 inch width', v_cat_mold, v_uom_ft, 'raw_material', 45.00, 75.00, 42.00, true, true),
-        (v_company_id, 'MOLD-W-002', 'Walnut Molding 1.5"', 'Dark walnut molding 1.5 inch width', v_cat_mold, v_uom_ft, 'raw_material', 65.00, 105.00, 62.00, true, true),
-        (v_company_id, 'MOLD-W-003', 'Cherry Molding 2"', 'Cherry wood molding 2 inch width', v_cat_mold, v_uom_ft, 'raw_material', 75.00, 125.00, 72.00, true, true),
-        (v_company_id, 'MOLD-M-001', 'Gold Metal Molding 0.75"', 'Gold finish metal molding 0.75 inch', v_cat_mold, v_uom_ft, 'raw_material', 35.00, 60.00, 32.00, true, true),
-        (v_company_id, 'MOLD-M-002', 'Silver Metal Molding 1"', 'Silver finish metal molding 1 inch', v_cat_mold, v_uom_ft, 'raw_material', 40.00, 68.00, 37.00, true, true),
-        (v_company_id, 'MOLD-M-003', 'Black Metal Molding 1.25"', 'Matte black metal molding 1.25 inch', v_cat_mold, v_uom_ft, 'raw_material', 42.00, 70.00, 39.00, true, true),
+        (v_company_id, 'MOLD-W-001', 'Oak Molding 1"', '橡木线条 1英寸', 'Natural oak molding 1 inch width', v_cat_mold, v_uom_ft, 'raw_material', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'MOLD-W-002', 'Walnut Molding 1.5"', '胡桃木线条 1.5英寸', 'Dark walnut molding 1.5 inch width', v_cat_mold, v_uom_ft, 'raw_material', 65.00, 105.00, 62.00, true, true),
+        (v_company_id, 'MOLD-W-003', 'Cherry Molding 2"', '樱桃木线条 2英寸', 'Cherry wood molding 2 inch width', v_cat_mold, v_uom_ft, 'raw_material', 75.00, 125.00, 72.00, true, true),
+        (v_company_id, 'MOLD-M-001', 'Gold Metal Molding 0.75"', '金色金属线条 0.75英寸', 'Gold finish metal molding 0.75 inch', v_cat_mold, v_uom_ft, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'MOLD-M-002', 'Silver Metal Molding 1"', '银色金属线条 1英寸', 'Silver finish metal molding 1 inch', v_cat_mold, v_uom_ft, 'raw_material', 40.00, 68.00, 37.00, true, true),
+        (v_company_id, 'MOLD-M-003', 'Black Metal Molding 1.25"', '黑色金属线条 1.25英寸', 'Matte black metal molding 1.25 inch', v_cat_mold, v_uom_ft, 'raw_material', 42.00, 70.00, 39.00, true, true),
 
         -- Glass Sheets (Various Sizes in Inches)
-        (v_company_id, 'GLASS-8X10', 'Glass Sheet 8x10"', 'Clear glass sheet 8 x 10 inches', v_cat_glass, v_uom_sheet, 'raw_material', 25.00, 45.00, 23.00, true, true),
-        (v_company_id, 'GLASS-11X14', 'Glass Sheet 11x14"', 'Clear glass sheet 11 x 14 inches', v_cat_glass, v_uom_sheet, 'raw_material', 35.00, 60.00, 32.00, true, true),
-        (v_company_id, 'GLASS-16X20', 'Glass Sheet 16x20"', 'Clear glass sheet 16 x 20 inches', v_cat_glass, v_uom_sheet, 'raw_material', 55.00, 95.00, 52.00, true, true),
-        (v_company_id, 'GLASS-18X24', 'Glass Sheet 18x24"', 'Clear glass sheet 18 x 24 inches', v_cat_glass, v_uom_sheet, 'raw_material', 65.00, 110.00, 62.00, true, true),
-        (v_company_id, 'GLASS-24X36', 'Glass Sheet 24x36"', 'Clear glass sheet 24 x 36 inches', v_cat_glass, v_uom_sheet, 'raw_material', 95.00, 160.00, 92.00, true, true),
-        (v_company_id, 'GLASS-UV-16X20', 'UV Glass 16x20"', 'UV protection glass 16 x 20 inches', v_cat_glass, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
-        (v_company_id, 'GLASS-UV-24X36', 'UV Glass 24x36"', 'UV protection glass 24 x 36 inches', v_cat_glass, v_uom_sheet, 'raw_material', 135.00, 225.00, 132.00, true, true),
+        (v_company_id, 'GLASS-8X10', 'Glass Sheet 8x10"', '玻璃板 8x10英寸', 'Clear glass sheet 8 x 10 inches', v_cat_glass, v_uom_sheet, 'raw_material', 25.00, 45.00, 23.00, true, true),
+        (v_company_id, 'GLASS-11X14', 'Glass Sheet 11x14"', '玻璃板 11x14英寸', 'Clear glass sheet 11 x 14 inches', v_cat_glass, v_uom_sheet, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'GLASS-16X20', 'Glass Sheet 16x20"', '玻璃板 16x20英寸', 'Clear glass sheet 16 x 20 inches', v_cat_glass, v_uom_sheet, 'raw_material', 55.00, 95.00, 52.00, true, true),
+        (v_company_id, 'GLASS-18X24', 'Glass Sheet 18x24"', '玻璃板 18x24英寸', 'Clear glass sheet 18 x 24 inches', v_cat_glass, v_uom_sheet, 'raw_material', 65.00, 110.00, 62.00, true, true),
+        (v_company_id, 'GLASS-24X36', 'Glass Sheet 24x36"', '玻璃板 24x36英寸', 'Clear glass sheet 24 x 36 inches', v_cat_glass, v_uom_sheet, 'raw_material', 95.00, 160.00, 92.00, true, true),
+        (v_company_id, 'GLASS-UV-16X20', 'UV Glass 16x20"', '防紫外线玻璃 16x20英寸', 'UV protection glass 16 x 20 inches', v_cat_glass, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'GLASS-UV-24X36', 'UV Glass 24x36"', '防紫外线玻璃 24x36英寸', 'UV protection glass 24 x 36 inches', v_cat_glass, v_uom_sheet, 'raw_material', 135.00, 225.00, 132.00, true, true),
 
         -- Matboards
-        (v_company_id, 'MAT-WHT-32X40', 'White Matboard 32x40"', 'White matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
-        (v_company_id, 'MAT-BLK-32X40', 'Black Matboard 32x40"', 'Black matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
-        (v_company_id, 'MAT-CRM-32X40', 'Cream Matboard 32x40"', 'Cream matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
-        (v_company_id, 'MAT-GRY-32X40', 'Gray Matboard 32x40"', 'Gray matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-WHT-32X40', 'White Matboard 32x40"', '白色卡纸板 32x40英寸', 'White matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-BLK-32X40', 'Black Matboard 32x40"', '黑色卡纸板 32x40英寸', 'Black matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-CRM-32X40', 'Cream Matboard 32x40"', '米色卡纸板 32x40英寸', 'Cream matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'MAT-GRY-32X40', 'Gray Matboard 32x40"', '灰色卡纸板 32x40英寸', 'Gray matboard 32 x 40 inches', v_cat_mat, v_uom_sheet, 'raw_material', 85.00, 145.00, 82.00, true, true),
 
         -- Backing Boards
-        (v_company_id, 'BACK-8X10', 'Backing Board 8x10"', 'Foam core backing 8 x 10 inches', v_cat_back, v_uom_sheet, 'raw_material', 15.00, 28.00, 14.00, true, true),
-        (v_company_id, 'BACK-11X14', 'Backing Board 11x14"', 'Foam core backing 11 x 14 inches', v_cat_back, v_uom_sheet, 'raw_material', 20.00, 35.00, 18.00, true, true),
-        (v_company_id, 'BACK-16X20', 'Backing Board 16x20"', 'Foam core backing 16 x 20 inches', v_cat_back, v_uom_sheet, 'raw_material', 30.00, 52.00, 28.00, true, true),
-        (v_company_id, 'BACK-24X36', 'Backing Board 24x36"', 'Foam core backing 24 x 36 inches', v_cat_back, v_uom_sheet, 'raw_material', 50.00, 85.00, 48.00, true, true),
+        (v_company_id, 'BACK-8X10', 'Backing Board 8x10"', '背板 8x10英寸', 'Foam core backing 8 x 10 inches', v_cat_back, v_uom_sheet, 'raw_material', 15.00, 28.00, 14.00, true, true),
+        (v_company_id, 'BACK-11X14', 'Backing Board 11x14"', '背板 11x14英寸', 'Foam core backing 11 x 14 inches', v_cat_back, v_uom_sheet, 'raw_material', 20.00, 35.00, 18.00, true, true),
+        (v_company_id, 'BACK-16X20', 'Backing Board 16x20"', '背板 16x20英寸', 'Foam core backing 16 x 20 inches', v_cat_back, v_uom_sheet, 'raw_material', 30.00, 52.00, 28.00, true, true),
+        (v_company_id, 'BACK-24X36', 'Backing Board 24x36"', '背板 24x36英寸', 'Foam core backing 24 x 36 inches', v_cat_back, v_uom_sheet, 'raw_material', 50.00, 85.00, 48.00, true, true),
 
         -- Hardware & Accessories
-        (v_company_id, 'HARD-HANG-WIRE', 'Hanging Wire', 'Frame hanging wire 50ft roll', v_cat_hard, v_uom_pcs, 'raw_material', 35.00, 60.00, 32.00, true, true),
-        (v_company_id, 'HARD-D-RINGS', 'D-Rings', 'Metal D-rings for hanging (100pcs)', v_cat_hard, v_uom_box, 'raw_material', 45.00, 75.00, 42.00, true, true),
-        (v_company_id, 'HARD-SPRINGS', 'Frame Springs', 'Metal frame springs (500pcs)', v_cat_hard, v_uom_box, 'raw_material', 55.00, 95.00, 52.00, true, true),
-        (v_company_id, 'HARD-CORNERS', 'Corner Brackets', 'Metal corner brackets (100pcs)', v_cat_hard, v_uom_box, 'raw_material', 65.00, 110.00, 62.00, true, true),
+        (v_company_id, 'HARD-HANG-WIRE', 'Hanging Wire', '挂画钢丝', 'Frame hanging wire 50ft roll', v_cat_hard, v_uom_pcs, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'HARD-D-RINGS', 'D-Rings', 'D型挂环', 'Metal D-rings for hanging (100pcs)', v_cat_hard, v_uom_box, 'raw_material', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'HARD-SPRINGS', 'Frame Springs', '画框弹簧', 'Metal frame springs (500pcs)', v_cat_hard, v_uom_box, 'raw_material', 55.00, 95.00, 52.00, true, true),
+        (v_company_id, 'HARD-CORNERS', 'Corner Brackets', '角铁', 'Metal corner brackets (100pcs)', v_cat_hard, v_uom_box, 'raw_material', 65.00, 110.00, 62.00, true, true),
 
         -- Packaging Materials
-        (v_company_id, 'PACK-CORNER', 'Corner Protectors', 'Foam corner protectors (100pcs)', v_cat_pack, v_uom_box, 'raw_material', 45.00, 75.00, 42.00, true, true),
-        (v_company_id, 'PACK-BUBBLE', 'Bubble Wrap', 'Bubble wrap 12" x 100ft roll', v_cat_pack, v_uom_pcs, 'raw_material', 85.00, 145.00, 82.00, true, true),
-        (v_company_id, 'PACK-KRAFT', 'Kraft Paper', 'Brown kraft paper 36" x 200ft', v_cat_pack, v_uom_pcs, 'raw_material', 95.00, 160.00, 92.00, true, true),
+        (v_company_id, 'PACK-CORNER', 'Corner Protectors', '护角', 'Foam corner protectors (100pcs)', v_cat_pack, v_uom_box, 'raw_material', 45.00, 75.00, 42.00, true, true),
+        (v_company_id, 'PACK-BUBBLE', 'Bubble Wrap', '气泡膜', 'Bubble wrap 12" x 100ft roll', v_cat_pack, v_uom_pcs, 'raw_material', 85.00, 145.00, 82.00, true, true),
+        (v_company_id, 'PACK-KRAFT', 'Kraft Paper', '牛皮纸', 'Brown kraft paper 36" x 200ft', v_cat_pack, v_uom_pcs, 'raw_material', 95.00, 160.00, 92.00, true, true),
 
         -- Supplies
-        (v_company_id, 'SUPPLY-GLUE', 'Wood Glue', 'Wood glue for frame assembly 16oz', v_cat_supply, v_uom_pcs, 'raw_material', 35.00, 60.00, 32.00, true, true),
-        (v_company_id, 'SUPPLY-TAPE', 'Framing Tape', 'Double-sided framing tape 1" x 50ft', v_cat_supply, v_uom_pcs, 'raw_material', 25.00, 45.00, 23.00, true, true),
-        (v_company_id, 'SUPPLY-POINTS', 'Glazier Points', 'Metal glazier points (1000pcs)', v_cat_supply, v_uom_box, 'raw_material', 40.00, 68.00, 37.00, true, true);
+        (v_company_id, 'SUPPLY-GLUE', 'Wood Glue', '木胶', 'Wood glue for frame assembly 16oz', v_cat_supply, v_uom_pcs, 'raw_material', 35.00, 60.00, 32.00, true, true),
+        (v_company_id, 'SUPPLY-TAPE', 'Framing Tape', '装框胶带', 'Double-sided framing tape 1" x 50ft', v_cat_supply, v_uom_pcs, 'raw_material', 25.00, 45.00, 23.00, true, true),
+        (v_company_id, 'SUPPLY-POINTS', 'Glazier Points', '玻璃固定钉', 'Metal glazier points (1000pcs)', v_cat_supply, v_uom_box, 'raw_material', 40.00, 68.00, 37.00, true, true);
 END $$;
 
 -- ============================================================================
@@ -1388,3 +1388,82 @@ END $$;
 --   - Dashboard (view only)
 --   - Inventory > Items (view only)
 --   - Sales > Point of Sale, POS Transactions, Customers, Sales Orders, Invoices
+
+-- Purpose: Backfill MAIN locations and item_location rows from item_warehouse totals
+
+-- Ensure MAIN location exists per warehouse
+INSERT INTO warehouse_locations (
+  company_id,
+  warehouse_id,
+  code,
+  name,
+  location_type,
+  is_pickable,
+  is_storable,
+  is_active,
+  created_at,
+  updated_at
+)
+SELECT
+  w.company_id,
+  w.id,
+  'MAIN',
+  'Main',
+  'crate',
+  true,
+  true,
+  true,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM warehouses w
+WHERE w.deleted_at IS NULL
+ON CONFLICT (company_id, warehouse_id, code) DO NOTHING;
+
+-- Set MAIN as default location for all item_warehouse rows
+UPDATE item_warehouse iw
+SET default_location_id = wl.id
+FROM warehouse_locations wl
+WHERE wl.warehouse_id = iw.warehouse_id
+  AND wl.code = 'MAIN'
+  AND wl.deleted_at IS NULL
+  AND iw.deleted_at IS NULL;
+
+-- Re-seed item_location from item_warehouse (MAIN location as source of truth)
+DELETE FROM item_location il
+USING item_warehouse iw
+WHERE il.company_id = iw.company_id
+  AND il.item_id = iw.item_id
+  AND il.warehouse_id = iw.warehouse_id
+  AND il.deleted_at IS NULL
+  AND iw.deleted_at IS NULL;
+
+INSERT INTO item_location (
+  company_id,
+  item_id,
+  warehouse_id,
+  location_id,
+  qty_on_hand,
+  qty_reserved,
+  created_at,
+  updated_at
+)
+SELECT
+  iw.company_id,
+  iw.item_id,
+  iw.warehouse_id,
+  wl.id,
+  iw.current_stock,
+  iw.reserved_stock,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM item_warehouse iw
+JOIN warehouse_locations wl
+  ON wl.warehouse_id = iw.warehouse_id
+ AND wl.code = 'MAIN'
+WHERE iw.deleted_at IS NULL
+  AND wl.deleted_at IS NULL
+ON CONFLICT (company_id, item_id, warehouse_id, location_id)
+DO UPDATE SET
+  qty_on_hand = EXCLUDED.qty_on_hand,
+  qty_reserved = EXCLUDED.qty_reserved,
+  updated_at = CURRENT_TIMESTAMP;

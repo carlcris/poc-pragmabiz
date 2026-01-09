@@ -103,6 +103,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch invoices' }, { status: 500 })
     }
 
+    const locationIds = new Set<string>()
+    const warehouseIds = new Set<string>()
+    invoices?.forEach((invoice) => {
+      const locationId = invoice.custom_fields?.locationId
+      if (locationId) locationIds.add(locationId)
+      if (invoice.warehouse_id) warehouseIds.add(invoice.warehouse_id)
+    })
+
+    const [locationsData, warehousesData] = await Promise.all([
+      locationIds.size > 0
+        ? supabase
+            .from('warehouse_locations')
+            .select('id, code, name')
+            .in('id', Array.from(locationIds))
+        : Promise.resolve({ data: [] }),
+      warehouseIds.size > 0
+        ? supabase
+            .from('warehouses')
+            .select('id, warehouse_name')
+            .in('id', Array.from(warehouseIds))
+        : Promise.resolve({ data: [] }),
+    ])
+
+    const locationsMap = new Map(locationsData?.data?.map((loc) => [loc.id, loc]) || [])
+    const warehousesMap = new Map(warehousesData?.data?.map((wh) => [wh.id, wh]) || [])
+
     // Fetch line items for each invoice
     const invoiceIds = invoices?.map((inv) => inv.id) || []
     const { data: items } = await supabase
@@ -130,6 +156,9 @@ export async function GET(request: NextRequest) {
     // Format response
     const formattedInvoices = invoices?.map((invoice) => {
       const invoiceItems = items?.filter((item) => item.invoice_id === invoice.id) || []
+      const locationId = invoice.custom_fields?.locationId
+      const location = locationId ? locationsMap.get(locationId) : null
+      const warehouse = invoice.warehouse_id ? warehousesMap.get(invoice.warehouse_id) : null
 
       return {
         id: invoice.id,
@@ -139,6 +168,10 @@ export async function GET(request: NextRequest) {
         customerName: invoice.customers?.customer_name || '',
         customerEmail: invoice.customers?.email || '',
         warehouseId: invoice.warehouse_id || null,
+        warehouseName: warehouse?.warehouse_name || '',
+        locationId: invoice.custom_fields?.locationId || null,
+        locationCode: location?.code || null,
+        locationName: location?.name || null,
         salesOrderId: invoice.sales_order_id,
         salesOrderNumber: invoice.sales_orders?.order_code,
         invoiceDate: invoice.invoice_date,
@@ -319,6 +352,7 @@ export async function POST(request: NextRequest) {
         invoice_code: invoiceNumber,
         customer_id: body.customerId,
         warehouse_id: body.warehouseId || null,
+        custom_fields: body.locationId ? { locationId: body.locationId } : null,
         sales_order_id: body.salesOrderId,
         invoice_date: body.invoiceDate,
         due_date: body.dueDate,

@@ -16,6 +16,7 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { validateTransition } from "@/lib/validations/transformation-order";
 import type { ExecuteTransformationOrderRequest } from "@/types/transformation-order";
 import { normalizeTransactionItems } from "./normalizationService";
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from "./locationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 // ============================================================================
@@ -263,6 +264,13 @@ export async function executeTransformation(
       };
     }
 
+    const defaultLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: order.company_id,
+      warehouseId: order.source_warehouse_id,
+      userId,
+    });
+
     // 3. Validate execution data matches order inputs/outputs
     const inputLineIds = new Set(order.inputs.map((i: any) => i.id));
     const outputLineIds = new Set(order.outputs.map((o: any) => o.id));
@@ -342,7 +350,7 @@ export async function executeTransformation(
       // Get current stock
       const { data: warehouseStock, error: stockError } = await supabase
         .from("item_warehouse")
-        .select("current_stock, available_stock")
+        .select("current_stock, available_stock, default_location_id")
         .eq("item_id", inputLine.item_id)
         .eq("warehouse_id", order.source_warehouse_id)
         .single();
@@ -391,6 +399,7 @@ export async function executeTransformation(
           transaction_type: "out",
           transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
           warehouse_id: order.source_warehouse_id,
+          from_location_id: defaultLocationId,
           reference_type: "transformation_order",
           reference_id: orderId,
           reference_code: order.order_code,
@@ -446,6 +455,16 @@ export async function executeTransformation(
         posting_time: postingTime,
         created_by: userId,
         updated_by: userId,
+      });
+
+      await adjustItemLocation({
+        supabase,
+        companyId: order.company_id,
+        itemId: inputLine.item_id,
+        warehouseId: order.source_warehouse_id,
+        locationId: warehouseStock?.default_location_id || defaultLocationId,
+        userId,
+        qtyOnHandDelta: -normalizedInput.normalizedQty,
       });
 
       // Update item_warehouse (only update stock quantities, no stock_value column)
@@ -557,7 +576,7 @@ export async function executeTransformation(
       // Get current stock (same warehouse as inputs)
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
-        .select("current_stock, available_stock")
+        .select("current_stock, available_stock, default_location_id")
         .eq("item_id", outputLine.item_id)
         .eq("warehouse_id", order.source_warehouse_id)
         .maybeSingle();
@@ -579,6 +598,7 @@ export async function executeTransformation(
           transaction_type: "in",
           transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
           warehouse_id: order.source_warehouse_id,
+          to_location_id: defaultLocationId,
           reference_type: "transformation_order",
           reference_id: orderId,
           reference_code: order.order_code,
@@ -632,6 +652,16 @@ export async function executeTransformation(
         updated_by: userId,
       });
 
+      await adjustItemLocation({
+        supabase,
+        companyId: order.company_id,
+        itemId: outputLine.item_id,
+        warehouseId: order.source_warehouse_id,
+        locationId: warehouseStock?.default_location_id || defaultLocationId,
+        userId,
+        qtyOnHandDelta: normalizedOutput.normalizedQty,
+      });
+
       // Update or insert item_warehouse (no stock_value column) - same warehouse as inputs
       if (warehouseStock) {
         await supabase
@@ -649,6 +679,7 @@ export async function executeTransformation(
           warehouse_id: order.source_warehouse_id,
           current_stock: newStock,
           reserved_stock: 0,
+          default_location_id: warehouseStock?.default_location_id || defaultLocationId,
           created_by: userId,
           updated_by: userId,
         });
@@ -690,6 +721,7 @@ export async function executeTransformation(
             transaction_type: "out", // Waste is recorded as outbound from a "virtual" waste location
             transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
             warehouse_id: order.source_warehouse_id,
+            from_location_id: defaultLocationId,
             reference_type: "transformation_order",
             reference_id: orderId,
             reference_code: order.order_code,

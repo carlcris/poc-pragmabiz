@@ -5,6 +5,7 @@ import { calculateCOGS, postCOGS } from '@/services/accounting/cogsPosting'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
+import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
 // POST /api/sales-orders/[id]/convert-to-invoice
@@ -173,6 +174,7 @@ export async function POST(
         invoice_code: invoiceNumber,
         customer_id: salesOrder.customer_id,
         warehouse_id: body.warehouseId,
+        custom_fields: body.locationId ? { locationId: body.locationId } : null,
         sales_order_id: salesOrderId,
         invoice_date: today.toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
@@ -263,6 +265,14 @@ export async function POST(
     }
     const transactionCode = `ST-${currentYear}-${String(nextTransactionNum).padStart(4, '0')}`
 
+    const defaultLocationId = await ensureWarehouseDefaultLocation({
+      supabase,
+      companyId: salesOrder.company_id,
+      warehouseId: body.warehouseId,
+      userId: user.id,
+    })
+    const selectedLocationId = body.locationId || defaultLocationId
+
     // Create stock transaction header
     const { data: stockTransaction, error: transactionError } = await supabase
       .from('stock_transactions')
@@ -273,6 +283,7 @@ export async function POST(
         transaction_type: 'out',
         transaction_date: today.toISOString().split('T')[0],
         warehouse_id: body.warehouseId,
+        from_location_id: selectedLocationId,
         reference_type: 'sales_invoice',
         reference_id: invoice.id,
         reference_code: invoice.invoice_code,
@@ -348,7 +359,7 @@ export async function POST(
       // Get current stock from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from('item_warehouse')
-        .select('current_stock')
+        .select('current_stock, default_location_id')
         .eq('item_id', item.item_id)
         .eq('warehouse_id', body.warehouseId)
         .single()
@@ -399,6 +410,16 @@ export async function POST(
           { status: 500 }
         )
       }
+
+      await adjustItemLocation({
+        supabase,
+        companyId: salesOrder.company_id,
+        itemId: item.item_id,
+        warehouseId: body.warehouseId,
+        locationId: selectedLocationId || warehouseStock?.default_location_id || null,
+        userId: user.id,
+        qtyOnHandDelta: -normalizedQty,
+      })
 
       // Update item_warehouse current_stock
       const { error: updateWarehouseError } = await supabase

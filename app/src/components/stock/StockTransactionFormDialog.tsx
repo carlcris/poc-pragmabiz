@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
 import { useCreateStockTransaction } from "@/hooks/useStockTransactions";
 import { useCreateStockTransfer } from "@/hooks/useStockTransfers";
 import { useItems } from "@/hooks/useItems";
@@ -52,6 +54,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import type { WarehouseLocation } from "@/types/inventory-location";
 
 interface StockTransactionFormDialogProps {
   open: boolean;
@@ -116,6 +119,8 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
       itemId: "",
       warehouseId: "",
       toWarehouseId: "",
+      fromLocationId: "",
+      toLocationId: "",
       quantity: 1,
       packagingId: null,
       uomId: "",
@@ -129,6 +134,7 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
 
   const transactionType = form.watch("transactionType");
   const selectedWarehouseId = form.watch("warehouseId");
+  const selectedToWarehouseId = form.watch("toWarehouseId");
   const selectedItemId = form.watch("itemId");
 
   // Fetch items with stock information filtered by selected warehouse
@@ -138,10 +144,39 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
   });
   const enhancedItems = enhancedItemsData?.data || [];
 
+  const { data: fromLocationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedWarehouseId],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
+    enabled: !!selectedWarehouseId,
+  });
+
+  const { data: toLocationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedToWarehouseId],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedToWarehouseId}/locations`),
+    enabled: !!selectedToWarehouseId,
+  });
+
+  const fromLocations = useMemo(
+    () => (fromLocationsData?.data || []).filter((location) => location.isActive),
+    [fromLocationsData]
+  );
+
+  const toLocations = useMemo(
+    () => (toLocationsData?.data || []).filter((location) => location.isActive),
+    [toLocationsData]
+  );
+
   useEffect(() => {
     // Reset destination warehouse when transaction type changes
     if (transactionType !== "transfer") {
       form.setValue("toWarehouseId", "");
+      form.setValue("toLocationId", "");
+    }
+    if (transactionType === "in") {
+      form.setValue("fromLocationId", "");
+    }
+    if (transactionType === "out" || transactionType === "adjustment") {
+      form.setValue("toLocationId", "");
     }
   }, [transactionType, form]);
 
@@ -149,8 +184,16 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
     // Clear selected item when warehouse changes
     if (selectedWarehouseId) {
       form.setValue("itemId", "");
+      form.setValue("fromLocationId", "");
+      form.setValue("toLocationId", "");
     }
   }, [selectedWarehouseId, form]);
+
+  useEffect(() => {
+    if (!selectedToWarehouseId) {
+      form.setValue("toLocationId", "");
+    }
+  }, [selectedToWarehouseId, form]);
 
   useEffect(() => {
     // Reset packaging and set uomId when item changes
@@ -173,17 +216,24 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
       }
 
       // Check if this is a transfer to a van warehouse
-      const isTransferToVan = values.transactionType === "transfer" &&
-                             values.toWarehouseId &&
-                             warehouses.find(w => w.id === values.toWarehouseId)?.isVan;
+      const isSameWarehouse =
+        values.transactionType === "transfer" &&
+        values.toWarehouseId &&
+        values.warehouseId === values.toWarehouseId;
+      const isTransferToVan =
+        values.transactionType === "transfer" &&
+        values.toWarehouseId &&
+        warehouses.find((w) => w.id === values.toWarehouseId)?.isVan;
 
-      if (isTransferToVan) {
+      if (isTransferToVan && !isSameWarehouse) {
         // Create a pending stock transfer for van (requires driver confirmation)
         const transferData = {
           fromWarehouseId: values.warehouseId,
           toWarehouseId: values.toWarehouseId!,
           transferDate: values.transactionDate,
           notes: values.reason,
+          fromLocationId: values.fromLocationId || undefined,
+          toLocationId: values.toLocationId || undefined,
           items: [
             {
               itemId: values.itemId,
@@ -206,6 +256,8 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
           transactionType: values.transactionType,
           warehouseId: values.warehouseId,
           toWarehouseId: values.toWarehouseId || undefined,
+          fromLocationId: values.fromLocationId || undefined,
+          toLocationId: values.toLocationId || undefined,
           referenceType: values.referenceType || undefined,
           referenceId: values.referenceId || undefined,
           referenceNumber: values.referenceNumber || undefined,
@@ -350,6 +402,108 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
                 />
               )}
             </div>
+
+            {transactionType === "transfer" ? (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="fromLocationId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>From Location</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!selectedWarehouseId}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                selectedWarehouseId ? "Select location" : "Select warehouse first"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {fromLocations.map((location) => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.code} {location.name ? `- ${location.name}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="toLocationId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>To Location</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!selectedToWarehouseId}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                selectedToWarehouseId ? "Select location" : "Select destination warehouse"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {toLocations.map((location) => (
+                            <SelectItem key={location.id} value={location.id}>
+                              {location.code} {location.name ? `- ${location.name}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ) : (
+              <FormField
+                control={form.control}
+                name={transactionType === "in" ? "toLocationId" : "fromLocationId"}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {transactionType === "in" ? "Destination Location" : "Source Location"}
+                    </FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={!selectedWarehouseId}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={selectedWarehouseId ? "Select location" : "Select warehouse first"}
+                          />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {fromLocations.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.code} {location.name ? `- ${location.name}` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             
             <FormField
               control={form.control}

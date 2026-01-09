@@ -21,6 +21,7 @@ function transformDbItem(
     companyId: dbItem.company_id,
     code: dbItem.item_code,
     name: dbItem.item_name,
+    chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || '',
     itemType: dbItem.item_type as Item['itemType'],
     uom: dbItem.units_of_measure?.code || '',
@@ -158,6 +159,7 @@ export async function PUT(
     }
 
     if (body.name !== undefined) updateData.item_name = body.name
+    if (body.chineseName !== undefined) updateData.item_name_cn = body.chineseName
     if (body.description !== undefined) updateData.description = body.description
     if (body.itemType !== undefined) updateData.item_type = body.itemType
     if (body.standardCost !== undefined) {
@@ -198,9 +200,14 @@ export async function PUT(
         .is('deleted_at', null)
         .maybeSingle()
 
-      if (categoryData) {
-        updateData.category_id = categoryData.id
+      if (!categoryData) {
+        return NextResponse.json(
+          { error: 'Invalid category', details: `Category "${body.category}" not found` },
+          { status: 400 }
+        )
       }
+
+      updateData.category_id = categoryData.id
     }
 
     // Update item

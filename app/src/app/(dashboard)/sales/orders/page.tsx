@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -18,6 +18,8 @@ import {
 import { useSalesOrders, useConvertToInvoice, useConfirmOrder } from "@/hooks/useSalesOrders";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +52,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { SalesOrderFormDialog } from "@/components/sales-orders/SalesOrderFormDialog";
 import { SalesOrderViewDialog } from "@/components/sales-orders/SalesOrderViewDialog";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
+import type { WarehouseLocation } from "@/types/inventory-location";
 
 export default function SalesOrdersPage() {
   const [search, setSearch] = useState("");
@@ -61,6 +64,7 @@ export default function SalesOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
 
   const { formatCurrency } = useCurrency();
@@ -70,6 +74,17 @@ export default function SalesOrdersPage() {
 
   const { data: warehousesData } = useWarehouses({ limit: 1000 });
   const warehouses = warehousesData?.data || [];
+
+  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedWarehouse],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouse}/locations`),
+    enabled: !!selectedWarehouse,
+  });
+
+  const locations = useMemo(
+    () => (locationsData?.data || []).filter((location) => location.isActive),
+    [locationsData]
+  );
 
   const { data, isLoading, error } = useSalesOrders({
     search,
@@ -192,6 +207,7 @@ export default function SalesOrdersPage() {
   const handleConvertToInvoice = (order: SalesOrder) => {
     setOrderToInvoice(order);
     setSelectedWarehouse("");
+    setSelectedLocation("");
     setWarehouseDialogOpen(true);
   };
 
@@ -199,7 +215,11 @@ export default function SalesOrdersPage() {
     if (!orderToInvoice || !selectedWarehouse) return;
 
     try {
-      await convertToInvoice.mutateAsync({ orderId: orderToInvoice.id, warehouseId: selectedWarehouse });
+      await convertToInvoice.mutateAsync({
+        orderId: orderToInvoice.id,
+        warehouseId: selectedWarehouse,
+        locationId: selectedLocation || undefined,
+      });
       setWarehouseDialogOpen(false);
       // Navigate to invoices page after conversion
       router.push('/sales/invoices');
@@ -452,7 +472,13 @@ export default function SalesOrdersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+            <Select
+              value={selectedWarehouse}
+              onValueChange={(value) => {
+                setSelectedWarehouse(value);
+                setSelectedLocation("");
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a warehouse" />
               </SelectTrigger>
@@ -460,6 +486,28 @@ export default function SalesOrdersPage() {
                 {warehouses.map((warehouse) => (
                   <SelectItem key={warehouse.id} value={warehouse.id}>
                     {warehouse.code} - {warehouse.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="pb-2">
+            <Select
+              value={selectedLocation}
+              onValueChange={setSelectedLocation}
+              disabled={!selectedWarehouse}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    selectedWarehouse ? "Select a location (optional)" : "Select warehouse first"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.code} {location.name ? `- ${location.name}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

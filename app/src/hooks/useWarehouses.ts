@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { warehousesApi } from "@/lib/api/warehouses";
 import type {
-  Warehouse,
   CreateWarehouseRequest,
   UpdateWarehouseRequest,
   WarehouseFilters,

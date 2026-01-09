@@ -55,7 +55,12 @@ interface StockAdjustmentLineItemDialogProps {
   item?: StockAdjustmentLineItemFormValues | null;
   mode?: "add" | "edit";
   warehouseId?: string;
-  onItemSelect?: (itemId: string, warehouseId: string) => Promise<number>;
+  locationId?: string;
+  onItemSelect?: (
+    itemId: string,
+    warehouseId: string,
+    locationId?: string
+  ) => Promise<number>;
 }
 
 export function StockAdjustmentLineItemDialog({
@@ -65,6 +70,7 @@ export function StockAdjustmentLineItemDialog({
   item,
   mode = "add",
   warehouseId,
+  locationId,
   onItemSelect,
 }: StockAdjustmentLineItemDialogProps) {
   const { data: itemsData } = useItems({ limit: 1000 });
@@ -148,7 +154,7 @@ export function StockAdjustmentLineItemDialog({
 
       // Fetch current stock quantity if warehouse is selected
       if (warehouseId && onItemSelect) {
-        const currentQty = await onItemSelect(itemId, warehouseId);
+        const currentQty = await onItemSelect(itemId, warehouseId, locationId);
         form.setValue("currentQty", currentQty);
         // Don't default adjustedQty - user will enter adjustment amount
       }

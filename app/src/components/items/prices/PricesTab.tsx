@@ -39,9 +39,10 @@ type PricesResponse = {
 
 type PricesTabProps = {
   itemId: string;
+  readOnly?: boolean;
 };
 
-export const PricesTab = ({ itemId }: PricesTabProps) => {
+export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
   const queryClient = useQueryClient();
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<ItemPrice | null>(null);
@@ -130,10 +131,12 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
                 Manage multi-tier pricing for this item (e.g., Factory Cost, Wholesale, SRP)
               </CardDescription>
             </div>
-            <Button onClick={handleCreatePrice}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Price
-            </Button>
+            {!readOnly && (
+              <Button onClick={handleCreatePrice}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Price
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -160,7 +163,7 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
                     <TableHead>Effective From</TableHead>
                     <TableHead>Effective To</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {!readOnly && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -191,25 +194,27 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
                             {price.isActive ? "Active" : "Inactive"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditPrice(price)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeletePrice(price)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {!readOnly && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditPrice(price)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePrice(price)}
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -220,28 +225,32 @@ export const PricesTab = ({ itemId }: PricesTabProps) => {
         </CardContent>
       </Card>
 
-      <PriceFormDialog
-        open={formDialogOpen}
-        onOpenChange={setFormDialogOpen}
-        itemId={itemId}
-        price={selectedPrice}
-      />
+      {!readOnly && (
+        <PriceFormDialog
+          open={formDialogOpen}
+          onOpenChange={setFormDialogOpen}
+          itemId={itemId}
+          price={selectedPrice}
+        />
+      )}
 
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDelete}
-        title="Delete Price"
-        description={
-          priceToDelete
-            ? `Are you sure you want to delete the price ₱${priceToDelete.price.toFixed(4)} for "${priceToDelete.priceTierName}"? This action cannot be undone.`
-            : "Are you sure you want to delete this price?"
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        isLoading={deleteMutation.isPending}
-      />
+      {!readOnly && (
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDelete}
+          title="Delete Price"
+          description={
+            priceToDelete
+              ? `Are you sure you want to delete the price ₱${priceToDelete.price.toFixed(4)} for "${priceToDelete.priceTierName}"? This action cannot be undone.`
+              : "Are you sure you want to delete this price?"
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="destructive"
+          isLoading={deleteMutation.isPending}
+        />
+      )}
     </>
   );
 };

@@ -19,6 +19,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, Lock } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -97,34 +98,28 @@ export default function LoginPage() {
   };
 
   return (
-    <Card>
-      <CardHeader className="space-y-6">
-        <div className="flex flex-col items-center space-y-3">
+    <Card className="rounded-3xl border border-white/70 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.15)] backdrop-blur-xl">
+      <CardHeader className="space-y-6 pb-2 text-center">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg shadow-slate-900/10">
           <Image
-            src="/erp.png"
-            alt="ERP Logo"
-            width={120}
-            height={120}
+            src="/achlers_circle.png"
+            alt="Achlers Logo"
+            width={84}
+            height={84}
             priority
             className="object-contain"
           />
-          <div className="text-center space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              PragmaBiz
-            </h1>
-            <p className="text-sm text-muted-foreground font-medium">
-              Enterprise Resource Planning System
-            </p>
-          </div>
         </div>
-        <div className="space-y-1 text-center pt-2">
-          <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account
+        <div className="space-y-2">
+          <CardTitle className="text-2xl font-semibold text-slate-900">
+            Sign in with email
+          </CardTitle>
+          <CardDescription className="text-sm text-slate-500">
+            Access your inventory workspace, orders, and reports in one place.
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -132,14 +127,18 @@ export default function LoginPage() {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel className="sr-only">Email</FormLabel>
                   <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="admin@erp.com"
-                      {...field}
-                      disabled={isLoading}
-                    />
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        type="email"
+                        placeholder="Email"
+                        {...field}
+                        disabled={isLoading}
+                        className="h-12 rounded-full border-slate-200 bg-slate-50/80 pl-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-400"
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,14 +150,18 @@ export default function LoginPage() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
+                  <FormLabel className="sr-only">Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Enter your password"
-                      {...field}
-                      disabled={isLoading}
-                    />
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        type="password"
+                        placeholder="Password"
+                        {...field}
+                        disabled={isLoading}
+                        className="h-12 rounded-full border-slate-200 bg-slate-50/80 pl-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-400"
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,11 +174,31 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+            <div className="text-right text-xs text-slate-500">
+              Forgot password? Contact your administrator.
+            </div>
+
+            <Button
+              type="submit"
+              className="h-12 w-full rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800"
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing in..." : "Get Started"}
             </Button>
           </form>
         </Form>
+        <div className="mt-6 flex flex-col items-center gap-2 text-xs text-slate-400">
+          <span className="uppercase tracking-[0.2em]">Powered by</span>
+          <div className="flex items-center justify-center rounded-full bg-transparent px-2 py-1">
+            <Image
+              src="/pragmatica.jpeg"
+              alt="Pragmatica"
+              width={280}
+              height={80}
+              className="h-16 w-auto object-contain"
+            />
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -26,6 +26,7 @@ export function ItemCreationWizard({ onSuccess, onCancel }: ItemCreationWizardPr
   const [formData, setFormData] = useState<CreateItemWithPackagesInput>({
     itemCode: '',
     itemName: '',
+    itemNameCn: '',
     itemDescription: '',
     itemType: 'finished_good',
     basePackage: {
@@ -236,6 +237,19 @@ function BasicInfoStep({
             placeholder="e.g., Widget A"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Chinese Name
+        </label>
+        <input
+          type="text"
+          value={formData.itemNameCn}
+          onChange={(e) => setFormData({ ...formData, itemNameCn: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Optional Chinese name"
+        />
       </div>
 
       <div>
@@ -517,6 +531,12 @@ function ReviewStep({ formData }: { formData: CreateItemWithPackagesInput }) {
             <dd className="font-medium">{formData.itemCode}</dd>
             <dt className="text-gray-600">Item Name:</dt>
             <dd className="font-medium">{formData.itemName}</dd>
+            {formData.itemNameCn ? (
+              <>
+                <dt className="text-gray-600">Chinese Name:</dt>
+                <dd className="font-medium">{formData.itemNameCn}</dd>
+              </>
+            ) : null}
             <dt className="text-gray-600">Item Type:</dt>
             <dd className="font-medium capitalize">{formData.itemType?.replace('_', ' ')}</dd>
             <dt className="text-gray-600">Standard Cost:</dt>

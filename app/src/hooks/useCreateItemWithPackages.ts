@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api';
 export type CreateItemWithPackagesInput = {
   itemCode: string;
   itemName: string;
+  itemNameCn?: string;
   itemDescription?: string;
   itemType?: 'raw_material' | 'finished_good' | 'asset' | 'service';
   basePackage: {
@@ -32,6 +33,7 @@ export type CreateItemWithPackagesResult = {
     id: string;
     itemCode: string;
     itemName: string;
+    itemNameCn?: string;
     description?: string;
     itemType: string;
     packageId: string;
