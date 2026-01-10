@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { requirePermission, getAuthenticatedUser } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { Tables } from '@/types/supabase';
+
+type PermissionRow = Tables<'permissions'>;
+type RoleRow = Tables<'roles'>;
+type RolePermissionRow = Tables<'role_permissions'>;
+
+type PermissionWithRoles = PermissionRow & {
+  role_permissions?: Array<RolePermissionRow & { roles?: RoleRow | null }>;
+};
 
 // GET /api/rbac/permissions - List all permissions
 export async function GET(request: NextRequest) {
@@ -63,9 +72,9 @@ export async function GET(request: NextRequest) {
 
     // Transform data if roles are included
     const permissions = includeRoles
-      ? (data || []).map((perm: any) => ({
+      ? ((data as PermissionWithRoles[] | null) || []).map((perm) => ({
           ...perm,
-          roles: perm.role_permissions?.map((rp: any) => rp.roles).filter(Boolean) || []
+          roles: (perm.role_permissions || []).map((rp) => rp.roles).filter(Boolean)
         }))
       : data || [];
 
@@ -78,7 +87,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit)
       }
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -156,7 +165,7 @@ export async function POST(request: NextRequest) {
       { data: newPermission },
       { status: 201 }
     );
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

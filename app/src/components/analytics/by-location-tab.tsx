@@ -20,7 +20,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByLocation(filters);
 
-  const locationData = data?.data || [];
+  const locationData = useMemo(() => data?.data || [], [data]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 

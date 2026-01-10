@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
+import type { Database } from '@/types/database.types'
+type DbStockAdjustmentItem = Database['public']['Tables']['stock_adjustment_items']['Row']
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
 export async function POST(
@@ -79,7 +81,10 @@ export async function POST(
 
     // STEP 1: Use already-normalized data from stock_adjustment_items
     // The adjustment items were normalized when created, so we use that data
-    const itemsWithChanges = items.filter((item: any) => parseFloat(item.difference) !== 0)
+    const typedItems = (items || []) as DbStockAdjustmentItem[]
+    const itemsWithChanges = typedItems.filter(
+      (item) => parseFloat(String(item.difference ?? 0)) !== 0
+    )
 
     if (itemsWithChanges.length === 0) {
       return NextResponse.json({ error: 'No net adjustment (all differences are zero)' }, { status: 400 })
@@ -87,8 +92,8 @@ export async function POST(
 
     // Calculate total normalized difference to determine transaction type
     // The difference is already in normalized (base) units
-    const totalNormalizedDifference = itemsWithChanges.reduce((sum, item: any) => {
-      return sum + parseFloat(item.difference)
+    const totalNormalizedDifference = itemsWithChanges.reduce((sum, item) => {
+      return sum + parseFloat(String(item.difference ?? 0))
     }, 0)
 
     // Determine transaction type based on total normalized difference
@@ -152,8 +157,8 @@ export async function POST(
     const postingDate = adjustment.adjustment_date
     const postingTime = now.toTimeString().split(' ')[0]
 
-    for (const item of items) {
-      const normalizedDifference = parseFloat(item.difference)
+    for (const item of typedItems) {
+      const normalizedDifference = parseFloat(String(item.difference ?? 0))
 
       // Skip items with zero difference
       if (normalizedDifference === 0) continue
@@ -175,7 +180,7 @@ export async function POST(
       const newBalance = currentBalance + normalizedDifference
 
       // Create stock transaction item with normalization metadata from adjustment item
-      const { data: stockTxItem, error: stockTxItemError } = await supabase
+      const { error: stockTxItemError } = await supabase
         .from('stock_transaction_items')
         .insert({
           company_id: userData.company_id,
@@ -190,14 +195,14 @@ export async function POST(
           // Standard fields
           quantity: Math.abs(normalizedDifference), // Backward compat
           uom_id: item.uom_id,
-          unit_cost: parseFloat(item.unit_cost || 0),
-          total_cost: Math.abs(normalizedDifference) * parseFloat(item.unit_cost || 0),
+          unit_cost: parseFloat(String(item.unit_cost ?? 0)),
+          total_cost: Math.abs(normalizedDifference) * parseFloat(String(item.unit_cost ?? 0)),
           // Audit fields
           qty_before: currentBalance,
           qty_after: newBalance,
-          valuation_rate: parseFloat(item.unit_cost || 0),
-          stock_value_before: currentBalance * parseFloat(item.unit_cost || 0),
-          stock_value_after: newBalance * parseFloat(item.unit_cost || 0),
+          valuation_rate: parseFloat(String(item.unit_cost ?? 0)),
+          stock_value_before: currentBalance * parseFloat(String(item.unit_cost ?? 0)),
+          stock_value_after: newBalance * parseFloat(String(item.unit_cost ?? 0)),
           posting_date: postingDate,
           posting_time: postingTime,
           notes: item.reason || `Adjustment: ${adjustment.adjustment_code}`,
@@ -300,7 +305,7 @@ export async function POST(
         status: updatedAdjustment.status,
         reason: updatedAdjustment.reason,
         notes: updatedAdjustment.notes,
-        totalValue: parseFloat(updatedAdjustment.total_value),
+        totalValue: parseFloat(String(updatedAdjustment.total_value ?? 0)),
         stockTransactionId: updatedAdjustment.stock_transaction_id,
         approvedBy: updatedAdjustment.approved_by,
         approvedAt: updatedAdjustment.approved_at,
@@ -310,26 +315,27 @@ export async function POST(
         updatedBy: updatedAdjustment.updated_by,
         createdAt: updatedAdjustment.created_at,
         updatedAt: updatedAdjustment.updated_at,
-        items: updatedItems?.map((item: any) => ({
-          id: item.id,
-          adjustmentId: item.adjustment_id,
-          itemId: item.item_id,
-          itemCode: item.item_code,
-          itemName: item.item_name,
-          currentQty: parseFloat(item.current_qty),
-          adjustedQty: parseFloat(item.adjusted_qty),
-          difference: parseFloat(item.difference),
-          unitCost: parseFloat(item.unit_cost),
-          totalCost: parseFloat(item.total_cost),
-          uomId: item.uom_id,
-          uomName: item.uom_name,
-          reason: item.reason,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at,
-        })) || [],
+        items:
+          (updatedItems as DbStockAdjustmentItem[] | null)?.map((item) => ({
+            id: item.id,
+            adjustmentId: item.adjustment_id,
+            itemId: item.item_id,
+            itemCode: item.item_code,
+            itemName: item.item_name,
+            currentQty: parseFloat(String(item.current_qty ?? 0)),
+            adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+            difference: parseFloat(String(item.difference ?? 0)),
+            unitCost: parseFloat(String(item.unit_cost ?? 0)),
+            totalCost: parseFloat(String(item.total_cost ?? 0)),
+            uomId: item.uom_id,
+            uomName: item.uom_name,
+            reason: item.reason,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
+          })) || [],
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

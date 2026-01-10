@@ -1,6 +1,5 @@
 import type { Resource } from '@/constants/resources';
 import type {
-  ResourcePermission,
   PermissionAction,
   UserPermissions
 } from '@/types/rbac';

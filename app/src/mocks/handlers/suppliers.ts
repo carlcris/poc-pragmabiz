@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import type { Supplier, CreateSupplierRequest, UpdateSupplierRequest } from "@/types/supplier";
 import { suppliers } from "../data/suppliers";
 
-let suppliersData = [...suppliers];
+const suppliersData = [...suppliers];
 
 export const supplierHandlers = [
   // GET /api/suppliers

@@ -19,6 +19,30 @@ import { normalizeTransactionItems } from "./normalizationService";
 import { adjustItemLocation, ensureWarehouseDefaultLocation } from "./locationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
+type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
+
+type TransformationOrderInputRow = {
+  id: string;
+  item_id: string;
+};
+
+type TransformationOrderOutputRow = {
+  id: string;
+  item_id: string;
+  is_scrap: boolean;
+};
+
+type TransformationOrderRow = {
+  id: string;
+  company_id: string;
+  business_unit_id: string | null;
+  order_code: string;
+  source_warehouse_id: string;
+  status: string;
+  inputs: TransformationOrderInputRow[];
+  outputs: TransformationOrderOutputRow[];
+};
+
 // ============================================================================
 // Template Validation
 // ============================================================================
@@ -67,7 +91,7 @@ export async function validateTemplate(templateId: string): Promise<{
     }
 
     return { isValid: true };
-  } catch (error) {
+  } catch {
 
     return { isValid: false, error: "Template validation failed" };
   }
@@ -133,9 +157,6 @@ export async function validateStockAvailability(
       const available = warehouseStock
         ? parseFloat(String(warehouseStock.available_stock))
         : 0;
-      const currentStock = warehouseStock
-        ? parseFloat(String(warehouseStock.current_stock))
-        : 0;
       const required = input.planned_quantity;
 
       if (available < required) {
@@ -157,7 +178,7 @@ export async function validateStockAvailability(
     }
 
     return { isAvailable: true };
-  } catch (error) {
+  } catch {
 
     return {
       isAvailable: false,
@@ -206,7 +227,7 @@ export async function validateStateTransition(
         currentStatus,
       };
     }
-  } catch (error) {
+  } catch {
 
     return { isValid: false, error: "State transition validation failed" };
   }
@@ -220,7 +241,7 @@ export async function executeTransformation(
   orderId: string,
   userId: string,
   executionData: ExecuteTransformationOrderRequest,
-  supabaseClient?: any
+  supabaseClient?: SupabaseClient
 ): Promise<{
   success: boolean;
   error?: string;
@@ -255,25 +276,26 @@ export async function executeTransformation(
     if (orderError || !order) {
       return { success: false, error: "Order not found" };
     }
+    const typedOrder = order as TransformationOrderRow;
 
     // 2. Validate order is in PREPARING status
-    if (order.status !== "PREPARING") {
+    if (typedOrder.status !== "PREPARING") {
       return {
         success: false,
-        error: `Order must be in PREPARING status. Current status: ${order.status}`,
+        error: `Order must be in PREPARING status. Current status: ${typedOrder.status}`,
       };
     }
 
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
-      companyId: order.company_id,
-      warehouseId: order.source_warehouse_id,
+      companyId: typedOrder.company_id,
+      warehouseId: typedOrder.source_warehouse_id,
       userId,
     });
 
     // 3. Validate execution data matches order inputs/outputs
-    const inputLineIds = new Set(order.inputs.map((i: any) => i.id));
-    const outputLineIds = new Set(order.outputs.map((o: any) => o.id));
+    const inputLineIds = new Set(typedOrder.inputs.map((i) => i.id));
+    const outputLineIds = new Set(typedOrder.outputs.map((o) => o.id));
 
     for (const input of executionData.inputs) {
       if (!inputLineIds.has(input.inputLineId)) {
@@ -322,7 +344,7 @@ export async function executeTransformation(
 
     // 5. Normalize input quantities from packages to base units
     const inputItemsToNormalize: StockTransactionItemInput[] = executionData.inputs.map((inputData) => {
-      const inputLine = order.inputs.find((i: any) => i.id === inputData.inputLineId);
+      const inputLine = typedOrder.inputs.find((i) => i.id === inputData.inputLineId);
       if (!inputLine) throw new Error(`Input line not found: ${inputData.inputLineId}`);
 
       return {
@@ -333,7 +355,7 @@ export async function executeTransformation(
       };
     });
 
-    const normalizedInputs = await normalizeTransactionItems(order.company_id, inputItemsToNormalize);
+    const normalizedInputs = await normalizeTransactionItems(typedOrder.company_id, inputItemsToNormalize);
 
     // 6. Consume inputs (create stock transactions type='out')
     const inputTransactionIds: string[] = [];
@@ -342,13 +364,13 @@ export async function executeTransformation(
     let inputIndex = 0;
     for (const inputData of executionData.inputs) {
       inputIndex++;
-      const inputLine = order.inputs.find((i: any) => i.id === inputData.inputLineId);
+      const inputLine = typedOrder.inputs.find((i) => i.id === inputData.inputLineId);
       if (!inputLine) continue;
 
       const normalizedInput = normalizedInputs[inputIndex - 1];
 
       // Get current stock
-      const { data: warehouseStock, error: stockError } = await supabase
+      const { data: warehouseStock } = await supabase
         .from("item_warehouse")
         .select("current_stock, available_stock, default_location_id")
         .eq("item_id", inputLine.item_id)
@@ -364,9 +386,6 @@ export async function executeTransformation(
 
       const currentStock = warehouseStock
         ? parseFloat(String(warehouseStock.current_stock))
-        : 0;
-      const availableStock = warehouseStock
-        ? parseFloat(String(warehouseStock.available_stock))
         : 0;
       const unitCost = itemData?.cost_price ? parseFloat(String(itemData.cost_price)) : 0;
 
@@ -393,17 +412,17 @@ export async function executeTransformation(
       const { data: stockTransaction, error: transactionError } = await supabase
         .from("stock_transactions")
         .insert({
-          company_id: order.company_id,
-          business_unit_id: order.business_unit_id,
-          transaction_code: `ST-TRANS-IN-${order.order_code}-${inputIndex}`,
+          company_id: typedOrder.company_id,
+          business_unit_id: typedOrder.business_unit_id,
+          transaction_code: `ST-TRANS-IN-${typedOrder.order_code}-${inputIndex}`,
           transaction_type: "out",
           transaction_date: executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
-          warehouse_id: order.source_warehouse_id,
+          warehouse_id: typedOrder.source_warehouse_id,
           from_location_id: defaultLocationId,
           reference_type: "transformation_order",
           reference_id: orderId,
-          reference_code: order.order_code,
-          notes: `Transformation input consumption - ${order.order_code}`,
+          reference_code: typedOrder.order_code,
+          notes: `Transformation input consumption - ${typedOrder.order_code}`,
           status: "posted",
           created_by: userId,
           updated_by: userId,
@@ -431,7 +450,7 @@ export async function executeTransformation(
       const stockValueAfter = newStock * unitCost;
 
       await supabase.from("stock_transaction_items").insert({
-        company_id: order.company_id,
+        company_id: typedOrder.company_id,
         transaction_id: stockTransaction.id,
         item_id: inputLine.item_id,
         // Normalization fields (NEW)
@@ -459,9 +478,9 @@ export async function executeTransformation(
 
       await adjustItemLocation({
         supabase,
-        companyId: order.company_id,
+        companyId: typedOrder.company_id,
         itemId: inputLine.item_id,
-        warehouseId: order.source_warehouse_id,
+        warehouseId: typedOrder.source_warehouse_id,
         locationId: warehouseStock?.default_location_id || defaultLocationId,
         userId,
         qtyOnHandDelta: -normalizedInput.normalizedQty,
@@ -475,7 +494,7 @@ export async function executeTransformation(
           updated_by: userId,
         })
         .eq("item_id", inputLine.item_id)
-        .eq("warehouse_id", order.source_warehouse_id);
+        .eq("warehouse_id", typedOrder.source_warehouse_id);
 
       // Update transformation_order_inputs (store normalized quantity)
       await supabase
@@ -497,7 +516,7 @@ export async function executeTransformation(
 
     // 7. Normalize output quantities from packages to base units
     const outputItemsToNormalize: StockTransactionItemInput[] = executionData.outputs.map((outputData) => {
-      const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
+      const outputLine = typedOrder.outputs.find((o) => o.id === outputData.outputLineId);
       if (!outputLine) throw new Error(`Output line not found: ${outputData.outputLineId}`);
 
       return {
@@ -508,13 +527,13 @@ export async function executeTransformation(
       };
     });
 
-    const normalizedOutputs = await normalizeTransactionItems(order.company_id, outputItemsToNormalize);
+    const normalizedOutputs = await normalizeTransactionItems(typedOrder.company_id, outputItemsToNormalize);
 
     // 7.5 Normalize waste quantities for cost allocation
     const wasteItemsToNormalize: StockTransactionItemInput[] = executionData.outputs
       .filter(output => output.wastedQuantity && output.wastedQuantity > 0)
       .map((outputData) => {
-        const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
+        const outputLine = typedOrder.outputs.find((o) => o.id === outputData.outputLineId);
         if (!outputLine) throw new Error(`Output line not found: ${outputData.outputLineId}`);
 
         return {
@@ -526,7 +545,7 @@ export async function executeTransformation(
       });
 
     const normalizedWastes = wasteItemsToNormalize.length > 0
-      ? await normalizeTransactionItems(order.company_id, wasteItemsToNormalize)
+      ? await normalizeTransactionItems(typedOrder.company_id, wasteItemsToNormalize)
       : [];
 
     // 8. Produce outputs (create stock transactions type='in')
@@ -559,7 +578,7 @@ export async function executeTransformation(
     let outputIndex = 0;
     for (const outputData of executionData.outputs) {
       outputIndex++;
-      const outputLine = order.outputs.find((o: any) => o.id === outputData.outputLineId);
+      const outputLine = typedOrder.outputs.find((o) => o.id === outputData.outputLineId);
       if (!outputLine) continue;
 
       const normalizedOutput = normalizedOutputs[outputIndex - 1];
@@ -804,7 +823,9 @@ export async function executeTransformation(
 
     for (let idx = 0; idx < executionData.outputs.length; idx++) {
       const output = executionData.outputs[idx];
-      const outputLine = order.outputs.find((o: any) => o.id === output.outputLineId);
+      const outputLine = typedOrder.outputs.find(
+        (line) => line.id === output.outputLineId
+      );
       if (outputLine?.is_scrap) continue; // Skip scrap items from cost calculation
 
       const costPerUnit = totalOutputQuantity > 0 ? totalInputCost / totalOutputQuantity : 0;
@@ -842,7 +863,7 @@ export async function executeTransformation(
         waste: wasteTransactionIds,
       },
     };
-  } catch (error) {
+  } catch {
 
     return { success: false, error: "Transformation execution failed" };
   }
@@ -874,7 +895,7 @@ export async function checkTemplateLock(templateId: string): Promise<{
       isLocked: template.usage_count > 0,
       usageCount: template.usage_count,
     };
-  } catch (error) {
+  } catch {
 
     return { isLocked: false };
   }

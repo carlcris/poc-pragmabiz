@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
+import type { CreateInvoiceRequest } from '@/types/invoice'
 
 // GET /api/invoices
 export async function GET(request: NextRequest) {
@@ -232,7 +233,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -290,25 +291,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate totals
-    const lineItems = body.lineItems || []
+    const lineItems = (body.lineItems || []) as CreateInvoiceRequest["lineItems"]
     let subtotal = 0
     let totalDiscount = 0
     let totalTax = 0
 
-    const itemInputs: StockTransactionItemInput[] = lineItems.map((item: any) => ({
+    const itemInputs: StockTransactionItemInput[] = lineItems.map((item) => ({
       itemId: item.itemId,
       packagingId: item.packagingId ?? null,
-      inputQty: parseFloat(item.quantity),
-      unitCost: parseFloat(item.unitPrice),
+      inputQty: Number(item.quantity),
+      unitCost: Number(item.unitPrice),
     }))
 
     const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
 
-    const processedItems = lineItems.map((item: any, index: number) => {
-      const quantity = parseFloat(item.quantity)
-      const rate = parseFloat(item.unitPrice)
-      const discountPercent = parseFloat(item.discount || 0)
-      const taxPercent = parseFloat(item.taxRate || 0)
+    const processedItems = lineItems.map((item, index) => {
+      const quantity = Number(item.quantity)
+      const rate = Number(item.unitPrice)
+      const discountPercent = Number(item.discount || 0)
+      const taxPercent = Number(item.taxRate || 0)
 
       const normalizedQty = normalizedItems[index]?.normalizedQty ?? quantity
       const itemTotal = normalizedQty * rate
@@ -417,7 +418,7 @@ export async function POST(request: NextRequest) {
       if (!commissionResult.success) {
 
       }
-    } catch (commissionError) {
+    } catch {
 
       // Don't fail invoice creation if commission calculation fails
     }
@@ -429,7 +430,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     )
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import type { Warehouse, CreateWarehouseRequest } from "@/types/warehouse";
 import { warehouses } from "../data/warehouses";
 
-let warehousesData = [...warehouses];
+const warehousesData = [...warehouses];
 
 export const warehouseHandlers = [
   // GET /api/warehouses

@@ -15,12 +15,22 @@ type DbUser = Database['public']['Tables']['users']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
 type DbPackaging = Database['public']['Tables']['item_packaging']['Row']
 
+type DbQuotationWithJoins = DbQuotation & {
+  customers?: DbCustomer | null
+  users?: DbUser | null
+}
+
+type DbQuotationItemWithJoins = DbQuotationItem & {
+  items?: DbItem | null
+  units_of_measure?: DbUoM | null
+  item_packaging?: DbPackaging | null
+}
+
+type QuotationItemInput = CreateQuotationRequest['items'][number]
+
 // Transform database quotation to frontend type
 function transformDbQuotation(
-  dbQuotation: DbQuotation & {
-    customers?: DbCustomer | null
-    users?: DbUser | null
-  },
+  dbQuotation: DbQuotationWithJoins,
   items?: QuotationLineItem[]
 ): Quotation {
   return {
@@ -50,11 +60,7 @@ function transformDbQuotation(
 
 // Transform database quotation item to frontend type
 function transformDbQuotationItem(
-  dbItem: DbQuotationItem & {
-    items?: DbItem | null
-    units_of_measure?: DbUoM | null
-    item_packaging?: DbPackaging | null
-  }
+  dbItem: DbQuotationItemWithJoins
 ): QuotationLineItem {
   return {
     id: dbItem.id,
@@ -204,17 +210,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Group items by quotation
-    const itemsByQuotation = items?.reduce((acc, item) => {
+    const itemsByQuotation = (items as DbQuotationItemWithJoins[] | null)?.reduce((acc, item) => {
       if (!acc[item.quotation_id]) {
         acc[item.quotation_id] = []
       }
-      acc[item.quotation_id].push(transformDbQuotationItem(item as any))
+      acc[item.quotation_id].push(transformDbQuotationItem(item))
       return acc
     }, {} as Record<string, QuotationLineItem[]>) || {}
 
     // Transform to frontend format
     const transformedData = quotations.map((quotation) =>
-      transformDbQuotation(quotation as any, itemsByQuotation[quotation.id] || [])
+      transformDbQuotation(quotation as DbQuotationWithJoins, itemsByQuotation[quotation.id] || [])
     )
 
     return NextResponse.json({
@@ -226,7 +232,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -310,7 +316,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item: QuotationItemInput) => ({
       itemId: item.itemId,
       packagingId: item.packagingId ?? null,
       inputQty: parseFloat(item.quantity),
@@ -460,11 +466,11 @@ export async function POST(request: NextRequest) {
       .eq('quotation_id', quotation.id)
       .order('sort_order', { ascending: true })
 
-    const items = quotationItems?.map(item => transformDbQuotationItem(item as any)) || []
-    const result = transformDbQuotation(completeQuotation as any, items)
+    const items = (quotationItems as DbQuotationItemWithJoins[] | null)?.map(item => transformDbQuotationItem(item)) || []
+    const result = transformDbQuotation(completeQuotation as DbQuotationWithJoins, items)
 
     return NextResponse.json(result, { status: 201 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

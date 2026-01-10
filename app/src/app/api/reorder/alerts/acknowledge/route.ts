@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       message: `${body.alertIds.length} alert(s) acknowledged`,
       acknowledgedCount: body.alertIds.length,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

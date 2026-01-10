@@ -37,6 +37,17 @@ export async function GET() {
 
     const companyId = userData.company_id;
 
+    type ItemWarehouseAlertRow = {
+      item_id: string;
+      warehouse_id: string;
+      current_stock: number | string | null;
+      reorder_level: number | string | null;
+      items: {
+        item_code: string;
+        item_name: string;
+      };
+    };
+
     // Get items with stock levels below reorder level across all warehouses
     const { data: alerts, error: alertsError } = await supabase
       .from("item_warehouse")
@@ -66,19 +77,19 @@ export async function GET() {
     }
 
     // Filter alerts where current stock is below reorder level and transform
-    const reorderAlerts = (alerts || [])
-      .filter((alert: any) => {
+    const reorderAlerts = (alerts as ItemWarehouseAlertRow[] | null || [])
+      .filter((alert) => {
         const currentStock = parseFloat(alert.current_stock) || 0;
         const reorderLevel = parseFloat(alert.reorder_level) || 0;
         return currentStock < reorderLevel;
       })
-      .sort((a: any, b: any) => {
+      .sort((a, b) => {
         const aStock = parseFloat(a.current_stock) || 0;
         const bStock = parseFloat(b.current_stock) || 0;
         return aStock - bStock;
       })
       .slice(0, 10)
-      .map((alert: any) => ({
+      .map((alert) => ({
         id: alert.item_id,
         code: alert.items.item_code,
         name: alert.items.item_name,
@@ -88,7 +99,7 @@ export async function GET() {
       }));
 
     return NextResponse.json(reorderAlerts);
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

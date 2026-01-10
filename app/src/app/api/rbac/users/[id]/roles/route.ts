@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { getAuthenticatedUser, checkPermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { Tables } from '@/types/supabase';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
+};
+
+type UserRoleRow = Tables<'user_roles'>;
+type RoleRow = Tables<'roles'>;
+type BusinessUnitRow = Tables<'business_units'>;
+
+type UserRoleWithJoins = UserRoleRow & {
+  roles?: Pick<RoleRow, 'id' | 'name' | 'description'> | null;
+  business_units?: Pick<BusinessUnitRow, 'id' | 'name'> | null;
 };
 
 // GET /api/rbac/users/[userId]/roles - Get user's roles
@@ -82,18 +92,18 @@ export async function GET(
     }
 
     // Transform data to include business unit info
-    const roles = userRoles?.map((ur: any) => ({
+    const roles = ((userRoles as UserRoleWithJoins[] | null) || []).map((ur) => ({
       id: ur.roles?.id,
       name: ur.roles?.name,
       description: ur.roles?.description,
       business_unit_id: ur.business_unit_id,
       business_unit_name: ur.business_units?.name || 'Unknown Business Unit',
-    })) || [];
+    }));
 
     return NextResponse.json({
       data: roles
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -204,7 +214,7 @@ export async function POST(
     return NextResponse.json({
       message: 'Role assigned successfully'
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -280,7 +290,7 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Role removed successfully'
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -29,7 +29,7 @@ export async function createServerClientWithBU() {
 
   // SECURITY: Use getUser() to authenticate the JWT by contacting Supabase Auth server
   // Do NOT use getSession() as it reads from cookies without verification
-  const { data: { user } } = await supabase.auth.getUser();
+  await supabase.auth.getUser();
 
   // Custom claims from auth hooks are NOT in the user object from getUser()
   // We need to decode the JWT directly to access custom claims
@@ -45,8 +45,7 @@ export async function createServerClientWithBU() {
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
         currentBusinessUnitId = payload.current_business_unit_id;
       }
-    } catch (e) {
-
+    } catch {
     }
   }
 

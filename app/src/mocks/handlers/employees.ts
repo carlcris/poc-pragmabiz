@@ -12,7 +12,7 @@ import {
   employeeDistributionLocations,
 } from "../data/employees";
 
-let employeesData = [...employees];
+const employeesData = [...employees];
 let territoriesData = [...employeeDistributionLocations];
 
 export const employeeHandlers = [

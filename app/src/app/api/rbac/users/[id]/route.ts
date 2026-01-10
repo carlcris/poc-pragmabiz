@@ -42,7 +42,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -113,7 +113,7 @@ export async function PATCH(
       message: 'User updated successfully',
       data: updatedUser
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

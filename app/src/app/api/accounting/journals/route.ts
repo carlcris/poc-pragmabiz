@@ -22,8 +22,68 @@ import {
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
 
+type AccountRow = {
+  id: string;
+  company_id: string;
+  account_number: string;
+  account_name: string;
+  account_type: string;
+  parent_account_id: string | null;
+  is_system_account: boolean;
+  is_active: boolean;
+  level: number;
+  sort_order: number;
+  description: string | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+  deleted_at: string | null;
+  version: number;
+};
+
+type JournalLineRow = {
+  id: string;
+  company_id: string;
+  journal_entry_id: string;
+  account_id: string;
+  debit: number | string;
+  credit: number | string;
+  description: string | null;
+  line_number: number;
+  cost_center_id: string | null;
+  project_id: string | null;
+  created_at: string;
+  created_by: string;
+  accounts?: AccountRow | null;
+};
+
+type JournalEntryRow = {
+  id: string;
+  company_id: string;
+  journal_code: string;
+  posting_date: string;
+  reference_type: string | null;
+  reference_id: string | null;
+  reference_code: string | null;
+  description: string | null;
+  status: string;
+  source_module: string | null;
+  total_debit: number | string;
+  total_credit: number | string;
+  posted_at: string | null;
+  posted_by: string | null;
+  created_at: string;
+  created_by: string;
+  updated_at: string;
+  updated_by: string;
+  deleted_at: string | null;
+  version: number;
+  journal_lines?: JournalLineRow[] | null;
+};
+
 // Helper function to transform database records to TypeScript types
-function transformJournalEntry(entry: any): JournalEntryWithLines {
+function transformJournalEntry(entry: JournalEntryRow): JournalEntryWithLines {
   return {
     id: entry.id,
     companyId: entry.company_id,
@@ -45,7 +105,7 @@ function transformJournalEntry(entry: any): JournalEntryWithLines {
     updatedBy: entry.updated_by,
     deletedAt: entry.deleted_at,
     version: entry.version,
-    lines: (entry.journal_lines || []).map((line: any) => ({
+    lines: (entry.journal_lines || []).map((line) => ({
       id: line.id,
       companyId: line.company_id,
       journalEntryId: line.journal_entry_id,
@@ -218,7 +278,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -388,7 +448,7 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
     }));
 
-    const { data: journalLines, error: linesError } = await supabase
+    const { error: linesError } = await supabase
       .from("journal_lines")
       .insert(journalLinesData)
       .select();

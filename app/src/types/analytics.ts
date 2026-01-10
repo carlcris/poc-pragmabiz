@@ -1,5 +1,3 @@
-import type { Employee } from "./employee";
-
 // Time period granularity
 export type TimePeriod = "daily" | "weekly" | "monthly" | "quarterly" | "yearly";
 
@@ -138,7 +136,7 @@ export interface AnalyticsUpdate {
     employeeId?: string;
     amount?: number;
     location?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 

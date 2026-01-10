@@ -98,19 +98,22 @@ export function PurchaseOrderFormDialog({
   const [activeTab, setActiveTab] = useState("general");
 
   // Default values
-  const defaultValues: PurchaseOrderFormValues = {
-    supplierId: "",
-    orderDate: new Date().toISOString().split("T")[0],
-    expectedDeliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-    deliveryAddress: "",
-    deliveryCity: "",
-    deliveryState: "",
-    deliveryCountry: "Philippines",
-    deliveryPostalCode: "",
-    notes: "",
-  };
+  const defaultValues = useMemo<PurchaseOrderFormValues>(
+    () => ({
+      supplierId: "",
+      orderDate: new Date().toISOString().split("T")[0],
+      expectedDeliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      deliveryAddress: "",
+      deliveryCity: "",
+      deliveryState: "",
+      deliveryCountry: "Philippines",
+      deliveryPostalCode: "",
+      notes: "",
+    }),
+    []
+  );
 
   const form = useForm<PurchaseOrderFormValues>({
     resolver: zodResolver(purchaseOrderFormSchema),
@@ -185,7 +188,7 @@ export function PurchaseOrderFormDialog({
       setLineItems([]);
       setActiveTab("general");
     }
-  }, [open, purchaseOrder, form]);
+  }, [open, purchaseOrder, form, defaultValues]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -268,12 +271,13 @@ export function PurchaseOrderFormDialog({
         toast.success("Purchase order created successfully");
       }
       onOpenChange(false);
-    } catch (error: any) {
-      const errorMessage = error?.message || (isEditMode
-        ? "Failed to update purchase order"
-        : "Failed to create purchase order");
+    } catch (error) {
+      const errorMessage = error instanceof Error
+        ? error.message
+        : (isEditMode
+            ? "Failed to update purchase order"
+            : "Failed to create purchase order");
       toast.error(errorMessage);
-
     }
   };
 
@@ -466,7 +470,7 @@ export function PurchaseOrderFormDialog({
                   {lineItems.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                       <p>No items added yet.</p>
-                      <p className="text-sm">Click "Add Item" to get started.</p>
+                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
                     </div>
                   ) : (
                     <>

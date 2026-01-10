@@ -95,8 +95,7 @@ export function ImageUpload({
           method: "DELETE",
         });
       }
-    } catch (error) {
-
+    } catch {
     }
 
     setPreview(undefined);

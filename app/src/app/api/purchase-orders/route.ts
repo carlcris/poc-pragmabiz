@@ -4,6 +4,38 @@ import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
+import type { CreatePurchaseOrderRequest } from '@/types/purchase-order'
+import type { Tables } from '@/types/supabase'
+
+type PurchaseOrderRow = Tables<'purchase_orders'>
+type PurchaseOrderItemRow = Tables<'purchase_order_items'>
+type SupplierRow = Tables<'suppliers'>
+type ItemRow = Tables<'items'>
+type ItemPackagingRow = Tables<'item_packaging'>
+type UnitRow = Tables<'units_of_measure'>
+
+type SupplierSummary = Pick<SupplierRow, 'id' | 'supplier_code' | 'supplier_name'>
+type ItemSummary = Pick<ItemRow, 'id' | 'item_code' | 'item_name'>
+type PackagingSummary = Pick<ItemPackagingRow, 'id' | 'pack_name' | 'qty_per_pack'>
+type UnitSummary = Pick<UnitRow, 'id' | 'code' | 'name'>
+
+type PurchaseOrderItemQueryRow = PurchaseOrderItemRow & {
+  item?: ItemSummary | null
+  packaging?: PackagingSummary | null
+  uom?: UnitSummary | null
+}
+
+type PurchaseOrderQueryRow = PurchaseOrderRow & {
+  supplier?: SupplierSummary | null
+  items?: PurchaseOrderItemQueryRow[] | null
+}
+
+type PurchaseOrderCreateBody = CreatePurchaseOrderRequest & {
+  orderCode?: string
+  status?: string
+}
+
+type PurchaseOrderItemInput = PurchaseOrderCreateBody['items'][number]
 
 // GET /api/purchase-orders
 export async function GET(request: NextRequest) {
@@ -103,7 +135,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response
-    const formattedOrders = purchaseOrders?.map((order) => ({
+    const formattedOrders = (purchaseOrders as PurchaseOrderQueryRow[] | null)?.map((order) => ({
       id: order.id,
       companyId: order.company_id,
       orderCode: order.order_code,
@@ -131,7 +163,7 @@ export async function GET(request: NextRequest) {
       notes: order.notes,
       approvedBy: order.approved_by,
       approvedAt: order.approved_at,
-      items: order.items?.map((item: any) => ({
+      items: order.items?.map((item) => ({
         id: item.id,
         itemId: item.item_id,
         item: item.item
@@ -178,7 +210,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -189,7 +221,7 @@ export async function POST(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.PURCHASE_ORDERS, 'create')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
-    const body = await request.json()
+    const body = (await request.json()) as PurchaseOrderCreateBody
 
     // Check authentication
     const {
@@ -247,7 +279,7 @@ export async function POST(request: NextRequest) {
       orderCode = `PO-${year}-${String(nextNum).padStart(4, '0')}`
     }
 
-    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item: PurchaseOrderItemInput) => ({
       itemId: item.itemId,
       packagingId: item.packagingId ?? null,
       inputQty: parseFloat(item.quantity),
@@ -258,7 +290,7 @@ export async function POST(request: NextRequest) {
 
     // Calculate totals
     let subtotal = 0
-    const items = body.items.map((item: any, index: number) => {
+    const items = body.items.map((item: PurchaseOrderItemInput, index: number) => {
       const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity
       const itemSubtotal = normalizedQty * item.rate
       const discountAmount = itemSubtotal * (item.discountPercent || 0) / 100
@@ -315,7 +347,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create line items
-    const lineItemsData = items.map((item: any) => ({
+    const lineItemsData = items.map((item) => ({
       company_id: userData.company_id,
       purchase_order_id: purchaseOrder.id,
       item_id: item.itemId,
@@ -353,7 +385,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     )
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

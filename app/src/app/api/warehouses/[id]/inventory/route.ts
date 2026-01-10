@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { requireLookupDataAccess } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { Tables } from '@/types/supabase';
+
+type ItemWarehouseRow = Tables<'item_warehouse'>;
+type ItemRow = Tables<'items'>;
+type UomRow = Tables<'units_of_measure'>;
+type ItemWarehouseWithItem = ItemWarehouseRow & {
+  items: ItemRow | null;
+};
+
+type InventoryItem = {
+  id: string | undefined;
+  itemId: string;
+  itemCode: string | undefined;
+  itemName: string | undefined;
+  description: string | null | undefined;
+  currentStock: number;
+  availableStock: number;
+  unitPrice: number;
+  unitCost: number;
+  reorderPoint: number;
+  categoryId: string | null | undefined;
+  categoryName: string | null;
+  uomId: string | null | undefined;
+  uomName: string;
+};
 
 export async function GET(
   request: NextRequest,
@@ -90,37 +115,37 @@ export async function GET(
 
     // Get UOM names separately to avoid relationship conflicts
     const uomIds = inventoryData && inventoryData.length > 0
-      ? [...new Set(inventoryData.map((stock: any) => stock.items?.uom_id).filter(Boolean))]
+      ? [...new Set((inventoryData as ItemWarehouseWithItem[]).map((stock) => stock.items?.uom_id).filter(Boolean))]
       : [];
-      
-    let uomsData: any[] = [];
-    let uomError: any = null;
+
+    let uomsData: UomRow[] = [];
+    let uomError: unknown = null;
     if (uomIds.length > 0) {
       const uomRes = await supabase
         .from('units_of_measure')
         .select('id, name')
         .in('id', uomIds);
-      uomsData = uomRes.data || [];
+      uomsData = (uomRes.data as UomRow[] | null) || [];
       uomError = uomRes.error;
     }
 
     if (uomError) {
     }
 
-    const uomMap = new Map((uomsData || []).map((uom: any) => [uom.id, uom.name]));
+    const uomMap = new Map((uomsData || []).map((uom) => [uom.id, uom.name]));
 
     // Transform data
-    const inventory = inventoryData?.map((stock: any) => ({
+    const inventory: InventoryItem[] = (inventoryData as ItemWarehouseWithItem[] | null)?.map((stock) => ({
       id: stock.items?.id,
       itemId: stock.item_id,
       itemCode: stock.items?.item_code,
       itemName: stock.items?.item_name,
       description: stock.items?.description,
-      currentStock: parseFloat(stock.current_stock) || 0,
-      availableStock: parseFloat(stock.current_stock) || 0,
-      unitPrice: parseFloat(stock.items?.sales_price) || 0,
-      unitCost: parseFloat(stock.items?.cost_price) || 0,
-      reorderPoint: parseFloat(stock.reorder_level) || 0,
+      currentStock: Number(stock.current_stock) || 0,
+      availableStock: Number(stock.current_stock) || 0,
+      unitPrice: Number(stock.items?.sales_price) || 0,
+      unitCost: Number(stock.items?.cost_price) || 0,
+      reorderPoint: Number(stock.reorder_level) || 0,
       categoryId: stock.items?.category_id,
       categoryName: null,
       uomId: stock.items?.uom_id,
@@ -128,9 +153,8 @@ export async function GET(
     })) || [];
 
     // Sort client-side by itemName to emulate previous ordering
-    inventory.sort((a: any, b: any) => {
-      const an = (a.itemName || '').toString().localeCompare((b.itemName || '').toString());
-      return an;
+    inventory.sort((a, b) => {
+      return (a.itemName || '').toString().localeCompare((b.itemName || '').toString());
     });
 
     return NextResponse.json({
@@ -144,16 +168,16 @@ export async function GET(
         inventory,
         summary: {
           totalItems: inventory.length,
-          itemsInStock: inventory.filter((i: any) => i.availableStock > 0).length,
+          itemsInStock: inventory.filter((i) => i.availableStock > 0).length,
           lowStockItems: inventory.filter(
-            (i: any) => i.availableStock > 0 && i.availableStock <= i.reorderPoint
+            (i) => i.availableStock > 0 && i.availableStock <= i.reorderPoint
           ).length,
-          outOfStockItems: inventory.filter((i: any) => i.availableStock === 0).length,
+          outOfStockItems: inventory.filter((i) => i.availableStock === 0).length,
         },
       },
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

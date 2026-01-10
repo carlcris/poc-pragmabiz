@@ -201,7 +201,7 @@ export async function POST(
         orderNumber: salesOrder.order_code,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

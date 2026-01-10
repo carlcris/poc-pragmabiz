@@ -6,6 +6,55 @@ import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
 import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
+import type { Tables } from '@/types/supabase'
+
+type PurchaseReceiptRow = Tables<'purchase_receipts'>
+type PurchaseReceiptItemRow = Tables<'purchase_receipt_items'>
+type PurchaseOrderRow = Tables<'purchase_orders'>
+type PurchaseOrderItemRow = Tables<'purchase_order_items'>
+type SupplierRow = Tables<'suppliers'>
+type WarehouseRow = Tables<'warehouses'>
+type ItemRow = Tables<'items'>
+type ItemPackagingRow = Tables<'item_packaging'>
+type UnitRow = Tables<'units_of_measure'>
+
+type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
+  item?: Pick<ItemRow, 'id' | 'item_code' | 'item_name'> | null
+  uom?: Pick<UnitRow, 'id' | 'code' | 'name'> | null
+  packaging?: Pick<ItemPackagingRow, 'id' | 'pack_name' | 'qty_per_pack'> | null
+}
+
+type PurchaseReceiptQueryRow = PurchaseReceiptRow & {
+  purchase_order?: Pick<PurchaseOrderRow, 'id' | 'order_code'> | null
+  supplier?: Pick<SupplierRow, 'id' | 'supplier_code' | 'supplier_name'> | null
+  warehouse?: Pick<WarehouseRow, 'id' | 'warehouse_code' | 'warehouse_name'> | null
+  items?: PurchaseReceiptItemQueryRow[] | null
+}
+
+type PurchaseReceiptItemInput = {
+  purchaseOrderItemId: string
+  itemId: string
+  quantityOrdered: number
+  quantityReceived: number
+  uomId?: string | null
+  rate: number
+  notes?: string | null
+}
+
+type PurchaseReceiptUpdateBody = {
+  warehouseId: string
+  receiptDate: string
+  supplierInvoiceNumber?: string | null
+  supplierInvoiceDate?: string | null
+  notes?: string | null
+  status?: string
+  items?: PurchaseReceiptItemInput[]
+}
+
+type ReceiptItemUpdateInput = {
+  purchaseOrderItemId: string
+  quantityReceived: number
+}
 
 // GET /api/purchase-receipts/[id]
 export async function GET(
@@ -17,7 +66,7 @@ export async function GET(
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'view')
 
     const { id } = await params
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
     const {
@@ -41,7 +90,7 @@ export async function GET(
     }
 
     // Fetch receipt with all related data
-    const { data: receipt, error } = await supabase
+    const { data: receiptData, error } = await supabase
       .from('purchase_receipts')
       .select(
         `
@@ -70,9 +119,10 @@ export async function GET(
       .is('deleted_at', null)
       .single()
 
-    if (error || !receipt) {
+    if (error || !receiptData) {
       return NextResponse.json({ error: 'Receipt not found' }, { status: 404 })
     }
+    const receipt = receiptData as PurchaseReceiptQueryRow
 
     // Format response
     const formattedReceipt = {
@@ -101,7 +151,7 @@ export async function GET(
       supplierInvoiceDate: receipt.supplier_invoice_date,
       status: receipt.status,
       notes: receipt.notes,
-      items: receipt.items?.map((item: any) => ({
+      items: receipt.items?.map((item) => ({
         id: item.id,
         purchaseOrderItemId: item.purchase_order_item_id,
         itemId: item.item_id,
@@ -110,8 +160,8 @@ export async function GET(
           code: item.item.item_code,
           name: item.item.item_name,
         } : undefined,
-        quantityOrdered: parseFloat(item.quantity_ordered),
-        quantityReceived: parseFloat(item.quantity_received),
+        quantityOrdered: Number(item.quantity_ordered),
+        quantityReceived: Number(item.quantity_received),
         uomId: item.uom_id,
         uom: item.uom ? {
           id: item.uom.id,
@@ -124,7 +174,7 @@ export async function GET(
           name: item.packaging.pack_name,
           qtyPerPack: item.packaging.qty_per_pack,
         } : undefined,
-        rate: parseFloat(item.rate),
+        rate: Number(item.rate),
         notes: item.notes,
       })),
       createdAt: receipt.created_at,
@@ -135,7 +185,7 @@ export async function GET(
     }
 
     return NextResponse.json(formattedReceipt)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -151,8 +201,8 @@ export async function PUT(
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'edit')
 
     const { id } = await params
-    const { supabase } = await createServerClientWithBU()
-    const body = await request.json()
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
+    const body = (await request.json()) as PurchaseReceiptUpdateBody
 
     // Check authentication
     const {
@@ -229,7 +279,7 @@ export async function PUT(
 
       // Insert new items
       if (body.items.length > 0) {
-        const receiptItems = body.items.map((item: any) => ({
+        const receiptItems = body.items.map((item) => ({
           company_id: userData.company_id,
           receipt_id: id,
           purchase_order_item_id: item.purchaseOrderItemId,
@@ -258,7 +308,7 @@ export async function PUT(
     }
 
     if (body.status === 'received' && existingReceipt.status === 'draft') {
-      let itemsForUpdate = body.items || []
+      let itemsForUpdate: ReceiptItemUpdateInput[] = body.items || []
 
       if (itemsForUpdate.length === 0) {
         const { data: receiptItems } = await supabase
@@ -266,7 +316,7 @@ export async function PUT(
           .select('purchase_order_item_id, quantity_received')
           .eq('receipt_id', id)
 
-        itemsForUpdate = (receiptItems || []).map((item: any) => ({
+        itemsForUpdate = (receiptItems || []).map((item) => ({
           purchaseOrderItemId: item.purchase_order_item_id,
           quantityReceived: item.quantity_received,
         }))
@@ -279,8 +329,8 @@ export async function PUT(
           .eq('id', item.purchaseOrderItemId)
           .single()
 
-        const currentQty = parseFloat(currentItem?.quantity_received || 0)
-        const newQty = currentQty + parseFloat(item.quantityReceived || 0)
+        const currentQty = Number(currentItem?.quantity_received || 0)
+        const newQty = currentQty + Number(item.quantityReceived || 0)
 
         await supabase
           .from('purchase_order_items')
@@ -292,21 +342,23 @@ export async function PUT(
       }
 
       if (existingReceipt.purchase_order_id) {
-        const { data: poItems } = await supabase
+        const { data: poItemsData } = await supabase
           .from('purchase_order_items')
           .select('quantity, quantity_received')
           .eq('purchase_order_id', existingReceipt.purchase_order_id)
           .is('deleted_at', null)
 
-        if (poItems && poItems.length > 0) {
-          const allFullyReceived = poItems.every((poItem: any) => {
-            const ordered = parseFloat(poItem.quantity)
-            const received = parseFloat(poItem.quantity_received || 0)
+        const poItems = (poItemsData as PurchaseOrderItemRow[] | null) || []
+
+        if (poItems.length > 0) {
+          const allFullyReceived = poItems.every((poItem) => {
+            const ordered = Number(poItem.quantity)
+            const received = Number(poItem.quantity_received || 0)
             return received >= ordered
           })
 
-          const anyReceived = poItems.some((poItem: any) => {
-            const received = parseFloat(poItem.quantity_received || 0)
+          const anyReceived = poItems.some((poItem) => {
+            const received = Number(poItem.quantity_received || 0)
             return received > 0
           })
 
@@ -354,19 +406,18 @@ export async function PUT(
         .single()
 
       if (receiptData?.warehouse_id) {
-        const items = receiptData.purchase_receipt_items as Array<{
-          item_id: string
-          quantity_received: string
-          packaging_id?: string | null
-          uom_id?: string | null
-          rate: string
-        }>
+        const items = receiptData.purchase_receipt_items as Array<
+          Pick<
+            PurchaseReceiptItemRow,
+            'item_id' | 'quantity_received' | 'packaging_id' | 'uom_id' | 'rate'
+          >
+        >
 
         const itemInputs: StockTransactionItemInput[] = items.map((item) => ({
           itemId: item.item_id,
           packagingId: item.packaging_id || null,
-          inputQty: parseFloat(item.quantity_received || '0'),
-          unitCost: parseFloat(item.rate || '0'),
+          inputQty: Number(item.quantity_received || 0),
+          unitCost: Number(item.rate || 0),
         }))
 
         const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
@@ -519,13 +570,13 @@ export async function PUT(
       if (receiptData) {
         // Calculate total amount from items
         const items = receiptData.purchase_receipt_items as Array<{
-          quantity_received: string
-          rate: string
+          quantity_received: number
+          rate: number
           packaging?: { qty_per_pack: number } | null
         }>
         const totalAmount = items.reduce((sum, item) => {
           const conversionFactor = item.packaging?.qty_per_pack ?? 1
-          return sum + parseFloat(item.quantity_received) * conversionFactor * parseFloat(item.rate)
+          return sum + Number(item.quantity_received) * conversionFactor * Number(item.rate)
         }, 0)
 
         const apResult = await postAPBill(userData.company_id, user.id, {
@@ -544,7 +595,7 @@ export async function PUT(
     }
 
     return NextResponse.json({ message: 'Receipt updated successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -622,7 +673,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Receipt deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

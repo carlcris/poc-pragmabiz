@@ -1,4 +1,4 @@
-import type { Invoice, InvoiceLineItem } from "@/types/invoice";
+import type { Invoice } from "@/types/invoice";
 
 // Helper function to calculate line total
 function calculateLineTotal(

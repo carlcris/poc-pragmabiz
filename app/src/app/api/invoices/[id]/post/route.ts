@@ -262,7 +262,7 @@ export async function POST(
       if (!commissionResult.success) {
 
       }
-    } catch (commissionError) {
+    } catch {
 
       // Don't fail invoice posting if commission calculation fails
     }
@@ -327,7 +327,7 @@ export async function POST(
       commissionEmployeeId: commissionResult.employeeId,
       commissionSuccess: commissionResult.success,
     }, { status: 200 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

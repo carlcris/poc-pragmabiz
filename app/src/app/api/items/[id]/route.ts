@@ -8,6 +8,10 @@ import { RESOURCES } from '@/constants/resources'
 type DbItem = Database['public']['Tables']['items']['Row']
 type DbItemCategory = Database['public']['Tables']['item_categories']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
+type ItemRow = DbItem & {
+  item_categories: DbItemCategory | null
+  units_of_measure: DbUoM | null
+}
 
 // Transform database item to frontend Item type
 function transformDbItem(
@@ -97,9 +101,9 @@ export async function GET(
     }
 
     // Transform and return
-    const item = transformDbItem(data as any)
+    const item = transformDbItem(data as ItemRow)
     return NextResponse.json({ data: item })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -154,7 +158,7 @@ export async function PUT(
     }
 
     // Build update object
-    const updateData: any = {
+    const updateData: Record<string, unknown> & { updated_by: string } = {
       updated_by: user.id,
     }
 
@@ -241,9 +245,9 @@ export async function PUT(
     }
 
     // Transform and return
-    const item = transformDbItem(updatedItem as any)
+    const item = transformDbItem(updatedItem as ItemRow)
     return NextResponse.json({ data: item })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -306,7 +310,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Item deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -10,6 +10,9 @@ import type {
 
 export const STOCK_ADJUSTMENTS_QUERY_KEY = 'stock-adjustments';
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 /**
  * Hook to fetch list of stock adjustments
  */
@@ -43,8 +46,8 @@ export function useCreateStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       toast.success('Stock adjustment created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to create stock adjustment');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to create stock adjustment'));
     },
   });
 }
@@ -62,8 +65,8 @@ export function useUpdateStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       toast.success('Stock adjustment updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update stock adjustment');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to update stock adjustment'));
     },
   });
 }
@@ -80,8 +83,8 @@ export function useDeleteStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       toast.success('Stock adjustment deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete stock adjustment');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to delete stock adjustment'));
     },
   });
 }
@@ -101,8 +104,8 @@ export function usePostStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: ['stock-balances'] });
       toast.success('Stock adjustment posted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to post stock adjustment');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to post stock adjustment'));
     },
   });
 }

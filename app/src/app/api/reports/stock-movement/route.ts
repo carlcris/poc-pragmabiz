@@ -3,6 +3,51 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 
+type StockMovementEntry = {
+  itemId: string
+  itemCode: string | null
+  itemName: string | null
+  warehouseId: string | null
+  warehouseCode: string | null
+  warehouseName: string | null
+  uom: string
+  totalIn: number
+  totalOut: number
+  netMovement: number
+  totalInValue: number
+  totalOutValue: number
+  netValue: number
+  transactionCount: number
+}
+
+type StockMovementItem = {
+  item_id: string
+  quantity: number | string | null
+  valuation_rate: number | string | null
+  stock_value_before: number | string | null
+  stock_value_after: number | string | null
+  transaction?: {
+    warehouse_id: string | null
+    transaction_type?: string | null
+  } | null
+  item?: {
+    item_code: string | null
+    item_name: string | null
+    uom?: {
+      code: string | null
+    } | null
+  } | null
+}
+
+type PrevTransactionItem = {
+  quantity: number | string | null
+  stock_value_before: number | string | null
+  stock_value_after: number | string | null
+  transaction?: {
+    transaction_type?: string | null
+  } | null
+}
+
 // GET /api/reports/stock-movement
 // Returns aggregated stock movement report
 export async function GET(request: NextRequest) {
@@ -93,7 +138,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Need to fetch warehouse details separately since we're joining through transaction
-    const warehouseIds = [...new Set(transactionItems?.map(item => item.transaction?.warehouse_id) || [])]
+    const typedItems = (transactionItems || []) as StockMovementItem[]
+    const warehouseIds = [
+      ...new Set(typedItems.map((item) => item.transaction?.warehouse_id).filter(Boolean)),
+    ] as string[]
     const { data: warehouses } = await supabase
       .from('warehouses')
       .select('id, warehouse_code, warehouse_name')
@@ -102,9 +150,9 @@ export async function GET(request: NextRequest) {
     const warehouseMap = new Map(warehouses?.map(w => [w.id, w]) || [])
 
     // Aggregate data based on groupBy parameter
-    const movementMap = new Map<string, any>()
+    const movementMap = new Map<string, StockMovementEntry>()
 
-    for (const entry of transactionItems || []) {
+    for (const entry of typedItems) {
       const warehouseId = entry.transaction?.warehouse_id
       const transactionType = entry.transaction?.transaction_type
 
@@ -140,8 +188,10 @@ export async function GET(request: NextRequest) {
       }
 
       const movement = movementMap.get(key)!
-      const qty = parseFloat(String(entry.quantity))
-      const valueDiff = parseFloat(String(entry.stock_value_after)) - parseFloat(String(entry.stock_value_before))
+      const qty = parseFloat(String(entry.quantity ?? 0))
+      const valueDiff =
+        parseFloat(String(entry.stock_value_after ?? 0)) -
+        parseFloat(String(entry.stock_value_before ?? 0))
 
       // IN transactions have positive quantity, OUT have negative (based on transaction_type)
       if (transactionType === 'in' || transactionType === 'adjustment') {
@@ -207,21 +257,36 @@ export async function GET(request: NextRequest) {
       const { data: prevTransactionItems } = await prevQuery
 
       if (prevTransactionItems) {
-        const prevTotalIn = prevTransactionItems
-          .filter((e: any) => e.transaction?.transaction_type === 'in')
-          .reduce((sum: number, e: any) => sum + parseFloat(e.quantity), 0)
+        const typedPrevItems = prevTransactionItems as PrevTransactionItem[]
+        const prevTotalIn = typedPrevItems
+          .filter((e) => e.transaction?.transaction_type === 'in')
+          .reduce((sum, e) => sum + parseFloat(String(e.quantity ?? 0)), 0)
 
-        const prevTotalOut = prevTransactionItems
-          .filter((e: any) => e.transaction?.transaction_type === 'out')
-          .reduce((sum: number, e: any) => sum + parseFloat(e.quantity), 0)
+        const prevTotalOut = typedPrevItems
+          .filter((e) => e.transaction?.transaction_type === 'out')
+          .reduce((sum, e) => sum + parseFloat(String(e.quantity ?? 0)), 0)
 
-        const prevTotalInValue = prevTransactionItems
-          .filter((e: any) => e.transaction?.transaction_type === 'in')
-          .reduce((sum: number, e: any) => sum + (parseFloat(e.stock_value_after) - parseFloat(e.stock_value_before)), 0)
+        const prevTotalInValue = typedPrevItems
+          .filter((e) => e.transaction?.transaction_type === 'in')
+          .reduce(
+            (sum, e) =>
+              sum +
+              (parseFloat(String(e.stock_value_after ?? 0)) -
+                parseFloat(String(e.stock_value_before ?? 0))),
+            0
+          )
 
-        const prevTotalOutValue = prevTransactionItems
-          .filter((e: any) => e.transaction?.transaction_type === 'out')
-          .reduce((sum: number, e: any) => sum + Math.abs(parseFloat(e.stock_value_after) - parseFloat(e.stock_value_before)), 0)
+        const prevTotalOutValue = typedPrevItems
+          .filter((e) => e.transaction?.transaction_type === 'out')
+          .reduce(
+            (sum, e) =>
+              sum +
+              Math.abs(
+                parseFloat(String(e.stock_value_after ?? 0)) -
+                  parseFloat(String(e.stock_value_before ?? 0))
+              ),
+            0
+          )
 
         periodComparison = {
           previousPeriod: {
@@ -266,7 +331,7 @@ export async function GET(request: NextRequest) {
         groupBy,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

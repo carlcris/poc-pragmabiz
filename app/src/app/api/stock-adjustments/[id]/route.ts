@@ -2,6 +2,40 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import type { Database } from '@/types/database.types'
+
+type DbStockAdjustmentUpdate = Database['public']['Tables']['stock_adjustments']['Update']
+type DbStockAdjustmentItem = Database['public']['Tables']['stock_adjustment_items']['Row']
+
+type StockAdjustmentItemInput = {
+  itemId: string
+  currentQty: number
+  adjustedQty: number
+  unitCost: number
+  uomId: string
+  reason?: string | null
+}
+
+type StockAdjustmentPatchBody = {
+  adjustmentType?: string
+  adjustmentDate?: string
+  warehouseId?: string
+  reason?: string
+  notes?: string | null
+  locationId?: string | null
+  items?: StockAdjustmentItemInput[]
+}
+
+type ItemRow = {
+  id: string
+  item_code: string | null
+  item_name: string | null
+}
+
+type UomRow = {
+  id: string
+  uom_name: string | null
+}
 
 // GET /api/stock-adjustments/[id] - Get single stock adjustment
 export async function GET(
@@ -93,7 +127,7 @@ export async function GET(
       status: adjustment.status,
       reason: adjustment.reason,
       notes: adjustment.notes,
-      totalValue: parseFloat(adjustment.total_value || 0),
+      totalValue: parseFloat(String(adjustment.total_value ?? 0)),
       stockTransactionId: adjustment.stock_transaction_id,
       stockTransactionCode: stockTransaction?.data?.transaction_code || null,
       approvedBy: adjustment.approved_by,
@@ -107,25 +141,26 @@ export async function GET(
       updatedBy: adjustment.updated_by,
       createdAt: adjustment.created_at,
       updatedAt: adjustment.updated_at,
-      items: items?.map((item: any) => ({
-        id: item.id,
-        adjustmentId: item.adjustment_id,
-        itemId: item.item_id,
-        itemCode: item.item_code,
-        itemName: item.item_name,
-        currentQty: parseFloat(item.current_qty),
-        adjustedQty: parseFloat(item.adjusted_qty),
-        difference: parseFloat(item.difference),
-        unitCost: parseFloat(item.unit_cost),
-        totalCost: parseFloat(item.total_cost),
-        uomId: item.uom_id,
-        uomName: item.uom_name,
-        reason: item.reason,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      })) || [],
+      items:
+        (items as DbStockAdjustmentItem[] | null)?.map((item) => ({
+          id: item.id,
+          adjustmentId: item.adjustment_id,
+          itemId: item.item_id,
+          itemCode: item.item_code,
+          itemName: item.item_name,
+          currentQty: parseFloat(String(item.current_qty ?? 0)),
+          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+          difference: parseFloat(String(item.difference ?? 0)),
+          unitCost: parseFloat(String(item.unit_cost ?? 0)),
+          totalCost: parseFloat(String(item.total_cost ?? 0)),
+          uomId: item.uom_id,
+          uomName: item.uom_name,
+          reason: item.reason,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        })) || [],
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -142,7 +177,7 @@ export async function PATCH(
     if (unauthorized) return unauthorized
 
     const { id } = await params
-    const body = await request.json()
+    const body = (await request.json()) as StockAdjustmentPatchBody
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -187,7 +222,7 @@ export async function PATCH(
     }
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: DbStockAdjustmentUpdate = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     }
@@ -214,25 +249,29 @@ export async function PATCH(
       await supabase.from('stock_adjustment_items').delete().eq('adjustment_id', id)
 
       // Get item details
-      const itemIds = body.items.map((item: any) => item.itemId)
+      const itemIds = body.items.map((item) => item.itemId)
       const { data: itemsData } = await supabase
         .from('items')
         .select('id, item_code, item_name')
         .in('id', itemIds)
 
-      const itemsMap = new Map(itemsData?.map((item: any) => [item.id, item]) || [])
+      const itemsMap = new Map(
+        (itemsData as ItemRow[] | null)?.map((item) => [item.id, item]) || []
+      )
 
       // Get UOM details
-      const uomIds = body.items.map((item: any) => item.uomId)
+      const uomIds = body.items.map((item) => item.uomId)
       const { data: uomsData } = await supabase
         .from('uoms')
         .select('id, uom_name')
         .in('id', uomIds)
 
-      const uomsMap = new Map(uomsData?.map((uom: any) => [uom.id, uom]) || [])
+      const uomsMap = new Map(
+        (uomsData as UomRow[] | null)?.map((uom) => [uom.id, uom]) || []
+      )
 
       // Create new items
-      const adjustmentItems = body.items.map((item: any) => {
+      const adjustmentItems = body.items.map((item) => {
         const itemData = itemsMap.get(item.itemId)
         const uomData = uomsMap.get(item.uomId)
         const difference = item.adjustedQty - item.currentQty
@@ -260,7 +299,7 @@ export async function PATCH(
       await supabase.from('stock_adjustment_items').insert(adjustmentItems)
 
       // Calculate new total value
-      const totalValue = body.items.reduce((sum: number, item: any) => {
+      const totalValue = body.items.reduce((sum, item) => {
         const difference = item.adjustedQty - item.currentQty
         return sum + difference * item.unitCost
       }, 0)
@@ -309,30 +348,31 @@ export async function PATCH(
       status: updatedAdjustment.status,
       reason: updatedAdjustment.reason,
       notes: updatedAdjustment.notes,
-      totalValue: parseFloat(updatedAdjustment.total_value),
+      totalValue: parseFloat(String(updatedAdjustment.total_value ?? 0)),
       createdBy: updatedAdjustment.created_by,
       updatedBy: updatedAdjustment.updated_by,
       createdAt: updatedAdjustment.created_at,
       updatedAt: updatedAdjustment.updated_at,
-      items: updatedItems?.map((item: any) => ({
-        id: item.id,
-        adjustmentId: item.adjustment_id,
-        itemId: item.item_id,
-        itemCode: item.item_code,
-        itemName: item.item_name,
-        currentQty: parseFloat(item.current_qty),
-        adjustedQty: parseFloat(item.adjusted_qty),
-        difference: parseFloat(item.difference),
-        unitCost: parseFloat(item.unit_cost),
-        totalCost: parseFloat(item.total_cost),
-        uomId: item.uom_id,
-        uomName: item.uom_name,
-        reason: item.reason,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      })) || [],
+      items:
+        (updatedItems as DbStockAdjustmentItem[] | null)?.map((item) => ({
+          id: item.id,
+          adjustmentId: item.adjustment_id,
+          itemId: item.item_id,
+          itemCode: item.item_code,
+          itemName: item.item_name,
+          currentQty: parseFloat(String(item.current_qty ?? 0)),
+          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+          difference: parseFloat(String(item.difference ?? 0)),
+          unitCost: parseFloat(String(item.unit_cost ?? 0)),
+          totalCost: parseFloat(String(item.total_cost ?? 0)),
+          uomId: item.uom_id,
+          uomName: item.uom_name,
+          reason: item.reason,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        })) || [],
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -407,7 +447,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

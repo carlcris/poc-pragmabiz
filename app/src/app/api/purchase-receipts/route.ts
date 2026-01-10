@@ -2,6 +2,50 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import type { Tables } from '@/types/supabase'
+
+type PurchaseReceiptRow = Tables<'purchase_receipts'>
+type PurchaseReceiptItemRow = Tables<'purchase_receipt_items'>
+type PurchaseOrderRow = Tables<'purchase_orders'>
+type SupplierRow = Tables<'suppliers'>
+type WarehouseRow = Tables<'warehouses'>
+type ItemRow = Tables<'items'>
+type ItemPackagingRow = Tables<'item_packaging'>
+type UnitRow = Tables<'units_of_measure'>
+
+type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
+  item?: Pick<ItemRow, 'id' | 'item_code' | 'item_name'> | null
+  uom?: Pick<UnitRow, 'id' | 'code' | 'name'> | null
+  packaging?: Pick<ItemPackagingRow, 'id' | 'pack_name' | 'qty_per_pack'> | null
+}
+
+type PurchaseReceiptQueryRow = PurchaseReceiptRow & {
+  purchase_order?: Pick<PurchaseOrderRow, 'id' | 'order_code'> | null
+  supplier?: Pick<SupplierRow, 'id' | 'supplier_code' | 'supplier_name'> | null
+  warehouse?: Pick<WarehouseRow, 'id' | 'warehouse_code' | 'warehouse_name'> | null
+  items?: PurchaseReceiptItemQueryRow[] | null
+}
+
+type PurchaseReceiptItemInput = {
+  purchaseOrderItemId: string
+  itemId: string
+  quantityOrdered: number
+  quantityReceived: number
+  packagingId?: string | null
+  uomId?: string | null
+  rate: number
+  notes?: string | null
+}
+
+type PurchaseReceiptCreateBody = {
+  purchaseOrderId: string
+  warehouseId: string
+  receiptDate: string
+  supplierInvoiceNumber?: string | null
+  supplierInvoiceDate?: string | null
+  notes?: string | null
+  items?: PurchaseReceiptItemInput[]
+}
 
 // GET /api/purchase-receipts
 export async function GET(request: NextRequest) {
@@ -115,7 +159,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response
-    const formattedReceipts = receipts?.map((receipt) => ({
+    const formattedReceipts = (receipts as PurchaseReceiptQueryRow[] | null)?.map((receipt) => ({
       id: receipt.id,
       companyId: receipt.company_id,
       receiptCode: receipt.receipt_code,
@@ -141,7 +185,7 @@ export async function GET(request: NextRequest) {
       supplierInvoiceDate: receipt.supplier_invoice_date,
       status: receipt.status,
       notes: receipt.notes,
-        items: receipt.items?.map((item: any) => ({
+        items: receipt.items?.map((item) => ({
           id: item.id,
           purchaseOrderItemId: item.purchase_order_item_id,
           itemId: item.item_id,
@@ -150,8 +194,8 @@ export async function GET(request: NextRequest) {
             code: item.item.item_code,
             name: item.item.item_name,
           } : undefined,
-          quantityOrdered: parseFloat(item.quantity_ordered),
-          quantityReceived: parseFloat(item.quantity_received),
+          quantityOrdered: Number(item.quantity_ordered),
+          quantityReceived: Number(item.quantity_received),
           uomId: item.uom_id,
           uom: item.uom ? {
             id: item.uom.id,
@@ -164,7 +208,7 @@ export async function GET(request: NextRequest) {
           name: item.packaging.pack_name,
           qtyPerPack: item.packaging.qty_per_pack,
         } : undefined,
-        rate: parseFloat(item.rate),
+        rate: Number(item.rate),
         notes: item.notes,
       })),
       createdAt: receipt.created_at,
@@ -183,7 +227,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -196,7 +240,7 @@ export async function POST(request: NextRequest) {
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, 'create')
 
     const { supabase } = await createServerClientWithBU()
-    const body = await request.json()
+    const body = (await request.json()) as PurchaseReceiptCreateBody
 
     // Check authentication
     const {
@@ -279,7 +323,7 @@ export async function POST(request: NextRequest) {
 
     // Create receipt items
     if (body.items && body.items.length > 0) {
-      const receiptItems = body.items.map((item: any) => ({
+      const receiptItems = body.items.map((item) => ({
         company_id: userData.company_id,
         receipt_id: receipt.id,
         purchase_order_item_id: item.purchaseOrderItemId,
@@ -316,7 +360,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     )
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

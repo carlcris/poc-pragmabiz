@@ -71,12 +71,12 @@ export async function GET(
     if (error) throw error;
 
     // Transform snake_case to camelCase
-    const transformedPrices = (prices || []).map((price: any) => ({
+    const transformedPrices = (prices as ItemPrice[] | null || []).map((price) => ({
       id: price.id,
       itemId: price.item_id,
       priceTier: price.price_tier,
       priceTierName: price.price_tier_name,
-      price: parseFloat(price.price),
+      price: Number(price.price),
       currencyCode: price.currency_code,
       effectiveFrom: price.effective_from,
       effectiveTo: price.effective_to,
@@ -105,7 +105,17 @@ export async function POST(
 ) {
   try {
     const { id: itemId } = await params;
-    const body = await request.json();
+    type PriceCreateBody = {
+      priceTier: string;
+      priceTierName: string;
+      price: number | string;
+      currencyCode?: string;
+      effectiveFrom: string;
+      effectiveTo?: string | null;
+      isActive?: boolean;
+    };
+
+    const body = (await request.json()) as PriceCreateBody;
     const { supabase } = await createServerClientWithBU();
 
     // Get user info

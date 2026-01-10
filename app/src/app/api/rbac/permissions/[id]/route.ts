@@ -3,6 +3,20 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { requirePermission, getAuthenticatedUser } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
 import { invalidatePermissionCache } from '@/services/permissions/permissionResolver';
+import type { Tables } from '@/types/supabase';
+
+type PermissionRow = Tables<'permissions'>;
+type RoleRow = Tables<'roles'>;
+type RolePermissionRow = Tables<'role_permissions'>;
+
+type PermissionWithRoles = PermissionRow & {
+  role_permissions?: Array<RolePermissionRow & { roles?: RoleRow | null }>;
+};
+
+type PermissionUpdate = Partial<PermissionRow> & {
+  updated_by: string;
+  updated_at: string;
+};
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -48,12 +62,14 @@ export async function GET(
 
     // Transform data
     const permissionWithRoles = {
-      ...permission,
-      roles: permission.role_permissions?.map((rp: any) => rp.roles).filter(Boolean) || []
+      ...(permission as PermissionWithRoles),
+      roles: ((permission as PermissionWithRoles).role_permissions || [])
+        .map((rp) => rp.roles)
+        .filter(Boolean),
     };
 
     return NextResponse.json({ data: permissionWithRoles });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -100,7 +116,7 @@ export async function PUT(
     }
 
     // Update permission
-    const updateData: any = {
+    const updateData: PermissionUpdate = {
       updated_by: user.id,
       updated_at: new Date().toISOString()
     };
@@ -141,12 +157,14 @@ export async function PUT(
 
     // Transform data
     const permissionWithRoles = {
-      ...updatedPermission,
-      roles: updatedPermission.role_permissions?.map((rp: any) => rp.roles).filter(Boolean) || []
+      ...(updatedPermission as PermissionWithRoles),
+      roles: ((updatedPermission as PermissionWithRoles).role_permissions || [])
+        .map((rp) => rp.roles)
+        .filter(Boolean),
     };
 
     return NextResponse.json({ data: permissionWithRoles });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -233,7 +251,7 @@ export async function DELETE(
       message: 'Permission deleted successfully',
       data: { id }
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

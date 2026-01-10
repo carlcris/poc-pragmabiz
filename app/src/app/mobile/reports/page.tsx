@@ -1,8 +1,8 @@
 "use client";
 
 import { MobileHeader } from "@/components/mobile/MobileHeader";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Package, ArrowRightLeft } from "lucide-react";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { TrendingUp, Package, ArrowRightLeft } from "lucide-react";
 import Link from "next/link";
 
 const reportSections = [

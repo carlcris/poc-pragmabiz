@@ -3,6 +3,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
 
+type PackageItemRef = {
+  package_id: string | null;
+};
+
+type PackageRow = {
+  id: string;
+  item_id: string;
+  pack_type: string;
+  pack_name: string;
+  qty_per_pack: number | string;
+  uom_id: string | null;
+  barcode: string | null;
+  is_default: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  units_of_measure?: { id: string; code: string; name: string; symbol: string | null } | null;
+  items?: PackageItemRef | null;
+};
+
+type UpdatePackageBody = {
+  packType?: string;
+  packName?: string;
+  qtyPerPack?: number | string;
+  uomId?: string | null;
+  barcode?: string | null;
+  isDefault?: boolean;
+  isActive?: boolean;
+};
+
+type UpdatePackageRow = {
+  updated_by: string;
+  updated_at: string;
+  pack_type?: string;
+  pack_name?: string;
+  qty_per_pack?: number;
+  uom_id?: string | null;
+  barcode?: string | null;
+  is_default?: boolean;
+  is_active?: boolean;
+};
+
 // GET /api/items/[id]/packages/[packageId] - Get specific package details
 export async function GET(
   request: NextRequest,
@@ -64,7 +106,7 @@ export async function GET(
       return NextResponse.json({ error: 'Package not found' }, { status: 404 });
     }
 
-    const item = pkg.items as any;
+    const item = (pkg as PackageRow).items;
 
     return NextResponse.json({
       data: {
@@ -100,7 +142,7 @@ export async function PUT(
 
     const { supabase } = await createServerClientWithBU();
     const { id: itemId, packageId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as UpdatePackageBody;
 
     // Check authentication
     const {
@@ -137,7 +179,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Package not found' }, { status: 404 });
     }
 
-    const item = existingPkg.items as any;
+    const item = (existingPkg as PackageRow).items;
     const isBasePackage = packageId === item?.package_id;
 
     // Validate: Cannot change qty_per_pack of base package (must be 1.0)
@@ -176,7 +218,7 @@ export async function PUT(
     }
 
     // Build update object
-    const updateData: any = {
+    const updateData: UpdatePackageRow = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     };
@@ -284,7 +326,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Package not found' }, { status: 404 });
     }
 
-    const item = pkg.items as any;
+    const item = (pkg as PackageRow).items;
 
     // Prevent deletion of base package
     if (packageId === item?.package_id) {

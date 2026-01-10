@@ -75,7 +75,7 @@ export function UserRolesDialog({
       toast.success("Role assigned successfully");
       setSelectedRoleId("");
       setSelectedBusinessUnitId("");
-    } catch (error) {
+    } catch {
       toast.error("Failed to assign role");
     }
   };
@@ -89,7 +89,7 @@ export function UserRolesDialog({
       });
 
       toast.success("Role removed successfully");
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove role");
     }
   };

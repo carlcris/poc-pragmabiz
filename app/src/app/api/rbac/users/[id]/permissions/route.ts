@@ -72,7 +72,7 @@ export async function GET(
     response.headers.set('Expires', '0');
 
     return response;
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

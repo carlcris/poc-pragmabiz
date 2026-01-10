@@ -57,7 +57,7 @@ export default function POSPage() {
   const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, limit: 1000 });
   const createTransaction = useCreatePOSTransaction();
 
-  const items = (itemsData?.data || []) as ItemWithStock[];
+  const items = useMemo(() => (itemsData?.data || []) as ItemWithStock[], [itemsData]);
   const customers = customersData?.data || [];
 
   // Create a map of item stock for quick lookup
@@ -235,7 +235,10 @@ export default function POSPage() {
 
     const transactionData = {
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
-      items: cart.map(({ id, ...item }) => item),
+      items: cart.map(({ id, ...item }) => {
+        void id;
+        return item;
+      }),
       payments: [payment],
     };
 

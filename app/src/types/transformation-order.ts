@@ -143,12 +143,77 @@ export interface TransformationOrderFilters {
   limit?: number;
 }
 
-export interface TransformationOrderListResponse {
-  data: TransformationOrder[];
+export type TransformationOrderTemplateApi = {
+  id: string;
+  template_code: string | null;
+  template_name: string | null;
+};
+
+export type TransformationOrderWarehouseApi = {
+  id: string;
+  warehouse_code: string | null;
+  warehouse_name: string | null;
+};
+
+export type TransformationOrderItemApi = {
+  id: string;
+  item_code: string | null;
+  item_name: string | null;
+};
+
+export type TransformationOrderUomApi = {
+  id: string;
+  code: string | null;
+  name: string | null;
+};
+
+export type TransformationOrderInputApi = {
+  id: string;
+  planned_quantity: number;
+  consumed_quantity: number | null;
+  unit_cost: number | null;
+  total_cost: number | null;
+  items?: TransformationOrderItemApi | null;
+  warehouse?: TransformationOrderWarehouseApi | null;
+  uom?: TransformationOrderUomApi | null;
+};
+
+export type TransformationOrderOutputApi = {
+  id: string;
+  planned_quantity: number;
+  produced_quantity: number | null;
+  wasted_quantity: number | null;
+  waste_reason: string | null;
+  is_scrap: boolean;
+  allocated_cost_per_unit: number | null;
+  total_allocated_cost: number | null;
+  items?: TransformationOrderItemApi | null;
+  warehouse?: TransformationOrderWarehouseApi | null;
+  uom?: TransformationOrderUomApi | null;
+};
+
+export type TransformationOrderApi = {
+  id: string;
+  order_code: string;
+  order_date: string;
+  status: TransformationOrderStatus;
+  planned_quantity: number;
+  actual_quantity: number | null;
+  total_input_cost: number | null;
+  total_output_cost: number | null;
+  cost_variance: number | null;
+  template?: TransformationOrderTemplateApi | null;
+  source_warehouse?: TransformationOrderWarehouseApi | null;
+  inputs?: TransformationOrderInputApi[] | null;
+  outputs?: TransformationOrderOutputApi[] | null;
+};
+
+export type TransformationOrderListResponse = {
+  data: TransformationOrderApi[];
   total: number;
   page: number;
   limit: number;
-}
+};
 
 // ============================================================================
 // State Transition Validation

@@ -20,7 +20,6 @@ import {
   useDeleteStockAdjustment,
   usePostStockAdjustment,
 } from "@/hooks/useStockAdjustments";
-import { useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,10 +131,8 @@ export default function StockAdjustmentsPage() {
     limit: 1000,
   });
 
-  const { data: itemsData } = useItems({ page: 1, limit: 1000 });
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
 
-  const items = itemsData?.data || [];
   const warehouses = warehousesData?.data || [];
 
   const createMutation = useCreateStockAdjustment();
@@ -403,8 +400,7 @@ export default function StockAdjustmentsPage() {
       }
 
       return data ? parseFloat(data.current_stock) : 0;
-    } catch (error) {
-
+    } catch {
       return 0;
     }
   };
@@ -439,8 +435,7 @@ export default function StockAdjustmentsPage() {
       setDialogOpen(false);
       setLineItems([]);
       form.reset();
-    } catch (error) {
-
+    } catch {
     }
   };
 
@@ -815,7 +810,7 @@ export default function StockAdjustmentsPage() {
                   {lineItems.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                       <p>No items added yet.</p>
-                      <p className="text-sm">Click "Add Item" to get started.</p>
+                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
                     </div>
                   ) : (
                     <>

@@ -8,6 +8,10 @@ import { RESOURCES } from '@/constants/resources'
 type DbItem = Database['public']['Tables']['items']['Row']
 type DbItemCategory = Database['public']['Tables']['item_categories']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
+type ItemRow = DbItem & {
+  item_categories: DbItemCategory | null
+  units_of_measure: DbUoM | null
+}
 
 // Transform database item to frontend Item type
 function transformDbItem(
@@ -141,7 +145,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data
-    const items = (data || []).map((item) => transformDbItem(item as any))
+    const items = (data || []).map((item) => transformDbItem(item as ItemRow))
 
     // Calculate pagination
     const total = count || 0
@@ -156,7 +160,7 @@ export async function GET(request: NextRequest) {
         totalPages,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -298,10 +302,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Transform and return
-    const item = transformDbItem(newItem as any)
+    const item = transformDbItem(newItem as ItemRow)
 
     return NextResponse.json({ data: item }, { status: 201 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

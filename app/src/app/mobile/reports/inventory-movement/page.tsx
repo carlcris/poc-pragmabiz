@@ -11,15 +11,13 @@ import { useUserVanWarehouse } from "@/hooks/useVanWarehouse";
 import {
   Search,
   AlertCircle,
-  ArrowDownCircle,
-  ArrowUpCircle,
   Calendar,
   Package,
   TrendingUp,
   TrendingDown
 } from "lucide-react";
 
-interface ItemMovement {
+type ItemMovement = {
   itemId: string;
   itemCode: string;
   itemName: string;
@@ -28,7 +26,22 @@ interface ItemMovement {
   itemsIn: number;
   itemsOut: number;
   endingQty: number;
-}
+};
+
+type CurrentStockItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  uomName: string;
+  currentStock?: number;
+};
+
+type MovementEntry = {
+  itemId: string;
+  totalIn?: number;
+  totalOut?: number;
+  openingBalance?: number;
+};
 
 export default function InventoryMovementPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,13 +81,13 @@ export default function InventoryMovementPage() {
     enabled: !!vanData?.vanWarehouseId && !!selectedDate,
   });
 
-  const currentStock = currentStockData?.data?.inventory || [];
-  const movementReport = movementData?.data || [];
+  const currentStock = (currentStockData?.data?.inventory as CurrentStockItem[] | undefined) || [];
+  const movementReport = (movementData?.data as MovementEntry[] | undefined) || [];
 
   // Calculate movements per item from the movement report
-  const itemMovements: ItemMovement[] = currentStock.map((item: any) => {
+  const itemMovements: ItemMovement[] = currentStock.map((item) => {
     // Find the movement report entry for this item
-    const movement = movementReport.find((entry: any) => entry.itemId === item.itemId);
+    const movement = movementReport.find((entry) => entry.itemId === item.itemId);
 
     const itemsIn = movement?.totalIn || 0;
     const itemsOut = movement?.totalOut || 0;

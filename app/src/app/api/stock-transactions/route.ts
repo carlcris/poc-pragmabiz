@@ -6,6 +6,83 @@ import { normalizeTransactionItems } from '@/services/inventory/normalizationSer
 import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
 
+type TransactionListItemRow = {
+  id: string
+  quantity: number | string | null
+  unit_cost: number | string | null
+  total_cost: number | string | null
+  batch_no: string | null
+  serial_no: string | null
+  expiry_date: string | null
+  notes: string | null
+  created_at: string
+  transaction: {
+    id: string
+    transaction_code: string
+    transaction_type: string
+    transaction_date: string
+    warehouse_id: string | null
+    to_warehouse_id: string | null
+    from_location_id: string | null
+    to_location_id: string | null
+    reference_type: string | null
+    reference_id: string | null
+    status: string
+    notes: string | null
+    created_by: string | null
+    created_at: string
+  }
+  item: {
+    id: string
+    item_code: string | null
+    item_name: string | null
+    uom?: {
+      code: string | null
+    } | null
+  }
+}
+
+type WarehouseRow = {
+  id: string
+  warehouse_code: string | null
+  warehouse_name: string | null
+}
+
+type LocationRow = {
+  id: string
+  code: string | null
+  name: string | null
+}
+
+type UserRow = {
+  id: string
+  first_name: string | null
+  last_name: string | null
+}
+
+type StockTransactionBody = {
+  transactionType: 'in' | 'out' | 'transfer'
+  transactionDate?: string
+  warehouseId: string
+  toWarehouseId?: string | null
+  fromLocationId?: string | null
+  toLocationId?: string | null
+  referenceType?: string | null
+  referenceId?: string | null
+  notes?: string | null
+  items: Array<{
+    itemId: string
+    quantity: number | string
+    unitCost?: number | string | null
+    packagingId?: string | null
+    uomId?: string | null
+    batchNo?: string | null
+    serialNo?: string | null
+    expiryDate?: string | null
+    notes?: string | null
+  }>
+}
+
 // GET /api/stock-transactions
 export async function GET(request: NextRequest) {
   try {
@@ -93,7 +170,8 @@ export async function GET(request: NextRequest) {
     const locationIds = new Set<string>()
     const userIds = new Set<string>()
 
-    transactionItems.forEach((item: any) => {
+    const typedTransactionItems = (transactionItems || []) as TransactionListItemRow[]
+    typedTransactionItems.forEach((item) => {
       if (item.transaction.warehouse_id) warehouseIds.add(item.transaction.warehouse_id)
       if (item.transaction.to_warehouse_id) warehouseIds.add(item.transaction.to_warehouse_id)
       if (item.transaction.from_location_id) locationIds.add(item.transaction.from_location_id)
@@ -123,12 +201,18 @@ export async function GET(request: NextRequest) {
         : Promise.resolve({ data: [] }),
     ])
 
-    const warehousesMap = new Map(warehousesData.data?.map((w: any) => [w.id, w]) || [])
-    const locationsMap = new Map(locationsData.data?.map((l: any) => [l.id, l]) || [])
-    const usersMap = new Map(usersData.data?.map((u: any) => [u.id, u]) || [])
+    const warehousesMap = new Map(
+      (warehousesData.data as WarehouseRow[] | null)?.map((w) => [w.id, w]) || []
+    )
+    const locationsMap = new Map(
+      (locationsData.data as LocationRow[] | null)?.map((l) => [l.id, l]) || []
+    )
+    const usersMap = new Map(
+      (usersData.data as UserRow[] | null)?.map((u) => [u.id, u]) || []
+    )
 
     // Format stock transactions
-    const formattedTransactions = transactionItems.map((item: any) => {
+    const formattedTransactions = typedTransactionItems.map((item) => {
       const warehouse = warehousesMap.get(item.transaction.warehouse_id)
       const toWarehouse = warehousesMap.get(item.transaction.to_warehouse_id)
       const fromLocation = locationsMap.get(item.transaction.from_location_id)
@@ -157,10 +241,10 @@ export async function GET(request: NextRequest) {
         toLocationId: item.transaction.to_location_id,
         toLocationCode: toLocation?.code || '',
         toLocationName: toLocation?.name || '',
-        quantity: parseFloat(item.quantity),
+        quantity: parseFloat(String(item.quantity ?? 0)),
         uom: item.item.uom?.code || '',
-        unitCost: item.unit_cost ? parseFloat(item.unit_cost) : 0,
-        totalCost: item.total_cost ? parseFloat(item.total_cost) : 0,
+        unitCost: parseFloat(String(item.unit_cost ?? 0)),
+        totalCost: parseFloat(String(item.total_cost ?? 0)),
         batchNo: item.batch_no,
         serialNo: item.serial_no,
         expiryDate: item.expiry_date,
@@ -196,7 +280,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -210,7 +294,7 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized
 
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
-    const body = await request.json()
+    const body = (await request.json()) as StockTransactionBody
 
     if (
       body.transactionType === 'transfer' &&
@@ -334,11 +418,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
       itemId: item.itemId,
       packagingId: item.packagingId || null,
       inputQty: item.quantity,
-      unitCost: item.unitCost || 0,
+      unitCost: item.unitCost ? parseFloat(String(item.unitCost)) : 0,
     }))
 
     let normalizedItems
@@ -391,7 +475,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create stock transaction item with full normalization metadata
-      const { data: stockTxItem, error: stockTxItemError } = await supabase
+      const { error: stockTxItemError } = await supabase
         .from('stock_transaction_items')
         .insert({
           company_id: userData.company_id,

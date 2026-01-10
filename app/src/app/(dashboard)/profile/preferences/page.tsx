@@ -1,13 +1,9 @@
 "use client"
 
-import React from 'react'
 import { FontSizeSettings } from '@/components/settings/FontSizeSettings'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useTranslation } from '@/contexts/LanguageContext'
 
 export default function SettingsPage() {
-  const t = useTranslation()
-
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">

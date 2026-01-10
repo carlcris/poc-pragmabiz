@@ -71,7 +71,7 @@ export async function POST(
       data: order,
       message: 'Order cancelled successfully',
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

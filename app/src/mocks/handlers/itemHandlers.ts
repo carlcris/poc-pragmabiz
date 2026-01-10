@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { mockItems, Item } from "../data/items";
 
 // In-memory store for items (will reset on page refresh)
-let items = [...mockItems];
+const items = [...mockItems];
 
 export const itemHandlers = [
   // Get all items

@@ -10,7 +10,6 @@ import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useAuthStore } from "@/stores/authStore";
 import { itemFormSchema, type ItemFormValues } from "@/lib/validations/item";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -212,7 +211,7 @@ export function ItemFormDialog({
           setActiveTab("variants");
         }
       }
-    } catch (error) {
+    } catch {
       toast.error(resolvedItem ? "Failed to update item" : "Failed to create item");
     }
   };

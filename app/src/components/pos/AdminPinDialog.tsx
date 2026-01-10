@@ -50,7 +50,7 @@ export function AdminPinDialog({
       } else {
         setError('Invalid PIN. Please try again.')
       }
-    } catch (err) {
+    } catch {
       setError('Verification failed. Please try again.')
     } finally {
       setIsVerifying(false)

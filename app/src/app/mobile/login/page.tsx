@@ -48,7 +48,11 @@ export default function MobileLoginPage() {
         .single();
 
       if (vanError) {
+        throw new Error(vanError.message);
+      }
 
+      if (!vanData?.van_warehouse_id) {
+        throw new Error("No van warehouse assigned. Please contact your supervisor.");
       }
 
       // Redirect to van sales dashboard

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { UpdateEmployeeRequest } from '@/types/employee';
 
 type RouteContext = {
   params: Promise<{
@@ -9,10 +10,44 @@ type RouteContext = {
   }>;
 };
 
+type EmployeeLocationRow = {
+  city: string | null;
+  region_state: string | null;
+};
+
+type EmployeeRow = {
+  id: string;
+  company_id: string;
+  employee_code: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  role: string;
+  department: string | null;
+  hire_date: string;
+  commission_rate: number | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  region_state: string | null;
+  country: string;
+  postal_code: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  employment_status: string;
+  is_active: boolean;
+  employee_distribution_locations?: EmployeeLocationRow[] | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by: string;
+};
+
 // Helper function to transform employee data to camelCase
-function transformEmployee(emp: any) {
-  const territories = (emp.employee_distribution_locations || []).map((loc: any) =>
-    loc.city ? `${loc.city}, ${loc.region_state}` : loc.region_state
+function transformEmployee(emp: EmployeeRow) {
+  const territories = (emp.employee_distribution_locations || []).map((loc) =>
+    loc.city ? `${loc.city}, ${loc.region_state}` : loc.region_state || ''
   );
 
   return {
@@ -71,7 +106,7 @@ export const GET = async (
     }
 
     return NextResponse.json({ data: transformEmployee(data) });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -99,7 +134,7 @@ export const PUT = async (
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = (await req.json()) as Partial<UpdateEmployeeRequest>;
 
     // Build update object
     const updateData: Record<string, unknown> = {
@@ -164,7 +199,7 @@ export const PUT = async (
     }
 
     return NextResponse.json({ data: transformEmployee(data) });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -221,7 +256,7 @@ export const DELETE = async (
     }
 
     return NextResponse.json({ data: transformEmployee(data) });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

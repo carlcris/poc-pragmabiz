@@ -101,7 +101,7 @@ export function StockTransactionFormDialog({ open, onOpenChange }: StockTransact
 
   // Fetch basic items (for uomId)
   const { data: basicItemsData } = useItems({ limit: 1000 });
-  const basicItems = basicItemsData?.data || [];
+  const basicItems = useMemo(() => basicItemsData?.data || [], [basicItemsData]);
 
   const { data: warehousesData } = useWarehouses({ limit: 1000 });
   const { formatCurrency } = useCurrency();

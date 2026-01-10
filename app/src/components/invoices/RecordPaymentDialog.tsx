@@ -71,8 +71,7 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
     try {
       await recordPayment.mutateAsync(data);
       onOpenChange(false);
-    } catch (error) {
-
+    } catch {
     }
   };
 

@@ -114,7 +114,7 @@ export async function calculateCOGS(
       items: cogsItems,
       totalCOGS,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -269,7 +269,7 @@ export async function postCOGS(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,

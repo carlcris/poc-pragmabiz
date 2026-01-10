@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { TopAgentWidget } from "@/components/dashboard/top-agent-widget";
 import { RecentActivityWidget } from "@/components/dashboard/recent-activity-widget";
 import { useDashboardWidgets } from "@/hooks/useAnalytics";
+import type { DashboardWidgetData } from "@/types/analytics";
 
 export default function DashboardPage() {
   const { formatCurrency } = useCurrency();
@@ -27,13 +28,14 @@ export default function DashboardPage() {
 
   const isLoading = widgetLoading || salesOrdersLoading || invoicesLoading;
 
-  const salesOrders = salesOrdersData?.data || [];
+  const salesOrders = useMemo(() => salesOrdersData?.data ?? [], [salesOrdersData?.data]);
   const invoices = invoicesData?.data || [];
 
   // Extract data from widgets API
-  const reorderAlerts = widgetData?.reorderAlerts || [];
+  const reorderAlerts = widgetData?.reorderAlerts ?? [];
   const activePurchaseOrders = widgetData?.stats?.activePurchaseOrders || 0;
   const todaysTotalSales = widgetData?.todaysSales?.amount || 0;
+  type ReorderAlert = NonNullable<DashboardWidgetData["reorderAlerts"]>[number];
 
   // Calculate revenue from invoices (still needed for display)
   const totalRevenue = invoices
@@ -149,7 +151,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back! Here's an overview of your business operations
+          Welcome back! Here&apos;s an overview of your business operations
         </p>
       </div>
 
@@ -199,7 +201,7 @@ export default function DashboardPage() {
         {/* Today's Sales */}
         <Card>
           <CardHeader>
-            <CardTitle>Today's Sales</CardTitle>
+            <CardTitle>Today&apos;s Sales</CardTitle>
             <CardDescription>
               {isLoading ? (
                 <Skeleton className="h-4 w-48" />
@@ -292,7 +294,7 @@ export default function DashboardPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {reorderAlerts.map((item: any) => (
+                {reorderAlerts.map((item: ReorderAlert) => (
                   <div key={`${item.id}-${item.warehouseId}`} className="flex items-center gap-3">
                     <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0" />
                     <div className="flex-1 min-w-0">

@@ -2,7 +2,9 @@ import { http, HttpResponse } from "msw";
 import type { Invoice, CreateInvoiceRequest, InvoiceLineItem, RecordPaymentRequest } from "@/types/invoice";
 import { invoices } from "../data/invoices";
 
-let invoicesData = [...invoices];
+const invoicesData = [...invoices];
+type InvoiceLineItemInput = Omit<InvoiceLineItem, "id" | "lineTotal">;
+type InvoiceLineItemUpdate = InvoiceLineItemInput & { id?: string };
 
 // Helper function to calculate line total
 function calculateLineTotal(
@@ -182,8 +184,8 @@ export const invoiceHandlers = [
     };
 
     if (body.lineItems) {
-      lineItems = body.lineItems.map((item: any, idx: number) => ({
-        id: item.id || `invli-${Date.now()}-${idx}`,
+      lineItems = body.lineItems.map((item: InvoiceLineItemUpdate, idx: number) => ({
+        id: item.id ?? `invli-${Date.now()}-${idx}`,
         ...item,
         lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
       }));

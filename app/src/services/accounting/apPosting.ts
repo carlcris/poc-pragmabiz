@@ -165,7 +165,7 @@ export async function postAPBill(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -312,7 +312,7 @@ export async function postAPPayment(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,

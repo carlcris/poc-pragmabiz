@@ -24,7 +24,7 @@ import {
 import { StockTransactionFormDialog } from "@/components/stock/StockTransactionFormDialog";
 import { StockTransactionDetailDialog } from "@/components/stock/StockTransactionDetailDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import type { StockTransaction, TransactionType } from "@/types/stock-transaction";
+import type { TransactionType } from "@/types/stock-transaction";
 
 export default function StockTransactionsPage() {
   const [search, setSearch] = useState("");

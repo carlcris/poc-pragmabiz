@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       business_unit: data.business_unit,
       requires_refresh: data.requires_refresh, // Signal client to refresh session
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

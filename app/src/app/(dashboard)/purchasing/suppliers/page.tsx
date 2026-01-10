@@ -123,6 +123,9 @@ export default function SuppliersPage() {
     setDeleteDialogOpen(true);
   };
 
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
+
   const confirmDelete = async () => {
     if (!supplierToDelete) return;
 
@@ -131,8 +134,8 @@ export default function SuppliersPage() {
       toast.success("Supplier deleted successfully");
       setDeleteDialogOpen(false);
       setSupplierToDelete(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete supplier");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to delete supplier"));
     }
   };
 

@@ -66,14 +66,14 @@ export default function POSTransactionsPage() {
     }
     // Remove undefined values
     return Object.fromEntries(
-      Object.entries(params).filter(([_, v]) => v !== undefined)
+      Object.entries(params).filter(([, v]) => v !== undefined)
     ) as Record<string, string | number>
   }, [search, statusFilter, dateRange, cashierFilter, currentPage, pageSize])
 
   const { data, isLoading } = usePOSTransactions(queryParams)
   const voidTransaction = useVoidPOSTransaction()
 
-  const transactions = data?.data || []
+  const transactions = useMemo(() => data?.data || [], [data])
 
   // Get unique cashiers for filter dropdown
   const uniqueCashiers = useMemo(() => {

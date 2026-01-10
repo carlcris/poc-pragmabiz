@@ -27,10 +27,10 @@ import {
   Percent
 } from "lucide-react";
 import { useUserVanWarehouse, useVanItems } from "@/hooks/useVanWarehouse";
-import { Customer } from "@/types/customer";
+import type { Customer } from "@/types/customer";
 import { useQueryClient } from "@tanstack/react-query";
 
-interface CartItem {
+type CartItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
@@ -40,7 +40,38 @@ interface CartItem {
   uomName: string;
   availableStock: number;
   discount: number; // Discount percentage
-}
+};
+
+type VanInventoryItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  unitPrice: number;
+  uomId: string;
+  uomName: string;
+  availableStock: number;
+  categoryName?: string;
+};
+
+type PaymentInput = {
+  method: string;
+  amount: number;
+  reference?: string;
+};
+
+type PaymentResult = {
+  method: string;
+  amount: number;
+};
+
+type VanSaleResponse = {
+  data: {
+    payments: PaymentResult[];
+    orderNumber: string;
+    invoiceNumber: string;
+    totalAmount: number;
+  };
+};
 
 export default function SellPage() {
   const queryClient = useQueryClient();
@@ -68,9 +99,9 @@ export default function SellPage() {
   const vanName = vanData?.vanWarehouse?.name || "No Van Assigned";
   const driverName = vanData?.fullName || "Driver";
 
-  const items = (itemsData as any)?.inventory || [];
+  const items = (itemsData as { inventory?: VanInventoryItem[] } | undefined)?.inventory || [];
   const filteredItems = searchTerm
-    ? items.filter((item: any) => {
+    ? items.filter((item) => {
         const matchesSearch = item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           item.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
         const hasStock = item.availableStock > 0;
@@ -88,7 +119,7 @@ export default function SellPage() {
   const tax = taxableAmount * 0.12; // 12% VAT
   const total = taxableAmount + tax;
 
-  const addToCart = (item: any) => {
+  const addToCart = (item: VanInventoryItem) => {
     // Check if item has stock available
     if (!item.availableStock || item.availableStock <= 0) {
       setAlertState({
@@ -197,7 +228,7 @@ export default function SellPage() {
     setShowPaymentDialog(true);
   };
 
-  const handleProcessPayment = async (payments: Array<{ method: string; amount: number; reference: string }>) => {
+  const handleProcessPayment = async (payments: PaymentInput[]) => {
     if (!selectedCustomer || !vanData?.vanWarehouseId) return;
 
     setIsProcessingPayment(true);
@@ -236,7 +267,7 @@ export default function SellPage() {
         throw new Error(error.error || "Failed to process payment");
       }
 
-      const result = await response.json();
+      const result = (await response.json()) as VanSaleResponse;
 
       // Invalidate sales stats to refresh dashboard
       queryClient.invalidateQueries({ queryKey: ["vanSalesStats"] });
@@ -249,7 +280,7 @@ export default function SellPage() {
       setShowPaymentDialog(false);
 
       const paymentSummary = result.data.payments
-        .map((p: any) => `${p.method}: ₱${p.amount.toFixed(2)}`)
+        .map((p) => `${p.method}: ₱${p.amount.toFixed(2)}`)
         .join("\n");
 
       setAlertState({
@@ -326,9 +357,9 @@ export default function SellPage() {
                       <span>{selectedCustomer.phone}</span>
                     </div>
                   )}
-                  {(selectedCustomer as any).address && (
+                  {selectedCustomer.billingAddress && (
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                      {(selectedCustomer as any).address}
+                      {selectedCustomer.billingAddress}
                     </p>
                   )}
                 </div>
@@ -391,7 +422,7 @@ export default function SellPage() {
           </div>
         ) : filteredItems.length > 0 ? (
           <div className="space-y-3">
-            {filteredItems.map((item: any) => (
+            {filteredItems.map((item) => (
               <MobileItemCard
                 key={item.itemId}
                 item={item}

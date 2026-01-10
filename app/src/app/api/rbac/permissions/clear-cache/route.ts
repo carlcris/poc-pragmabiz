@@ -23,7 +23,7 @@ export async function POST() {
     return NextResponse.json({
       message: 'Permission cache cleared successfully'
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Failed to clear permission cache' },

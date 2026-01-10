@@ -15,12 +15,26 @@ type DbUser = Database['public']['Tables']['users']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
 type DbPackaging = Database['public']['Tables']['item_packaging']['Row']
 
+type DbQuotationWithJoins = DbQuotation & {
+  customers?: DbCustomer | null
+  users?: DbUser | null
+}
+
+type DbQuotationItemWithJoins = DbQuotationItem & {
+  items?: DbItem | null
+  units_of_measure?: DbUoM | null
+  item_packaging?: DbPackaging | null
+}
+
+type QuotationItemInput = NonNullable<UpdateQuotationRequest['items']>[number]
+
+type QuotationHeaderUpdate = Partial<DbQuotation> & {
+  updated_by: string
+}
+
 // Transform database quotation to frontend type
 function transformDbQuotation(
-  dbQuotation: DbQuotation & {
-    customers?: DbCustomer | null
-    users?: DbUser | null
-  },
+  dbQuotation: DbQuotationWithJoins,
   items?: QuotationLineItem[]
 ): Quotation {
   return {
@@ -50,11 +64,7 @@ function transformDbQuotation(
 
 // Transform database quotation item to frontend type
 function transformDbQuotationItem(
-  dbItem: DbQuotationItem & {
-    items?: DbItem | null
-    units_of_measure?: DbUoM | null
-    item_packaging?: DbPackaging | null
-  }
+  dbItem: DbQuotationItemWithJoins
 ): QuotationLineItem {
   return {
     id: dbItem.id,
@@ -160,11 +170,11 @@ export async function GET(
       return NextResponse.json({ error: itemsError.message }, { status: 500 })
     }
 
-    const transformedItems = items?.map(item => transformDbQuotationItem(item as any)) || []
-    const result = transformDbQuotation(quotation as any, transformedItems)
+    const transformedItems = (items as DbQuotationItemWithJoins[] | null)?.map(item => transformDbQuotationItem(item)) || []
+    const result = transformDbQuotation(quotation as DbQuotationWithJoins, transformedItems)
 
     return NextResponse.json(result)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -225,7 +235,7 @@ export async function PUT(
     }
 
     // Build update object for header
-    const headerUpdate: any = {
+    const headerUpdate: QuotationHeaderUpdate = {
       updated_by: user.id,
     }
 
@@ -241,7 +251,7 @@ export async function PUT(
       let totalDiscount = 0
       let totalTax = 0
 
-      const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+      const itemInputs: StockTransactionItemInput[] = body.items.map((item: QuotationItemInput) => ({
         itemId: item.itemId,
         packagingId: item.packagingId ?? null,
         inputQty: parseFloat(item.quantity),
@@ -388,11 +398,11 @@ export async function PUT(
       .is('deleted_at', null)
       .order('sort_order', { ascending: true })
 
-    const items = quotationItems?.map(item => transformDbQuotationItem(item as any)) || []
-    const result = transformDbQuotation(updatedQuotation as any, items)
+    const items = (quotationItems as DbQuotationItemWithJoins[] | null)?.map(item => transformDbQuotationItem(item)) || []
+    const result = transformDbQuotation(updatedQuotation as DbQuotationWithJoins, items)
 
     return NextResponse.json(result)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -465,7 +475,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Quotation deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

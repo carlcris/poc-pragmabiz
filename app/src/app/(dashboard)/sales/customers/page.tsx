@@ -123,7 +123,7 @@ function CustomersPageContent() {
       await deleteCustomer.mutateAsync(customerToDelete.id);
       toast.success("Customer deleted successfully");
       setCustomerToDelete(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete customer");
     }
   };

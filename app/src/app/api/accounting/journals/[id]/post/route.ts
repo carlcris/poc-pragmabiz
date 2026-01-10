@@ -146,7 +146,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       data: postedEntry,
       message: "Journal entry posted successfully",
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

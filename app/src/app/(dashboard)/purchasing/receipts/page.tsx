@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Eye, Filter, Trash2 } from "lucide-react";
+import { Search, Eye, Filter, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePurchaseReceipts, useDeletePurchaseReceipt } from "@/hooks/usePurchaseReceipts";
 import { Button } from "@/components/ui/button";
@@ -35,14 +35,14 @@ import {
 import { PurchaseReceiptViewDialog } from "@/components/purchase-receipts/PurchaseReceiptViewDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
-import type { PurchaseReceipt } from "@/types/purchase-receipt";
+import type { PurchaseReceipt, PurchaseReceiptStatus } from "@/types/purchase-receipt";
 import { format } from "date-fns";
 
 export default function PurchaseReceiptsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<PurchaseReceiptStatus | "all">("all");
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<PurchaseReceipt | null>(null);
 
@@ -55,13 +55,13 @@ export default function PurchaseReceiptsPage() {
 
   const { data, isLoading, error } = usePurchaseReceipts({
     search,
-    status: statusFilter !== "all" ? statusFilter as any : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
     page: 1,
     limit: 1000,
   });
 
   // Apply client-side filtering
-  let filteredReceipts = data?.data || [];
+  const filteredReceipts = data?.data || [];
 
   // Calculate pagination
   const total = filteredReceipts.length;
@@ -76,6 +76,9 @@ export default function PurchaseReceiptsPage() {
     limit: pageSize,
     totalPages,
   };
+
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -112,8 +115,8 @@ export default function PurchaseReceiptsPage() {
       toast.success("Receipt deleted successfully");
       setDeleteDialogOpen(false);
       setReceiptForAction(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete receipt");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to delete receipt"));
     }
   };
 

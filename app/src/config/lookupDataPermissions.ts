@@ -192,7 +192,7 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
  */
 export function getAccessorsForLookupData(lookupResource: LookupResource): TransactionalResource[] {
   return Object.entries(LOOKUP_DATA_ACCESS_MAP)
-    .filter(([_, lookups]) => lookups.includes(lookupResource))
+    .filter(([, lookups]) => lookups.includes(lookupResource))
     .map(([feature]) => feature as TransactionalResource);
 }
 

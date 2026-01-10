@@ -117,15 +117,24 @@ export function MobilePaymentDialog({
     }
   };
 
-  const updatePayment = (id: string, field: keyof Payment, value: any) => {
-    setPayments(payments.map(p =>
-      p.id === id ? { ...p, [field]: value } : p
-    ));
+  const updatePayment = <K extends keyof Payment>(
+    id: string,
+    field: K,
+    value: Payment[K]
+  ) => {
+    setPayments(
+      payments.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
   };
 
   const handleConfirm = () => {
     if (isValid) {
-      onConfirm(payments.map(({ id, ...rest }) => rest));
+      onConfirm(
+        payments.map(({ id, ...rest }) => {
+          void id;
+          return rest;
+        })
+      );
     }
   };
 

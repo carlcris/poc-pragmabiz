@@ -3,6 +3,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 
+type StockTransactionItemRow = {
+  id: string
+  item_id: string
+  item: {
+    item_code: string | null
+    item_name: string | null
+    uom?: {
+      code: string | null
+    } | null
+  } | null
+  quantity: number | string | null
+  uom_id: string | null
+  unit_cost: number | string | null
+  total_cost: number | string | null
+  qty_before: number | string | null
+  qty_after: number | string | null
+  valuation_rate: number | string | null
+  stock_value_before: number | string | null
+  stock_value_after: number | string | null
+  posting_date: string | null
+  posting_time: string | null
+  batch_no: string | null
+  serial_no: string | null
+  expiry_date: string | null
+  notes: string | null
+}
+
 // GET /api/stock-transactions/[id]
 export async function GET(
   request: NextRequest,
@@ -80,6 +107,7 @@ export async function GET(
     }
 
     // Format response
+    const typedItems = (transaction.items || []) as StockTransactionItemRow[]
     const formattedTransaction = {
       id: transaction.id,
       transactionCode: transaction.transaction_code,
@@ -101,21 +129,25 @@ export async function GET(
       referenceId: transaction.reference_id,
       status: transaction.status,
       notes: transaction.notes,
-      items: transaction.items?.map((item: any) => ({
+      items: typedItems.map((item) => ({
         id: item.id,
         itemId: item.item_id,
-        itemCode: item.item.item_code,
-        itemName: item.item.item_name,
-        quantity: parseFloat(item.quantity),
+        itemCode: item.item?.item_code || '',
+        itemName: item.item?.item_name || '',
+        quantity: parseFloat(String(item.quantity ?? 0)),
         uomId: item.uom_id,
-        uom: item.item.uom?.code || '',
-        unitCost: item.unit_cost ? parseFloat(item.unit_cost) : 0,
-        totalCost: item.total_cost ? parseFloat(item.total_cost) : 0,
-        qtyBefore: item.qty_before ? parseFloat(item.qty_before) : null,
-        qtyAfter: item.qty_after ? parseFloat(item.qty_after) : null,
-        valuationRate: item.valuation_rate ? parseFloat(item.valuation_rate) : null,
-        stockValueBefore: item.stock_value_before ? parseFloat(item.stock_value_before) : null,
-        stockValueAfter: item.stock_value_after ? parseFloat(item.stock_value_after) : null,
+        uom: item.item?.uom?.code || '',
+        unitCost: parseFloat(String(item.unit_cost ?? 0)),
+        totalCost: parseFloat(String(item.total_cost ?? 0)),
+        qtyBefore: item.qty_before ? parseFloat(String(item.qty_before)) : null,
+        qtyAfter: item.qty_after ? parseFloat(String(item.qty_after)) : null,
+        valuationRate: item.valuation_rate ? parseFloat(String(item.valuation_rate)) : null,
+        stockValueBefore: item.stock_value_before
+          ? parseFloat(String(item.stock_value_before))
+          : null,
+        stockValueAfter: item.stock_value_after
+          ? parseFloat(String(item.stock_value_after))
+          : null,
         postingDate: item.posting_date,
         postingTime: item.posting_time,
         batchNo: item.batch_no,
@@ -130,7 +162,7 @@ export async function GET(
     }
 
     return NextResponse.json(formattedTransaction)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -208,7 +240,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Stock transaction deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

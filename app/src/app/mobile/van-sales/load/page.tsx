@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Package, CheckCircle, AlertCircle, TruckIcon } from "lucide-react";
+import { CheckCircle, AlertCircle, TruckIcon } from "lucide-react";
 import { useUserVanWarehouse } from "@/hooks/useVanWarehouse";
 import { useStockTransfers, useConfirmStockTransfer } from "@/hooks/useStockTransfers";
 import { useState } from "react";

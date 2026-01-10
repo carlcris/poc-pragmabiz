@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         totalPages,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     const warehouse = transformDbWarehouse(newWarehouse)
 
     return NextResponse.json({ data: warehouse }, { status: 201 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

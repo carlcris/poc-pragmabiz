@@ -60,7 +60,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const { data: itemResponse } = useItem(itemId);
   const item = itemResponse?.data;
 
-  const locations = data?.data || [];
+  const locations = useMemo(() => data?.data || [], [data]);
   const warehouses = useMemo(() => {
     const map = new Map<string, { id: string; code: string; name: string }>();
     locations.forEach((loc) => {

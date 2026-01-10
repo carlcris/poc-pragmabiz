@@ -45,7 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { PurchaseOrder } from "@/types/purchase-order";
+import type { PurchaseOrder, PurchaseOrderLineItem } from "@/types/purchase-order";
 import type { WarehouseLocation } from "@/types/inventory-location";
 import { format } from "date-fns";
 
@@ -104,7 +104,7 @@ export function ReceiveGoodsDialog({
   useEffect(() => {
     if (purchaseOrder && open) {
 
-      const items = (purchaseOrder.items || []).map((item: any) => {
+      const items = (purchaseOrder.items || []).map((item: PurchaseOrderLineItem) => {
         const remainingQty = item.quantity - (item.quantityReceived || 0);
 
         // Get uomId from either direct property or nested uom object
@@ -164,7 +164,7 @@ export function ReceiveGoodsDialog({
     }
 
     try {
-      const result = await receiveMutation.mutateAsync({
+      await receiveMutation.mutateAsync({
         purchaseOrderId: purchaseOrder.id,
         data: {
           warehouseId: data.warehouseId,
@@ -179,9 +179,10 @@ export function ReceiveGoodsDialog({
 
       toast.success("Goods received successfully! Stock levels updated.");
       onOpenChange(false);
-    } catch (error: any) {
-
-      toast.error(error.message || "Failed to receive goods");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to receive goods";
+      toast.error(message);
     }
   };
 
@@ -459,7 +460,7 @@ export function ReceiveGoodsDialog({
                   )}
                   {form.formState.errors.items && Array.isArray(form.formState.errors.items) && (
                     <>
-                      {form.formState.errors.items.map((itemError: any, idx: number) => (
+                      {form.formState.errors.items.map((itemError, idx: number) => (
                         itemError && (
                           <li key={idx}>
                             Item {idx + 1}: {JSON.stringify(itemError)}

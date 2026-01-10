@@ -1,6 +1,5 @@
 import { apiClient } from "@/lib/api";
 import type {
-  Item,
   ItemsListResponse,
   ItemResponse,
   CreateItemRequest,

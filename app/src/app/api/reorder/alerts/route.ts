@@ -2,6 +2,34 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import type { Tables } from '@/types/supabase'
+
+type ItemWarehouseRow = Tables<'item_warehouse'>
+type ItemRow = Tables<'items'>
+type WarehouseRow = Tables<'warehouses'>
+
+type StockLevelRow = ItemWarehouseRow & {
+  items: Pick<ItemRow, 'item_code' | 'item_name'>
+  warehouses: Pick<WarehouseRow, 'warehouse_name'>
+}
+
+type ReorderAlert = {
+  id: string
+  itemId: string
+  itemCode: string
+  itemName: string
+  warehouseId: string
+  warehouseName: string
+  currentStock: number
+  reorderPoint: number
+  minimumLevel: number
+  maxQuantity: number
+  severity: 'critical' | 'warning' | 'info'
+  message: string
+  alertType: 'low_stock'
+  createdAt: string
+  acknowledged: boolean
+}
 
 // GET /api/reorder/alerts
 // Returns low stock alerts based on current stock levels and reorder levels
@@ -40,7 +68,6 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams
-    const acknowledged = searchParams.get('acknowledged')
     const severity = searchParams.get('severity')
     const warehouseId = searchParams.get('warehouseId')
     const page = parseInt(searchParams.get('page') || '1')
@@ -87,7 +114,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data: stockLevels, error, count } = await query.range(offset, offset + limit - 1)
+    const { data: stockLevels, error } = await query.range(offset, offset + limit - 1)
 
     if (error) {
 
@@ -95,11 +122,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Process alerts - filter by stock level and determine severity
-    const alerts = (stockLevels || [])
-      .map((stock: any) => {
-        const currentStock = parseFloat(stock.current_stock || 0)
-        const reorderLevel = parseFloat(stock.reorder_level || 0)
-        const maxQuantity = parseFloat(stock.max_quantity || 0)
+    const alerts = ((stockLevels as StockLevelRow[] | null) || [])
+      .map((stock) => {
+        const currentStock = Number(stock.current_stock || 0)
+        const reorderLevel = Number(stock.reorder_level || 0)
+        const maxQuantity = Number(stock.max_quantity || 0)
 
         // Skip items without reorder level set or with adequate stock
         if (reorderLevel <= 0 || currentStock >= reorderLevel) {
@@ -136,17 +163,17 @@ export async function GET(request: NextRequest) {
           minimumLevel: reorderLevel * 0.5, // Use 50% of reorder level as minimum
           maxQuantity: maxQuantity,
           severity: alertSeverity,
-          message: message,
+          message,
           alertType: 'low_stock',
           createdAt: new Date().toISOString(),
           acknowledged: false,
         }
       })
-      .filter((alert: any) => alert !== null) // Remove nulls (items with adequate stock)
+      .filter((alert): alert is ReorderAlert => alert !== null) // Remove nulls (items with adequate stock)
 
     // Apply severity filter if provided
     const filteredAlerts = severity
-      ? alerts.filter((alert: any) => alert.severity === severity)
+      ? alerts.filter((alert) => alert.severity === severity)
       : alerts
 
     // Note: acknowledged filter not yet implemented (would require reorder_alerts table)
@@ -161,7 +188,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(filteredAlerts.length / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, Trophy } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import { KPICard } from "./kpi-card";
 import { useDashboardWidgets } from "@/hooks/useAnalytics";
 import { useCurrency } from "@/hooks/useCurrency";

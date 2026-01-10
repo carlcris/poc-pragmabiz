@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const supabase = await createClient()
 
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         companyId: userData.company_id,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { message: 'Internal server error' },

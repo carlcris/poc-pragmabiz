@@ -22,6 +22,10 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
+import type {
+  TransformationOrderInputApi,
+  TransformationOrderOutputApi,
+} from "@/types/transformation-order";
 
 const statusColors: Record<string, string> = {
   DRAFT: "bg-gray-500",
@@ -59,26 +63,27 @@ function TransformationOrderContent({ id }: { id: string }) {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { data: orderResponse, isLoading, refetch } = useTransformationOrder(id);
-  // @ts-ignore - API returns snake_case fields, will be fixed with API transformation layer
   const order = orderResponse?.data;
   const handleCompleteClick = () => {
     if (!order) return;
 
     // Prepare execute form data with planned quantities as defaults
+    const inputs = order.inputs ?? [];
+    const outputs = order.outputs ?? [];
     setExecuteFormData({
-      inputs: order.inputs.map((input: any) => ({
+      inputs: inputs.map((input: TransformationOrderInputApi) => ({
         id: input.id,
-        itemName: input.items?.item_name || 'N/A',
+        itemName: input.items?.item_name || "N/A",
         plannedQty: input.planned_quantity,
         actualQty: input.planned_quantity,
       })),
-      outputs: order.outputs.map((output: any) => ({
+      outputs: outputs.map((output: TransformationOrderOutputApi) => ({
         id: output.id,
-        itemName: output.items?.item_name || 'N/A',
+        itemName: output.items?.item_name || "N/A",
         plannedQty: output.planned_quantity,
         actualQty: output.planned_quantity,
         wastedQty: 0,
-        wasteReason: '',
+        wasteReason: "",
         isScrap: output.is_scrap || false,
       })),
     });
@@ -171,14 +176,10 @@ function TransformationOrderContent({ id }: { id: string }) {
           </Link>
         </Button>
         <div>
-          {/* @ts-ignore - API returns snake_case until transformation is implemented */}
           <h1 className="text-3xl font-bold tracking-tight">{order.order_code}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t.transformation.template}:{" "}
-            {/* @ts-ignore - API returns snake_case until transformation is implemented */}
-            {"template" in order && order.template && typeof order.template === "object" && "template_code" in order.template
-              ? String(order.template.template_code)
-              : "N/A"}
+            {order.template?.template_code || "N/A"}
           </p>
         </div>
       </div>
@@ -194,9 +195,7 @@ function TransformationOrderContent({ id }: { id: string }) {
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.common.warehouse}</p>
               <p className="text-sm font-semibold">
-                {"source_warehouse" in order && order.source_warehouse && typeof order.source_warehouse === "object" && "warehouse_name" in order.source_warehouse
-                  ? String(order.source_warehouse.warehouse_name)
-                  : "N/A"}
+                {order.source_warehouse?.warehouse_name || "N/A"}
               </p>
             </div>
             <div className="space-y-1">
@@ -208,8 +207,8 @@ function TransformationOrderContent({ id }: { id: string }) {
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.transformation.plannedQuantity}</p>
               <p className="text-sm font-semibold">
-                {("outputs" in order && Array.isArray(order.outputs))
-                  ? order.outputs.reduce((sum: number, output: any) => sum + (output.planned_quantity || 0), 0)
+                {order.outputs && order.outputs.length > 0
+                  ? order.outputs.reduce((sum, output) => sum + output.planned_quantity, 0)
                   : order.planned_quantity}
               </p>
             </div>
@@ -271,23 +270,19 @@ function TransformationOrderContent({ id }: { id: string }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {"inputs" in order && Array.isArray(order.inputs) && order.inputs.map((input: any) => (
+              {(order.inputs ?? []).map((input) => (
                 <div key={input.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-semibold text-sm">
-                        {"items" in input && input.items && typeof input.items === "object" && "item_code" in input.items
-                          ? String(input.items.item_code)
-                          : "N/A"}
+                        {input.items?.item_code || "N/A"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {"items" in input && input.items && typeof input.items === "object" && "item_name" in input.items
-                          ? String(input.items.item_name)
-                          : "N/A"}
+                        {input.items?.item_name || "N/A"}
                       </p>
                     </div>
                     <Badge variant="outline" className="text-xs">
-                      {formatCurrency("unit_cost" in input && input.unit_cost ? Number(input.unit_cost) : 0)}/unit
+                      {formatCurrency(input.unit_cost ?? 0)}/unit
                     </Badge>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
@@ -298,13 +293,13 @@ function TransformationOrderContent({ id }: { id: string }) {
                     <div>
                       <p className="text-muted-foreground">{t.transformation.consumed}</p>
                       <p className="font-semibold text-orange-600">
-                        {"consumed_quantity" in input && input.consumed_quantity ? input.consumed_quantity : "-"}
+                        {input.consumed_quantity ?? "-"}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.transformation.totalCost}</p>
                       <p className="font-semibold">
-                        {formatCurrency("total_cost" in input && input.total_cost ? Number(input.total_cost) : 0)}
+                        {formatCurrency(input.total_cost ?? 0)}
                       </p>
                     </div>
                   </div>
@@ -324,27 +319,23 @@ function TransformationOrderContent({ id }: { id: string }) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {"outputs" in order && Array.isArray(order.outputs) && order.outputs.map((output: any) => (
+              {(order.outputs ?? []).map((output) => (
                 <div key={output.id} className="border rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-semibold text-sm">
-                        {"items" in output && output.items && typeof output.items === "object" && "item_code" in output.items
-                          ? String(output.items.item_code)
-                          : "N/A"}
+                        {output.items?.item_code || "N/A"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {"items" in output && output.items && typeof output.items === "object" && "item_name" in output.items
-                          ? String(output.items.item_name)
-                          : "N/A"}
+                        {output.items?.item_name || "N/A"}
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      {"is_scrap" in output && output.is_scrap && (
+                      {output.is_scrap && (
                         <Badge variant="outline" className="text-xs">{t.transformation.scrap}</Badge>
                       )}
                       <Badge variant="outline" className="text-xs">
-                        {formatCurrency("allocated_cost_per_unit" in output && output.allocated_cost_per_unit ? Number(output.allocated_cost_per_unit) : 0)}/unit
+                        {formatCurrency(output.allocated_cost_per_unit ?? 0)}/unit
                       </Badge>
                     </div>
                   </div>
@@ -356,28 +347,28 @@ function TransformationOrderContent({ id }: { id: string }) {
                     <div>
                       <p className="text-muted-foreground">{t.transformation.produced}</p>
                       <p className="font-semibold text-green-600">
-                        {"produced_quantity" in output && output.produced_quantity ? output.produced_quantity : "-"}
+                        {output.produced_quantity ?? "-"}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.transformation.wastedQuantity}</p>
                       <p className="font-semibold text-orange-600">
-                        {"wasted_quantity" in output && output.wasted_quantity ? output.wasted_quantity : "0"}
+                        {output.wasted_quantity ?? 0}
                       </p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.transformation.totalCost}</p>
                       <p className="font-semibold">
-                        {formatCurrency("total_allocated_cost" in output && output.total_allocated_cost ? Number(output.total_allocated_cost) : 0)}
+                        {formatCurrency(output.total_allocated_cost ?? 0)}
                       </p>
                     </div>
                   </div>
                   {/* Show waste reason if there is waste */}
-                  {"wasted_quantity" in output && output.wasted_quantity && output.wasted_quantity > 0 && (
+                  {output.wasted_quantity && output.wasted_quantity > 0 && (
                     <div className="mt-2 pt-2 border-t text-xs">
                       <p className="text-muted-foreground">{t.transformation.wasteReason}:</p>
                       <p className="text-orange-600 italic">
-                        {"waste_reason" in output && output.waste_reason ? output.waste_reason : "No reason provided"}
+                        {output.waste_reason || "No reason provided"}
                       </p>
                     </div>
                   )}

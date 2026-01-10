@@ -116,7 +116,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
       }
       onOpenChange(false);
       form.reset();
-    } catch (error) {
+    } catch {
       toast.error(warehouse ? "Failed to update warehouse" : "Failed to create warehouse");
     }
   };

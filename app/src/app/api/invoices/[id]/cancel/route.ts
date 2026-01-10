@@ -66,7 +66,7 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, message: 'Invoice cancelled successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

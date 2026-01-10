@@ -1,9 +1,9 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransformationTemplateSchema } from '@/lib/validations/transformation-template';
-import { checkTemplateLock } from '@/services/inventory/transformationService';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { CreateTransformationTemplateRequest } from '@/types/transformation-template';
 
 // GET /api/transformations/templates - List transformation templates
 export async function GET(request: NextRequest) {
@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const search = searchParams.get('search') || '';
     const isActive = searchParams.get('isActive');
-    const itemId = searchParams.get('itemId') || '';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
@@ -175,12 +174,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse and validate request body
-    const body = await request.json();
+    const body = (await request.json()) as CreateTransformationTemplateRequest;
 
     // Friendly guard: prevent same item in inputs and outputs
     if (Array.isArray(body?.inputs) && Array.isArray(body?.outputs)) {
-      const inputIds = new Set(body.inputs.map((input: any) => input?.itemId).filter(Boolean));
-      const hasCircular = body.outputs.some((output: any) => inputIds.has(output?.itemId));
+      const inputIds = new Set(body.inputs.map((input) => input?.itemId).filter(Boolean));
+      const hasCircular = body.outputs.some((output) => inputIds.has(output?.itemId));
       if (hasCircular) {
         return NextResponse.json(
           {
@@ -323,7 +322,7 @@ export async function POST(request: NextRequest) {
       { data: completeTemplate },
       { status: 201 }
     );
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

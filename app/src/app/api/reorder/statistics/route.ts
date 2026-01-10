@@ -1,11 +1,21 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import type { Tables } from '@/types/supabase'
+
+type ItemWarehouseRow = Tables<'item_warehouse'>
+type ItemRow = Tables<'items'>
+type WarehouseRow = Tables<'warehouses'>
+
+type StockLevelRow = ItemWarehouseRow & {
+  items: Pick<ItemRow, 'purchase_price'> | null
+  warehouses: Pick<WarehouseRow, 'id' | 'business_unit_id'> | null
+}
 
 // GET /api/reorder/statistics
 // Returns summary statistics for reorder management
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await requirePermission(RESOURCES.REORDER_MANAGEMENT, 'view')
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
@@ -67,11 +77,11 @@ export async function GET(request: NextRequest) {
     let itemsCritical = 0
     let totalEstimatedReorderCost = 0
 
-    stockLevels?.forEach((stock: any) => {
-      const currentStock = parseFloat(stock.current_stock || 0)
-      const reorderLevel = parseFloat(stock.reorder_level || 0)
-      const reorderQuantity = parseFloat(stock.reorder_quantity || 0)
-      const purchasePrice = parseFloat(stock.items?.purchase_price || 0)
+    ;(stockLevels as StockLevelRow[] | null)?.forEach((stock) => {
+      const currentStock = Number(stock.current_stock || 0)
+      const reorderLevel = Number(stock.reorder_level || 0)
+      const reorderQuantity = Number(stock.reorder_quantity || 0)
+      const purchasePrice = Number(stock.items?.purchase_price || 0)
 
       // Skip items without reorder level set
       if (reorderLevel <= 0) {
@@ -101,7 +111,7 @@ export async function GET(request: NextRequest) {
       pendingSuggestions: 0, // Not yet implemented (requires reorder_suggestions table)
       totalEstimatedReorderCost,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

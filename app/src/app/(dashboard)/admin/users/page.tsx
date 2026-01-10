@@ -82,7 +82,7 @@ function UserManagementContent() {
           ? `User ${user.email} deactivated`
           : `User ${user.email} activated`
       );
-    } catch (error) {
+    } catch {
       toast.error("Failed to update user status");
     }
   };

@@ -1,23 +1,69 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
-import { requirePermission } from '@/lib/auth';
-import { RESOURCES } from '@/constants/resources';
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
+import { requirePermission } from '@/lib/auth'
+import { RESOURCES } from '@/constants/resources'
+
+type StockTransferItemRow = {
+  id: string
+  item_id: string
+  item_code: string | null
+  item_name: string | null
+  quantity: number | string
+  received_quantity: number | string | null
+  packaging_id: string | null
+  uom_id: string | null
+  uom_name: string | null
+  sort_order: number | null
+}
+
+type StockTransferRow = {
+  id: string
+  transfer_code: string
+  transfer_date: string | null
+  status: string
+  notes: string | null
+  total_items: number | null
+  from_warehouse?: {
+    id: string
+    warehouse_code: string | null
+    warehouse_name: string | null
+  } | null
+  to_warehouse?: {
+    id: string
+    warehouse_code: string | null
+    warehouse_name: string | null
+  } | null
+  stock_transfer_items?: StockTransferItemRow[] | null
+}
+
+type StockTransferItemInput = {
+  itemId: string
+  quantity: number | string
+  uomId: string
+  code?: string | null
+  name?: string | null
+  packagingId?: string | null
+  uomName?: string | null
+}
 
 export async function GET(request: NextRequest) {
   try {
     // Require 'stock_transfers' view permission
-    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'view');
-    if (unauthorized) return unauthorized;
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'view')
+    if (unauthorized) return unauthorized
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU()
 
     // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
+      )
     }
 
     // Get user details
@@ -25,18 +71,18 @@ export async function GET(request: NextRequest) {
       .from('users')
       .select('company_id, van_warehouse_id')
       .eq('id', user.id)
-      .single();
+      .single()
 
     if (userError || !userData) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
-      );
+      )
     }
 
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'pending';
-    const toWarehouseId = searchParams.get('to_warehouse_id') || userData.van_warehouse_id;
+    const { searchParams } = new URL(request.url)
+    const status = searchParams.get('status') || 'pending'
+    const toWarehouseId = searchParams.get('to_warehouse_id') || userData.van_warehouse_id
 
     // Fetch stock transfers
     let query = supabase
@@ -76,7 +122,7 @@ export async function GET(request: NextRequest) {
       `)
       .eq('company_id', userData.company_id)
       .order('transfer_date', { ascending: false })
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
 
     if (status) {
       query = query.eq('status', status);
@@ -86,76 +132,83 @@ export async function GET(request: NextRequest) {
       query = query.eq('to_warehouse_id', toWarehouseId);
     }
 
-    const { data: transfers, error: transfersError } = await query;
+    const { data: transfers, error: transfersError } = await query
 
     if (transfersError) {
 
       return NextResponse.json(
         { error: 'Failed to fetch stock transfers' },
         { status: 500 }
-      );
+      )
     }
 
     // Transform data
-    const transformedTransfers = transfers?.map((transfer: any) => ({
-      id: transfer.id,
-      code: transfer.transfer_code,
-      date: transfer.transfer_date,
-      status: transfer.status,
-      notes: transfer.notes,
-      totalItems: transfer.total_items,
-      fromWarehouse: {
-        id: transfer.from_warehouse?.id,
-        code: transfer.from_warehouse?.warehouse_code,
-        name: transfer.from_warehouse?.warehouse_name,
-      },
-      toWarehouse: {
-        id: transfer.to_warehouse?.id,
-        code: transfer.to_warehouse?.warehouse_code,
-        name: transfer.to_warehouse?.warehouse_name,
-      },
-      items: transfer.stock_transfer_items?.map((item: any) => ({
-        id: item.id,
-        itemId: item.item_id,
-        code: item.item_code,
-        name: item.item_name,
-        quantity: parseFloat(item.quantity),
-        receivedQuantity: parseFloat(item.received_quantity) || 0,
-        packagingId: item.packaging_id,
-        uomId: item.uom_id,
-        uom: item.uom_name,
-        sortOrder: item.sort_order,
-      })).sort((a: any, b: any) => a.sortOrder - b.sortOrder) || [],
-    })) || [];
+    const transformedTransfers =
+      (transfers as StockTransferRow[] | null)?.map((transfer) => ({
+        id: transfer.id,
+        code: transfer.transfer_code,
+        date: transfer.transfer_date,
+        status: transfer.status,
+        notes: transfer.notes,
+        totalItems: transfer.total_items,
+        fromWarehouse: {
+          id: transfer.from_warehouse?.id,
+          code: transfer.from_warehouse?.warehouse_code,
+          name: transfer.from_warehouse?.warehouse_name,
+        },
+        toWarehouse: {
+          id: transfer.to_warehouse?.id,
+          code: transfer.to_warehouse?.warehouse_code,
+          name: transfer.to_warehouse?.warehouse_name,
+        },
+        items:
+          transfer.stock_transfer_items
+            ?.map((item) => ({
+              id: item.id,
+              itemId: item.item_id,
+              code: item.item_code,
+              name: item.item_name,
+              quantity: parseFloat(String(item.quantity)),
+              receivedQuantity: parseFloat(String(item.received_quantity ?? 0)) || 0,
+              packagingId: item.packaging_id,
+              uomId: item.uom_id,
+              uom: item.uom_name,
+              sortOrder: item.sort_order ?? 0,
+            }))
+            .sort((a, b) => a.sortOrder - b.sortOrder) || [],
+      })) || []
 
     return NextResponse.json({
       data: transformedTransfers,
-    });
+    })
 
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error';
+    const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json(
       { error: message },
       { status: 500 }
-    );
+    )
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     // Require 'stock_transfers' create permission
-    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'create');
-    if (unauthorized) return unauthorized;
+    const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, 'create')
+    if (unauthorized) return unauthorized
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
 
     // Check authentication
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
-      );
+      )
     }
 
     // Get user details
@@ -163,23 +216,32 @@ export async function POST(request: NextRequest) {
       .from('users')
       .select('company_id')
       .eq('id', user.id)
-      .single();
+      .single()
 
     if (userError || !userData) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
-      );
+      )
     }
 
-    const body = await request.json();
-    const { fromWarehouseId, toWarehouseId, transferDate, notes, items, fromLocationId, toLocationId } = body;
+    const body = (await request.json()) as {
+      fromWarehouseId?: string
+      toWarehouseId?: string
+      transferDate?: string
+      notes?: string
+      items?: StockTransferItemInput[]
+      fromLocationId?: string | null
+      toLocationId?: string | null
+    }
+    const { fromWarehouseId, toWarehouseId, transferDate, notes, items, fromLocationId, toLocationId } =
+      body
 
     if (!currentBusinessUnitId) {
       return NextResponse.json(
         { error: 'Business unit context required' },
         { status: 400 }
-      );
+      )
     }
 
     // Validate required fields
@@ -187,21 +249,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
-      );
+      )
     }
 
     if (!Array.isArray(items)) {
       return NextResponse.json(
         { error: 'Items must be an array' },
         { status: 400 }
-      );
+      )
     }
 
     if (fromWarehouseId === toWarehouseId) {
       return NextResponse.json(
         { error: 'Use stock transactions to transfer within the same warehouse' },
         { status: 400 }
-      );
+      )
     }
 
     for (const item of items) {
@@ -209,18 +271,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'Each item requires itemId, quantity, and uomId' },
           { status: 400 }
-        );
+        )
       }
       if (Number(item.quantity) <= 0) {
         return NextResponse.json(
           { error: 'Item quantity must be greater than 0' },
           { status: 400 }
-        );
+        )
       }
     }
 
     // Generate transfer code
-    const transferCode = `ST-${Date.now()}`;
+    const transferCode = `ST-${Date.now()}`
 
     // Create stock transfer with status='pending'
     const { data: transfer, error: transferError } = await supabase
@@ -242,18 +304,18 @@ export async function POST(request: NextRequest) {
         updated_by: user.id,
       })
       .select()
-      .single();
+      .single()
 
     if (transferError) {
 
       return NextResponse.json(
         { error: transferError.message || 'Failed to create stock transfer' },
         { status: 500 }
-      );
+      )
     }
 
     // Create stock transfer items
-    const transferItems = items.map((item: any, index: number) => ({
+    const transferItems = items.map((item, index) => ({
       company_id: userData.company_id,
       transfer_id: transfer.id,
       item_id: item.itemId,
@@ -267,20 +329,20 @@ export async function POST(request: NextRequest) {
       sort_order: index + 1,
       created_by: user.id,
       updated_by: user.id,
-    }));
+    }))
 
     const { error: itemsError } = await supabase
       .from('stock_transfer_items')
-      .insert(transferItems);
+      .insert(transferItems)
 
     if (itemsError) {
 
       // Rollback: delete the transfer
-      await supabase.from('stock_transfers').delete().eq('id', transfer.id);
+      await supabase.from('stock_transfers').delete().eq('id', transfer.id)
       return NextResponse.json(
         { error: itemsError.message || 'Failed to create stock transfer items' },
         { status: 500 }
-      );
+      )
     }
 
     return NextResponse.json(
@@ -293,13 +355,13 @@ export async function POST(request: NextRequest) {
         },
       },
       { status: 201 }
-    );
+    )
 
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Internal server error';
+    const message = error instanceof Error ? error.message : 'Internal server error'
     return NextResponse.json(
       { error: message },
       { status: 500 }
-    );
+    )
   }
 }

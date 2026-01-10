@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Search, Download, Printer } from 'lucide-react'
-import type { Account, AccountLedger, LedgerEntry } from '@/types/accounting'
+import type { Account, AccountLedger } from '@/types/accounting'
 import { format } from 'date-fns'
 
 export default function GeneralLedgerPage() {
@@ -38,11 +38,7 @@ export default function GeneralLedgerPage() {
     return new Date().toISOString().split('T')[0]
   })
 
-  useEffect(() => {
-    fetchAccounts()
-  }, [])
-
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       const response = await fetch('/api/accounting/accounts?isActive=true')
 
@@ -52,10 +48,13 @@ export default function GeneralLedgerPage() {
 
       const result = await response.json()
       setAccounts(result.data || [])
-    } catch (error) {
-
+    } catch {
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchAccounts()
+  }, [fetchAccounts])
 
   const fetchLedger = async () => {
     if (!selectedAccountId || !dateFrom || !dateTo) {
@@ -78,8 +77,7 @@ export default function GeneralLedgerPage() {
 
       const result = await response.json()
       setLedger(result.data)
-    } catch (error) {
-
+    } catch {
     } finally {
       setLoading(false)
     }

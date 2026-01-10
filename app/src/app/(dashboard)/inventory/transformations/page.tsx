@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Eye, Trash2, PlayCircle } from "lucide-react";
+import { Plus, Search, Eye, Trash2 } from "lucide-react";
 import Link from "next/link";
 import {
   useTransformationOrders,
@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import type { TransformationOrderStatus } from "@/types/transformation-order";
+import type { TransformationOrderApi, TransformationOrderStatus } from "@/types/transformation-order";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -154,7 +154,7 @@ export default function TransformationOrdersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              ordersData?.data.map((order: any) => (
+              ordersData?.data.map((order: TransformationOrderApi) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.order_code}</TableCell>
                   <TableCell>

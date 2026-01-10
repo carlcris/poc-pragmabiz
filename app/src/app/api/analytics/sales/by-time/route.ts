@@ -14,8 +14,6 @@ export const GET = async (req: NextRequest) => {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
     const employeeId = searchParams.get("employeeId");
-    const city = searchParams.get("city");
-    const region = searchParams.get("region");
     const granularity = searchParams.get("granularity") || "daily"; // "daily", "weekly", "monthly"
 
     // Build query for invoices
@@ -107,7 +105,7 @@ export const GET = async (req: NextRequest) => {
       data: timeArray,
       granularity,
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

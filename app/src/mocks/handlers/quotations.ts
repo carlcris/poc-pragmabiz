@@ -2,7 +2,14 @@ import { http, HttpResponse } from "msw";
 import type { Quotation, CreateQuotationRequest, QuotationLineItem } from "@/types/quotation";
 import { quotations } from "../data/quotations";
 
-let quotationsData = [...quotations];
+const quotationsData = [...quotations];
+type QuotationLineItemInput = {
+  id?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+} & Record<string, unknown>;
 
 // Helper function to calculate line total
 function calculateLineTotal(
@@ -175,8 +182,8 @@ export const quotationHandlers = [
     };
 
     if (body.lineItems) {
-      lineItems = body.lineItems.map((item: any, idx: number) => ({
-        id: item.id || `li-${Date.now()}-${idx}`,
+      lineItems = body.lineItems.map((item: QuotationLineItemInput, idx: number) => ({
+        id: item.id ?? `li-${Date.now()}-${idx}`,
         ...item,
         lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
       }));

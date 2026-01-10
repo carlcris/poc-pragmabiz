@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { User, LoginCredentials, AuthResponse } from "@/types/auth";
+import { User, LoginCredentials } from "@/types/auth";
 import { supabase } from "@/lib/supabase/client";
 import { useBusinessUnitStore } from "./businessUnitStore";
 import { usePermissionStore } from "./permissionStore";
@@ -29,7 +29,7 @@ interface AuthStore {
   checkAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>()((set, get) => ({
+export const useAuthStore = create<AuthStore>()((set) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -117,8 +117,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
           if (queryClientInstance) {
             queryClientInstance.clear();
           }
-        } catch (error) {
-
+        } catch {
           // Clear state even if API call fails
           set({
             user: null,
@@ -187,7 +186,7 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
             isLoading: false,
             error: null,
           });
-        } catch (error) {
+        } catch {
           set({
             user: null,
             token: null,

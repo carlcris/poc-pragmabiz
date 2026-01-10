@@ -1,4 +1,4 @@
-import type { Quotation, QuotationLineItem } from "@/types/quotation";
+import type { Quotation } from "@/types/quotation";
 
 // Helper function to calculate line total
 function calculateLineTotal(

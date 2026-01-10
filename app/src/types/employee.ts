@@ -130,7 +130,7 @@ export interface CreateTerritoryRequest {
   notes?: string;
 }
 
-export interface UpdateTerritoryRequest extends Partial<CreateTerritoryRequest> {}
+export type UpdateTerritoryRequest = Partial<CreateTerritoryRequest>;
 
 // Helper types
 export interface EmployeeWithTerritories extends Employee {

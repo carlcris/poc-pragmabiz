@@ -13,6 +13,8 @@ import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 
 type WizardStep = 'basic' | 'base-package' | 'additional-packages' | 'review';
+type AdditionalPackage = NonNullable<CreateItemWithPackagesInput["additionalPackages"]>[number];
+type AdditionalPackageUpdate = Partial<AdditionalPackage>;
 
 type ItemCreationWizardProps = {
   onSuccess?: (itemId: string) => void;
@@ -273,7 +275,12 @@ function BasicInfoStep({
           </label>
           <select
             value={formData.itemType}
-            onChange={(e) => setFormData({ ...formData, itemType: e.target.value as any })}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                itemType: e.target.value as CreateItemWithPackagesInput["itemType"],
+              })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="finished_good">Finished Good</option>
@@ -382,7 +389,7 @@ function BasePackageStep({
             placeholder="base"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Usually "base" - this identifies it as the base storage unit
+            Usually &quot;base&quot; - this identifies it as the base storage unit
           </p>
         </div>
       </div>
@@ -418,7 +425,7 @@ function AdditionalPackagesStep({
     setFormData({ ...formData, additionalPackages: packages });
   };
 
-  const updatePackage = (index: number, updates: any) => {
+  const updatePackage = (index: number, updates: AdditionalPackageUpdate) => {
     const packages = [...(formData.additionalPackages || [])];
     packages[index] = { ...packages[index], ...updates };
     setFormData({ ...formData, additionalPackages: packages });

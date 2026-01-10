@@ -3,9 +3,26 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { requirePermission, getAuthenticatedUser } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
 import { invalidatePermissionCache } from '@/services/permissions/permissionResolver';
+import type { Tables } from '@/types/supabase';
 
 type RouteContext = {
   params: Promise<{ id: string }>;
+};
+
+type RoleRow = Tables<'roles'>;
+type PermissionRow = Tables<'permissions'>;
+type RolePermissionRow = Tables<'role_permissions'>;
+
+type RolePermissionWithPermission = RolePermissionRow & {
+  permissions?: PermissionRow | null;
+};
+
+type RolePermissionInput = {
+  permission_id: string;
+  can_view?: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
 };
 
 // POST /api/rbac/roles/[id]/permissions - Assign permissions to role
@@ -27,7 +44,7 @@ export async function POST(
     const { supabase } = await createServerClientWithBU();
 
     // Parse request body
-    const body = await request.json();
+    const body = (await request.json()) as { permissions?: RolePermissionInput[] };
     const { permissions } = body;
 
     if (!permissions || !Array.isArray(permissions)) {
@@ -62,7 +79,7 @@ export async function POST(
     }
 
     // Verify all permissions exist
-    const permissionIds = permissions.map((p: any) => p.permission_id);
+    const permissionIds = permissions.map((p) => p.permission_id);
     const { data: existingPermissions, error: permError } = await supabase
       .from('permissions')
       .select('id')
@@ -92,7 +109,7 @@ export async function POST(
 
     // Insert new role-permission mappings with granular CRUD control
     if (permissions.length > 0) {
-      const rolePermissions = permissions.map((perm: any) => ({
+      const rolePermissions = permissions.map((perm) => ({
         role_id: roleId,
         permission_id: perm.permission_id,
         can_view: perm.can_view ?? false,
@@ -133,15 +150,18 @@ export async function POST(
       .single();
 
     const roleWithPermissions = {
-      ...updatedRole,
-      permissions: updatedRole?.role_permissions?.map((rp: any) => rp.permissions) || []
+      ...(updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }),
+      permissions:
+        (updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null })
+          ?.role_permissions?.map((rp) => rp.permissions)
+          .filter(Boolean) || []
     };
 
     return NextResponse.json({
       message: 'Permissions updated successfully',
       data: roleWithPermissions
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -169,7 +189,7 @@ export async function DELETE(
     const { supabase } = await createServerClientWithBU();
 
     // Parse request body
-    const body = await request.json();
+    const body = (await request.json()) as { permissionIds?: string[] };
     const { permissionIds } = body;
 
     if (!permissionIds || !Array.isArray(permissionIds)) {
@@ -236,15 +256,18 @@ export async function DELETE(
       .single();
 
     const roleWithPermissions = {
-      ...updatedRole,
-      permissions: updatedRole?.role_permissions?.map((rp: any) => rp.permissions) || []
+      ...(updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }),
+      permissions:
+        (updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null })
+          ?.role_permissions?.map((rp) => rp.permissions)
+          .filter(Boolean) || []
     };
 
     return NextResponse.json({
       message: 'Permissions removed successfully',
       data: roleWithPermissions
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

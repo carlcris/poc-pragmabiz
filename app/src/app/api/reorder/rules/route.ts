@@ -2,6 +2,19 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import type { Tables } from '@/types/supabase'
+
+type ReorderRuleRow = Tables<'reorder_rules'>
+type ItemRow = Tables<'items'>
+type WarehouseRow = Tables<'warehouses'>
+type UomRow = Tables<'units_of_measure'>
+
+type ReorderRuleWithJoins = ReorderRuleRow & {
+  item?: (Pick<ItemRow, 'item_code' | 'item_name'> & {
+    uom?: Pick<UomRow, 'code' | 'name'> | null
+  }) | null
+  warehouse?: Pick<WarehouseRow, 'warehouse_code' | 'warehouse_name'> | null
+}
 
 // GET /api/reorder/rules
 export async function GET(request: NextRequest) {
@@ -90,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response
-    const formattedRules = (rules || []).map((rule: any) => ({
+    const formattedRules = ((rules as ReorderRuleWithJoins[] | null) || []).map((rule) => ({
       id: rule.id,
       itemId: rule.item_id,
       itemCode: rule.item?.item_code,
@@ -98,10 +111,10 @@ export async function GET(request: NextRequest) {
       warehouseId: rule.warehouse_id,
       warehouseCode: rule.warehouse?.warehouse_code,
       warehouseName: rule.warehouse?.warehouse_name,
-      reorderPoint: parseFloat(rule.reorder_point),
-      minQty: parseFloat(rule.min_qty),
-      maxQty: parseFloat(rule.max_qty),
-      reorderQty: parseFloat(rule.reorder_qty),
+      reorderPoint: Number(rule.reorder_point),
+      minQty: Number(rule.min_qty),
+      maxQty: Number(rule.max_qty),
+      reorderQty: Number(rule.reorder_qty),
       leadTimeDays: rule.lead_time_days,
       isActive: rule.is_active,
       uom: rule.item?.uom?.code || '',
@@ -110,7 +123,7 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json(formattedRules)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -196,7 +209,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(rule, { status: 201 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -6,8 +6,6 @@ import type {
 } from "@/types/quotation";
 import { apiClient } from "@/lib/api";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-
 export interface QuotationsResponse {
   data: Quotation[];
   pagination: {

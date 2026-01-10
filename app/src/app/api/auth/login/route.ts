@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch user details from our users table
-    const { data: userData, error: userError } = await supabase
+    const { data: userData } = await supabase
       .from('users')
       .select('id, username, email, first_name, last_name, company_id')
       .eq('id', data.user.id)
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       },
       token: data.session.access_token,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { message: 'Internal server error' },

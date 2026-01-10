@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from "next/image";
 import { useAuthStore } from "@/stores/authStore";
+import type { Resource } from "@/constants/resources";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,6 +28,36 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
+
+type RoleSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  business_unit_id: string | null;
+  business_unit_name: string;
+};
+
+type RolesResponse = {
+  data: RoleSummary[];
+};
+
+type PermissionEntry = {
+  resource: Resource;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+};
+
+type PermissionsResponse = {
+  data: {
+    userId: string;
+    businessUnitId: string | null;
+    permissions: PermissionEntry[];
+  };
+};
+
+type UserPermissions = Record<Resource, Omit<PermissionEntry, "resource">>;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,30 +93,32 @@ export default function LoginPage() {
           ]);
 
           if (rolesResponse.ok && permissionsResponse.ok) {
-            const { data: roles } = await rolesResponse.json();
-            const { data: permissionsData } = await permissionsResponse.json();
+            const rolesPayload = (await rolesResponse.json()) as RolesResponse;
+            const permissionsPayload = (await permissionsResponse.json()) as PermissionsResponse;
 
             // Transform permissions array to object
-            const permissions: any = {};
-            permissionsData.permissions.forEach((perm: any) => {
-              permissions[perm.resource] = {
-                can_view: perm.can_view,
-                can_create: perm.can_create,
-                can_edit: perm.can_edit,
-                can_delete: perm.can_delete,
-              };
-            });
+            const permissions = permissionsPayload.data.permissions.reduce<UserPermissions>(
+              (acc, perm) => {
+                acc[perm.resource] = {
+                  can_view: perm.can_view,
+                  can_create: perm.can_create,
+                  can_edit: perm.can_edit,
+                  can_delete: perm.can_delete,
+                };
+                return acc;
+              },
+              {} as UserPermissions
+            );
 
             // Get first accessible page based on permissions
-            const roleNames = roles.map((r: any) => r.name);
+            const roleNames = rolesPayload.data.map((role) => role.name);
             const { getFirstAccessiblePage } = await import('@/config/roleDefaultPages');
             const landingPage = getFirstAccessiblePage(permissions, roleNames);
 
             router.push(landingPage);
             return;
           }
-        } catch (error) {
-
+        } catch {
           // Fall through to 403 redirect
         }
       }

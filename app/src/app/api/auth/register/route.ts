@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { message: 'Internal server error' },

@@ -5,7 +5,6 @@ import { MobileHeader } from "@/components/mobile/MobileHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useQuery } from "@tanstack/react-query";
 import { useUserVanWarehouse } from "@/hooks/useVanWarehouse";

@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       invoices: invoices || [],
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

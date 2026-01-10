@@ -9,7 +9,10 @@ import {
   useCreateTransformationTemplate,
   useUpdateTransformationTemplate,
 } from "@/hooks/useTransformationTemplates";
-import type { TransformationTemplate } from "@/types/transformation-template";
+import type {
+  CreateTransformationTemplateRequest,
+  TransformationTemplateApi,
+} from "@/types/transformation-template";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +59,7 @@ type TemplateFormValues = z.infer<typeof templateFormSchema>;
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  template?: TransformationTemplate;
+  template?: TransformationTemplateApi;
 };
 
 export function TransformationTemplateFormDialog({
@@ -196,7 +199,7 @@ export function TransformationTemplateFormDialog({
         return;
       }
 
-      const payload = {
+      const payload: CreateTransformationTemplateRequest = {
         companyId: finalCompanyId,
         templateCode: data.templateCode,
         templateName: data.templateName,
@@ -235,13 +238,20 @@ export function TransformationTemplateFormDialog({
       form.reset();
       setInputs([]);
       setOutputs([]);
-    } catch (error: any) {
-
-      const errorMessage =
-        error?.cause?.error ||
-        error?.cause?.details?.[0]?.message ||
-        error.message ||
-        "Failed to save template. Please try again.";
+    } catch (error) {
+      const errorMessage = (() => {
+        if (error && typeof error === "object") {
+          const errorWithCause = error as {
+            cause?: { error?: string; details?: Array<{ message?: string }> };
+          };
+          if (errorWithCause.cause?.error) return errorWithCause.cause.error;
+          const detailsMessage = errorWithCause.cause?.details?.[0]?.message;
+          if (detailsMessage) return detailsMessage;
+        }
+        return error instanceof Error
+          ? error.message
+          : "Failed to save template. Please try again.";
+      })();
       form.setError("root", {
         type: "manual",
         message: errorMessage,
@@ -339,7 +349,7 @@ export function TransformationTemplateFormDialog({
 
                   {inputs.length === 0 ? (
                     <div className="text-sm text-muted-foreground border rounded-md p-8 text-center">
-                      No input materials added yet. Click "Add Input" to get started.
+                      No input materials added yet. Click &quot;Add Input&quot; to get started.
                     </div>
                   ) : (
                     <div className="border rounded-md">
@@ -407,7 +417,7 @@ export function TransformationTemplateFormDialog({
 
                   {outputs.length === 0 ? (
                     <div className="text-sm text-muted-foreground border rounded-md p-8 text-center">
-                      No output products added yet. Click "Add Output" to get started.
+                      No output products added yet. Click &quot;Add Output&quot; to get started.
                     </div>
                   ) : (
                     <div className="border rounded-md">

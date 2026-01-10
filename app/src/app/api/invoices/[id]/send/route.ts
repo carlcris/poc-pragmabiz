@@ -275,7 +275,7 @@ export async function POST(
       message: responseMessage,
       stockTransactionCode: stockTransactionCode
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

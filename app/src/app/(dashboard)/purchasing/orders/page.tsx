@@ -77,7 +77,7 @@ export default function PurchaseOrdersPage() {
   });
 
   // Apply client-side filtering
-  let filteredOrders = data?.data || [];
+  const filteredOrders = data?.data || [];
 
   // Calculate pagination
   const total = filteredOrders.length;
@@ -92,6 +92,9 @@ export default function PurchaseOrdersPage() {
     limit: pageSize,
     totalPages,
   };
+
+  const getErrorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -166,8 +169,8 @@ export default function PurchaseOrdersPage() {
       toast.success("Purchase order submitted successfully");
       setSubmitDialogOpen(false);
       setOrderForAction(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit purchase order");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to submit purchase order"));
     }
   };
 
@@ -178,8 +181,8 @@ export default function PurchaseOrdersPage() {
       toast.success("Purchase order approved successfully");
       setApproveDialogOpen(false);
       setOrderForAction(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to approve purchase order");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to approve purchase order"));
     }
   };
 
@@ -190,8 +193,8 @@ export default function PurchaseOrdersPage() {
       toast.success("Purchase order cancelled successfully");
       setCancelDialogOpen(false);
       setOrderForAction(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to cancel purchase order");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to cancel purchase order"));
     }
   };
 
@@ -202,8 +205,8 @@ export default function PurchaseOrdersPage() {
       toast.success("Purchase order deleted successfully");
       setDeleteDialogOpen(false);
       setOrderForAction(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete purchase order");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Failed to delete purchase order"));
     }
   };
 

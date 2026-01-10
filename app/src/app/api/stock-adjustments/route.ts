@@ -4,6 +4,64 @@ import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
+import type { Database } from '@/types/database.types'
+
+type DbStockAdjustmentRow = Database['public']['Tables']['stock_adjustments']['Row']
+type DbStockAdjustmentItem = Database['public']['Tables']['stock_adjustment_items']['Row']
+
+type StockAdjustmentItemInput = {
+  itemId: string
+  packagingId?: string | null
+  currentQty: number
+  adjustedQty: number
+  unitCost: number
+  uomId: string
+  reason?: string | null
+}
+
+type StockAdjustmentBody = {
+  warehouseId: string
+  adjustmentType: string
+  adjustmentDate: string
+  reason: string
+  notes?: string | null
+  locationId?: string | null
+  items: StockAdjustmentItemInput[]
+}
+
+type WarehouseRow = {
+  id: string
+  warehouse_code: string | null
+  warehouse_name: string | null
+}
+
+type LocationRow = {
+  id: string
+  code: string | null
+  name: string | null
+}
+
+type UserRow = {
+  id: string
+  first_name: string | null
+  last_name: string | null
+}
+
+type StockTransactionRow = {
+  id: string
+  transaction_code: string | null
+}
+
+type ItemRow = {
+  id: string
+  item_code: string | null
+  item_name: string | null
+}
+
+type UomRow = {
+  id: string
+  code: string | null
+}
 
 // GET /api/stock-adjustments - List stock adjustments
 export async function GET(request: NextRequest) {
@@ -115,7 +173,8 @@ export async function GET(request: NextRequest) {
     const userIds = new Set<string>()
     const stockTransactionIds = new Set<string>()
 
-    adjustments.forEach((adj: any) => {
+    const typedAdjustments = (adjustments || []) as DbStockAdjustmentRow[]
+    typedAdjustments.forEach((adj) => {
       if (adj.warehouse_id) warehouseIds.add(adj.warehouse_id)
       if (adj.custom_fields?.locationId) locationIds.add(adj.custom_fields.locationId)
       if (adj.created_by) userIds.add(adj.created_by)
@@ -142,13 +201,22 @@ export async function GET(request: NextRequest) {
     ])
 
     // Create lookup maps
-    const warehousesMap = new Map(warehousesData.data?.map((w: any) => [w.id, w]) || [])
-    const locationsMap = new Map(locationsData.data?.map((l: any) => [l.id, l]) || [])
-    const usersMap = new Map(usersData.data?.map((u: any) => [u.id, u]) || [])
-    const stockTransactionsMap = new Map(stockTransactionsData.data?.map((st: any) => [st.id, st]) || [])
+    const warehousesMap = new Map(
+      (warehousesData.data as WarehouseRow[] | null)?.map((w) => [w.id, w]) || []
+    )
+    const locationsMap = new Map(
+      (locationsData.data as LocationRow[] | null)?.map((l) => [l.id, l]) || []
+    )
+    const usersMap = new Map(
+      (usersData.data as UserRow[] | null)?.map((u) => [u.id, u]) || []
+    )
+    const stockTransactionsMap = new Map(
+      (stockTransactionsData.data as StockTransactionRow[] | null)?.map((st) => [st.id, st]) ||
+        []
+    )
 
     // Fetch items for each adjustment
-    const adjustmentIds = adjustments.map((adj: any) => adj.id)
+    const adjustmentIds = typedAdjustments.map((adj) => adj.id)
     const { data: itemsData } = adjustmentIds.length > 0
       ? await supabase
           .from('stock_adjustment_items')
@@ -157,8 +225,8 @@ export async function GET(request: NextRequest) {
       : { data: [] }
 
     // Group items by adjustment
-    const itemsByAdjustment = new Map<string, any[]>()
-    itemsData?.forEach((item: any) => {
+    const itemsByAdjustment = new Map<string, DbStockAdjustmentItem[]>()
+    ;(itemsData as DbStockAdjustmentItem[] | null)?.forEach((item) => {
       const adjustmentId = item.adjustment_id
       if (!itemsByAdjustment.has(adjustmentId)) {
         itemsByAdjustment.set(adjustmentId, [])
@@ -167,7 +235,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Format response
-    const formattedData = adjustments.map((adj: any) => {
+    const formattedData = typedAdjustments.map((adj) => {
       const warehouse = warehousesMap.get(adj.warehouse_id)
       const createdBy = usersMap.get(adj.created_by)
       const updatedBy = usersMap.get(adj.updated_by)
@@ -192,7 +260,7 @@ export async function GET(request: NextRequest) {
         status: adj.status,
         reason: adj.reason,
         notes: adj.notes,
-        totalValue: parseFloat(adj.total_value || 0),
+        totalValue: parseFloat(String(adj.total_value ?? 0)),
         stockTransactionId: adj.stock_transaction_id,
         stockTransactionCode: stockTransaction?.transaction_code || null,
         approvedBy: adj.approved_by,
@@ -207,17 +275,17 @@ export async function GET(request: NextRequest) {
         updatedByName: updatedBy ? `${updatedBy.first_name || ''} ${updatedBy.last_name || ''}`.trim() : null,
         createdAt: adj.created_at,
         updatedAt: adj.updated_at,
-        items: items.map((item: any) => ({
+        items: items.map((item) => ({
           id: item.id,
           adjustmentId: item.adjustment_id,
           itemId: item.item_id,
           itemCode: item.item_code,
           itemName: item.item_name,
-          currentQty: parseFloat(item.current_qty),
-          adjustedQty: parseFloat(item.adjusted_qty),
-          difference: parseFloat(item.difference),
-          unitCost: parseFloat(item.unit_cost),
-          totalCost: parseFloat(item.total_cost),
+          currentQty: parseFloat(String(item.current_qty ?? 0)),
+          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+          difference: parseFloat(String(item.difference ?? 0)),
+          unitCost: parseFloat(String(item.unit_cost ?? 0)),
+          totalCost: parseFloat(String(item.total_cost ?? 0)),
           uomId: item.uom_id,
           uomName: item.uom_name,
           reason: item.reason,
@@ -236,7 +304,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -250,7 +318,7 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized
 
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
-    const body = await request.json()
+    const body = (await request.json()) as StockAdjustmentBody
 
     // Check authentication
     const {
@@ -300,7 +368,7 @@ export async function POST(request: NextRequest) {
     const adjustmentCode = `ADJ-${dateStr}${milliseconds}`
 
     // Normalize item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = body.items.map((item: any) => ({
+    const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
       itemId: item.itemId,
       packagingId: item.packagingId || null,
       inputQty: item.adjustedQty,
@@ -318,7 +386,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate total value using normalized quantities
-    const totalValue = body.items.reduce((sum: number, item: any, index: number) => {
+    const totalValue = body.items.reduce((sum, item, index) => {
       const normalizedItem = normalizedItems[index]
       const normalizedAdjusted = normalizedItem.normalizedQty
       const difference = normalizedAdjusted - item.currentQty
@@ -352,25 +420,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Get item details for items
-    const itemIds = body.items.map((item: any) => item.itemId)
+    const itemIds = body.items.map((item) => item.itemId)
     const { data: itemsData } = await supabase
       .from('items')
       .select('id, item_code, item_name')
       .in('id', itemIds)
 
-    const itemsMap = new Map(itemsData?.map((item: any) => [item.id, item]) || [])
+    const itemsMap = new Map(
+      (itemsData as ItemRow[] | null)?.map((item) => [item.id, item]) || []
+    )
 
     // Get UOM details
-    const uomIds = body.items.map((item: any) => item.uomId)
+    const uomIds = body.items.map((item) => item.uomId)
     const { data: uomsData } = await supabase
       .from('units_of_measure')
       .select('id, code')
       .in('id', uomIds)
 
-    const uomsMap = new Map(uomsData?.map((uom: any) => [uom.id, uom]) || [])
+    const uomsMap = new Map(
+      (uomsData as UomRow[] | null)?.map((uom) => [uom.id, uom]) || []
+    )
 
     // Create adjustment items with normalization metadata
-    const adjustmentItems = body.items.map((item: any, index: number) => {
+    const adjustmentItems = body.items.map((item, index) => {
       const itemData = itemsMap.get(item.itemId)
       const uomData = uomsMap.get(item.uomId)
       const normalizedItem = normalizedItems[index]
@@ -437,30 +509,31 @@ export async function POST(request: NextRequest) {
       status: completeAdjustment.status,
       reason: completeAdjustment.reason,
       notes: completeAdjustment.notes,
-      totalValue: parseFloat(completeAdjustment.total_value),
+      totalValue: parseFloat(String(completeAdjustment.total_value ?? 0)),
       createdBy: completeAdjustment.created_by,
       updatedBy: completeAdjustment.updated_by,
       createdAt: completeAdjustment.created_at,
       updatedAt: completeAdjustment.updated_at,
-      items: completeItems?.map((item: any) => ({
-        id: item.id,
-        adjustmentId: item.adjustment_id,
-        itemId: item.item_id,
-        itemCode: item.item_code,
-        itemName: item.item_name,
-        currentQty: parseFloat(item.current_qty),
-        adjustedQty: parseFloat(item.adjusted_qty),
-        difference: parseFloat(item.difference),
-        unitCost: parseFloat(item.unit_cost),
-        totalCost: parseFloat(item.total_cost),
-        uomId: item.uom_id,
-        uomName: item.uom_name,
-        reason: item.reason,
-        createdAt: item.created_at,
-        updatedAt: item.updated_at,
-      })) || [],
+      items:
+        (completeItems as DbStockAdjustmentItem[] | null)?.map((item) => ({
+          id: item.id,
+          adjustmentId: item.adjustment_id,
+          itemId: item.item_id,
+          itemCode: item.item_code,
+          itemName: item.item_name,
+          currentQty: parseFloat(String(item.current_qty ?? 0)),
+          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+          difference: parseFloat(String(item.difference ?? 0)),
+          unitCost: parseFloat(String(item.unit_cost ?? 0)),
+          totalCost: parseFloat(String(item.total_cost ?? 0)),
+          uomId: item.uom_id,
+          uomName: item.uom_name,
+          reason: item.reason,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        })) || [],
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

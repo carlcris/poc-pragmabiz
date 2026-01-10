@@ -70,7 +70,7 @@ export async function GET() {
       },
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -143,7 +143,7 @@ export async function PATCH(request: Request) {
         : 'Van warehouse unassigned successfully',
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

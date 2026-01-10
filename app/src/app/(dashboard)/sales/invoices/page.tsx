@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Pencil, Filter, Eye, FileText, CheckCircle, Clock, Send, XCircle, AlertCircle, DollarSign, Printer, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Filter, Eye, FileText, CheckCircle, Send, XCircle, AlertCircle, DollarSign, Printer, Trash2 } from "lucide-react";
 import { useInvoices, useSendInvoice, useCancelInvoice, useDeleteInvoice } from "@/hooks/useInvoices";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -179,7 +179,7 @@ export default function InvoicesPage() {
       await sendInvoice.mutateAsync(invoiceToSend.id);
       setSendDialogOpen(false);
       setInvoiceToSend(null);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
     }
   };
@@ -196,7 +196,7 @@ export default function InvoicesPage() {
       await cancelInvoice.mutateAsync(invoiceToCancel.id);
       setCancelDialogOpen(false);
       setInvoiceToCancel(null);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
     }
   };
@@ -213,7 +213,7 @@ export default function InvoicesPage() {
       await deleteInvoice.mutateAsync(invoiceToDelete.id);
       setDeleteDialogOpen(false);
       setInvoiceToDelete(null);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
     }
   };
@@ -463,7 +463,7 @@ export default function InvoicesPage() {
               <strong>{invoiceToSend?.customerName}</strong>?
               <br />
               <br />
-              This will update the invoice status to "Sent" and the customer will be
+              This will update the invoice status to &quot;Sent&quot; and the customer will be
               able to view and pay the invoice.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -519,7 +519,7 @@ export default function InvoicesPage() {
               {invoiceToDelete?.salesOrderId && (
                 <>
                   {" "}
-                  The linked sales order will be reverted back to "Confirmed" status so it
+                  The linked sales order will be reverted back to &quot;Confirmed&quot; status so it
                   can be converted to a new invoice.
                 </>
               )}

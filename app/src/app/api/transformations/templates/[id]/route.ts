@@ -1,9 +1,12 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateTransformationTemplateSchema } from '@/lib/validations/transformation-template';
-import { checkTemplateLock } from '@/services/inventory/transformationService';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { Database } from '@/types/database.types';
+
+type DbTransformationTemplateUpdate =
+  Database['public']['Tables']['transformation_templates']['Update'];
 
 // GET /api/transformations/templates/[id] - Get template by ID
 export async function GET(
@@ -66,7 +69,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data: template });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -145,7 +148,7 @@ export async function PATCH(
     }
 
     // Build update object
-    const updateData: any = {
+    const updateData: DbTransformationTemplateUpdate = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     };
@@ -174,7 +177,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ data: updatedTemplate });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -250,7 +253,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Template deleted successfully' });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { MobileHeader } from "@/components/mobile/MobileHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { useUserVanWarehouse } from "@/hooks/useVanWarehouse";
 import { useVanInventory } from "@/hooks/useVanInventory";
 import {
@@ -16,10 +15,31 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  TrendingUp,
   Box,
   DollarSign,
 } from "lucide-react";
+
+type InventorySummary = {
+  totalItems: number;
+  itemsInStock: number;
+  lowStockItems: number;
+  outOfStockItems: number;
+};
+
+type InventoryItem = {
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  categoryName?: string;
+  uomName?: string;
+  currentStock: number;
+  reorderPoint: number;
+  unitPrice: number;
+};
+
+type InventoryItemWithStatus = InventoryItem & {
+  status: "out" | "low" | "ok";
+};
 
 export default function StockLevelsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -67,8 +87,14 @@ export default function StockLevelsPage() {
   // Debug: Check the full data structure
 
   // FIX: The hook already extracts response.data, so we access directly
-  const inventory = inventoryData?.data?.inventory || inventoryData?.inventory || [];
-  const summary = inventoryData?.data?.summary || inventoryData?.summary || {
+  const inventory =
+    (inventoryData?.data?.inventory as InventoryItem[] | undefined) ||
+    (inventoryData?.inventory as InventoryItem[] | undefined) ||
+    [];
+  const summary =
+    (inventoryData?.data?.summary as InventorySummary | undefined) ||
+    (inventoryData?.summary as InventorySummary | undefined) ||
+    {
     totalItems: 0,
     itemsInStock: 0,
     lowStockItems: 0,
@@ -76,7 +102,7 @@ export default function StockLevelsPage() {
   };
 
   // Categorize items by stock status
-  const categorizedItems = inventory.map((item: any) => {
+  const categorizedItems: InventoryItemWithStatus[] = inventory.map((item) => {
     let status: "out" | "low" | "ok" = "ok";
     if (item.currentStock === 0) {
       status = "out";
@@ -87,7 +113,7 @@ export default function StockLevelsPage() {
   });
 
   // Filter items by search query first
-  const searchFilteredItems = categorizedItems.filter((item: any) => {
+  const searchFilteredItems = categorizedItems.filter((item) => {
     if (!searchQuery) return true;
 
     const query = searchQuery.toLowerCase();
@@ -106,11 +132,11 @@ export default function StockLevelsPage() {
   // Then apply status filter
   let filteredItems = searchFilteredItems;
   if (filterStatus !== "all") {
-    filteredItems = searchFilteredItems.filter((item: any) => item.status === filterStatus);
+    filteredItems = searchFilteredItems.filter((item) => item.status === filterStatus);
   }
 
   // Sort: out of stock first, then low stock, then ok
-  filteredItems.sort((a: any, b: any) => {
+  filteredItems.sort((a, b) => {
     const statusOrder = { out: 0, low: 1, ok: 2 };
     return statusOrder[a.status] - statusOrder[b.status];
   });
@@ -291,7 +317,7 @@ export default function StockLevelsPage() {
               </CardContent>
             </Card>
           ) : (
-            filteredItems.map((item: any) => {
+            filteredItems.map((item) => {
               const colors = getStatusColor(item.status);
               const stockPercentage = item.reorderPoint > 0
                 ? Math.min((item.currentStock / item.reorderPoint) * 100, 100)

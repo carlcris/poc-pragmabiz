@@ -2,6 +2,7 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu';
 import { NextRequest, NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { CreateItemWithPackagesInput } from '@/hooks/useCreateItemWithPackages';
 
 /**
  * POST /api/items/create-with-packages
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized;
 
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
-    const body = await request.json();
+    const body = (await request.json()) as CreateItemWithPackagesInput;
 
     // Check authentication
     const {
@@ -63,10 +64,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare additional packages (if any)
-    const additionalPackages = (body.additionalPackages || []).map((pkg: any) => ({
+    type AdditionalPackageInput = NonNullable<CreateItemWithPackagesInput["additionalPackages"]>[number];
+
+    const additionalPackages = (body.additionalPackages || []).map((pkg: AdditionalPackageInput) => ({
       pack_type: pkg.packType,
       pack_name: pkg.packName,
-      qty_per_pack: parseFloat(pkg.qtyPerPack),
+      qty_per_pack: Number(pkg.qtyPerPack),
       uom_id: pkg.uomId || null,
       barcode: pkg.barcode || null,
       is_active: pkg.isActive !== false,
@@ -86,8 +89,8 @@ export async function POST(request: NextRequest) {
         p_base_package_name: body.basePackage.packName,
         p_base_package_type: body.basePackage.packType || 'base',
         p_base_uom_id: body.basePackage.uomId || null,
-        p_standard_cost: body.standardCost ? parseFloat(body.standardCost) : 0,
-        p_list_price: body.listPrice ? parseFloat(body.listPrice) : 0,
+        p_standard_cost: body.standardCost ? Number(body.standardCost) : 0,
+        p_list_price: body.listPrice ? Number(body.listPrice) : 0,
         p_additional_packages: additionalPackages,
       }
     );

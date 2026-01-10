@@ -1,9 +1,9 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { requireLookupDataAccess } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const permissionCheck = await requireLookupDataAccess(RESOURCES.ITEMS)
     if (permissionCheck) return permissionCheck
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
         isActive: unit.is_active ?? true,
       })),
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

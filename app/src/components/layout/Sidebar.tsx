@@ -1,23 +1,19 @@
 "use client";
 
-import { useState, type ReactNode, Children, isValidElement } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import {
   LayoutDashboard,
   Package,
-  ShoppingCart,
   ShoppingBag,
   FileText,
-  Settings,
   ChevronRight,
-  Calculator,
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
-import { ViewGuard } from "@/components/permissions/PermissionGuard";
 import { usePermissions } from "@/hooks/usePermissions";
 import { RESOURCES } from "@/constants/resources";
 import type { Resource } from "@/constants/resources";

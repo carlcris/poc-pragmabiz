@@ -38,7 +38,7 @@ type UserPermissionsResponse = {
 export function useLoadPermissions() {
   const user = useAuthStore((state) => state.user);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
-  const { setPermissions, setLoading, setError, isStale } = usePermissionStore();
+  const { setPermissions, setLoading, setError } = usePermissionStore();
 
   const userId = user?.id;
   const businessUnitId = currentBusinessUnit?.id || null;

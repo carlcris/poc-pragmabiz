@@ -72,7 +72,7 @@ export const DELETE = async (
     }
 
     return NextResponse.json({ data });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -150,7 +150,7 @@ export const PUT = async (
     }
 
     return NextResponse.json({ data });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

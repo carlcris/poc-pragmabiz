@@ -7,7 +7,6 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import type { CreateJournalLineRequest } from "@/types/accounting";
 
 export type ARInvoicePostingData = {
   invoiceId: string;
@@ -165,7 +164,7 @@ export async function postARInvoice(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -312,7 +311,7 @@ export async function postARPayment(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,

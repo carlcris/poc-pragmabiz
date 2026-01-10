@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       valid: isValid,
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

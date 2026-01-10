@@ -78,7 +78,7 @@ export async function PATCH(
         updatedAt: updated.updated_at,
       },
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

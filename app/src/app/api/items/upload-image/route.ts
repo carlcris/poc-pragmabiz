@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('item-images')
       .upload(filePath, buffer, {
         contentType: file.type,
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       imageUrl: publicUrlData.publicUrl,
       path: filePath,
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -150,7 +150,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Image deleted successfully',
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

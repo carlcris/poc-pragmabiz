@@ -23,8 +23,8 @@ export function OverviewTab({ filters }: OverviewTabProps) {
   const { data: timeData, isLoading: timeLoading } = useSalesByTime(filters);
 
   const overview = overviewData?.data;
-  const topEmployees = employeeData?.data?.slice(0, 5) || [];
-  const topLocations = locationData?.data?.slice(0, 5) || [];
+  const topEmployees = useMemo(() => employeeData?.data?.slice(0, 5) || [], [employeeData]);
+  const topLocations = useMemo(() => locationData?.data?.slice(0, 5) || [], [locationData]);
 
   // Prepare chart data
   const salesTrendData = useMemo(() => {

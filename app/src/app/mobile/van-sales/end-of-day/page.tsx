@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 
-interface InventoryItem {
+type InventoryItem = {
   itemId: string;
   itemCode: string;
   itemName: string;
@@ -33,11 +33,29 @@ interface InventoryItem {
   uomId: string;
   uomName: string;
   unitCost: number;
-}
+};
 
-interface AdjustmentItem extends InventoryItem {
+type AdjustmentItem = InventoryItem & {
   countedQty: number;
-}
+};
+
+type AdjustmentItemInput = {
+  itemId: string;
+  currentQty: number;
+  adjustedQty: number;
+  unitCost: number;
+  uomId: string;
+  reason: string;
+};
+
+type AdjustmentPayload = {
+  warehouseId?: string;
+  adjustmentType: "physical_count";
+  adjustmentDate: string;
+  reason: string;
+  notes: string | null;
+  items: AdjustmentItemInput[];
+};
 
 export default function EndOfDayPage() {
   const { data: vanData, isLoading: vanLoading } = useUserVanWarehouse();
@@ -71,7 +89,7 @@ export default function EndOfDayPage() {
   });
 
   const createAdjustmentMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: AdjustmentPayload) => {
       const response = await fetch("/api/stock-adjustments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,7 +125,7 @@ export default function EndOfDayPage() {
     },
   });
 
-  const allInventory: InventoryItem[] = inventoryData?.data?.inventory || [];
+  const allInventory: InventoryItem[] = (inventoryData?.data?.inventory as InventoryItem[] | undefined) || [];
 
   const filteredItems = searchTerm
     ? allInventory.filter(item => {

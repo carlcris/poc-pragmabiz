@@ -14,8 +14,6 @@ export const GET = async (req: NextRequest) => {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
     const employeeId = searchParams.get("employeeId");
-    const city = searchParams.get("city");
-    const region = searchParams.get("region");
 
     // Build base query for invoices
     let query = supabase
@@ -148,7 +146,7 @@ export const GET = async (req: NextRequest) => {
         topEmployees: topEmployeesWithNames,
       },
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

@@ -48,6 +48,18 @@ const lineItemSchema = z.object({
 
 export type StockAdjustmentLineItemFormValues = z.infer<typeof lineItemSchema>;
 
+type ItemPackageSummary = {
+  id: string;
+  isBasePackage?: boolean;
+  packageName?: string;
+  qtyPerPack?: number;
+  uomCode?: string | null;
+};
+
+type ItemPackagesResponse = {
+  data?: ItemPackageSummary[];
+};
+
 interface StockAdjustmentLineItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -134,8 +146,8 @@ export function StockAdjustmentLineItemDialog({
       try {
         const response = await fetch(`/api/items/${itemId}/packages`);
         if (response.ok) {
-          const packagesData = await response.json();
-          const basePackage = packagesData.data?.find((pkg: any) => pkg.isBasePackage);
+          const packagesData = (await response.json()) as ItemPackagesResponse;
+          const basePackage = packagesData.data?.find((pkg) => pkg.isBasePackage);
           if (basePackage) {
             form.setValue("packagingId", basePackage.id);
 
@@ -147,7 +159,7 @@ export function StockAdjustmentLineItemDialog({
             });
           }
         }
-      } catch (error) {
+      } catch {
         // If fetching packages fails, leave packagingId as null
         setPackageInfo(null);
       }
@@ -169,8 +181,8 @@ export function StockAdjustmentLineItemDialog({
     try {
       const response = await fetch(`/api/items/${itemId}/packages`);
       if (response.ok) {
-        const packagesData = await response.json();
-        const selectedPackage = packagesData.data?.find((pkg: any) => pkg.id === packagingId);
+        const packagesData = (await response.json()) as ItemPackagesResponse;
+        const selectedPackage = packagesData.data?.find((pkg) => pkg.id === packagingId);
         if (selectedPackage) {
           setPackageInfo({
             name: selectedPackage.packageName,
@@ -181,7 +193,7 @@ export function StockAdjustmentLineItemDialog({
           setPackageInfo(null);
         }
       }
-    } catch (error) {
+    } catch {
       setPackageInfo(null);
     }
   };

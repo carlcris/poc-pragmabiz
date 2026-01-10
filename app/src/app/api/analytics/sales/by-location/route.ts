@@ -55,11 +55,33 @@ export const GET = async (req: NextRequest) => {
       );
     }
 
-    // Aggregate by location
-    const locationKey = groupBy === "region" ? "billing_state" : "billing_city";
+    type InvoiceRow = {
+      total_amount: number | string;
+      commission_total: number | string;
+      customer_id: string | null;
+      customers?: {
+        billing_city: string | null;
+        billing_state: string | null;
+      } | null;
+    };
 
-    const locationStats = invoices?.reduce((acc: Record<string, { city: string; regionState: string; totalSales: number; totalCommission: number; count: number; customers: Set<string> }>, inv: any) => {
-      const customer = inv.customers;
+    // Aggregate by location
+    const locationStats = (invoices as InvoiceRow[] | null || []).reduce(
+      (
+        acc: Record<
+          string,
+          {
+            city: string;
+            regionState: string;
+            totalSales: number;
+            totalCommission: number;
+            count: number;
+            customers: Set<string>;
+          }
+        >,
+        inv
+      ) => {
+        const customer = inv.customers;
       if (!customer) return acc;
 
       const billingCity = customer.billing_city;
@@ -87,7 +109,7 @@ export const GET = async (req: NextRequest) => {
       }
 
       return acc;
-    }, {}) || {};
+    }, {});
 
     // Convert to array and sort
     const locationArray = Object.values(locationStats)
@@ -117,7 +139,7 @@ export const GET = async (req: NextRequest) => {
       },
       groupBy,
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

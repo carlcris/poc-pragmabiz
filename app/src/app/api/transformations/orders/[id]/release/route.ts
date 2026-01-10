@@ -105,7 +105,7 @@ export async function POST(
       data: updatedOrder,
       message: `Order ${order.order_code} is now being prepared`,
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

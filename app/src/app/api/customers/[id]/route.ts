@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
-import type { Customer, UpdateCustomerRequest } from '@/types/customer'
+import type { Customer, UpdateCustomerRequest, PaymentTerms } from '@/types/customer'
 import type { Database } from '@/types/database.types'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
@@ -33,7 +33,7 @@ function transformDbCustomer(dbCustomer: DbCustomer): Customer {
     contactPersonName: dbCustomer.contact_person || undefined,
     contactPersonEmail: dbCustomer.contact_email || undefined,
     contactPersonPhone: dbCustomer.contact_phone || undefined,
-    paymentTerms: dbCustomer.payment_terms as any || 'net_30',
+    paymentTerms: (dbCustomer.payment_terms as PaymentTerms | null) || 'net_30',
     creditLimit: Number(dbCustomer.credit_limit || 0),
     currentBalance: 0, // This would need to be calculated from invoices
     notes: '',
@@ -82,7 +82,7 @@ export async function GET(
     }
 
     return NextResponse.json(transformDbCustomer(data))
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -141,7 +141,7 @@ export async function PUT(
       return [address.substring(0, maxLine1Length), address.substring(maxLine1Length)]
     }
 
-    const updateData: any = {
+    const updateData: Partial<DbCustomer> & { updated_by: string; updated_at: string } = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     }
@@ -203,7 +203,7 @@ export async function PUT(
     }
 
     return NextResponse.json(transformDbCustomer(data))
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -263,7 +263,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

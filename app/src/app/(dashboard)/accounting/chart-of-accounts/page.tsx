@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -29,11 +29,7 @@ export default function ChartOfAccountsPage() {
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | 'all'>('all')
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
-  useEffect(() => {
-    fetchAccounts()
-  }, [accountTypeFilter, activeFilter])
-
-  const fetchAccounts = async () => {
+  const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -56,12 +52,15 @@ export default function ChartOfAccountsPage() {
 
       const result = await response.json()
       setAccounts(result.data || [])
-    } catch (error) {
-
+    } catch {
     } finally {
       setLoading(false)
     }
-  }
+  }, [accountTypeFilter, activeFilter])
+
+  useEffect(() => {
+    fetchAccounts()
+  }, [fetchAccounts])
 
   const filteredAccounts = accounts.filter((account) => {
     if (searchTerm) {

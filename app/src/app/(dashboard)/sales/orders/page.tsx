@@ -223,7 +223,7 @@ export default function SalesOrdersPage() {
       setWarehouseDialogOpen(false);
       // Navigate to invoices page after conversion
       router.push('/sales/invoices');
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
     }
   };
@@ -231,7 +231,7 @@ export default function SalesOrdersPage() {
   const handleConfirmOrder = async (order: SalesOrder) => {
     try {
       await confirmOrder.mutateAsync(order.id);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
     }
   };

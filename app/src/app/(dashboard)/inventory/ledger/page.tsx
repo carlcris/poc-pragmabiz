@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Package, Warehouse, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { Package, Warehouse, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { useStockLedger } from "@/hooks/useStockLedger";
 import { useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,9 +75,6 @@ export default function StockLedgerPage() {
       : openingBalance;
 
   const selectedItem = items.find((item) => item.id === selectedItemId);
-  const selectedWarehouse = warehouses.find(
-    (warehouse) => warehouse.id === selectedWarehouseId
-  );
 
   const handleItemChange = (value: string) => {
     setSelectedItemId(value);

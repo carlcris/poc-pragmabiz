@@ -161,7 +161,7 @@ function ItemsPageContent() {
       await deleteItem.mutateAsync(itemToDelete.id);
       toast.success("Item deleted successfully");
       setItemToDelete(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete item");
     }
   };

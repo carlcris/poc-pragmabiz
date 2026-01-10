@@ -4,11 +4,11 @@
  * GET /api/business-units - Get all business units accessible by current user
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { BusinessUnitWithAccess } from '@/types/business-unit';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Note: No permission check - all authenticated users need to see their business units
     const supabase = await createClient();
@@ -65,9 +65,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    type AccessRecord = {
+      role: BusinessUnitWithAccess["access"]["role"];
+      is_default: boolean;
+      business_units: Omit<BusinessUnitWithAccess, "access"> | null;
+    };
+
     // Transform data to BusinessUnitWithAccess format
-    const businessUnits: BusinessUnitWithAccess[] = accessRecords
-      .map((record: any) => {
+    const businessUnits: BusinessUnitWithAccess[] = (accessRecords as AccessRecord[])
+      .map((record) => {
         if (!record.business_units) return null;
 
         return {
@@ -84,7 +90,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: businessUnits,
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

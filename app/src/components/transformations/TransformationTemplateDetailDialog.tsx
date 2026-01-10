@@ -1,6 +1,6 @@
 "use client";
 
-import type { TransformationTemplate } from "@/types/transformation-template";
+import type { TransformationTemplateApi } from "@/types/transformation-template";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  template?: TransformationTemplate;
+  template?: TransformationTemplateApi;
 };
 
 export function TransformationTemplateDetailDialog({
@@ -58,7 +58,7 @@ export function TransformationTemplateDetailDialog({
           <div>
             <h3 className="font-semibold mb-2">Inputs</h3>
             <div className="space-y-2">
-              {template.inputs?.map((input: any) => (
+              {(template.inputs ?? []).map((input) => (
                 <div key={input.id} className="flex justify-between items-center border p-3 rounded">
                   <div>
                     <p className="font-medium">
@@ -69,7 +69,7 @@ export function TransformationTemplateDetailDialog({
                     )}
                   </div>
                   <span className="font-medium whitespace-nowrap ml-4">
-                    {input.quantity} {input.uom?.code || input.uom?.name || ""}
+                    {input.quantity} {input.uom?.uom_name || input.uom?.name || input.uom?.code || ""}
                   </span>
                 </div>
               ))}
@@ -79,7 +79,7 @@ export function TransformationTemplateDetailDialog({
           <div>
             <h3 className="font-semibold mb-2">Outputs</h3>
             <div className="space-y-2">
-              {template.outputs?.map((output: any) => (
+              {(template.outputs ?? []).map((output) => (
                 <div key={output.id} className="flex justify-between items-center border p-3 rounded">
                   <div>
                     <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export function TransformationTemplateDetailDialog({
                     )}
                   </div>
                   <span className="font-medium whitespace-nowrap ml-4">
-                    {output.quantity} {output.uom?.code || output.uom?.name || ""}
+                    {output.quantity} {output.uom?.uom_name || output.uom?.name || output.uom?.code || ""}
                   </span>
                 </div>
               ))}

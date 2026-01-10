@@ -2,6 +2,13 @@ import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
+import type { Tables } from '@/types/supabase'
+
+type ReorderRuleRow = Tables<'reorder_rules'>
+type ReorderRuleUpdate = Partial<ReorderRuleRow> & {
+  updated_by: string
+  updated_at: string
+}
 
 // PATCH /api/reorder/rules/[id]
 export async function PATCH(
@@ -51,7 +58,7 @@ export async function PATCH(
     }
 
     // Update reorder rule
-    const updateData: any = {
+    const updateData: ReorderRuleUpdate = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     }
@@ -79,7 +86,7 @@ export async function PATCH(
     }
 
     return NextResponse.json(rule)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -143,7 +150,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Reorder rule deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

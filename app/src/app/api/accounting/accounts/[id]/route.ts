@@ -76,7 +76,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data: account });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -221,7 +221,7 @@ export async function PUT(
     }
 
     return NextResponse.json({ data: updatedAccount });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -343,7 +343,7 @@ export async function DELETE(
       { message: "Account deleted successfully" },
       { status: 200 }
     );
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

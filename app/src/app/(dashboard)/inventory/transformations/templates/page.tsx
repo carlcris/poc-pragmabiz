@@ -34,7 +34,7 @@ import {
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { TransformationTemplateFormDialog } from "@/components/transformations/TransformationTemplateFormDialog";
 import { TransformationTemplateDetailDialog } from "@/components/transformations/TransformationTemplateDetailDialog";
-import type { TransformationTemplate } from "@/types/transformation-template";
+import type { TransformationTemplateApi } from "@/types/transformation-template";
 
 export default function TransformationTemplatesPage() {
   const router = useRouter();
@@ -42,8 +42,8 @@ export default function TransformationTemplatesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<TransformationTemplate | null>(null);
-  const [viewTemplate, setViewTemplate] = useState<TransformationTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<TransformationTemplateApi | null>(null);
+  const [viewTemplate, setViewTemplate] = useState<TransformationTemplateApi | null>(null);
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
 
   const limit = 20;

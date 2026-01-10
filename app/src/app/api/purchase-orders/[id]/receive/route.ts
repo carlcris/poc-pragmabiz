@@ -6,6 +6,35 @@ import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
 import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
+import type { Tables } from '@/types/supabase'
+
+type PurchaseOrderRow = Tables<'purchase_orders'>
+type PurchaseOrderItemRow = Tables<'purchase_order_items'>
+
+type PurchaseOrderQueryRow = PurchaseOrderRow & {
+  items: PurchaseOrderItemRow[]
+}
+
+type PurchaseOrderReceiptItemInput = {
+  purchaseOrderItemId: string
+  itemId: string
+  quantityOrdered: number
+  quantityReceived: number
+  packagingId?: string | null
+  uomId?: string | null
+  rate: number
+  notes?: string | null
+}
+
+type PurchaseOrderReceiveBody = {
+  warehouseId: string
+  receiptDate?: string
+  supplierInvoiceNumber?: string | null
+  supplierInvoiceDate?: string | null
+  notes?: string | null
+  items?: PurchaseOrderReceiptItemInput[]
+  locationId?: string | null
+}
 
 // POST /api/purchase-orders/[id]/receive
 // Creates a purchase receipt from an approved purchase order
@@ -17,7 +46,7 @@ export async function POST(
     await requirePermission(RESOURCES.PURCHASE_ORDERS, 'edit')
     const { id: purchaseOrderId } = await params
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU()
-    const body = await request.json()
+    const body = (await request.json()) as PurchaseOrderReceiveBody
 
     // Check authentication
     const {
@@ -48,7 +77,7 @@ export async function POST(
     }
 
     // Get purchase order with items
-    const { data: po, error: poError } = await supabase
+    const { data: poData, error: poError } = await supabase
       .from('purchase_orders')
       .select(
         `
@@ -69,9 +98,10 @@ export async function POST(
       .is('deleted_at', null)
       .single()
 
-    if (poError || !po) {
+    if (poError || !poData) {
       return NextResponse.json({ error: 'Purchase order not found' }, { status: 404 })
     }
+    const po = poData as PurchaseOrderQueryRow
 
     // Validate PO status
     if (po.status !== 'approved' && po.status !== 'in_transit' && po.status !== 'partially_received') {
@@ -130,18 +160,18 @@ export async function POST(
     }
 
     // Create receipt items from PO items (or from provided items if partial receive)
-    const itemsToReceive = body.items || po.items.map((item: any) => ({
+    const itemsToReceive: PurchaseOrderReceiptItemInput[] = body.items ?? po.items.map((item) => ({
       purchaseOrderItemId: item.id,
       itemId: item.item_id,
-      quantityOrdered: parseFloat(item.quantity),
-      quantityReceived: parseFloat(item.quantity) - parseFloat(item.quantity_received || 0), // Remaining quantity
+      quantityOrdered: Number(item.quantity),
+      quantityReceived: Number(item.quantity) - Number(item.quantity_received || 0), // Remaining quantity
       packagingId: item.packaging_id || null, // Package selected by user (null = use base package)
       uomId: item.uom_id, // Deprecated: kept for backward compatibility
-      rate: parseFloat(item.rate),
+      rate: Number(item.rate),
     }))
 
     // STEP 1: Normalize all item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = itemsToReceive.map((item: any) => ({
+    const itemInputs: StockTransactionItemInput[] = itemsToReceive.map((item) => ({
       itemId: item.itemId,
       packagingId: item.packagingId || null, // null = use base package
       inputQty: item.quantityReceived,
@@ -150,7 +180,7 @@ export async function POST(
 
     const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs)
 
-    const receiptItems = itemsToReceive.map((item: any, index: number) => ({
+    const receiptItems = itemsToReceive.map((item, index: number) => ({
       company_id: userData.company_id,
       receipt_id: receipt.id,
       purchase_order_item_id: item.purchaseOrderItemId,
@@ -232,8 +262,6 @@ export async function POST(
 
     for (let i = 0; i < normalizedItems.length; i++) {
       const item = normalizedItems[i]
-      const originalItem = itemsToReceive[i]
-
       // Get current stock balance from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from('item_warehouse')
@@ -250,7 +278,7 @@ export async function POST(
       const newBalance = currentBalance + item.normalizedQty
 
       // Create stock transaction item with full normalization metadata
-      const { data: stockTxItem, error: stockTxItemError } = await supabase
+      const { error: stockTxItemError } = await supabase
         .from('stock_transaction_items')
         .insert({
           company_id: userData.company_id,
@@ -325,12 +353,10 @@ export async function POST(
 
     // Update quantity_received in purchase_order_items using input units
     // Keep track of updated quantities for status calculation
-    const updatedItems = []
+    const updatedItems: Array<{ id: string; newQtyReceived: number }> = []
 
     for (let i = 0; i < itemsToReceive.length; i++) {
       const originalItem = itemsToReceive[i]
-      const normalizedItem = normalizedItems[i]
-
       // First get the current quantity_received
       const { data: currentItem } = await supabase
         .from('purchase_order_items')
@@ -338,13 +364,13 @@ export async function POST(
         .eq('id', originalItem.purchaseOrderItemId)
         .single()
 
-      const currentQtyReceived = parseFloat(currentItem?.quantity_received || 0)
-      const newQtyReceived = currentQtyReceived + parseFloat(originalItem.quantityReceived || 0)
+      const currentQtyReceived = Number(currentItem?.quantity_received || 0)
+      const newQtyReceived = currentQtyReceived + Number(originalItem.quantityReceived || 0)
 
       await supabase
         .from('purchase_order_items')
         .update({
-        quantity_received: newQtyReceived,
+          quantity_received: newQtyReceived,
           updated_by: user.id,
         })
         .eq('id', originalItem.purchaseOrderItemId)
@@ -358,26 +384,28 @@ export async function POST(
 
     // Update purchase order status based on received quantities
     // Use the original PO items data and apply our updates
-    const allPoItems = po.items.map((item: any) => {
+    const warnings: string[] = []
+
+    const allPoItems = po.items.map((item) => {
       const update = updatedItems.find(u => u.id === item.id)
       return {
         quantity: item.quantity,
-        quantity_received: update ? update.newQtyReceived : parseFloat(item.quantity_received || 0)
+        quantity_received: update ? update.newQtyReceived : Number(item.quantity_received || 0)
       }
     })
 
     if (allPoItems && allPoItems.length > 0) {
       // Check if all items are fully received
-      const allFullyReceived = allPoItems.every((item: any) => {
-        const ordered = parseFloat(item.quantity)
-        const received = parseFloat(item.quantity_received || 0)
+      const allFullyReceived = allPoItems.every((item) => {
+        const ordered = Number(item.quantity)
+        const received = Number(item.quantity_received || 0)
         const isFullyReceived = received >= ordered
         return isFullyReceived
       })
 
       // Check if any items are received
-      const anyReceived = allPoItems.some((item: any) => {
-        const received = parseFloat(item.quantity_received || 0)
+      const anyReceived = allPoItems.some((item) => {
+        const received = Number(item.quantity_received || 0)
         return received > 0
       })
 
@@ -409,8 +437,6 @@ export async function POST(
     // POST-RECEIPT PROCESSING: Accounting Integration
     // ============================================================================
 
-    const warnings: string[] = []
-
     // Post AP Bill to General Ledger
     try {
       // Calculate total amount from normalized items (actual cost based on base units)
@@ -437,7 +463,7 @@ export async function POST(
 
         warnings.push(`GL posting failed: ${apResult.error}`)
       }
-    } catch (error) {
+    } catch {
 
       warnings.push('GL posting failed')
     }
@@ -451,7 +477,7 @@ export async function POST(
       },
       { status: 201 }
     )
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

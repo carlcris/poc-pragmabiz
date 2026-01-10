@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api';
 import type {
-  TransformationTemplate,
+  TransformationTemplateApi,
   TransformationTemplateFilters,
   TransformationTemplateListResponse,
   CreateTransformationTemplateRequest,
@@ -27,15 +27,15 @@ export const transformationTemplatesApi = {
   /**
    * Get single transformation template by ID
    */
-  async getById(id: string): Promise<{ data: TransformationTemplate }> {
-    return apiClient.get<{ data: TransformationTemplate }>(`/api/transformations/templates/${id}`);
+  async getById(id: string): Promise<{ data: TransformationTemplateApi }> {
+    return apiClient.get<{ data: TransformationTemplateApi }>(`/api/transformations/templates/${id}`);
   },
 
   /**
    * Create new transformation template
    */
-  async create(data: CreateTransformationTemplateRequest): Promise<{ data: TransformationTemplate }> {
-    return apiClient.post<{ data: TransformationTemplate }>('/api/transformations/templates', data);
+  async create(data: CreateTransformationTemplateRequest): Promise<{ data: TransformationTemplateApi }> {
+    return apiClient.post<{ data: TransformationTemplateApi }>('/api/transformations/templates', data);
   },
 
   /**
@@ -46,8 +46,8 @@ export const transformationTemplatesApi = {
   async update(
     id: string,
     data: UpdateTransformationTemplateRequest
-  ): Promise<{ data: TransformationTemplate }> {
-    return apiClient.patch<{ data: TransformationTemplate }>(
+  ): Promise<{ data: TransformationTemplateApi }> {
+    return apiClient.patch<{ data: TransformationTemplateApi }>(
       `/api/transformations/templates/${id}`,
       data
     );
@@ -65,8 +65,8 @@ export const transformationTemplatesApi = {
    * Deactivate transformation template
    * Sets isActive = false
    */
-  async deactivate(id: string): Promise<{ data: TransformationTemplate }> {
-    return apiClient.patch<{ data: TransformationTemplate }>(
+  async deactivate(id: string): Promise<{ data: TransformationTemplateApi }> {
+    return apiClient.patch<{ data: TransformationTemplateApi }>(
       `/api/transformations/templates/${id}`,
       { isActive: false }
     );
@@ -76,8 +76,8 @@ export const transformationTemplatesApi = {
    * Activate transformation template
    * Sets isActive = true
    */
-  async activate(id: string): Promise<{ data: TransformationTemplate }> {
-    return apiClient.patch<{ data: TransformationTemplate }>(
+  async activate(id: string): Promise<{ data: TransformationTemplateApi }> {
+    return apiClient.patch<{ data: TransformationTemplateApi }>(
       `/api/transformations/templates/${id}`,
       { isActive: true }
     );

@@ -1,10 +1,6 @@
 // Purchase Receipt Types
 // Based on database tables: purchase_receipts, purchase_receipt_items
 
-import type { Supplier } from "./supplier";
-import type { PurchaseOrder } from "./purchase-order";
-import type { Item } from "./item";
-
 export type PurchaseReceiptStatus = "draft" | "received" | "cancelled";
 
 export interface PurchaseReceipt {
@@ -52,7 +48,7 @@ export interface PurchaseReceipt {
   updatedBy?: string;
   deletedAt?: string | null;
   version: number;
-  customFields?: Record<string, any>;
+  customFields?: Record<string, unknown>;
 }
 
 export interface PurchaseReceiptItem {

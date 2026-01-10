@@ -257,7 +257,7 @@ export async function postPOSSale(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -349,7 +349,7 @@ export async function calculatePOSCOGS(
       items: cogsItems,
       totalCOGS,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -505,7 +505,7 @@ export async function postPOSCOGS(
       success: true,
       journalEntryId: journalEntry.id,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -597,7 +597,7 @@ export async function reversePOSTransaction(
     return {
       success: true,
     };
-  } catch (error) {
+  } catch {
 
     return {
       success: false,
@@ -776,7 +776,7 @@ async function postPOSSaleReversal(
     }
 
     return { success: true, journalEntryId: journalEntry.id };
-  } catch (error) {
+  } catch {
 
     return { success: false, error: "Internal error" };
   }
@@ -893,7 +893,7 @@ async function postPOSCOGSReversal(
     }
 
     return { success: true, journalEntryId: journalEntry.id };
-  } catch (error) {
+  } catch {
 
     return { success: false, error: "Internal error" };
   }

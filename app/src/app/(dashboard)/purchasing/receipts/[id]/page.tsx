@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Package, CheckCircle, XCircle, Clock, Download, Printer } from "lucide-react";
+import { ArrowLeft, Package, CheckCircle, Clock, Download, Printer } from "lucide-react";
 
 // Mock data for a single goods receipt
 const mockReceiptDetails = {
@@ -227,7 +227,7 @@ export default function GoodsReceiptDetailPage() {
         </div>
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            The goods receipt you're looking for doesn't exist.
+            The goods receipt you&apos;re looking for doesn&apos;t exist.
           </CardContent>
         </Card>
       </div>

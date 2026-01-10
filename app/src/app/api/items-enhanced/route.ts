@@ -71,6 +71,47 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
+    type ItemRow = {
+      id: string
+      item_code: string
+      item_name: string
+      item_name_cn: string | null
+      category_id?: string | null
+      item_category_id?: string | null
+      supplier_id?: string | null
+      item_categories?: { id: string; name: string } | null
+      units_of_measure?: { code: string } | null
+      uom_id: string | null
+      cost_price: number | string | null
+      sales_price: number | string | null
+      item_type: string
+      is_active: boolean | null
+      image_url: string | null
+    }
+
+    type SupplierRow = {
+      id: string
+      supplier_name: string
+    }
+
+    type ItemWarehouseRow = {
+      item_id: string
+      current_stock: number | string
+      reorder_level: number | string | null
+    }
+
+    type SalesOrderItemRow = {
+      item_id: string
+      quantity: number | string
+      quantity_delivered: number | string | null
+    }
+
+    type PurchaseOrderItemRow = {
+      item_id: string
+      quantity: number | string
+      quantity_received: number | string | null
+    }
+
     // Fetch items with categories
     let itemsQuery = supabase
       .from('items')
@@ -125,11 +166,11 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const itemIds = items.map((i) => i.id)
+    const itemIds = (items as ItemRow[]).map((i) => i.id)
 
     // Fetch supplier data separately
-    const supplierIds = items
-      .map((i: any) => i.supplier_id || i.supplierId)
+    const supplierIds = (items as ItemRow[])
+      .map((i) => i.supplier_id || null)
       .filter((id): id is string => id !== null && id !== undefined)
 
     const suppliersMap = new Map<string, string>()
@@ -142,7 +183,7 @@ export async function GET(request: NextRequest) {
         .in('id', supplierIds)
 
       if (suppliers) {
-        for (const supplier of suppliers) {
+        for (const supplier of suppliers as SupplierRow[]) {
           suppliersMap.set(supplier.id, supplier.supplier_name)
         }
       }
@@ -168,18 +209,18 @@ export async function GET(request: NextRequest) {
 
     if (itemWarehouseData) {
       // Sum current_stock across warehouses for each item
-      for (const entry of itemWarehouseData) {
+      for (const entry of itemWarehouseData as ItemWarehouseRow[]) {
         const itemId = entry.item_id
         const currentQty = onHandMap.get(itemId) || 0
-        onHandMap.set(itemId, currentQty + parseFloat(entry.current_stock))
+        onHandMap.set(itemId, currentQty + Number(entry.current_stock))
       }
     }
 
     // Calculate reorder points (use max reorder level across warehouses for each item)
     if (itemWarehouseData) {
-      for (const iwData of itemWarehouseData) {
+      for (const iwData of itemWarehouseData as ItemWarehouseRow[]) {
         const itemId = iwData.item_id
-        const reorderLevel = parseFloat(iwData.reorder_level || '0')
+        const reorderLevel = Number(iwData.reorder_level || 0)
         const currentMax = reorderPointMap.get(itemId) || 0
         if (reorderLevel > currentMax) {
           reorderPointMap.set(itemId, reorderLevel)
@@ -208,13 +249,13 @@ export async function GET(request: NextRequest) {
     const onSOMap = new Map<string, number>()
 
     if (salesOrderItems) {
-      for (const item of salesOrderItems) {
+      for (const item of salesOrderItems as SalesOrderItemRow[]) {
         const itemId = item.item_id
-        const pending = parseFloat(item.quantity) - (parseFloat(item.quantity_delivered) || 0)
+        const pending = Number(item.quantity) - (Number(item.quantity_delivered) || 0)
         const currentAllocated = allocatedMap.get(itemId) || 0
         const currentOnSO = onSOMap.get(itemId) || 0
         allocatedMap.set(itemId, currentAllocated + pending)
-        onSOMap.set(itemId, currentOnSO + parseFloat(item.quantity))
+        onSOMap.set(itemId, currentOnSO + Number(item.quantity))
       }
     }
     // Get On PO (from purchase_order_items where order not yet fully received)
@@ -237,16 +278,16 @@ export async function GET(request: NextRequest) {
     const onPOMap = new Map<string, number>()
 
     if (poItems) {
-      for (const item of poItems) {
+      for (const item of poItems as PurchaseOrderItemRow[]) {
         const itemId = item.item_id
-        const pending = parseFloat(item.quantity) - (parseFloat(item.quantity_received) || 0)
+        const pending = Number(item.quantity) - (Number(item.quantity_received) || 0)
         const currentOnPO = onPOMap.get(itemId) || 0
         onPOMap.set(itemId, currentOnPO + pending)
       }
     }
 
     // Build enhanced items with stock data
-    const itemsWithStock: ItemWithStock[] = items.map((item: any) => {
+    const itemsWithStock: ItemWithStock[] = (items as ItemRow[]).map((item) => {
       const onHand = onHandMap.get(item.id) || 0
       const allocated = allocatedMap.get(item.id) || 0
       const available = onHand - allocated
@@ -268,8 +309,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Get category_id and supplier_id from the actual database columns
-      const categoryId = (item.category_id || item.item_category_id || '') as string
-      const supplierId = (item.supplier_id || '') as string
+      const categoryId = item.category_id || item.item_category_id || ''
+      const supplierId = item.supplier_id || ''
       return {
         id: item.id,
         code: item.item_code,
@@ -288,8 +329,8 @@ export async function GET(request: NextRequest) {
         status,
         uom: item.units_of_measure?.code || '',
         uomId: item.uom_id || '',
-        standardCost: parseFloat(item.cost_price) || 0,
-        listPrice: parseFloat(item.sales_price) || 0,
+        standardCost: Number(item.cost_price) || 0,
+        listPrice: Number(item.sales_price) || 0,
         itemType: item.item_type,
         isActive: item.is_active ?? true,
         imageUrl: item.image_url || undefined,
@@ -330,7 +371,7 @@ export async function GET(request: NextRequest) {
         totalPages,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -106,7 +106,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform database snake_case to camelCase
-    const transformedData: Account[] = (data || []).map((account: any) => ({
+    type AccountRow = {
+      id: string;
+      company_id: string;
+      account_number: string;
+      account_name: string;
+      account_type: string;
+      parent_account_id: string | null;
+      is_system_account: boolean;
+      is_active: boolean;
+      level: number;
+      sort_order: number;
+      description: string | null;
+      created_at: string;
+      created_by: string;
+      updated_at: string;
+      updated_by: string;
+      deleted_at: string | null;
+      version: number;
+    };
+
+    const transformedData: Account[] = (data || []).map((account: AccountRow) => ({
       id: account.id,
       companyId: account.company_id,
       accountNumber: account.account_number,
@@ -137,7 +157,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },
@@ -289,7 +309,7 @@ export async function POST(request: NextRequest) {
       { data: transformedAccount },
       { status: 201 }
     );
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

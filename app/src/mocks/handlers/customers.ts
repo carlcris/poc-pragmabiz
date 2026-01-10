@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import type { Customer, CreateCustomerRequest } from "@/types/customer";
 import { customers } from "../data/customers";
 
-let customersData = [...customers];
+const customersData = [...customers];
 
 export const customerHandlers = [
   // GET /api/customers

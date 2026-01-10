@@ -4,7 +4,7 @@ import { stockTransactions } from "../data/stock-transactions";
 import { mockItems as items } from "../data/items";
 import { warehouses } from "../data/warehouses";
 
-let transactionsData = [...stockTransactions];
+const transactionsData = [...stockTransactions];
 
 export const stockTransactionHandlers = [
   // GET /api/stock-transactions
@@ -120,7 +120,6 @@ export const stockTransactionHandlers = [
     // Validate stock for "out" and "transfer" transactions
     if (body.transactionType === "out" || body.transactionType === "transfer") {
       // Calculate current stock balance
-      const key = `${body.itemId}-${body.warehouseId}`;
       let currentBalance = 0;
 
       transactionsData.forEach((txn) => {

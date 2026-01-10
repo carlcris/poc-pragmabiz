@@ -82,7 +82,7 @@ function RoleManagementContent() {
       toast.success(`Role "${roleToDelete.name}" deleted successfully`);
       setDeleteDialogOpen(false);
       setRoleToDelete(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete role");
     }
   };

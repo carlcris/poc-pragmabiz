@@ -1,9 +1,9 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { requireLookupDataAccess } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check permission using Lookup Data Access Pattern
     // User can access if they have EITHER:
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: categories || [],
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

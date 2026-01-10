@@ -9,6 +9,25 @@ import type {
 
 export const TRANSFORMATION_TEMPLATES_QUERY_KEY = 'transformation-templates';
 
+type ErrorWithCause = {
+  cause?: {
+    error?: string;
+    details?: Array<{ message?: string }>;
+  };
+};
+
+const getTemplateErrorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object') {
+    const errorWithCause = error as ErrorWithCause;
+    const causeMessage = errorWithCause.cause?.error;
+    const detailMessage = errorWithCause.cause?.details?.[0]?.message;
+    if (causeMessage) return causeMessage;
+    if (detailMessage) return detailMessage;
+    if (error instanceof Error) return error.message;
+  }
+  return fallback;
+};
+
 /**
  * Hook to fetch list of transformation templates
  */
@@ -43,13 +62,8 @@ export function useCreateTransformationTemplate() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY] });
       toast.success('Transformation template created successfully');
     },
-    onError: (error: any) => {
-      const message =
-        error?.cause?.error ||
-        error?.cause?.details?.[0]?.message ||
-        error.message ||
-        'Failed to create transformation template';
-      toast.error(message);
+    onError: (error: unknown) => {
+      toast.error(getTemplateErrorMessage(error, 'Failed to create transformation template'));
     },
   });
 }
@@ -70,8 +84,8 @@ export function useUpdateTransformationTemplate() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, variables.id] });
       toast.success('Transformation template updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update transformation template');
+    onError: (error: unknown) => {
+      toast.error(getTemplateErrorMessage(error, 'Failed to update transformation template'));
     },
   });
 }
@@ -89,8 +103,8 @@ export function useDeleteTransformationTemplate() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY] });
       toast.success('Transformation template deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete transformation template');
+    onError: (error: unknown) => {
+      toast.error(getTemplateErrorMessage(error, 'Failed to delete transformation template'));
     },
   });
 }
@@ -108,8 +122,8 @@ export function useDeactivateTransformationTemplate() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, id] });
       toast.success('Transformation template deactivated');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to deactivate transformation template');
+    onError: (error: unknown) => {
+      toast.error(getTemplateErrorMessage(error, 'Failed to deactivate transformation template'));
     },
   });
 }
@@ -127,8 +141,8 @@ export function useActivateTransformationTemplate() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_TEMPLATES_QUERY_KEY, id] });
       toast.success('Transformation template activated');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to activate transformation template');
+    onError: (error: unknown) => {
+      toast.error(getTemplateErrorMessage(error, 'Failed to activate transformation template'));
     },
   });
 }

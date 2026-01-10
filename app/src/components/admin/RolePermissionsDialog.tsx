@@ -79,7 +79,6 @@ export function RolePermissionsDialog({
     () => permissionsData?.data || [],
     [permissionsData?.data]
   );
-  const rolePermissions: RolePermission[] = roleData?.permissions || [];
 
   // Filter permissions based on search query
   const filteredPermissions = allPermissions.filter((permission: Permission) => {
@@ -177,7 +176,7 @@ export function RolePermissionsDialog({
       toast.success("Permissions updated successfully");
       setHasChanges(false);
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast.error("Failed to update permissions");
     }
   };

@@ -5,19 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Package } from "lucide-react";
 
-interface MobileItemCardProps {
-  item: {
-    itemId: string;
-    itemCode: string;
-    itemName: string;
-    unitPrice: number;
-    availableStock: number;
-    uomName: string;
-    categoryName?: string;
-  };
-  onAddToCart: (item: any) => void;
+type MobileItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  unitPrice: number;
+  availableStock: number;
+  uomName: string;
+  categoryName?: string;
+};
+
+type MobileItemCardProps = {
+  item: MobileItem;
+  onAddToCart: (item: MobileItem) => void;
   inCart?: boolean;
-}
+};
 
 export function MobileItemCard({ item, onAddToCart, inCart }: MobileItemCardProps) {
   const hasStock = item.availableStock > 0;

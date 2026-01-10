@@ -5,6 +5,33 @@ import { validateTemplate } from '@/services/inventory/transformationService';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
 
+type TemplateInputRow = {
+  item_id: string
+  quantity: number | string
+  uom_id: string
+  sequence?: number | null
+  notes?: string | null
+}
+
+type TemplateOutputRow = {
+  item_id: string
+  quantity: number | string
+  uom_id: string
+  is_scrap: boolean
+  sequence?: number | null
+  notes?: string | null
+}
+
+type TemplateWithLines = {
+  inputs: TemplateInputRow[]
+  outputs: TemplateOutputRow[]
+}
+
+type ItemCostRow = {
+  id: string
+  cost_price: number | string | null
+}
+
 // GET /api/transformations/orders - List transformation orders
 export async function GET(request: NextRequest) {
   try {
@@ -115,7 +142,7 @@ export async function GET(request: NextRequest) {
       page,
       limit,
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -236,7 +263,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get item costs for inputs
-    const inputItemIds = template.inputs.map((input: any) => input.item_id);
+    const typedTemplate = template as TemplateWithLines
+    const inputItemIds = typedTemplate.inputs.map((input) => input.item_id)
 
     const { data: inputItems, error: itemsError } = await supabase
       .from('items')
@@ -247,12 +275,17 @@ export async function POST(request: NextRequest) {
 
     }
 
-    const itemCostMap = new Map(inputItems?.map((item: any) => [item.id, parseFloat(item.cost_price || '0')]) || []);
+    const itemCostMap = new Map(
+      ((inputItems || []) as ItemCostRow[]).map((item) => [
+        item.id,
+        parseFloat(String(item.cost_price ?? 0)),
+      ])
+    )
 
     // Create order inputs from template
-    const inputsData = template.inputs.map((input: any, index: number) => {
+    const inputsData = typedTemplate.inputs.map((input, index) => {
       const unitCost = itemCostMap.get(input.item_id) || 0;
-      const plannedQty = input.quantity * data.plannedQuantity;
+      const plannedQty = Number(input.quantity) * data.plannedQuantity;
       return {
         order_id: order.id,
         item_id: input.item_id,
@@ -284,12 +317,14 @@ export async function POST(request: NextRequest) {
 
     // Create order outputs from template
     // Allocate input costs to outputs proportionally
-    const totalOutputQty = template.outputs.reduce((sum: number, output: any) =>
-      sum + (output.is_scrap ? 0 : output.quantity * data.plannedQuantity), 0
-    );
+    const totalOutputQty = typedTemplate.outputs.reduce(
+      (sum, output) =>
+        sum + (output.is_scrap ? 0 : Number(output.quantity) * data.plannedQuantity),
+      0
+    )
 
-    const outputsData = template.outputs.map((output: any, index: number) => {
-      const plannedQty = output.quantity * data.plannedQuantity;
+    const outputsData = typedTemplate.outputs.map((output, index) => {
+      const plannedQty = Number(output.quantity) * data.plannedQuantity;
       // Only non-scrap items get cost allocation
       const allocatedCostPerUnit = output.is_scrap || totalOutputQty === 0
         ? 0
@@ -354,7 +389,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     return NextResponse.json({ data: completeOrder }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

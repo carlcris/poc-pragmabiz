@@ -75,7 +75,7 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
 
       // If copying from an existing role and it has permissions, assign them
       if (copyFromRoleId && copyFromRoleData?.permissions && copyFromRoleData.permissions.length > 0) {
-        const permissionsToAssign: RolePermission[] = copyFromRoleData.permissions.map((perm: any) => ({
+        const permissionsToAssign: RolePermission[] = (copyFromRoleData.permissions as RolePermission[]).map((perm) => ({
           permission_id: perm.permission_id,
           can_view: perm.can_view,
           can_create: perm.can_create,
@@ -94,8 +94,8 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
       }
 
       onOpenChange(false);
-    } catch (error: any) {
-      const errorMessage = error?.message || "Failed to create role";
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create role";
       toast.error(errorMessage);
     }
   };

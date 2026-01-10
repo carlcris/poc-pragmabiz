@@ -6,6 +6,7 @@ import type { Warehouse, UpdateWarehouseRequest } from '@/types/warehouse'
 import type { Database } from '@/types/database.types'
 
 type DbWarehouse = Database['public']['Tables']['warehouses']['Row']
+type WarehouseUpdate = Partial<DbWarehouse> & { updated_by: string }
 
 // Transform database warehouse to frontend Warehouse type
 function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
@@ -76,7 +77,7 @@ export async function GET(
     // Transform and return
     const warehouse = transformDbWarehouse(data)
     return NextResponse.json({ data: warehouse })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -131,7 +132,7 @@ export async function PUT(
     }
 
     // Build update object
-    const updateData: any = {
+    const updateData: WarehouseUpdate = {
       updated_by: user.id,
     }
 
@@ -165,7 +166,7 @@ export async function PUT(
     // Transform and return
     const warehouse = transformDbWarehouse(updatedWarehouse)
     return NextResponse.json({ data: warehouse })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -228,7 +229,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Warehouse deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

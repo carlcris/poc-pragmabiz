@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Pencil, Filter, Eye, FileText, CheckCircle, XCircle, Clock, Send, ShoppingCart, MailCheck } from "lucide-react";
+import { Plus, Search, Pencil, Filter, Eye, FileText, CheckCircle, XCircle, Clock, Send, ShoppingCart } from "lucide-react";
 import { useQuotations, useConvertToOrder, useChangeQuotationStatus } from "@/hooks/useQuotations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ export default function QuotationsPage() {
   const convertToOrder = useConvertToOrder();
   const changeStatus = useChangeQuotationStatus();
 
-  const { data, isLoading, error } = useQuotations({
+  const { data, isLoading } = useQuotations({
     search,
     page: 1,
     limit: 1000, // Get all for client-side filtering
@@ -165,13 +165,13 @@ export default function QuotationsPage() {
     if (!quotationToConvert) return;
 
     try {
-      const result = await convertToOrder.mutateAsync(quotationToConvert.id);
+      await convertToOrder.mutateAsync(quotationToConvert.id);
       setConvertDialogOpen(false);
       setQuotationToConvert(null);
 
       // Navigate to sales orders page or show success message
       router.push(`/sales/orders`);
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
       setConvertDialogOpen(false);
       setQuotationToConvert(null);
@@ -181,7 +181,7 @@ export default function QuotationsPage() {
   const handleChangeStatus = async (quotationId: string, newStatus: string) => {
     try {
       await changeStatus.mutateAsync({ id: quotationId, status: newStatus });
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation hook with toast
     }
   };
@@ -416,7 +416,7 @@ export default function QuotationsPage() {
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>Create a new sales order with all quotation details</li>
                 <li>Copy all line items to the sales order</li>
-                <li>Update the quotation status to "Ordered"</li>
+                <li>Update the quotation status to &quot;Ordered&quot;</li>
                 <li>Link the quotation to the new sales order</li>
               </ul>
               <p className="font-medium">This action cannot be undone.</p>

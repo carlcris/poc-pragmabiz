@@ -4,6 +4,39 @@ import { postPOSSale, calculatePOSCOGS, postPOSCOGS } from '@/services/accountin
 import { createPOSStockTransaction } from '@/services/inventory/posStockService';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { PaymentMethod } from '@/types/pos';
+import type { Tables } from '@/types/supabase';
+
+type POSTransactionRow = Tables<'pos_transactions'>;
+type POSTransactionItemRow = Tables<'pos_transaction_items'>;
+type POSTransactionPaymentRow = Tables<'pos_transaction_payments'>;
+
+type POSTransactionQueryRow = POSTransactionRow & {
+  pos_transaction_items: POSTransactionItemRow[];
+  pos_transaction_payments: POSTransactionPaymentRow[];
+};
+
+type POSItemInput = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+  discount?: number;
+};
+
+type POSPaymentInput = {
+  method: PaymentMethod;
+  amount: number | string;
+  reference?: string;
+};
+
+type POSCreateBody = {
+  customerId?: string;
+  items: POSItemInput[];
+  payments: POSPaymentInput[];
+  notes?: string;
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -126,35 +159,35 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data to match POSTransaction type
-    const transactions = data?.map((txn: any) => ({
+    const transactions = (data as POSTransactionQueryRow[] | null)?.map((txn) => ({
       id: txn.id,
       companyId: userData.company_id,
       transactionNumber: txn.transaction_code,
       transactionDate: txn.transaction_date,
       customerId: txn.customer_id,
       customerName: txn.customer_name,
-      items: txn.pos_transaction_items.map((item: any) => ({
+      items: txn.pos_transaction_items.map((item) => ({
         id: item.id,
         itemId: item.item_id,
         itemCode: item.item_code,
         itemName: item.item_name,
-        quantity: parseFloat(item.quantity),
-        unitPrice: parseFloat(item.unit_price),
-        discount: parseFloat(item.discount),
-        lineTotal: parseFloat(item.line_total),
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unit_price),
+        discount: Number(item.discount),
+        lineTotal: Number(item.line_total),
       })),
-      subtotal: parseFloat(txn.subtotal),
-      totalDiscount: parseFloat(txn.total_discount),
-      taxRate: parseFloat(txn.tax_rate),
-      totalTax: parseFloat(txn.total_tax),
-      totalAmount: parseFloat(txn.total_amount),
-      payments: txn.pos_transaction_payments.map((payment: any) => ({
+      subtotal: Number(txn.subtotal),
+      totalDiscount: Number(txn.total_discount),
+      taxRate: Number(txn.tax_rate),
+      totalTax: Number(txn.total_tax),
+      totalAmount: Number(txn.total_amount),
+      payments: txn.pos_transaction_payments.map((payment) => ({
         method: payment.payment_method,
-        amount: parseFloat(payment.amount),
+        amount: Number(payment.amount),
         reference: payment.reference,
       })),
-      amountPaid: parseFloat(txn.amount_paid),
-      changeAmount: parseFloat(txn.change_amount),
+      amountPaid: Number(txn.amount_paid),
+      changeAmount: Number(txn.change_amount),
       status: txn.status,
       cashierId: txn.cashier_id,
       cashierName: txn.cashier_name,
@@ -173,7 +206,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -227,7 +260,7 @@ export async function POST(request: NextRequest) {
 
     const fullName = `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Unknown';
 
-    const body = await request.json();
+    const body = (await request.json()) as POSCreateBody;
     const { customerId, items, payments, notes } = body;
 
     // Validate required fields
@@ -250,7 +283,7 @@ export async function POST(request: NextRequest) {
     let totalDiscount = 0;
     const taxRate = 0; // Can be configured
 
-    const processedItems = items.map((item: any) => {
+    const processedItems = items.map((item) => {
       const itemSubtotal = item.quantity * item.unitPrice;
       const itemDiscount = (itemSubtotal * (item.discount || 0)) / 100;
       const lineTotal = itemSubtotal - itemDiscount;
@@ -267,7 +300,7 @@ export async function POST(request: NextRequest) {
     const totalTax = ((subtotal - totalDiscount) * taxRate) / 100;
     const totalAmount = subtotal - totalDiscount + totalTax;
 
-    const amountPaid = payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+    const amountPaid = payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
     const changeAmount = amountPaid - totalAmount;
 
     if (changeAmount < 0) {
@@ -327,7 +360,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create transaction items
-    const itemsToInsert = processedItems.map((item: any) => ({
+    const itemsToInsert = processedItems.map((item) => ({
       pos_transaction_id: transaction.id,
       item_id: item.itemId,
       item_code: item.itemCode,
@@ -353,10 +386,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Create transaction payments
-    const paymentsToInsert = payments.map((payment: any) => ({
+    const paymentsToInsert = payments.map((payment) => ({
       pos_transaction_id: transaction.id,
       payment_method: payment.method,
-      amount: parseFloat(payment.amount).toFixed(4),
+      amount: Number(payment.amount).toFixed(4),
       reference: payment.reference,
     }));
 
@@ -375,7 +408,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch the complete transaction
-    const { data: completeTransaction } = await supabase
+    const { data: completeTransactionData } = await supabase
       .from('pos_transactions')
       .select(`
         *,
@@ -384,6 +417,7 @@ export async function POST(request: NextRequest) {
       `)
       .eq('id', transaction.id)
       .single();
+    const completeTransaction = completeTransactionData as POSTransactionQueryRow;
 
     // ============================================================================
     // POST-TRANSACTION PROCESSING: Stock & Accounting Integration
@@ -401,7 +435,7 @@ export async function POST(request: NextRequest) {
         const { data: itemsWithUom } = await supabase
           .from('items')
           .select('id, uom_id')
-          .in('id', processedItems.map((item: any) => item.itemId))
+          .in('id', processedItems.map((item) => item.itemId))
           .eq('company_id', userData.company_id);
 
         const itemsMap = new Map(itemsWithUom?.map(item => [item.id, item.uom_id]) || []);
@@ -415,11 +449,11 @@ export async function POST(request: NextRequest) {
             transactionCode: transaction.transaction_code,
             transactionDate: transaction.transaction_date,
             warehouseId: userData.van_warehouse_id,
-            items: processedItems.map((item: any) => ({
+            items: processedItems.map((item) => ({
               itemId: item.itemId,
-              quantity: parseFloat(item.quantity),
+              quantity: Number(item.quantity),
               uomId: itemsMap.get(item.itemId) || '',
-              rate: parseFloat(item.unitPrice),
+              rate: Number(item.unitPrice),
             })),
           }
         );
@@ -430,7 +464,7 @@ export async function POST(request: NextRequest) {
 
           warnings.push(`Stock transaction failed: ${stockResult.error}`);
         }
-      } catch (error) {
+      } catch {
 
         warnings.push('Stock transaction creation failed');
       }
@@ -462,7 +496,7 @@ export async function POST(request: NextRequest) {
 
         warnings.push(`Sale GL posting failed: ${saleResult.error}`);
       }
-    } catch (error) {
+    } catch {
 
       warnings.push('Sale GL posting failed');
     }
@@ -498,7 +532,7 @@ export async function POST(request: NextRequest) {
 
         warnings.push(`COGS calculation failed: ${cogsCalculation.error || 'Unknown error'}`);
       }
-    } catch (error) {
+    } catch {
 
       warnings.push('COGS GL posting failed');
     }
@@ -515,28 +549,28 @@ export async function POST(request: NextRequest) {
         transactionDate: completeTransaction.transaction_date,
         customerId: completeTransaction.customer_id,
         customerName: completeTransaction.customer_name,
-        items: completeTransaction.pos_transaction_items.map((item: any) => ({
+        items: completeTransaction.pos_transaction_items.map((item) => ({
           id: item.id,
           itemId: item.item_id,
           itemCode: item.item_code,
           itemName: item.item_name,
-          quantity: parseFloat(item.quantity),
-          unitPrice: parseFloat(item.unit_price),
-          discount: parseFloat(item.discount),
-          lineTotal: parseFloat(item.line_total),
+          quantity: Number(item.quantity),
+          unitPrice: Number(item.unit_price),
+          discount: Number(item.discount),
+          lineTotal: Number(item.line_total),
         })),
-        subtotal: parseFloat(completeTransaction.subtotal),
-        totalDiscount: parseFloat(completeTransaction.total_discount),
-        taxRate: parseFloat(completeTransaction.tax_rate),
-        totalTax: parseFloat(completeTransaction.total_tax),
-        totalAmount: parseFloat(completeTransaction.total_amount),
-        payments: completeTransaction.pos_transaction_payments.map((payment: any) => ({
+        subtotal: Number(completeTransaction.subtotal),
+        totalDiscount: Number(completeTransaction.total_discount),
+        taxRate: Number(completeTransaction.tax_rate),
+        totalTax: Number(completeTransaction.total_tax),
+        totalAmount: Number(completeTransaction.total_amount),
+        payments: completeTransaction.pos_transaction_payments.map((payment) => ({
           method: payment.payment_method,
-          amount: parseFloat(payment.amount),
+          amount: Number(payment.amount),
           reference: payment.reference,
         })),
-        amountPaid: parseFloat(completeTransaction.amount_paid),
-        changeAmount: parseFloat(completeTransaction.change_amount),
+        amountPaid: Number(completeTransaction.amount_paid),
+        changeAmount: Number(completeTransaction.change_amount),
         status: completeTransaction.status,
         cashierId: completeTransaction.cashier_id,
         cashierName: completeTransaction.cashier_name,
@@ -552,7 +586,7 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 201 });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

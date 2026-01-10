@@ -27,13 +27,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -107,20 +100,23 @@ export function SalesOrderFormDialog({
   const [customerOpen, setCustomerOpen] = useState(false);
 
   // Default values
-  const defaultValues: SalesOrderFormValues = {
-    customerId: "",
-    orderDate: new Date().toISOString().split("T")[0],
-    expectedDeliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-    shippingAddress: "",
-    shippingCity: "",
-    shippingState: "",
-    shippingPostalCode: "",
-    shippingCountry: "",
-    paymentTerms: "Payment due within 30 days",
-    notes: "",
-  };
+  const defaultValues = useMemo<SalesOrderFormValues>(
+    () => ({
+      customerId: "",
+      orderDate: new Date().toISOString().split("T")[0],
+      expectedDeliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      shippingAddress: "",
+      shippingCity: "",
+      shippingState: "",
+      shippingPostalCode: "",
+      shippingCountry: "",
+      paymentTerms: "Payment due within 30 days",
+      notes: "",
+    }),
+    []
+  );
 
   const form = useForm<SalesOrderFormValues>({
     resolver: zodResolver(salesOrderFormSchema),
@@ -185,7 +181,7 @@ export function SalesOrderFormDialog({
       form.reset(defaultValues);
       setLineItems([]);
     }
-  }, [open, salesOrder, form]);
+  }, [open, salesOrder, form, defaultValues]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -255,8 +251,7 @@ export function SalesOrderFormDialog({
         await createMutation.mutateAsync(apiRequest);
       }
       onOpenChange(false);
-    } catch (error) {
-
+    } catch {
     }
   };
 
@@ -414,7 +409,7 @@ export function SalesOrderFormDialog({
                   {lineItems.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                       <p>No items added yet.</p>
-                      <p className="text-sm">Click "Add Item" to get started.</p>
+                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
                     </div>
                   ) : (
                     <>

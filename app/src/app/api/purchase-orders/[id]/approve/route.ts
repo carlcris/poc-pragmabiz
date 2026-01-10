@@ -77,7 +77,7 @@ export async function POST(
       success: true,
       message: `Purchase order ${purchaseOrder.order_code} approved successfully`,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

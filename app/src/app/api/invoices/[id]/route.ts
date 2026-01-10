@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 import { normalizeTransactionItems } from '@/services/inventory/normalizationService'
 import type { StockTransactionItemInput } from '@/types/inventory-normalization'
+import type { UpdateInvoiceRequest, CreateInvoiceRequest } from '@/types/invoice'
 
 // GET /api/invoices/[id]
 export async function GET(
@@ -146,7 +147,7 @@ export async function GET(
     }
 
     return NextResponse.json(formattedInvoice)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -160,7 +161,7 @@ export async function PUT(
   try {
     await requirePermission(RESOURCES.SALES_INVOICES, 'edit')
     const { id } = await params
-    const body = await request.json()
+    const body = (await request.json()) as UpdateInvoiceRequest
     const { supabase } = await createServerClientWithBU()
 
     // Check authentication
@@ -204,20 +205,22 @@ export async function PUT(
       totalDiscount = 0
       totalTax = 0
 
-      const itemInputs: StockTransactionItemInput[] = body.lineItems.map((item: any) => ({
+      const lineItems = (body.lineItems || []) as CreateInvoiceRequest["lineItems"]
+
+      const itemInputs: StockTransactionItemInput[] = lineItems.map((item) => ({
         itemId: item.itemId,
         packagingId: item.packagingId ?? null,
-        inputQty: parseFloat(item.quantity),
-        unitCost: parseFloat(item.unitPrice),
+        inputQty: Number(item.quantity),
+        unitCost: Number(item.unitPrice),
       }))
 
       const normalizedItems = await normalizeTransactionItems(existingInvoice.company_id, itemInputs)
 
-      const processedItems = body.lineItems.map((item: any, index: number) => {
-        const quantity = parseFloat(item.quantity)
-        const rate = parseFloat(item.unitPrice)
-        const discountPercent = parseFloat(item.discount || 0)
-        const taxPercent = parseFloat(item.taxRate || 0)
+      const processedItems = lineItems.map((item, index) => {
+        const quantity = Number(item.quantity)
+        const rate = Number(item.unitPrice)
+        const discountPercent = Number(item.discount || 0)
+        const taxPercent = Number(item.taxRate || 0)
 
         const normalizedQty = normalizedItems[index]?.normalizedQty ?? quantity
         const itemTotal = normalizedQty * rate
@@ -311,7 +314,7 @@ export async function PUT(
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -437,7 +440,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

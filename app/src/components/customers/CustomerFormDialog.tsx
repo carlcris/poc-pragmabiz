@@ -197,7 +197,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
       onOpenChange(false);
       form.reset();
       setSameAsBilling(false);
-    } catch (error) {
+    } catch {
       toast.error(customer ? "Failed to update customer" : "Failed to create customer");
     }
   };

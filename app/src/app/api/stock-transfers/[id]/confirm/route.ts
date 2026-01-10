@@ -6,6 +6,22 @@ import { normalizeTransactionItems } from '@/services/inventory/normalizationSer
 import { adjustItemLocation, ensureWarehouseDefaultLocation } from '@/services/inventory/locationService';
 import type { StockTransactionItemInput } from '@/types/inventory-normalization';
 
+type StockTransferItemRow = {
+  id: string
+  item_id: string
+  quantity: number | string
+  packaging_id: string | null
+  uom_id: string | null
+}
+
+type StockTransferRow = {
+  to_warehouse_id: string
+  from_warehouse_id: string
+  status: string
+  custom_fields?: { fromLocationId?: string | null; toLocationId?: string | null } | null
+  stock_transfer_items: StockTransferItemRow[]
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -60,8 +76,10 @@ export async function POST(
       );
     }
 
+    const typedTransfer = transfer as StockTransferRow
+
     // Verify the transfer is for the user's van
-    if (transfer.to_warehouse_id !== userData.van_warehouse_id) {
+    if (typedTransfer.to_warehouse_id !== userData.van_warehouse_id) {
       return NextResponse.json(
         { error: 'This transfer is not assigned to your van' },
         { status: 403 }
@@ -69,7 +87,7 @@ export async function POST(
     }
 
     // Verify transfer is in pending status
-    if (transfer.status !== 'pending' && transfer.status !== 'in_transit') {
+    if (typedTransfer.status !== 'pending' && typedTransfer.status !== 'in_transit') {
       return NextResponse.json(
         { error: 'Transfer cannot be confirmed in current status' },
         { status: 400 }
@@ -96,7 +114,7 @@ export async function POST(
     }
 
     // Update received quantities for all items
-    const itemUpdates = transfer.stock_transfer_items.map((item: any) => ({
+    const itemUpdates = typedTransfer.stock_transfer_items.map((item) => ({
       id: item.id,
       received_quantity: item.quantity, // Mark full quantity as received
     }));
@@ -109,12 +127,14 @@ export async function POST(
     }
 
     // STEP 1: Normalize all item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = transfer.stock_transfer_items.map((item: any) => ({
-      itemId: item.item_id,
-      packagingId: item.packaging_id || null, // null = use base package
-      inputQty: parseFloat(item.quantity),
-      unitCost: 0, // Transfers don't have cost (internal movement)
-    }));
+    const itemInputs: StockTransactionItemInput[] = typedTransfer.stock_transfer_items.map(
+      (item) => ({
+        itemId: item.item_id,
+        packagingId: item.packaging_id || null, // null = use base package
+        inputQty: parseFloat(String(item.quantity)),
+        unitCost: 0, // Transfers don't have cost (internal movement)
+      })
+    )
 
     const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
 
@@ -141,19 +161,19 @@ export async function POST(
     const defaultFromLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId: userData.company_id,
-      warehouseId: transfer.from_warehouse_id,
+      warehouseId: typedTransfer.from_warehouse_id,
       userId: user.id,
     });
 
     const defaultToLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId: userData.company_id,
-      warehouseId: transfer.to_warehouse_id,
+      warehouseId: typedTransfer.to_warehouse_id,
       userId: user.id,
     });
 
-    const fromLocationId = transfer.custom_fields?.fromLocationId || defaultFromLocationId;
-    const toLocationId = transfer.custom_fields?.toLocationId || defaultToLocationId;
+    const fromLocationId = typedTransfer.custom_fields?.fromLocationId || defaultFromLocationId;
+    const toLocationId = typedTransfer.custom_fields?.toLocationId || defaultToLocationId;
 
     const { data: stockTransaction, error: transactionError } = await supabase
       .from('stock_transactions')
@@ -162,14 +182,14 @@ export async function POST(
         transaction_code: transactionCode,
         transaction_type: 'transfer',
         transaction_date: new Date().toISOString().split('T')[0],
-        warehouse_id: transfer.from_warehouse_id,
-        to_warehouse_id: transfer.to_warehouse_id,
+        warehouse_id: typedTransfer.from_warehouse_id,
+        to_warehouse_id: typedTransfer.to_warehouse_id,
         from_location_id: fromLocationId,
         to_location_id: toLocationId,
         reference_type: 'Stock Transfer',
         reference_id: transferId,
         status: 'posted',
-        notes: `Transfer from ${transfer.from_warehouse_id} to ${transfer.to_warehouse_id}`,
+        notes: `Transfer from ${typedTransfer.from_warehouse_id} to ${typedTransfer.to_warehouse_id}`,
         created_by: user.id,
         updated_by: user.id,
       })
@@ -189,15 +209,13 @@ export async function POST(
 
     for (let i = 0; i < normalizedItems.length; i++) {
       const item = normalizedItems[i];
-      const originalItem = transfer.stock_transfer_items[i];
-
       // OUT from source warehouse (reduce stock)
       const { data: sourceStock } = await supabase
         .from('item_warehouse')
         .select('id, current_stock, default_location_id')
         .eq('company_id', userData.company_id)
         .eq('item_id', item.itemId)
-        .eq('warehouse_id', transfer.from_warehouse_id)
+        .eq('warehouse_id', typedTransfer.from_warehouse_id)
         .is('deleted_at', null)
         .single();
 
@@ -210,7 +228,7 @@ export async function POST(
         supabase,
         companyId: userData.company_id,
         itemId: item.itemId,
-        warehouseId: transfer.from_warehouse_id,
+        warehouseId: typedTransfer.from_warehouse_id,
         locationId: fromLocationId || sourceStock?.default_location_id || null,
         userId: user.id,
         qtyOnHandDelta: -item.normalizedQty,
@@ -233,7 +251,7 @@ export async function POST(
         .select('id, current_stock, default_location_id')
         .eq('company_id', userData.company_id)
         .eq('item_id', item.itemId)
-        .eq('warehouse_id', transfer.to_warehouse_id)
+        .eq('warehouse_id', typedTransfer.to_warehouse_id)
         .is('deleted_at', null)
         .maybeSingle();
 
@@ -257,7 +275,7 @@ export async function POST(
         await supabase.from('item_warehouse').insert({
           company_id: userData.company_id,
           item_id: item.itemId,
-          warehouse_id: transfer.to_warehouse_id,
+          warehouse_id: typedTransfer.to_warehouse_id,
           current_stock: newDestStock,
           default_location_id: toLocationId,
           created_by: user.id,
@@ -269,7 +287,7 @@ export async function POST(
         supabase,
         companyId: userData.company_id,
         itemId: item.itemId,
-        warehouseId: transfer.to_warehouse_id,
+        warehouseId: typedTransfer.to_warehouse_id,
         locationId: toLocationId || destStock?.default_location_id || null,
         userId: user.id,
         qtyOnHandDelta: item.normalizedQty,
@@ -314,7 +332,7 @@ export async function POST(
       },
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

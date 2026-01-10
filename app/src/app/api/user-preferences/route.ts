@@ -4,6 +4,7 @@ import type { UserPreferences, UpdateUserPreferencesRequest } from '@/types/user
 import type { Database } from '@/types/database.types'
 
 type DbUserPreferences = Database['public']['Tables']['user_preferences']['Row']
+type UserPreferencesUpdate = Partial<DbUserPreferences>
 
 // Transform database preferences to frontend type
 function transformDbPreferences(dbPrefs: DbUserPreferences): UserPreferences {
@@ -18,7 +19,7 @@ function transformDbPreferences(dbPrefs: DbUserPreferences): UserPreferences {
 }
 
 // GET /api/user-preferences - Get current user's preferences
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const { supabase } = await createServerClientWithBU()
 
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ data: transformDbPreferences(data) })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -98,7 +99,7 @@ export async function PUT(request: NextRequest) {
 
     if (existing) {
       // Update existing preferences
-      const updateData: any = {}
+      const updateData: UserPreferencesUpdate = {}
       if (body.fontSize !== undefined) updateData.font_size = body.fontSize
       if (body.theme !== undefined) updateData.theme = body.theme
 
@@ -140,7 +141,7 @@ export async function PUT(request: NextRequest) {
     }
 
     return NextResponse.json({ data: transformDbPreferences(result) })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

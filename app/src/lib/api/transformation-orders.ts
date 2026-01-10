@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api';
 import type {
-  TransformationOrder,
+  TransformationOrderApi,
   TransformationOrderFilters,
   TransformationOrderListResponse,
   CreateTransformationOrderRequest,
@@ -32,15 +32,15 @@ export const transformationOrdersApi = {
   /**
    * Get single transformation order by ID
    */
-  async getById(id: string): Promise<{ data: TransformationOrder }> {
-    return apiClient.get<{ data: TransformationOrder }>(`/api/transformations/orders/${id}`);
+  async getById(id: string): Promise<{ data: TransformationOrderApi }> {
+    return apiClient.get<{ data: TransformationOrderApi }>(`/api/transformations/orders/${id}`);
   },
 
   /**
    * Create new transformation order from template
    */
-  async create(data: CreateTransformationOrderRequest): Promise<{ data: TransformationOrder }> {
-    return apiClient.post<{ data: TransformationOrder }>('/api/transformations/orders', data);
+  async create(data: CreateTransformationOrderRequest): Promise<{ data: TransformationOrderApi }> {
+    return apiClient.post<{ data: TransformationOrderApi }>('/api/transformations/orders', data);
   },
 
   /**
@@ -49,8 +49,8 @@ export const transformationOrdersApi = {
   async update(
     id: string,
     data: UpdateTransformationOrderRequest
-  ): Promise<{ data: TransformationOrder }> {
-    return apiClient.patch<{ data: TransformationOrder }>(`/api/transformations/orders/${id}`, data);
+  ): Promise<{ data: TransformationOrderApi }> {
+    return apiClient.patch<{ data: TransformationOrderApi }>(`/api/transformations/orders/${id}`, data);
   },
 
   /**
@@ -64,8 +64,8 @@ export const transformationOrdersApi = {
    * Prepare order (DRAFT → PREPARING)
    * Validates template and stock availability
    */
-  async prepare(id: string): Promise<{ data: TransformationOrder; message: string }> {
-    return apiClient.post<{ data: TransformationOrder; message: string }>(
+  async prepare(id: string): Promise<{ data: TransformationOrderApi; message: string }> {
+    return apiClient.post<{ data: TransformationOrderApi; message: string }>(
       `/api/transformations/orders/${id}/release`,
       {}
     );
@@ -76,7 +76,7 @@ export const transformationOrdersApi = {
    * Release order (DRAFT → PREPARING)
    * Validates template and stock availability
    */
-  async release(id: string): Promise<{ data: TransformationOrder; message: string }> {
+  async release(id: string): Promise<{ data: TransformationOrderApi; message: string }> {
     return this.prepare(id);
   },
 
@@ -88,12 +88,12 @@ export const transformationOrdersApi = {
     id: string,
     data: ExecuteTransformationOrderRequest
   ): Promise<{
-    data: TransformationOrder;
+    data: TransformationOrderApi;
     message: string;
     stockTransactions?: { inputs: string[]; outputs: string[] };
   }> {
     return apiClient.post<{
-      data: TransformationOrder;
+      data: TransformationOrderApi;
       message: string;
       stockTransactions?: { inputs: string[]; outputs: string[] };
     }>(`/api/transformations/orders/${id}/execute`, data);
@@ -102,8 +102,8 @@ export const transformationOrdersApi = {
   /**
    * Cancel order (DRAFT or PREPARING → CANCELLED)
    */
-  async cancel(id: string): Promise<{ data: TransformationOrder; message: string }> {
-    return apiClient.post<{ data: TransformationOrder; message: string }>(
+  async cancel(id: string): Promise<{ data: TransformationOrderApi; message: string }> {
+    return apiClient.post<{ data: TransformationOrderApi; message: string }>(
       `/api/transformations/orders/${id}/cancel`,
       {}
     );

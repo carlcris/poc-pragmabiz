@@ -3,6 +3,60 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
 
+type ItemWarehouseRow = {
+  item_id: string
+  warehouse_id: string
+  current_stock: number | string | null
+  item?: {
+    item_code: string | null
+    item_name: string | null
+    category_id: string | null
+    category?: {
+      category_name: string | null
+    } | null
+    uom?: {
+      code: string | null
+    } | null
+  } | null
+  warehouse?: {
+    warehouse_code: string | null
+    warehouse_name: string | null
+  } | null
+}
+
+type StockBalance = {
+  itemId: string
+  itemCode: string | null
+  itemName: string | null
+  categoryId: string | null
+  category: string
+  warehouseId: string
+  warehouseCode: string | null
+  warehouseName: string | null
+  quantity: number
+  valuationRate: number
+  stockValue: number
+  uom: string
+}
+
+type ValuationGroup = {
+  groupKey: string
+  groupName: string
+  itemId: string | null
+  itemCode: string | null
+  itemName: string | null
+  category: string
+  warehouseId: string | null
+  warehouseCode: string | null
+  warehouseName: string | null
+  totalQuantity: number
+  totalValue: number
+  averageRate: number
+  uom: string
+  warehouseCount: Set<string>
+  itemCount: Set<string>
+}
+
 // GET /api/reports/stock-valuation
 // Returns current stock valuation report
 export async function GET(request: NextRequest) {
@@ -84,7 +138,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get latest valuation rates from stock_transaction_items for each item-warehouse
-    const itemWarehousePairs = inventoryData?.map(inv => ({ item_id: inv.item_id, warehouse_id: inv.warehouse_id })) || []
+    const itemWarehousePairs =
+      inventoryData?.map((inv) => ({ item_id: inv.item_id, warehouse_id: inv.warehouse_id })) || []
 
     const valuationRates = new Map<string, number>()
     for (const pair of itemWarehousePairs) {
@@ -102,9 +157,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Build valuation map
-    const balancesMap = new Map<string, any>()
+    const balancesMap = new Map<string, StockBalance>()
 
-    for (const entry of inventoryData || []) {
+    const typedInventoryData = (inventoryData || []) as ItemWarehouseRow[]
+    for (const entry of typedInventoryData) {
       const key = `${entry.item_id}_${entry.warehouse_id}`
 
       if (!balancesMap.has(key)) {
@@ -135,7 +191,7 @@ export async function GET(request: NextRequest) {
     )
 
     // Group data based on groupBy parameter
-    const valuationMap = new Map<string, any>()
+    const valuationMap = new Map<string, ValuationGroup>()
 
     for (const balance of stockBalances) {
       let key: string
@@ -259,7 +315,7 @@ export async function GET(request: NextRequest) {
         groupBy,
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

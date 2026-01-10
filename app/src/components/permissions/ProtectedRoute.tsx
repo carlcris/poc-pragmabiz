@@ -39,7 +39,7 @@ export function ProtectedRoute({
   loadingComponent,
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { canView, isLoading, hasAnyPermissions } = usePermissions();
+  const { canView, isLoading } = usePermissions();
 
   useEffect(() => {
     // Wait for permissions to load

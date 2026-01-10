@@ -20,7 +20,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByEmployee(filters);
 
-  const employeeData = data?.data || [];
+  const employeeData = useMemo(() => data?.data || [], [data]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 

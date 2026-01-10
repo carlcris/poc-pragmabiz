@@ -1,4 +1,4 @@
-import type { SalesOrder, SalesOrderLineItem } from "@/types/sales-order";
+import type { SalesOrder } from "@/types/sales-order";
 
 // Helper function to calculate line total
 function calculateLineTotal(

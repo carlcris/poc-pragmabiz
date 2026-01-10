@@ -45,6 +45,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Quotation } from "@/types/quotation";
 import type { CreateQuotationRequest } from "@/types/quotation";
+import type { Customer } from "@/types/customer";
 import { QuotationLineItemDialog, type LineItemFormValues } from "./QuotationLineItemDialog";
 
 const quotationFormSchema = z.object({
@@ -86,17 +87,20 @@ export function QuotationFormDialog({
   } | null>(null);
 
   // Default values
-  const defaultValues: QuotationFormValues = {
-    companyId: "",
-    customerId: "",
-    quotationDate: new Date().toISOString().split("T")[0],
-    validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-    terms:
-      "Payment due within 30 days. Delivery within 2 weeks of order confirmation.",
-    notes: "",
-  };
+  const defaultValues = useMemo<QuotationFormValues>(
+    () => ({
+      companyId: "",
+      customerId: "",
+      quotationDate: new Date().toISOString().split("T")[0],
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      terms:
+        "Payment due within 30 days. Delivery within 2 weeks of order confirmation.",
+      notes: "",
+    }),
+    []
+  );
 
   const form = useForm<QuotationFormValues>({
     resolver: zodResolver(quotationFormSchema),
@@ -168,7 +172,7 @@ export function QuotationFormDialog({
       form.reset(defaultValues);
       setLineItems([]);
     }
-  }, [open, quotation, form]);
+  }, [open, quotation, form, defaultValues]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -239,8 +243,7 @@ export function QuotationFormDialog({
         await createMutation.mutateAsync(apiRequest);
       }
       onOpenChange(false);
-    } catch (error) {
-
+    } catch {
     }
   };
 
@@ -287,9 +290,9 @@ export function QuotationFormDialog({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {customers
-                              .filter((c: any) => c.isActive)
-                              .map((customer: any) => (
+                            {(customers as Customer[])
+                              .filter((customer) => customer.isActive)
+                              .map((customer) => (
                                 <SelectItem key={customer.id} value={customer.id}>
                                   {customer.code} - {customer.name}
                                 </SelectItem>
@@ -353,7 +356,7 @@ export function QuotationFormDialog({
                   {lineItems.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                       <p>No items added yet.</p>
-                      <p className="text-sm">Click "Add Item" to get started.</p>
+                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
                     </div>
                   ) : (
                     <>

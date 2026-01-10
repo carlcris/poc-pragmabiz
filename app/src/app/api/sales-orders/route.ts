@@ -13,6 +13,17 @@ type DbCustomer = Database['public']['Tables']['customers']['Row']
 type DbItem = Database['public']['Tables']['items']['Row']
 type DbUser = Database['public']['Tables']['users']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
+type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
+  items?: DbItem | null
+  units_of_measure?: DbUoM | null
+  item_packaging?: { id: string; pack_name: string; qty_per_pack: number } | null
+}
+type CalculatedSalesOrderLineItem = SalesOrderLineItem & {
+  normalizedQty: number
+  discountAmount: number
+  taxAmount: number
+  lineTotal: number
+}
 
 // Transform database sales order to frontend type
 function transformDbSalesOrder(
@@ -54,13 +65,7 @@ function transformDbSalesOrder(
 }
 
 // Transform database sales order item to frontend type
-function transformDbSalesOrderItem(
-  dbItem: DbSalesOrderItem & {
-    items?: DbItem | null
-    units_of_measure?: DbUoM | null
-    item_packaging?: { id: string; pack_name: string; qty_per_pack: number } | null
-  }
-): SalesOrderLineItem {
+function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): SalesOrderLineItem {
   return {
     id: dbItem.id,
     itemId: dbItem.item_id,
@@ -219,17 +224,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Group items by order
-    const itemsByOrder = items?.reduce((acc, item) => {
+    const itemsByOrder =
+      (items as DbSalesOrderItemWithRelations[] | null)?.reduce((acc, item) => {
       if (!acc[item.order_id]) {
         acc[item.order_id] = []
       }
-      acc[item.order_id].push(transformDbSalesOrderItem(item as any))
+      acc[item.order_id].push(transformDbSalesOrderItem(item))
       return acc
     }, {} as Record<string, SalesOrderLineItem[]>) || {}
 
     // Transform to frontend format
     const transformedData = orders.map((order) =>
-      transformDbSalesOrder(order as any, itemsByOrder[order.id] || [])
+      transformDbSalesOrder(
+        order as DbSalesOrder & {
+          customers?: DbCustomer | null
+          users?: DbUser | null
+          sales_quotations?: { quotation_code: string } | null
+        },
+        itemsByOrder[order.id] || []
+      )
     )
 
     return NextResponse.json({
@@ -241,7 +254,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -322,7 +335,8 @@ export async function POST(request: NextRequest) {
     let totalDiscount = 0
     let totalTax = 0
 
-    const itemsWithCalculations = orderData.lineItems.map((item, index) => {
+    const itemsWithCalculations: CalculatedSalesOrderLineItem[] = orderData.lineItems.map(
+      (item, index) => {
       const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity
       const itemSubtotal = normalizedQty * item.unitPrice
       const discountAmount = (itemSubtotal * (item.discount || 0) / 100)
@@ -334,14 +348,15 @@ export async function POST(request: NextRequest) {
       totalDiscount += discountAmount
       totalTax += taxAmount
 
-      return {
-        ...item,
-        normalizedQty,
-        discountAmount,
-        taxAmount,
-        lineTotal,
+        return {
+          ...item,
+          normalizedQty,
+          discountAmount,
+          taxAmount,
+          lineTotal,
+        }
       }
-    })
+    )
 
     const totalAmount = subtotal - totalDiscount + totalTax
 
@@ -460,11 +475,20 @@ export async function POST(request: NextRequest) {
       .eq('order_id', order.id)
       .order('sort_order', { ascending: true })
 
-    const items = orderItems?.map(item => transformDbSalesOrderItem(item as any)) || []
-    const result = transformDbSalesOrder(completeOrder as any, items)
+    const items =
+      orderItems?.map((item) => transformDbSalesOrderItem(item as DbSalesOrderItemWithRelations)) ||
+      []
+    const result = transformDbSalesOrder(
+      completeOrder as DbSalesOrder & {
+        customers?: DbCustomer | null
+        users?: DbUser | null
+        sales_quotations?: { quotation_code: string } | null
+      },
+      items
+    )
 
     return NextResponse.json(result, { status: 201 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

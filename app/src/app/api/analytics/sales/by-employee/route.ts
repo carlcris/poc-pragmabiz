@@ -139,7 +139,7 @@ export const GET = async (req: NextRequest) => {
         totalPages: Math.ceil(rankedEmployees.length / limit),
       },
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

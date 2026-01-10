@@ -138,7 +138,7 @@ export async function PATCH(
     }
 
     return NextResponse.json(formattedQuotation)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

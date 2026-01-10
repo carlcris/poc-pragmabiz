@@ -109,7 +109,7 @@ export const GET = async (req: NextRequest) => {
         createdAt: c.created_at,
       })) || [],
     });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

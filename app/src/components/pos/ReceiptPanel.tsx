@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Printer, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,27 +17,26 @@ export function ReceiptPanel({ transaction, open, onClose }: ReceiptPanelProps) 
   const [pdfDataUrl, setPdfDataUrl] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
 
-  useEffect(() => {
-    if (open && transaction) {
-      generateReceipt()
-    } else {
-      setPdfDataUrl(null)
-    }
-  }, [open, transaction])
-
-  const generateReceipt = async () => {
+  const generateReceipt = useCallback(async () => {
     if (!transaction) return
 
     setIsGenerating(true)
     try {
       const dataUrl = await generateReceiptPDF(transaction)
       setPdfDataUrl(dataUrl)
-    } catch (error) {
-
+    } catch {
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [transaction])
+
+  useEffect(() => {
+    if (open && transaction) {
+      generateReceipt()
+    } else {
+      setPdfDataUrl(null)
+    }
+  }, [open, transaction, generateReceipt])
 
   const handlePrint = () => {
     if (!pdfDataUrl || !transaction) return

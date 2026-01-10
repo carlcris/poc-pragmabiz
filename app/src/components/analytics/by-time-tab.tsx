@@ -10,7 +10,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { format, parseISO } from "date-fns";
 import type { SalesAnalyticsFilters } from "@/types/analytics";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { TrendingUp, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ByTimeTabProps {
   filters?: SalesAnalyticsFilters;
@@ -20,7 +20,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByTime(filters);
 
-  const salesData = data?.data || [];
+  const salesData = useMemo(() => data?.data || [], [data]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 

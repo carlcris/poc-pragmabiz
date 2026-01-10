@@ -93,18 +93,21 @@ export function InvoiceFormDialog({
   } | null>(null);
 
   // Default values
-  const defaultValues: InvoiceFormValues = {
-    customerId: "",
-    warehouseId: "",
-    locationId: "",
-    invoiceDate: new Date().toISOString().split("T")[0],
-    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-    terms:
-      "Payment due within 30 days. Delivery within 2 weeks of order confirmation.",
-    notes: "",
-  };
+  const defaultValues = useMemo<InvoiceFormValues>(
+    () => ({
+      customerId: "",
+      warehouseId: "",
+      locationId: "",
+      invoiceDate: new Date().toISOString().split("T")[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      terms:
+        "Payment due within 30 days. Delivery within 2 weeks of order confirmation.",
+      notes: "",
+    }),
+    []
+  );
 
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
@@ -191,7 +194,7 @@ export function InvoiceFormDialog({
       form.reset(defaultValues);
       setLineItems([]);
     }
-  }, [open, invoice, form]);
+  }, [open, invoice, form, defaultValues]);
 
   useEffect(() => {
     if (!selectedWarehouseId) {
@@ -272,8 +275,7 @@ export function InvoiceFormDialog({
         await createMutation.mutateAsync(apiRequest);
       }
       onOpenChange(false);
-    } catch (error) {
-
+    } catch {
     }
   };
 
@@ -454,7 +456,7 @@ export function InvoiceFormDialog({
                   {lineItems.length === 0 ? (
                     <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
                       <p>No items added yet.</p>
-                      <p className="text-sm">Click "Add Item" to get started.</p>
+                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
                     </div>
                   ) : (
                     <>

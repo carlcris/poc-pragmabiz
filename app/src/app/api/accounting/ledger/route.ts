@@ -73,8 +73,44 @@ export async function GET(request: NextRequest) {
     }
 
     // Resolve account
+    type AccountRow = {
+      id: string;
+      company_id: string;
+      account_number: string;
+      account_name: string;
+      account_type: string;
+      parent_account_id: string | null;
+      is_system_account: boolean;
+      is_active: boolean;
+      level: number;
+      sort_order: number;
+      description: string | null;
+      created_at: string;
+      created_by: string;
+      updated_at: string;
+      updated_by: string;
+      deleted_at: string | null;
+      version: number;
+    };
+
+    type JournalEntryRow = {
+      id: string;
+      journal_code: string;
+      posting_date: string;
+      description: string | null;
+      reference_type: string | null;
+      reference_code: string | null;
+      source_module: string;
+    };
+
+    type JournalLineRow = {
+      debit: number | string;
+      credit: number | string;
+      journal_entries: JournalEntryRow;
+    };
+
     let account: Account | null = null;
-    let accountData: any = null;
+    let accountData: AccountRow | null = null;
 
     if (accountId) {
       const { data, error } = await supabase
@@ -223,9 +259,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Sort journal lines by posting date manually (since we can't use .order() with nested fields)
-    const sortedJournalLines = (journalLines || []).sort((a, b) => {
-      const dateA = new Date((a.journal_entries as any).posting_date).getTime();
-      const dateB = new Date((b.journal_entries as any).posting_date).getTime();
+    const sortedJournalLines = (journalLines as JournalLineRow[] | null || []).sort((a, b) => {
+      const dateA = new Date(a.journal_entries.posting_date).getTime();
+      const dateB = new Date(b.journal_entries.posting_date).getTime();
       return dateA - dateB;
     });
 
@@ -237,15 +273,7 @@ export async function GET(request: NextRequest) {
 
     if (sortedJournalLines) {
       for (const line of sortedJournalLines) {
-        const je = line.journal_entries as unknown as {
-          id: string;
-          journal_code: string;
-          posting_date: string;
-          description: string | null;
-          reference_type: string | null;
-          reference_code: string | null;
-          source_module: string;
-        };
+        const je = line.journal_entries;
 
         const debit = Number(line.debit);
         const credit = Number(line.credit);
@@ -295,7 +323,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json({ data: ledger });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

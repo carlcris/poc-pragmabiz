@@ -3,13 +3,27 @@
 import { useEffect, useState } from "react";
 import { useCurrency } from "@/hooks/useCurrency";
 
-interface CartItem {
+type CartItem = {
   id: string;
   name: string;
   quantity: number;
   price: number;
   total: number;
-}
+};
+
+type POSUpdateTotals = {
+  subtotal?: number;
+  discount?: number;
+  tax?: number;
+  total?: number;
+  paid?: number;
+  change?: number;
+};
+
+type POSUpdateDetail = {
+  cart?: CartItem[];
+  totals?: POSUpdateTotals;
+};
 
 export default function CustomerDisplayPage() {
   const { formatCurrency } = useCurrency();
@@ -77,25 +91,28 @@ export default function CustomerDisplayPage() {
     window.addEventListener("storage", handleStorageChange);
 
     // Also listen for custom events from same window
-    const handleCustomEvent = (e: CustomEvent) => {
-      if (e.detail.cart) {
-        setCart(e.detail.cart);
+    const handleCustomEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<POSUpdateDetail>;
+      const { cart: updatedCart, totals } = customEvent.detail || {};
+
+      if (updatedCart) {
+        setCart(updatedCart);
       }
-      if (e.detail.totals) {
-        setSubtotal(e.detail.totals.subtotal || 0);
-        setDiscount(e.detail.totals.discount || 0);
-        setTax(e.detail.totals.tax || 0);
-        setTotal(e.detail.totals.total || 0);
-        setPaid(e.detail.totals.paid || 0);
-        setChange(e.detail.totals.change || 0);
+      if (totals) {
+        setSubtotal(totals.subtotal || 0);
+        setDiscount(totals.discount || 0);
+        setTax(totals.tax || 0);
+        setTotal(totals.total || 0);
+        setPaid(totals.paid || 0);
+        setChange(totals.change || 0);
       }
     };
 
-    window.addEventListener("pos_update" as any, handleCustomEvent as any);
+    window.addEventListener("pos_update", handleCustomEvent);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("pos_update" as any, handleCustomEvent as any);
+      window.removeEventListener("pos_update", handleCustomEvent);
     };
   }, []);
 

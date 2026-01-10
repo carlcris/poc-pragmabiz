@@ -12,29 +12,38 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     const numericPattern = /^-?\d*(\.\d*)?$/
     const resolvedInputMode = isNumeric ? inputMode ?? "decimal" : inputMode
     const resolvedPattern = isNumeric ? pattern ?? "^-?\\d*(\\.\\d*)?$" : pattern
-    const toDisplayValue = (nextValue: typeof value) =>
-      nextValue === undefined || nextValue === null ? "" : String(nextValue)
-    const isIncompleteNumeric = (nextValue: string) =>
-      nextValue === "" ||
-      nextValue === "-" ||
-      nextValue === "." ||
-      nextValue === "-." ||
-      nextValue.endsWith(".")
-    const numericEqualsDisplay = (nextValue: typeof value, currentDisplay: string) => {
-      if (isIncompleteNumeric(currentDisplay)) {
-        return false
-      }
-      if (nextValue === undefined || nextValue === null || nextValue === "") {
-        return currentDisplay === ""
-      }
-      const parsedDisplay = Number.parseFloat(currentDisplay)
-      const parsedValue =
-        typeof nextValue === "number" ? nextValue : Number.parseFloat(String(nextValue))
-      if (Number.isNaN(parsedDisplay) || Number.isNaN(parsedValue)) {
-        return false
-      }
-      return parsedDisplay === parsedValue
-    }
+    const toDisplayValue = React.useCallback(
+      (nextValue: typeof value) =>
+        nextValue === undefined || nextValue === null ? "" : String(nextValue),
+      []
+    )
+    const isIncompleteNumeric = React.useCallback(
+      (nextValue: string) =>
+        nextValue === "" ||
+        nextValue === "-" ||
+        nextValue === "." ||
+        nextValue === "-." ||
+        nextValue.endsWith("."),
+      []
+    )
+    const numericEqualsDisplay = React.useCallback(
+      (nextValue: typeof value, currentDisplay: string) => {
+        if (isIncompleteNumeric(currentDisplay)) {
+          return false
+        }
+        if (nextValue === undefined || nextValue === null || nextValue === "") {
+          return currentDisplay === ""
+        }
+        const parsedDisplay = Number.parseFloat(currentDisplay)
+        const parsedValue =
+          typeof nextValue === "number" ? nextValue : Number.parseFloat(String(nextValue))
+        if (Number.isNaN(parsedDisplay) || Number.isNaN(parsedValue)) {
+          return false
+        }
+        return parsedDisplay === parsedValue
+      },
+      [isIncompleteNumeric]
+    )
     const [displayValue, setDisplayValue] = React.useState<string>(() =>
       toDisplayValue(value)
     )
@@ -54,7 +63,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       if (next !== displayValue) {
         setDisplayValue(next)
       }
-    }, [value, displayValue, isNumeric])
+    }, [value, displayValue, isNumeric, isFocused, numericEqualsDisplay, toDisplayValue, isIncompleteNumeric])
 
     const handleChange: React.ChangeEventHandler<HTMLInputElement> = (event) => {
       if (!isNumeric) {

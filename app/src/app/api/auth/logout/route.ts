@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const supabase = await createClient()
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ message: 'Logged out successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { message: 'Internal server error' },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Key, Loader2, Search, Shield, Eye, Plus, Edit, Trash2 } from "lucide-react";
+import { Key, Search, Shield, Eye, Plus, Edit, Trash2 } from "lucide-react";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toProperCase } from "@/lib/string";
 import {

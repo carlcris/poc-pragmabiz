@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useCommissionSummary } from "@/hooks/useCommission";
 
 interface CommissionByPeriodProps {
   dateRange?: {
@@ -11,10 +10,7 @@ interface CommissionByPeriodProps {
 }
 
 export function CommissionByPeriod({ dateRange }: CommissionByPeriodProps) {
-  const { data, isLoading } = useCommissionSummary({
-    dateFrom: dateRange?.from,
-    dateTo: dateRange?.to,
-  });
+  void dateRange;
 
   return (
     <Card>

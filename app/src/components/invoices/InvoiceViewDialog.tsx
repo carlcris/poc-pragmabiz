@@ -55,8 +55,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
           });
 
           setQrCodeDataUrl(qrDataUrl);
-        } catch (error) {
-
+        } catch {
         }
       };
 
@@ -89,8 +88,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
           }, 1000);
         };
       }
-    } catch (error) {
-
+    } catch {
     } finally {
       setIsPrinting(false);
     }
@@ -116,8 +114,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
       // Cleanup
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (error) {
-
+    } catch {
     } finally {
       setIsGeneratingPDF(false);
     }

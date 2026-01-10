@@ -7,11 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useCreateCustomer } from "@/hooks/useCustomers";
 import { toast } from "sonner";
+import { useAuthStore } from "@/stores/authStore";
+import type { Customer, CreateCustomerRequest } from "@/types/customer";
 
 interface QuickCustomerFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCustomerCreated: (customer: any) => void;
+  onCustomerCreated: (customer: Customer) => void;
 }
 
 export function QuickCustomerForm({
@@ -20,6 +22,7 @@ export function QuickCustomerForm({
   onCustomerCreated,
 }: QuickCustomerFormProps) {
   const createCustomer = useCreateCustomer();
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -37,7 +40,13 @@ export function QuickCustomerForm({
     }
 
     try {
-      const customerData = {
+      if (!user?.companyId) {
+        toast.error("User company information not available");
+        return;
+      }
+
+      const customerData: CreateCustomerRequest = {
+        companyId: user.companyId,
         customerType: "individual" as const,
         code: `CUST-${Date.now()}`, // Auto-generate code
         name: formData.name,
@@ -60,7 +69,7 @@ export function QuickCustomerForm({
         isActive: true,
       };
 
-      const result = await createCustomer.mutateAsync(customerData as any);
+      const result = await createCustomer.mutateAsync(customerData);
 
       toast.success("Customer created successfully");
       onCustomerCreated(result);
@@ -74,8 +83,7 @@ export function QuickCustomerForm({
         address: "",
         city: "",
       });
-    } catch (error) {
-
+    } catch {
       toast.error("Failed to create customer");
     }
   };

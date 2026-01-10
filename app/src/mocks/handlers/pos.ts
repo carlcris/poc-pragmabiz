@@ -4,7 +4,7 @@ import type { POSTransaction, POSTransactionCreate } from "@/types/pos";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api";
 
-let transactions = [...mockPOSTransactions];
+const transactions = [...mockPOSTransactions];
 
 export const posHandlers = [
   // Get all POS transactions
@@ -14,7 +14,7 @@ export const posHandlers = [
     const page = parseInt(url.searchParams.get("page") || "1");
     const limit = parseInt(url.searchParams.get("limit") || "10");
 
-    let filtered = transactions.filter((txn) => {
+    const filtered = transactions.filter((txn) => {
       const searchMatch =
         !search ||
         txn.transactionNumber.toLowerCase().includes(search) ||

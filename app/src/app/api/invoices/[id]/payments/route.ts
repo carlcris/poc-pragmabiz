@@ -64,7 +64,7 @@ export async function GET(
     }))
 
     return NextResponse.json({ data: formattedPayments || [] })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -237,7 +237,7 @@ export async function POST(
       journalEntryId: arPaymentResult.journalEntryId,
       arPostingSuccess: arPaymentResult.success,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import { RESOURCES, type Resource } from '@/constants/resources';
 import type {
   UserPermissions,
-  ResourcePermission,
   PermissionAction
 } from '@/types/rbac';
 import type {

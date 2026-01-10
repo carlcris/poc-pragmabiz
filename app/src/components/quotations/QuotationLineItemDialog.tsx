@@ -25,13 +25,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -46,7 +39,6 @@ import {
 } from "@/components/ui/command";
 import { Textarea } from "@/components/ui/textarea";
 import { useItems } from "@/hooks/useItems";
-import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
 import { useCurrency } from "@/hooks/useCurrency";
 import { PackageSelector } from "@/components/inventory/PackageSelector";
 import { useActivePackages } from "@/hooks/useItemPackages";
@@ -69,6 +61,15 @@ export type LineItemFormValues = z.infer<typeof lineItemSchema> & {
   lineTotal?: number;
 };
 
+type ItemPackageSummary = {
+  id: string;
+  isBasePackage?: boolean;
+};
+
+type ItemPackagesResponse = {
+  data?: ItemPackageSummary[];
+};
+
 interface QuotationLineItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -87,10 +88,6 @@ export function QuotationLineItemDialog({
   // Fetch basic items (for uomId and description)
   const { data: basicItemsData } = useItems({ limit: 1000 });
   const basicItems = basicItemsData?.data || [];
-
-  // Fetch items with stock information for display
-  const { data: enhancedItemsData } = useItemsEnhanced({ limit: 1000 });
-  const enhancedItems = enhancedItemsData?.data || [];
 
   const { formatCurrency } = useCurrency();
 
@@ -135,8 +132,6 @@ export function QuotationLineItemDialog({
 
   const handleItemSelect = async (itemId: string) => {
     const basicItem = basicItems.find((i) => i.id === itemId);
-    const enhancedItem = enhancedItems.find((i) => i.id === itemId);
-
     if (basicItem) {
       form.setValue("itemId", basicItem.id);
       form.setValue("itemCode", basicItem.code);
@@ -149,13 +144,13 @@ export function QuotationLineItemDialog({
       try {
         const response = await fetch(`/api/items/${itemId}/packages`);
         if (response.ok) {
-          const packagesData = await response.json();
-          const basePackage = packagesData.data?.find((pkg: any) => pkg.isBasePackage);
+          const packagesData = (await response.json()) as ItemPackagesResponse;
+          const basePackage = packagesData.data?.find((pkg) => pkg.isBasePackage);
           if (basePackage) {
             form.setValue("packagingId", basePackage.id);
           }
         }
-      } catch (error) {
+      } catch {
         // If fetching packages fails, leave packagingId as null
       }
     }

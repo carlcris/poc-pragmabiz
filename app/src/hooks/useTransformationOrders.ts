@@ -11,6 +11,29 @@ import type {
 
 export const TRANSFORMATION_ORDERS_QUERY_KEY = 'transformation-orders';
 
+type InsufficientItem = {
+  itemName: string;
+  available: number;
+  required: number;
+};
+
+type ErrorWithResponseData = {
+  response?: {
+    data?: {
+      insufficientItems?: InsufficientItem[];
+    };
+  };
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const getInsufficientItems = (error: unknown): InsufficientItem[] | null => {
+  if (!error || typeof error !== 'object') return null;
+  const errorWithResponse = error as ErrorWithResponseData;
+  return errorWithResponse.response?.data?.insufficientItems ?? null;
+};
+
 /**
  * Hook to fetch list of transformation orders
  */
@@ -45,8 +68,8 @@ export function useCreateTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: ['transformation-templates'] });
       toast.success('Transformation order created successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to create transformation order');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to create transformation order'));
     },
   });
 }
@@ -66,8 +89,8 @@ export function useUpdateTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, variables.id] });
       toast.success('Transformation order updated successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update transformation order');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to update transformation order'));
     },
   });
 }
@@ -85,8 +108,8 @@ export function useDeleteTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
       toast.success('Transformation order deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete transformation order');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to delete transformation order'));
     },
   });
 }
@@ -105,16 +128,16 @@ export function useReleaseTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, id] });
       toast.success(response.message || 'Order released successfully');
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       // Check if error has insufficientItems
-      const errorData = error.response?.data;
-      if (errorData?.insufficientItems) {
-        const items = errorData.insufficientItems
-          .map((item: any) => `${item.itemName}: ${item.available}/${item.required}`)
+      const insufficientItems = getInsufficientItems(error);
+      if (insufficientItems) {
+        const items = insufficientItems
+          .map((item) => `${item.itemName}: ${item.available}/${item.required}`)
           .join(', ');
         toast.error(`Insufficient stock: ${items}`);
       } else {
-        toast.error(error.message || 'Failed to release transformation order');
+        toast.error(getErrorMessage(error, 'Failed to release transformation order'));
       }
     },
   });
@@ -140,8 +163,8 @@ export function useExecuteTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: ['item-warehouse'] });
       toast.success(response.message || 'Transformation executed successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to execute transformation');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to execute transformation'));
     },
   });
 }
@@ -161,8 +184,8 @@ export function useCompleteTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, variables.id] });
       toast.success(response.message || 'Order completed successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to complete transformation order');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to complete transformation order'));
     },
   });
 }
@@ -180,8 +203,8 @@ export function useCloseTransformationOrder() {
       queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, id] });
       toast.success(response.message || 'Order closed successfully');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to close transformation order');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to close transformation order'));
     },
   });
 }

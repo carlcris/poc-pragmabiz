@@ -15,7 +15,6 @@ import {
   Mail,
   Globe,
   CreditCard,
-  Building2,
   FileText,
 } from "lucide-react";
 

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -32,15 +31,15 @@ import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Account, CreateJournalLineRequest } from "@/types/accounting";
 
-interface JournalEntryFormDialogProps {
+type JournalEntryFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
-}
+};
 
-interface JournalLine extends CreateJournalLineRequest {
+type JournalLine = CreateJournalLineRequest & {
   tempId: string;
-}
+};
 
 export function JournalEntryFormDialog({
   open,
@@ -85,8 +84,7 @@ export function JournalEntryFormDialog({
       }
       const result = await response.json();
       setAccounts(result.data || []);
-    } catch (error) {
-
+    } catch {
       toast.error("Failed to load accounts");
     }
   };
@@ -112,7 +110,11 @@ export function JournalEntryFormDialog({
     setLines(lines.filter((line) => line.tempId !== tempId));
   };
 
-  const updateLine = (tempId: string, field: keyof JournalLine, value: any) => {
+  const updateLine = <K extends keyof JournalLine>(
+    tempId: string,
+    field: K,
+    value: JournalLine[K]
+  ) => {
     setLines(
       lines.map((line) =>
         line.tempId === tempId ? { ...line, [field]: value } : line

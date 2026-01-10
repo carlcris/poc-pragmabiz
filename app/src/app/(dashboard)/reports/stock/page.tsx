@@ -14,7 +14,6 @@ import { useStockMovement, useStockValuation } from "@/hooks/useStockReports";
 import { useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,8 +34,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { StockMovementFilters, StockValuationFilters } from "@/hooks/useStockReports";
 
 export default function StockReportsPage() {
+  type StockMovementGroupBy = NonNullable<StockMovementFilters["groupBy"]>;
+  type StockValuationGroupBy = NonNullable<StockValuationFilters["groupBy"]>;
+
   const [activeTab, setActiveTab] = useState("movement");
   const { formatCurrency } = useCurrency();
 
@@ -49,13 +52,13 @@ export default function StockReportsPage() {
   );
   const [movementWarehouseId, setMovementWarehouseId] = useState<string>("all");
   const [movementItemId, setMovementItemId] = useState<string>("all");
-  const [movementGroupBy, setMovementGroupBy] = useState<string>("item");
+  const [movementGroupBy, setMovementGroupBy] = useState<StockMovementGroupBy>("item");
 
   // Valuation report filters
   const [valuationWarehouseId, setValuationWarehouseId] = useState<string>("all");
   const [valuationItemId, setValuationItemId] = useState<string>("all");
   const [valuationCategory, setValuationCategory] = useState<string>("all");
-  const [valuationGroupBy, setValuationGroupBy] = useState<string>("item");
+  const [valuationGroupBy, setValuationGroupBy] = useState<StockValuationGroupBy>("item");
 
   // Fetch dropdown data
   const { data: itemsData } = useItems({ limit: 1000 });
@@ -73,7 +76,7 @@ export default function StockReportsPage() {
     endDate: movementEndDate,
     warehouseId: movementWarehouseId === "all" ? undefined : movementWarehouseId,
     itemId: movementItemId === "all" ? undefined : movementItemId,
-    groupBy: movementGroupBy as any,
+    groupBy: movementGroupBy,
   });
 
   // Fetch valuation report
@@ -81,7 +84,7 @@ export default function StockReportsPage() {
     warehouseId: valuationWarehouseId === "all" ? undefined : valuationWarehouseId,
     itemId: valuationItemId === "all" ? undefined : valuationItemId,
     category: valuationCategory === "all" ? undefined : valuationCategory,
-    groupBy: valuationGroupBy as any,
+    groupBy: valuationGroupBy,
   });
 
   return (
@@ -134,7 +137,10 @@ export default function StockReportsPage() {
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Group By</label>
-                  <Select value={movementGroupBy} onValueChange={setMovementGroupBy}>
+                  <Select
+                    value={movementGroupBy}
+                    onValueChange={(value) => setMovementGroupBy(value as StockMovementGroupBy)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -431,7 +437,10 @@ export default function StockReportsPage() {
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Group By</label>
-                  <Select value={valuationGroupBy} onValueChange={setValuationGroupBy}>
+                  <Select
+                    value={valuationGroupBy}
+                    onValueChange={(value) => setValuationGroupBy(value as StockValuationGroupBy)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

@@ -43,8 +43,7 @@ export default function TrialBalancePage() {
 
       const result = await response.json()
       setTrialBalance(result.data)
-    } catch (error) {
-
+    } catch {
     } finally {
       setLoading(false)
     }

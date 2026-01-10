@@ -2,7 +2,14 @@ import { http, HttpResponse } from "msw";
 import type { SalesOrder, CreateSalesOrderRequest, SalesOrderLineItem } from "@/types/sales-order";
 import { salesOrders } from "../data/sales-orders";
 
-let salesOrdersData = [...salesOrders];
+const salesOrdersData = [...salesOrders];
+type SalesOrderLineItemInput = {
+  id?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+} & Record<string, unknown>;
 
 // Helper function to calculate line total
 function calculateLineTotal(
@@ -175,8 +182,8 @@ export const salesOrderHandlers = [
     };
 
     if (body.lineItems) {
-      lineItems = body.lineItems.map((item: any, idx: number) => ({
-        id: item.id || `soli-${Date.now()}-${idx}`,
+      lineItems = body.lineItems.map((item: SalesOrderLineItemInput, idx: number) => ({
+        id: item.id ?? `soli-${Date.now()}-${idx}`,
         ...item,
         lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
       }));

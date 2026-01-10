@@ -57,6 +57,47 @@ export interface TransformationTemplate {
   outputs: TransformationTemplateOutput[];
 }
 
+export type TransformationTemplateItemApi = {
+  id: string;
+  item_code: string | null;
+  item_name: string | null;
+};
+
+export type TransformationTemplateUomApi = {
+  id: string;
+  uom_name?: string | null;
+  name?: string | null;
+  code?: string | null;
+};
+
+export type TransformationTemplateInputApi = {
+  id: string;
+  quantity: number;
+  notes?: string | null;
+  items?: TransformationTemplateItemApi | null;
+  uom?: TransformationTemplateUomApi | null;
+};
+
+export type TransformationTemplateOutputApi = {
+  id: string;
+  quantity: number;
+  notes?: string | null;
+  is_scrap?: boolean;
+  items?: TransformationTemplateItemApi | null;
+  uom?: TransformationTemplateUomApi | null;
+};
+
+export type TransformationTemplateApi = {
+  id: string;
+  template_code: string;
+  template_name: string;
+  description?: string | null;
+  is_active: boolean;
+  usage_count: number;
+  inputs?: TransformationTemplateInputApi[] | null;
+  outputs?: TransformationTemplateOutputApi[] | null;
+};
+
 // ============================================================================
 // Request/Response Types for API
 // ============================================================================
@@ -98,9 +139,9 @@ export interface TransformationTemplateFilters {
   limit?: number;
 }
 
-export interface TransformationTemplateListResponse {
-  data: TransformationTemplate[];
+export type TransformationTemplateListResponse = {
+  data: TransformationTemplateApi[];
   total: number;
   page: number;
   limit: number;
-}
+};

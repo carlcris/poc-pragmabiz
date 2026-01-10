@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, DollarSign, Users, TrendingUp } from "lucide-react";
+import { DollarSign, Users, TrendingUp } from "lucide-react";
 import { CommissionSummary } from "@/components/commission/commission-summary";
 import { CommissionDetails } from "@/components/commission/commission-details";
 import { CommissionByPeriod } from "@/components/commission/commission-by-period";
 
 export default function CommissionReportsPage() {
-  const [dateRange, setDateRange] = useState({
+  const [dateRange] = useState({
     from: new Date(new Date().setDate(new Date().getDate() - 30)),
     to: new Date(),
   });

@@ -3,7 +3,15 @@ import type { PurchaseOrder, CreatePurchaseOrderRequest, PurchaseOrderLineItem }
 import { purchaseOrders } from "../data/purchase-orders";
 import { suppliers } from "../data/suppliers";
 
-let purchaseOrdersData = [...purchaseOrders];
+const purchaseOrdersData = [...purchaseOrders];
+type PurchaseOrderLineItemInput = {
+  id?: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  taxRate: number;
+  quantityReceived?: number;
+} & Record<string, unknown>;
 
 // Helper function to calculate line total
 function calculateLineTotal(
@@ -183,8 +191,8 @@ export const purchaseOrderHandlers = [
     };
 
     if (body.lineItems) {
-      lineItems = body.lineItems.map((item: any, idx: number) => ({
-        id: item.id || `poli-${Date.now()}-${idx}`,
+      lineItems = body.lineItems.map((item: PurchaseOrderLineItemInput, idx: number) => ({
+        id: item.id ?? `poli-${Date.now()}-${idx}`,
         ...item,
         lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
         quantityReceived: item.quantityReceived || 0,

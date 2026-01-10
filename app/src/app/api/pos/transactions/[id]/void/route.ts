@@ -4,6 +4,16 @@ import { reversePOSTransaction } from '@/services/accounting/posPosting';
 import { reversePOSStockTransaction } from '@/services/inventory/posStockService';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { Tables } from '@/types/supabase';
+
+type POSTransactionRow = Tables<'pos_transactions'>;
+type POSTransactionItemRow = Tables<'pos_transaction_items'>;
+type POSTransactionPaymentRow = Tables<'pos_transaction_payments'>;
+
+type POSTransactionQueryRow = POSTransactionRow & {
+  pos_transaction_items: POSTransactionItemRow[];
+  pos_transaction_payments: POSTransactionPaymentRow[];
+};
 
 export async function POST(
   request: NextRequest,
@@ -62,7 +72,7 @@ export async function POST(
     }
 
     // Update transaction status to voided
-    const { data: voidedTransaction, error: voidError } = await supabase
+    const { data: voidedTransactionData, error: voidError } = await supabase
       .from('pos_transactions')
       .update({
         status: 'voided',
@@ -115,6 +125,7 @@ export async function POST(
         { status: 500 }
       );
     }
+    const voidedTransaction = voidedTransactionData as POSTransactionQueryRow;
 
     // ============================================================================
     // POST-VOID PROCESSING: Reverse Stock & Accounting Entries
@@ -139,7 +150,7 @@ export async function POST(
 
           warnings.push(`Stock reversal failed: ${stockReversalResult.error}`);
         }
-      } catch (error) {
+      } catch {
 
         warnings.push('Stock reversal failed');
       }
@@ -160,7 +171,7 @@ export async function POST(
 
         warnings.push(`GL reversal failed: ${glReversalResult.error}`);
       }
-    } catch (error) {
+    } catch {
 
       warnings.push('GL reversal failed');
     }
@@ -177,28 +188,28 @@ export async function POST(
       transactionDate: voidedTransaction.transaction_date,
       customerId: voidedTransaction.customer_id,
       customerName: voidedTransaction.customer_name,
-      items: voidedTransaction.pos_transaction_items.map((item: any) => ({
+      items: voidedTransaction.pos_transaction_items.map((item) => ({
         id: item.id,
         itemId: item.item_id,
         itemCode: item.item_code,
         itemName: item.item_name,
-        quantity: parseFloat(item.quantity),
-        unitPrice: parseFloat(item.unit_price),
-        discount: parseFloat(item.discount),
-        lineTotal: parseFloat(item.line_total),
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unit_price),
+        discount: Number(item.discount),
+        lineTotal: Number(item.line_total),
       })),
-      subtotal: parseFloat(voidedTransaction.subtotal),
-      totalDiscount: parseFloat(voidedTransaction.total_discount),
-      taxRate: parseFloat(voidedTransaction.tax_rate),
-      totalTax: parseFloat(voidedTransaction.total_tax),
-      totalAmount: parseFloat(voidedTransaction.total_amount),
-      payments: voidedTransaction.pos_transaction_payments.map((payment: any) => ({
+      subtotal: Number(voidedTransaction.subtotal),
+      totalDiscount: Number(voidedTransaction.total_discount),
+      taxRate: Number(voidedTransaction.tax_rate),
+      totalTax: Number(voidedTransaction.total_tax),
+      totalAmount: Number(voidedTransaction.total_amount),
+      payments: voidedTransaction.pos_transaction_payments.map((payment) => ({
         method: payment.payment_method,
-        amount: parseFloat(payment.amount),
+        amount: Number(payment.amount),
         reference: payment.reference,
       })),
-      amountPaid: parseFloat(voidedTransaction.amount_paid),
-      changeAmount: parseFloat(voidedTransaction.change_amount),
+      amountPaid: Number(voidedTransaction.amount_paid),
+      changeAmount: Number(voidedTransaction.change_amount),
       status: voidedTransaction.status,
       cashierId: voidedTransaction.cashier_id,
       cashierName: voidedTransaction.cashier_name,
@@ -212,7 +223,7 @@ export async function POST(
       warnings: warnings.length > 0 ? warnings : undefined,
     });
 
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

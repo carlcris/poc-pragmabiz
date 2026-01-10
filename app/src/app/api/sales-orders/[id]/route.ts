@@ -13,6 +13,18 @@ type DbCustomer = Database['public']['Tables']['customers']['Row']
 type DbItem = Database['public']['Tables']['items']['Row']
 type DbUser = Database['public']['Tables']['users']['Row']
 type DbUoM = Database['public']['Tables']['units_of_measure']['Row']
+type DbSalesOrderUpdate = Database['public']['Tables']['sales_orders']['Update']
+type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
+  items?: DbItem | null
+  units_of_measure?: DbUoM | null
+  item_packaging?: { id: string; pack_name: string; qty_per_pack: number } | null
+}
+type CalculatedSalesOrderLineItem = SalesOrderLineItem & {
+  normalizedQty: number
+  discountAmount: number
+  taxAmount: number
+  lineTotal: number
+}
 
 // Transform database sales order to frontend type
 function transformDbSalesOrder(
@@ -54,13 +66,7 @@ function transformDbSalesOrder(
 }
 
 // Transform database sales order item to frontend type
-function transformDbSalesOrderItem(
-  dbItem: DbSalesOrderItem & {
-    items?: DbItem | null
-    units_of_measure?: DbUoM | null
-    item_packaging?: { id: string; pack_name: string; qty_per_pack: number } | null
-  }
-): SalesOrderLineItem {
+function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): SalesOrderLineItem {
   return {
     id: dbItem.id,
     itemId: dbItem.item_id,
@@ -170,11 +176,19 @@ export async function GET(
 
     }
 
-    const transformedItems = items?.map(item => transformDbSalesOrderItem(item as any)) || []
-    const result = transformDbSalesOrder(order as any, transformedItems)
+    const transformedItems =
+      items?.map((item) => transformDbSalesOrderItem(item as DbSalesOrderItemWithRelations)) || []
+    const result = transformDbSalesOrder(
+      order as DbSalesOrder & {
+        customers?: DbCustomer | null
+        users?: DbUser | null
+        sales_quotations?: { quotation_code: string } | null
+      },
+      transformedItems
+    )
 
     return NextResponse.json(result)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -222,7 +236,7 @@ export async function PUT(
     let subtotal = 0
     let totalDiscount = 0
     let totalTax = 0
-    let itemsWithCalculations: any[] = []
+    let itemsWithCalculations: CalculatedSalesOrderLineItem[] = []
 
     if (updateData.lineItems && updateData.lineItems.length > 0) {
       const itemInputs: StockTransactionItemInput[] = updateData.lineItems.map((item) => ({
@@ -259,7 +273,7 @@ export async function PUT(
     const totalAmount = subtotal - totalDiscount + totalTax
 
     // Update order header
-    const orderUpdate: any = {
+    const orderUpdate: DbSalesOrderUpdate = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     }
@@ -384,11 +398,20 @@ export async function PUT(
       .eq('order_id', id)
       .order('sort_order', { ascending: true })
 
-    const items = orderItems?.map(item => transformDbSalesOrderItem(item as any)) || []
-    const result = transformDbSalesOrder(updatedOrder as any, items)
+    const items =
+      orderItems?.map((item) => transformDbSalesOrderItem(item as DbSalesOrderItemWithRelations)) ||
+      []
+    const result = transformDbSalesOrder(
+      updatedOrder as DbSalesOrder & {
+        customers?: DbCustomer | null
+        users?: DbUser | null
+        sales_quotations?: { quotation_code: string } | null
+      },
+      items
+    )
 
     return NextResponse.json(result)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -457,7 +480,7 @@ export async function DELETE(
       .eq('order_id', id)
 
     return NextResponse.json({ message: 'Sales order deleted successfully' })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

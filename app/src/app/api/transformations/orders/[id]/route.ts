@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateTransformationOrderSchema } from '@/lib/validations/transformation-order';
 import { requirePermission } from '@/lib/auth';
 import { RESOURCES } from '@/constants/resources';
+import type { Database } from '@/types/database.types';
+
+type DbTransformationOrderUpdate = Database['public']['Tables']['transformation_orders']['Update'];
 
 // GET /api/transformations/orders/[id] - Get order by ID
 export async function GET(
@@ -70,7 +73,7 @@ export async function GET(
     }
 
     return NextResponse.json({ data: order });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -142,7 +145,7 @@ export async function PATCH(
     const data = validationResult.data;
 
     // Build update object
-    const updateData: any = {
+    const updateData: DbTransformationOrderUpdate = {
       updated_by: user.id,
       updated_at: new Date().toISOString(),
     };
@@ -171,7 +174,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ data: updatedOrder });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -245,7 +248,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Order deleted successfully' });
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

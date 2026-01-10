@@ -6,7 +6,7 @@ import type {
   SalesByLocation,
   DashboardWidgetData,
 } from "@/types/analytics";
-import { employees, salesDistributions } from "../data/employees";
+import { employees } from "../data/employees";
 
 export const analyticsHandlers = [
   // GET /api/analytics/sales/overview
@@ -77,11 +77,7 @@ export const analyticsHandlers = [
   }),
 
   // GET /api/analytics/sales/by-employee
-  http.get("/api/analytics/sales/by-employee", ({ request }) => {
-    const url = new URL(request.url);
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
-
+  http.get("/api/analytics/sales/by-employee", () => {
     const salesAgents = employees.filter((e) => e.role === "sales_agent");
 
     const employeeData: SalesByEmployee[] = salesAgents.map((employee, index) => {
@@ -278,11 +274,8 @@ export const analyticsHandlers = [
   }),
 
   // GET /api/analytics/commissions/employee/:id/breakdown
-  http.get("/api/analytics/commissions/employee/:employeeId/breakdown", ({ params, request }) => {
+  http.get("/api/analytics/commissions/employee/:employeeId/breakdown", ({ params }) => {
     const { employeeId } = params;
-    const url = new URL(request.url);
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
 
     const employee = employees.find((e) => e.id === employeeId);
 
@@ -361,9 +354,7 @@ export const analyticsHandlers = [
   }),
 
   // POST /api/analytics/export
-  http.post("/api/analytics/export", async ({ request }) => {
-    const body = await request.json();
-
+  http.post("/api/analytics/export", async () => {
     // Return mock blob data for export
     const mockData = new Blob(["Mock export data"], { type: "application/octet-stream" });
 

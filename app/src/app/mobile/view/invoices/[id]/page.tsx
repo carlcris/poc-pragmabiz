@@ -14,7 +14,6 @@ import {
   Calendar,
   User,
   MapPin,
-  Phone,
   Mail,
   Package,
   DollarSign

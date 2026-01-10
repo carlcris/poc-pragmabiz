@@ -54,8 +54,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
           });
 
           setQrCodeDataUrl(qrDataUrl);
-        } catch (error) {
-
+        } catch {
         }
       };
 
@@ -88,8 +87,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
           }, 1000);
         };
       }
-    } catch (error) {
-
+    } catch {
     } finally {
       setIsPrinting(false);
     }
@@ -115,8 +113,7 @@ export function SalesOrderViewDialog({ open, onOpenChange, salesOrder }: SalesOr
       // Cleanup
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (error) {
-
+    } catch {
     } finally {
       setIsGeneratingPDF(false);
     }

@@ -28,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -201,7 +200,7 @@ export function TerritoryManagementDialog({
                 <CardContent className="pt-6 text-center text-muted-foreground">
                   <MapPin className="mx-auto h-8 w-8 mb-2 opacity-50" />
                   <p>No territories assigned yet</p>
-                  <p className="text-xs">Click "Add Territory" to assign one</p>
+                  <p className="text-xs">Click &quot;Add Territory&quot; to assign one</p>
                 </CardContent>
               </Card>
             ) : (

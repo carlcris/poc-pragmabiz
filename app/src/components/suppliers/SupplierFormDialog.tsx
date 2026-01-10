@@ -188,7 +188,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
       onOpenChange(false);
       form.reset();
       setSameAsBilling(false);
-    } catch (error) {
+    } catch {
       toast.error(supplier ? "Failed to update supplier" : "Failed to create supplier");
     }
   };

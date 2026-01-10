@@ -86,7 +86,7 @@ export async function GET(
     }
 
     return NextResponse.json(formattedSupplier)
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -188,7 +188,7 @@ export async function PUT(
       code: supplier.supplier_code,
       name: supplier.supplier_name,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -284,7 +284,7 @@ export async function DELETE(
       success: true,
       message: `Supplier ${supplier.supplier_code} - ${supplier.supplier_name} deleted successfully`,
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

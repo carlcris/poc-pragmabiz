@@ -44,6 +44,61 @@ export async function GET() {
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
+    type AmountRow = {
+      total_amount: number | string;
+      created_at?: string;
+      created_by?: string | null;
+    };
+
+    type EmployeeUserRow = {
+      id: string;
+      first_name: string;
+      last_name: string;
+    };
+
+    type InvoiceEmployeeRow = {
+      total_amount: number | string;
+      primary_employee_id: string | null;
+      employees?: {
+        id: string;
+        users?: EmployeeUserRow | null;
+      } | null;
+    };
+
+    type RecentPOSTransactionRow = {
+      id: string;
+      transaction_code: string;
+      total_amount: number | string;
+      created_at: string;
+      customers?: { customer_name: string } | null;
+      users?: { first_name: string; last_name: string } | null;
+    };
+
+    type RecentInvoiceRow = {
+      id: string;
+      invoice_code: string;
+      total_amount: number | string;
+      created_at: string;
+      customers?: { customer_name: string } | null;
+      employees?: { users?: EmployeeUserRow | null } | null;
+      warehouses?: { warehouse_name: string | null } | null;
+    };
+
+    type ItemWarehouseAlertRow = {
+      item_id: string;
+      warehouse_id: string;
+      current_stock: number | string | null;
+      reorder_level: number | string | null;
+      items: {
+        item_code: string;
+        item_name: string;
+      };
+    };
+
+    type OrderStatusRow = {
+      status: string;
+    };
+
     // Get today's sales from ALL sources
 
     // 1. POS Transactions
@@ -85,25 +140,39 @@ export async function GET() {
       .lte("invoice_date", yesterday);
 
     // Calculate totals from all sources
-    const todayPOSAmount = todayPOSTransactions?.reduce((sum, t) => sum + Number(t.total_amount), 0) || 0;
-    const todayInvoiceAmount = todayInvoices?.reduce((sum, t) => sum + Number(t.total_amount), 0) || 0;
+    const todayPOSAmount = (todayPOSTransactions as AmountRow[] | null || []).reduce(
+      (sum, t) => sum + Number(t.total_amount),
+      0
+    );
+    const todayInvoiceAmount = (todayInvoices as AmountRow[] | null || []).reduce(
+      (sum, t) => sum + Number(t.total_amount),
+      0
+    );
     const todayAmount = todayPOSAmount + todayInvoiceAmount;
 
-    const yesterdayPOSAmount = yesterdayPOSTransactions?.reduce((sum, t) => sum + Number(t.total_amount), 0) || 0;
-    const yesterdayInvoiceAmount = yesterdayInvoices?.reduce((sum, t) => sum + Number(t.total_amount), 0) || 0;
+    const yesterdayPOSAmount = (yesterdayPOSTransactions as AmountRow[] | null || []).reduce(
+      (sum, t) => sum + Number(t.total_amount),
+      0
+    );
+    const yesterdayInvoiceAmount = (yesterdayInvoices as AmountRow[] | null || []).reduce(
+      (sum, t) => sum + Number(t.total_amount),
+      0
+    );
     const yesterdayAmount = yesterdayPOSAmount + yesterdayInvoiceAmount;
 
     const growth = yesterdayAmount > 0 ? ((todayAmount - yesterdayAmount) / yesterdayAmount) * 100 : 0;
 
-    const todayTransactionCount = (todayPOSTransactions?.length || 0) + (todayInvoices?.length || 0);
+    const todayTransactionCount =
+      (todayPOSTransactions as AmountRow[] | null || []).length +
+      (todayInvoices as AmountRow[] | null || []).length;
 
     // Get top agent (user with most sales today from all sources)
 
     // Aggregate sales by user from POS
     const posSalesByUser = new Map<string, { name: string; sales: number; transactions: number }>();
     if (todayPOSTransactions) {
-      for (const transaction of todayPOSTransactions) {
-        const userId = (transaction as any).created_by;
+      for (const transaction of todayPOSTransactions as AmountRow[]) {
+        const userId = transaction.created_by || "";
         if (!posSalesByUser.has(userId)) {
           posSalesByUser.set(userId, { name: '', sales: 0, transactions: 0 });
         }
@@ -137,11 +206,12 @@ export async function GET() {
     // Aggregate invoice sales by user
     const invoiceSalesByUser = new Map<string, { name: string; sales: number; transactions: number }>();
     if (invoicesByEmployee) {
-      for (const invoice of invoicesByEmployee) {
-        const employee = (invoice.employees as any);
-        if (employee && employee.users) {
-          const userId = employee.users.id;
-          const userName = `${employee.users.first_name} ${employee.users.last_name}`;
+      for (const invoice of invoicesByEmployee as InvoiceEmployeeRow[]) {
+        const employee = invoice.employees;
+        const employeeUser = employee?.users;
+        if (employeeUser) {
+          const userId = employeeUser.id;
+          const userName = `${employeeUser.first_name} ${employeeUser.last_name}`;
           if (!invoiceSalesByUser.has(userId)) {
             invoiceSalesByUser.set(userId, { name: userName, sales: 0, transactions: 0 });
           }
@@ -275,13 +345,13 @@ export async function GET() {
 
     // Add POS transactions
     if (recentPOSTransactions) {
-      for (const t of recentPOSTransactions) {
+      for (const t of recentPOSTransactions as RecentPOSTransactionRow[]) {
         allRecentActivity.push({
           id: t.id,
           time: new Date(t.created_at).toLocaleTimeString(),
-          customer: t.customers ? (t.customers as any).customer_name : "Walk-in Customer",
+          customer: t.customers ? t.customers.customer_name : "Walk-in Customer",
           amount: Number(t.total_amount),
-          agent: t.users ? `${(t.users as any).first_name} ${(t.users as any).last_name}` : "Unknown",
+          agent: t.users ? `${t.users.first_name} ${t.users.last_name}` : "Unknown",
           location: "POS",
           timestamp: new Date(t.created_at),
         });
@@ -290,19 +360,18 @@ export async function GET() {
 
     // Add Invoice transactions
     if (recentInvoices) {
-      for (const inv of recentInvoices) {
-        const employee = (inv.employees as any);
-        const agentName = employee && employee.users
-          ? `${employee.users.first_name} ${employee.users.last_name}`
+      for (const inv of recentInvoices as RecentInvoiceRow[]) {
+        const employeeUser = inv.employees?.users;
+        const agentName = employeeUser
+          ? `${employeeUser.first_name} ${employeeUser.last_name}`
           : "Unknown";
 
-        const warehouse = (inv.warehouses as any);
-        const locationName = warehouse?.warehouse_name || "Invoice";
+        const locationName = inv.warehouses?.warehouse_name || "Invoice";
 
         allRecentActivity.push({
           id: inv.id,
           time: new Date(inv.created_at).toLocaleTimeString(),
-          customer: inv.customers ? (inv.customers as any).customer_name : "Unknown Customer",
+          customer: inv.customers ? inv.customers.customer_name : "Unknown Customer",
           amount: Number(inv.total_amount),
           agent: agentName,
           location: locationName,
@@ -313,7 +382,7 @@ export async function GET() {
 
     // Sort by timestamp descending and take top 5
     allRecentActivity.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-    const recentActivity = allRecentActivity.slice(0, 5).map(({ timestamp, ...rest }) => rest);
+    const recentActivity = allRecentActivity.slice(0, 5).map(({  ...rest }) => rest);
 
     // Get reorder alerts - items with stock below reorder level
     const { data: reorderAlertsData, error: reorderAlertsError } = await supabase
@@ -340,19 +409,19 @@ export async function GET() {
     }
 
     // Filter alerts where current stock is below reorder level and sort
-    const reorderAlerts = (reorderAlertsData || [])
-      .filter((alert: any) => {
+    const reorderAlerts = (reorderAlertsData as ItemWarehouseAlertRow[] | null || [])
+      .filter((alert) => {
         const currentStock = parseFloat(alert.current_stock) || 0;
         const reorderLevel = parseFloat(alert.reorder_level) || 0;
         return currentStock < reorderLevel;
       })
-      .sort((a: any, b: any) => {
+      .sort((a, b) => {
         const aStock = parseFloat(a.current_stock) || 0;
         const bStock = parseFloat(b.current_stock) || 0;
         return aStock - bStock;
       })
       .slice(0, 10)
-      .map((alert: any) => ({
+      .map((alert) => ({
         id: alert.item_id,
         code: alert.items.item_code,
         name: alert.items.item_name,
@@ -368,8 +437,8 @@ export async function GET() {
       .eq("company_id", companyId)
       .is("deleted_at", null);
 
-    const activeSalesOrders = (salesOrdersData || []).filter(
-      (order: any) => order.status !== "delivered" && order.status !== "cancelled"
+    const activeSalesOrders = (salesOrdersData as OrderStatusRow[] | null || []).filter(
+      (order) => order.status !== "delivered" && order.status !== "cancelled"
     ).length;
 
     const { data: purchaseOrdersData } = await supabase
@@ -378,8 +447,8 @@ export async function GET() {
       .eq("company_id", companyId)
       .is("deleted_at", null);
 
-    const activePurchaseOrders = (purchaseOrdersData || []).filter(
-      (order: any) => order.status === "pending" || order.status === "in_transit"
+    const activePurchaseOrders = (purchaseOrdersData as OrderStatusRow[] | null || []).filter(
+      (order) => order.status === "pending" || order.status === "in_transit"
     ).length;
 
     const widgetData: DashboardWidgetData = {
@@ -399,7 +468,7 @@ export async function GET() {
     };
 
     return NextResponse.json(widgetData);
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: "Internal server error" },

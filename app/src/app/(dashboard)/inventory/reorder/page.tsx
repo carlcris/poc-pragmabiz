@@ -7,8 +7,6 @@ import {
   XCircle,
   Package,
   TrendingUp,
-  RefreshCw,
-  Eye,
   Check,
   X,
   ShoppingCart,
@@ -92,14 +90,6 @@ export default function ReorderManagementPage() {
         {config.label}
       </Badge>
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
   };
 
   return (

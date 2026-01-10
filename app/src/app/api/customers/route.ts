@@ -1,6 +1,6 @@
 import { createServerClientWithBU } from '@/lib/supabase/server-with-bu'
 import { NextRequest, NextResponse } from 'next/server'
-import type { Customer, CreateCustomerRequest } from '@/types/customer'
+import type { Customer, CreateCustomerRequest, PaymentTerms } from '@/types/customer'
 import type { Database } from '@/types/database.types'
 import { requirePermission, requireLookupDataAccess } from '@/lib/auth'
 import { RESOURCES } from '@/constants/resources'
@@ -33,7 +33,7 @@ function transformDbCustomer(dbCustomer: DbCustomer): Customer {
     contactPersonName: dbCustomer.contact_person || undefined,
     contactPersonEmail: dbCustomer.contact_email || undefined,
     contactPersonPhone: dbCustomer.contact_phone || undefined,
-    paymentTerms: dbCustomer.payment_terms as any || 'net_30',
+    paymentTerms: (dbCustomer.payment_terms as PaymentTerms | null) || 'net_30',
     creditLimit: Number(dbCustomer.credit_limit || 0),
     currentBalance: 0, // This would need to be calculated from invoices
     notes: '',
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil((count || 0) / limit),
       },
     })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(transformDbCustomer(data), { status: 201 })
-  } catch (error) {
+  } catch {
 
     return NextResponse.json(
       { error: 'Internal server error' },

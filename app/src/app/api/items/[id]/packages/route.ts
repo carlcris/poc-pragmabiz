@@ -78,8 +78,22 @@ export async function GET(
       );
     }
 
+    type PackageRow = {
+      id: string;
+      pack_type: string;
+      pack_name: string;
+      qty_per_pack: number | string;
+      uom_id: string | null;
+      barcode: string | null;
+      is_default: boolean;
+      is_active: boolean;
+      created_at: string;
+      updated_at: string;
+      units_of_measure?: { id: string; code: string; name: string; symbol: string | null } | null;
+    };
+
     return NextResponse.json({
-      data: packages.map((pkg: any) => ({
+      data: (packages as PackageRow[]).map((pkg) => ({
         id: pkg.id,
         packType: pkg.pack_type,
         packName: pkg.pack_name,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -35,11 +35,7 @@ export default function JournalsPage() {
   const [showViewDialog, setShowViewDialog] = useState(false)
   const [selectedJournal, setSelectedJournal] = useState<JournalEntryWithLines | null>(null)
 
-  useEffect(() => {
-    fetchJournals()
-  }, [statusFilter, sourceModuleFilter])
-
-  const fetchJournals = async () => {
+  const fetchJournals = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -60,12 +56,15 @@ export default function JournalsPage() {
 
       const result = await response.json()
       setJournals(result.data || [])
-    } catch (error) {
-
+    } catch {
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter, sourceModuleFilter])
+
+  useEffect(() => {
+    fetchJournals()
+  }, [fetchJournals])
 
   const filteredJournals = journals.filter((journal) => {
     if (searchTerm) {

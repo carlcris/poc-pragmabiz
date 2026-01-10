@@ -26,7 +26,6 @@ type ItemPackageManagerProps = {
 
 export function ItemPackageManager({ itemId, itemCode, itemName }: ItemPackageManagerProps) {
   const { data: packages, isLoading } = useItemPackages(itemId);
-  const createPackage = useCreateItemPackage(itemId);
   const deletePackage = useDeleteItemPackage(itemId);
 
   const [isAddingPackage, setIsAddingPackage] = useState(false);
@@ -52,6 +51,11 @@ export function ItemPackageManager({ itemId, itemCode, itemName }: ItemPackageMa
           <p className="text-sm text-gray-500">
             Manage how this item can be packaged and transacted
           </p>
+          {(itemName || itemCode) && (
+            <p className="text-xs text-gray-400 mt-1">
+              {itemName || 'Item'}{itemCode ? ` • ${itemCode}` : ''}
+            </p>
+          )}
         </div>
         <button
           onClick={() => setIsAddingPackage(true)}

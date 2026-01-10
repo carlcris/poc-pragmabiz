@@ -90,7 +90,7 @@ interface VanSalesStats {
   todaySales: number;
   transactions: number;
   itemsSold: number;
-  invoices: any[];
+  invoices: unknown[];
 }
 
 export function useVanSalesStats() {
@@ -105,8 +105,7 @@ export function useVanSalesStats() {
           itemsSold: 0,
           invoices: [],
         };
-      } catch (error) {
-
+      } catch {
         // Return default values on error
         return {
           todaySales: 0,

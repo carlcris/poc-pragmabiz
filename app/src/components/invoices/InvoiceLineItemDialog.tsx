@@ -54,6 +54,15 @@ export type LineItemFormValues = z.infer<typeof lineItemSchema> & {
   lineTotal?: number;
 };
 
+type ItemPackageSummary = {
+  id: string;
+  isBasePackage?: boolean;
+};
+
+type ItemPackagesResponse = {
+  data?: ItemPackageSummary[];
+};
+
 interface InvoiceLineItemDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -121,13 +130,13 @@ export function InvoiceLineItemDialog({
       try {
         const response = await fetch(`/api/items/${itemId}/packages`);
         if (response.ok) {
-          const packagesData = await response.json();
-          const basePackage = packagesData.data?.find((pkg: any) => pkg.isBasePackage);
+          const packagesData = (await response.json()) as ItemPackagesResponse;
+          const basePackage = packagesData.data?.find((pkg) => pkg.isBasePackage);
           if (basePackage) {
             form.setValue("packagingId", basePackage.id);
           }
         }
-      } catch (error) {
+      } catch {
         // If fetching packages fails, leave packagingId as null
       }
     }
