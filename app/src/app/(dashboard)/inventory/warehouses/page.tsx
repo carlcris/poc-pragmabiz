@@ -122,7 +122,7 @@ export default function WarehousesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
@@ -136,149 +136,149 @@ export default function WarehousesPage() {
         </Button>
       </div>
 
-      <div className="space-y-4">
-        <div className="mb-4 flex gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search warehouses..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Select value={countryFilter} onValueChange={handleCountryFilterChange}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Country" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Countries</SelectItem>
-                {uniqueCountries.map((country) => (
-                  <SelectItem key={country} value={country}>
-                    {country}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-              <SelectTrigger className="w-[150px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search warehouses..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
           </div>
+          <Select value={countryFilter} onValueChange={handleCountryFilterChange}>
+            <SelectTrigger className="w-[180px]">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Country" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Countries</SelectItem>
+              {uniqueCountries.map((country) => (
+                <SelectItem key={country} value={country}>
+                  {country}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-[150px]">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
+        <div className="min-h-0 flex-1">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex h-full items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : error ? (
-            <div className="text-center py-8 text-destructive">
+            <div className="flex h-full items-center justify-center text-center text-destructive">
               Error loading warehouses. Please try again.
             </div>
           ) : warehouses.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="flex h-full items-center justify-center text-muted-foreground">
               No warehouses found
             </div>
           ) : (
-            <>
-              <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-background z-10">
-                    <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Manager</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
+              <Table containerClassName="overflow-visible">
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Manager</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {warehouses.map((warehouse) => (
+                    <TableRow key={warehouse.id}>
+                      <TableCell className="font-medium">{warehouse.code}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
+                          {warehouse.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {warehouse.city}, {warehouse.state}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {warehouse.country}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {warehouse.managerName || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{warehouse.phone}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {warehouse.email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={warehouse.isActive ? "outline" : "secondary"} className={warehouse.isActive ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400" : ""}>
+                          {warehouse.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
+                                Locations
+                              </Link>
+                            </Button>
+                          </ViewGuard>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditWarehouse(warehouse)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteWarehouse(warehouse)}
+                            disabled={deleteWarehouse.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {warehouses.map((warehouse) => (
-                      <TableRow key={warehouse.id}>
-                        <TableCell className="font-medium">{warehouse.code}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <MapPin className="mr-2 h-4 w-4 text-muted-foreground" />
-                            {warehouse.name}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {warehouse.city}, {warehouse.state}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {warehouse.country}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {warehouse.managerName || "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">{warehouse.phone}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {warehouse.email}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={warehouse.isActive ? "outline" : "secondary"} className={warehouse.isActive ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400" : ""}>
-                            {warehouse.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
-                                  Locations
-                                </Link>
-                              </Button>
-                            </ViewGuard>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditWarehouse(warehouse)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteWarehouse(warehouse)}
-                              disabled={deleteWarehouse.isPending}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {pagination && pagination.total > 0 && (
-                <div className="mt-4">
-                  <DataTablePagination
-                    currentPage={page}
-                    totalPages={pagination.totalPages}
-                    pageSize={pageSize}
-                    totalItems={pagination.total}
-                    onPageChange={setPage}
-                    onPageSizeChange={setPageSize}
-                  />
-                </div>
-              )}
-            </>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
+        </div>
+
+        {pagination && pagination.total > 0 && (
+          <div className="shrink-0">
+            <DataTablePagination
+              currentPage={page}
+              totalPages={pagination.totalPages}
+              pageSize={pageSize}
+              totalItems={pagination.total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        )}
       </div>
 
       <WarehouseFormDialog

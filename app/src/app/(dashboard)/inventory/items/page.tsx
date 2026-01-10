@@ -221,7 +221,7 @@ function ItemsPageContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Inventory Master</h1>
@@ -279,7 +279,7 @@ function ItemsPageContent() {
         )}
       </div>
 
-      <div className="space-y-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         {/* Filters */}
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
@@ -295,8 +295,8 @@ function ItemsPageContent() {
             />
           </div>
           <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-[200px]">
+              <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -307,8 +307,8 @@ function ItemsPageContent() {
             </SelectContent>
           </Select>
           <Select value={supplierFilter} onValueChange={(value) => { setSupplierFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-[200px]">
+              <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Supplier" />
             </SelectTrigger>
             <SelectContent>
@@ -319,8 +319,8 @@ function ItemsPageContent() {
             </SelectContent>
           </Select>
           <Select value={warehouseFilter} onValueChange={(value) => { setWarehouseFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-[200px]">
+              <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Warehouse" />
             </SelectTrigger>
             <SelectContent>
@@ -331,8 +331,8 @@ function ItemsPageContent() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-[200px]">
+              <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -347,66 +347,64 @@ function ItemsPageContent() {
         </div>
 
         {/* Table */}
-        {isLoading ? (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">Image</TableHead>
-                  <TableHead>Item Code</TableHead>
-                  <TableHead>Item Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>UOM</TableHead>
-                  <TableHead className="text-right">On Hand</TableHead>
-                  <TableHead className="text-right">Allocated</TableHead>
-                  <TableHead className="text-right">Available</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...Array(10)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-12 w-12 rounded" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+        <div className="min-h-0 flex-1">
+          {isLoading ? (
+            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
+              <Table containerClassName="overflow-visible">
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
+                  <TableRow>
+                    <TableHead className="w-[80px]">Image</TableHead>
+                    <TableHead>Item Code</TableHead>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>UOM</TableHead>
+                    <TableHead className="text-right">On Hand</TableHead>
+                    <TableHead className="text-right">Allocated</TableHead>
+                    <TableHead className="text-right">Available</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-destructive mb-2">Error Loading Items</h3>
-            <p className="text-muted-foreground mb-4">
-              {error instanceof Error && error.message.includes('Unauthorized')
-                ? 'Please log in to view inventory items.'
-                : 'Unable to load inventory data. Please try again.'}
-            </p>
-            <Button variant="outline" onClick={() => window.location.reload()}>
-              Retry
-            </Button>
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            No items found. Create your first item to get started.
-          </div>
-        ) : (
-          <>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(10)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-12 w-12 rounded" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : error ? (
+            <div className="flex h-full items-center justify-center text-center">
+              <div>
+                <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-destructive mb-2">Error Loading Items</h3>
+                <p className="text-muted-foreground mb-4">
+                  {error instanceof Error && error.message.includes('Unauthorized')
+                    ? 'Please log in to view inventory items.'
+                    : 'Unable to load inventory data. Please try again.'}
+                </p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              No items found. Create your first item to get started.
+            </div>
+          ) : (
+            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
+              <Table containerClassName="overflow-visible">
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
                     <TableHead className="w-[80px]">Image</TableHead>
                     <TableHead>Item Code</TableHead>
@@ -456,7 +454,6 @@ function ItemsPageContent() {
                           {item.available.toFixed(2)}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground">{item.reorderPoint.toFixed(2)}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -486,20 +483,20 @@ function ItemsPageContent() {
                 </TableBody>
               </Table>
             </div>
+          )}
+        </div>
 
-            {pagination && pagination.total > 0 && (
-              <div className="mt-4">
-                <DataTablePagination
-                  currentPage={page}
-                  totalPages={pagination.totalPages}
-                  pageSize={pageSize}
-                  totalItems={pagination.total}
-                  onPageChange={setPage}
-                  onPageSizeChange={setPageSize}
-                />
-              </div>
-            )}
-          </>
+        {pagination && pagination.total > 0 && (
+          <div className="shrink-0">
+            <DataTablePagination
+              currentPage={page}
+              totalPages={pagination.totalPages}
+              pageSize={pageSize}
+              totalItems={pagination.total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         )}
       </div>
 
