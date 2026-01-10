@@ -30,7 +30,7 @@ type InventoryItem = {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check permission using Lookup Data Access Pattern
@@ -65,8 +65,7 @@ export async function GET(
       );
     }
 
-    // params is provided directly by Next.js (not a Promise)
-    const { id: warehouseId } = params;
+    const { id: warehouseId } = await params;
 
     // Verify warehouse belongs to user's company
     const { data: warehouse, error: warehouseError } = await supabase

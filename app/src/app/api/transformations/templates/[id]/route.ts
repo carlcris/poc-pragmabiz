@@ -11,14 +11,14 @@ type DbTransformationTemplateUpdate =
 // GET /api/transformations/templates/[id] - Get template by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'view');
     if (unauthorized) return unauthorized;
 
     const { supabase } = await createServerClientWithBU();
-    const { id } = params;
+    const { id } = await params;
 
     // Check authentication
     const {
@@ -78,14 +78,14 @@ export async function GET(
 // PATCH /api/transformations/templates/[id] - Update template (limited fields)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
     if (unauthorized) return unauthorized;
 
     const { supabase } = await createServerClientWithBU();
-    const { id } = params;
+    const { id } = await params;
 
     // Check authentication
     const {
@@ -186,14 +186,14 @@ export async function PATCH(
 // DELETE /api/transformations/templates/[id] - Soft delete template
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'delete');
     if (unauthorized) return unauthorized;
 
     const { supabase } = await createServerClientWithBU();
-    const { id } = params;
+    const { id } = await params;
 
     // Check authentication
     const {

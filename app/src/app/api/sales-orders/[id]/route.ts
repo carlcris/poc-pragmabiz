@@ -95,7 +95,7 @@ function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): Sales
 // GET /api/sales-orders/[id] - Get single sales order by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check permission
@@ -114,7 +114,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Fetch sales order with customer info
     const { data: order, error } = await supabase
@@ -197,7 +197,7 @@ export async function GET(
 // PUT /api/sales-orders/[id] - Update sales order
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check permission
@@ -216,7 +216,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const updateData: UpdateSalesOrderRequest = body
 
@@ -420,7 +420,7 @@ export async function PUT(
 // DELETE /api/sales-orders/[id] - Soft delete sales order
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check permission
@@ -439,7 +439,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if sales order exists
     const { data: existingOrder, error: fetchError } = await supabase
