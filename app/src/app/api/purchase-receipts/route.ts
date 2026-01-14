@@ -41,6 +41,7 @@ type PurchaseReceiptCreateBody = {
   purchaseOrderId: string
   warehouseId: string
   receiptDate: string
+  batchSequenceNumber?: string | null
   supplierInvoiceNumber?: string | null
   supplierInvoiceDate?: string | null
   notes?: string | null
@@ -129,7 +130,9 @@ export async function GET(request: NextRequest) {
 
     const search = searchParams.get('search')
     if (search) {
-      query = query.or(`receipt_code.ilike.%${search}%`)
+      query = query.or(
+        `receipt_code.ilike.%${search}%,batch_sequence_number.ilike.%${search}%`
+      )
     }
 
     // Date range filters
@@ -181,6 +184,7 @@ export async function GET(request: NextRequest) {
         name: receipt.warehouse.warehouse_name,
       } : undefined,
       receiptDate: receipt.receipt_date,
+      batchSequenceNumber: receipt.batch_sequence_number,
       supplierInvoiceNumber: receipt.supplier_invoice_number,
       supplierInvoiceDate: receipt.supplier_invoice_date,
       status: receipt.status,
@@ -303,6 +307,7 @@ export async function POST(request: NextRequest) {
         supplier_id: poData.supplier_id,
         warehouse_id: body.warehouseId,
         receipt_date: body.receiptDate,
+        batch_sequence_number: body.batchSequenceNumber || null,
         supplier_invoice_number: body.supplierInvoiceNumber,
         supplier_invoice_date: body.supplierInvoiceDate,
         status: 'draft',

@@ -44,6 +44,7 @@ type PurchaseReceiptItemInput = {
 type PurchaseReceiptUpdateBody = {
   warehouseId: string
   receiptDate: string
+  batchSequenceNumber?: string | null
   supplierInvoiceNumber?: string | null
   supplierInvoiceDate?: string | null
   notes?: string | null
@@ -130,6 +131,7 @@ export async function GET(
       companyId: receipt.company_id,
       receiptCode: receipt.receipt_code,
       purchaseOrderId: receipt.purchase_order_id,
+      batchSequenceNumber: receipt.batch_sequence_number,
       purchaseOrder: receipt.purchase_order ? {
         id: receipt.purchase_order.id,
         orderCode: receipt.purchase_order.order_code,
@@ -251,6 +253,7 @@ export async function PUT(
       .update({
         warehouse_id: body.warehouseId,
         receipt_date: body.receiptDate,
+        batch_sequence_number: body.batchSequenceNumber || null,
         supplier_invoice_number: body.supplierInvoiceNumber,
         supplier_invoice_date: body.supplierInvoiceDate,
         notes: body.notes,

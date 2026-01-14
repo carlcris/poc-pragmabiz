@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Filter, Download, Package, AlertTriangle, AlertCircle, TrendingUp, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
 import { useDeleteItem, useItems } from "@/hooks/useItems";
@@ -37,11 +37,12 @@ import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 function ItemsPageContent() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
+  const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemDialogMode, setItemDialogMode] = useState<ItemDialogMode>("create");
@@ -54,6 +55,8 @@ function ItemsPageContent() {
 
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
+  const { currentBusinessUnit } = useBusinessUnitStore();
+  const lastAutoSetBuId = useRef<string | null>(null);
 
   // Fetch items with stock data
   const { data, isLoading, error } = useItems({
@@ -71,6 +74,26 @@ function ItemsPageContent() {
   const { data: warehousesData } = useWarehouses({ limit: 1000 });
   const warehouses = warehousesData?.data?.filter(wh => wh.isActive) || [];
 
+  useEffect(() => {
+    if (!currentBusinessUnit || warehouseFilter !== "all" || warehouses.length === 0) {
+      return;
+    }
+
+    if (lastAutoSetBuId.current === currentBusinessUnit.id) {
+      return;
+    }
+
+    const matchedWarehouse = warehouses.find(
+      (warehouse) => warehouse.businessUnitId === currentBusinessUnit.id
+    );
+
+    if (matchedWarehouse) {
+      setWarehouseFilter(matchedWarehouse.id);
+      setPage(1);
+      lastAutoSetBuId.current = currentBusinessUnit.id;
+    }
+  }, [currentBusinessUnit, warehouseFilter, warehouses]);
+
   // Fetch categories for filter
   const { data: categoriesData } = useItemCategories();
   const categories = categoriesData?.data || [];
@@ -81,11 +104,12 @@ function ItemsPageContent() {
 
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
+  const statistics = data?.statistics;
 
-  // Calculate statistics
-  const lowStockItems = items.filter(i => i.status === 'low_stock').length;
-  const outOfStockItems = items.filter(i => i.status === 'out_of_stock').length;
-  const totalValue = items.reduce((sum, item) => sum + (item.available * item.listPrice), 0);
+  // Use statistics from API (calculated from all filtered items, not just current page)
+  const lowStockItems = statistics?.lowStockCount ?? 0;
+  const outOfStockItems = statistics?.outOfStockCount ?? 0;
+  const totalValue = statistics?.totalAvailableValue ?? 0;
 
   const stats = [
     {
@@ -108,6 +132,7 @@ function ItemsPageContent() {
       description: "At or below reorder point",
       icon: AlertTriangle,
       iconColor: "text-yellow-600",
+      filterValue: "low_stock" as const,
     },
     {
       title: "Out of Stock",
@@ -115,20 +140,25 @@ function ItemsPageContent() {
       description: "No available inventory",
       icon: AlertCircle,
       iconColor: "text-red-600",
+      filterValue: "out_of_stock" as const,
     },
   ];
 
   const getStatusBadge = (status: ItemWithStock['status']) => {
-    const variants: Record<ItemWithStock['status'], { label: string; variant: "default" | "secondary" | "outline" | "destructive"; className?: string }> = {
-      normal: { label: "Normal", variant: "default", className: "bg-green-600" },
-      low_stock: { label: "Low Stock", variant: "outline", className: "text-yellow-600 border-yellow-600" },
-      out_of_stock: { label: "Out of Stock", variant: "destructive" },
-      overstock: { label: "Overstock", variant: "secondary", className: "bg-blue-600 text-white" },
-      discontinued: { label: "Discontinued", variant: "outline", className: "text-gray-500" },
+    const variants: Record<ItemWithStock['status'], { label: string; className: string }> = {
+      normal: { label: "Normal", className: "text-emerald-700" },
+      low_stock: { label: "Low Stock", className: "text-amber-700" },
+      out_of_stock: { label: "Out of Stock", className: "text-red-700" },
+      overstock: { label: "Overstock", className: "text-blue-700" },
+      discontinued: { label: "Discontinued", className: "text-slate-500" },
     };
 
     const config = variants[status];
-    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
+    return (
+      <span className={`text-xs font-semibold tracking-wide ${config.className}`}>
+        {config.label}
+      </span>
+    );
   };
 
   const handleCreateItem = () => {
@@ -263,8 +293,44 @@ function ItemsPageContent() {
         ) : (
           stats.map((stat) => {
             const Icon = stat.icon;
+            const isFilterCard = !!stat.filterValue;
+            const isActiveFilter = isFilterCard && statusFilter === stat.filterValue;
             return (
-              <Card key={stat.title}>
+              <Card
+                key={stat.title}
+                role={isFilterCard ? "button" : undefined}
+                tabIndex={isFilterCard ? 0 : undefined}
+                onClick={
+                  isFilterCard
+                    ? () => {
+                        const nextFilter =
+                          statusFilter === stat.filterValue ? "all" : stat.filterValue;
+                        setStatusFilter(nextFilter);
+                        setPage(1);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  isFilterCard
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          const nextFilter =
+                            statusFilter === stat.filterValue ? "all" : stat.filterValue;
+                          setStatusFilter(nextFilter);
+                          setPage(1);
+                        }
+                      }
+                    : undefined
+                }
+                className={
+                  isFilterCard
+                    ? `cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md ${
+                        isActiveFilter ? "ring-2 ring-primary/40" : ""
+                      }`
+                    : undefined
+                }
+              >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
                   <Icon className={`h-4 w-4 ${stat.iconColor}`} />
@@ -281,8 +347,8 @@ function ItemsPageContent() {
 
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-wrap gap-3 lg:flex-nowrap">
+          <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by item code or name..."
@@ -295,7 +361,7 @@ function ItemsPageContent() {
             />
           </div>
           <Select value={categoryFilter} onValueChange={(value) => { setCategoryFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
@@ -307,7 +373,7 @@ function ItemsPageContent() {
             </SelectContent>
           </Select>
           <Select value={supplierFilter} onValueChange={(value) => { setSupplierFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Supplier" />
             </SelectTrigger>
@@ -319,7 +385,7 @@ function ItemsPageContent() {
             </SelectContent>
           </Select>
           <Select value={warehouseFilter} onValueChange={(value) => { setWarehouseFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Warehouse" />
             </SelectTrigger>
@@ -331,7 +397,7 @@ function ItemsPageContent() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -447,11 +513,11 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell className="text-muted-foreground">{item.uom || '-'}</TableCell>
-                      <TableCell className="text-right">{item.onHand.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-orange-600">{item.allocated.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">{Math.trunc(item.onHand)}</TableCell>
+                      <TableCell className="text-right text-orange-600">{Math.trunc(item.allocated)}</TableCell>
                       <TableCell className="text-right font-semibold">
                         <span className={item.available <= 0 ? 'text-red-600' : item.available <= item.reorderPoint ? 'text-yellow-600' : 'text-green-600'}>
-                          {item.available.toFixed(2)}
+                          {Math.trunc(item.available)}
                         </span>
                       </TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>

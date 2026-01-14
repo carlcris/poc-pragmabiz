@@ -53,6 +53,7 @@ const receiveGoodsSchema = z.object({
   warehouseId: z.string().min(1, "Warehouse is required"),
   locationId: z.string().optional(),
   receiptDate: z.string().min(1, "Receipt date is required"),
+  batchSequenceNumber: z.string().optional(),
   supplierInvoiceNumber: z.string().optional(),
   supplierInvoiceDate: z.string().optional(),
   notes: z.string().optional(),
@@ -93,6 +94,7 @@ export function ReceiveGoodsDialog({
       warehouseId: "",
       locationId: "",
       receiptDate: format(new Date(), "yyyy-MM-dd"),
+      batchSequenceNumber: "",
       supplierInvoiceNumber: "",
       supplierInvoiceDate: "",
       notes: "",
@@ -125,6 +127,7 @@ export function ReceiveGoodsDialog({
         warehouseId: "",
         locationId: "",
         receiptDate: format(new Date(), "yyyy-MM-dd"),
+        batchSequenceNumber: "",
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
         notes: "",
@@ -170,11 +173,12 @@ export function ReceiveGoodsDialog({
           warehouseId: data.warehouseId,
           locationId: data.locationId || undefined,
           receiptDate: data.receiptDate,
-          supplierInvoiceNumber: data.supplierInvoiceNumber,
-          supplierInvoiceDate: data.supplierInvoiceDate,
-          notes: data.notes,
-          items: itemsToReceive,
-        },
+        supplierInvoiceNumber: data.supplierInvoiceNumber,
+        supplierInvoiceDate: data.supplierInvoiceDate,
+        batchSequenceNumber: data.batchSequenceNumber,
+        notes: data.notes,
+        items: itemsToReceive,
+      },
       });
 
       toast.success("Goods received successfully! Stock levels updated.");
@@ -345,6 +349,20 @@ export function ReceiveGoodsDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="batchSequenceNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Batch</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Batch reference" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Items to Receive */}
@@ -379,13 +397,13 @@ export function ReceiveGoodsDialog({
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <CompactPackageSelector
-                              itemId={poItem.itemId}
-                              value={packagingId}
-                              onChange={(pkgId) => updateItemPackaging(index, pkgId)}
-                            />
-                          </TableCell>
+                        <TableCell>
+                          <CompactPackageSelector
+                            itemId={poItem.itemId}
+                            value={packagingId}
+                            onChange={(pkgId) => updateItemPackaging(index, pkgId)}
+                          />
+                        </TableCell>
                           <TableCell className="text-right">
                             {poItem.quantity}
                           </TableCell>

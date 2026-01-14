@@ -82,6 +82,7 @@ export const purchaseReceiptsApi = {
       warehouseId: string;
       locationId?: string;
       receiptDate?: string;
+      batchSequenceNumber?: string | null;
       supplierInvoiceNumber?: string;
       supplierInvoiceDate?: string;
       notes?: string;

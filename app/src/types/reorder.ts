@@ -73,6 +73,7 @@ export interface ReorderAlert {
   warehouseName: string;
   currentStock: number;
   reorderPoint: number;
+  reorderQuantity: number;
   minimumLevel: number;
   severity: "critical" | "warning" | "info";
   message: string;

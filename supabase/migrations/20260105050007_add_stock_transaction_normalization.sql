@@ -86,6 +86,12 @@ ON purchase_receipt_items(packaging_id) WHERE deleted_at IS NULL;
 COMMENT ON COLUMN purchase_receipt_items.packaging_id IS
   'Package used when receiving goods. Used for display purposes only - actual normalization happens in stock_transaction_items.';
 
+ALTER TABLE purchase_receipts
+ADD COLUMN IF NOT EXISTS batch_sequence_number TEXT;
+
+COMMENT ON COLUMN purchase_receipts.batch_sequence_number IS
+  'Free-form batch or lot identifier captured during receiving.';
+
 -- ============================================================================
 -- TABLE: stock_transfer_items - Add packaging_id for tracking
 -- ============================================================================

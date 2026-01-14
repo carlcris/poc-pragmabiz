@@ -1428,6 +1428,7 @@ export type Database = {
       }
       journal_entries: {
         Row: {
+          batch_sequence_number: string | null
           business_unit_id: string | null
           company_id: string
           created_at: string
@@ -1451,6 +1452,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          batch_sequence_number?: string | null
           business_unit_id?: string | null
           company_id: string
           created_at?: string
@@ -1474,6 +1476,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          batch_sequence_number?: string | null
           business_unit_id?: string | null
           company_id?: string
           created_at?: string

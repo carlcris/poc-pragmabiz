@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -12,10 +12,12 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { useReorderSuggestions, useReorderAlerts, useReorderStatistics, useApproveReorderSuggestion, useRejectReorderSuggestion, useAcknowledgeAlerts } from "@/hooks/useReorder";
+import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -27,6 +29,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ReorderSuggestion, ReorderAlert } from "@/types/reorder";
+import { PurchaseOrderFormDialog } from "@/components/purchase-orders/PurchaseOrderFormDialog";
+import type { PurchaseOrderLineItemFormValues } from "@/components/purchase-orders/PurchaseOrderLineItemDialog";
+import { toast } from "sonner";
 
 export default function ReorderManagementPage() {
   const [selectedTab, setSelectedTab] = useState("suggestions");
@@ -35,6 +40,7 @@ export default function ReorderManagementPage() {
   const { data: suggestionsData, isLoading: suggestionsLoading } = useReorderSuggestions();
   const { data: alertsData, isLoading: alertsLoading } = useReorderAlerts({ acknowledged: "false" });
   const { data: statistics, isLoading: statsLoading } = useReorderStatistics();
+  const { data: itemsData } = useItems({ limit: 1000 });
 
   const approveSuggestion = useApproveReorderSuggestion();
   const rejectSuggestion = useRejectReorderSuggestion();
@@ -42,6 +48,10 @@ export default function ReorderManagementPage() {
 
   const suggestions = suggestionsData || [];
   const alerts = alertsData?.data || [];
+  const items = itemsData?.data || [];
+  const [selectedAlertIds, setSelectedAlertIds] = useState<string[]>([]);
+  const [poDialogOpen, setPoDialogOpen] = useState(false);
+  const [poLineItems, setPoLineItems] = useState<PurchaseOrderLineItemFormValues[]>([]);
 
   const handleApproveSuggestion = async (id: string) => {
     await approveSuggestion.mutateAsync(id);
@@ -54,6 +64,69 @@ export default function ReorderManagementPage() {
   const handleAcknowledgeAlert = async (id: string) => {
     await acknowledgeAlerts.mutateAsync({ alertIds: [id] });
   };
+
+  useEffect(() => {
+    if (alerts.length === 0) {
+      setSelectedAlertIds((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    setSelectedAlertIds((prev) => {
+      const next = prev.filter((id) => alerts.some((alert) => alert.id === id));
+      if (next.length === prev.length && next.every((id, index) => id === prev[index])) {
+        return prev;
+      }
+      return next;
+    });
+  }, [alerts]);
+
+  const toggleAlertSelection = (id: string, checked: boolean) => {
+    setSelectedAlertIds((prev) =>
+      checked ? [...prev, id] : prev.filter((alertId) => alertId !== id)
+    );
+  };
+
+  const handleSelectAllAlerts = (checked: boolean) => {
+    setSelectedAlertIds(checked ? alerts.map((alert) => alert.id) : []);
+  };
+
+  const handleCreatePurchaseOrder = () => {
+    if (selectedAlertIds.length === 0) return;
+
+    const selectedAlerts = alerts.filter((alert) => selectedAlertIds.includes(alert.id));
+    const lineItems: PurchaseOrderLineItemFormValues[] = [];
+
+    selectedAlerts.forEach((alert) => {
+      const item = items.find((candidate) => candidate.id === alert.itemId);
+      if (!item) return;
+
+      const fallbackQty = Math.max(0.01, alert.reorderPoint - alert.currentStock);
+      const quantity =
+        alert.reorderQuantity > 0 ? alert.reorderQuantity : fallbackQty;
+
+      lineItems.push({
+        itemId: item.id,
+        itemCode: item.code,
+        itemName: item.name,
+        quantity,
+        packagingId: null,
+        rate: item.standardCost || item.listPrice || 0,
+        uomId: item.uomId,
+        discountPercent: 0,
+        taxPercent: 0,
+      });
+    });
+
+    if (lineItems.length === 0) {
+      toast.error("No matching items found for the selected alerts.");
+      return;
+    }
+
+    setPoLineItems(lineItems);
+    setPoDialogOpen(true);
+  };
+
+  const allAlertsSelected = alerts.length > 0 && selectedAlertIds.length === alerts.length;
+  const someAlertsSelected = selectedAlertIds.length > 0 && !allAlertsSelected;
 
   const getPriorityBadge = (priority: "high" | "medium" | "low") => {
     const variants = {
@@ -309,10 +382,21 @@ export default function ReorderManagementPage() {
         <TabsContent value="alerts" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Stock Level Alerts</CardTitle>
-              <CardDescription>
-                Critical and warning alerts for items requiring immediate attention
-              </CardDescription>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Stock Level Alerts</CardTitle>
+                  <CardDescription>
+                    Critical and warning alerts for items requiring immediate attention
+                  </CardDescription>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={selectedAlertIds.length === 0}
+                  onClick={handleCreatePurchaseOrder}
+                >
+                  Create Purchase Order
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {alertsLoading ? (
@@ -320,6 +404,7 @@ export default function ReorderManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[40px]"></TableHead>
                         <TableHead>Severity</TableHead>
                         <TableHead>Item</TableHead>
                         <TableHead>Warehouse</TableHead>
@@ -331,6 +416,7 @@ export default function ReorderManagementPage() {
                     <TableBody>
                       {[1, 2, 3].map((i) => (
                         <TableRow key={i}>
+                          <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                           <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -353,6 +439,13 @@ export default function ReorderManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={allAlertsSelected ? true : someAlertsSelected ? "indeterminate" : false}
+                            onCheckedChange={(checked) => handleSelectAllAlerts(Boolean(checked))}
+                            aria-label="Select all alerts"
+                          />
+                        </TableHead>
                         <TableHead>Severity</TableHead>
                         <TableHead>Item</TableHead>
                         <TableHead>Warehouse</TableHead>
@@ -364,6 +457,13 @@ export default function ReorderManagementPage() {
                     <TableBody>
                       {alerts.map((alert) => (
                         <TableRow key={alert.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedAlertIds.includes(alert.id)}
+                              onCheckedChange={(checked) => toggleAlertSelection(alert.id, Boolean(checked))}
+                              aria-label={`Select alert for ${alert.itemName}`}
+                            />
+                          </TableCell>
                           <TableCell>{getSeverityBadge(alert.severity)}</TableCell>
                           <TableCell>
                             <div className="font-medium">{alert.itemName}</div>
@@ -398,6 +498,13 @@ export default function ReorderManagementPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PurchaseOrderFormDialog
+        open={poDialogOpen}
+        onOpenChange={setPoDialogOpen}
+        initialLineItems={poLineItems}
+        initialActiveTab="items"
+      />
     </div>
   );
 }

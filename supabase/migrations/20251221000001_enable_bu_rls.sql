@@ -628,36 +628,136 @@ DROP POLICY IF EXISTS bu_select_policy ON warehouses;
 CREATE POLICY bu_select_policy ON warehouses
   FOR SELECT
   USING (
-    business_unit_id = get_current_business_unit_id()
-    OR business_unit_id IS NULL
+    business_unit_id IS NULL
+    OR business_unit_id IN (
+      SELECT business_unit_id
+      FROM user_business_unit_access
+      WHERE user_id = auth.uid()
+    )
   );
 
 DROP POLICY IF EXISTS bu_insert_policy ON warehouses;
 CREATE POLICY bu_insert_policy ON warehouses
   FOR INSERT
   WITH CHECK (
-    business_unit_id = get_current_business_unit_id()
-    OR business_unit_id IS NULL
+    business_unit_id IS NULL
+    OR business_unit_id IN (
+      SELECT business_unit_id
+      FROM user_business_unit_access
+      WHERE user_id = auth.uid()
+    )
   );
 
 DROP POLICY IF EXISTS bu_update_policy ON warehouses;
 CREATE POLICY bu_update_policy ON warehouses
   FOR UPDATE
   USING (
-    business_unit_id = get_current_business_unit_id()
-    OR business_unit_id IS NULL
+    business_unit_id IS NULL
+    OR business_unit_id IN (
+      SELECT business_unit_id
+      FROM user_business_unit_access
+      WHERE user_id = auth.uid()
+    )
   )
   WITH CHECK (
-    business_unit_id = get_current_business_unit_id()
-    OR business_unit_id IS NULL
+    business_unit_id IS NULL
+    OR business_unit_id IN (
+      SELECT business_unit_id
+      FROM user_business_unit_access
+      WHERE user_id = auth.uid()
+    )
   );
 
 DROP POLICY IF EXISTS bu_delete_policy ON warehouses;
 CREATE POLICY bu_delete_policy ON warehouses
   FOR DELETE
   USING (
-    business_unit_id = get_current_business_unit_id()
-    OR business_unit_id IS NULL
+    business_unit_id IS NULL
+    OR business_unit_id IN (
+      SELECT business_unit_id
+      FROM user_business_unit_access
+      WHERE user_id = auth.uid()
+    )
+  );
+
+-- Item Warehouse
+DROP POLICY IF EXISTS "Allow authenticated users to read item_warehouse" ON item_warehouse;
+DROP POLICY IF EXISTS "Allow authenticated users to write item_warehouse" ON item_warehouse;
+DROP POLICY IF EXISTS bu_select_policy ON item_warehouse;
+DROP POLICY IF EXISTS bu_insert_policy ON item_warehouse;
+DROP POLICY IF EXISTS bu_update_policy ON item_warehouse;
+DROP POLICY IF EXISTS bu_delete_policy ON item_warehouse;
+
+CREATE POLICY bu_select_policy ON item_warehouse
+  FOR SELECT
+  USING (
+    warehouse_id IN (
+      SELECT w.id
+      FROM warehouses w
+      WHERE w.business_unit_id IS NULL
+        OR w.business_unit_id IN (
+          SELECT business_unit_id
+          FROM user_business_unit_access
+          WHERE user_id = auth.uid()
+        )
+    )
+  );
+
+CREATE POLICY bu_insert_policy ON item_warehouse
+  FOR INSERT
+  WITH CHECK (
+    warehouse_id IN (
+      SELECT w.id
+      FROM warehouses w
+      WHERE w.business_unit_id IS NULL
+        OR w.business_unit_id IN (
+          SELECT business_unit_id
+          FROM user_business_unit_access
+          WHERE user_id = auth.uid()
+        )
+    )
+  );
+
+CREATE POLICY bu_update_policy ON item_warehouse
+  FOR UPDATE
+  USING (
+    warehouse_id IN (
+      SELECT w.id
+      FROM warehouses w
+      WHERE w.business_unit_id IS NULL
+        OR w.business_unit_id IN (
+          SELECT business_unit_id
+          FROM user_business_unit_access
+          WHERE user_id = auth.uid()
+        )
+    )
+  )
+  WITH CHECK (
+    warehouse_id IN (
+      SELECT w.id
+      FROM warehouses w
+      WHERE w.business_unit_id IS NULL
+        OR w.business_unit_id IN (
+          SELECT business_unit_id
+          FROM user_business_unit_access
+          WHERE user_id = auth.uid()
+        )
+    )
+  );
+
+CREATE POLICY bu_delete_policy ON item_warehouse
+  FOR DELETE
+  USING (
+    warehouse_id IN (
+      SELECT w.id
+      FROM warehouses w
+      WHERE w.business_unit_id IS NULL
+        OR w.business_unit_id IN (
+          SELECT business_unit_id
+          FROM user_business_unit_access
+          WHERE user_id = auth.uid()
+        )
+    )
   );
 
 -- Employees

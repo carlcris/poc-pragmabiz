@@ -355,6 +355,11 @@ export async function GET(request: NextRequest) {
       filteredItems = filteredItems.filter((item) => item.status === stockStatus)
     }
 
+    // Calculate statistics for all filtered items (not just current page)
+    const totalAvailableValue = filteredItems.reduce((sum, item) => sum + (item.available * item.listPrice), 0)
+    const lowStockCount = filteredItems.filter(item => item.status === 'low_stock').length
+    const outOfStockCount = filteredItems.filter(item => item.status === 'out_of_stock').length
+
     // Apply pagination
     const total = filteredItems.length
     const totalPages = Math.ceil(total / limit)
@@ -369,6 +374,11 @@ export async function GET(request: NextRequest) {
         limit,
         total,
         totalPages,
+      },
+      statistics: {
+        totalAvailableValue,
+        lowStockCount,
+        outOfStockCount,
       },
     })
   } catch {

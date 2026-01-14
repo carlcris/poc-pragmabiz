@@ -131,108 +131,120 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="rounded-3xl border border-white/70 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.15)] backdrop-blur-xl">
-      <CardHeader className="space-y-6 pb-2 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg shadow-slate-900/10">
-          <Image
-            src="/achlers_circle.png"
-            alt="Achlers Logo"
-            width={84}
-            height={84}
-            priority
-            className="object-contain"
-          />
-        </div>
-        <div className="space-y-2">
-          <CardTitle className="text-2xl font-semibold text-slate-900">
-            Sign in with email
-          </CardTitle>
-          <CardDescription className="text-sm text-slate-500">
-            Access your inventory workspace, orders, and reports in one place.
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-2">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="sr-only">Email</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        type="email"
-                        placeholder="Email"
-                        {...field}
-                        disabled={isLoading}
-                        className="h-12 rounded-full border-slate-200 bg-slate-50/80 pl-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-400"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="sr-only">Password</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <Input
-                        type="password"
-                        placeholder="Password"
-                        {...field}
-                        disabled={isLoading}
-                        className="h-12 rounded-full border-slate-200 bg-slate-50/80 pl-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-400"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {(loginError || error) && (
-              <Alert variant="destructive">
-                <AlertDescription>{loginError || error}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="text-right text-xs text-slate-500">
-              Forgot password? Contact your administrator.
+    <div
+      className="relative min-h-screen overflow-hidden bg-cover bg-center"
+      style={{ backgroundImage: "url('/bg.jpg')" }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-sky-100/70 via-sky-200/40 to-white/90" />
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/50" />
+        <div className="absolute left-1/2 top-1/2 h-[720px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30" />
+      </div>
+      <div className="relative flex min-h-screen items-center justify-center px-4 py-12">
+        <Card className="w-full max-w-md rounded-[28px] border border-white/70 bg-white/80 shadow-[0_30px_70px_rgba(37,99,235,0.18)] backdrop-blur-2xl">
+          <CardHeader className="space-y-6 pb-2 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg shadow-slate-900/10">
+              <Image
+                src="/achlers_circle.png"
+                alt="Achlers Logo"
+                width={84}
+                height={84}
+                priority
+                className="object-contain"
+              />
             </div>
+            <div className="space-y-2">
+              <CardTitle className="text-2xl font-semibold text-slate-900">
+                Sign in with email
+              </CardTitle>
+              <CardDescription className="text-sm text-slate-500">
+                Access your inventory workspace, orders, and reports in one place.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="sr-only">Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <Input
+                            type="email"
+                            placeholder="Email"
+                            {...field}
+                            disabled={isLoading}
+                            className="h-12 rounded-full border-slate-200 bg-slate-50/80 pl-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-400"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="sr-only">Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <Input
+                            type="password"
+                            placeholder="Password"
+                            {...field}
+                            disabled={isLoading}
+                            className="h-12 rounded-full border-slate-200 bg-slate-50/80 pl-11 text-slate-900 placeholder:text-slate-400 focus-visible:ring-slate-400"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {(loginError || error) && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{loginError || error}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="text-right text-xs text-slate-500">
+                  Forgot password? Contact your administrator.
+                </div>
 
             <Button
               type="submit"
-              className="h-12 w-full rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:bg-slate-800"
+              className="h-12 w-full rounded-full"
               disabled={isLoading}
             >
               {isLoading ? "Signing in..." : "Get Started"}
             </Button>
-          </form>
-        </Form>
-        <div className="mt-6 flex flex-col items-center gap-2 text-xs text-slate-400">
-          <span className="uppercase tracking-[0.2em]">Powered by</span>
-          <div className="flex items-center justify-center rounded-full bg-transparent px-2 py-1">
-            <Image
-              src="/pragmatica.jpeg"
-              alt="Pragmatica"
-              width={280}
-              height={80}
-              className="h-16 w-auto object-contain"
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+              </form>
+            </Form>
+            <div className="mt-6 flex flex-col items-center gap-2 text-xs text-slate-400">
+              <span className="uppercase tracking-[0.2em]">Powered by</span>
+              <div className="flex items-center justify-center rounded-full bg-transparent px-2 py-1">
+                <Image
+                  src="/pragmatica.jpeg"
+                  alt="Pragmatica"
+                  width={280}
+                  height={80}
+                  className="h-16 w-auto object-contain"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -53,6 +53,7 @@ export const PackagingFormDialog = ({ open, onOpenChange, itemId, packaging }: P
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
@@ -196,16 +197,28 @@ export const PackagingFormDialog = ({ open, onOpenChange, itemId, packaging }: P
             <Label htmlFor="qtyPerPack">
               Quantity Per Pack <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="qtyPerPack"
-              type="number"
-              step="0.01"
-              {...register("qtyPerPack", {
+            <Controller
+              name="qtyPerPack"
+              control={control}
+              rules={{
                 required: "Quantity per pack is required",
                 min: { value: 0.01, message: "Must be greater than 0" },
-              })}
-              placeholder="e.g., 100"
-              disabled={isPending}
+              }}
+              render={({ field }) => (
+                <Input
+                  id="qtyPerPack"
+                  type="number"
+                  step="0.01"
+                  value={field.value ?? ""}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    field.onChange(nextValue === "" ? "" : Number(nextValue));
+                  }}
+                  onBlur={field.onBlur}
+                  placeholder="e.g., 100"
+                  disabled={isPending}
+                />
+              )}
             />
             {errors.qtyPerPack && (
               <p className="text-sm text-destructive">{errors.qtyPerPack.message}</p>

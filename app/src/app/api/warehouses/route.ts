@@ -13,6 +13,7 @@ function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
   return {
     id: dbWarehouse.id,
     companyId: dbWarehouse.company_id,
+    businessUnitId: dbWarehouse.business_unit_id,
     code: dbWarehouse.warehouse_code,
     name: dbWarehouse.warehouse_name,
     description: '', // Not in DB, can add later if needed
@@ -60,11 +61,34 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    // Build query
+    // Get user's accessible business units
+    const { data: userBUAccess } = await supabase
+      .from('user_business_unit_access')
+      .select('business_unit_id')
+      .eq('user_id', user.id)
+
+    const accessibleBUIds = userBUAccess?.map(access => access.business_unit_id) || []
+
+    // If user has no business unit access, return empty result
+    if (accessibleBUIds.length === 0) {
+      return NextResponse.json({
+        data: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      })
+    }
+
+    // Build query - filter by user's accessible business units
+    // Also include warehouses without a business_unit_id (NULL) for backward compatibility
     let query = supabase
       .from('warehouses')
       .select('*', { count: 'exact' })
       .is('deleted_at', null)
+      .or(`business_unit_id.in.(${accessibleBUIds.join(',')}),business_unit_id.is.null`)
 
     // Apply filters
     if (search) {

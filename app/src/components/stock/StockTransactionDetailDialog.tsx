@@ -288,7 +288,7 @@ export function StockTransactionDetailDialog({
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Source Warehouse:</p>
+                    <p className="text-xs text-muted-foreground mb-1">Source Location:</p>
                     <p className="font-semibold text-sm">
                       {transaction.warehouseCode} - {transaction.warehouseName}
                     </p>
@@ -303,7 +303,7 @@ export function StockTransactionDetailDialog({
                     <>
                       <Separator />
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Destination Warehouse:</p>
+                        <p className="text-xs text-muted-foreground mb-1">Destination Location:</p>
                         <p className="font-semibold text-sm">
                           {transaction.toWarehouseCode} - {transaction.toWarehouseName}
                         </p>

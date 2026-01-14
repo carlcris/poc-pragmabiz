@@ -178,6 +178,7 @@ export default function PurchaseReceiptsPage() {
                     <TableHead>Purchase Order</TableHead>
                     <TableHead>Supplier</TableHead>
                     <TableHead>Warehouse</TableHead>
+                    <TableHead>Batch</TableHead>
                     <TableHead>Receipt Date</TableHead>
                     <TableHead className="text-right">Total Value</TableHead>
                     <TableHead>Status</TableHead>
@@ -197,7 +198,12 @@ export default function PurchaseReceiptsPage() {
                     return (
                       <TableRow key={receipt.id}>
                         <TableCell className="font-medium">
-                          {receipt.receiptCode}
+                          <div>{receipt.receiptCode}</div>
+                          {receipt.batchSequenceNumber && (
+                            <div className="text-xs text-muted-foreground">
+                              Batch: {receipt.batchSequenceNumber}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="text-sm text-blue-600">
@@ -216,6 +222,9 @@ export default function PurchaseReceiptsPage() {
                           <div className="text-sm">
                             {receipt.warehouse?.code}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {receipt.batchSequenceNumber || "--"}
                         </TableCell>
                         <TableCell>
                           {format(new Date(receipt.receiptDate), "MMM d, yyyy")}

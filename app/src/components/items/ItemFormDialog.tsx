@@ -228,6 +228,9 @@ export function ItemFormDialog({
   const showTabs = isEditingExisting || createdItemId !== null;
   const currentItemId = resolvedItem?.id || createdItemId;
   const isReadOnly = dialogMode === "view";
+  const watchedName = form.watch("name");
+  const headerName = resolvedItem?.name || watchedName || "";
+  const showHeaderName = activeTab !== "general" && !!headerName;
 
   if (itemId && itemLoading) {
     return (
@@ -269,7 +272,7 @@ export function ItemFormDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        className="max-w-4xl h-[90vh] overflow-hidden flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
@@ -281,6 +284,7 @@ export function ItemFormDialog({
               : createdItemId
               ? "Add Item Details"
               : "Create New Item"}
+            {showHeaderName ? ` - ${headerName}` : ""}
           </DialogTitle>
           <DialogDescription>
             {resolvedItem
@@ -293,19 +297,24 @@ export function ItemFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {showTabs ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="packaging">Packaging</TabsTrigger>
-              <TabsTrigger value="prices">Prices</TabsTrigger>
-              <TabsTrigger value="locations">Locations</TabsTrigger>
-            </TabsList>
+        <div className="flex-1 overflow-hidden">
+          {showTabs ? (
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="flex h-full flex-col"
+            >
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="packaging">Packaging</TabsTrigger>
+                <TabsTrigger value="prices">Prices</TabsTrigger>
+                <TabsTrigger value="locations">Locations</TabsTrigger>
+              </TabsList>
 
-            {/* General Tab */}
-            <TabsContent value="general" className="space-y-4 mt-4">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* General Tab */}
+              <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <div className={`space-y-6 ${isReadOnly ? "pointer-events-none opacity-90" : ""}`}>
                     {/* Basic Information with Image */}
                     <div>
@@ -600,61 +609,62 @@ export function ItemFormDialog({
                     </div>
                   </div>
 
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleClose}
-                    >
-                      {createdItemId ? "Close" : "Cancel"}
-                    </Button>
-                    {isReadOnly ? (
+                    <DialogFooter>
                       <Button
                         type="button"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          setDialogMode("edit");
-                        }}
+                        variant="outline"
+                        onClick={handleClose}
                       >
-                        Edit
+                        {createdItemId ? "Close" : "Cancel"}
                       </Button>
-                    ) : (
-                      <Button
-                        type="submit"
-                        disabled={createItem.isPending || updateItem.isPending}
-                      >
-                        {createItem.isPending || updateItem.isPending
-                          ? "Saving..."
-                          : resolvedItem
-                          ? "Update Item"
-                          : "Save & Continue"}
-                      </Button>
-                    )}
-                  </DialogFooter>
-                </form>
-              </Form>
-            </TabsContent>
+                      {isReadOnly ? (
+                        <Button
+                          type="button"
+                          onClick={(event) => {
+                            event.preventDefault();
+                            setDialogMode("edit");
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      ) : (
+                        <Button
+                          type="submit"
+                          disabled={createItem.isPending || updateItem.isPending}
+                        >
+                          {createItem.isPending || updateItem.isPending
+                            ? "Saving..."
+                            : resolvedItem
+                            ? "Update Item"
+                            : "Save & Continue"}
+                        </Button>
+                      )}
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </TabsContent>
 
-            {/* Packaging Tab */}
-            <TabsContent value="packaging" className="mt-4">
-              {currentItemId ? (
-                <PackagingTab itemId={currentItemId} readOnly={isReadOnly} />
-              ) : null}
-            </TabsContent>
+              {/* Packaging Tab */}
+              <TabsContent value="packaging" className="mt-4 flex-1 overflow-y-auto pr-1">
+                {currentItemId ? (
+                  <PackagingTab itemId={currentItemId} readOnly={isReadOnly} />
+                ) : null}
+              </TabsContent>
 
-            {/* Prices Tab */}
-            <TabsContent value="prices" className="mt-4">
-              {currentItemId ? <PricesTab itemId={currentItemId} readOnly={isReadOnly} /> : null}
-            </TabsContent>
+              {/* Prices Tab */}
+              <TabsContent value="prices" className="mt-4 flex-1 overflow-y-auto pr-1">
+                {currentItemId ? <PricesTab itemId={currentItemId} readOnly={isReadOnly} /> : null}
+              </TabsContent>
 
-            {/* Locations Tab */}
-            <TabsContent value="locations" className="mt-4">
-              {currentItemId ? <LocationsTab itemId={currentItemId} /> : null}
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {/* Locations Tab */}
+              <TabsContent value="locations" className="mt-4 flex-1 overflow-y-auto pr-1">
+                {currentItemId ? <LocationsTab itemId={currentItemId} /> : null}
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <div className="mt-4 flex-1 overflow-y-auto pr-1">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -915,10 +925,11 @@ export function ItemFormDialog({
                   </Button>
                 </DialogFooter>
               )}
-            </form>
-          </Form>
-        )}
-
+                </form>
+              </Form>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

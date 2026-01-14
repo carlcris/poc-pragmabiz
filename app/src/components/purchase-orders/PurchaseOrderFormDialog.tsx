@@ -71,12 +71,16 @@ interface PurchaseOrderFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseOrder?: PurchaseOrder | null;
+  initialLineItems?: PurchaseOrderLineItemFormValues[];
+  initialActiveTab?: "general" | "items" | "terms";
 }
 
 export function PurchaseOrderFormDialog({
   open,
   onOpenChange,
   purchaseOrder,
+  initialLineItems,
+  initialActiveTab,
 }: PurchaseOrderFormDialogProps) {
   const isEditMode = !!purchaseOrder;
   const { formatCurrency } = useCurrency();
@@ -185,10 +189,10 @@ export function PurchaseOrderFormDialog({
       setActiveTab("general");
     } else if (open) {
       form.reset(defaultValues);
-      setLineItems([]);
-      setActiveTab("general");
+      setLineItems(initialLineItems || []);
+      setActiveTab(initialActiveTab || "general");
     }
-  }, [open, purchaseOrder, form, defaultValues]);
+  }, [open, purchaseOrder, form, defaultValues, initialLineItems, initialActiveTab]);
 
   const handleAddItem = () => {
     setEditingItem(null);

@@ -7,6 +7,7 @@ export interface PurchaseReceipt {
   id: string;
   companyId: string;
   receiptCode: string;
+  batchSequenceNumber?: string | null;
 
   // Relations
   purchaseOrderId: string;
@@ -100,6 +101,7 @@ export interface CreatePurchaseReceiptRequest {
   warehouseId: string;
   locationId?: string;
   receiptDate: string;
+  batchSequenceNumber?: string | null;
   supplierInvoiceNumber?: string;
   supplierInvoiceDate?: string;
   notes?: string;
@@ -120,6 +122,7 @@ export interface CreatePurchaseReceiptItemRequest {
 export interface UpdatePurchaseReceiptRequest {
   warehouseId?: string;
   receiptDate?: string;
+  batchSequenceNumber?: string | null;
   supplierInvoiceNumber?: string;
   supplierInvoiceDate?: string;
   notes?: string;

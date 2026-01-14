@@ -7,7 +7,7 @@
 
 INSERT INTO companies (id, code, name, legal_name, tax_id, email, phone, address_line1, city, state, country, postal_code, currency_code, is_active)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'DEMO', 'Demo Company Inc.', 'Demo Company Incorporated', '123-456-789', 'contact@democompany.com', '+63-917-123-4567', '123 Business St', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'PHP', true);
+    ('00000000-0000-0000-0000-000000000001', 'ACHLERS', 'Achlers Integrated Sales', 'Achlers Integrated Sales', '123-456-789', 'contact@achlers.com', '+63-917-123-4567', '123 Business St', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'PHP', true);
 
 -- ============================================================================
 -- SEED DATA: Default Business Unit
@@ -19,7 +19,7 @@ VALUES
     '00000000-0000-0000-0000-000000000100',
     '00000000-0000-0000-0000-000000000001',
     'MAIN',
-    'Main Office',
+    'Main-Bulacan',
     'primary',
     true,
     now(),
@@ -28,9 +28,9 @@ VALUES
   (
     '00000000-0000-0000-0000-000000000101',
     '00000000-0000-0000-0000-000000000001',
-    'DTN',
-    'Downtown Branch',
-    'branch',
+    'WH-BRANCH 01',
+    'Bambang',
+    'warehouse',
     true,
     now(),
     now()
@@ -38,8 +38,8 @@ VALUES
   (
     '00000000-0000-0000-0000-000000000102',
     '00000000-0000-0000-0000-000000000001',
-    'WHS',
-    'Warehouse',
+    'WH-BRANCH 02',
+    'Abad Santos',
     'warehouse',
     true,
     now(),
@@ -257,22 +257,9 @@ END $$;
 INSERT INTO warehouses (id, company_id, business_unit_id, warehouse_code, warehouse_name, warehouse_type, address_line1, city, state, country, postal_code, contact_person, phone, email, is_active, is_van)
 VALUES
     -- Main Office Warehouses
-    ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-DAVAO-01', 'Davao Main Warehouse', 'main', 'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'davao.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-CDO-01', 'Cagayan de Oro Warehouse', 'main', 'Carmen, CDO Business Park', 'Cagayan de Oro', 'Misamis Oriental', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'cdo.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'VAN-002', 'Demo Van 002', 'retail', 'Mobile Unit', 'General Santos City', 'South Cotabato', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'van002@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000014', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-BUTUAN-01', 'Butuan Distribution Center', 'transit', 'J.C. Aquino Avenue', 'Butuan City', 'Agusan del Norte', 'Philippines', '8600', 'Ana Reyes', '+63-917-444-5555', 'butuan.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000015', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-ZAMBO-01', 'Zamboanga Retail Warehouse', 'retail', 'Gov. Camins Avenue', 'Zamboanga City', 'Zamboanga del Sur', 'Philippines', '7000', 'Carlos Miguel', '+63-917-555-6666', 'zambo.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000021', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'VAN-001', 'Demo Van 001', 'main', 'Mobile Unit', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Demo User', '+63-917-777-8888', 'van001@democompany.com', true, true),
-
-    -- Downtown Branch Warehouses
-    ('00000000-0000-0000-0000-000000000016', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'WH-DTN-01', 'Downtown Storage Facility', 'retail', 'Rizal Avenue, Downtown', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Rosa Martinez', '+63-917-111-9999', 'downtown.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000017', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'WH-DTN-02', 'City Center Warehouse', 'transit', 'C.M. Recto Street', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Pedro Gonzales', '+63-917-222-8888', 'citycenter.wh@democompany.com', true, false),
-
-    -- Warehouse Business Unit Warehouses (Large Distribution Centers)
-    ('00000000-0000-0000-0000-000000000018', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-MAIN-DIST', 'Main Distribution Center', 'main', 'Industrial Park, Warehouse Complex A', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Roberto Santos', '+63-917-555-1111', 'maindist.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000019', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-PORT-DIST', 'Port Distribution Center', 'transit', 'Port Area, Building 5', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Carmen Lopez', '+63-917-666-2222', 'port.wh@democompany.com', true, false),
-    ('00000000-0000-0000-0000-000000000020', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-LOGISTICS', 'Central Logistics Hub', 'main', 'Logistics Hub, Bay 12', 'Davao City', 'Davao del Sur', 'Philippines', '8000', 'Sandra Villanueva', '+63-917-777-3333', 'logistics.wh@democompany.com', true, false);
-
+    ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-BULACAN', 'Bulacan', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'taguig.wh@achlers.com', true, false),
+    ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'WH-BAMBANG', 'Bambang', 'main', '123 Lopez St.', 'Manila', 'NCR', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'pasay.wh@achlers.com', true, false),
+    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-SANTOS', 'Abad Santos', 'store', '456 Juan Luna St.', 'Pasig City', 'NCR', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'pasig@achlers.com', true, false);
 -- ============================================================================
 -- SEED DATA: Customers
 -- ============================================================================
@@ -533,26 +520,78 @@ BEGIN
                 v_item.id,
                 v_warehouse.id,
                 CASE
-                    WHEN v_warehouse.warehouse_type = 'main' THEN (RANDOM() * 500 + 100)::DECIMAL(20,4)
-                    ELSE (RANDOM() * 100 + 20)::DECIMAL(20,4)
+                    WHEN v_warehouse.warehouse_type = 'main' THEN FLOOR(RANDOM() * 500 + 100)
+                    ELSE FLOOR(RANDOM() * 100 + 20)
                 END,
                 CASE
-                    WHEN v_warehouse.warehouse_type = 'main' THEN 50.0000
-                    ELSE 20.0000
+                    WHEN v_warehouse.warehouse_type = 'main' THEN 50
+                    ELSE 20
                 END,
                 CASE
-                    WHEN v_warehouse.warehouse_type = 'main' THEN 200.0000
-                    ELSE 50.0000
+                    WHEN v_warehouse.warehouse_type = 'main' THEN 200
+                    ELSE 50
                 END,
                 CASE
-                    WHEN v_warehouse.warehouse_type = 'main' THEN 1000.0000
-                    ELSE 300.0000
+                    WHEN v_warehouse.warehouse_type = 'main' THEN 1000
+                    ELSE 300
                 END,
-                0.0000,
+                0,
                 true
             );
         END LOOP;
     END LOOP;
+END $$;
+
+-- ============================================================================
+-- SEED DATA: Force Low/Out of Stock Items
+-- ============================================================================
+
+DO $$
+DECLARE
+    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
+    v_low_stock_codes TEXT[] := ARRAY[
+        'MOLD-W-001',
+        'MOLD-W-002',
+        'MOLD-M-001',
+        'GLASS-16X20',
+        'GLASS-24X36',
+        'MAT-WHT-32X40',
+        'BACK-16X20',
+        'HARD-D-RINGS'
+    ];
+    v_out_of_stock_codes TEXT[] := ARRAY[
+        'MOLD-M-003',
+        'GLASS-UV-24X36',
+        'SUPPLY-GLUE'
+    ];
+    v_overstock_codes TEXT[] := ARRAY[
+        'MOLD-W-003',
+        'PACK-KRAFT'
+    ];
+BEGIN
+    -- Set low stock (below reorder level, above zero)
+    UPDATE item_warehouse iw
+    SET current_stock = 10
+    FROM items i
+    WHERE iw.item_id = i.id
+      AND i.company_id = v_company_id
+      AND i.item_code = ANY(v_low_stock_codes);
+
+    -- Set out of stock
+    UPDATE item_warehouse iw
+    SET current_stock = 0
+    FROM items i
+    WHERE iw.item_id = i.id
+      AND i.company_id = v_company_id
+      AND i.item_code = ANY(v_out_of_stock_codes);
+
+    -- Set overstock (above max quantity)
+    UPDATE item_warehouse iw
+    SET current_stock = COALESCE(iw.max_quantity, 0) + 50
+    FROM items i
+    WHERE iw.item_id = i.id
+      AND i.company_id = v_company_id
+      AND i.item_code = ANY(v_overstock_codes);
 END $$;
 
 -- ============================================================================
@@ -588,8 +627,8 @@ VALUES
 
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
-('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021'),
-('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','00000000-0000-0000-0000-000000000001','cashier','cashier@pragmatica.com','Store','Cashier',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000021');
+('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.com','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013'),
+('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','00000000-0000-0000-0000-000000000001','cashier','cashier@pragmatica.com','Store','Cashier',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013');
 
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
@@ -604,16 +643,12 @@ VALUES
 
 INSERT INTO user_business_unit_access (user_id, business_unit_id, role, is_default, is_current, granted_at)
 VALUES
-  -- Admin user access to all three business units
+  -- Regular user access to all three business units
   ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000100', 'admin', true, true, now()),
   ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000101', 'admin', false, false, now()),
   ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000102', 'admin', false, false, now()),
-  -- Cashier user access to main business unit
-  ('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f', '00000000-0000-0000-0000-000000000100', 'user', true, true, now()),
-  -- Regular user access to all three business units
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000100', 'admin', true, true, now()),
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000101', 'admin', false, false, now()),
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000102', 'admin', false, false, now());
+  ('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f', '00000000-0000-0000-0000-000000000102', 'admin', false, true, now()),
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000102', 'admin', false, true, now());
 
 -- ============================================================================
 -- SEED DATA: Cashier Role and Permissions
@@ -691,6 +726,19 @@ WHERE r.name = 'Cashier'
   AND p.resource = 'sales_invoices'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
+-- Stock Requests (Warehouse dashboard)
+INSERT INTO permissions (resource, description, can_view, can_create, can_edit, can_delete)
+VALUES ('stock_requests', 'Manage stock requests', true, true, true, true)
+ON CONFLICT (resource) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.resource = 'stock_requests'
+WHERE r.name = 'Super Admin'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+ON CONFLICT (role_id, permission_id) DO NOTHING;
+
 -- ============================================================================
 -- SEED DATA: User Role Assignments
 -- ============================================================================
@@ -719,7 +767,7 @@ INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
 SELECT
   '5fa2a5a4-14ca-4afb-bfeb-abc345335a1f',
   r.id,
-  '00000000-0000-0000-0000-000000000100',
+  '00000000-0000-0000-0000-000000000102',
   NOW()
 FROM roles r
 WHERE r.name = 'Cashier'
@@ -731,7 +779,7 @@ INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
 SELECT
   'bcb8f5df-b678-4c22-ba71-59b33ba06227',
   r.id,
-  '00000000-0000-0000-0000-000000000100',
+  '00000000-0000-0000-0000-000000000102',
   NOW()
 FROM roles r
 WHERE r.name = 'Admin'
@@ -802,212 +850,7 @@ BEGIN
     RAISE NOTICE 'Suppliers seeded: % records', (SELECT COUNT(*) FROM suppliers);
 END $$;
 
--- ============================================================================
--- SEED DATA: Purchase Orders
--- ============================================================================
 
-DO $$
-DECLARE
-    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
-    v_user_id UUID := '5745e13c-ab07-48b7-9db7-24372b16f5a9';
-    v_supplier_davao UUID;
-    v_supplier_sanmiguel UUID;
-    v_supplier_bounty UUID;
-    v_supplier_packaging UUID;
-    v_item_whole_m UUID;
-    v_item_breast UUID;
-    v_item_thigh UUID;
-    v_item_liver UUID;
-    v_item_gizzard UUID;
-    v_item_feet UUID;
-    v_item_styro_m UUID;
-    v_item_plastic_m UUID;
-    v_uom_kg UUID;
-    v_uom_pcs UUID;
-    v_uom_box UUID;
-    v_warehouse_main UUID;
-    v_po_1 UUID;
-    v_po_2 UUID;
-    v_po_3 UUID;
-BEGIN
-    -- Get supplier IDs
-    SELECT id INTO v_supplier_davao FROM suppliers WHERE supplier_code = 'SUP-001' AND company_id = v_company_id;
-    SELECT id INTO v_supplier_sanmiguel FROM suppliers WHERE supplier_code = 'SUP-002' AND company_id = v_company_id;
-    SELECT id INTO v_supplier_bounty FROM suppliers WHERE supplier_code = 'SUP-003' AND company_id = v_company_id;
-    SELECT id INTO v_supplier_packaging FROM suppliers WHERE supplier_code = 'SUP-005' AND company_id = v_company_id;
-
-    -- Get item IDs
-    SELECT id INTO v_item_whole_m FROM items WHERE item_code = 'MOLD-W-002' AND company_id = v_company_id;
-    SELECT id INTO v_item_breast FROM items WHERE item_code = 'MOLD-W-003' AND company_id = v_company_id;
-    SELECT id INTO v_item_thigh FROM items WHERE item_code = 'MOLD-M-001' AND company_id = v_company_id;
-    SELECT id INTO v_item_liver FROM items WHERE item_code = 'GLASS-16X20' AND company_id = v_company_id;
-    SELECT id INTO v_item_gizzard FROM items WHERE item_code = 'GLASS-24X36' AND company_id = v_company_id;
-    SELECT id INTO v_item_feet FROM items WHERE item_code = 'MAT-WHT-32X40' AND company_id = v_company_id;
-    SELECT id INTO v_item_styro_m FROM items WHERE item_code = 'PACK-BUBBLE' AND company_id = v_company_id;
-    SELECT id INTO v_item_plastic_m FROM items WHERE item_code = 'PACK-CORNER' AND company_id = v_company_id;
-
-    -- Get UoM IDs
-    SELECT id INTO v_uom_kg FROM units_of_measure WHERE code = 'FT' AND company_id = v_company_id;
-    SELECT id INTO v_uom_pcs FROM units_of_measure WHERE code = 'PCS' AND company_id = v_company_id;
-    SELECT id INTO v_uom_box FROM units_of_measure WHERE code = 'BOX' AND company_id = v_company_id;
-
-    -- Get warehouse ID
-    SELECT id INTO v_warehouse_main FROM warehouses WHERE warehouse_code = 'WH-DAVAO-01' AND company_id = v_company_id;
-
-    -- PO 1: Draft - Wood moldings order
-    INSERT INTO purchase_orders (
-        company_id, business_unit_id, order_code, supplier_id, order_date, expected_delivery_date,
-        subtotal, discount_amount, tax_amount, total_amount, status,
-        delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
-        payment_terms, notes, created_by, updated_by
-    ) VALUES (
-        v_company_id, '00000000-0000-0000-0000-000000000100', 'PO-2025-0001', v_supplier_davao, '2025-11-01', '2025-11-05',
-        0, 0, 0, 0, 'draft',
-        'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-        'Net 30 days', 'Wood moldings order for November', v_user_id, v_user_id
-    ) RETURNING id INTO v_po_1;
-
-    -- PO 1 Items
-    INSERT INTO purchase_order_items (
-        company_id, purchase_order_id, item_id, item_description, quantity, uom_id,
-        rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
-        sort_order, created_by, updated_by
-    ) VALUES
-        (v_company_id, v_po_1, v_item_whole_m, 'Walnut Molding 1.5 inch', 500.0000, v_uom_kg,
-         65.00, 2.00, 650.00, 0.00, 0.00, 31850.00, 0, v_user_id, v_user_id),
-        (v_company_id, v_po_1, v_item_breast, 'Cherry Molding 2 inch', 300.0000, v_uom_kg,
-         75.00, 0.00, 0.00, 0.00, 0.00, 22500.00, 1, v_user_id, v_user_id),
-        (v_company_id, v_po_1, v_item_thigh, 'Gold Metal Molding 0.75 inch', 400.0000, v_uom_kg,
-         35.00, 0.00, 0.00, 0.00, 0.00, 14000.00, 2, v_user_id, v_user_id);
-
-    -- Update PO 1 totals
-    UPDATE purchase_orders SET
-        subtotal = 68350.00,
-        discount_amount = 650.00,
-        tax_amount = 0.00,
-        total_amount = 67700.00
-    WHERE id = v_po_1;
-
-    -- PO 2: Approved - Glass sheets order (ready to receive)
-    INSERT INTO purchase_orders (
-        company_id, business_unit_id, order_code, supplier_id, order_date, expected_delivery_date,
-        subtotal, discount_amount, tax_amount, total_amount, status,
-        delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
-        payment_terms, notes, approved_by, approved_at, created_by, updated_by
-    ) VALUES (
-        v_company_id, '00000000-0000-0000-0000-000000000100', 'PO-2025-0002', v_supplier_bounty, '2025-10-25', '2025-11-02',
-        0, 0, 0, 0, 'approved',
-        'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-        'Net 30 days', 'Glass sheets and matboards order', v_user_id, '2025-10-26 10:00:00', v_user_id, v_user_id
-    ) RETURNING id INTO v_po_2;
-
-    -- PO 2 Items
-    INSERT INTO purchase_order_items (
-        company_id, purchase_order_id, item_id, item_description, quantity, uom_id,
-        rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
-        sort_order, created_by, updated_by
-    ) VALUES
-        (v_company_id, v_po_2, v_item_liver, 'Glass Sheet 16x20 inches', 100.0000, v_uom_pcs,
-         55.00, 0.00, 0.00, 0.00, 0.00, 5500.00, 0, v_user_id, v_user_id),
-        (v_company_id, v_po_2, v_item_gizzard, 'Glass Sheet 24x36 inches', 50.0000, v_uom_pcs,
-         95.00, 0.00, 0.00, 0.00, 0.00, 4750.00, 1, v_user_id, v_user_id),
-        (v_company_id, v_po_2, v_item_feet, 'White Matboard 32x40 inches', 75.0000, v_uom_pcs,
-         85.00, 0.00, 0.00, 0.00, 0.00, 6375.00, 2, v_user_id, v_user_id);
-
-    -- Update PO 2 totals
-    UPDATE purchase_orders SET
-        subtotal = 16625.00,
-        discount_amount = 0.00,
-        tax_amount = 0.00,
-        total_amount = 16625.00
-    WHERE id = v_po_2;
-
-    -- PO 3: Partially Received - Packaging supplies
-    INSERT INTO purchase_orders (
-        company_id, business_unit_id, order_code, supplier_id, order_date, expected_delivery_date,
-        subtotal, discount_amount, tax_amount, total_amount, status,
-        delivery_address_line1, delivery_city, delivery_state, delivery_country, delivery_postal_code,
-        payment_terms, notes, approved_by, approved_at, created_by, updated_by
-    ) VALUES (
-        v_company_id, '00000000-0000-0000-0000-000000000100', 'PO-2025-0003', v_supplier_packaging, '2025-10-20', '2025-11-05',
-        0, 0, 0, 0, 'partially_received',
-        'JP Laurel Ave, Bajada', 'Davao City', 'Davao del Sur', 'Philippines', '8000',
-        'Net 15 days', 'Monthly packaging supplies for frames', v_user_id, '2025-10-21 09:00:00', v_user_id, v_user_id
-    ) RETURNING id INTO v_po_3;
-
-    -- PO 3 Items
-    INSERT INTO purchase_order_items (
-        company_id, purchase_order_id, item_id, item_description, quantity, uom_id,
-        rate, discount_percent, discount_amount, tax_percent, tax_amount, line_total,
-        quantity_received, sort_order, created_by, updated_by
-    ) VALUES
-        (v_company_id, v_po_3, v_item_styro_m, 'Bubble Wrap 12" x 100ft roll', 20.0000, v_uom_pcs,
-         85.00, 5.00, 85.00, 12.00, 189.00, 1764.00, 10.0000, 0, v_user_id, v_user_id),
-        (v_company_id, v_po_3, v_item_plastic_m, 'Corner Protectors (100pcs)', 30.0000, v_uom_box,
-         45.00, 0.00, 0.00, 12.00, 162.00, 1512.00, 0.0000, 1, v_user_id, v_user_id);
-
-    -- Update PO 3 totals
-    UPDATE purchase_orders SET
-        subtotal = 3276.00,
-        discount_amount = 85.00,
-        tax_amount = 351.00,
-        total_amount = 3542.00
-    WHERE id = v_po_3;
-
-    RAISE NOTICE 'Purchase Orders seeded: % records', (SELECT COUNT(*) FROM purchase_orders);
-    RAISE NOTICE 'Purchase Order Items seeded: % records', (SELECT COUNT(*) FROM purchase_order_items);
-END $$;
-
--- ============================================================================
--- SEED DATA: Van Warehouse Inventory
--- ============================================================================
--- Add initial inventory to Demo Van 001 for testing
-DO $$
-DECLARE
-    v_van_id UUID := '00000000-0000-0000-0000-000000000021';
-    v_company_id UUID := '00000000-0000-0000-0000-000000000001';
-    v_item_chicken UUID;
-    v_item_pork UUID;
-    v_item_eggs UUID;
-    v_item_rice UUID;
-BEGIN
-    -- Get item IDs (using items that should exist from previous seeds)
-    SELECT id INTO v_item_chicken FROM items WHERE item_code = 'CHK-WHL-01' LIMIT 1;
-    SELECT id INTO v_item_pork FROM items WHERE item_code = 'PRK-BLY-01' LIMIT 1;
-    SELECT id INTO v_item_eggs FROM items WHERE item_code = 'EGG-FRH-01' LIMIT 1;
-    SELECT id INTO v_item_rice FROM items WHERE item_code = 'RIC-WHT-01' LIMIT 1;
-
-    -- Insert van warehouse stock (only if items exist)
-    IF v_item_chicken IS NOT NULL THEN
-        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
-        VALUES (v_company_id, v_item_chicken, v_van_id, 15.0000)
-        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
-        SET current_stock = EXCLUDED.current_stock;
-    END IF;
-
-    IF v_item_pork IS NOT NULL THEN
-        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
-        VALUES (v_company_id, v_item_pork, v_van_id, 8.0000)
-        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
-        SET current_stock = EXCLUDED.current_stock;
-    END IF;
-
-    IF v_item_eggs IS NOT NULL THEN
-        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
-        VALUES (v_company_id, v_item_eggs, v_van_id, 3.0000)
-        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
-        SET current_stock = EXCLUDED.current_stock;
-    END IF;
-
-    IF v_item_rice IS NOT NULL THEN
-        INSERT INTO item_warehouse_stock (company_id, item_id, warehouse_id, current_stock)
-        VALUES (v_company_id, v_item_rice, v_van_id, 25.0000)
-        ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
-        SET current_stock = EXCLUDED.current_stock;
-    END IF;
-
-    RAISE NOTICE 'Van warehouse inventory seeded for VAN-001';
-END $$;
 -- ============================================================================
 -- SEED DATA: Chart of Accounts
 -- ============================================================================

@@ -34,6 +34,7 @@ const menuItems = [
       { title: "Warehouses", href: "/inventory/warehouses", resource: RESOURCES.WAREHOUSES as Resource },
       { title: "Stock Transactions", href: "/inventory/stock", resource: RESOURCES.STOCK_TRANSFERS as Resource },
       { title: "Stock Adjustments", href: "/inventory/adjustments", resource: RESOURCES.STOCK_ADJUSTMENTS as Resource },
+      { title: "Stock Requests", href: "/inventory/stock-requests", resource: RESOURCES.STOCK_REQUESTS as Resource },
       { title: "Stock Transformations", href: "/inventory/transformations", resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource },
       { title: "Reorder Management", href: "/inventory/reorder", resource: RESOURCES.REORDER_MANAGEMENT as Resource },
     ],
@@ -113,18 +114,24 @@ export function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-gray-800 min-h-screen flex flex-col" style={{ backgroundColor: '#240032' }}>
-      <div className="p-6 flex items-center gap-3 border-b border-white/10">
-        <div className="w-12 h-12 relative flex-shrink-0">
-          <Image
-            src="/erp.png"
-            alt="ERP Logo"
-            fill
-            className="object-contain"
-          />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-white">PragmaBiz</h1>
-          <p className="text-xs text-gray-400">Business Solution</p>
+      <div className="p-6 border-b border-white/10">
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/15 via-white/10 to-white/5 ring-1 ring-white/15 shadow-[0_12px_30px_rgba(15,23,42,0.35)]">
+            <Image
+              src="/achlers_circle.png"
+              alt="Achlers Logo"
+              fill
+              className="object-contain p-0"
+            />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-base font-semibold text-white">Achlers</h4>
+            <p className="text-sm font-medium text-white/80">Integrated Sales</p>
+            <div className="h-px w-10 bg-white/20" />
+            <p className="text-[9px] uppercase tracking-[0.3em] text-white/45">
+              Inventory System
+            </p>
+          </div>
         </div>
       </div>
 

@@ -11,8 +11,10 @@ type ItemWarehouseRow = {
     item_code: string | null
     item_name: string | null
     category_id: string | null
+    cost_price?: number | string | null
+    purchase_price?: number | string | null
     category?: {
-      category_name: string | null
+      name: string | null
     } | null
     uom?: {
       code: string | null
@@ -105,7 +107,9 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name,
           category_id,
-          category:item_categories(id, category_name),
+          cost_price,
+          purchase_price,
+          category:item_categories(id, name),
           uom:units_of_measure(id, code, name)
         ),
         warehouse:warehouses!inner(
@@ -127,7 +131,54 @@ export async function GET(request: NextRequest) {
     }
 
     if (categoryFilter) {
-      query = query.eq('item.category_id', categoryFilter)
+      const uuidMatch =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          categoryFilter
+        )
+
+      if (uuidMatch) {
+        query = query.eq('item.category_id', categoryFilter)
+      } else {
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('item_categories')
+          .select('id')
+          .eq('name', categoryFilter)
+          .eq('company_id', userData.company_id)
+          .is('deleted_at', null)
+          .maybeSingle()
+
+        if (categoryError) {
+          return NextResponse.json(
+            { error: 'Failed to fetch stock valuation data' },
+            { status: 500 }
+          )
+        }
+
+        if (!categoryData?.id) {
+          return NextResponse.json({
+            data: [],
+            summary: {
+              totalStockValue: 0,
+              totalQuantity: 0,
+              itemCount: 0,
+              warehouseCount: 0,
+              categoryCount: 0,
+              averageItemValue: 0,
+            },
+            topItems: [],
+            lowValueItems: [],
+            categoryBreakdown: [],
+            filters: {
+              warehouseId: warehouseId || null,
+              itemId: itemId || null,
+              category: categoryFilter || null,
+              groupBy,
+            },
+          })
+        }
+
+        query = query.eq('item.category_id', categoryData.id)
+      }
     }
 
     const { data: inventoryData, error } = await query
@@ -146,11 +197,13 @@ export async function GET(request: NextRequest) {
       const { data: latestTx } = await supabase
         .from('stock_transaction_items')
         .select('valuation_rate')
+        .eq('company_id', userData.company_id)
         .eq('item_id', pair.item_id)
+        .gt('valuation_rate', 0)
         .order('posting_date', { ascending: false })
         .order('posting_time', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       const key = `${pair.item_id}_${pair.warehouse_id}`
       valuationRates.set(key, latestTx?.valuation_rate ? parseFloat(String(latestTx.valuation_rate)) : 0)
@@ -165,7 +218,12 @@ export async function GET(request: NextRequest) {
 
       if (!balancesMap.has(key)) {
         const currentStock = parseFloat(String(entry.current_stock || 0))
-        const valuationRate = valuationRates.get(key) || 0
+        const fallbackRate = Math.max(
+          0,
+          Number(entry.item?.cost_price ?? 0),
+          Number(entry.item?.purchase_price ?? 0)
+        )
+        const valuationRate = valuationRates.get(key) || fallbackRate
         const stockValue = currentStock * valuationRate
 
         balancesMap.set(key, {
@@ -173,7 +231,7 @@ export async function GET(request: NextRequest) {
           itemCode: entry.item?.item_code,
           itemName: entry.item?.item_name,
           categoryId: entry.item?.category_id,
-          category: entry.item?.category?.category_name || 'Uncategorized',
+          category: entry.item?.category?.name || 'Uncategorized',
           warehouseId: entry.warehouse_id,
           warehouseCode: entry.warehouse?.warehouse_code,
           warehouseName: entry.warehouse?.warehouse_name,

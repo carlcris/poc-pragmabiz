@@ -22,6 +22,7 @@ type ReorderAlert = {
   warehouseName: string
   currentStock: number
   reorderPoint: number
+  reorderQuantity: number
   minimumLevel: number
   maxQuantity: number
   severity: 'critical' | 'warning' | 'info'
@@ -126,6 +127,7 @@ export async function GET(request: NextRequest) {
       .map((stock) => {
         const currentStock = Number(stock.current_stock || 0)
         const reorderLevel = Number(stock.reorder_level || 0)
+        const reorderQuantity = Number(stock.reorder_quantity || 0)
         const maxQuantity = Number(stock.max_quantity || 0)
 
         // Skip items without reorder level set or with adequate stock
@@ -160,6 +162,7 @@ export async function GET(request: NextRequest) {
           warehouseName: stock.warehouses.warehouse_name,
           currentStock: currentStock,
           reorderPoint: reorderLevel,
+          reorderQuantity: reorderQuantity,
           minimumLevel: reorderLevel * 0.5, // Use 50% of reorder level as minimum
           maxQuantity: maxQuantity,
           severity: alertSeverity,

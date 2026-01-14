@@ -96,6 +96,10 @@ export function PurchaseReceiptViewDialog({
                   <div className="font-medium">{formatDate(receipt.receiptDate)}</div>
                 </div>
                 <div>
+                  <span className="text-muted-foreground">Batch:</span>
+                  <div className="font-medium">{receipt.batchSequenceNumber || "—"}</div>
+                </div>
+                <div>
                   <span className="text-muted-foreground">Warehouse:</span>
                   <div className="font-medium">
                     {receipt.warehouse?.code} - {receipt.warehouse?.name}

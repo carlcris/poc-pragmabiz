@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
   Package,
   Warehouse,
   ArrowUpDown,
@@ -13,7 +12,6 @@ import {
 import { useStockMovement, useStockValuation } from "@/hooks/useStockReports";
 import { useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
-import { useCurrency } from "@/hooks/useCurrency";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,7 +39,11 @@ export default function StockReportsPage() {
   type StockValuationGroupBy = NonNullable<StockValuationFilters["groupBy"]>;
 
   const [activeTab, setActiveTab] = useState("movement");
-  const { formatCurrency } = useCurrency();
+  const formatPhp = (amount: number) =>
+    new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    }).format(amount);
 
   // Movement report filters
   const [movementStartDate, setMovementStartDate] = useState<string>(
@@ -103,7 +105,7 @@ export default function StockReportsPage() {
             Stock Movement
           </TabsTrigger>
           <TabsTrigger value="valuation" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <TrendingUp className="h-4 w-4" />
             Stock Valuation
           </TabsTrigger>
         </TabsList>
@@ -200,10 +202,10 @@ export default function StockReportsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-green-600">
-                      +{movementQuery.data.summary.totalIn.toFixed(2)}
+                      +{Math.trunc(movementQuery.data.summary.totalIn)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(movementQuery.data.summary.totalInValue)}
+                      {formatPhp(movementQuery.data.summary.totalInValue)}
                     </p>
                   </CardContent>
                 </Card>
@@ -215,10 +217,10 @@ export default function StockReportsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-red-600">
-                      -{movementQuery.data.summary.totalOut.toFixed(2)}
+                      -{Math.trunc(movementQuery.data.summary.totalOut)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(movementQuery.data.summary.totalOutValue)}
+                      {formatPhp(movementQuery.data.summary.totalOutValue)}
                     </p>
                   </CardContent>
                 </Card>
@@ -239,10 +241,10 @@ export default function StockReportsPage() {
                       }`}
                     >
                       {movementQuery.data.summary.netMovement > 0 ? "+" : ""}
-                      {movementQuery.data.summary.netMovement.toFixed(2)}
+                      {Math.trunc(movementQuery.data.summary.netMovement)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(movementQuery.data.summary.netValue)}
+                      {formatPhp(movementQuery.data.summary.netValue)}
                     </p>
                   </CardContent>
                 </Card>
@@ -276,18 +278,14 @@ export default function StockReportsPage() {
                         <p className="text-sm font-medium mb-2">Total IN</p>
                         <div className="flex items-center gap-2">
                           <span className="text-2xl font-bold">
-                            {movementQuery.data.summary.totalIn.toFixed(2)}
+                            {Math.trunc(movementQuery.data.summary.totalIn)}
                           </span>
                           <Badge
-                            variant={
-                              movementQuery.data.periodComparison.changes.totalInChangePercent > 0
-                                ? "default"
-                                : "secondary"
-                            }
+                            variant="outline"
                             className={
                               movementQuery.data.periodComparison.changes.totalInChangePercent > 0
-                                ? "bg-green-600"
-                                : "bg-red-600"
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                                : "border-rose-500/30 bg-rose-500/10 text-rose-600"
                             }
                           >
                             {movementQuery.data.periodComparison.changes.totalInChangePercent > 0
@@ -301,18 +299,14 @@ export default function StockReportsPage() {
                         <p className="text-sm font-medium mb-2">Total OUT</p>
                         <div className="flex items-center gap-2">
                           <span className="text-2xl font-bold">
-                            {movementQuery.data.summary.totalOut.toFixed(2)}
+                            {Math.trunc(movementQuery.data.summary.totalOut)}
                           </span>
                           <Badge
-                            variant={
-                              movementQuery.data.periodComparison.changes.totalOutChangePercent > 0
-                                ? "default"
-                                : "secondary"
-                            }
+                            variant="outline"
                             className={
                               movementQuery.data.periodComparison.changes.totalOutChangePercent > 0
-                                ? "bg-green-600"
-                                : "bg-red-600"
+                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                                : "border-rose-500/30 bg-rose-500/10 text-rose-600"
                             }
                           >
                             {movementQuery.data.periodComparison.changes.totalOutChangePercent > 0
@@ -373,10 +367,10 @@ export default function StockReportsPage() {
                                 </TableCell>
                               )}
                               <TableCell className="text-right text-green-600 font-medium">
-                                +{movement.totalIn.toFixed(2)}
+                                +{Math.trunc(movement.totalIn)}
                               </TableCell>
                               <TableCell className="text-right text-red-600 font-medium">
-                                -{movement.totalOut.toFixed(2)}
+                                -{Math.trunc(movement.totalOut)}
                               </TableCell>
                               <TableCell
                                 className={`text-right font-bold ${
@@ -388,16 +382,16 @@ export default function StockReportsPage() {
                                 }`}
                               >
                                 {movement.netMovement > 0 ? "+" : ""}
-                                {movement.netMovement.toFixed(2)}
+                                {Math.trunc(movement.netMovement)}
                               </TableCell>
                               <TableCell className="text-right">
-                                {formatCurrency(movement.totalInValue)}
+                                {formatPhp(movement.totalInValue)}
                               </TableCell>
                               <TableCell className="text-right">
-                                {formatCurrency(movement.totalOutValue)}
+                                {formatPhp(movement.totalOutValue)}
                               </TableCell>
                               <TableCell className="text-right font-medium">
-                                {formatCurrency(movement.netValue)}
+                                {formatPhp(movement.netValue)}
                               </TableCell>
                               <TableCell className="text-right">
                                 {movement.transactionCount}
@@ -514,11 +508,11 @@ export default function StockReportsPage() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Stock Value</CardTitle>
-                    <DollarSign className="h-4 w-4 text-green-600" />
+                    <TrendingUp className="h-4 w-4 text-green-600" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {formatCurrency(valuationQuery.data.summary.totalStockValue)}
+                      {formatPhp(valuationQuery.data.summary.totalStockValue)}
                     </div>
                     <p className="text-xs text-muted-foreground">Current valuation</p>
                   </CardContent>
@@ -559,7 +553,7 @@ export default function StockReportsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {formatCurrency(valuationQuery.data.summary.averageItemValue)}
+                      {formatPhp(valuationQuery.data.summary.averageItemValue)}
                     </div>
                     <p className="text-xs text-muted-foreground">Per item</p>
                   </CardContent>
@@ -595,13 +589,13 @@ export default function StockReportsPage() {
                                 </div>
                               </TableCell>
                               <TableCell className="text-right">
-                                {item.totalQuantity.toFixed(2)} {item.uom}
+                                {Math.trunc(item.totalQuantity)} {item.uom}
                               </TableCell>
                               <TableCell className="text-right">
-                                {formatCurrency(item.averageRate)}
+                                {formatPhp(item.averageRate)}
                               </TableCell>
                               <TableCell className="text-right font-bold">
-                                {formatCurrency(item.totalValue)}
+                                {formatPhp(item.totalValue)}
                               </TableCell>
                             </TableRow>
                           ))}
@@ -635,10 +629,12 @@ export default function StockReportsPage() {
                               <TableCell className="font-medium">{category.category}</TableCell>
                               <TableCell className="text-right">{category.itemCount}</TableCell>
                               <TableCell className="text-right font-bold">
-                                {formatCurrency(category.totalValue)}
+                                {formatPhp(category.totalValue)}
                               </TableCell>
                               <TableCell className="text-right">
-                                <Badge variant="outline">{category.percentage.toFixed(1)}%</Badge>
+                                <Badge variant="outline">
+                                  {Number(category.percentage ?? 0).toFixed(1)}%
+                                </Badge>
                               </TableCell>
                             </TableRow>
                           ))}

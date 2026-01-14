@@ -1,6 +1,7 @@
 export interface Warehouse {
   id: string;
   companyId: string;
+  businessUnitId?: string | null;
   code: string;
   name: string;
   description: string;

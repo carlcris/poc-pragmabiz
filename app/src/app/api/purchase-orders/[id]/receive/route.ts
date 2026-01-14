@@ -29,6 +29,7 @@ type PurchaseOrderReceiptItemInput = {
 type PurchaseOrderReceiveBody = {
   warehouseId: string
   receiptDate?: string
+  batchSequenceNumber?: string | null
   supplierInvoiceNumber?: string | null
   supplierInvoiceDate?: string | null
   notes?: string | null
@@ -141,6 +142,7 @@ export async function POST(
         supplier_id: po.supplier_id,
         warehouse_id: body.warehouseId,
         receipt_date: body.receiptDate || new Date().toISOString().split('T')[0],
+        batch_sequence_number: body.batchSequenceNumber || null,
         supplier_invoice_number: body.supplierInvoiceNumber || null,
         supplier_invoice_date: body.supplierInvoiceDate || null,
         status: 'received', // Auto-mark as received

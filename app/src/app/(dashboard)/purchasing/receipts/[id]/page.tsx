@@ -27,6 +27,7 @@ const mockReceiptDetails = {
     },
     receiptDate: "2024-01-15T10:30:00",
     deliveryDate: "2024-01-15T09:00:00",
+    batchSequenceNumber: "BATCH-2024-001",
     status: "completed",
     receivedBy: "John Doe",
     warehouse: "Main Warehouse - Davao",
@@ -100,6 +101,7 @@ const mockReceiptDetails = {
     },
     receiptDate: "2024-01-14T14:20:00",
     deliveryDate: "2024-01-14T13:00:00",
+    batchSequenceNumber: "BATCH-2024-002",
     status: "partial",
     receivedBy: "Jane Smith",
     warehouse: "Main Warehouse - Davao",
@@ -151,6 +153,7 @@ const mockReceiptDetails = {
     },
     receiptDate: "2024-01-14T11:00:00",
     deliveryDate: "2024-01-14T10:00:00",
+    batchSequenceNumber: "BATCH-2024-003",
     status: "pending",
     receivedBy: "Mike Johnson",
     warehouse: "Main Warehouse - Davao",
@@ -318,6 +321,10 @@ export default function GoodsReceiptDetailPage() {
                     minute: "2-digit",
                   })}
                 </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Batch</p>
+                <p className="text-sm">{receipt.batchSequenceNumber || "—"}</p>
               </div>
             </div>
             <div>
