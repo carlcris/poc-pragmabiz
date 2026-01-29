@@ -19,22 +19,22 @@ All documentation is in the `/docs` folder:
 
 ```
 /erpplus
-├── /app                        # Next.js application
-│   ├── /src
-│   │   ├── /app                # Next.js App Router (pages + API routes)
-│   │   ├── /components         # React components
-│   │   ├── /lib                # Utilities and clients
-│   │   │   ├── /supabase       # Supabase client (browser & server)
-│   │   │   └── /api            # API client functions
-│   │   └── /types              # TypeScript type definitions
-│   │
-│   ├── /supabase               # Database migrations & config
-│   │   ├── /migrations         # SQL migration files
-│   │   ├── config.toml         # Supabase configuration
-│   │   └── seed.sql            # Development seed data
-│   │
-│   ├── package.json
-│   └── .env.local              # Environment variables
+├── /src
+│   ├── /app                    # Next.js App Router (pages + API routes)
+│   ├── /components             # React components
+│   ├── /lib                    # Utilities and clients
+│   │   ├── /supabase           # Supabase client (browser & server)
+│   │   └── /api                # API client functions
+│   └── /types                  # TypeScript type definitions
+│
+├── package.json
+├── .env.local                  # Environment variables
+│
+├── /supabase                   # Database migrations & config
+│   ├── /migrations             # SQL migration files
+│   ├── /functions              # Edge functions (Deno)
+│   ├── config.toml             # Supabase configuration
+│   └── seed.sql                # Development seed data
 │
 ├── /docs                       # All project documentation
 ├── todo.md                     # Project task tracking
@@ -45,7 +45,7 @@ All documentation is in the `/docs` folder:
 
 ### Frontend (Next.js)
 
-From the `app/` directory:
+From the repo root:
 
 ```bash
 # Install dependencies
@@ -90,7 +90,7 @@ export const Button = ({ children, variant = "primary" }: ButtonProps) => (
 
 ### Database (Supabase)
 
-From the `app/` directory:
+From the repo root:
 
 ```bash
 # Start Supabase local services
@@ -121,7 +121,7 @@ supabase migration new <migration_name>
 
 ## Database Migration Conventions
 
-When working with database migrations in the `app/supabase/migrations/` directory, follow these rules:
+When working with database migrations in the `supabase/migrations/` directory, follow these rules:
 
 ### Migration File Naming
 
@@ -187,7 +187,7 @@ Each migration file should include:
 ### How to Follow This Rule
 
 1. **Before writing any API endpoint that queries or modifies the database:**
-   - Locate the relevant migration files in the `app/supabase/migrations/` directory
+   - Locate the relevant migration files in the `supabase/migrations/` directory
    - Read the table schema to verify:
      - Exact table names (e.g., `item_warehouse` not `item_warehouse_stock`)
      - Exact column names (e.g., `sales_price` not `sell_price`)
@@ -221,7 +221,7 @@ const { data } = await supabase
 
 **GOOD - Verifying schema first:**
 ```typescript
-// 1. First, check app/supabase/migrations/00001_db_schema_up.sql
+// 1. First, check supabase/migrations/00001_db_schema_up.sql
 // 2. Find the items table definition:
 //    CREATE TABLE items (
 //      id UUID PRIMARY KEY,
@@ -239,7 +239,7 @@ const { data } = await supabase
 
 ### Migration File Location
 
-Database migrations are located in: `app/supabase/migrations/`
+Database migrations are located in: `supabase/migrations/`
 
 Common tables to reference:
 - `items` - Product/inventory items

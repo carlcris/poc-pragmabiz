@@ -32,7 +32,7 @@ Create a **configurable, reusable permission pattern** where:
 
 ### 1. Lookup Data Configuration
 
-**File**: `/app/src/config/lookupDataPermissions.ts`
+**File**: `/src/config/lookupDataPermissions.ts`
 
 ```typescript
 /**
@@ -148,7 +148,7 @@ export function getAccessorsForLookupData(lookupResource: LookupResource): Trans
 
 ### 2. Enhanced Permission Helper
 
-**File**: `/app/src/lib/auth/requirePermission.ts`
+**File**: `/src/lib/auth/requirePermission.ts`
 
 ```typescript
 import { LOOKUP_DATA_ACCESS_MAP, type LookupResource } from '@/config/lookupDataPermissions';
@@ -198,8 +198,8 @@ export async function requireLookupDataAccess(
 **Goal**: Create the foundation without touching existing APIs
 
 **Tasks**:
-1. ✅ Create `/app/src/config/lookupDataPermissions.ts` configuration file
-2. ✅ Add `requireLookupDataAccess()` helper to `/app/src/lib/auth/requirePermission.ts`
+1. ✅ Create `/src/config/lookupDataPermissions.ts` configuration file
+2. ✅ Add `requireLookupDataAccess()` helper to `/src/lib/auth/requirePermission.ts`
 3. ✅ Add `getAccessorsForLookupData()` utility function
 4. ✅ Write unit tests for the configuration and helpers
 5. ✅ Document the pattern in RBAC documentation
@@ -212,7 +212,7 @@ export async function requireLookupDataAccess(
 **Goal**: Implement pattern on ONE critical API and validate
 
 **Tasks**:
-1. Update `/app/src/app/api/items/route.ts` GET endpoint
+1. Update `/src/app/api/items/route.ts` GET endpoint
    - Replace current permission check with `requireLookupDataAccess()`
    - Add comment explaining the pattern
 
@@ -232,10 +232,10 @@ export async function requireLookupDataAccess(
 **Goal**: Roll out to most critical lookup data
 
 **APIs to Update**:
-1. `/app/src/app/api/customers/route.ts` (GET)
-2. `/app/src/app/api/suppliers/route.ts` (GET)
-3. `/app/src/app/api/warehouses/route.ts` (GET)
-4. `/app/src/app/api/item-categories/route.ts` (GET)
+1. `/src/app/api/customers/route.ts` (GET)
+2. `/src/app/api/suppliers/route.ts` (GET)
+3. `/src/app/api/warehouses/route.ts` (GET)
+4. `/src/app/api/item-categories/route.ts` (GET)
 
 **Validation After Each API**:
 - Test POS page → Should work with only 'pos' permission
@@ -250,11 +250,11 @@ export async function requireLookupDataAccess(
 **Goal**: Complete rollout to all lookup data
 
 **APIs to Update**:
-1. `/app/src/app/api/employees/route.ts` (GET)
-2. `/app/src/app/api/items/[id]/route.ts` (GET)
-3. `/app/src/app/api/customers/[id]/route.ts` (GET)
-4. `/app/src/app/api/suppliers/[id]/route.ts` (GET)
-5. `/app/src/app/api/warehouses/[id]/route.ts` (GET)
+1. `/src/app/api/employees/route.ts` (GET)
+2. `/src/app/api/items/[id]/route.ts` (GET)
+3. `/src/app/api/customers/[id]/route.ts` (GET)
+4. `/src/app/api/suppliers/[id]/route.ts` (GET)
+5. `/src/app/api/warehouses/[id]/route.ts` (GET)
 
 **Validation**: Full regression testing on all transactional features
 
@@ -264,8 +264,8 @@ export async function requireLookupDataAccess(
 **Goal**: Apply pattern to enhanced/specialized endpoints
 
 **APIs to Consider**:
-- `/app/src/app/api/items-enhanced/route.ts`
-- `/app/src/app/api/warehouses/[id]/inventory/route.ts`
+- `/src/app/api/items-enhanced/route.ts`
+- `/src/app/api/warehouses/[id]/inventory/route.ts`
 - Item variants, pricing, packaging endpoints
 
 ---

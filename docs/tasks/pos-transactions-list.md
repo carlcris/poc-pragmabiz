@@ -69,11 +69,11 @@
 - `GET /api/pos/transactions/[id]/receipt` - Generate receipt
 
 ### Files Created
-- `/app/src/app/(dashboard)/sales/pos/transactions/page.tsx`
-- `/app/src/components/pos/TransactionDetailsDialog.tsx`
+- `/src/app/(dashboard)/sales/pos/transactions/page.tsx`
+- `/src/components/pos/TransactionDetailsDialog.tsx`
 
 ### Files Modified
-- `/app/src/components/layout/Sidebar.tsx` - Added POS Transactions menu item
+- `/src/components/layout/Sidebar.tsx` - Added POS Transactions menu item
 
 ### Dependencies
 - Existing hooks: `usePOSTransactions`, `usePOSTransaction`, `useVoidPOSTransaction`

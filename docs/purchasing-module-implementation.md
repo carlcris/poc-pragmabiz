@@ -559,7 +559,7 @@ Create validation schemas:
 
 ### ✅ Phase 5: Pages Implementation (COMPLETED - Nov 11, 2025)
 
-#### Suppliers Page (`app/(dashboard)/purchasing/suppliers/page.tsx`)
+#### Suppliers Page (`src/app/(dashboard)/purchasing/suppliers/page.tsx`)
 ✅ **Complete implementation with:**
 - Search functionality (by name, code, email)
 - Status filter dropdown (all, active, inactive, blacklisted)
@@ -575,7 +575,7 @@ Create validation schemas:
 - Color-coded status badges
 - Balance highlighting for non-zero values
 
-#### Purchase Orders Page (`app/(dashboard)/purchasing/orders/page.tsx`)
+#### Purchase Orders Page (`src/app/(dashboard)/purchasing/orders/page.tsx`)
 ✅ **Complete implementation with full workflow:**
 - Search functionality
 - Status filter dropdown (all statuses)

@@ -36,9 +36,9 @@
 ### 2. ✅ TypeScript Types (EPIC 1)
 
 **Files Created:**
-- ✅ `app/src/types/transformation-template.ts`
-- ✅ `app/src/types/transformation-order.ts`
-- ✅ `app/src/types/transformation-lineage.ts`
+- ✅ `src/types/transformation-template.ts`
+- ✅ `src/types/transformation-order.ts`
+- ✅ `src/types/transformation-lineage.ts`
 
 **Key Interfaces:**
 - `TransformationTemplate`, `TransformationTemplateInput`, `TransformationTemplateOutput`
@@ -57,8 +57,8 @@
 ### 3. ✅ Validation Schemas (EPIC 3 & 4)
 
 **Files Created:**
-- ✅ `app/src/lib/validations/transformation-template.ts`
-- ✅ `app/src/lib/validations/transformation-order.ts`
+- ✅ `src/lib/validations/transformation-template.ts`
+- ✅ `src/lib/validations/transformation-order.ts`
 
 **Validation Rules:**
 
@@ -79,7 +79,7 @@
 
 ### 4. ✅ Transformation Service (EPIC 5, 6, 7, 8)
 
-**File:** `app/src/services/inventory/transformationService.ts`
+**File:** `src/services/inventory/transformationService.ts`
 
 **Functions Implemented:**
 
@@ -132,11 +132,11 @@
 
 **Files Created:**
 
-**`app/src/app/api/transformations/templates/route.ts`**
+**`src/app/api/transformations/templates/route.ts`**
 - ✅ `GET /api/transformations/templates` - List templates with filters
 - ✅ `POST /api/transformations/templates` - Create template with inputs/outputs
 
-**`app/src/app/api/transformations/templates/[id]/route.ts`**
+**`src/app/api/transformations/templates/[id]/route.ts`**
 - ✅ `GET /api/transformations/templates/[id]` - Get template by ID (with inputs/outputs)
 - ✅ `PATCH /api/transformations/templates/[id]` - Update template (limited fields)
   - ✅ Blocks structural changes if usage_count > 0
@@ -157,38 +157,38 @@
 
 **Files Created:**
 
-**`app/src/app/api/transformations/orders/route.ts`**
+**`src/app/api/transformations/orders/route.ts`**
 - ✅ `GET /api/transformations/orders` - List orders with filters
 - ✅ `POST /api/transformations/orders` - Create order from template
   - ✅ Validates template
   - ✅ Copies template inputs/outputs to order
   - ✅ Multiplies quantities by plannedQuantity
 
-**`app/src/app/api/transformations/orders/[id]/route.ts`**
+**`src/app/api/transformations/orders/[id]/route.ts`**
 - ✅ `GET /api/transformations/orders/[id]` - Get order with all details
 - ✅ `PATCH /api/transformations/orders/[id]` - Update order (DRAFT only)
 - ✅ `DELETE /api/transformations/orders/[id]` - Soft delete (DRAFT only)
 
 **State Transition Endpoints:**
 
-**`app/src/app/api/transformations/orders/[id]/release/route.ts`**
+**`src/app/api/transformations/orders/[id]/release/route.ts`**
 - ✅ `POST` - Release order (DRAFT → RELEASED)
   - ✅ Validates template is active
   - ✅ Validates stock availability
   - ✅ Validates state transition
 
-**`app/src/app/api/transformations/orders/[id]/execute/route.ts`**
+**`src/app/api/transformations/orders/[id]/execute/route.ts`**
 - ✅ `POST` - Execute transformation (RELEASED → EXECUTING → COMPLETED)
   - ✅ Validates execution data (actual quantities)
   - ✅ Calls `executeTransformation()` service
   - ✅ Returns stock transaction IDs
   - ✅ Auto-updates status to COMPLETED
 
-**`app/src/app/api/transformations/orders/[id]/complete/route.ts`**
+**`src/app/api/transformations/orders/[id]/complete/route.ts`**
 - ✅ `POST` - Complete order (EXECUTING → COMPLETED)
   - ✅ Optional endpoint (execution usually auto-completes)
 
-**`app/src/app/api/transformations/orders/[id]/close/route.ts`**
+**`src/app/api/transformations/orders/[id]/close/route.ts`**
 - ✅ `POST` - Close order (COMPLETED → CLOSED)
   - ✅ Finalizes the order
 
@@ -213,8 +213,8 @@ None currently - ready to proceed with frontend
 ### 7. ✅ API Client Layer
 
 **Files Created:**
-- ✅ `app/src/lib/api/transformation-templates.ts`
-- ✅ `app/src/lib/api/transformation-orders.ts`
+- ✅ `src/lib/api/transformation-templates.ts`
+- ✅ `src/lib/api/transformation-orders.ts`
 
 **Template API Client Functions:**
 - ✅ `list(params)` - List templates with filters
@@ -246,8 +246,8 @@ None currently - ready to proceed with frontend
 ### 8. ✅ React Query Hooks
 
 **Files Created:**
-- ✅ `app/src/hooks/useTransformationTemplates.ts`
-- ✅ `app/src/hooks/useTransformationOrders.ts`
+- ✅ `src/hooks/useTransformationTemplates.ts`
+- ✅ `src/hooks/useTransformationOrders.ts`
 
 **Template Hooks:**
 - ✅ `useTransformationTemplates(params)` - Query: List templates
@@ -287,7 +287,7 @@ None currently - ready to proceed with frontend
 
 **Pages to Create:**
 ```
-app/src/app/(dashboard)/inventory/transformations/
+src/app/(dashboard)/inventory/transformations/
 ├── page.tsx                          # List orders
 ├── templates/page.tsx                # Manage templates
 ├── new/page.tsx                      # Create order
@@ -296,7 +296,7 @@ app/src/app/(dashboard)/inventory/transformations/
 
 **Components to Create:**
 ```
-app/src/components/transformations/
+src/components/transformations/
 ├── TransformationTemplateForm.tsx    # Create/edit template
 ├── TransformationTemplateList.tsx    # Template list with search
 ├── TransformationOrderForm.tsx       # Create order from template
@@ -498,34 +498,34 @@ POST /api/transformations/orders/[id]/execute
 - `supabase/migrations/20251217000000_transformation_schema.sql`
 
 ### Types (3 files)
-- `app/src/types/transformation-template.ts`
-- `app/src/types/transformation-order.ts`
-- `app/src/types/transformation-lineage.ts`
+- `src/types/transformation-template.ts`
+- `src/types/transformation-order.ts`
+- `src/types/transformation-lineage.ts`
 
 ### Validation (2 files)
-- `app/src/lib/validations/transformation-template.ts`
-- `app/src/lib/validations/transformation-order.ts`
+- `src/lib/validations/transformation-template.ts`
+- `src/lib/validations/transformation-order.ts`
 
 ### Service (1 file)
-- `app/src/services/inventory/transformationService.ts`
+- `src/services/inventory/transformationService.ts`
 
 ### API Routes (8 files)
-- `app/src/app/api/transformations/templates/route.ts`
-- `app/src/app/api/transformations/templates/[id]/route.ts`
-- `app/src/app/api/transformations/orders/route.ts`
-- `app/src/app/api/transformations/orders/[id]/route.ts`
-- `app/src/app/api/transformations/orders/[id]/release/route.ts`
-- `app/src/app/api/transformations/orders/[id]/execute/route.ts`
-- `app/src/app/api/transformations/orders/[id]/complete/route.ts`
-- `app/src/app/api/transformations/orders/[id]/close/route.ts`
+- `src/app/api/transformations/templates/route.ts`
+- `src/app/api/transformations/templates/[id]/route.ts`
+- `src/app/api/transformations/orders/route.ts`
+- `src/app/api/transformations/orders/[id]/route.ts`
+- `src/app/api/transformations/orders/[id]/release/route.ts`
+- `src/app/api/transformations/orders/[id]/execute/route.ts`
+- `src/app/api/transformations/orders/[id]/complete/route.ts`
+- `src/app/api/transformations/orders/[id]/close/route.ts`
 
 ### API Client (2 files)
-- `app/src/lib/api/transformation-templates.ts`
-- `app/src/lib/api/transformation-orders.ts`
+- `src/lib/api/transformation-templates.ts`
+- `src/lib/api/transformation-orders.ts`
 
 ### React Query Hooks (2 files)
-- `app/src/hooks/useTransformationTemplates.ts`
-- `app/src/hooks/useTransformationOrders.ts`
+- `src/hooks/useTransformationTemplates.ts`
+- `src/hooks/useTransformationOrders.ts`
 
 ### Documentation (2 files)
 - `docs/plans/transformation-todo.md`

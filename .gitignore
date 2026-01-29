@@ -2,11 +2,20 @@
 node_modules/
 frontend/node_modules/
 backend/node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # Next.js
 frontend/.next/
 frontend/out/
 frontend/build/
+/.next/
+/out/
 
 # Environment variables
 .env
@@ -73,3 +82,10 @@ vendor/
 
 # Supabase
 .supabase/
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

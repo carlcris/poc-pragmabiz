@@ -236,7 +236,7 @@ CREATE INDEX idx_invoice_payments_bu ON invoice_payments(business_unit_id);
 ## Phase 3: Backend Middleware & Context Management
 
 ### 3.1 Create Business Unit Context Store
-**File:** `app/src/stores/businessUnitStore.ts`
+**File:** `src/stores/businessUnitStore.ts`
 
 ```typescript
 import { create } from 'zustand';
@@ -275,7 +275,7 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
 ```
 
 ### 3.2 Create Supabase Client Wrapper with BU Context
-**File:** `app/src/lib/supabase/client-with-bu.ts`
+**File:** `src/lib/supabase/client-with-bu.ts`
 
 ```typescript
 import { createClient } from '@/lib/supabase/client';
@@ -322,7 +322,7 @@ $$;
 ```
 
 ### 3.4 Create API Route for BU Operations
-**File:** `app/src/app/api/business-units/route.ts`
+**File:** `src/app/api/business-units/route.ts`
 
 ```typescript
 import { createClient } from '@/lib/supabase/server';
@@ -367,7 +367,7 @@ export async function GET() {
 ## Phase 4: Frontend Components
 
 ### 4.1 Business Unit Switcher Component
-**File:** `app/src/components/business-unit/BusinessUnitSwitcher.tsx`
+**File:** `src/components/business-unit/BusinessUnitSwitcher.tsx`
 
 ```typescript
 'use client';
@@ -447,7 +447,7 @@ export function BusinessUnitSwitcher() {
 ```
 
 ### 4.2 Business Unit Provider
-**File:** `app/src/components/business-unit/BusinessUnitProvider.tsx`
+**File:** `src/components/business-unit/BusinessUnitProvider.tsx`
 
 ```typescript
 'use client';
@@ -501,7 +501,7 @@ export function BusinessUnitProvider({ children }: { children: React.ReactNode }
 ```
 
 ### 4.3 Update Layout to Include BU Switcher
-**File:** `app/src/components/layout/Sidebar.tsx`
+**File:** `src/components/layout/Sidebar.tsx`
 
 Add Business Unit Switcher to the sidebar header:
 

@@ -16,9 +16,9 @@
 - [ ] Document domain boundaries in architecture docs
 
 ### Task 1.2: Define Core Domain Models
-- [ ] Create `app/src/types/transformation-template.ts`
-- [ ] Create `app/src/types/transformation-order.ts`
-- [ ] Create `app/src/types/transformation-lineage.ts`
+- [ ] Create `src/types/transformation-template.ts`
+- [ ] Create `src/types/transformation-order.ts`
+- [ ] Create `src/types/transformation-lineage.ts`
 - [ ] Define state machine enums (DRAFT → RELEASED → EXECUTING → COMPLETED)
 - [ ] Define status types and filter interfaces
 
@@ -70,10 +70,10 @@
 **Status:** 🔴 Not Started
 
 ### Task 3.1: Create Template CRUD APIs
-- [ ] Create `app/src/lib/validations/transformation-template.ts` (Zod schemas)
-- [ ] Create `app/src/app/api/transformations/templates/route.ts` (GET, POST)
-- [ ] Create `app/src/app/api/transformations/templates/[id]/route.ts` (GET, PATCH, DELETE)
-- [ ] Create `app/src/app/api/transformations/templates/[id]/deactivate/route.ts` (POST)
+- [ ] Create `src/lib/validations/transformation-template.ts` (Zod schemas)
+- [ ] Create `src/app/api/transformations/templates/route.ts` (GET, POST)
+- [ ] Create `src/app/api/transformations/templates/[id]/route.ts` (GET, PATCH, DELETE)
+- [ ] Create `src/app/api/transformations/templates/[id]/deactivate/route.ts` (POST)
 - [ ] Implement template immutability check in PATCH endpoint
 - [ ] Add pagination to GET list endpoint
 - [ ] Add filtering by name, status, item
@@ -101,9 +101,9 @@
 **Status:** 🔴 Not Started
 
 ### Task 4.1: Create Transformation Order
-- [ ] Create `app/src/lib/validations/transformation-order.ts` (Zod schemas)
-- [ ] Create `app/src/app/api/transformations/orders/route.ts` (GET, POST)
-- [ ] Create `app/src/app/api/transformations/orders/[id]/route.ts` (GET, PATCH)
+- [ ] Create `src/lib/validations/transformation-order.ts` (Zod schemas)
+- [ ] Create `src/app/api/transformations/orders/route.ts` (GET, POST)
+- [ ] Create `src/app/api/transformations/orders/[id]/route.ts` (GET, PATCH)
 - [ ] Capture: template_id, source_warehouse_id, dest_warehouse_id, planned_quantity
 - [ ] Default status to DRAFT on creation
 - [ ] Copy template inputs/outputs to order inputs/outputs
@@ -143,7 +143,7 @@
 **Status:** 🔴 Not Started
 
 ### Task 5.1: Consume Input Inventory
-- [ ] Create `app/src/services/inventory/transformationService.ts`
+- [ ] Create `src/services/inventory/transformationService.ts`
 - [ ] Implement `consumeInputs()` function:
   - [ ] Validate stock availability for each input
   - [ ] Create stock_transaction (type='out') for each input line
@@ -276,7 +276,7 @@
 **Status:** 🔴 Not Started
 
 ### Task 9.1: Transformation History Query
-- [ ] Create `app/src/app/api/transformations/reports/history/route.ts`
+- [ ] Create `src/app/api/transformations/reports/history/route.ts`
 - [ ] Support filters: item_id, warehouse_id, date_range, status
 - [ ] Include pagination and sorting
 - [ ] Return full order details with inputs/outputs
@@ -287,7 +287,7 @@
 - ✅ Full audit trail visible
 
 ### Task 9.2: Lineage & Cost Audit Queries
-- [ ] Create `app/src/app/api/transformations/lineage/route.ts`
+- [ ] Create `src/app/api/transformations/lineage/route.ts`
 - [ ] Support input → output trace
 - [ ] Support reverse trace (output → inputs)
 - [ ] Show cost flow through transformation
@@ -336,17 +336,17 @@
 **Status:** 🔴 Not Started
 
 ### Task 11.1: Template Management UI
-- [ ] Create `app/src/app/(dashboard)/inventory/transformations/templates/page.tsx`
-- [ ] Create `app/src/components/transformations/TransformationTemplateForm.tsx`
+- [ ] Create `src/app/(dashboard)/inventory/transformations/templates/page.tsx`
+- [ ] Create `src/components/transformations/TransformationTemplateForm.tsx`
 - [ ] List templates with search/filter
 - [ ] Create/edit template form with input/output builder
 - [ ] Show usage count and lock status
 - [ ] Deactivate template action
 
 ### Task 11.2: Order Management UI
-- [ ] Create `app/src/app/(dashboard)/inventory/transformations/page.tsx`
-- [ ] Create `app/src/app/(dashboard)/inventory/transformations/new/page.tsx`
-- [ ] Create `app/src/app/(dashboard)/inventory/transformations/[id]/page.tsx`
+- [ ] Create `src/app/(dashboard)/inventory/transformations/page.tsx`
+- [ ] Create `src/app/(dashboard)/inventory/transformations/new/page.tsx`
+- [ ] Create `src/app/(dashboard)/inventory/transformations/[id]/page.tsx`
 - [ ] List orders with filters
 - [ ] Create order from template
 - [ ] Order detail view with state actions
@@ -354,12 +354,12 @@
 - [ ] Show lineage visualization
 
 ### Task 11.3: React Query Hooks & API Clients
-- [ ] Create `app/src/hooks/useTransformationTemplates.ts`
-- [ ] Create `app/src/hooks/useTransformationOrders.ts`
-- [ ] Create `app/src/hooks/useTransformationLineage.ts`
-- [ ] Create `app/src/lib/api/transformation-templates.ts`
-- [ ] Create `app/src/lib/api/transformation-orders.ts`
-- [ ] Create `app/src/lib/api/transformation-lineage.ts`
+- [ ] Create `src/hooks/useTransformationTemplates.ts`
+- [ ] Create `src/hooks/useTransformationOrders.ts`
+- [ ] Create `src/hooks/useTransformationLineage.ts`
+- [ ] Create `src/lib/api/transformation-templates.ts`
+- [ ] Create `src/lib/api/transformation-orders.ts`
+- [ ] Create `src/lib/api/transformation-lineage.ts`
 
 ---
 

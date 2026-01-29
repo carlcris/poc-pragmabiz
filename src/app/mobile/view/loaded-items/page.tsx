@@ -1,0 +1,158 @@
+"use client";
+
+import { useState } from "react";
+import { MobileHeader } from "@/components/mobile/MobileHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useQuery } from "@tanstack/react-query";
+import { useUserVanWarehouse } from "@/hooks/useVanWarehouse";
+import { Package, Search, AlertCircle, Box } from "lucide-react";
+
+interface LoadedItem {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  currentStock: number;
+  availableStock: number;
+  unitPrice: number;
+  uomCode: string;
+  uomName: string;
+}
+
+export default function MobileLoadedItemsPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const { data: vanData, isLoading: vanLoading } = useUserVanWarehouse();
+
+  const { data: stockData, isLoading: stockLoading } = useQuery({
+    queryKey: ["van-stock", vanData?.vanWarehouseId],
+    queryFn: async () => {
+      if (!vanData?.vanWarehouseId) return { data: { inventory: [] } };
+
+      const response = await fetch(`/api/warehouses/${vanData.vanWarehouseId}/inventory`);
+      if (!response.ok) throw new Error("Failed to fetch stock");
+      return response.json();
+    },
+    enabled: !!vanData?.vanWarehouseId,
+  });
+
+  const items: LoadedItem[] = stockData?.data?.inventory || [];
+  const filteredItems = items.filter(
+    (item) =>
+      item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.itemCode.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (vanLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <MobileHeader title="Loaded Items" showBack backHref="/mobile/view" />
+        <div className="p-4">
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!vanData?.vanWarehouseId) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <MobileHeader title="Loaded Items" showBack backHref="/mobile/view" />
+        <div className="p-4">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You have not been assigned to a van warehouse. Please contact your supervisor.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <MobileHeader
+        title="Loaded Items"
+        showBack
+        backHref="/mobile/view"
+        subtitle={vanData?.vanWarehouse?.name}
+      />
+
+      {/* Search Bar */}
+      <div className="sticky top-0 z-10 border-b bg-white p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Search items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
+
+      {/* Stats Card */}
+      <div className="p-4">
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="mb-1 text-sm opacity-90">Total Items Loaded</div>
+                <div className="text-3xl font-bold">
+                  {stockLoading ? "..." : filteredItems.length}
+                </div>
+              </div>
+              <Box className="h-12 w-12 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Item List */}
+      <div className="space-y-3 px-4 pb-4">
+        {stockLoading ? (
+          <>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <Skeleton className="mb-2 h-5 w-48" />
+                  <Skeleton className="h-4 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : filteredItems.length === 0 ? (
+          <div className="py-12 text-center">
+            <Package className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+            <p className="text-gray-500">
+              {searchQuery ? "No items found matching your search" : "No items loaded in your van"}
+            </p>
+          </div>
+        ) : (
+          filteredItems.map((item) => (
+            <Card key={item.itemId} className="transition-shadow hover:shadow-md">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 text-base font-semibold">{item.itemName}</div>
+                    <div className="mb-1 text-sm text-gray-500">{item.itemCode}</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span>
+                        Stock: {item.currentStock.toFixed(2)} {item.uomName}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <div className="text-xl font-bold text-black">₱{item.unitPrice.toFixed(2)}</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

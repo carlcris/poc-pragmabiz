@@ -27,7 +27,7 @@ All 9 tasks have been successfully completed for the Material/Product Transforma
 - **Validation:** Circular references, duplicate items, state transitions
 
 ### 4. ✅ Business Logic Service
-- **File:** `app/src/services/inventory/transformationService.ts`
+- **File:** `src/services/inventory/transformationService.ts`
 - **Main Function:** `executeTransformation()` - Atomic inventory operations
 
 ### 5. ✅ API Routes
@@ -134,7 +134,7 @@ All 9 tasks have been successfully completed for the Material/Product Transforma
 /erpplus
 ├── supabase/migrations/
 │   └── 20251217000000_transformation_schema.sql
-├── app/src/
+├── src/
 │   ├── types/
 │   │   ├── transformation-template.ts
 │   │   ├── transformation-order.ts
@@ -151,7 +151,7 @@ All 9 tasks have been successfully completed for the Material/Product Transforma
 │   ├── hooks/
 │   │   ├── useTransformationTemplates.ts
 │   │   └── useTransformationOrders.ts
-│   ├── app/(dashboard)/inventory/transformations/
+│   ├── src/app/(dashboard)/inventory/transformations/
 │   │   ├── page.tsx (Orders List)
 │   │   └── templates/page.tsx (Templates Management)
 │   └── components/transformations/

@@ -38,9 +38,9 @@ VALUES
   (
     '00000000-0000-0000-0000-000000000102',
     '00000000-0000-0000-0000-000000000001',
-    'WH-BRANCH 02',
+    'STR-BRANCH 02',
     'Abad Santos',
-    'warehouse',
+    'store',
     true,
     now(),
     now()
@@ -259,7 +259,7 @@ VALUES
     -- Main Office Warehouses
     ('00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000100', 'WH-BULACAN', 'Bulacan', 'main', 'JP Laurel Ave', 'Malolos City', 'Region III', 'Philippines', '8000', 'Juan Dela Cruz', '+63-917-111-2222', 'taguig.wh@achlers.com', true, false),
     ('00000000-0000-0000-0000-000000000012', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'WH-BAMBANG', 'Bambang', 'main', '123 Lopez St.', 'Manila', 'NCR', 'Philippines', '9000', 'Maria Santos', '+63-917-222-3333', 'pasay.wh@achlers.com', true, false),
-    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'WH-SANTOS', 'Abad Santos', 'store', '456 Juan Luna St.', 'Pasig City', 'NCR', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'pasig@achlers.com', true, false);
+    ('00000000-0000-0000-0000-000000000013', '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000102', 'STR-SANTOS', 'Abad Santos', 'store', '456 Juan Luna St.', 'Pasig City', 'NCR', 'Philippines', '9500', 'Miguel Flores', '+63-917-333-4444', 'pasig@achlers.com', true, false);
 -- ============================================================================
 -- SEED DATA: Customers
 -- ============================================================================
@@ -731,13 +731,28 @@ INSERT INTO permissions (resource, description, can_view, can_create, can_edit, 
 VALUES ('stock_requests', 'Manage stock requests', true, true, true, true)
 ON CONFLICT (resource) DO NOTHING;
 
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT r.id, p.id
+-- Grant Super Admin full access to all permissions
+INSERT INTO role_permissions (role_id, permission_id, can_view, can_create, can_edit, can_delete)
+SELECT r.id, p.id, p.can_view, p.can_create, p.can_edit, p.can_delete
 FROM roles r
-JOIN permissions p ON p.resource = 'stock_requests'
+CROSS JOIN permissions p
 WHERE r.name = 'Super Admin'
   AND r.company_id = '00000000-0000-0000-0000-000000000001'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
+
+-- Ensure Super Admin role_permissions CRUD flags are fully populated
+UPDATE role_permissions rp
+SET
+  can_view = p.can_view,
+  can_create = p.can_create,
+  can_edit = p.can_edit,
+  can_delete = p.can_delete
+FROM roles r,
+     permissions p
+WHERE rp.role_id = r.id
+  AND rp.permission_id = p.id
+  AND r.name = 'Super Admin'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001';
 
 -- ============================================================================
 -- SEED DATA: User Role Assignments

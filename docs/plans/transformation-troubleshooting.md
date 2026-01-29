@@ -10,13 +10,13 @@
 ```bash
 # Stop the current dev server (Ctrl+C)
 # Then restart:
-cd /Users/carl/workspace/react-app/poc-pragmabiz/app
+cd /Users/carl/workspace/react-app/poc-pragmabiz
 npm run dev
 ```
 
 ### Step 2: Clear Next.js Cache
 ```bash
-cd /Users/carl/workspace/react-app/poc-pragmabiz/app
+cd /Users/carl/workspace/react-app/poc-pragmabiz
 rm -rf .next
 npm run dev
 ```
@@ -25,11 +25,11 @@ npm run dev
 
 Check that these files exist:
 ```bash
-ls app/src/app/\(dashboard\)/inventory/transformations/page.tsx
-ls app/src/app/\(dashboard\)/inventory/transformations/templates/page.tsx
-ls app/src/hooks/useTransformationOrders.ts
-ls app/src/hooks/useTransformationTemplates.ts
-ls app/src/components/transformations/TransformationTemplateFormDialog.tsx
+ls src/app/\(dashboard\)/inventory/transformations/page.tsx
+ls src/app/\(dashboard\)/inventory/transformations/templates/page.tsx
+ls src/hooks/useTransformationOrders.ts
+ls src/hooks/useTransformationTemplates.ts
+ls src/components/transformations/TransformationTemplateFormDialog.tsx
 ```
 
 All files should exist ✅
@@ -53,42 +53,42 @@ If there are TypeScript errors, they will show here.
 - ✅ `supabase/migrations/20251217000000_transformation_schema.sql`
 
 **Types:**
-- ✅ `app/src/types/transformation-template.ts`
-- ✅ `app/src/types/transformation-order.ts`
-- ✅ `app/src/types/transformation-lineage.ts`
+- ✅ `src/types/transformation-template.ts`
+- ✅ `src/types/transformation-order.ts`
+- ✅ `src/types/transformation-lineage.ts`
 
 **Validation:**
-- ✅ `app/src/lib/validations/transformation-template.ts`
-- ✅ `app/src/lib/validations/transformation-order.ts`
+- ✅ `src/lib/validations/transformation-template.ts`
+- ✅ `src/lib/validations/transformation-order.ts`
 
 **Service:**
-- ✅ `app/src/services/inventory/transformationService.ts`
+- ✅ `src/services/inventory/transformationService.ts`
 
 **API Routes:**
-- ✅ `app/src/app/api/transformations/templates/route.ts`
-- ✅ `app/src/app/api/transformations/templates/[id]/route.ts`
-- ✅ `app/src/app/api/transformations/orders/route.ts`
-- ✅ `app/src/app/api/transformations/orders/[id]/route.ts`
-- ✅ `app/src/app/api/transformations/orders/[id]/release/route.ts`
-- ✅ `app/src/app/api/transformations/orders/[id]/execute/route.ts`
-- ✅ `app/src/app/api/transformations/orders/[id]/complete/route.ts`
-- ✅ `app/src/app/api/transformations/orders/[id]/close/route.ts`
+- ✅ `src/app/api/transformations/templates/route.ts`
+- ✅ `src/app/api/transformations/templates/[id]/route.ts`
+- ✅ `src/app/api/transformations/orders/route.ts`
+- ✅ `src/app/api/transformations/orders/[id]/route.ts`
+- ✅ `src/app/api/transformations/orders/[id]/release/route.ts`
+- ✅ `src/app/api/transformations/orders/[id]/execute/route.ts`
+- ✅ `src/app/api/transformations/orders/[id]/complete/route.ts`
+- ✅ `src/app/api/transformations/orders/[id]/close/route.ts`
 
 **API Clients:**
-- ✅ `app/src/lib/api/transformation-templates.ts`
-- ✅ `app/src/lib/api/transformation-orders.ts`
+- ✅ `src/lib/api/transformation-templates.ts`
+- ✅ `src/lib/api/transformation-orders.ts`
 
 **Hooks:**
-- ✅ `app/src/hooks/useTransformationTemplates.ts`
-- ✅ `app/src/hooks/useTransformationOrders.ts`
+- ✅ `src/hooks/useTransformationTemplates.ts`
+- ✅ `src/hooks/useTransformationOrders.ts`
 
 **Pages:**
-- ✅ `app/src/app/(dashboard)/inventory/transformations/page.tsx`
-- ✅ `app/src/app/(dashboard)/inventory/transformations/templates/page.tsx`
+- ✅ `src/app/(dashboard)/inventory/transformations/page.tsx`
+- ✅ `src/app/(dashboard)/inventory/transformations/templates/page.tsx`
 
 **Components:**
-- ✅ `app/src/components/transformations/TransformationTemplateFormDialog.tsx`
-- ✅ `app/src/components/transformations/TransformationTemplateDetailDialog.tsx`
+- ✅ `src/components/transformations/TransformationTemplateFormDialog.tsx`
+- ✅ `src/components/transformations/TransformationTemplateDetailDialog.tsx`
 
 ---
 
@@ -98,7 +98,7 @@ If there are TypeScript errors, they will show here.
 
 **Solution:** Make sure you're in the correct directory
 ```bash
-cd /Users/carl/workspace/react-app/poc-pragmabiz/app
+cd /Users/carl/workspace/react-app/poc-pragmabiz
 npm install
 npm run dev
 ```
@@ -208,7 +208,7 @@ Open DevTools (F12) and check:
 Make sure you're in the right directory:
 ```bash
 pwd
-# Should output: /Users/carl/workspace/react-app/poc-pragmabiz/app
+# Should output: /Users/carl/workspace/react-app/poc-pragmabiz
 ```
 
 ---
@@ -219,7 +219,7 @@ If issues persist, provide:
 1. Output of `npm run dev`
 2. Browser console errors
 3. Any TypeScript errors
-4. Result of `ls app/src/app/\(dashboard\)/inventory/transformations/`
+4. Result of `ls src/app/\(dashboard\)/inventory/transformations/`
 
 ---
 

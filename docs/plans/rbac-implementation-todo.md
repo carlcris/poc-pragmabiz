@@ -100,8 +100,8 @@
 **Files Created:**
 - `supabase/migrations/20251228000000_create_rbac_tables.sql`
 - `supabase/migrations/20251228000001_seed_rbac_data.sql`
-- `app/src/constants/resources.ts`
-- `app/src/types/rbac.ts`
+- `src/constants/resources.ts`
+- `src/types/rbac.ts`
 
 ---
 
@@ -137,55 +137,55 @@
 - [x] Create `lib/auth/index.ts` - Barrel export for easy imports
 
 **Files Created:**
-- `app/src/services/permissions/permissionResolver.ts`
-- `app/src/services/permissions/types.ts`
-- `app/src/lib/auth/checkPermission.ts`
-- `app/src/lib/auth/requirePermission.ts`
-- `app/src/lib/auth/index.ts`
+- `src/services/permissions/permissionResolver.ts`
+- `src/services/permissions/types.ts`
+- `src/lib/auth/checkPermission.ts`
+- `src/lib/auth/requirePermission.ts`
+- `src/lib/auth/index.ts`
 
 ### 2.3 RBAC Management APIs ✅
 
 #### Roles APIs ✅
-- [x] Create `app/api/rbac/roles/route.ts`
+- [x] Create `src/app/api/rbac/roles/route.ts`
   - [x] GET: List all roles (requires 'roles' view permission)
   - [x] POST: Create role (requires 'roles' create permission)
 
-- [x] Create `app/api/rbac/roles/[id]/route.ts`
+- [x] Create `src/app/api/rbac/roles/[id]/route.ts`
   - [x] GET: Get single role with permissions
   - [x] PUT: Update role
   - [x] DELETE: Delete role (prevent if system role or in use)
 
-- [x] Create `app/api/rbac/roles/[id]/permissions/route.ts`
+- [x] Create `src/app/api/rbac/roles/[id]/permissions/route.ts`
   - [x] POST: Assign permissions to role
   - [x] DELETE: Remove permissions from role
 
 #### Permissions APIs ✅
-- [x] Create `app/api/rbac/permissions/route.ts`
+- [x] Create `src/app/api/rbac/permissions/route.ts`
   - [x] GET: List all permissions
   - [x] POST: Create permission
 
-- [x] Create `app/api/rbac/permissions/[id]/route.ts`
+- [x] Create `src/app/api/rbac/permissions/[id]/route.ts`
   - [x] GET: Get single permission
   - [x] PUT: Update permission flags
   - [x] DELETE: Delete permission (prevent if in use)
 
 #### User-Role APIs ✅
-- [x] Create `app/api/rbac/users/[userId]/roles/route.ts`
+- [x] Create `src/app/api/rbac/users/[userId]/roles/route.ts`
   - [x] GET: List user's roles
   - [x] POST: Assign role to user (with BU scope)
   - [x] DELETE: Remove role from user
 
-- [x] Create `app/api/rbac/users/[userId]/permissions/route.ts`
+- [x] Create `src/app/api/rbac/users/[userId]/permissions/route.ts`
   - [x] GET: Get effective user permissions (aggregated across roles)
 
 **Files Created:**
-- `app/src/app/api/rbac/roles/route.ts`
-- `app/src/app/api/rbac/roles/[id]/route.ts`
-- `app/src/app/api/rbac/roles/[id]/permissions/route.ts`
-- `app/src/app/api/rbac/permissions/route.ts`
-- `app/src/app/api/rbac/permissions/[id]/route.ts`
-- `app/src/app/api/rbac/users/[userId]/roles/route.ts`
-- `app/src/app/api/rbac/users/[userId]/permissions/route.ts`
+- `src/app/api/rbac/roles/route.ts`
+- `src/app/api/rbac/roles/[id]/route.ts`
+- `src/app/api/rbac/roles/[id]/permissions/route.ts`
+- `src/app/api/rbac/permissions/route.ts`
+- `src/app/api/rbac/permissions/[id]/route.ts`
+- `src/app/api/rbac/users/[userId]/roles/route.ts`
+- `src/app/api/rbac/users/[userId]/permissions/route.ts`
 
 ---
 
@@ -356,12 +356,12 @@ export async function GET(request: NextRequest) {
 - [x] Create `components/permissions/index.ts` - Barrel export
 
 **Files Created:**
-- `app/src/stores/permissionStore.ts`
-- `app/src/hooks/usePermissions.ts`
-- `app/src/components/permissions/PermissionGuard.tsx`
-- `app/src/components/permissions/ProtectedRoute.tsx`
-- `app/src/components/permissions/index.ts`
-- `app/src/app/(dashboard)/403/page.tsx`
+- `src/stores/permissionStore.ts`
+- `src/hooks/usePermissions.ts`
+- `src/components/permissions/PermissionGuard.tsx`
+- `src/components/permissions/ProtectedRoute.tsx`
+- `src/components/permissions/index.ts`
+- `src/app/(dashboard)/403/page.tsx`
 
 ### 4.5 Update Navigation Menu ✅ COMPLETED
 - [x] Wrap menu items with ViewGuard
@@ -374,7 +374,7 @@ export async function GET(request: NextRequest) {
 - [x] Hide parent menu sections when user has no access to any children
 - [x] Implement role-based menu filtering
 
-**Implemented in:** `app/src/components/layout/Sidebar.tsx`
+**Implemented in:** `src/components/layout/Sidebar.tsx`
 
 ### 4.6 Update Page Action Buttons ✅ COMPLETED
 - [x] Add permission guards to "Create" buttons
@@ -383,8 +383,8 @@ export async function GET(request: NextRequest) {
 - [x] Wrap pages with ProtectedRoute component
 
 **Pages Updated:**
-- Items Page: `app/src/app/(dashboard)/inventory/items/page.tsx`
-- Customers Page: `app/src/app/(dashboard)/sales/customers/page.tsx`
+- Items Page: `src/app/(dashboard)/inventory/items/page.tsx`
+- Customers Page: `src/app/(dashboard)/sales/customers/page.tsx`
 
 ### 4.7 Role-Based Default Landing Pages ✅ COMPLETED
 - [x] Create role-to-page mapping configuration
@@ -394,10 +394,10 @@ export async function GET(request: NextRequest) {
 - [x] Implement role priority logic
 
 **Files Created:**
-- `app/src/config/roleDefaultPages.ts` - Role to page mapping
-- `app/src/app/api/rbac/users/[userId]/roles/route.ts` - User roles API
-- `app/src/hooks/useUserRoles.ts` - User roles hook
-- Updated `app/src/app/(auth)/login/page.tsx` - Role-based redirect
+- `src/config/roleDefaultPages.ts` - Role to page mapping
+- `src/app/api/rbac/users/[userId]/roles/route.ts` - User roles API
+- `src/hooks/useUserRoles.ts` - User roles hook
+- Updated `src/app/(auth)/login/page.tsx` - Role-based redirect
 
 **Default Pages:**
 - Cashier → `/sales/pos`
@@ -409,7 +409,7 @@ export async function GET(request: NextRequest) {
 ## Phase 5: Admin Management UI ✅ COMPLETED
 
 ### 5.1 User Management Page ✅
-- [x] Create `app/(dashboard)/admin/users/page.tsx`
+- [x] Create `src/app/(dashboard)/admin/users/page.tsx`
   - [x] List all users with search/filter
   - [x] Show user's current roles
   - [x] Add "Manage Roles" button per user
@@ -427,7 +427,7 @@ export async function GET(request: NextRequest) {
   - [ ] Indicate source role
 
 ### 5.2 Role Management Page ✅
-- [x] Create `app/(dashboard)/admin/roles/page.tsx`
+- [x] Create `src/app/(dashboard)/admin/roles/page.tsx`
   - [x] List all roles
   - [x] Show role description
   - [x] Show system/custom badge
@@ -447,7 +447,7 @@ export async function GET(request: NextRequest) {
   - [ ] Save changes
 
 ### 5.3 Permission Management Page ✅
-- [x] Create `app/(dashboard)/admin/permissions/page.tsx`
+- [x] Create `src/app/(dashboard)/admin/permissions/page.tsx`
   - [x] List all resources
   - [x] Show permission flags per resource (view/create/edit/delete)
   - [x] Add "Create Permission" button (placeholder)
@@ -477,13 +477,13 @@ export async function GET(request: NextRequest) {
   - [ ] Export audit log
 
 **Files Created:**
-- `app/src/app/(dashboard)/admin/users/page.tsx`
-- `app/src/app/(dashboard)/admin/roles/page.tsx`
-- `app/src/app/(dashboard)/admin/permissions/page.tsx`
-- `app/src/components/admin/UserRolesDialog.tsx`
-- `app/src/hooks/useUsers.ts`
-- `app/src/hooks/useRoles.ts`
-- `app/src/hooks/usePermissionsManagement.ts`
+- `src/app/(dashboard)/admin/users/page.tsx`
+- `src/app/(dashboard)/admin/roles/page.tsx`
+- `src/app/(dashboard)/admin/permissions/page.tsx`
+- `src/components/admin/UserRolesDialog.tsx`
+- `src/hooks/useUsers.ts`
+- `src/hooks/useRoles.ts`
+- `src/hooks/usePermissionsManagement.ts`
 
 ---
 

@@ -3,15 +3,15 @@
 ## Project Structure & Module Organization
 This repo contains a Next.js 15 ERP frontend with Supabase-backed data.
 
-- `app/src/app/` holds App Router route groups like `(auth)` and `(dashboard)`.
-- `app/src/components/`, `app/src/hooks/`, `app/src/lib/`, `app/src/services/`, `app/src/stores/` organize UI, logic, API helpers, and state.
-- `app/src/types/`, `app/src/constants/`, `app/src/config/` contain shared types and configuration.
-- `app/src/assets/` and `app/public/` store static assets.
+- `src/app/` holds App Router route groups like `(auth)` and `(dashboard)`.
+- `src/components/`, `src/hooks/`, `src/lib/`, `src/services/`, `src/stores/` organize UI, logic, API helpers, and state.
+- `src/types/`, `src/constants/`, `src/config/` contain shared types and configuration.
+- `src/assets/` and `public/` store static assets.
 - `supabase/migrations/` contains schema and data migrations.
 - `docs/` includes architecture and implementation notes.
 
 ## Build, Test, and Development Commands
-Run these from `app/`:
+Run these from the repo root:
 
 - `npm install` installs dependencies.
 - `npm run dev` starts the dev server at `http://localhost:3000`.
@@ -24,7 +24,7 @@ Supabase commands (repo root):
 
 - `supabase start` / `supabase stop` manage local services.
 - `supabase db reset` drops, migrates, and seeds the local DB.
-- `supabase gen types typescript --local > app/src/types/database.types.ts` refreshes DB types.
+- `supabase gen types typescript --local > src/types/database.types.ts` refreshes DB types.
 
 ## Coding Style & Naming Conventions
 - TypeScript only; prefer `type` over `interface`.
@@ -34,7 +34,7 @@ Supabase commands (repo root):
 - Formatting is enforced by Prettier and `prettier-plugin-tailwindcss`.
 
 ## Testing Guidelines
-There is no test runner configured in `app/package.json`. Use MSW mocks in `app/src/mocks/` for local API simulation and add tests only when introducing a harness. Keep ad-hoc scripts alongside existing `test-*.js` files in `app/`.
+There is no test runner configured in `package.json`. Use MSW mocks in `src/mocks/` for local API simulation and add tests only when introducing a harness. Keep ad-hoc scripts alongside existing `test-*.js` files in the repo root.
 
 ## Commit & Pull Request Guidelines
 Recent history follows Conventional Commits with scopes, e.g. `feat(inventory): ...`, `fix(admin): ...`, `feature(security): ...`. Keep messages concise and scoped.

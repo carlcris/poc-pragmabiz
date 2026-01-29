@@ -107,7 +107,7 @@ All tables must have RLS policies based on:
 
 ### 2. Permission Resolution Service
 
-**File**: `app/src/services/permissions/permissionResolver.ts`
+**File**: `src/services/permissions/permissionResolver.ts`
 
 ```typescript
 interface UserPermissions {
@@ -133,7 +133,7 @@ class PermissionResolver {
 
 ### 3. Authorization Middleware
 
-**File**: `app/src/middleware/authorization.ts`
+**File**: `src/middleware/authorization.ts`
 
 ```typescript
 // Middleware to protect API routes
@@ -156,7 +156,7 @@ export function requirePermission(resource: string, action: 'view' | 'create' | 
 Apply authorization to all API routes:
 
 ```typescript
-// Example: app/src/app/api/users/route.ts
+// Example: src/app/api/users/route.ts
 export async function GET(request: NextRequest) {
   // Check permission
   if (!await checkPermission(request, 'users', 'view')) {
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
 
 #### Architecture
 
-**Configuration File**: `app/src/config/lookupDataPermissions.ts`
+**Configuration File**: `src/config/lookupDataPermissions.ts`
 
 Defines which resources are lookup data and which transactional features depend on them:
 
@@ -208,7 +208,7 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
 
 #### Authorization Helper
 
-**File**: `app/src/lib/auth/requirePermission.ts`
+**File**: `src/lib/auth/requirePermission.ts`
 
 Includes `requireLookupDataAccess()` helper that checks if user has EITHER:
 1. Direct `view` permission to the lookup resource, OR
@@ -228,12 +228,12 @@ export async function GET(request: NextRequest) {
 #### Implementation Status ✅
 
 **Files Created:**
-- `app/src/config/lookupDataPermissions.ts` - Configuration and utilities
+- `src/config/lookupDataPermissions.ts` - Configuration and utilities
 - `docs/plans/lookup-data-permission-pattern.md` - Comprehensive implementation plan
 
 **Files Modified:**
-- `app/src/lib/auth/requirePermission.ts` - Added `requireLookupDataAccess()` function
-- `app/src/lib/auth/index.ts` - Exported new function
+- `src/lib/auth/requirePermission.ts` - Added `requireLookupDataAccess()` function
+- `src/lib/auth/index.ts` - Exported new function
 
 **APIs Updated (8 endpoints):**
 1. `/api/items/route.ts` (GET)
@@ -294,7 +294,7 @@ Create endpoints for admin management:
 
 ### 1. Permission Context/Store
 
-**File**: `app/src/stores/permissionStore.ts`
+**File**: `src/stores/permissionStore.ts`
 
 ```typescript
 interface PermissionState {
@@ -314,7 +314,7 @@ interface PermissionState {
 
 ### 2. Permission Hooks
 
-**File**: `app/src/hooks/usePermissions.ts`
+**File**: `src/hooks/usePermissions.ts`
 
 ```typescript
 export function usePermissions() {
@@ -339,7 +339,7 @@ export function useCanDelete(resource: string): boolean
 
 ### 3. Permission Guard Components
 
-**File**: `app/src/components/permissions/PermissionGuard.tsx`
+**File**: `src/components/permissions/PermissionGuard.tsx`
 
 ```typescript
 interface PermissionGuardProps {
@@ -361,7 +361,7 @@ export function DeleteGuard({ resource, fallback, children })
 
 ### 4. Route Protection
 
-**File**: `app/src/middleware/routeGuard.ts`
+**File**: `src/middleware/routeGuard.ts`
 
 ```typescript
 // Protect routes based on permissions
@@ -388,7 +388,7 @@ export function withPermission(Component: React.ComponentType, resource: string)
 ### 5. Admin Management UI
 
 #### User Management
-**File**: `app/src/app/(dashboard)/admin/users/page.tsx`
+**File**: `src/app/(dashboard)/admin/users/page.tsx`
 
 Features:
 - List all users with their roles
@@ -397,7 +397,7 @@ Features:
 - View effective permissions per user
 
 #### Role Management
-**File**: `app/src/app/(dashboard)/admin/roles/page.tsx`
+**File**: `src/app/(dashboard)/admin/roles/page.tsx`
 
 Features:
 - Create/edit/delete roles
@@ -407,7 +407,7 @@ Features:
 - Prevent deletion of roles in use
 
 #### Permission Management
-**File**: `app/src/app/(dashboard)/admin/permissions/page.tsx`
+**File**: `src/app/(dashboard)/admin/permissions/page.tsx`
 
 Features:
 - List all resources
@@ -422,7 +422,7 @@ Features:
 Define all resources in the system:
 
 ```typescript
-// app/src/constants/resources.ts
+// src/constants/resources.ts
 export const RESOURCES = {
   // User Management
   USERS: 'users',
@@ -657,7 +657,7 @@ Phase 3 focused on completing API protection coverage and resolving critical per
 ### Issues Discovered and Resolved
 
 #### 1. Stock Transformations Permission Mismatch ✅
-**Location**: `/app/src/app/api/transformations/**/*.ts` (7 files)
+**Location**: `/src/app/api/transformations/**/*.ts` (7 files)
 
 **Problem**:
 - Database permission record: `stock_transformations`
@@ -666,7 +666,7 @@ Phase 3 focused on completing API protection coverage and resolving critical per
 
 **Root Cause**:
 Resource name mismatch between:
-- `/app/src/constants/resources.ts`: Had both `TRANSFORMATIONS` and `STOCK_TRANSFORMATIONS` constants
+- `/src/constants/resources.ts`: Had both `TRANSFORMATIONS` and `STOCK_TRANSFORMATIONS` constants
 - `/supabase/migrations/20251228000001_seed_rbac_data.sql`: Only seeded `stock_transformations` permission
 
 **Solution**:
@@ -688,7 +688,7 @@ Resource name mismatch between:
 ---
 
 #### 2. RLS Policy Violation in Transformation Service ✅
-**Location**: `/app/src/services/inventory/transformationService.ts`
+**Location**: `/src/services/inventory/transformationService.ts`
 
 **Problem**:
 ```
@@ -883,14 +883,14 @@ await supabase.from("stock_transactions").insert({
 - None (bug fixes only)
 
 **Modified**:
-1. `/app/src/app/api/transformations/orders/route.ts` - Fixed resource name
-2. `/app/src/app/api/transformations/orders/[id]/route.ts` - Fixed resource name
-3. `/app/src/app/api/transformations/orders/[id]/cancel/route.ts` - Fixed resource name
-4. `/app/src/app/api/transformations/orders/[id]/release/route.ts` - Fixed resource name
-5. `/app/src/app/api/transformations/orders/[id]/execute/route.ts` - Fixed resource name, passes supabase client to service
-6. `/app/src/app/api/transformations/templates/route.ts` - Fixed resource name
-7. `/app/src/app/api/transformations/templates/[id]/route.ts` - Fixed resource name
-8. `/app/src/services/inventory/transformationService.ts` - Added business_unit_id to SELECT and all stock transaction INSERTs, accepts supabase client parameter
+1. `/src/app/api/transformations/orders/route.ts` - Fixed resource name
+2. `/src/app/api/transformations/orders/[id]/route.ts` - Fixed resource name
+3. `/src/app/api/transformations/orders/[id]/cancel/route.ts` - Fixed resource name
+4. `/src/app/api/transformations/orders/[id]/release/route.ts` - Fixed resource name
+5. `/src/app/api/transformations/orders/[id]/execute/route.ts` - Fixed resource name, passes supabase client to service
+6. `/src/app/api/transformations/templates/route.ts` - Fixed resource name
+7. `/src/app/api/transformations/templates/[id]/route.ts` - Fixed resource name
+8. `/src/services/inventory/transformationService.ts` - Added business_unit_id to SELECT and all stock transaction INSERTs, accepts supabase client parameter
 
 ---
 
@@ -945,7 +945,7 @@ After Phase 3 fixed `TRANSFORMATIONS` → `STOCK_TRANSFORMATIONS`, audit reveale
 | `RESOURCES.INVOICES` | `sales_invoices` | 10 API files affected |
 
 **Root Cause**:
-The `/app/src/constants/resources.ts` file contained duplicate constants with different names for the same resources:
+The `/src/constants/resources.ts` file contained duplicate constants with different names for the same resources:
 ```typescript
 // Duplicates causing confusion:
 REORDER: 'reorder',                      // Not in database
@@ -960,7 +960,7 @@ SALES_INVOICES: 'sales_invoices',        // ✅ Correct
 
 **Solution**:
 
-1. **Resource Constants Cleanup** (`/app/src/constants/resources.ts`):
+1. **Resource Constants Cleanup** (`/src/constants/resources.ts`):
    - Removed `REORDER: 'reorder'` (line 30)
    - Removed `QUOTATIONS: 'quotations'` (line 37)
    - Removed `INVOICES: 'invoices'` (line 40)
@@ -1106,16 +1106,16 @@ grep -r "RESOURCES\.INVOICES\>" . --include="*.ts" | grep -v SALES_INVOICES
 
 **Modified** (25 files):
 
-1. `/app/src/constants/resources.ts` - Removed duplicate constants
+1. `/src/constants/resources.ts` - Removed duplicate constants
 2-15. Reorder Management APIs (14 files)
 16-22. Sales Quotations APIs (7 files)
 23-32. Sales Invoices APIs (10 files)
 
 **Audited** (No changes needed):
-- `/app/src/components/permissions/PermissionGuard.tsx` - All guard components verified
-- `/app/src/components/layout/Sidebar.tsx` - Navigation guards verified
-- `/app/src/app/(dashboard)/admin/users/page.tsx` - Admin UI verified
-- `/app/src/app/(dashboard)/admin/roles/page.tsx` - Admin UI verified
+- `/src/components/permissions/PermissionGuard.tsx` - All guard components verified
+- `/src/components/layout/Sidebar.tsx` - Navigation guards verified
+- `/src/app/(dashboard)/admin/users/page.tsx` - Admin UI verified
+- `/src/app/(dashboard)/admin/roles/page.tsx` - Admin UI verified
 
 ---
 

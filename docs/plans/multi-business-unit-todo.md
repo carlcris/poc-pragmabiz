@@ -218,7 +218,7 @@
 - [x] Test store in isolation
 
 **Files:**
-- `app/src/stores/businessUnitStore.ts`
+- `src/stores/businessUnitStore.ts`
 
 ---
 
@@ -229,7 +229,7 @@
 - [x] Export types from index
 
 **Files:**
-- `app/src/types/business-unit.ts`
+- `src/types/business-unit.ts`
 
 ---
 
@@ -259,7 +259,7 @@
 - [x] Test API endpoint
 
 **Files:**
-- `app/src/app/api/business-units/route.ts`
+- `src/app/api/business-units/route.ts`
 
 ---
 
@@ -272,8 +272,8 @@
 - [x] Document usage
 
 **Files:**
-- `app/src/lib/supabase/client-with-bu.ts`
-- `app/src/lib/supabase/server-with-bu.ts`
+- `src/lib/supabase/client-with-bu.ts`
+- `src/lib/supabase/server-with-bu.ts`
 
 ---
 
@@ -292,7 +292,7 @@
 - [x] Test component in isolation
 
 **Files:**
-- `app/src/components/business-unit/BusinessUnitSwitcher.tsx`
+- `src/components/business-unit/BusinessUnitSwitcher.tsx`
 
 ---
 
@@ -305,7 +305,7 @@
 - [x] Test provider
 
 **Files:**
-- `app/src/components/business-unit/BusinessUnitProvider.tsx`
+- `src/components/business-unit/BusinessUnitProvider.tsx`
 
 ---
 
@@ -317,7 +317,7 @@
 - [x] Verify on all screen sizes
 
 **Files:**
-- `app/src/components/layout/Sidebar.tsx`
+- `src/components/layout/Sidebar.tsx`
 
 ---
 
@@ -328,7 +328,7 @@
 - [x] Verify BU context available app-wide
 
 **Files:**
-- `app/src/app/(dashboard)/layout.tsx`
+- `src/app/(dashboard)/layout.tsx`
 
 ---
 
@@ -336,7 +336,7 @@
 **Status:** ✅ Completed | **Progress:** 2/2
 
 ### ✅ 5.1 Update All API Client Files
-- [x] Update sales quotations API client (`app/src/lib/api/quotations.ts`)
+- [x] Update sales quotations API client (`src/lib/api/quotations.ts`)
 - [x] Update sales orders API client
 - [x] Update sales invoices API client
 - [x] Update purchase orders API client
@@ -358,8 +358,8 @@
 - [x] Verify RLS filtering works with JWT-based approach
 
 **Files:**
-- `app/src/lib/api/*.ts` (all API client files use apiClient with BU headers)
-- `app/src/app/api/**/route.ts` (all server routes use createServerClientWithBU)
+- `src/lib/api/*.ts` (all API client files use apiClient with BU headers)
+- `src/app/api/**/route.ts` (all server routes use createServerClientWithBU)
 
 ---
 
@@ -383,7 +383,7 @@
 - [x] Test form submissions
 
 **Files:**
-- `app/src/components/**/FormDialog.tsx` (all forms work through API clients)
+- `src/components/**/FormDialog.tsx` (all forms work through API clients)
 
 **Note**: Forms use API clients which send `x-business-unit-id` header. Server-side routes use `createServerClientWithBU()` which gets BU from JWT. RLS policies automatically inject and validate business_unit_id. No form changes needed.
 
