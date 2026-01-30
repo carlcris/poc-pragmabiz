@@ -48,7 +48,8 @@ const territoryFormSchema = z.object({
   isPrimary: z.boolean().default(false),
 });
 
-type TerritoryFormValues = z.infer<typeof territoryFormSchema>;
+type TerritoryFormInput = z.input<typeof territoryFormSchema>;
+type TerritoryFormValues = z.output<typeof territoryFormSchema>;
 
 interface TerritoryManagementDialogProps {
   open: boolean;
@@ -119,7 +120,7 @@ export function TerritoryManagementDialog({
 
   const territories = territoriesData?.data || [];
 
-  const form = useForm<TerritoryFormValues>({
+  const form = useForm<TerritoryFormInput>({
     resolver: zodResolver(territoryFormSchema),
     defaultValues: {
       city: "",
@@ -128,11 +129,12 @@ export function TerritoryManagementDialog({
     },
   });
 
-  const onSubmit = async (data: TerritoryFormValues) => {
+  const onSubmit = async (data: TerritoryFormInput) => {
     try {
+      const parsed = territoryFormSchema.parse(data);
       await addTerritory.mutateAsync({
         employeeId: employee.id,
-        ...data,
+        ...parsed,
       });
 
       toast.success("Territory assigned successfully");

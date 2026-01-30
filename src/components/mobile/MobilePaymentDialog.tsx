@@ -192,7 +192,9 @@ export function MobilePaymentDialog({
                 <Label className="text-xs">Payment Method</Label>
                 <Select
                   value={payment.method}
-                  onValueChange={(value) => updatePayment(payment.id, "method", value)}
+                  onValueChange={(value) =>
+                    updatePayment(payment.id, "method", value as Payment["method"])
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />

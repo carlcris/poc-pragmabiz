@@ -74,14 +74,14 @@ function TransformationOrderContent({ id }: { id: string }) {
       inputs: inputs.map((input: TransformationOrderInputApi) => ({
         id: input.id,
         itemName: input.items?.item_name || "N/A",
-        plannedQty: input.planned_quantity,
-        actualQty: input.planned_quantity,
+        plannedQty: Number(input.planned_quantity) || 0,
+        actualQty: Number(input.planned_quantity) || 0,
       })),
       outputs: outputs.map((output: TransformationOrderOutputApi) => ({
         id: output.id,
         itemName: output.items?.item_name || "N/A",
-        plannedQty: output.planned_quantity,
-        actualQty: output.planned_quantity,
+        plannedQty: Number(output.planned_quantity) || 0,
+        actualQty: Number(output.planned_quantity) || 0,
         wastedQty: 0,
         wasteReason: "",
         isScrap: output.is_scrap || false,
@@ -517,7 +517,8 @@ function TransformationOrderContent({ id }: { id: string }) {
                                 const value = e.target.value.replace(/[^0-9.]/g, "");
                                 const numValue = parseFloat(value) || 0;
                                 // Auto-calculate wasted quantity
-                                const autoWasted = Math.max(0, output.plannedQty - numValue);
+                                const plannedQty = Number(output.plannedQty) || 0;
+                                const autoWasted = Math.max(0, plannedQty - numValue);
                                 setExecuteFormData({
                                   ...executeFormData,
                                   outputs: executeFormData.outputs.map((out, i) =>
@@ -583,7 +584,8 @@ function TransformationOrderContent({ id }: { id: string }) {
                                 const value = e.target.value.replace(/[^0-9.]/g, "");
                                 const numValue = parseFloat(value) || 0;
                                 // Recalculate actual produced to maintain total
-                                const newActual = Math.max(0, output.plannedQty - numValue);
+                                const plannedQty = Number(output.plannedQty) || 0;
+                                const newActual = Math.max(0, plannedQty - numValue);
                                 setExecuteFormData({
                                   ...executeFormData,
                                   outputs: executeFormData.outputs.map((out, i) =>

@@ -42,10 +42,15 @@ export async function GET() {
       warehouse_id: string;
       current_stock: number | string | null;
       reorder_level: number | string | null;
-      items: {
-        item_code: string;
-        item_name: string;
-      };
+      items:
+        | {
+            item_code: string;
+            item_name: string;
+          }
+        | {
+            item_code: string;
+            item_name: string;
+          }[];
     };
 
     // Get items with stock levels below reorder level across all warehouses
@@ -77,24 +82,27 @@ export async function GET() {
     // Filter alerts where current stock is below reorder level and transform
     const reorderAlerts = ((alerts as ItemWarehouseAlertRow[] | null) || [])
       .filter((alert) => {
-        const currentStock = parseFloat(alert.current_stock) || 0;
-        const reorderLevel = parseFloat(alert.reorder_level) || 0;
+        const currentStock = Number(alert.current_stock) || 0;
+        const reorderLevel = Number(alert.reorder_level) || 0;
         return currentStock < reorderLevel;
       })
       .sort((a, b) => {
-        const aStock = parseFloat(a.current_stock) || 0;
-        const bStock = parseFloat(b.current_stock) || 0;
+        const aStock = Number(a.current_stock) || 0;
+        const bStock = Number(b.current_stock) || 0;
         return aStock - bStock;
       })
       .slice(0, 10)
-      .map((alert) => ({
-        id: alert.item_id,
-        code: alert.items.item_code,
-        name: alert.items.item_name,
-        currentStock: parseFloat(alert.current_stock) || 0,
-        reorderPoint: parseFloat(alert.reorder_level) || 0,
-        warehouseId: alert.warehouse_id,
-      }));
+      .map((alert) => {
+        const item = Array.isArray(alert.items) ? alert.items[0] : alert.items;
+        return {
+          id: alert.item_id,
+          code: item?.item_code || "",
+          name: item?.item_name || "",
+          currentStock: Number(alert.current_stock) || 0,
+          reorderPoint: Number(alert.reorder_level) || 0,
+          warehouseId: alert.warehouse_id,
+        };
+      });
 
     return NextResponse.json(reorderAlerts);
   } catch {

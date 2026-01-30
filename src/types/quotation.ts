@@ -37,6 +37,11 @@ export interface Quotation {
   totalAmount: number; // Maps to total_amount in DB
   terms: string; // Maps to terms_conditions in DB
   notes: string;
+  billingAddress?: string;
+  billingCity?: string;
+  billingState?: string;
+  billingPostalCode?: string;
+  billingCountry?: string;
   createdBy: string;
   createdByName?: string; // Joined from users table
   createdAt: string;

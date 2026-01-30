@@ -277,7 +277,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }))
     );
 
-    let cogsResult = { success: true, journalEntryId: undefined as string | undefined };
+    let cogsResult: { success: boolean; journalEntryId?: string; error?: string } = {
+      success: true,
+    };
 
     if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
       cogsResult = await postCOGS(userData.company_id, user.id, {

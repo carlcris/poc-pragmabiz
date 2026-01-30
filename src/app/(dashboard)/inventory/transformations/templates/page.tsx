@@ -155,7 +155,11 @@ export default function TransformationTemplatesPage() {
                       <span className="ml-2 text-xs text-muted-foreground">(locked)</span>
                     )}
                   </TableCell>
-                  <TableCell>{new Date(template.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {template.created_at
+                      ? new Date(template.created_at).toLocaleDateString()
+                      : "—"}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setViewTemplate(template)}>
@@ -202,8 +206,10 @@ export default function TransformationTemplatesPage() {
       {/* Pagination */}
       {templatesData && templatesData.total > limit && (
         <DataTablePagination
-          page={page}
+          currentPage={page}
           totalPages={Math.ceil(templatesData.total / limit)}
+          pageSize={limit}
+          totalItems={templatesData.total}
           onPageChange={setPage}
         />
       )}

@@ -96,11 +96,14 @@ export async function calculateCOGS(
       } else {
         const valuationRate = parseFloat(transactionItem.valuation_rate || "0");
         const totalCost = item.quantity * valuationRate;
+        const transactionItemRecord = Array.isArray(transactionItem.item)
+          ? transactionItem.item[0]
+          : transactionItem.item;
 
         cogsItems.push({
           itemId: item.itemId,
-          itemCode: (transactionItem.item as { item_code: string })?.item_code,
-          itemName: (transactionItem.item as { item_name: string })?.item_name,
+          itemCode: (transactionItemRecord as { item_code?: string } | null)?.item_code,
+          itemName: (transactionItemRecord as { item_name?: string } | null)?.item_name,
           quantity: item.quantity,
           valuationRate,
           totalCost,

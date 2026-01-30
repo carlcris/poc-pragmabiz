@@ -45,6 +45,8 @@ export interface PurchaseOrder {
     id: string;
     code: string;
     name: string;
+    email?: string;
+    phone?: string;
   };
   orderDate: string;
   expectedDeliveryDate: string;

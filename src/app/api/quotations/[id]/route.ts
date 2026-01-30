@@ -1,29 +1,61 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { Quotation, QuotationLineItem, UpdateQuotationRequest } from "@/types/quotation";
-import type { Database } from "@/types/database.types";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
-type DbQuotation = Database["public"]["Tables"]["sales_quotations"]["Row"];
-type DbQuotationItem = Database["public"]["Tables"]["sales_quotation_items"]["Row"];
-type DbCustomer = Database["public"]["Tables"]["customers"]["Row"];
-type DbItem = Database["public"]["Tables"]["items"]["Row"];
-type DbUser = Database["public"]["Tables"]["users"]["Row"];
-type DbUoM = Database["public"]["Tables"]["units_of_measure"]["Row"];
-type DbPackaging = Database["public"]["Tables"]["item_packaging"]["Row"];
+type DbQuotation = {
+  id: string;
+  company_id: string;
+  quotation_code: string;
+  customer_id: string;
+  quotation_date: string;
+  valid_until: string | null;
+  status: string;
+  sales_order_id: string | null;
+  subtotal: number | string | null;
+  discount_amount: number | string | null;
+  tax_amount: number | string | null;
+  total_amount: number | string | null;
+  terms_conditions: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+type DbQuotationItem = {
+  id: string;
+  quotation_id: string;
+  item_id: string;
+  item_description: string | null;
+  quantity: number | string;
+  packaging_id: string | null;
+  uom_id: string | null;
+  rate: number | string;
+  discount_percent: number | string | null;
+  discount_amount: number | string | null;
+  tax_percent: number | string | null;
+  tax_amount: number | string | null;
+  line_total: number | string;
+  sort_order: number | null;
+};
+type DbCustomer = { id: string; customer_name: string | null; email: string | null };
+type DbItem = { id: string; item_code: string | null; item_name: string | null };
+type DbUser = { id: string; first_name: string | null; last_name: string | null };
+type DbUoM = { id: string; code: string | null; name: string | null };
+type DbPackaging = { id: string; pack_name: string | null; qty_per_pack: number | string | null };
 
 type DbQuotationWithJoins = DbQuotation & {
-  customers?: DbCustomer | null;
-  users?: DbUser | null;
+  customers?: DbCustomer | DbCustomer[] | null;
+  users?: DbUser | DbUser[] | null;
 };
 
 type DbQuotationItemWithJoins = DbQuotationItem & {
-  items?: DbItem | null;
-  units_of_measure?: DbUoM | null;
-  item_packaging?: DbPackaging | null;
+  items?: DbItem | DbItem[] | null;
+  units_of_measure?: DbUoM | DbUoM[] | null;
+  item_packaging?: DbPackaging | DbPackaging[] | null;
 };
 
 type QuotationItemInput = NonNullable<UpdateQuotationRequest["items"]>[number];
@@ -37,13 +69,17 @@ function transformDbQuotation(
   dbQuotation: DbQuotationWithJoins,
   items?: QuotationLineItem[]
 ): Quotation {
+  const customer = Array.isArray(dbQuotation.customers)
+    ? dbQuotation.customers[0]
+    : dbQuotation.customers;
+  const user = Array.isArray(dbQuotation.users) ? dbQuotation.users[0] : dbQuotation.users;
   return {
     id: dbQuotation.id,
     companyId: dbQuotation.company_id,
     quotationNumber: dbQuotation.quotation_code,
     customerId: dbQuotation.customer_id,
-    customerName: dbQuotation.customers?.customer_name,
-    customerEmail: dbQuotation.customers?.email,
+    customerName: customer?.customer_name || undefined,
+    customerEmail: customer?.email || undefined,
     quotationDate: dbQuotation.quotation_date,
     validUntil: dbQuotation.valid_until || "",
     status: dbQuotation.status as Quotation["status"],
@@ -56,8 +92,8 @@ function transformDbQuotation(
     terms: dbQuotation.terms_conditions || "",
     notes: dbQuotation.notes || "",
     createdBy: dbQuotation.created_by || "",
-    createdByName: dbQuotation.users
-      ? `${dbQuotation.users.first_name || ""} ${dbQuotation.users.last_name || ""}`.trim()
+    createdByName: user
+      ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
       : undefined,
     createdAt: dbQuotation.created_at,
     updatedAt: dbQuotation.updated_at,
@@ -66,16 +102,20 @@ function transformDbQuotation(
 
 // Transform database quotation item to frontend type
 function transformDbQuotationItem(dbItem: DbQuotationItemWithJoins): QuotationLineItem {
+  const item = Array.isArray(dbItem.items) ? dbItem.items[0] : dbItem.items;
+  const packaging = Array.isArray(dbItem.item_packaging)
+    ? dbItem.item_packaging[0]
+    : dbItem.item_packaging;
   return {
     id: dbItem.id,
     itemId: dbItem.item_id,
-    itemCode: dbItem.items?.item_code,
-    itemName: dbItem.items?.item_name,
+    itemCode: item?.item_code || undefined,
+    itemName: item?.item_name || undefined,
     description: dbItem.item_description || "",
     quantity: Number(dbItem.quantity),
     packagingId: dbItem.packaging_id,
-    packagingName: dbItem.item_packaging?.pack_name,
-    uomId: dbItem.uom_id,
+    packagingName: packaging?.pack_name || undefined,
+    uomId: dbItem.uom_id || "",
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
     discountAmount: Number(dbItem.discount_amount) || 0,
@@ -245,8 +285,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         (item: QuotationItemInput) => ({
           itemId: item.itemId,
           packagingId: item.packagingId ?? null,
-          inputQty: parseFloat(item.quantity),
-          unitCost: parseFloat(item.rate),
+          inputQty: Number(item.quantity),
+          unitCost: Number(item.rate),
         })
       );
 

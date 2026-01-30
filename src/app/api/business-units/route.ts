@@ -61,16 +61,22 @@ export async function GET() {
     type AccessRecord = {
       role: BusinessUnitWithAccess["access"]["role"];
       is_default: boolean;
-      business_units: Omit<BusinessUnitWithAccess, "access"> | null;
+      business_units:
+        | Omit<BusinessUnitWithAccess, "access">
+        | Omit<BusinessUnitWithAccess, "access">[]
+        | null;
     };
 
     // Transform data to BusinessUnitWithAccess format
     const businessUnits: BusinessUnitWithAccess[] = (accessRecords as AccessRecord[])
       .map((record) => {
-        if (!record.business_units) return null;
+        const businessUnit = Array.isArray(record.business_units)
+          ? record.business_units[0]
+          : record.business_units;
+        if (!businessUnit) return null;
 
         return {
-          ...record.business_units,
+          ...businessUnit,
           access: {
             role: record.role,
             is_default: record.is_default,

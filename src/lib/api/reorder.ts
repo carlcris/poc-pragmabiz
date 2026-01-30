@@ -22,7 +22,7 @@ export const reorderApi = {
     const response = await apiClient.get<PaginatedResponse<StockLevel>>(
       `/api/reorder/stock-levels${queryString}`
     );
-    return response.data;
+    return response;
   },
 
   // Reorder Suggestions
@@ -38,7 +38,7 @@ export const reorderApi = {
 
   getReorderSuggestion: async (id: string) => {
     const response = await apiClient.get<ReorderSuggestion>(`/inventory/reorder-suggestions/${id}`);
-    return response.data;
+    return response;
   },
 
   updateReorderSuggestion: async (id: string, data: ReorderSuggestionUpdate) => {
@@ -46,28 +46,31 @@ export const reorderApi = {
       `/inventory/reorder-suggestions/${id}`,
       data
     );
-    return response.data;
+    return response;
   },
 
   approveReorderSuggestion: async (id: string) => {
     const response = await apiClient.post<ReorderSuggestion>(
-      `/inventory/reorder-suggestions/${id}/approve`
+      `/inventory/reorder-suggestions/${id}/approve`,
+      {}
     );
-    return response.data;
+    return response;
   },
 
   rejectReorderSuggestion: async (id: string) => {
     const response = await apiClient.post<ReorderSuggestion>(
-      `/inventory/reorder-suggestions/${id}/reject`
+      `/inventory/reorder-suggestions/${id}/reject`,
+      {}
     );
-    return response.data;
+    return response;
   },
 
   createPurchaseOrderFromSuggestion: async (id: string) => {
     const response = await apiClient.post<{ purchaseOrderId: string }>(
-      `/inventory/reorder-suggestions/${id}/create-po`
+      `/inventory/reorder-suggestions/${id}/create-po`,
+      {}
     );
-    return response.data;
+    return response;
   },
 
   // Reorder Rules
@@ -78,27 +81,27 @@ export const reorderApi = {
         params,
       }
     );
-    return response.data;
+    return response;
   },
 
   getReorderRule: async (id: string) => {
     const response = await apiClient.get<ReorderRule>(`/inventory/reorder-rules/${id}`);
-    return response.data;
+    return response;
   },
 
   createReorderRule: async (data: ReorderRuleInput) => {
     const response = await apiClient.post<ReorderRule>("/inventory/reorder-rules", data);
-    return response.data;
+    return response;
   },
 
   updateReorderRule: async (id: string, data: Partial<ReorderRuleInput>) => {
     const response = await apiClient.patch<ReorderRule>(`/inventory/reorder-rules/${id}`, data);
-    return response.data;
+    return response;
   },
 
   deleteReorderRule: async (id: string) => {
     const response = await apiClient.delete(`/inventory/reorder-rules/${id}`);
-    return response.data;
+    return response;
   },
 
   // Reorder Alerts
@@ -114,7 +117,7 @@ export const reorderApi = {
 
   acknowledgeAlerts: async (data: AcknowledgeAlertInput) => {
     const response = await apiClient.post("/api/reorder/alerts/acknowledge", data);
-    return response.data;
+    return response;
   },
 
   // Statistics
@@ -126,8 +129,9 @@ export const reorderApi = {
   // Generate suggestions manually
   generateReorderSuggestions: async () => {
     const response = await apiClient.post<{ generated: number }>(
-      "/inventory/reorder-suggestions/generate"
+      "/inventory/reorder-suggestions/generate",
+      {}
     );
-    return response.data;
+    return response;
   },
 };

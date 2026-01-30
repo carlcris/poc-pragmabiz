@@ -21,6 +21,7 @@ type RolesResponse = {
 };
 
 type RolePermission = {
+  permission_id: string;
   resource: string;
   can_view: boolean;
   can_create: boolean;

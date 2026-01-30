@@ -19,8 +19,11 @@ type PackageRow = {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  units_of_measure?: { id: string; code: string; name: string; symbol: string | null } | null;
-  items?: PackageItemRef | null;
+  units_of_measure?:
+    | { id: string; code: string; name: string; symbol: string | null }
+    | { id: string; code: string; name: string; symbol: string | null }[]
+    | null;
+  items?: PackageItemRef | PackageItemRef[] | null;
 };
 
 type UpdatePackageBody = {
@@ -108,7 +111,10 @@ export async function GET(
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    const item = (pkg as PackageRow).items;
+    const itemRefRaw = (pkg as PackageRow).items;
+    const item = Array.isArray(itemRefRaw) ? itemRefRaw[0] : itemRefRaw;
+    const uomRaw = (pkg as PackageRow).units_of_measure;
+    const uom = Array.isArray(uomRaw) ? uomRaw[0] : uomRaw;
 
     return NextResponse.json({
       data: {
@@ -118,7 +124,7 @@ export async function GET(
         packName: pkg.pack_name,
         qtyPerPack: parseFloat(pkg.qty_per_pack),
         uomId: pkg.uom_id,
-        uom: pkg.units_of_measure,
+        uom,
         barcode: pkg.barcode,
         isDefault: pkg.is_default,
         isBasePackage: pkg.id === item?.package_id,
@@ -181,11 +187,12 @@ export async function PUT(
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    const item = (existingPkg as PackageRow).items;
+    const itemRefRaw = (existingPkg as PackageRow).items;
+    const item = Array.isArray(itemRefRaw) ? itemRefRaw[0] : itemRefRaw;
     const isBasePackage = packageId === item?.package_id;
 
     // Validate: Cannot change qty_per_pack of base package (must be 1.0)
-    if (isBasePackage && body.qtyPerPack && parseFloat(body.qtyPerPack) !== 1.0) {
+    if (isBasePackage && body.qtyPerPack && Number(body.qtyPerPack) !== 1.0) {
       return NextResponse.json(
         {
           error:
@@ -196,7 +203,7 @@ export async function PUT(
     }
 
     // Validate qty_per_pack if provided
-    if (body.qtyPerPack && parseFloat(body.qtyPerPack) <= 0) {
+    if (body.qtyPerPack && Number(body.qtyPerPack) <= 0) {
       return NextResponse.json({ error: "qtyPerPack must be greater than 0" }, { status: 400 });
     }
 
@@ -227,7 +234,7 @@ export async function PUT(
 
     if (body.packType !== undefined) updateData.pack_type = body.packType;
     if (body.packName !== undefined) updateData.pack_name = body.packName;
-    if (body.qtyPerPack !== undefined) updateData.qty_per_pack = parseFloat(body.qtyPerPack);
+    if (body.qtyPerPack !== undefined) updateData.qty_per_pack = Number(body.qtyPerPack);
     if (body.uomId !== undefined) updateData.uom_id = body.uomId;
     if (body.barcode !== undefined) updateData.barcode = body.barcode;
     if (body.isDefault !== undefined) updateData.is_default = body.isDefault;
@@ -327,7 +334,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Package not found" }, { status: 404 });
     }
 
-    const item = (pkg as PackageRow).items;
+    const itemRefRaw = (pkg as PackageRow).items;
+    const item = Array.isArray(itemRefRaw) ? itemRefRaw[0] : itemRefRaw;
 
     // Prevent deletion of base package
     if (packageId === item?.package_id) {

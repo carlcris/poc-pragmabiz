@@ -2,13 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
-type ItemWarehouseRow = Tables<"item_warehouse">;
-type ItemRow = Tables<"items">;
-type UomRow = Tables<"units_of_measure">;
-type ItemWarehouseWithItem = ItemWarehouseRow & {
-  items: ItemRow | null;
+type ItemRow = {
+  id: string;
+  item_code: string | null;
+  item_name: string | null;
+  description: string | null;
+  sales_price: number | string | null;
+  cost_price: number | string | null;
+  category_id: string | null;
+  uom_id: string | null;
+};
+type UomRow = {
+  id: string;
+  name: string | null;
+};
+type ItemWarehouseWithItem = {
+  item_id: string;
+  warehouse_id: string;
+  current_stock: number | string | null;
+  reorder_level: number | string | null;
+  items: ItemRow | ItemRow[] | null;
 };
 
 type InventoryItem = {
@@ -102,12 +115,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Get UOM names separately to avoid relationship conflicts
+    const inventoryRows = (inventoryData as ItemWarehouseWithItem[] | null) || [];
     const uomIds =
-      inventoryData && inventoryData.length > 0
+      inventoryRows.length > 0
         ? [
             ...new Set(
-              (inventoryData as ItemWarehouseWithItem[])
-                .map((stock) => stock.items?.uom_id)
+              inventoryRows
+                .map((stock) => {
+                  const item = Array.isArray(stock.items) ? stock.items[0] ?? null : stock.items;
+                  return item?.uom_id || null;
+                })
                 .filter(Boolean)
             ),
           ]
@@ -127,23 +144,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const uomMap = new Map((uomsData || []).map((uom) => [uom.id, uom.name]));
 
     // Transform data
-    const inventory: InventoryItem[] =
-      (inventoryData as ItemWarehouseWithItem[] | null)?.map((stock) => ({
-        id: stock.items?.id,
+    const inventory: InventoryItem[] = inventoryRows.map((stock) => {
+      const item = Array.isArray(stock.items) ? stock.items[0] ?? null : stock.items;
+
+      return {
+        id: item?.id,
         itemId: stock.item_id,
-        itemCode: stock.items?.item_code,
-        itemName: stock.items?.item_name,
-        description: stock.items?.description,
+        itemCode: item?.item_code || undefined,
+        itemName: item?.item_name || undefined,
+        description: item?.description,
         currentStock: Number(stock.current_stock) || 0,
         availableStock: Number(stock.current_stock) || 0,
-        unitPrice: Number(stock.items?.sales_price) || 0,
-        unitCost: Number(stock.items?.cost_price) || 0,
+        unitPrice: Number(item?.sales_price) || 0,
+        unitCost: Number(item?.cost_price) || 0,
         reorderPoint: Number(stock.reorder_level) || 0,
-        categoryId: stock.items?.category_id,
+        categoryId: item?.category_id,
         categoryName: null,
-        uomId: stock.items?.uom_id,
-        uomName: uomMap.get(stock.items?.uom_id) || "",
-      })) || [];
+        uomId: item?.uom_id,
+        uomName: uomMap.get(item?.uom_id || "") || "",
+      };
+    });
 
     // Sort client-side by itemName to emulate previous ordering
     inventory.sort((a, b) => {

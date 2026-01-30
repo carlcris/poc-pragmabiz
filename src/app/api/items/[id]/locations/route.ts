@@ -97,16 +97,20 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     const locations = (data || []).map((row) => {
       const defaultLocationId = defaultLocationMap.get(row.warehouse_id) || null;
+      const warehouse = Array.isArray(row.warehouses) ? row.warehouses[0] : row.warehouses;
+      const location = Array.isArray(row.warehouse_locations)
+        ? row.warehouse_locations[0]
+        : row.warehouse_locations;
       return {
         id: row.id,
         itemId: row.item_id,
         warehouseId: row.warehouse_id,
         locationId: row.location_id,
-        warehouseCode: row.warehouses?.warehouse_code || "",
-        warehouseName: row.warehouses?.warehouse_name || "",
-        locationCode: row.warehouse_locations?.code || "",
-        locationName: row.warehouse_locations?.name || "",
-        locationType: row.warehouse_locations?.location_type || "",
+        warehouseCode: warehouse?.warehouse_code || "",
+        warehouseName: warehouse?.warehouse_name || "",
+        locationCode: location?.code || "",
+        locationName: location?.name || "",
+        locationType: location?.location_type || "",
         qtyOnHand: Number(row.qty_on_hand) || 0,
         qtyReserved: Number(row.qty_reserved) || 0,
         qtyAvailable: Number(row.qty_available) || 0,

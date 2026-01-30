@@ -25,7 +25,7 @@ export class ApiClient {
 
   async get<T>(
     endpoint: string,
-    options?: { params?: Record<string, string | number | undefined> }
+    options?: { params?: Record<string, string | number | undefined>; responseType?: "blob" }
   ): Promise<T> {
     let url = `${this.baseURL}${endpoint}`;
 
@@ -50,6 +50,10 @@ export class ApiClient {
 
     if (!response.ok) {
       throw new Error(`API Error: ${response.statusText}`);
+    }
+
+    if (options?.responseType === "blob") {
+      return (await response.blob()) as T;
     }
 
     return response.json();

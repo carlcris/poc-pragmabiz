@@ -1,5 +1,12 @@
 // Employee roles
-export type EmployeeRole = "admin" | "manager" | "sales_agent" | "warehouse_staff" | "accountant";
+export type EmployeeRole =
+  | "admin"
+  | "manager"
+  | "sales_agent"
+  | "sales_manager"
+  | "territory_manager"
+  | "warehouse_staff"
+  | "accountant";
 
 // Employment status
 export type EmploymentStatus = "active" | "inactive" | "terminated" | "on_leave";
@@ -133,9 +140,9 @@ export interface CreateTerritoryRequest {
 export type UpdateTerritoryRequest = Partial<CreateTerritoryRequest>;
 
 // Helper types
-export interface EmployeeWithTerritories extends Employee {
+export type EmployeeWithTerritories = Omit<Employee, "territories"> & {
   territories: EmployeeDistributionLocation[];
-}
+};
 
 export interface EmployeePerformance {
   employee: Employee;

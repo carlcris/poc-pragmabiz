@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type {
   Account,
+  AccountType,
   CreateAccountRequest,
   AccountFilters,
   AccountsResponse,
@@ -123,7 +124,7 @@ export async function GET(request: NextRequest) {
       companyId: account.company_id,
       accountNumber: account.account_number,
       accountName: account.account_name,
-      accountType: account.account_type,
+      accountType: account.account_type as AccountType,
       parentAccountId: account.parent_account_id,
       isSystemAccount: account.is_system_account,
       isActive: account.is_active,

@@ -56,14 +56,14 @@ import { PurchaseOrderViewDialog } from "@/components/purchase-orders/PurchaseOr
 import { ReceiveGoodsDialog } from "@/components/purchase-receipts/ReceiveGoodsDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
-import type { PurchaseOrder } from "@/types/purchase-order";
+import type { PurchaseOrder, PurchaseOrderStatus } from "@/types/purchase-order";
 import { format } from "date-fns";
 
 export default function PurchaseOrdersPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<PurchaseOrderStatus | "all">("all");
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [receiveGoodsDialogOpen, setReceiveGoodsDialogOpen] = useState(false);
@@ -153,7 +153,7 @@ export default function PurchaseOrdersPage() {
   };
 
   const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
+    setStatusFilter(value as PurchaseOrderStatus | "all");
     setPage(1);
   };
 

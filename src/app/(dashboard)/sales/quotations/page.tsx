@@ -72,7 +72,7 @@ export default function QuotationsPage() {
   const convertToOrder = useConvertToOrder();
   const changeStatus = useChangeQuotationStatus();
 
-  const { data, isLoading } = useQuotations({
+  const { data, isLoading, error } = useQuotations({
     search,
     page: 1,
     limit: 1000, // Get all for client-side filtering

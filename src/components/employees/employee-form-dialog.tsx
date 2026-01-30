@@ -51,7 +51,8 @@ const employeeFormSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-type EmployeeFormValues = z.infer<typeof employeeFormSchema>;
+type EmployeeFormInput = z.input<typeof employeeFormSchema>;
+type EmployeeFormValues = z.output<typeof employeeFormSchema>;
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -69,7 +70,7 @@ export function EmployeeFormDialog({
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
 
-  const form = useForm<EmployeeFormValues>({
+  const form = useForm<EmployeeFormInput>({
     resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       employeeCode: "",
@@ -109,11 +110,12 @@ export function EmployeeFormDialog({
     }
   }, [mode, employee, form, open]);
 
-  const onSubmit = async (data: EmployeeFormValues) => {
+  const onSubmit = async (data: EmployeeFormInput) => {
     try {
+      const parsed = employeeFormSchema.parse(data);
       const payload = {
-        ...data,
-        commissionRate: Number(data.commissionRate),
+        ...parsed,
+        commissionRate: Number(parsed.commissionRate),
         hireDate: new Date().toISOString().split("T")[0], // Add current date as hire date
       };
 

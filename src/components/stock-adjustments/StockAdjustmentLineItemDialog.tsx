@@ -149,8 +149,8 @@ export function StockAdjustmentLineItemDialog({
 
             // Set package info for display
             setPackageInfo({
-              name: basePackage.packageName,
-              conversionFactor: basePackage.qtyPerPack,
+              name: basePackage.packageName || "Base Package",
+              conversionFactor: basePackage.qtyPerPack ?? 1,
               baseUom: basePackage.uomCode || "Unit",
             });
           }
@@ -181,8 +181,8 @@ export function StockAdjustmentLineItemDialog({
         const selectedPackage = packagesData.data?.find((pkg) => pkg.id === packagingId);
         if (selectedPackage) {
           setPackageInfo({
-            name: selectedPackage.packageName,
-            conversionFactor: selectedPackage.qtyPerPack,
+            name: selectedPackage.packageName || "Package",
+            conversionFactor: selectedPackage.qtyPerPack ?? 1,
             baseUom: selectedPackage.uomCode || "Unit",
           });
         } else {

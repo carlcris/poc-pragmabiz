@@ -3,19 +3,33 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { invalidatePermissionCache } from "@/services/permissions/permissionResolver";
-import type { Tables } from "@/types/supabase";
-
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-type RoleRow = Tables<"roles">;
-type PermissionRow = Tables<"permissions">;
-type RolePermissionRow = Tables<"role_permissions">;
-
-type RolePermissionWithPermission = RolePermissionRow & {
-  permissions?: PermissionRow | null;
+type RoleRow = {
+  id: string;
+  name?: string;
+  company_id: string;
+  is_system_role?: boolean;
 };
+type PermissionRow = {
+  id: string;
+  resource?: string;
+  description?: string | null;
+  can_view?: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
+};
+type RolePermissionRow = {
+  id?: string;
+  role_id: string;
+  permission_id: string;
+  permissions?: PermissionRow | PermissionRow[] | null;
+};
+
+type RolePermissionWithPermission = RolePermissionRow;
 
 type RolePermissionInput = {
   permission_id: string;
@@ -152,7 +166,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         (
           updatedRole as RoleRow & { role_permissions?: RolePermissionWithPermission[] | null }
         )?.role_permissions
-          ?.map((rp) => rp.permissions)
+          ?.flatMap((rp) => (Array.isArray(rp.permissions) ? rp.permissions : [rp.permissions]))
           .filter(Boolean) || [],
     };
 

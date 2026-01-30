@@ -51,7 +51,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
     return timeData.data.map((item) => ({
       date: format(parseISO(item.date), "MMM dd"),
       sales: item.sales,
-      commission: item.commission,
+      commissions: item.commissions,
       transactions: item.transactions,
     }));
   }, [timeData]);
@@ -161,7 +161,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                 />
                 <Line
                   type="monotone"
-                  dataKey="commission"
+                  dataKey="commissions"
                   stroke="#10b981"
                   strokeWidth={2}
                   name="Commission"
@@ -215,7 +215,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                   <Legend />
                   <Bar dataKey="sales" fill="#3b82f6" name="Sales" radius={[4, 4, 0, 0]} />
                   <Bar
-                    dataKey="commission"
+                    dataKey="commissions"
                     fill="#10b981"
                     name="Commission"
                     radius={[4, 4, 0, 0]}
@@ -250,7 +250,9 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }: { name?: string; percent?: number }) =>
+                      `${name ?? ""} (${(((percent ?? 0) * 100).toFixed(0))}%)`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"

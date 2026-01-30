@@ -18,6 +18,7 @@ import {
   stockTransactionFormSchema,
   type StockTransactionFormValues,
 } from "@/lib/validations/stock-transaction";
+import type { z } from "zod";
 import { PackageSelector } from "@/components/inventory/PackageSelector";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,11 +90,12 @@ export function StockTransactionFormDialog({
   const { formatCurrency } = useCurrency();
 
   const warehouses = warehousesData?.data?.filter((wh) => wh.isActive) || [];
+  type StockTransactionFormInput = z.input<typeof stockTransactionFormSchema>;
 
   // Item combobox state
   const [itemOpen, setItemOpen] = useState(false);
 
-  const form = useForm<StockTransactionFormValues>({
+  const form = useForm<StockTransactionFormInput>({
     resolver: zodResolver(stockTransactionFormSchema),
     defaultValues: {
       transactionDate: new Date().toISOString().slice(0, 16),
@@ -188,10 +190,11 @@ export function StockTransactionFormDialog({
     }
   }, [selectedItemId, form, basicItems]);
 
-  const onSubmit = async (values: StockTransactionFormValues) => {
+  const onSubmit = async (values: StockTransactionFormInput) => {
     try {
+      const parsed = stockTransactionFormSchema.parse(values);
       // Find the selected item to get its UOM
-      const selectedItem = basicItems.find((item) => item.id === values.itemId);
+      const selectedItem = basicItems.find((item) => item.id === parsed.itemId);
       if (!selectedItem || !selectedItem.uomId) {
         toast.error("Invalid item selected or item has no unit of measure");
         return;
@@ -199,31 +202,31 @@ export function StockTransactionFormDialog({
 
       // Check if this is a transfer to a van warehouse
       const isSameWarehouse =
-        values.transactionType === "transfer" &&
-        values.toWarehouseId &&
-        values.warehouseId === values.toWarehouseId;
+        parsed.transactionType === "transfer" &&
+        parsed.toWarehouseId &&
+        parsed.warehouseId === parsed.toWarehouseId;
       const isTransferToVan =
-        values.transactionType === "transfer" &&
-        values.toWarehouseId &&
-        warehouses.find((w) => w.id === values.toWarehouseId)?.isVan;
+        parsed.transactionType === "transfer" &&
+        parsed.toWarehouseId &&
+        warehouses.find((w) => w.id === parsed.toWarehouseId)?.isVan;
 
       if (isTransferToVan && !isSameWarehouse) {
         // Create a pending stock transfer for van (requires driver confirmation)
         const transferData = {
-          fromWarehouseId: values.warehouseId,
-          toWarehouseId: values.toWarehouseId!,
-          transferDate: values.transactionDate,
-          notes: values.reason,
-          fromLocationId: values.fromLocationId || undefined,
-          toLocationId: values.toLocationId || undefined,
+          fromWarehouseId: parsed.warehouseId,
+          toWarehouseId: parsed.toWarehouseId!,
+          transferDate: parsed.transactionDate,
+          notes: parsed.reason,
+          fromLocationId: parsed.fromLocationId || undefined,
+          toLocationId: parsed.toLocationId || undefined,
           items: [
             {
-              itemId: values.itemId,
+              itemId: parsed.itemId,
               code: selectedItem.code,
               name: selectedItem.name,
-              quantity: values.quantity,
-              packagingId: values.packagingId || null,
-              uomId: values.uomId,
+              quantity: parsed.quantity,
+              packagingId: parsed.packagingId || null,
+              uomId: parsed.uomId,
               uomName: selectedItem.uom,
             },
           ],
@@ -234,23 +237,23 @@ export function StockTransactionFormDialog({
       } else {
         // Create immediate stock transaction (non-van transfer or other transaction types)
         const requestData = {
-          transactionDate: values.transactionDate,
-          transactionType: values.transactionType,
-          warehouseId: values.warehouseId,
-          toWarehouseId: values.toWarehouseId || undefined,
-          fromLocationId: values.fromLocationId || undefined,
-          toLocationId: values.toLocationId || undefined,
-          referenceType: values.referenceType || undefined,
-          referenceId: values.referenceId || undefined,
-          referenceNumber: values.referenceNumber || undefined,
-          notes: values.reason,
+          transactionDate: parsed.transactionDate,
+          transactionType: parsed.transactionType,
+          warehouseId: parsed.warehouseId,
+          toWarehouseId: parsed.toWarehouseId || undefined,
+          fromLocationId: parsed.fromLocationId || undefined,
+          toLocationId: parsed.toLocationId || undefined,
+          referenceType: parsed.referenceType || undefined,
+          referenceId: parsed.referenceId || undefined,
+          referenceNumber: parsed.referenceNumber || undefined,
+          notes: parsed.reason,
           items: [
             {
-              itemId: values.itemId,
-              quantity: values.quantity,
-              packagingId: values.packagingId || null,
-              uomId: values.uomId,
-              notes: values.notes || undefined,
+              itemId: parsed.itemId,
+              quantity: parsed.quantity,
+              packagingId: parsed.packagingId || null,
+              uomId: parsed.uomId,
+              notes: parsed.notes || undefined,
             },
           ],
         };

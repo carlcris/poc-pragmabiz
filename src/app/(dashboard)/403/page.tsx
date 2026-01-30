@@ -5,14 +5,19 @@ import { RESOURCE_METADATA } from "@/constants/resources";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useUserRoles } from "@/hooks/useUserRoles";
 import { useAuthStore } from "@/stores/authStore";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
 
 export default function AccessDeniedPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { permissions, isLoading: permissionsLoading } = usePermissions();
-  const { data: rolesData, isLoading: rolesLoading } = useUserRoles();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const { data: rolesData, isLoading: rolesLoading } = useUserRoles(
+    user?.id,
+    currentBusinessUnit?.id
+  );
 
   const resource = searchParams.get("resource");
   const resources = searchParams.get("resources");

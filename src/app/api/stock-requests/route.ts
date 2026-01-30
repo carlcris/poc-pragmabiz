@@ -185,8 +185,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    const fromLocationId = body.from_location_id ?? body.source_warehouse_id;
-    const toLocationId = body.to_location_id ?? body.destination_warehouse_id;
+    const fromLocationId = body.from_location_id;
+    const toLocationId = body.to_location_id;
 
     // Validate required fields
     if (!body.request_date || !body.required_date || !fromLocationId || !body.priority) {
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
         request_date: body.request_date,
         required_date: body.required_date,
         source_warehouse_id: fromLocationId,
-        destination_warehouse_id: toLocationId || null,
+        destination_warehouse_id: toLocationId ?? null,
         department: body.department || null,
         status: "draft",
         priority: body.priority,

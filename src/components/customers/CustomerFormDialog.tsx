@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useAuthStore } from "@/stores/authStore";
 import { customerFormSchema, type CustomerFormValues } from "@/lib/validations/customer";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -64,8 +65,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const [sameAsBilling, setSameAsBilling] = useState(false);
+  type CustomerFormInput = z.input<typeof customerFormSchema>;
 
-  const form = useForm<CustomerFormValues>({
+  const form = useForm<CustomerFormInput>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
       customerType: "company",
@@ -168,12 +170,13 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
     }
   };
 
-  const onSubmit = async (values: CustomerFormValues) => {
+  const onSubmit = async (values: CustomerFormInput) => {
     try {
+      const parsed = customerFormSchema.parse(values);
       if (customer) {
         await updateCustomer.mutateAsync({
           id: customer.id,
-          data: values,
+          data: parsed,
         });
         toast.success("Customer updated successfully");
       } else {
@@ -184,7 +187,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
         }
 
         await createCustomer.mutateAsync({
-          ...values,
+          ...parsed,
           companyId: user.companyId,
         });
         toast.success("Customer created successfully");

@@ -89,11 +89,17 @@ export type TransformationTemplateOutputApi = {
 
 export type TransformationTemplateApi = {
   id: string;
+  company_id?: string;
   template_code: string;
   template_name: string;
   description?: string | null;
   is_active: boolean;
   usage_count: number;
+  created_by?: string | null;
+  created_at?: string | null;
+  updated_by?: string | null;
+  updated_at?: string | null;
+  deleted_at?: string | null;
   inputs?: TransformationTemplateInputApi[] | null;
   outputs?: TransformationTemplateOutputApi[] | null;
 };

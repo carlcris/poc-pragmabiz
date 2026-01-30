@@ -60,7 +60,8 @@ const invoiceFormSchema = z.object({
   notes: z.string().default(""),
 });
 
-type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
+type InvoiceFormInput = z.input<typeof invoiceFormSchema>;
+type InvoiceFormValues = z.output<typeof invoiceFormSchema>;
 
 interface InvoiceFormDialogProps {
   open: boolean;
@@ -89,7 +90,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
   } | null>(null);
 
   // Default values
-  const defaultValues = useMemo<InvoiceFormValues>(
+  const defaultValues = useMemo<InvoiceFormInput>(
     () => ({
       customerId: "",
       warehouseId: "",
@@ -102,7 +103,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
     []
   );
 
-  const form = useForm<InvoiceFormValues>({
+  const form = useForm<InvoiceFormInput>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues,
   });
@@ -156,7 +157,6 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
   useEffect(() => {
     if (open && invoice) {
       form.reset({
-        companyId: invoice.companyId,
         customerId: invoice.customerId,
         warehouseId: invoice.warehouseId || "",
         locationId: invoice.locationId || "",
@@ -217,22 +217,25 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
     }
   };
 
-  const onSubmit = async (data: InvoiceFormValues) => {
+  const onSubmit = async (data: InvoiceFormInput) => {
     if (lineItems.length === 0) {
       alert("Please add at least one line item");
       return;
     }
 
     try {
+      const parsed = invoiceFormSchema.parse(data);
       // Transform form data to API request format
       const apiRequest = {
-        customerId: data.customerId,
-        warehouseId: data.warehouseId,
-        locationId: data.locationId || undefined,
-        invoiceDate: data.invoiceDate,
-        dueDate: data.dueDate,
+        customerId: parsed.customerId,
+        warehouseId: parsed.warehouseId,
+        locationId: parsed.locationId || undefined,
+        invoiceDate: parsed.invoiceDate,
+        dueDate: parsed.dueDate,
         lineItems: lineItems.map((item) => ({
           itemId: item.itemId,
+          itemCode: item.itemCode || "",
+          itemName: item.itemName || "",
           description: item.description,
           quantity: item.quantity,
           packagingId: item.packagingId ?? null,
@@ -242,8 +245,8 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
           taxRate: item.taxRate,
           lineTotal: item.lineTotal,
         })),
-        paymentTerms: data.terms,
-        notes: data.notes,
+        paymentTerms: parsed.terms,
+        notes: parsed.notes,
       };
 
       if (isEditMode && invoice) {
@@ -261,7 +264,21 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
           },
         });
       } else {
-        await createMutation.mutateAsync(apiRequest);
+        const selectedCustomer = customers.find((cust) => cust.id === apiRequest.customerId);
+        if (!selectedCustomer) {
+          alert("Selected customer details not found.");
+          return;
+        }
+
+        await createMutation.mutateAsync({
+          ...apiRequest,
+          companyId: selectedCustomer.companyId,
+          billingAddress: selectedCustomer.billingAddress,
+          billingCity: selectedCustomer.billingCity,
+          billingState: selectedCustomer.billingState,
+          billingPostalCode: selectedCustomer.billingPostalCode,
+          billingCountry: selectedCustomer.billingCountry,
+        });
       }
       onOpenChange(false);
     } catch {}

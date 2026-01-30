@@ -137,7 +137,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
       price: Number(data.price),
       currencyCode: data.currencyCode,
       effectiveFrom: data.effectiveFrom,
-      effectiveTo: data.effectiveTo || undefined,
+      effectiveTo: data.effectiveTo || "",
       isActive: data.isActive,
     };
 

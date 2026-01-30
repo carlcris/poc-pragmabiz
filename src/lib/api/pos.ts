@@ -18,26 +18,29 @@ export const posApi = {
   // Get single transaction
   getTransaction: async (id: string) => {
     const response = await apiClient.get<POSTransaction>(`/api/pos/transactions/${id}`);
-    return response.data;
+    return response;
   },
 
   // Create transaction
   createTransaction: async (data: POSTransactionCreate) => {
     const response = await apiClient.post<POSTransaction>("/api/pos/transactions", data);
-    return response.data;
+    return response;
   },
 
   // Void transaction
   voidTransaction: async (id: string) => {
-    const response = await apiClient.post<POSTransaction>(`/api/pos/transactions/${id}/void`);
-    return response.data;
+    const response = await apiClient.post<POSTransaction>(
+      `/api/pos/transactions/${id}/void`,
+      {}
+    );
+    return response;
   },
 
   // Print receipt
   printReceipt: async (id: string) => {
-    const response = await apiClient.get(`/api/pos/transactions/${id}/receipt`, {
+    const response = await apiClient.get<Blob>(`/api/pos/transactions/${id}/receipt`, {
       responseType: "blob",
     });
-    return response.data;
+    return response;
   },
 };

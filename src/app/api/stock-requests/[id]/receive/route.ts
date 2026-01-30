@@ -8,27 +8,32 @@ import {
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
-import type { Tables } from "@/types/supabase";
 
-type StockRequestRow = Tables<"stock_requests">;
-type StockRequestItemRow = Tables<"stock_request_items"> & {
+type StockRequestRow = {
+  id: string;
+  company_id: string;
+  request_code: string;
+  status: string;
+  source_warehouse_id: string | null;
+  destination_warehouse_id: string | null;
+};
+type StockRequestItemRow = {
+  id: string;
+  item_id: string;
+  requested_qty: number | string;
   packaging_id?: string | null;
   uom_id?: string | null;
 };
+type StockRequestWarehouse = {
+  id: string;
+  warehouse_code: string;
+  warehouse_name: string;
+  business_unit_id: string | null;
+};
 
 type StockRequestQueryRow = StockRequestRow & {
-  source_warehouse: {
-    id: string;
-    warehouse_code: string;
-    warehouse_name: string;
-    business_unit_id: string | null;
-  } | null;
-  destination_warehouse: {
-    id: string;
-    warehouse_code: string;
-    warehouse_name: string;
-    business_unit_id: string | null;
-  } | null;
+  source_warehouse: StockRequestWarehouse | StockRequestWarehouse[] | null;
+  destination_warehouse: StockRequestWarehouse | StockRequestWarehouse[] | null;
   stock_request_items: StockRequestItemRow[];
 };
 
@@ -129,11 +134,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    if (!stockRequest.source_warehouse?.business_unit_id) {
+    const sourceWarehouseRecord = stockRequest.source_warehouse;
+    const sourceWarehouse = Array.isArray(sourceWarehouseRecord)
+      ? sourceWarehouseRecord[0] ?? null
+      : sourceWarehouseRecord ?? null;
+    if (!sourceWarehouse?.business_unit_id) {
       return NextResponse.json({ error: "Source warehouse not found" }, { status: 400 });
     }
 
-    if (stockRequest.source_warehouse.business_unit_id !== currentBusinessUnitId) {
+    if (sourceWarehouse.business_unit_id !== currentBusinessUnitId) {
       return NextResponse.json(
         { error: "Stock request can only be received from the source business unit" },
         { status: 403 }
@@ -176,7 +185,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId: userData.company_id,
-      warehouseId: stockRequest.source_warehouse.id,
+      warehouseId: sourceWarehouse.id,
       userId: user.id,
     });
 
@@ -188,7 +197,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         transaction_code: transactionCode,
         transaction_type: "in",
         transaction_date: body.receivedDate || now.toISOString().split("T")[0],
-        warehouse_id: stockRequest.source_warehouse.id,
+        warehouse_id: sourceWarehouse.id,
         to_location_id: defaultLocationId,
         reference_type: "stock_request",
         reference_id: stockRequest.id,
@@ -220,7 +229,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .select("id, current_stock, default_location_id")
         .eq("company_id", userData.company_id)
         .eq("item_id", item.itemId)
-        .eq("warehouse_id", stockRequest.source_warehouse.id)
+        .eq("warehouse_id", sourceWarehouse.id)
         .is("deleted_at", null)
         .maybeSingle();
 
@@ -231,7 +240,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         supabase,
         companyId: userData.company_id,
         itemId: item.itemId,
-        warehouseId: stockRequest.source_warehouse.id,
+        warehouseId: sourceWarehouse.id,
         locationId:
           receiveInput.locationId ||
           defaultLocationId ||
@@ -254,7 +263,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         await supabase.from("item_warehouse").insert({
           company_id: userData.company_id,
           item_id: item.itemId,
-          warehouse_id: stockRequest.source_warehouse.id,
+          warehouse_id: sourceWarehouse.id,
           current_stock: newStock,
           default_location_id: defaultLocationId,
           created_by: user.id,

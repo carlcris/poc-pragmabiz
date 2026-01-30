@@ -2,14 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
-type RoleRow = Tables<"roles">;
-type PermissionRow = Tables<"permissions">;
-type RolePermissionRow = Tables<"role_permissions">;
+type RoleRow = {
+  id: string;
+  name?: string;
+  description?: string | null;
+  company_id: string;
+  is_system_role?: boolean;
+};
+type PermissionRow = {
+  id: string;
+  resource?: string;
+  description?: string | null;
+};
+type RolePermissionRow = {
+  role_id: string;
+  permission_id: string;
+  permissions?: PermissionRow | PermissionRow[] | null;
+};
 
 type RoleWithPermissions = RoleRow & {
-  role_permissions?: Array<RolePermissionRow & { permissions?: PermissionRow | null }> | null;
+  role_permissions?: Array<RolePermissionRow> | null;
 };
 
 // GET /api/rbac/roles - List all roles
@@ -34,20 +46,19 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
 
     // Build query
-    let query = supabase
-      .from("roles")
-      .select(
-        includePermissions
-          ? `
-            *,
-            role_permissions(
-              permission_id,
-              permissions(*)
-            )
-          `
-          : "*",
-        { count: "exact" }
-      )
+    const selectQuery = includePermissions
+      ? `
+          *,
+          role_permissions(
+            permission_id,
+            permissions(*)
+          )
+        `
+      : "*";
+
+    const rolesQuery = supabase.from("roles") as any;
+    let query = rolesQuery
+      .select(selectQuery, { count: "exact" })
       .eq("company_id", user.companyId)
       .is("deleted_at", null)
       .order("is_system_role", { ascending: false })
@@ -76,7 +87,9 @@ export async function GET(request: NextRequest) {
     const roles = includePermissions
       ? ((data as RoleWithPermissions[] | null) || []).map((role) => ({
           ...role,
-          permissions: (role.role_permissions || []).map((rp) => rp.permissions).filter(Boolean),
+          permissions: (role.role_permissions || [])
+            .flatMap((rp) => (Array.isArray(rp.permissions) ? rp.permissions : [rp.permissions]))
+            .filter(Boolean),
         }))
       : data || [];
 

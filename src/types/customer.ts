@@ -1,5 +1,5 @@
-export type CustomerType = "individual" | "business";
-export type PaymentTerms = "net_30" | "net_60" | "net_90" | "due_on_receipt" | "cod";
+export type CustomerType = "individual" | "company" | "government";
+export type PaymentTerms = "cash" | "net_30" | "net_60" | "net_90" | "due_on_receipt" | "cod";
 
 export interface Customer {
   id: string;

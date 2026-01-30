@@ -64,18 +64,31 @@ export const GET = async (req: NextRequest) => {
     const totalCommission =
       commissions?.reduce((sum, c) => sum + Number(c.commission_amount), 0) || 0;
     const totalSales =
-      commissions?.reduce((sum, c) => sum + Number(c.sales_invoices.total_amount), 0) || 0;
+      commissions?.reduce((sum, c) => {
+        const invoice = Array.isArray(c.sales_invoices) ? c.sales_invoices[0] : c.sales_invoices;
+        return sum + Number(invoice?.total_amount || 0);
+      }, 0) || 0;
     const transactionCount = commissions?.length || 0;
 
     // Group by status
     const paidCommission =
       commissions
-        ?.filter((c) => c.sales_invoices.status === "paid")
+        ?.filter((c) => {
+          const invoice = Array.isArray(c.sales_invoices)
+            ? c.sales_invoices[0]
+            : c.sales_invoices;
+          return invoice?.status === "paid";
+        })
         .reduce((sum, c) => sum + Number(c.commission_amount), 0) || 0;
 
     const pendingCommission =
       commissions
-        ?.filter((c) => c.sales_invoices.status !== "paid")
+        ?.filter((c) => {
+          const invoice = Array.isArray(c.sales_invoices)
+            ? c.sales_invoices[0]
+            : c.sales_invoices;
+          return invoice?.status !== "paid";
+        })
         .reduce((sum, c) => sum + Number(c.commission_amount), 0) || 0;
 
     // Get unique employees count
@@ -100,19 +113,25 @@ export const GET = async (req: NextRequest) => {
         effectiveRate,
       },
       commissions:
-        commissions?.map((c) => ({
-          id: c.id,
-          invoiceCode: c.sales_invoices.invoice_code,
-          invoiceDate: c.sales_invoices.invoice_date,
-          invoiceAmount: c.sales_invoices.total_amount,
-          invoiceStatus: c.sales_invoices.status,
-          employeeCode: c.employees.employee_code,
-          employeeName: `${c.employees.first_name} ${c.employees.last_name}`,
-          commissionRate: c.employees.commission_rate,
-          commissionAmount: c.commission_amount,
-          splitPercentage: c.commission_split_percentage,
-          createdAt: c.created_at,
-        })) || [],
+        commissions?.map((c) => {
+          const invoice = Array.isArray(c.sales_invoices) ? c.sales_invoices[0] : c.sales_invoices;
+          const employee = Array.isArray(c.employees) ? c.employees[0] : c.employees;
+          return {
+            id: c.id,
+            invoiceCode: invoice?.invoice_code,
+            invoiceDate: invoice?.invoice_date,
+            invoiceAmount: invoice?.total_amount,
+            invoiceStatus: invoice?.status,
+            employeeCode: employee?.employee_code,
+            employeeName: employee
+              ? `${employee.first_name} ${employee.last_name}`
+              : "",
+            commissionRate: employee?.commission_rate,
+            commissionAmount: c.commission_amount,
+            splitPercentage: c.commission_split_percentage,
+            createdAt: c.created_at,
+          };
+        }) || [],
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

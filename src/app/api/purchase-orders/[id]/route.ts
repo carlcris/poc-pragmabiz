@@ -237,8 +237,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       (item: PurchaseOrderItemInput) => ({
         itemId: item.itemId,
         packagingId: item.packagingId ?? null,
-        inputQty: parseFloat(item.quantity),
-        unitCost: parseFloat(item.rate),
+        inputQty: Number(item.quantity),
+        unitCost: Number(item.rate),
       })
     );
 

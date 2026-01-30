@@ -192,11 +192,11 @@ export async function POST(request: NextRequest) {
     const validationResult = createTransformationTemplateSchema.safeParse(dataToValidate);
 
     if (!validationResult.success) {
-      const firstError = validationResult.error.errors[0];
+      const firstError = validationResult.error.issues[0];
       return NextResponse.json(
         {
           error: firstError?.message || "Validation failed",
-          details: validationResult.error.errors,
+          details: validationResult.error.issues,
         },
         { status: 400 }
       );

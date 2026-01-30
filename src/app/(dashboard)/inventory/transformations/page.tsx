@@ -199,8 +199,10 @@ export default function TransformationOrdersPage() {
       {/* Pagination */}
       {ordersData && ordersData.total > limit && (
         <DataTablePagination
-          page={page}
+          currentPage={page}
           totalPages={Math.ceil(ordersData.total / limit)}
+          pageSize={limit}
+          totalItems={ordersData.total}
           onPageChange={setPage}
         />
       )}

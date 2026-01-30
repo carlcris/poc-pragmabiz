@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateTransformationTemplateSchema } from "@/lib/validations/transformation-template";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Database } from "@/types/database.types";
-
-type DbTransformationTemplateUpdate =
-  Database["public"]["Tables"]["transformation_templates"]["Update"];
+type DbTransformationTemplateUpdate = {
+  template_name?: string;
+  description?: string | null;
+  is_active?: boolean;
+  updated_by?: string;
+  updated_at?: string;
+};
 
 // GET /api/transformations/templates/[id] - Get template by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -120,7 +123,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.errors },
+        { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 }
       );
     }

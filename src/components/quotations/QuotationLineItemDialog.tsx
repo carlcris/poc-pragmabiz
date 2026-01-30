@@ -52,7 +52,8 @@ const lineItemSchema = z.object({
   taxRate: z.number().min(0).max(100).default(0),
 });
 
-export type LineItemFormValues = z.infer<typeof lineItemSchema> & {
+type LineItemFormInput = z.input<typeof lineItemSchema>;
+export type LineItemFormValues = z.output<typeof lineItemSchema> & {
   packagingName?: string;
   lineTotal?: number;
 };
@@ -84,13 +85,14 @@ export function QuotationLineItemDialog({
   // Fetch basic items (for uomId and description)
   const { data: basicItemsData } = useItems({ limit: 1000 });
   const basicItems = basicItemsData?.data || [];
+  const enhancedItems = basicItems;
 
   const { formatCurrency } = useCurrency();
 
   // Item combobox state
   const [itemOpen, setItemOpen] = useState(false);
 
-  const form = useForm<LineItemFormValues>({
+  const form = useForm<LineItemFormInput>({
     resolver: zodResolver(lineItemSchema),
     defaultValues: {
       itemId: "",
@@ -132,7 +134,8 @@ export function QuotationLineItemDialog({
       form.setValue("itemId", basicItem.id);
       form.setValue("itemCode", basicItem.code);
       form.setValue("itemName", basicItem.name);
-      form.setValue("description", basicItem.description);
+      const itemDescription = "description" in basicItem ? basicItem.description : "";
+      form.setValue("description", itemDescription);
       form.setValue("unitPrice", basicItem.listPrice);
       form.setValue("uomId", basicItem.uomId);
 
@@ -152,9 +155,10 @@ export function QuotationLineItemDialog({
     }
   };
 
-  const onSubmit = (data: LineItemFormValues) => {
+  const onSubmit = (data: LineItemFormInput) => {
+    const parsed = lineItemSchema.parse(data);
     onSave({
-      ...data,
+      ...parsed,
       lineTotal,
       packagingName: selectedPackage?.packName,
     });
@@ -254,14 +258,17 @@ export function QuotationLineItemDialog({
                                         <div className="mt-0.5 text-xs text-muted-foreground">
                                           <span
                                             className={cn(
-                                              item.available <= 0
+                                              ("available" in item ? item.available : 0) <= 0
                                                 ? "font-medium text-red-600"
-                                                : item.available <= item.reorderPoint
+                                                : ("available" in item ? item.available : 0) <=
+                                                    ("reorderPoint" in item ? item.reorderPoint : 0)
                                                   ? "text-orange-600"
                                                   : ""
                                             )}
                                           >
-                                            Stock: {item.available.toFixed(2)} {item.uom}
+                                            Stock:{" "}
+                                            {("available" in item ? item.available : 0).toFixed(2)}{" "}
+                                            {"uom" in item ? item.uom : ""}
                                           </span>
                                         </div>
                                       </div>

@@ -407,15 +407,15 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
           )}
 
           {/* Terms and Notes */}
-          {(invoice.terms || invoice.notes) && (
+          {(invoice.paymentTerms || invoice.notes) && (
             <>
               <hr className="border-t" />
               <div className="space-y-4">
-                {invoice.terms && (
+                {invoice.paymentTerms && (
                   <div>
                     <h3 className="mb-2 text-sm font-semibold">Terms & Conditions</h3>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                      {invoice.terms}
+                      {invoice.paymentTerms}
                     </p>
                   </div>
                 )}

@@ -253,28 +253,22 @@ export function SalesOrderViewDialog({
                   <span className="text-muted-foreground">Expected Delivery:</span>
                   <div className="font-medium">{formatDate(salesOrder.expectedDeliveryDate)}</div>
                 </div>
-                {salesOrder.deliveryAddress && (
-                  <div>
-                    <span className="text-muted-foreground">Priority:</span>
-                    <div className="font-medium capitalize">{salesOrder.priority || "Normal"}</div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
           {/* Delivery Address */}
-          {salesOrder.deliveryAddress && (
+          {salesOrder.shippingAddress && (
             <div>
               <h3 className="mb-3 text-sm font-semibold">Delivery Address</h3>
               <div className="text-sm text-muted-foreground">
-                <div>{salesOrder.deliveryAddress}</div>
+                <div>{salesOrder.shippingAddress}</div>
                 <div>
-                  {salesOrder.deliveryCity && `${salesOrder.deliveryCity}, `}
-                  {salesOrder.deliveryState && `${salesOrder.deliveryState} `}
-                  {salesOrder.deliveryPostalCode}
+                  {salesOrder.shippingCity && `${salesOrder.shippingCity}, `}
+                  {salesOrder.shippingState && `${salesOrder.shippingState} `}
+                  {salesOrder.shippingPostalCode}
                 </div>
-                {salesOrder.deliveryCountry && <div>{salesOrder.deliveryCountry}</div>}
+                {salesOrder.shippingCountry && <div>{salesOrder.shippingCountry}</div>}
               </div>
             </div>
           )}
@@ -443,15 +437,15 @@ export function SalesOrderViewDialog({
           )}
 
           {/* Terms and Notes */}
-          {(salesOrder.terms || salesOrder.notes) && (
+          {(salesOrder.paymentTerms || salesOrder.notes) && (
             <>
               <hr className="border-t" />
               <div className="space-y-4">
-                {salesOrder.terms && (
+                {salesOrder.paymentTerms && (
                   <div>
                     <h3 className="mb-2 text-sm font-semibold">Terms & Conditions</h3>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                      {salesOrder.terms}
+                      {salesOrder.paymentTerms}
                     </p>
                   </div>
                 )}

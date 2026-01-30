@@ -19,30 +19,76 @@ type TransactionListItemRow = {
   expiry_date: string | null;
   notes: string | null;
   created_at: string;
-  transaction: {
-    id: string;
-    transaction_code: string;
-    transaction_type: string;
-    transaction_date: string;
-    warehouse_id: string | null;
-    to_warehouse_id: string | null;
-    from_location_id: string | null;
-    to_location_id: string | null;
-    reference_type: string | null;
-    reference_id: string | null;
-    status: string;
-    notes: string | null;
-    created_by: string | null;
-    created_at: string;
-  };
-  item: {
-    id: string;
-    item_code: string | null;
-    item_name: string | null;
-    uom?: {
-      code: string | null;
-    } | null;
-  };
+  transaction:
+    | {
+        id: string;
+        transaction_code: string;
+        transaction_type: string;
+        transaction_date: string;
+        warehouse_id: string | null;
+        to_warehouse_id: string | null;
+        from_location_id: string | null;
+        to_location_id: string | null;
+        reference_type: string | null;
+        reference_id: string | null;
+        status: string;
+        notes: string | null;
+        created_by: string | null;
+        created_at: string;
+      }
+    | {
+        id: string;
+        transaction_code: string;
+        transaction_type: string;
+        transaction_date: string;
+        warehouse_id: string | null;
+        to_warehouse_id: string | null;
+        from_location_id: string | null;
+        to_location_id: string | null;
+        reference_type: string | null;
+        reference_id: string | null;
+        status: string;
+        notes: string | null;
+        created_by: string | null;
+        created_at: string;
+      }[]
+    | null;
+  item:
+    | {
+        id: string;
+        item_code: string | null;
+        item_name: string | null;
+        uom?:
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }[]
+          | null;
+      }
+    | {
+        id: string;
+        item_code: string | null;
+        item_name: string | null;
+        uom?:
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }[]
+          | null;
+      }[]
+    | null;
 };
 
 type WarehouseRow = {
@@ -174,11 +220,15 @@ export async function GET(request: NextRequest) {
 
     const typedTransactionItems = (transactionItems || []) as TransactionListItemRow[];
     typedTransactionItems.forEach((item) => {
-      if (item.transaction.warehouse_id) warehouseIds.add(item.transaction.warehouse_id);
-      if (item.transaction.to_warehouse_id) warehouseIds.add(item.transaction.to_warehouse_id);
-      if (item.transaction.from_location_id) locationIds.add(item.transaction.from_location_id);
-      if (item.transaction.to_location_id) locationIds.add(item.transaction.to_location_id);
-      if (item.transaction.created_by) userIds.add(item.transaction.created_by);
+      const transaction = Array.isArray(item.transaction)
+        ? item.transaction[0] ?? null
+        : item.transaction ?? null;
+      if (!transaction) return;
+      if (transaction.warehouse_id) warehouseIds.add(transaction.warehouse_id);
+      if (transaction.to_warehouse_id) warehouseIds.add(transaction.to_warehouse_id);
+      if (transaction.from_location_id) locationIds.add(transaction.from_location_id);
+      if (transaction.to_location_id) locationIds.add(transaction.to_location_id);
+      if (transaction.created_by) userIds.add(transaction.created_by);
     });
 
     // Fetch warehouses and users
@@ -209,55 +259,77 @@ export async function GET(request: NextRequest) {
     const usersMap = new Map((usersData.data as UserRow[] | null)?.map((u) => [u.id, u]) || []);
 
     // Format stock transactions
-    const formattedTransactions = typedTransactionItems.map((item) => {
-      const warehouse = warehousesMap.get(item.transaction.warehouse_id);
-      const toWarehouse = warehousesMap.get(item.transaction.to_warehouse_id);
-      const fromLocation = locationsMap.get(item.transaction.from_location_id);
-      const toLocation = locationsMap.get(item.transaction.to_location_id);
-      const creator = usersMap.get(item.transaction.created_by);
+    const formattedTransactions = typedTransactionItems
+      .map((item) => {
+        const transaction = Array.isArray(item.transaction)
+          ? item.transaction[0] ?? null
+          : item.transaction ?? null;
+        const itemRecord = Array.isArray(item.item) ? item.item[0] ?? null : item.item ?? null;
+        const uomRecord = Array.isArray(itemRecord?.uom)
+          ? itemRecord?.uom[0] ?? null
+          : itemRecord?.uom ?? null;
 
-      return {
-        id: item.id, // Use transaction item ID as unique key
-        transactionId: item.transaction.id,
-        companyId: userData.company_id,
-        transactionCode: item.transaction.transaction_code,
-        transactionDate: item.transaction.transaction_date,
-        transactionType: item.transaction.transaction_type,
-        itemId: item.item.id,
-        itemCode: item.item.item_code,
-        itemName: item.item.item_name,
-        warehouseId: item.transaction.warehouse_id,
-        warehouseCode: warehouse?.warehouse_code || "",
-        warehouseName: warehouse?.warehouse_name || "",
-        fromLocationId: item.transaction.from_location_id,
-        fromLocationCode: fromLocation?.code || "",
-        fromLocationName: fromLocation?.name || "",
-        toWarehouseId: item.transaction.to_warehouse_id,
-        toWarehouseCode: toWarehouse?.warehouse_code || "",
-        toWarehouseName: toWarehouse?.warehouse_name || "",
-        toLocationId: item.transaction.to_location_id,
-        toLocationCode: toLocation?.code || "",
-        toLocationName: toLocation?.name || "",
-        quantity: parseFloat(String(item.quantity ?? 0)),
-        uom: item.item.uom?.code || "",
-        unitCost: parseFloat(String(item.unit_cost ?? 0)),
-        totalCost: parseFloat(String(item.total_cost ?? 0)),
-        batchNo: item.batch_no,
-        serialNo: item.serial_no,
-        expiryDate: item.expiry_date,
-        referenceType: item.transaction.reference_type,
-        referenceId: item.transaction.reference_id,
-        referenceNumber: item.transaction.transaction_code,
-        reason: item.transaction.notes || "",
-        notes: item.notes || "",
-        createdBy: item.transaction.created_by,
-        createdByName: creator
-          ? `${creator.first_name || ""} ${creator.last_name || ""}`.trim()
-          : "Unknown",
-        createdAt: item.transaction.created_at,
-        updatedAt: item.created_at,
-      };
-    });
+        if (!transaction || !itemRecord) {
+          return null;
+        }
+
+        const warehouse = transaction.warehouse_id
+          ? warehousesMap.get(transaction.warehouse_id)
+          : undefined;
+        const toWarehouse = transaction.to_warehouse_id
+          ? warehousesMap.get(transaction.to_warehouse_id)
+          : undefined;
+        const fromLocation = transaction.from_location_id
+          ? locationsMap.get(transaction.from_location_id)
+          : undefined;
+        const toLocation = transaction.to_location_id
+          ? locationsMap.get(transaction.to_location_id)
+          : undefined;
+        const creator = transaction.created_by ? usersMap.get(transaction.created_by) : undefined;
+
+        return {
+          id: item.id, // Use transaction item ID as unique key
+          transactionId: transaction.id,
+          companyId: userData.company_id,
+          transactionCode: transaction.transaction_code,
+          transactionDate: transaction.transaction_date,
+          transactionType: transaction.transaction_type,
+          itemId: itemRecord.id,
+          itemCode: itemRecord.item_code,
+          itemName: itemRecord.item_name,
+          warehouseId: transaction.warehouse_id,
+          warehouseCode: warehouse?.warehouse_code || "",
+          warehouseName: warehouse?.warehouse_name || "",
+          fromLocationId: transaction.from_location_id,
+          fromLocationCode: fromLocation?.code || "",
+          fromLocationName: fromLocation?.name || "",
+          toWarehouseId: transaction.to_warehouse_id,
+          toWarehouseCode: toWarehouse?.warehouse_code || "",
+          toWarehouseName: toWarehouse?.warehouse_name || "",
+          toLocationId: transaction.to_location_id,
+          toLocationCode: toLocation?.code || "",
+          toLocationName: toLocation?.name || "",
+          quantity: parseFloat(String(item.quantity ?? 0)),
+          uom: uomRecord?.code || "",
+          unitCost: parseFloat(String(item.unit_cost ?? 0)),
+          totalCost: parseFloat(String(item.total_cost ?? 0)),
+          batchNo: item.batch_no,
+          serialNo: item.serial_no,
+          expiryDate: item.expiry_date,
+          referenceType: transaction.reference_type,
+          referenceId: transaction.reference_id,
+          referenceNumber: transaction.transaction_code,
+          reason: transaction.notes || "",
+          notes: item.notes || "",
+          createdBy: transaction.created_by,
+          createdByName: creator
+            ? `${creator.first_name || ""} ${creator.last_name || ""}`.trim()
+            : "Unknown",
+          createdAt: transaction.created_at,
+          updatedAt: item.created_at,
+        };
+      })
+      .filter((item) => item !== null);
 
     // Sort by date (most recent first)
     const allTransactions = formattedTransactions.sort(
@@ -414,7 +486,7 @@ export async function POST(request: NextRequest) {
     const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
       itemId: item.itemId,
       packagingId: item.packagingId || null,
-      inputQty: item.quantity,
+      inputQty: Number(item.quantity),
       unitCost: item.unitCost ? parseFloat(String(item.unitCost)) : 0,
     }));
 

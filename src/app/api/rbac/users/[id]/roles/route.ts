@@ -2,19 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { getAuthenticatedUser, checkPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-type UserRoleRow = Tables<"user_roles">;
-type RoleRow = Tables<"roles">;
-type BusinessUnitRow = Tables<"business_units">;
+type UserRoleRow = {
+  id: string;
+  user_id: string;
+  role_id: string;
+  business_unit_id: string;
+};
+type RoleRow = {
+  id: string;
+  name: string;
+  description: string | null;
+};
+type BusinessUnitRow = {
+  id: string;
+  name: string;
+};
 
 type UserRoleWithJoins = UserRoleRow & {
-  roles?: Pick<RoleRow, "id" | "name" | "description"> | null;
-  business_units?: Pick<BusinessUnitRow, "id" | "name"> | null;
+  roles?: Pick<RoleRow, "id" | "name" | "description"> | Pick<RoleRow, "id" | "name" | "description">[] | null;
+  business_units?: Pick<BusinessUnitRow, "id" | "name"> | Pick<BusinessUnitRow, "id" | "name">[] | null;
 };
 
 // GET /api/rbac/users/[userId]/roles - Get user's roles
@@ -84,13 +94,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Transform data to include business unit info
-    const roles = ((userRoles as UserRoleWithJoins[] | null) || []).map((ur) => ({
-      id: ur.roles?.id,
-      name: ur.roles?.name,
-      description: ur.roles?.description,
+    const roles = ((userRoles as UserRoleWithJoins[] | null) || []).map((ur) => {
+      const role = Array.isArray(ur.roles) ? ur.roles[0] : ur.roles;
+      const businessUnit = Array.isArray(ur.business_units)
+        ? ur.business_units[0]
+        : ur.business_units;
+      return {
+        id: role?.id,
+        name: role?.name,
+        description: role?.description,
       business_unit_id: ur.business_unit_id,
-      business_unit_name: ur.business_units?.name || "Unknown Business Unit",
-    }));
+        business_unit_name: businessUnit?.name || "Unknown Business Unit",
+      };
+    });
 
     return NextResponse.json({
       data: roles,

@@ -49,6 +49,10 @@ export async function GET() {
     // Concatenate first and last name
     const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(" ") || "User";
 
+    const vanWarehouse = Array.isArray(userData.warehouses)
+      ? userData.warehouses[0] ?? null
+      : userData.warehouses ?? null;
+
     // Return user data with van warehouse info and employee ID
     return NextResponse.json({
       data: {
@@ -57,12 +61,12 @@ export async function GET() {
         email: userData.email,
         employeeId: userData.employee_id,
         vanWarehouseId: userData.van_warehouse_id,
-        vanWarehouse: userData.warehouses
+        vanWarehouse: vanWarehouse
           ? {
-              id: userData.warehouses.id,
-              code: userData.warehouses.warehouse_code,
-              name: userData.warehouses.warehouse_name,
-              isVan: userData.warehouses.is_van,
+              id: vanWarehouse.id,
+              code: vanWarehouse.warehouse_code,
+              name: vanWarehouse.warehouse_name,
+              isVan: vanWarehouse.is_van,
             }
           : null,
       },

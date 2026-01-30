@@ -44,7 +44,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   return {
     id: user.id,
     companyId: userData.company_id,
-    businessUnitId: currentBusinessUnitId,
+    businessUnitId: currentBusinessUnitId ?? null,
   };
 }
 

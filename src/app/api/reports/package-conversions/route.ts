@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
         valuation_rate,
         total_amount,
         item_id,
+        input_packaging_id,
+        base_package_id,
         transaction:stock_transactions!inner(
           id,
           transaction_code,
@@ -144,9 +146,12 @@ export async function GET(request: NextRequest) {
     let conversionCount = 0;
 
     for (const txn of transactions || []) {
+      const inputPackaging = Array.isArray(txn.input_packaging)
+        ? txn.input_packaging[0]
+        : txn.input_packaging;
       if (txn.input_packaging_id) {
         summary.transactionsWithConversion++;
-        summary.packageTypesUsed.add(txn.input_packaging?.pack_type || "unknown");
+        summary.packageTypesUsed.add(inputPackaging?.pack_type || "unknown");
         totalConversionFactor += parseFloat(String(txn.conversion_factor || 1));
         conversionCount++;
       } else {
@@ -162,45 +167,58 @@ export async function GET(request: NextRequest) {
     }
 
     // Format transaction data
-    const formattedTransactions = (transactions || []).map((txn) => ({
-      id: txn.id,
-      postingDate: txn.posting_date,
-      transactionCode: txn.transaction?.transaction_code,
-      transactionType: txn.transaction?.transaction_type,
-      referenceNumber: txn.transaction?.reference_number,
-      warehouse: {
-        id: txn.transaction?.warehouse?.id,
-        code: txn.transaction?.warehouse?.warehouse_code,
-        name: txn.transaction?.warehouse?.warehouse_name,
-      },
-      item: {
-        id: txn.item?.id,
-        code: txn.item?.item_code,
-        name: txn.item?.item_name,
-      },
+    const formattedTransactions = (transactions || []).map((txn) => {
+      const transaction = Array.isArray(txn.transaction) ? txn.transaction[0] : txn.transaction;
+      const warehouse = Array.isArray(transaction?.warehouse)
+        ? transaction?.warehouse[0]
+        : transaction?.warehouse;
+      const item = Array.isArray(txn.item) ? txn.item[0] : txn.item;
+      const inputPackaging = Array.isArray(txn.input_packaging)
+        ? txn.input_packaging[0]
+        : txn.input_packaging;
+      const basePackage = Array.isArray(txn.base_package)
+        ? txn.base_package[0]
+        : txn.base_package;
+      return {
+        id: txn.id,
+        postingDate: txn.posting_date,
+        transactionCode: transaction?.transaction_code,
+        transactionType: transaction?.transaction_type,
+        referenceNumber: transaction?.reference_number,
+        warehouse: {
+          id: warehouse?.id,
+          code: warehouse?.warehouse_code,
+          name: warehouse?.warehouse_name,
+        },
+        item: {
+          id: item?.id,
+          code: item?.item_code,
+          name: item?.item_name,
+        },
       inputQty: parseFloat(String(txn.input_qty || txn.quantity || 0)),
       normalizedQty: parseFloat(String(txn.normalized_qty || txn.quantity || 0)),
       conversionFactor: parseFloat(String(txn.conversion_factor || 1)),
-      inputPackage: txn.input_packaging
+        inputPackage: inputPackaging
         ? {
-            id: txn.input_packaging.id,
-            name: txn.input_packaging.pack_name,
-            type: txn.input_packaging.pack_type,
-            qtyPerPack: parseFloat(String(txn.input_packaging.qty_per_pack)),
+            id: inputPackaging.id,
+            name: inputPackaging.pack_name,
+            type: inputPackaging.pack_type,
+            qtyPerPack: parseFloat(String(inputPackaging.qty_per_pack)),
           }
         : null,
-      basePackage: txn.base_package
+        basePackage: basePackage
         ? {
-            id: txn.base_package.id,
-            name: txn.base_package.pack_name,
-            type: txn.base_package.pack_type,
-            qtyPerPack: parseFloat(String(txn.base_package.qty_per_pack)),
+            id: basePackage.id,
+            name: basePackage.pack_name,
+            type: basePackage.pack_type,
+            qtyPerPack: parseFloat(String(basePackage.qty_per_pack)),
           }
         : null,
       valuationRate: parseFloat(String(txn.valuation_rate || 0)),
       totalAmount: parseFloat(String(txn.total_amount || 0)),
       usedConversion: !!txn.input_packaging_id,
-    }));
+      };
+    });
 
     // Package type breakdown
     const packageBreakdown: Record<

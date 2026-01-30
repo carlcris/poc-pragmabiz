@@ -68,10 +68,10 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
 
     try {
       // Create the role
-      const newRole = await createRole.mutateAsync({
+      const newRole = (await createRole.mutateAsync({
         name: name.trim(),
-        description: description.trim() || null,
-      });
+        description: description.trim() || undefined,
+      })) as { data: { id: string } };
 
       // If copying from an existing role and it has permissions, assign them
       if (

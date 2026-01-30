@@ -30,6 +30,11 @@ export interface ItemsWithStockResponse {
     total: number;
     totalPages: number;
   };
+  statistics?: {
+    totalAvailableValue: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+  };
 }
 
 export function useItems(filters?: ItemsFilters) {

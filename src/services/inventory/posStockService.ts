@@ -13,7 +13,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { normalizeTransactionItems } from "./normalizationService";
-import { consumeItemLocationsFIFO, ensureWarehouseDefaultLocation } from "./locationService";
+import {
+  adjustItemLocation,
+  consumeItemLocationsFIFO,
+  ensureWarehouseDefaultLocation,
+} from "./locationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 export type POSStockTransactionData = {

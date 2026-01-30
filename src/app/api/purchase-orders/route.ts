@@ -158,10 +158,10 @@ export async function GET(request: NextRequest) {
       deliveryState: order.delivery_state,
       deliveryCountry: order.delivery_country,
       deliveryPostalCode: order.delivery_postal_code,
-      subtotal: parseFloat(order.subtotal || 0),
-      discountAmount: parseFloat(order.discount_amount || 0),
-      taxAmount: parseFloat(order.tax_amount || 0),
-      totalAmount: parseFloat(order.total_amount || 0),
+      subtotal: Number(order.subtotal || 0),
+      discountAmount: Number(order.discount_amount || 0),
+      taxAmount: Number(order.tax_amount || 0),
+      totalAmount: Number(order.total_amount || 0),
       status: order.status,
       notes: order.notes,
       approvedBy: order.approved_by,
@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
               name: item.item.item_name,
             }
           : null,
-        quantity: parseFloat(item.quantity),
+        quantity: Number(item.quantity),
         packagingId: item.packaging_id,
         packagingName: item.packaging?.pack_name,
         packaging: item.packaging
@@ -193,11 +193,11 @@ export async function GET(request: NextRequest) {
               name: item.uom.name,
             }
           : null,
-        rate: parseFloat(item.rate),
-        discountPercent: parseFloat(item.discount_percent || 0),
-        taxPercent: parseFloat(item.tax_percent || 0),
-        lineTotal: parseFloat(item.line_total),
-        quantityReceived: parseFloat(item.quantity_received || 0),
+        rate: Number(item.rate),
+        discountPercent: Number(item.discount_percent || 0),
+        taxPercent: Number(item.tax_percent || 0),
+        lineTotal: Number(item.line_total),
+        quantityReceived: Number(item.quantity_received || 0),
       })),
       createdBy: order.created_by,
       createdAt: order.created_at,
@@ -282,8 +282,8 @@ export async function POST(request: NextRequest) {
       (item: PurchaseOrderItemInput) => ({
         itemId: item.itemId,
         packagingId: item.packagingId ?? null,
-        inputQty: parseFloat(item.quantity),
-        unitCost: parseFloat(item.rate),
+        inputQty: Number(item.quantity),
+        unitCost: Number(item.rate),
       })
     );
 
@@ -378,7 +378,7 @@ export async function POST(request: NextRequest) {
       {
         id: purchaseOrder.id,
         orderCode: purchaseOrder.order_code,
-        totalAmount: parseFloat(purchaseOrder.total_amount),
+        totalAmount: Number(purchaseOrder.total_amount),
       },
       { status: 201 }
     );

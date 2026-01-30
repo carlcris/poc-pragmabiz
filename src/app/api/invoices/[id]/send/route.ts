@@ -177,7 +177,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         // Get current stock balance from item_warehouse
         const { data: warehouseStock } = await supabase
           .from("item_warehouse")
-          .select("current_stock")
+          .select("current_stock, default_location_id")
           .eq("item_id", item.item_id)
           .eq("warehouse_id", invoice.warehouse_id)
           .single();

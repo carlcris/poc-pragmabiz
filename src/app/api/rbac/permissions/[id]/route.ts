@@ -3,11 +3,30 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { invalidatePermissionCache } from "@/services/permissions/permissionResolver";
-import type { Tables } from "@/types/supabase";
-
-type PermissionRow = Tables<"permissions">;
-type RoleRow = Tables<"roles">;
-type RolePermissionRow = Tables<"role_permissions">;
+type PermissionRow = {
+  id: string;
+  resource: string;
+  description: string | null;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  created_at?: string;
+  created_by?: string | null;
+  updated_at?: string;
+  updated_by?: string | null;
+  deleted_at?: string | null;
+};
+type RoleRow = {
+  id: string;
+  name: string;
+  company_id: string;
+};
+type RolePermissionRow = {
+  role_id: string;
+  permission_id?: string;
+  roles?: RoleRow | RoleRow[] | null;
+};
 
 type PermissionWithRoles = PermissionRow & {
   role_permissions?: Array<RolePermissionRow & { roles?: RoleRow | null }>;
@@ -60,7 +79,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const permissionWithRoles = {
       ...(permission as PermissionWithRoles),
       roles: ((permission as PermissionWithRoles).role_permissions || [])
-        .map((rp) => rp.roles)
+        .flatMap((rp) => (Array.isArray(rp.roles) ? rp.roles : [rp.roles]))
         .filter(Boolean),
     };
 
@@ -146,7 +165,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const permissionWithRoles = {
       ...(updatedPermission as PermissionWithRoles),
       roles: ((updatedPermission as PermissionWithRoles).role_permissions || [])
-        .map((rp) => rp.roles)
+        .flatMap((rp) => (Array.isArray(rp.roles) ? rp.roles : [rp.roles]))
         .filter(Boolean),
     };
 

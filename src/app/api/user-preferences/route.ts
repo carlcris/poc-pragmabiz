@@ -1,9 +1,14 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { UserPreferences, UpdateUserPreferencesRequest } from "@/types/user-preferences";
-import type { Database } from "@/types/database.types";
-
-type DbUserPreferences = Database["public"]["Tables"]["user_preferences"]["Row"];
+type DbUserPreferences = {
+  id: string;
+  user_id: string;
+  font_size: string;
+  theme: string;
+  created_at: string;
+  updated_at: string | null;
+};
 type UserPreferencesUpdate = Partial<DbUserPreferences>;
 
 // Transform database preferences to frontend type
@@ -14,7 +19,7 @@ function transformDbPreferences(dbPrefs: DbUserPreferences): UserPreferences {
     fontSize: dbPrefs.font_size as UserPreferences["fontSize"],
     theme: dbPrefs.theme as UserPreferences["theme"],
     createdAt: dbPrefs.created_at,
-    updatedAt: dbPrefs.updated_at,
+    updatedAt: dbPrefs.updated_at || dbPrefs.created_at,
   };
 }
 

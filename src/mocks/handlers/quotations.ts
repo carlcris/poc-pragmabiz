@@ -1,28 +1,42 @@
 import { http, HttpResponse } from "msw";
-import type { Quotation, CreateQuotationRequest, QuotationLineItem } from "@/types/quotation";
+import type {
+  Quotation,
+  CreateQuotationRequest,
+  CreateQuotationItemRequest,
+  QuotationLineItem,
+} from "@/types/quotation";
 import { quotations } from "../data/quotations";
 
 const quotationsData = [...quotations];
-type QuotationLineItemInput = {
-  id?: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  taxRate: number;
-} & Record<string, unknown>;
+type QuotationLineItemInput = CreateQuotationItemRequest & { id?: string };
 
 // Helper function to calculate line total
 function calculateLineTotal(
   quantity: number,
   unitPrice: number,
-  discount: number,
-  taxRate: number
+  discountPercent: number,
+  taxPercent: number
 ): number {
   const subtotal = quantity * unitPrice;
-  const discountAmount = (subtotal * discount) / 100;
+  const discountAmount = (subtotal * discountPercent) / 100;
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = (taxableAmount * taxRate) / 100;
+  const taxAmount = (taxableAmount * taxPercent) / 100;
   return taxableAmount + taxAmount;
+}
+
+function calculateDiscountAmount(quantity: number, unitPrice: number, discountPercent: number) {
+  return (quantity * unitPrice * discountPercent) / 100;
+}
+
+function calculateTaxAmount(
+  quantity: number,
+  unitPrice: number,
+  discountPercent: number,
+  taxPercent: number
+) {
+  const subtotal = quantity * unitPrice;
+  const discountAmount = calculateDiscountAmount(quantity, unitPrice, discountPercent);
+  return ((subtotal - discountAmount) * taxPercent) / 100;
 }
 
 // Helper function to calculate quotation totals
@@ -62,8 +76,8 @@ export const quotationHandlers = [
       filtered = filtered.filter(
         (quotation) =>
           quotation.quotationNumber.toLowerCase().includes(search) ||
-          quotation.customerName.toLowerCase().includes(search) ||
-          quotation.customerEmail.toLowerCase().includes(search)
+          (quotation.customerName || "").toLowerCase().includes(search) ||
+          (quotation.customerEmail || "").toLowerCase().includes(search)
       );
     }
 
@@ -127,13 +141,32 @@ export const quotationHandlers = [
   // POST /api/quotations
   http.post("/api/quotations", async ({ request }) => {
     const body = (await request.json()) as CreateQuotationRequest;
+    const { items, termsConditions, ...quotationPayload } = body;
 
     // Calculate line totals
-    const lineItems: QuotationLineItem[] = body.lineItems.map((item, index) => ({
-      id: `li-${Date.now()}-${index}`,
-      ...item,
-      lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
-    }));
+    const lineItems: QuotationLineItem[] = items.map((item, index) => {
+      const discountPercent = item.discountPercent ?? 0;
+      const taxPercent = item.taxPercent ?? 0;
+      const discountAmount =
+        item.discountAmount ?? calculateDiscountAmount(item.quantity, item.rate, discountPercent);
+      const taxAmount =
+        item.taxAmount ?? calculateTaxAmount(item.quantity, item.rate, discountPercent, taxPercent);
+
+      return {
+        id: `li-${Date.now()}-${index}`,
+        itemId: item.itemId,
+        description: item.description ?? "",
+        packagingId: item.packagingId ?? null,
+        uomId: item.uomId,
+        quantity: item.quantity,
+        unitPrice: item.rate,
+        discount: discountPercent,
+        discountAmount,
+        taxRate: taxPercent,
+        taxAmount,
+        lineTotal: calculateLineTotal(item.quantity, item.rate, discountPercent, taxPercent),
+      };
+    });
 
     // Calculate totals
     const totals = calculateTotals(lineItems);
@@ -145,14 +178,21 @@ export const quotationHandlers = [
     const customerName = "Customer Name"; // Placeholder
     const customerEmail = "customer@email.com"; // Placeholder
 
+    const validUntil = quotationPayload.validUntil ?? new Date().toISOString();
+    const notes = quotationPayload.notes ?? "";
+
     const newQuotation: Quotation = {
       id: `quot-${Date.now()}`,
+      companyId: "company-1",
       quotationNumber,
       customerName,
       customerEmail,
-      ...body,
+      ...quotationPayload,
+      validUntil,
       lineItems,
       ...totals,
+      terms: termsConditions ?? "",
+      notes,
       status: "draft",
       createdBy: "admin@company.com",
       createdAt: new Date().toISOString(),
@@ -183,12 +223,32 @@ export const quotationHandlers = [
       totalAmount: quotationsData[index].totalAmount,
     };
 
-    if (body.lineItems) {
-      lineItems = body.lineItems.map((item: QuotationLineItemInput, idx: number) => ({
-        id: item.id ?? `li-${Date.now()}-${idx}`,
-        ...item,
-        lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
-      }));
+    if (body.items) {
+      lineItems = body.items.map((item: QuotationLineItemInput, idx: number) => {
+        const discountPercent = item.discountPercent ?? 0;
+        const taxPercent = item.taxPercent ?? 0;
+        const discountAmount =
+          item.discountAmount ??
+          calculateDiscountAmount(item.quantity, item.rate, discountPercent);
+        const taxAmount =
+          item.taxAmount ??
+          calculateTaxAmount(item.quantity, item.rate, discountPercent, taxPercent);
+
+        return {
+          id: item.id ?? `li-${Date.now()}-${idx}`,
+          itemId: item.itemId,
+          description: item.description ?? "",
+          packagingId: item.packagingId ?? null,
+          uomId: item.uomId,
+          quantity: item.quantity,
+          unitPrice: item.rate,
+          discount: discountPercent,
+          discountAmount,
+          taxRate: taxPercent,
+          taxAmount,
+          lineTotal: calculateLineTotal(item.quantity, item.rate, discountPercent, taxPercent),
+        };
+      });
       totals = calculateTotals(lineItems);
     }
 

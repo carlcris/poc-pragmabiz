@@ -85,24 +85,31 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       is_active: boolean;
       created_at: string;
       updated_at: string;
-      units_of_measure?: { id: string; code: string; name: string; symbol: string | null } | null;
+      units_of_measure?:
+        | { id: string; code: string; name: string; symbol: string | null }
+        | { id: string; code: string; name: string; symbol: string | null }[]
+        | null;
     };
 
     return NextResponse.json({
-      data: (packages as PackageRow[]).map((pkg) => ({
-        id: pkg.id,
-        packType: pkg.pack_type,
-        packName: pkg.pack_name,
-        qtyPerPack: parseFloat(pkg.qty_per_pack),
-        uomId: pkg.uom_id,
-        uom: pkg.units_of_measure,
-        barcode: pkg.barcode,
-        isDefault: pkg.is_default,
-        isBasePackage: pkg.id === item.package_id,
-        isActive: pkg.is_active,
-        createdAt: pkg.created_at,
-        updatedAt: pkg.updated_at,
-      })),
+      data: (packages as PackageRow[]).map((pkg) => {
+        const uomRaw = pkg.units_of_measure;
+        const uom = Array.isArray(uomRaw) ? uomRaw[0] : uomRaw;
+        return {
+          id: pkg.id,
+          packType: pkg.pack_type,
+          packName: pkg.pack_name,
+          qtyPerPack: Number(pkg.qty_per_pack),
+          uomId: pkg.uom_id,
+          uom,
+          barcode: pkg.barcode,
+          isDefault: pkg.is_default,
+          isBasePackage: pkg.id === item.package_id,
+          isActive: pkg.is_active,
+          createdAt: pkg.created_at,
+          updatedAt: pkg.updated_at,
+        };
+      }),
     });
   } catch (error) {
     console.error("Error fetching item packages:", error);

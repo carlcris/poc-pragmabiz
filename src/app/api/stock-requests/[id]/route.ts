@@ -125,8 +125,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const fromLocationId = body.from_location_id ?? body.source_warehouse_id;
-    const toLocationId = body.to_location_id ?? body.destination_warehouse_id;
+    const fromLocationId = body.from_location_id;
+    const toLocationId = body.to_location_id;
 
     // Update stock request header
     const { error: updateError } = await supabase
@@ -135,7 +135,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         request_date: body.request_date,
         required_date: body.required_date,
         source_warehouse_id: fromLocationId,
-        destination_warehouse_id: toLocationId || null,
+        destination_warehouse_id: toLocationId ?? null,
         department: body.department || null,
         priority: body.priority,
         purpose: body.purpose || null,

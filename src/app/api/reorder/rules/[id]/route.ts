@@ -2,9 +2,16 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
-type ReorderRuleRow = Tables<"reorder_rules">;
+type ReorderRuleRow = {
+  reorder_point?: number | null;
+  min_qty?: number | null;
+  max_qty?: number | null;
+  reorder_qty?: number | null;
+  lead_time_days?: number | null;
+  is_active?: boolean | null;
+  updated_by?: string | null;
+  updated_at?: string | null;
+};
 type ReorderRuleUpdate = Partial<ReorderRuleRow> & {
   updated_by: string;
   updated_at: string;

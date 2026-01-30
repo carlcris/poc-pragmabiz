@@ -11,6 +11,8 @@ export interface SalesAnalyticsFilters {
   cities?: string[];
   regionState?: string;
   regions?: string[];
+  page?: number;
+  limit?: number;
 }
 
 // Overview KPIs

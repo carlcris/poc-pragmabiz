@@ -237,7 +237,8 @@ export default function GoodsReceiptDetailPage() {
     );
   }
 
-  const status = statusConfig[receipt.status];
+  const statusKey = receipt.status as keyof typeof statusConfig;
+  const status = statusConfig[statusKey] ?? statusConfig.pending;
   const StatusIcon = status.icon;
 
   const totalOrderedQty = receipt.items.reduce((sum, item) => sum + item.orderedQty, 0);

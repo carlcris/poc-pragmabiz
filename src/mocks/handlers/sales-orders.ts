@@ -3,13 +3,7 @@ import type { SalesOrder, CreateSalesOrderRequest, SalesOrderLineItem } from "@/
 import { salesOrders } from "../data/sales-orders";
 
 const salesOrdersData = [...salesOrders];
-type SalesOrderLineItemInput = {
-  id?: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-  taxRate: number;
-} & Record<string, unknown>;
+type SalesOrderLineItemInput = CreateSalesOrderRequest["lineItems"][number] & { id?: string };
 
 // Helper function to calculate line total
 function calculateLineTotal(
@@ -141,6 +135,7 @@ export const salesOrderHandlers = [
 
     const newOrder: SalesOrder = {
       id: `so-${Date.now()}`,
+      companyId: "company-1",
       orderNumber,
       customerName,
       customerEmail,

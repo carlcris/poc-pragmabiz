@@ -98,7 +98,7 @@ export default function PurchaseReceiptsPage() {
   };
 
   const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
+    setStatusFilter(value as PurchaseReceiptStatus | "all");
     setPage(1);
   };
 

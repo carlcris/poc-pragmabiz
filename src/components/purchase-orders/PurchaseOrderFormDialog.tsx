@@ -175,7 +175,7 @@ export function PurchaseOrderFormDialog({
           packagingId: item.packagingId || null,
           packagingName: item.packagingName,
           rate: item.rate,
-          uomId: item.uomId,
+          uomId: item.uomId || "",
           discountPercent: item.discountPercent,
           taxPercent: item.taxPercent,
           lineTotal: item.lineTotal,

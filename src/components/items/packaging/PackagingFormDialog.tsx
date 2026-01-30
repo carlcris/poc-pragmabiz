@@ -136,7 +136,7 @@ export const PackagingFormDialog = ({
       packType: data.packType,
       packName: data.packName,
       qtyPerPack: Number(data.qtyPerPack),
-      barcode: data.barcode || undefined,
+      barcode: data.barcode || "",
       isActive: data.isActive,
     };
 

@@ -27,7 +27,8 @@ export default function ItemDetailPage() {
   const itemId = params.id as string;
   const [activeTab, setActiveTab] = useState("general");
 
-  const { data: item, isLoading, error } = useItem(itemId);
+  const { data: itemResponse, isLoading, error } = useItem(itemId);
+  const item = itemResponse?.data;
 
   if (isLoading) {
     return (

@@ -66,7 +66,8 @@ const salesOrderFormSchema = z.object({
   notes: z.string().default(""),
 });
 
-type SalesOrderFormValues = z.infer<typeof salesOrderFormSchema>;
+type SalesOrderFormInput = z.input<typeof salesOrderFormSchema>;
+type SalesOrderFormValues = z.output<typeof salesOrderFormSchema>;
 
 interface SalesOrderFormDialogProps {
   open: boolean;
@@ -99,7 +100,7 @@ export function SalesOrderFormDialog({
   const [customerOpen, setCustomerOpen] = useState(false);
 
   // Default values
-  const defaultValues = useMemo<SalesOrderFormValues>(
+  const defaultValues = useMemo<SalesOrderFormInput>(
     () => ({
       customerId: "",
       orderDate: new Date().toISOString().split("T")[0],
@@ -117,7 +118,7 @@ export function SalesOrderFormDialog({
     []
   );
 
-  const form = useForm<SalesOrderFormValues>({
+  const form = useForm<SalesOrderFormInput>({
     resolver: zodResolver(salesOrderFormSchema),
     defaultValues,
   });
@@ -147,7 +148,6 @@ export function SalesOrderFormDialog({
   useEffect(() => {
     if (open && salesOrder) {
       form.reset({
-        companyId: salesOrder.companyId,
         customerId: salesOrder.customerId,
         orderDate: salesOrder.orderDate.split("T")[0],
         expectedDeliveryDate: salesOrder.expectedDeliveryDate.split("T")[0],
@@ -204,22 +204,23 @@ export function SalesOrderFormDialog({
     }
   };
 
-  const onSubmit = async (data: SalesOrderFormValues) => {
+  const onSubmit = async (data: SalesOrderFormInput) => {
     if (lineItems.length === 0) {
       alert("Please add at least one line item");
       return;
     }
 
     try {
+      const parsed = salesOrderFormSchema.parse(data);
       // Transform form data to API request format
       const apiRequest: CreateSalesOrderRequest = {
-        customerId: data.customerId,
-        orderDate: data.orderDate,
-        expectedDeliveryDate: data.expectedDeliveryDate,
+        customerId: parsed.customerId,
+        orderDate: parsed.orderDate,
+        expectedDeliveryDate: parsed.expectedDeliveryDate,
         lineItems: lineItems.map((item) => ({
           itemId: item.itemId,
-          itemCode: item.itemCode,
-          itemName: item.itemName,
+          itemCode: item.itemCode || "",
+          itemName: item.itemName || "",
           description: item.description,
           quantity: item.quantity,
           packagingId: item.packagingId ?? null,
@@ -228,13 +229,13 @@ export function SalesOrderFormDialog({
           discount: item.discount,
           taxRate: item.taxRate,
         })),
-        shippingAddress: data.shippingAddress,
-        shippingCity: data.shippingCity,
-        shippingState: data.shippingState,
-        shippingPostalCode: data.shippingPostalCode,
-        shippingCountry: data.shippingCountry,
-        paymentTerms: data.paymentTerms,
-        notes: data.notes,
+        shippingAddress: parsed.shippingAddress,
+        shippingCity: parsed.shippingCity,
+        shippingState: parsed.shippingState,
+        shippingPostalCode: parsed.shippingPostalCode,
+        shippingCountry: parsed.shippingCountry,
+        paymentTerms: parsed.paymentTerms,
+        notes: parsed.notes,
       };
 
       if (isEditMode && salesOrder) {

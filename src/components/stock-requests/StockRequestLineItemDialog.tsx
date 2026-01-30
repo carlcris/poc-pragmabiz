@@ -226,8 +226,11 @@ export function StockRequestLineItemDialog({
                                       </span>
                                     </div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">
-                                      On hand: {item.onHand.toFixed(2)} {item.uom} • Available:{" "}
-                                      {item.available.toFixed(2)} {item.uom}
+                                      On hand:{" "}
+                                      {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
+                                      {"uom" in item ? item.uom : ""} • Available:{" "}
+                                      {("available" in item ? item.available : 0).toFixed(2)}{" "}
+                                      {"uom" in item ? item.uom : ""}
                                     </div>
                                   </div>
                                 </CommandItem>

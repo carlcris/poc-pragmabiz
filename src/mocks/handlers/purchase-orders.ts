@@ -10,43 +10,46 @@ import { suppliers } from "../data/suppliers";
 const purchaseOrdersData = [...purchaseOrders];
 type PurchaseOrderLineItemInput = {
   id?: string;
+  itemId: string;
+  packagingId?: string | null;
+  uomId?: string;
   quantity: number;
-  unitPrice: number;
-  discount: number;
-  taxRate: number;
+  rate: number;
+  discountPercent: number;
+  taxPercent: number;
   quantityReceived?: number;
 } & Record<string, unknown>;
 
 // Helper function to calculate line total
 function calculateLineTotal(
   quantity: number,
-  unitPrice: number,
-  discount: number,
-  taxRate: number
+  rate: number,
+  discountPercent: number,
+  taxPercent: number
 ): number {
-  const subtotal = quantity * unitPrice;
-  const discountAmount = (subtotal * discount) / 100;
+  const subtotal = quantity * rate;
+  const discountAmount = (subtotal * discountPercent) / 100;
   const taxableAmount = subtotal - discountAmount;
-  const taxAmount = (taxableAmount * taxRate) / 100;
+  const taxAmount = (taxableAmount * taxPercent) / 100;
   return taxableAmount + taxAmount;
 }
 
 // Helper function to calculate order totals
 function calculateTotals(lineItems: PurchaseOrderLineItem[]) {
-  const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const totalDiscount = lineItems.reduce(
-    (sum, item) => sum + (item.quantity * item.unitPrice * item.discount) / 100,
+  const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.rate, 0);
+  const discountAmount = lineItems.reduce(
+    (sum, item) => sum + (item.quantity * item.rate * item.discountPercent) / 100,
     0
   );
-  const totalTax = lineItems.reduce((sum, item) => {
-    const itemSubtotal = item.quantity * item.unitPrice;
-    const itemDiscount = (itemSubtotal * item.discount) / 100;
+  const taxAmount = lineItems.reduce((sum, item) => {
+    const itemSubtotal = item.quantity * item.rate;
+    const itemDiscount = (itemSubtotal * item.discountPercent) / 100;
     const taxableAmount = itemSubtotal - itemDiscount;
-    return sum + (taxableAmount * item.taxRate) / 100;
+    return sum + (taxableAmount * item.taxPercent) / 100;
   }, 0);
-  const totalAmount = subtotal - totalDiscount + totalTax;
+  const totalAmount = subtotal - discountAmount + taxAmount;
 
-  return { subtotal, totalDiscount, totalTax, totalAmount };
+  return { subtotal, discountAmount, taxAmount, totalAmount };
 }
 
 export const purchaseOrderHandlers = [
@@ -67,9 +70,9 @@ export const purchaseOrderHandlers = [
     if (search) {
       filtered = filtered.filter(
         (order) =>
-          order.orderNumber.toLowerCase().includes(search) ||
-          order.supplierName.toLowerCase().includes(search) ||
-          order.supplierEmail.toLowerCase().includes(search)
+          order.orderCode.toLowerCase().includes(search) ||
+          order.supplier?.name?.toLowerCase().includes(search) ||
+          order.supplier?.email?.toLowerCase().includes(search)
       );
     }
 
@@ -136,10 +139,15 @@ export const purchaseOrderHandlers = [
     }
 
     // Calculate line totals
-    const lineItems: PurchaseOrderLineItem[] = body.lineItems.map((item, index) => ({
+    const lineItems: PurchaseOrderLineItem[] = body.items.map((item, index) => ({
       id: `poli-${Date.now()}-${index}`,
       ...item,
-      lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
+      lineTotal: calculateLineTotal(
+        item.quantity,
+        item.rate,
+        item.discountPercent,
+        item.taxPercent
+      ),
       quantityReceived: 0,
     }));
 
@@ -147,18 +155,24 @@ export const purchaseOrderHandlers = [
     const totals = calculateTotals(lineItems);
 
     // Generate order number
-    const orderNumber = `PO-${new Date().getFullYear()}-${String(purchaseOrdersData.length + 1).padStart(3, "0")}`;
+    const orderCode = `PO-${new Date().getFullYear()}-${String(purchaseOrdersData.length + 1).padStart(3, "0")}`;
 
     const newOrder: PurchaseOrder = {
       id: `po-${Date.now()}`,
-      orderNumber,
-      supplierName: supplier.name,
-      supplierEmail: supplier.email,
+      companyId: "company-1",
+      orderCode,
+      supplier: {
+        id: supplier.id,
+        code: supplier.code,
+        name: supplier.name,
+        email: supplier.email,
+        phone: supplier.phone,
+      },
       ...body,
-      lineItems,
+      items: lineItems,
       ...totals,
       status: "draft",
-      createdByName: "Current User",
+      createdBy: "user-1",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -181,19 +195,24 @@ export const purchaseOrderHandlers = [
     }
 
     // If line items are being updated, recalculate line totals
-    let lineItems = purchaseOrdersData[index].lineItems;
+    let lineItems = purchaseOrdersData[index].items;
     let totals = {
       subtotal: purchaseOrdersData[index].subtotal,
-      totalDiscount: purchaseOrdersData[index].totalDiscount,
-      totalTax: purchaseOrdersData[index].totalTax,
+      discountAmount: purchaseOrdersData[index].discountAmount,
+      taxAmount: purchaseOrdersData[index].taxAmount,
       totalAmount: purchaseOrdersData[index].totalAmount,
     };
 
-    if (body.lineItems) {
-      lineItems = body.lineItems.map((item: PurchaseOrderLineItemInput, idx: number) => ({
+    if (body.items) {
+      lineItems = body.items.map((item: PurchaseOrderLineItemInput, idx: number) => ({
         id: item.id ?? `poli-${Date.now()}-${idx}`,
         ...item,
-        lineTotal: calculateLineTotal(item.quantity, item.unitPrice, item.discount, item.taxRate),
+        lineTotal: calculateLineTotal(
+          item.quantity,
+          item.rate,
+          item.discountPercent,
+          item.taxPercent
+        ),
         quantityReceived: item.quantityReceived || 0,
       }));
       totals = calculateTotals(lineItems);
@@ -202,7 +221,7 @@ export const purchaseOrderHandlers = [
     const updatedOrder: PurchaseOrder = {
       ...purchaseOrdersData[index],
       ...(body as Partial<PurchaseOrder>),
-      lineItems,
+      items: lineItems,
       ...totals,
       updatedAt: new Date().toISOString(),
     };
@@ -252,7 +271,6 @@ export const purchaseOrderHandlers = [
 
     purchaseOrdersData[index].status = "approved";
     purchaseOrdersData[index].approvedBy = "user-1";
-    purchaseOrdersData[index].approvedByName = "Admin User";
     purchaseOrdersData[index].approvedAt = new Date().toISOString();
     purchaseOrdersData[index].updatedAt = new Date().toISOString();
 

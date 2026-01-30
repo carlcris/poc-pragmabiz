@@ -1,49 +1,119 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SalesOrder, SalesOrderLineItem, UpdateSalesOrderRequest } from "@/types/sales-order";
-import type { Database } from "@/types/database.types";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
-type DbSalesOrder = Database["public"]["Tables"]["sales_orders"]["Row"];
-type DbSalesOrderItem = Database["public"]["Tables"]["sales_order_items"]["Row"];
-type DbCustomer = Database["public"]["Tables"]["customers"]["Row"];
-type DbItem = Database["public"]["Tables"]["items"]["Row"];
-type DbUser = Database["public"]["Tables"]["users"]["Row"];
-type DbUoM = Database["public"]["Tables"]["units_of_measure"]["Row"];
-type DbSalesOrderUpdate = Database["public"]["Tables"]["sales_orders"]["Update"];
-type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
-  items?: DbItem | null;
-  units_of_measure?: DbUoM | null;
-  item_packaging?: { id: string; pack_name: string; qty_per_pack: number } | null;
+type DbSalesOrder = {
+  id: string;
+  company_id: string;
+  order_code: string;
+  customer_id: string | null;
+  quotation_id: string | null;
+  order_date: string;
+  expected_delivery_date: string | null;
+  status: string;
+  subtotal: number | string | null;
+  discount_amount: number | string | null;
+  tax_amount: number | string | null;
+  total_amount: number | string | null;
+  shipping_address: string | null;
+  shipping_city: string | null;
+  shipping_state: string | null;
+  shipping_postal_code: string | null;
+  shipping_country: string | null;
+  payment_terms: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+  deleted_at: string | null;
 };
-type CalculatedSalesOrderLineItem = SalesOrderLineItem & {
+type DbSalesOrderItem = {
+  id: string;
+  order_id: string;
+  item_id: string;
+  item_description: string | null;
+  quantity: number | string;
+  packaging_id: string | null;
+  uom_id: string | null;
+  rate: number | string;
+  discount_percent: number | string | null;
+  tax_percent: number | string | null;
+  line_total: number | string;
+  quantity_shipped: number | string | null;
+  quantity_delivered: number | string | null;
+  sort_order: number | null;
+  created_by: string | null;
+  updated_by: string | null;
+  deleted_at: string | null;
+};
+type DbCustomer = { id: string; customer_name: string; email: string | null };
+type DbItem = { id: string; item_code: string; item_name: string };
+type DbUser = { id: string; first_name: string | null; last_name: string | null };
+type DbUoM = { id: string; code: string; name: string };
+type DbSalesOrderUpdate = {
+  customer_id?: string | null;
+  order_date?: string;
+  expected_delivery_date?: string | null;
+  status?: string;
+  shipping_address?: string | null;
+  shipping_city?: string | null;
+  shipping_state?: string | null;
+  shipping_postal_code?: string | null;
+  shipping_country?: string | null;
+  payment_terms?: string | null;
+  notes?: string | null;
+  subtotal?: number | string;
+  discount_amount?: number | string;
+  tax_amount?: number | string;
+  total_amount?: number | string;
+  updated_by?: string;
+  updated_at?: string;
+};
+type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
+  items?: DbItem | DbItem[] | null;
+  units_of_measure?: DbUoM | DbUoM[] | null;
+  item_packaging?: { id: string; pack_name: string; qty_per_pack: number | string } | null;
+};
+type SalesOrderLineItemInput = Omit<
+  SalesOrderLineItem,
+  "id" | "lineTotal" | "quantityShipped" | "quantityDelivered"
+>;
+type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
   normalizedQty: number;
   discountAmount: number;
   taxAmount: number;
   lineTotal: number;
+  quantityShipped?: number;
+  quantityDelivered?: number;
 };
 
 // Transform database sales order to frontend type
 function transformDbSalesOrder(
   dbOrder: DbSalesOrder & {
-    customers?: DbCustomer | null;
-    users?: DbUser | null;
-    sales_quotations?: { quotation_code: string } | null;
+    customers?: DbCustomer | DbCustomer[] | null;
+    users?: DbUser | DbUser[] | null;
+    sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
   },
   items?: SalesOrderLineItem[]
 ): SalesOrder {
+  const customer = Array.isArray(dbOrder.customers) ? dbOrder.customers[0] ?? null : dbOrder.customers;
+  const quotation = Array.isArray(dbOrder.sales_quotations)
+    ? dbOrder.sales_quotations[0] ?? null
+    : dbOrder.sales_quotations;
+
   return {
     id: dbOrder.id,
     companyId: dbOrder.company_id,
     orderNumber: dbOrder.order_code,
-    customerId: dbOrder.customer_id,
-    customerName: dbOrder.customers?.customer_name || "",
-    customerEmail: dbOrder.customers?.email || "",
+    customerId: dbOrder.customer_id || "",
+    customerName: customer?.customer_name || "",
+    customerEmail: customer?.email || "",
     quotationId: dbOrder.quotation_id || undefined,
-    quotationNumber: dbOrder.sales_quotations?.quotation_code || undefined,
+    quotationNumber: quotation?.quotation_code || undefined,
     orderDate: dbOrder.order_date,
     expectedDeliveryDate: dbOrder.expected_delivery_date || "",
     status: dbOrder.status as SalesOrder["status"],
@@ -61,28 +131,33 @@ function transformDbSalesOrder(
     notes: dbOrder.notes || "",
     createdBy: dbOrder.created_by || "",
     createdAt: dbOrder.created_at,
-    updatedAt: dbOrder.updated_at,
+    updatedAt: dbOrder.updated_at || dbOrder.created_at,
   };
 }
 
 // Transform database sales order item to frontend type
 function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): SalesOrderLineItem {
+  const item = Array.isArray(dbItem.items) ? dbItem.items[0] ?? null : dbItem.items;
+  const packaging = Array.isArray(dbItem.item_packaging)
+    ? dbItem.item_packaging[0] ?? null
+    : dbItem.item_packaging;
+
   return {
     id: dbItem.id,
     itemId: dbItem.item_id,
-    itemCode: dbItem.items?.item_code || "",
-    itemName: dbItem.items?.item_name || "",
+    itemCode: item?.item_code || "",
+    itemName: item?.item_name || "",
     description: dbItem.item_description || "",
     quantity: Number(dbItem.quantity),
     packagingId: dbItem.packaging_id,
-    packaging: dbItem.item_packaging
+    packaging: packaging
       ? {
-          id: dbItem.item_packaging.id,
-          name: dbItem.item_packaging.pack_name,
-          qtyPerPack: Number(dbItem.item_packaging.qty_per_pack),
+          id: packaging.id,
+          name: packaging.pack_name,
+          qtyPerPack: Number(packaging.qty_per_pack),
         }
       : undefined,
-    uomId: dbItem.uom_id,
+    uomId: dbItem.uom_id || "",
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
     taxRate: Number(dbItem.tax_percent) || 0,

@@ -3,9 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateTransformationOrderSchema } from "@/lib/validations/transformation-order";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Database } from "@/types/database.types";
-
-type DbTransformationOrderUpdate = Database["public"]["Tables"]["transformation_orders"]["Update"];
+type DbTransformationOrderUpdate = {
+  planned_quantity?: number | string | null;
+  planned_date?: string | null;
+  notes?: string | null;
+  updated_by?: string;
+  updated_at?: string;
+};
 
 // GET /api/transformations/orders/[id] - Get order by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -132,7 +136,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.errors },
+        { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 }
       );
     }

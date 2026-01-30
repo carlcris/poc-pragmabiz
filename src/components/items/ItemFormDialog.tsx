@@ -9,6 +9,7 @@ import { useItemCategories } from "@/hooks/useItemCategories";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useAuthStore } from "@/stores/authStore";
 import { itemFormSchema, type ItemFormValues } from "@/lib/validations/item";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -73,8 +74,9 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
   const [dialogMode, setDialogMode] = useState<ItemDialogMode>("create");
   const categories = categoriesData?.data || [];
   const unitsOfMeasure = (uomsData?.data || []).filter((unit) => unit.isActive !== false);
+  type ItemFormInput = z.input<typeof itemFormSchema>;
 
-  const form = useForm<ItemFormValues>({
+  const form = useForm<ItemFormInput>({
     resolver: zodResolver(itemFormSchema),
     defaultValues: {
       code: "",
@@ -148,13 +150,21 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
     }
   }, [open, resolvedItem, unitsOfMeasure, form]);
 
-  const onSubmit = async (values: ItemFormValues) => {
+  const onSubmit = async (values: ItemFormInput) => {
     try {
+      const parsed = itemFormSchema.parse(values);
+      const payload = {
+        ...parsed,
+        description: parsed.description ?? "",
+        standardCost: parsed.standardCost ?? 0,
+        reorderLevel: parsed.reorderLevel ?? 0,
+        reorderQty: parsed.reorderQty ?? 0,
+      };
       if (resolvedItem) {
         // Update existing item
         const updated = await updateItem.mutateAsync({
           id: resolvedItem.id,
-          data: values,
+          data: payload,
         });
         const updatedItem = updated?.data;
         if (updatedItem) {
@@ -184,7 +194,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
         }
 
         const result = await createItem.mutateAsync({
-          ...values,
+          ...payload,
           companyId: user.companyId,
         });
 
@@ -426,7 +436,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                     <ImageUpload
                                       value={field.value}
                                       onChange={field.onChange}
-                                      itemId={currentItemId}
+                                      itemId={currentItemId || undefined}
                                       disabled={isReadOnly}
                                     />
                                   </FormControl>

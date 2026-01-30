@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useCreateWarehouse, useUpdateWarehouse } from "@/hooks/useWarehouses";
 import { useAuthStore } from "@/stores/authStore";
 import { warehouseFormSchema, type WarehouseFormValues } from "@/lib/validations/warehouse";
+import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,8 +40,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
   const { user } = useAuthStore();
   const createWarehouse = useCreateWarehouse();
   const updateWarehouse = useUpdateWarehouse();
+  type WarehouseFormInput = z.input<typeof warehouseFormSchema>;
 
-  const form = useForm<WarehouseFormValues>({
+  const form = useForm<WarehouseFormInput>({
     resolver: zodResolver(warehouseFormSchema),
     defaultValues: {
       code: "",
@@ -92,13 +94,14 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
     }
   }, [warehouse, form]);
 
-  const onSubmit = async (values: WarehouseFormValues) => {
+  const onSubmit = async (values: WarehouseFormInput) => {
     try {
+      const parsed = warehouseFormSchema.parse(values);
       if (warehouse) {
         // Update existing warehouse
         await updateWarehouse.mutateAsync({
           id: warehouse.id,
-          data: values,
+          data: parsed,
         });
         toast.success("Warehouse updated successfully");
       } else {
@@ -109,7 +112,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
         }
 
         await createWarehouse.mutateAsync({
-          ...values,
+          ...parsed,
           companyId: user.companyId,
         });
         toast.success("Warehouse created successfully");

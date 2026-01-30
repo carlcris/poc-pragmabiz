@@ -4,10 +4,51 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
-import type { Database } from "@/types/database.types";
-
-type DbStockAdjustmentRow = Database["public"]["Tables"]["stock_adjustments"]["Row"];
-type DbStockAdjustmentItem = Database["public"]["Tables"]["stock_adjustment_items"]["Row"];
+type DbStockAdjustmentRow = {
+  id: string;
+  company_id: string;
+  adjustment_code: string;
+  adjustment_type: string;
+  adjustment_date: string;
+  warehouse_id: string | null;
+  status: string;
+  reason: string | null;
+  notes: string | null;
+  total_value: number | string | null;
+  stock_transaction_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  posted_by: string | null;
+  posted_at: string | null;
+  custom_fields: { locationId?: string | null } | null;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+  deleted_at: string | null;
+};
+type DbStockAdjustmentItem = {
+  id: string;
+  adjustment_id: string;
+  item_id: string;
+  item_code: string | null;
+  item_name: string | null;
+  current_qty: number | string | null;
+  adjusted_qty: number | string | null;
+  difference: number | string | null;
+  unit_cost: number | string | null;
+  total_cost: number | string | null;
+  uom_id: string | null;
+  uom_name: string | null;
+  reason: string | null;
+  created_at: string;
+  updated_at: string | null;
+  input_qty?: number | string | null;
+  input_packaging_id?: string | null;
+  conversion_factor?: number | string | null;
+  normalized_qty?: number | string | null;
+  base_package_id?: string | null;
+};
 
 type StockAdjustmentItemInput = {
   itemId: string;
@@ -242,12 +283,14 @@ export async function GET(request: NextRequest) {
 
     // Format response
     const formattedData = typedAdjustments.map((adj) => {
-      const warehouse = warehousesMap.get(adj.warehouse_id);
-      const createdBy = usersMap.get(adj.created_by);
-      const updatedBy = usersMap.get(adj.updated_by);
-      const approvedBy = usersMap.get(adj.approved_by);
-      const postedBy = usersMap.get(adj.posted_by);
-      const stockTransaction = stockTransactionsMap.get(adj.stock_transaction_id);
+      const warehouse = adj.warehouse_id ? warehousesMap.get(adj.warehouse_id) : undefined;
+      const createdBy = adj.created_by ? usersMap.get(adj.created_by) : undefined;
+      const updatedBy = adj.updated_by ? usersMap.get(adj.updated_by) : undefined;
+      const approvedBy = adj.approved_by ? usersMap.get(adj.approved_by) : undefined;
+      const postedBy = adj.posted_by ? usersMap.get(adj.posted_by) : undefined;
+      const stockTransaction = adj.stock_transaction_id
+        ? stockTransactionsMap.get(adj.stock_transaction_id)
+        : undefined;
       const items = itemsByAdjustment.get(adj.id) || [];
       const locationId = adj.custom_fields?.locationId || null;
       const location = locationId ? locationsMap.get(locationId) : null;

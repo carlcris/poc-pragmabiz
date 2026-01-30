@@ -2,15 +2,26 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
-type ItemWarehouseRow = Tables<"item_warehouse">;
-type ItemRow = Tables<"items">;
-type WarehouseRow = Tables<"warehouses">;
+type ItemWarehouseRow = {
+  id: string;
+  item_id: string;
+  warehouse_id: string;
+  current_stock: number | string | null;
+  reorder_level: number | string | null;
+  reorder_quantity: number | string | null;
+  max_quantity: number | string | null;
+};
+type ItemRow = {
+  item_code: string | null;
+  item_name: string | null;
+};
+type WarehouseRow = {
+  warehouse_name: string | null;
+};
 
 type StockLevelRow = ItemWarehouseRow & {
-  items: Pick<ItemRow, "item_code" | "item_name">;
-  warehouses: Pick<WarehouseRow, "warehouse_name">;
+  items: Pick<ItemRow, "item_code" | "item_name"> | Pick<ItemRow, "item_code" | "item_name">[];
+  warehouses: Pick<WarehouseRow, "warehouse_name"> | Pick<WarehouseRow, "warehouse_name">[];
 };
 
 type ReorderAlert = {
@@ -25,7 +36,7 @@ type ReorderAlert = {
   reorderQuantity: number;
   minimumLevel: number;
   maxQuantity: number;
-  severity: "critical" | "warning" | "info";
+  severity: "critical" | "warning";
   message: string;
   alertType: "low_stock";
   createdAt: string;
@@ -121,6 +132,8 @@ export async function GET(request: NextRequest) {
     // Process alerts - filter by stock level and determine severity
     const alerts = ((stockLevels as StockLevelRow[] | null) || [])
       .map((stock) => {
+        const item = Array.isArray(stock.items) ? stock.items[0] : stock.items;
+        const warehouse = Array.isArray(stock.warehouses) ? stock.warehouses[0] : stock.warehouses;
         const currentStock = Number(stock.current_stock || 0);
         const reorderLevel = Number(stock.reorder_level || 0);
         const reorderQuantity = Number(stock.reorder_quantity || 0);
@@ -152,10 +165,10 @@ export async function GET(request: NextRequest) {
         return {
           id: stock.id,
           itemId: stock.item_id,
-          itemCode: stock.items.item_code,
-          itemName: stock.items.item_name,
+          itemCode: item?.item_code || "",
+          itemName: item?.item_name || "",
           warehouseId: stock.warehouse_id,
-          warehouseName: stock.warehouses.warehouse_name,
+          warehouseName: warehouse?.warehouse_name || "",
           currentStock: currentStock,
           reorderPoint: reorderLevel,
           reorderQuantity: reorderQuantity,

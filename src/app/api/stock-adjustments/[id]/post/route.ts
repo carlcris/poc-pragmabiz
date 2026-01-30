@@ -6,8 +6,28 @@ import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { Database } from "@/types/database.types";
-type DbStockAdjustmentItem = Database["public"]["Tables"]["stock_adjustment_items"]["Row"];
+type DbStockAdjustmentItem = {
+  id: string;
+  adjustment_id: string;
+  item_id: string;
+  item_code: string;
+  item_name: string;
+  current_qty: number | string | null;
+  adjusted_qty: number | string | null;
+  difference: number | string | null;
+  unit_cost: number | string | null;
+  total_cost: number | string | null;
+  uom_id: string | null;
+  uom_name: string | null;
+  reason: string | null;
+  created_at: string;
+  updated_at: string | null;
+  input_qty?: number | string | null;
+  input_packaging_id?: string | null;
+  conversion_factor?: number | string | null;
+  normalized_qty?: number | string | null;
+  base_package_id?: string | null;
+};
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

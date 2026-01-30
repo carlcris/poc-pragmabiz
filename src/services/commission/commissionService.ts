@@ -143,7 +143,7 @@ const autoAssignEmployeeToInvoice = async (
   invoiceId: string,
   customerId: string,
   companyId: string,
-  supabase: ReturnType<typeof createClient>
+  supabase: Awaited<ReturnType<typeof createClient>>
 ): Promise<CommissionCalculationResult> => {
   try {
     // Get customer location
@@ -205,8 +205,10 @@ const autoAssignEmployeeToInvoice = async (
       return await calculateInvoiceCommission(invoiceId, defaultEmployee.id);
     }
 
-    const assignedEmployee = territories[0].employees;
-    if (!assignedEmployee.is_active) {
+    const assignedEmployee = Array.isArray(territories[0].employees)
+      ? territories[0].employees[0]
+      : territories[0].employees;
+    if (!assignedEmployee || !assignedEmployee.is_active) {
       return {
         success: false,
         commissionTotal: 0,

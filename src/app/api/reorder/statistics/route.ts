@@ -2,15 +2,20 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
-type ItemWarehouseRow = Tables<"item_warehouse">;
-type ItemRow = Tables<"items">;
-type WarehouseRow = Tables<"warehouses">;
+type ItemWarehouseRow = {
+  current_stock: number | string | null;
+  reorder_level: number | string | null;
+  reorder_quantity: number | string | null;
+};
+type ItemRow = { purchase_price: number | string | null };
+type WarehouseRow = { id: string; business_unit_id: string | null };
 
 type StockLevelRow = ItemWarehouseRow & {
-  items: Pick<ItemRow, "purchase_price"> | null;
-  warehouses: Pick<WarehouseRow, "id" | "business_unit_id"> | null;
+  items: Pick<ItemRow, "purchase_price"> | Pick<ItemRow, "purchase_price">[] | null;
+  warehouses:
+    | Pick<WarehouseRow, "id" | "business_unit_id">
+    | Pick<WarehouseRow, "id" | "business_unit_id">[]
+    | null;
 };
 
 // GET /api/reorder/statistics
@@ -76,10 +81,11 @@ export async function GET() {
     let totalEstimatedReorderCost = 0;
 
     (stockLevels as StockLevelRow[] | null)?.forEach((stock) => {
+      const item = Array.isArray(stock.items) ? stock.items[0] : stock.items;
       const currentStock = Number(stock.current_stock || 0);
       const reorderLevel = Number(stock.reorder_level || 0);
       const reorderQuantity = Number(stock.reorder_quantity || 0);
-      const purchasePrice = Number(stock.items?.purchase_price || 0);
+      const purchasePrice = Number(item?.purchase_price || 0);
 
       // Skip items without reorder level set
       if (reorderLevel <= 0) {

@@ -1,25 +1,48 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { Item, CreateItemRequest } from "@/types/item";
-import type { Database } from "@/types/database.types";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-type DbItem = Database["public"]["Tables"]["items"]["Row"];
-type DbItemCategory = Database["public"]["Tables"]["item_categories"]["Row"];
-type DbUoM = Database["public"]["Tables"]["units_of_measure"]["Row"];
+type DbItem = {
+  id: string;
+  company_id: string;
+  item_code: string;
+  item_name: string;
+  item_name_cn: string | null;
+  description: string | null;
+  item_type: string;
+  uom_id: string;
+  cost_price: number | string | null;
+  sales_price: number | string | null;
+  image_url: string | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+type DbItemCategory = {
+  id: string;
+  name: string;
+  code: string;
+};
+type DbUoM = {
+  id: string;
+  code: string;
+  name: string;
+};
 type ItemRow = DbItem & {
-  item_categories: DbItemCategory | null;
-  units_of_measure: DbUoM | null;
+  item_categories: DbItemCategory | DbItemCategory[] | null;
+  units_of_measure: DbUoM | DbUoM[] | null;
 };
 
 // Transform database item to frontend Item type
-function transformDbItem(
-  dbItem: DbItem & {
-    item_categories: DbItemCategory | null;
-    units_of_measure: DbUoM | null;
-  }
-): Item {
+function transformDbItem(dbItem: ItemRow): Item {
+  const category = Array.isArray(dbItem.item_categories)
+    ? dbItem.item_categories[0]
+    : dbItem.item_categories;
+  const uom = Array.isArray(dbItem.units_of_measure)
+    ? dbItem.units_of_measure[0]
+    : dbItem.units_of_measure;
   return {
     id: dbItem.id,
     companyId: dbItem.company_id,
@@ -28,9 +51,9 @@ function transformDbItem(
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
     itemType: dbItem.item_type as Item["itemType"],
-    uom: dbItem.units_of_measure?.code || "",
+    uom: uom?.code || "",
     uomId: dbItem.uom_id, // Added uomId field
-    category: dbItem.item_categories?.name || "",
+    category: category?.name || "",
     standardCost: Number(dbItem.cost_price) || 0,
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0, // Will come from item_warehouse table

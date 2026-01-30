@@ -53,6 +53,16 @@ type VanInventoryItem = {
   categoryName?: string;
 };
 
+type MobileItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  unitPrice: number;
+  availableStock: number;
+  uomName: string;
+  categoryName?: string;
+};
+
 type PaymentInput = {
   method: string;
   amount: number;
@@ -163,6 +173,13 @@ export default function SellPage() {
     }
     // Clear search box after adding item
     setSearchTerm("");
+  };
+
+  const handleAddToCart = (item: MobileItem) => {
+    const fullItem = items.find((candidate) => candidate.itemId === item.itemId);
+    if (fullItem) {
+      addToCart(fullItem);
+    }
   };
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
@@ -425,7 +442,7 @@ export default function SellPage() {
               <MobileItemCard
                 key={item.itemId}
                 item={item}
-                onAddToCart={addToCart}
+                onAddToCart={handleAddToCart}
                 inCart={cart.some((ci) => ci.itemId === item.itemId)}
               />
             ))}

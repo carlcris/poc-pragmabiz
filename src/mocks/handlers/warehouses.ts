@@ -73,6 +73,7 @@ export const warehouseHandlers = [
       id: `wh-${Date.now()}`,
       ...body,
       managerName: undefined,
+      isVan: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -49,7 +49,8 @@ const lineItemSchema = z.object({
   lineTotal: z.number().optional(),
 });
 
-export type LineItemFormValues = z.infer<typeof lineItemSchema> & {
+type LineItemFormInput = z.input<typeof lineItemSchema>;
+export type LineItemFormValues = z.output<typeof lineItemSchema> & {
   packagingName?: string;
   lineTotal?: number;
 };
@@ -82,7 +83,7 @@ export function InvoiceLineItemDialog({
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
 
-  const form = useForm<LineItemFormValues>({
+  const form = useForm<LineItemFormInput>({
     resolver: zodResolver(lineItemSchema),
     defaultValues: {
       itemId: "",
@@ -123,7 +124,8 @@ export function InvoiceLineItemDialog({
       form.setValue("itemId", selectedItem.id);
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
-      form.setValue("description", selectedItem.description);
+      const itemDescription = "description" in selectedItem ? selectedItem.description : "";
+      form.setValue("description", itemDescription);
       form.setValue("unitPrice", selectedItem.listPrice);
       form.setValue("uomId", selectedItem.uomId);
 
@@ -142,9 +144,10 @@ export function InvoiceLineItemDialog({
     }
   };
 
-  const onSubmit = (data: LineItemFormValues) => {
+  const onSubmit = (data: LineItemFormInput) => {
+    const parsed = lineItemSchema.parse(data);
     onSave({
-      ...data,
+      ...parsed,
       lineTotal,
       packagingName: selectedPackage?.packName,
     });

@@ -2,10 +2,34 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Database } from "@/types/database.types";
-
-type DbStockAdjustmentUpdate = Database["public"]["Tables"]["stock_adjustments"]["Update"];
-type DbStockAdjustmentItem = Database["public"]["Tables"]["stock_adjustment_items"]["Row"];
+type DbStockAdjustmentUpdate = {
+  adjustment_type?: string;
+  adjustment_date?: string;
+  warehouse_id?: string;
+  reason?: string;
+  notes?: string | null;
+  custom_fields?: Record<string, unknown> | null;
+  total_value?: number | string | null;
+  updated_by?: string;
+  updated_at?: string;
+};
+type DbStockAdjustmentItem = {
+  id: string;
+  adjustment_id: string;
+  item_id: string;
+  item_code: string | null;
+  item_name: string | null;
+  current_qty: number | string | null;
+  adjusted_qty: number | string | null;
+  difference: number | string | null;
+  unit_cost: number | string | null;
+  total_cost: number | string | null;
+  uom_id: string | null;
+  uom_name: string | null;
+  reason: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
 
 type StockAdjustmentItemInput = {
   itemId: string;

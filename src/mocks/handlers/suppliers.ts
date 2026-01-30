@@ -130,9 +130,10 @@ export const supplierHandlers = [
     }
 
     // Check if code is being changed and if it already exists
-    if (body.code) {
+    const code = body.code?.toLowerCase();
+    if (code) {
       const existingSupplier = suppliersData.find(
-        (s) => s.code.toLowerCase() === body.code.toLowerCase() && s.id !== id
+        (s) => s.code.toLowerCase() === code && s.id !== id
       );
 
       if (existingSupplier) {

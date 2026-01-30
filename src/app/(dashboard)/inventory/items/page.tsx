@@ -48,6 +48,7 @@ import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
+import type { Item } from "@/types/item";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 function ItemsPageContent() {
@@ -121,7 +122,8 @@ function ItemsPageContent() {
 
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
-  const statistics = data?.statistics;
+  const statistics =
+    data && typeof data === "object" && "statistics" in data ? data.statistics : undefined;
 
   // Use statistics from API (calculated from all filtered items, not just current page)
   const lowStockItems = statistics?.lowStockCount ?? 0;

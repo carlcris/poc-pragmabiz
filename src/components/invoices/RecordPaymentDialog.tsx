@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { recordPaymentSchema, type RecordPaymentValues } from "@/lib/validations/invoice";
+import type { z } from "zod";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Invoice } from "@/types/invoice";
 
@@ -34,6 +35,7 @@ interface RecordPaymentDialogProps {
 export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPaymentDialogProps) {
   const { formatCurrency } = useCurrency();
   const recordPayment = useRecordPayment();
+  type RecordPaymentInput = z.input<typeof recordPaymentSchema>;
 
   const {
     register,
@@ -42,7 +44,7 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
     setValue,
     reset,
     formState: { errors },
-  } = useForm<RecordPaymentValues>({
+  } = useForm<RecordPaymentInput>({
     resolver: zodResolver(recordPaymentSchema),
     defaultValues: {
       invoiceId: "",
@@ -67,9 +69,10 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
     }
   }, [invoice, open, reset]);
 
-  const onSubmit = async (data: RecordPaymentValues) => {
+  const onSubmit = async (data: RecordPaymentInput) => {
     try {
-      await recordPayment.mutateAsync(data);
+      const parsed = recordPaymentSchema.parse(data);
+      await recordPayment.mutateAsync(parsed);
       onOpenChange(false);
     } catch {}
   };

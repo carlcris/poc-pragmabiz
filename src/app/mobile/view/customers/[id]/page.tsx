@@ -121,7 +121,7 @@ export default function MobileCustomerDetailsPage({ params }: { params: Promise<
             </div>
             <div className="mt-2 flex items-center gap-2">
               <Badge variant="outline" className="text-xs">
-                {customer.customerType === "business" ? "Business" : "Individual"}
+                {customer.customerType === "company" ? "Company" : "Individual"}
               </Badge>
             </div>
           </CardContent>

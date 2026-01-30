@@ -3,19 +3,34 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { invalidatePermissionCache } from "@/services/permissions/permissionResolver";
-import type { Tables } from "@/types/supabase";
-
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-type RoleRow = Tables<"roles">;
-type PermissionRow = Tables<"permissions">;
-type RolePermissionRow = Tables<"role_permissions">;
-
-type RolePermissionWithPermission = RolePermissionRow & {
-  permissions?: PermissionRow | null;
+type RoleRow = {
+  id: string;
+  name?: string;
+  description?: string | null;
+  company_id: string;
+  is_system_role?: boolean;
 };
+type PermissionRow = {
+  id: string;
+  resource?: string;
+  description?: string | null;
+};
+type RolePermissionRow = {
+  id?: string;
+  role_id?: string;
+  permission_id: string;
+  can_view?: boolean;
+  can_create?: boolean;
+  can_edit?: boolean;
+  can_delete?: boolean;
+  permissions?: PermissionRow | PermissionRow[] | null;
+};
+
+type RolePermissionWithPermission = RolePermissionRow;
 
 type RoleWithPermissions = RoleRow & {
   role_permissions?: RolePermissionWithPermission[] | null;
@@ -69,15 +84,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Transform data to include CRUD flags from role_permissions
     const roleWithPermissions = {
       ...(role as RoleWithPermissions),
-      permissions: ((role as RoleWithPermissions).role_permissions || []).map((rp) => ({
-        permission_id: rp.permission_id,
-        resource: rp.permissions?.resource,
-        description: rp.permissions?.description,
-        can_view: rp.can_view,
-        can_create: rp.can_create,
-        can_edit: rp.can_edit,
-        can_delete: rp.can_delete,
-      })),
+      permissions: ((role as RoleWithPermissions).role_permissions || []).map((rp) => {
+        const permission = Array.isArray(rp.permissions) ? rp.permissions[0] : rp.permissions;
+        return {
+          permission_id: rp.permission_id,
+          resource: permission?.resource,
+          description: permission?.description,
+          can_view: rp.can_view,
+          can_create: rp.can_create,
+          can_edit: rp.can_edit,
+          can_delete: rp.can_delete,
+        };
+      }),
     };
 
     return NextResponse.json({ data: roleWithPermissions });
@@ -181,7 +199,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const roleWithPermissions = {
       ...(updatedRole as RoleWithPermissions),
       permissions: ((updatedRole as RoleWithPermissions).role_permissions || [])
-        .map((rp) => rp.permissions)
+        .flatMap((rp) => (Array.isArray(rp.permissions) ? rp.permissions : [rp.permissions]))
         .filter(Boolean),
     };
 

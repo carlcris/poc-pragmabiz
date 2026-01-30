@@ -229,21 +229,28 @@ export function PurchaseOrderViewDialog({
                         {(purchaseOrder.status === "partially_received" ||
                           purchaseOrder.status === "received") && (
                           <td className="p-3 text-right">
+                            {(() => {
+                              const receivedQty = item.quantityReceived ?? 0;
+                              return (
+                                <>
                             <span
                               className={
-                                item.quantityReceived === item.quantity
+                                receivedQty === item.quantity
                                   ? "text-green-600"
                                   : "text-yellow-600"
                               }
                             >
-                              {item.quantityReceived} / {item.quantity}
+                              {receivedQty} / {item.quantity}
                             </span>
                             {showConversion && (
                               <div className="text-xs text-muted-foreground">
-                                = {(item.quantityReceived * conversionFactor).toFixed(4)}{" "}
+                                = {(receivedQty * conversionFactor).toFixed(4)}{" "}
                                 {baseUnitLabel}
                               </div>
                             )}
+                                </>
+                              );
+                            })()}
                           </td>
                         )}
                       </tr>

@@ -34,13 +34,20 @@ type StockRequestsQueueRow = {
 
 type StockMovementsRow = {
   quantity: number;
-  stock_transactions: {
-    transaction_type: string;
-    created_at: string;
-    users?: { email?: string | null } | null;
-  };
-  items: { item_name: string };
-  units_of_measure: { symbol: string };
+  stock_transactions:
+    | {
+        transaction_type: string;
+        created_at: string;
+        users?: { email?: string | null } | { email?: string | null }[] | null;
+      }
+    | {
+        transaction_type: string;
+        created_at: string;
+        users?: { email?: string | null } | { email?: string | null }[] | null;
+      }[]
+    | null;
+  items: { item_name: string } | { item_name: string }[] | null;
+  units_of_measure: { symbol: string } | { symbol: string }[] | null;
 };
 
 export async function GET() {
@@ -236,8 +243,11 @@ export async function GET() {
       warehouse_id: string;
       current_stock: number | string | null;
       reorder_level: number | string | null;
-      warehouse_locations?: { code?: string | null } | null;
-      items: { item_name: string; units_of_measure: { symbol: string } };
+      warehouse_locations?: { code?: string | null } | { code?: string | null }[] | null;
+      items:
+        | { item_name: string; units_of_measure: { symbol: string } | { symbol: string }[] }
+        | { item_name: string; units_of_measure: { symbol: string } | { symbol: string }[] }[]
+        | null;
     }>;
 
     const aggregatedInventory = new Map<
@@ -254,9 +264,16 @@ export async function GET() {
     >();
 
     for (const row of inventoryRows) {
+      const itemRecord = Array.isArray(row.items) ? row.items[0] ?? null : row.items ?? null;
+      const uomRecord = Array.isArray(itemRecord?.units_of_measure)
+        ? itemRecord?.units_of_measure[0] ?? null
+        : itemRecord?.units_of_measure ?? null;
+      const locationRecord = Array.isArray(row.warehouse_locations)
+        ? row.warehouse_locations[0] ?? null
+        : row.warehouse_locations ?? null;
       const qty = Number(row.current_stock || 0);
       const reorderLevel = Number(row.reorder_level || 0);
-      const locationCode = row.warehouse_locations?.code || null;
+      const locationCode = locationRecord?.code || null;
 
       const existing = aggregatedInventory.get(row.item_id);
       if (existing) {
@@ -269,10 +286,10 @@ export async function GET() {
       } else {
         aggregatedInventory.set(row.item_id, {
           item_id: row.item_id,
-          item_name: row.items.item_name,
+          item_name: itemRecord?.item_name || "",
           qty,
           reorder_level: reorderLevel,
-          uom: row.items.units_of_measure.symbol,
+          uom: uomRecord?.symbol || "",
           location_code: locationCode,
           hasMultipleLocations: false,
         });
@@ -348,14 +365,27 @@ export async function GET() {
           required_date: item.required_date,
         })),
       },
-      last_stock_movements: stockMovements.map((item) => ({
-        type: item.stock_transactions.transaction_type,
-        item_name: item.items.item_name,
-        qty: item.quantity,
-        uom: item.units_of_measure.symbol,
-        performed_by: item.stock_transactions.users?.email || "Unknown",
-        timestamp: item.stock_transactions.created_at,
-      })),
+      last_stock_movements: stockMovements.map((item) => {
+        const transaction = Array.isArray(item.stock_transactions)
+          ? item.stock_transactions[0] ?? null
+          : item.stock_transactions ?? null;
+        const user = Array.isArray(transaction?.users)
+          ? transaction?.users[0] ?? null
+          : transaction?.users ?? null;
+        const itemRecord = Array.isArray(item.items) ? item.items[0] ?? null : item.items ?? null;
+        const uomRecord = Array.isArray(item.units_of_measure)
+          ? item.units_of_measure[0] ?? null
+          : item.units_of_measure ?? null;
+
+        return {
+          type: transaction?.transaction_type || "",
+          item_name: itemRecord?.item_name || "",
+          qty: item.quantity,
+          uom: uomRecord?.symbol || "",
+          performed_by: user?.email || "Unknown",
+          timestamp: transaction?.created_at || "",
+        };
+      }),
     };
 
     return NextResponse.json(dashboardData);

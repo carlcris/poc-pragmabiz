@@ -115,10 +115,10 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                   <span className="text-muted-foreground">Valid Until:</span>
                   <div className="font-medium">{formatDate(quotation.validUntil)}</div>
                 </div>
-                {quotation.paymentTerms && (
+                {quotation.terms && (
                   <div>
                     <span className="text-muted-foreground">Payment Terms:</span>
-                    <div className="font-medium">{quotation.paymentTerms}</div>
+                    <div className="font-medium">{quotation.terms}</div>
                   </div>
                 )}
               </div>

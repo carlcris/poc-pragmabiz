@@ -78,20 +78,13 @@ export default function StockLevelsPage() {
     );
   }
 
-  // Debug: Check the full data structure
-
-  // FIX: The hook already extracts response.data, so we access directly
-  const inventory =
-    (inventoryData?.data?.inventory as InventoryItem[] | undefined) ||
-    (inventoryData?.inventory as InventoryItem[] | undefined) ||
-    [];
-  const summary = (inventoryData?.data?.summary as InventorySummary | undefined) ||
-    (inventoryData?.summary as InventorySummary | undefined) || {
-      totalItems: 0,
-      itemsInStock: 0,
-      lowStockItems: 0,
-      outOfStockItems: 0,
-    };
+  const inventory = (inventoryData?.inventory as InventoryItem[] | undefined) || [];
+  const summary = (inventoryData?.summary as InventorySummary | undefined) || {
+    totalItems: 0,
+    itemsInStock: 0,
+    lowStockItems: 0,
+    outOfStockItems: 0,
+  };
 
   // Categorize items by stock status
   const categorizedItems: InventoryItemWithStatus[] = inventory.map((item) => {

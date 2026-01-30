@@ -63,7 +63,10 @@ export const GET = async (req: NextRequest) => {
       customers?: {
         billing_city: string | null;
         billing_state: string | null;
-      } | null;
+      } | {
+        billing_city: string | null;
+        billing_state: string | null;
+      }[] | null;
     };
 
     // Aggregate by location
@@ -82,7 +85,7 @@ export const GET = async (req: NextRequest) => {
         >,
         inv
       ) => {
-        const customer = inv.customers;
+        const customer = Array.isArray(inv.customers) ? inv.customers[0] : inv.customers;
         if (!customer) return acc;
 
         const billingCity = customer.billing_city;

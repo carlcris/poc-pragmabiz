@@ -155,9 +155,10 @@ export async function validateStockAvailability(orderId: string): Promise<{
       const required = input.planned_quantity;
 
       if (available < required) {
+        const inputItem = Array.isArray(input.items) ? input.items[0] : input.items;
         insufficientItems.push({
-          itemCode: input.items?.item_code || "Unknown",
-          itemName: input.items?.item_name || "Unknown",
+          itemCode: inputItem?.item_code || "Unknown",
+          itemName: inputItem?.item_name || "Unknown",
           required,
           available,
         });
@@ -342,7 +343,7 @@ export async function executeTransformation(
 
         return {
           itemId: inputLine.item_id,
-          packagingId: inputData.packagingId || null, // null = use base package
+          packagingId: null, // null = use base package
           inputQty: inputData.consumedQuantity,
           unitCost: 0, // Will be fetched from item
         };
@@ -521,7 +522,7 @@ export async function executeTransformation(
 
         return {
           itemId: outputLine.item_id,
-          packagingId: outputData.packagingId || null, // null = use base package
+          packagingId: null, // null = use base package
           inputQty: outputData.producedQuantity,
           unitCost: 0, // Will be allocated from input costs
         };
@@ -542,7 +543,7 @@ export async function executeTransformation(
 
         return {
           itemId: outputLine.item_id,
-          packagingId: outputData.packagingId || null,
+          packagingId: null,
           inputQty: outputData.wastedQuantity || 0,
           unitCost: 0,
         };
@@ -598,7 +599,12 @@ export async function executeTransformation(
         .eq("warehouse_id", order.source_warehouse_id)
         .maybeSingle();
 
-      const currentStock = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
+      const warehouseStockRow = warehouseStock as
+        | { current_stock?: number | string | null; default_location_id?: string | null }
+        | null;
+      const currentStock = warehouseStockRow
+        ? parseFloat(String(warehouseStockRow.current_stock))
+        : 0;
 
       const newStock = currentStock + normalizedOutput.normalizedQty;
 
@@ -676,13 +682,13 @@ export async function executeTransformation(
         companyId: order.company_id,
         itemId: outputLine.item_id,
         warehouseId: order.source_warehouse_id,
-        locationId: warehouseStock?.default_location_id || defaultLocationId,
+        locationId: warehouseStockRow?.default_location_id || defaultLocationId,
         userId,
         qtyOnHandDelta: normalizedOutput.normalizedQty,
       });
 
       // Update or insert item_warehouse (no stock_value column) - same warehouse as inputs
-      if (warehouseStock) {
+      if (warehouseStockRow) {
         await supabase
           .from("item_warehouse")
           .update({
@@ -698,7 +704,7 @@ export async function executeTransformation(
           warehouse_id: order.source_warehouse_id,
           current_stock: newStock,
           reserved_stock: 0,
-          default_location_id: warehouseStock?.default_location_id || defaultLocationId,
+          default_location_id: defaultLocationId,
           created_by: userId,
           updated_by: userId,
         });

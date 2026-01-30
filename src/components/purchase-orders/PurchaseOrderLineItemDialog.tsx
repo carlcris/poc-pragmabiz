@@ -50,7 +50,8 @@ const lineItemSchema = z.object({
   taxPercent: z.number().min(0).max(100).default(0),
 });
 
-export type PurchaseOrderLineItemFormValues = z.infer<typeof lineItemSchema> & {
+type PurchaseOrderLineItemInput = z.input<typeof lineItemSchema>;
+export type PurchaseOrderLineItemFormValues = z.output<typeof lineItemSchema> & {
   packagingName?: string;
   lineTotal?: number;
 };
@@ -75,7 +76,7 @@ export function PurchaseOrderLineItemDialog({
   const { formatCurrency } = useCurrency();
   const [itemOpen, setItemOpen] = useState(false);
 
-  const form = useForm<PurchaseOrderLineItemFormValues>({
+  const form = useForm<PurchaseOrderLineItemInput>({
     resolver: zodResolver(lineItemSchema),
     defaultValues: {
       itemId: "",
@@ -120,9 +121,10 @@ export function PurchaseOrderLineItemDialog({
     }
   };
 
-  const onSubmit = (data: PurchaseOrderLineItemFormValues) => {
+  const onSubmit = (data: PurchaseOrderLineItemInput) => {
+    const parsed = lineItemSchema.parse(data);
     onSave({
-      ...data,
+      ...parsed,
       lineTotal,
       packagingName: selectedPackage?.packName,
     });
@@ -223,8 +225,11 @@ export function PurchaseOrderLineItemDialog({
                                       </span>
                                     </div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">
-                                      On hand: {item.onHand.toFixed(2)} {item.uom} • Available:{" "}
-                                      {item.available.toFixed(2)} {item.uom}
+                                      On hand:{" "}
+                                      {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
+                                      {"uom" in item ? item.uom : ""} • Available:{" "}
+                                      {("available" in item ? item.available : 0).toFixed(2)}{" "}
+                                      {"uom" in item ? item.uom : ""}
                                     </div>
                                   </div>
                                   <div className="ml-4 flex-shrink-0 text-sm font-semibold">

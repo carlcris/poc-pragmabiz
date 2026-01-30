@@ -263,7 +263,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
           </View>
           {qrCodeDataUrl && (
             <View style={styles.qrCodeContainer}>
-              <Image style={styles.qrCode} src={qrCodeDataUrl} alt="" />
+              <Image style={styles.qrCode} src={qrCodeDataUrl} />
               <Text style={styles.qrCodeLabel}>Scan for details</Text>
             </View>
           )}

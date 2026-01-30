@@ -61,8 +61,11 @@ export async function GET() {
       primary_employee_id: string | null;
       employees?: {
         id: string;
-        users?: EmployeeUserRow | null;
-      } | null;
+        users?: EmployeeUserRow | EmployeeUserRow[] | null;
+      } | {
+        id: string;
+        users?: EmployeeUserRow | EmployeeUserRow[] | null;
+      }[] | null;
     };
 
     type RecentPOSTransactionRow = {
@@ -70,8 +73,8 @@ export async function GET() {
       transaction_code: string;
       total_amount: number | string;
       created_at: string;
-      customers?: { customer_name: string } | null;
-      users?: { first_name: string; last_name: string } | null;
+      customers?: { customer_name: string } | { customer_name: string }[] | null;
+      users?: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
     };
 
     type RecentInvoiceRow = {
@@ -79,9 +82,9 @@ export async function GET() {
       invoice_code: string;
       total_amount: number | string;
       created_at: string;
-      customers?: { customer_name: string } | null;
-      employees?: { users?: EmployeeUserRow | null } | null;
-      warehouses?: { warehouse_name: string | null } | null;
+      customers?: { customer_name: string } | { customer_name: string }[] | null;
+      employees?: { users?: EmployeeUserRow | EmployeeUserRow[] | null } | { users?: EmployeeUserRow | EmployeeUserRow[] | null }[] | null;
+      warehouses?: { warehouse_name: string | null } | { warehouse_name: string | null }[] | null;
     };
 
     type ItemWarehouseAlertRow = {
@@ -89,10 +92,15 @@ export async function GET() {
       warehouse_id: string;
       current_stock: number | string | null;
       reorder_level: number | string | null;
-      items: {
-        item_code: string;
-        item_name: string;
-      };
+      items:
+        | {
+            item_code: string;
+            item_name: string;
+          }
+        | {
+            item_code: string;
+            item_name: string;
+          }[];
     };
 
     type OrderStatusRow = {
@@ -213,8 +221,9 @@ export async function GET() {
     >();
     if (invoicesByEmployee) {
       for (const invoice of invoicesByEmployee as InvoiceEmployeeRow[]) {
-        const employee = invoice.employees;
-        const employeeUser = employee?.users;
+        const employee = Array.isArray(invoice.employees) ? invoice.employees[0] : invoice.employees;
+        const employeeUserRaw = employee?.users;
+        const employeeUser = Array.isArray(employeeUserRaw) ? employeeUserRaw[0] : employeeUserRaw;
         if (employeeUser) {
           const userId = employeeUser.id;
           const userName = `${employeeUser.first_name} ${employeeUser.last_name}`;
@@ -356,12 +365,14 @@ export async function GET() {
     // Add POS transactions
     if (recentPOSTransactions) {
       for (const t of recentPOSTransactions as RecentPOSTransactionRow[]) {
+        const customer = Array.isArray(t.customers) ? t.customers[0] : t.customers;
+        const user = Array.isArray(t.users) ? t.users[0] : t.users;
         allRecentActivity.push({
           id: t.id,
           time: new Date(t.created_at).toLocaleTimeString(),
-          customer: t.customers ? t.customers.customer_name : "Walk-in Customer",
+          customer: customer ? customer.customer_name : "Walk-in Customer",
           amount: Number(t.total_amount),
-          agent: t.users ? `${t.users.first_name} ${t.users.last_name}` : "Unknown",
+          agent: user ? `${user.first_name} ${user.last_name}` : "Unknown",
           location: "POS",
           timestamp: new Date(t.created_at),
         });
@@ -371,17 +382,22 @@ export async function GET() {
     // Add Invoice transactions
     if (recentInvoices) {
       for (const inv of recentInvoices as RecentInvoiceRow[]) {
-        const employeeUser = inv.employees?.users;
+        const employeeContainer = Array.isArray(inv.employees) ? inv.employees[0] : inv.employees;
+        const employeeUserRaw = employeeContainer?.users;
+        const employeeUser = Array.isArray(employeeUserRaw) ? employeeUserRaw[0] : employeeUserRaw;
         const agentName = employeeUser
           ? `${employeeUser.first_name} ${employeeUser.last_name}`
           : "Unknown";
 
-        const locationName = inv.warehouses?.warehouse_name || "Invoice";
+        const warehouse =
+          Array.isArray(inv.warehouses) ? inv.warehouses[0] : inv.warehouses;
+        const locationName = warehouse?.warehouse_name || "Invoice";
+        const customer = Array.isArray(inv.customers) ? inv.customers[0] : inv.customers;
 
         allRecentActivity.push({
           id: inv.id,
           time: new Date(inv.created_at).toLocaleTimeString(),
-          customer: inv.customers ? inv.customers.customer_name : "Unknown Customer",
+          customer: customer ? customer.customer_name : "Unknown Customer",
           amount: Number(inv.total_amount),
           agent: agentName,
           location: locationName,
@@ -422,24 +438,27 @@ export async function GET() {
     // Filter alerts where current stock is below reorder level and sort
     const reorderAlerts = ((reorderAlertsData as ItemWarehouseAlertRow[] | null) || [])
       .filter((alert) => {
-        const currentStock = parseFloat(alert.current_stock) || 0;
-        const reorderLevel = parseFloat(alert.reorder_level) || 0;
+        const currentStock = Number(alert.current_stock) || 0;
+        const reorderLevel = Number(alert.reorder_level) || 0;
         return currentStock < reorderLevel;
       })
       .sort((a, b) => {
-        const aStock = parseFloat(a.current_stock) || 0;
-        const bStock = parseFloat(b.current_stock) || 0;
+        const aStock = Number(a.current_stock) || 0;
+        const bStock = Number(b.current_stock) || 0;
         return aStock - bStock;
       })
       .slice(0, 10)
-      .map((alert) => ({
-        id: alert.item_id,
-        code: alert.items.item_code,
-        name: alert.items.item_name,
-        currentStock: parseFloat(alert.current_stock) || 0,
-        reorderPoint: parseFloat(alert.reorder_level) || 0,
-        warehouseId: alert.warehouse_id,
-      }));
+      .map((alert) => {
+        const item = Array.isArray(alert.items) ? alert.items[0] : alert.items;
+        return {
+          id: alert.item_id,
+          code: item?.item_code || "",
+          name: item?.item_name || "",
+          currentStock: Number(alert.current_stock) || 0,
+          reorderPoint: Number(alert.reorder_level) || 0,
+          warehouseId: alert.warehouse_id,
+        };
+      });
 
     // Get statistics
     const { data: salesOrdersData } = await supabase

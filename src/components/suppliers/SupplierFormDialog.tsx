@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useCreateSupplier, useUpdateSupplier } from "@/hooks/useSuppliers";
 import { supplierFormSchema, type SupplierFormValues } from "@/lib/validations/supplier";
+import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,6 +62,7 @@ const PAYMENT_TERMS = [
 const COUNTRIES = ["Philippines", "USA", "China", "Japan", "Singapore", "Malaysia", "Thailand"];
 
 export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFormDialogProps) {
+  const { user } = useAuthStore();
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
   const [sameAsBilling, setSameAsBilling] = useState(false);
@@ -177,7 +179,15 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
         });
         toast.success("Supplier updated successfully");
       } else {
-        await createSupplier.mutateAsync(values);
+        if (!user?.companyId || !user?.id) {
+          toast.error("User company information not available");
+          return;
+        }
+        await createSupplier.mutateAsync({
+          ...values,
+          companyId: user.companyId,
+          createdBy: user.id,
+        });
         toast.success("Supplier created successfully");
       }
       onOpenChange(false);

@@ -4,7 +4,9 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { Tables } from "@/types/supabase";
 
-type PurchaseReceiptRow = Tables<"purchase_receipts">;
+type PurchaseReceiptRow = Tables<"purchase_receipts"> & {
+  batch_sequence_number?: string | null;
+};
 type PurchaseReceiptItemRow = Tables<"purchase_receipt_items">;
 type PurchaseOrderRow = Tables<"purchase_orders">;
 type SupplierRow = Tables<"suppliers">;

@@ -211,8 +211,18 @@ export default function EndOfDayPage() {
         reason: reason,
       }));
 
+    if (!vanData?.vanWarehouseId) {
+      setAlertState({
+        open: true,
+        title: "Van Warehouse Required",
+        description: "Please select a van warehouse before submitting adjustments.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createAdjustmentMutation.mutate({
-      warehouseId: vanData?.vanWarehouseId,
+      warehouseId: vanData.vanWarehouseId,
       adjustmentType: "physical_count",
       adjustmentDate: format(new Date(), "yyyy-MM-dd"),
       reason: reason,

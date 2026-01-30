@@ -9,9 +9,18 @@ import {
   consumeItemLocationsFIFO,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
+import type {
+  NormalizedStockTransactionItem,
+  StockTransactionItemInput,
+} from "@/types/inventory-normalization";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
+type StockRequestItemRow = {
+  item_id: string;
+  requested_qty: number | string;
+  packaging_id: string | null;
+  uom_id: string | null;
+};
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -91,7 +100,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const destinationBusinessUnitId = stockRequest.destination_warehouse?.business_unit_id || null;
+    const destinationWarehouseRecord = stockRequest.destination_warehouse;
+    const destinationWarehouse = Array.isArray(destinationWarehouseRecord)
+      ? destinationWarehouseRecord[0] ?? null
+      : destinationWarehouseRecord ?? null;
+    const destinationBusinessUnitId = destinationWarehouse?.business_unit_id || null;
 
     if (!destinationBusinessUnitId || destinationBusinessUnitId !== currentBusinessUnitId) {
       return NextResponse.json(
@@ -100,23 +113,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    if (!stockRequest.destination_warehouse?.id) {
+    if (!destinationWarehouse?.id) {
       return NextResponse.json(
         { error: "Destination warehouse is required to deliver this request" },
         { status: 400 }
       );
     }
 
-    const itemsToDeliver: StockTransactionItemInput[] =
-      stockRequest.stock_request_items?.map((item) => ({
-        itemId: item.item_id,
-        packagingId: item.packaging_id ?? null,
-        inputQty: Number(item.requested_qty),
-        unitCost: 0,
-        notes: `Stock request ${stockRequest.request_code} delivered`,
-      })) || [];
+    const requestItems = (stockRequest.stock_request_items as StockRequestItemRow[] | null) || [];
+    const itemsToDeliver: StockTransactionItemInput[] = requestItems.map((item) => ({
+      itemId: item.item_id,
+      packagingId: item.packaging_id ?? null,
+      inputQty: Number(item.requested_qty),
+      unitCost: 0,
+      notes: `Stock request ${stockRequest.request_code} delivered`,
+    }));
 
-    let normalizedItems: StockTransactionItemInput[] = [];
+    let normalizedItems: NormalizedStockTransactionItem[] = [];
     try {
       normalizedItems = await normalizeTransactionItems(userData.company_id, itemsToDeliver);
     } catch (error) {
@@ -132,7 +145,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const defaultFromLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId: userData.company_id,
-      warehouseId: stockRequest.destination_warehouse.id,
+      warehouseId: destinationWarehouse.id,
       userId: user.id,
     });
 
@@ -144,7 +157,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         transaction_code: transactionCode,
         transaction_type: "out",
         transaction_date: now.toISOString().split("T")[0],
-        warehouse_id: stockRequest.destination_warehouse.id,
+        warehouse_id: destinationWarehouse.id,
         from_location_id: defaultFromLocationId,
         reference_type: "stock_request",
         reference_id: stockRequest.id,
@@ -173,7 +186,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .select("id, current_stock, default_location_id")
         .eq("company_id", userData.company_id)
         .eq("item_id", item.itemId)
-        .eq("warehouse_id", stockRequest.destination_warehouse.id)
+        .eq("warehouse_id", destinationWarehouse.id)
         .is("deleted_at", null)
         .maybeSingle();
 
@@ -193,7 +206,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .select("location_id, qty_on_hand")
         .eq("company_id", userData.company_id)
         .eq("item_id", item.itemId)
-        .eq("warehouse_id", stockRequest.destination_warehouse.id)
+        .eq("warehouse_id", destinationWarehouse.id)
         .is("deleted_at", null);
 
       const locationTotal = (locationRows || []).reduce(
@@ -218,7 +231,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         supabase,
         companyId: userData.company_id,
         itemId: item.itemId,
-        warehouseId: stockRequest.destination_warehouse.id,
+        warehouseId: destinationWarehouse.id,
         quantity: item.normalizedQty,
         userId: user.id,
       });
@@ -236,7 +249,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         await supabase.from("item_warehouse").insert({
           company_id: userData.company_id,
           item_id: item.itemId,
-          warehouse_id: stockRequest.destination_warehouse.id,
+          warehouse_id: destinationWarehouse.id,
           current_stock: newBalance,
           default_location_id: defaultFromLocationId,
           created_by: user.id,

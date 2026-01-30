@@ -5,7 +5,6 @@ import type { UnitOfMeasure } from "@/types/uom";
 export const mockUoM: UnitOfMeasure[] = [
   {
     id: "uom-pc",
-    companyId: "company-1",
     code: "PC",
     name: "Pieces",
     symbol: "pcs",
@@ -14,7 +13,6 @@ export const mockUoM: UnitOfMeasure[] = [
   },
   {
     id: "uom-box",
-    companyId: "company-1",
     code: "BOX",
     name: "Box",
     symbol: "box",
@@ -23,7 +21,6 @@ export const mockUoM: UnitOfMeasure[] = [
   },
   {
     id: "uom-license",
-    companyId: "company-1",
     code: "LICENSE",
     name: "License",
     symbol: "lic",
@@ -32,7 +29,6 @@ export const mockUoM: UnitOfMeasure[] = [
   },
   {
     id: "uom-sqm",
-    companyId: "company-1",
     code: "SQM",
     name: "Square Meter",
     symbol: "m²",
@@ -41,7 +37,6 @@ export const mockUoM: UnitOfMeasure[] = [
   },
   {
     id: "uom-m",
-    companyId: "company-1",
     code: "M",
     name: "Meter",
     symbol: "m",
@@ -50,7 +45,6 @@ export const mockUoM: UnitOfMeasure[] = [
   },
   {
     id: "uom-kg",
-    companyId: "company-1",
     code: "KG",
     name: "Kilogram",
     symbol: "kg",

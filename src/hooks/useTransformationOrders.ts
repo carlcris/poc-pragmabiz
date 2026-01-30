@@ -6,7 +6,6 @@ import type {
   CreateTransformationOrderRequest,
   UpdateTransformationOrderRequest,
   ExecuteTransformationOrderRequest,
-  CompleteTransformationOrderRequest,
 } from "@/types/transformation-order";
 
 export const TRANSFORMATION_ORDERS_QUERY_KEY = "transformation-orders";
@@ -165,46 +164,6 @@ export function useExecuteTransformationOrder() {
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, "Failed to execute transformation"));
-    },
-  });
-}
-
-/**
- * Hook to complete transformation order (EXECUTING → COMPLETED)
- * Note: Usually auto-completed during execution
- */
-export function useCompleteTransformationOrder() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: CompleteTransformationOrderRequest }) =>
-      transformationOrdersApi.complete(id, data),
-    onSuccess: (response, variables) => {
-      queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, variables.id] });
-      toast.success(response.message || "Order completed successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to complete transformation order"));
-    },
-  });
-}
-
-/**
- * Hook to close transformation order (COMPLETED → CLOSED)
- */
-export function useCloseTransformationOrder() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => transformationOrdersApi.close(id),
-    onSuccess: (response, id) => {
-      queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY, id] });
-      toast.success(response.message || "Order closed successfully");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to close transformation order"));
     },
   });
 }

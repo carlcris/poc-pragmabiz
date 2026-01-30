@@ -82,7 +82,7 @@ export function useCreatePermission() {
       can_edit?: boolean;
       can_delete?: boolean;
     }) => {
-      const response = await apiClient.post("/api/rbac/permissions", data);
+      const response = await apiClient.post<{ data: Permission }>("/api/rbac/permissions", data);
       return response.data;
     },
     onSuccess: () => {
@@ -112,7 +112,10 @@ export function useUpdatePermission() {
         can_delete?: boolean;
       };
     }) => {
-      const response = await apiClient.put(`/api/rbac/permissions/${permissionId}`, data);
+      const response = await apiClient.put<{ data: Permission }>(
+        `/api/rbac/permissions/${permissionId}`,
+        data
+      );
       return response.data;
     },
     onSuccess: (_, variables) => {
@@ -130,7 +133,9 @@ export function useDeletePermission() {
 
   return useMutation({
     mutationFn: async (permissionId: string) => {
-      const response = await apiClient.delete(`/api/rbac/permissions/${permissionId}`);
+      const response = await apiClient.delete<{ data: Permission }>(
+        `/api/rbac/permissions/${permissionId}`
+      );
       return response.data;
     },
     onSuccess: () => {

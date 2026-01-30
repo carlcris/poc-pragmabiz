@@ -77,7 +77,10 @@ export const analyticsHandlers = [
   }),
 
   // GET /api/analytics/sales/by-employee
-  http.get("/api/analytics/sales/by-employee", () => {
+  http.get("/api/analytics/sales/by-employee", ({ request }) => {
+    const url = new URL(request.url);
+    const startDate = url.searchParams.get("startDate") || "2025-10-01";
+    const endDate = url.searchParams.get("endDate") || "2025-10-31";
     const salesAgents = employees.filter((e) => e.role === "sales_agent");
 
     const employeeData: SalesByEmployee[] = salesAgents.map((employee, index) => {

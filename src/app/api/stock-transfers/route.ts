@@ -27,12 +27,12 @@ type StockTransferRow = {
     id: string;
     warehouse_code: string | null;
     warehouse_name: string | null;
-  } | null;
+  } | { id: string; warehouse_code: string | null; warehouse_name: string | null }[] | null;
   to_warehouse?: {
     id: string;
     warehouse_code: string | null;
     warehouse_name: string | null;
-  } | null;
+  } | { id: string; warehouse_code: string | null; warehouse_name: string | null }[] | null;
   stock_transfer_items?: StockTransferItemRow[] | null;
 };
 
@@ -136,39 +136,48 @@ export async function GET(request: NextRequest) {
 
     // Transform data
     const transformedTransfers =
-      (transfers as StockTransferRow[] | null)?.map((transfer) => ({
-        id: transfer.id,
-        code: transfer.transfer_code,
-        date: transfer.transfer_date,
-        status: transfer.status,
-        notes: transfer.notes,
-        totalItems: transfer.total_items,
-        fromWarehouse: {
-          id: transfer.from_warehouse?.id,
-          code: transfer.from_warehouse?.warehouse_code,
-          name: transfer.from_warehouse?.warehouse_name,
-        },
-        toWarehouse: {
-          id: transfer.to_warehouse?.id,
-          code: transfer.to_warehouse?.warehouse_code,
-          name: transfer.to_warehouse?.warehouse_name,
-        },
-        items:
-          transfer.stock_transfer_items
-            ?.map((item) => ({
-              id: item.id,
-              itemId: item.item_id,
-              code: item.item_code,
-              name: item.item_name,
-              quantity: parseFloat(String(item.quantity)),
-              receivedQuantity: parseFloat(String(item.received_quantity ?? 0)) || 0,
-              packagingId: item.packaging_id,
-              uomId: item.uom_id,
-              uom: item.uom_name,
-              sortOrder: item.sort_order ?? 0,
-            }))
-            .sort((a, b) => a.sortOrder - b.sortOrder) || [],
-      })) || [];
+      (transfers as StockTransferRow[] | null)?.map((transfer) => {
+        const fromWarehouse = Array.isArray(transfer.from_warehouse)
+          ? transfer.from_warehouse[0] ?? null
+          : transfer.from_warehouse ?? null;
+        const toWarehouse = Array.isArray(transfer.to_warehouse)
+          ? transfer.to_warehouse[0] ?? null
+          : transfer.to_warehouse ?? null;
+
+        return {
+          id: transfer.id,
+          code: transfer.transfer_code,
+          date: transfer.transfer_date,
+          status: transfer.status,
+          notes: transfer.notes,
+          totalItems: transfer.total_items,
+          fromWarehouse: {
+            id: fromWarehouse?.id,
+            code: fromWarehouse?.warehouse_code,
+            name: fromWarehouse?.warehouse_name,
+          },
+          toWarehouse: {
+            id: toWarehouse?.id,
+            code: toWarehouse?.warehouse_code,
+            name: toWarehouse?.warehouse_name,
+          },
+          items:
+            transfer.stock_transfer_items
+              ?.map((item) => ({
+                id: item.id,
+                itemId: item.item_id,
+                code: item.item_code,
+                name: item.item_name,
+                quantity: parseFloat(String(item.quantity)),
+                receivedQuantity: parseFloat(String(item.received_quantity ?? 0)) || 0,
+                packagingId: item.packaging_id,
+                uomId: item.uom_id,
+                uom: item.uom_name,
+                sortOrder: item.sort_order ?? 0,
+              }))
+              .sort((a, b) => a.sortOrder - b.sortOrder) || [],
+        };
+      }) || [];
 
     return NextResponse.json({
       data: transformedTransfers,

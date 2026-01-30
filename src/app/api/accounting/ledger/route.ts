@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import type { AccountLedger, LedgerEntry, Account } from "@/types/accounting";
+import type { AccountLedger, LedgerEntry, Account, AccountType } from "@/types/accounting";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
@@ -101,8 +101,10 @@ export async function GET(request: NextRequest) {
     };
 
     type JournalLineRow = {
+      id: string;
       debit: number | string;
       credit: number | string;
+      description?: string | null;
       journal_entries: JournalEntryRow;
     };
 
@@ -149,7 +151,7 @@ export async function GET(request: NextRequest) {
       companyId: accountData.company_id,
       accountNumber: accountData.account_number,
       accountName: accountData.account_name,
-      accountType: accountData.account_type,
+      accountType: accountData.account_type as AccountType,
       parentAccountId: accountData.parent_account_id,
       isSystemAccount: accountData.is_system_account,
       isActive: accountData.is_active,
@@ -277,8 +279,8 @@ export async function GET(request: NextRequest) {
           journalCode: je.journal_code,
           postingDate: je.posting_date,
           accountId: account.id,
-          accountNumber: account.account_number,
-          accountName: account.account_name,
+          accountNumber: account.accountNumber,
+          accountName: account.accountName,
           debit,
           credit,
           balance: runningBalance,

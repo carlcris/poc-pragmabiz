@@ -44,7 +44,8 @@ const createOrderSchema = z.object({
   notes: z.string().optional(),
 });
 
-type CreateOrderFormValues = z.infer<typeof createOrderSchema>;
+type CreateOrderFormValues = z.input<typeof createOrderSchema>;
+type CreateOrderFormOutput = z.output<typeof createOrderSchema>;
 
 export default function NewTransformationOrderPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function NewTransformationOrderPage() {
 
   const { data: warehousesData } = useWarehouses({ limit: 1000 });
 
-  const form = useForm<CreateOrderFormValues>({
+  const form = useForm<CreateOrderFormValues, unknown, CreateOrderFormOutput>({
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
       templateId: "",
@@ -72,7 +73,7 @@ export default function NewTransformationOrderPage() {
     },
   });
 
-  const onSubmit = async (data: CreateOrderFormValues) => {
+  const onSubmit = async (data: CreateOrderFormOutput) => {
     if (!companyId) {
       form.setError("root", {
         type: "manual",
@@ -186,7 +187,20 @@ export default function NewTransformationOrderPage() {
                     <FormItem>
                       <FormLabel>{t.transformation.plannedQuantity} *</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.0001" placeholder="1" {...field} />
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          placeholder="1"
+                          value={
+                            typeof field.value === "number" || typeof field.value === "string"
+                              ? field.value
+                              : ""
+                          }
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

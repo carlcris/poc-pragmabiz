@@ -95,9 +95,14 @@ export const stockTransactionHandlers = [
   // POST /api/stock-transactions
   http.post("/api/stock-transactions", async ({ request }) => {
     const body = (await request.json()) as CreateStockTransactionRequest;
+    const transactionItem = body.items[0];
+
+    if (!transactionItem) {
+      return HttpResponse.json({ error: "No transaction items provided" }, { status: 400 });
+    }
 
     // Find item and warehouse details
-    const item = items.find((i) => i.id === body.itemId);
+    const item = items.find((i) => i.id === transactionItem.itemId);
     const warehouse = warehouses.find((w) => w.id === body.warehouseId);
     const toWarehouse = body.toWarehouseId
       ? warehouses.find((w) => w.id === body.toWarehouseId)
@@ -117,7 +122,7 @@ export const stockTransactionHandlers = [
       let currentBalance = 0;
 
       transactionsData.forEach((txn) => {
-        if (txn.itemId === body.itemId && txn.warehouseId === body.warehouseId) {
+        if (txn.itemId === transactionItem.itemId && txn.warehouseId === body.warehouseId) {
           if (txn.transactionType === "in" || txn.transactionType === "adjustment") {
             currentBalance += txn.quantity;
           } else if (txn.transactionType === "out") {
@@ -130,17 +135,17 @@ export const stockTransactionHandlers = [
         if (
           txn.transactionType === "transfer" &&
           txn.toWarehouseId === body.warehouseId &&
-          txn.itemId === body.itemId
+          txn.itemId === transactionItem.itemId
         ) {
           currentBalance += txn.quantity;
         }
       });
 
       // Check if sufficient stock available
-      if (currentBalance < body.quantity) {
+      if (currentBalance < transactionItem.quantity) {
         return HttpResponse.json(
           {
-            error: `Insufficient stock. Available: ${currentBalance} ${item.uom}, Requested: ${body.quantity} ${item.uom}`,
+            error: `Insufficient stock. Available: ${currentBalance} ${item.uom}, Requested: ${transactionItem.quantity} ${item.uom}`,
           },
           { status: 400 }
         );
@@ -149,14 +154,28 @@ export const stockTransactionHandlers = [
 
     const newTransaction: StockTransaction = {
       id: `st-${Date.now()}`,
-      ...body,
+      companyId: "company-1",
+      transactionDate: body.transactionDate,
+      transactionType: body.transactionType,
+      itemId: transactionItem.itemId,
       itemCode: item.code,
       itemName: item.name,
+      warehouseId: body.warehouseId,
       warehouseCode: warehouse.code,
       warehouseName: warehouse.name,
+      fromLocationId: body.fromLocationId ?? null,
       toWarehouseCode: toWarehouse?.code,
       toWarehouseName: toWarehouse?.name,
+      toWarehouseId: body.toWarehouseId,
+      toLocationId: body.toLocationId ?? null,
+      quantity: transactionItem.quantity,
       uom: item.uom,
+      referenceType: body.referenceType,
+      referenceId: body.referenceId,
+      referenceNumber: body.referenceNumber,
+      reason: body.referenceType || "Manual adjustment",
+      notes: body.notes || "",
+      createdBy: "user-1",
       createdByName: "Current User",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -11,6 +11,12 @@ export default function ReceivingPage() {
   type OrderStatusFilter = PurchaseOrderStatus | "all";
   const [statusFilter, setStatusFilter] = useState<OrderStatusFilter>("approved");
   const [searchQuery, setSearchQuery] = useState("");
+  const statusOptions: Array<{ value: OrderStatusFilter; label: string }> = [
+    { value: "approved", label: "Approved" },
+    { value: "in_transit", label: "In Transit" },
+    { value: "partially_received", label: "Partial" },
+    { value: "all", label: "All" },
+  ];
 
   const { data, isLoading, error } = usePurchaseOrders({
     status: statusFilter !== "all" ? statusFilter : undefined,
@@ -37,12 +43,7 @@ export default function ReceivingPage() {
         <div className="space-y-3">
           {/* Status Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {[
-              { value: "approved", label: "Approved" },
-              { value: "in_transit", label: "In Transit" },
-              { value: "partially_received", label: "Partial" },
-              { value: "all", label: "All" },
-            ].map((status) => (
+            {statusOptions.map((status) => (
               <button
                 key={status.value}
                 onClick={() => setStatusFilter(status.value)}

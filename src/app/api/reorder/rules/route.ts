@@ -2,20 +2,36 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import type { Tables } from "@/types/supabase";
-
-type ReorderRuleRow = Tables<"reorder_rules">;
-type ItemRow = Tables<"items">;
-type WarehouseRow = Tables<"warehouses">;
-type UomRow = Tables<"units_of_measure">;
+type ReorderRuleRow = {
+  id: string;
+  item_id: string;
+  warehouse_id: string;
+  reorder_point: number | string | null;
+  min_qty: number | string | null;
+  max_qty: number | string | null;
+  reorder_qty: number | string | null;
+  lead_time_days: number | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+type ItemRow = { item_code: string | null; item_name: string | null };
+type WarehouseRow = { warehouse_code: string | null; warehouse_name: string | null };
+type UomRow = { code: string | null; name: string | null };
 
 type ReorderRuleWithJoins = ReorderRuleRow & {
   item?:
     | (Pick<ItemRow, "item_code" | "item_name"> & {
-        uom?: Pick<UomRow, "code" | "name"> | null;
+        uom?: Pick<UomRow, "code" | "name"> | Pick<UomRow, "code" | "name">[] | null;
       })
+    | (Pick<ItemRow, "item_code" | "item_name"> & {
+        uom?: Pick<UomRow, "code" | "name"> | Pick<UomRow, "code" | "name">[] | null;
+      })[]
     | null;
-  warehouse?: Pick<WarehouseRow, "warehouse_code" | "warehouse_name"> | null;
+  warehouse?:
+    | Pick<WarehouseRow, "warehouse_code" | "warehouse_name">
+    | Pick<WarehouseRow, "warehouse_code" | "warehouse_name">[]
+    | null;
 };
 
 // GET /api/reorder/rules
@@ -104,24 +120,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response
-    const formattedRules = ((rules as ReorderRuleWithJoins[] | null) || []).map((rule) => ({
-      id: rule.id,
-      itemId: rule.item_id,
-      itemCode: rule.item?.item_code,
-      itemName: rule.item?.item_name,
-      warehouseId: rule.warehouse_id,
-      warehouseCode: rule.warehouse?.warehouse_code,
-      warehouseName: rule.warehouse?.warehouse_name,
-      reorderPoint: Number(rule.reorder_point),
-      minQty: Number(rule.min_qty),
-      maxQty: Number(rule.max_qty),
-      reorderQty: Number(rule.reorder_qty),
-      leadTimeDays: rule.lead_time_days,
-      isActive: rule.is_active,
-      uom: rule.item?.uom?.code || "",
-      createdAt: rule.created_at,
-      updatedAt: rule.updated_at,
-    }));
+    const formattedRules = ((rules as ReorderRuleWithJoins[] | null) || []).map((rule) => {
+      const item = Array.isArray(rule.item) ? rule.item[0] : rule.item;
+      const warehouse = Array.isArray(rule.warehouse) ? rule.warehouse[0] : rule.warehouse;
+      const uomRaw = item?.uom;
+      const uom = Array.isArray(uomRaw) ? uomRaw[0] : uomRaw;
+      return {
+        id: rule.id,
+        itemId: rule.item_id,
+        itemCode: item?.item_code,
+        itemName: item?.item_name,
+        warehouseId: rule.warehouse_id,
+        warehouseCode: warehouse?.warehouse_code,
+        warehouseName: warehouse?.warehouse_name,
+        reorderPoint: Number(rule.reorder_point),
+        minQty: Number(rule.min_qty),
+        maxQty: Number(rule.max_qty),
+        reorderQty: Number(rule.reorder_qty),
+        leadTimeDays: rule.lead_time_days,
+        isActive: rule.is_active,
+        uom: uom?.code || "",
+        createdAt: rule.created_at,
+        updatedAt: rule.updated_at,
+      };
+    });
 
     return NextResponse.json(formattedRules);
   } catch {

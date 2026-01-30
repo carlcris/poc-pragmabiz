@@ -136,6 +136,7 @@ export const invoiceHandlers = [
   // POST /api/invoices
   http.post("/api/invoices", async ({ request }) => {
     const body = (await request.json()) as CreateInvoiceRequest;
+    const { commissionSplits, ...invoicePayload } = body;
 
     const lineItems: InvoiceLineItem[] = body.lineItems.map((item, index) => ({
       id: `invli-${Date.now()}-${index}`,
@@ -145,15 +146,23 @@ export const invoiceHandlers = [
 
     const totals = calculateTotals(lineItems);
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoicesData.length + 1).padStart(3, "0")}`;
+    const mappedCommissionSplits = commissionSplits?.map((split) => ({
+      ...split,
+      employeeName: "Employee",
+      commissionAmount: 0,
+    }));
 
     const newInvoice: Invoice = {
       id: `inv-${Date.now()}`,
       invoiceNumber,
       customerName: "Customer Name",
       customerEmail: "customer@email.com",
-      ...body,
+      ...invoicePayload,
       lineItems,
       ...totals,
+      commissionTotal: 0,
+      commissionSplitCount: mappedCommissionSplits?.length ?? 0,
+      commissionSplits: mappedCommissionSplits,
       amountPaid: 0,
       amountDue: totals.totalAmount,
       status: "draft",

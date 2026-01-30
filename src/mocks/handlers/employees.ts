@@ -99,7 +99,7 @@ export const employeeHandlers = [
       id: `emp-${Date.now()}`,
       companyId: "company-1",
       ...body,
-      employmentStatus: body.employmentStatus || "active",
+      employmentStatus: "active",
       commissionRate: body.commissionRate || 5.0,
       country: body.country || "Philippines",
       isActive: true,

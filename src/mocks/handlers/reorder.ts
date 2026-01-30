@@ -62,7 +62,7 @@ export const reorderHandlers = [
       return HttpResponse.json({ error: "Reorder suggestion not found" }, { status: 404 });
     }
 
-    const updates = await request.json();
+    const updates = (await request.json()) as Partial<(typeof mockReorderSuggestions)[number]>;
     const updated = {
       ...suggestion,
       ...updates,
@@ -146,7 +146,7 @@ export const reorderHandlers = [
 
   // Create Reorder Rule
   http.post(`${BASE_URL}/inventory/reorder-rules`, async ({ request }) => {
-    const data = await request.json();
+    const data = (await request.json()) as Partial<(typeof mockReorderRules)[number]>;
     const newRule = {
       id: `rr-${Date.now()}`,
       companyId: "company-1",
@@ -165,7 +165,7 @@ export const reorderHandlers = [
       return HttpResponse.json({ error: "Reorder rule not found" }, { status: 404 });
     }
 
-    const updates = await request.json();
+    const updates = (await request.json()) as Partial<(typeof mockReorderRules)[number]>;
     const updated = {
       ...rule,
       ...updates,

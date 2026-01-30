@@ -11,7 +11,9 @@ import {
 import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 import type { Tables } from "@/types/supabase";
 
-type PurchaseReceiptRow = Tables<"purchase_receipts">;
+type PurchaseReceiptRow = Tables<"purchase_receipts"> & {
+  batch_sequence_number?: string | null;
+};
 type PurchaseReceiptItemRow = Tables<"purchase_receipt_items">;
 type PurchaseOrderRow = Tables<"purchase_orders">;
 type PurchaseOrderItemRow = Tables<"purchase_order_items">;
@@ -575,10 +577,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const items = receiptData.purchase_receipt_items as Array<{
           quantity_received: number;
           rate: number;
-          packaging?: { qty_per_pack: number } | null;
+          packaging?: { qty_per_pack: number } | { qty_per_pack: number }[] | null;
         }>;
         const totalAmount = items.reduce((sum, item) => {
-          const conversionFactor = item.packaging?.qty_per_pack ?? 1;
+          const packaging = Array.isArray(item.packaging) ? item.packaging[0] : item.packaging;
+          const conversionFactor = packaging?.qty_per_pack ?? 1;
           return sum + Number(item.quantity_received) * conversionFactor * Number(item.rate);
         }, 0);
 

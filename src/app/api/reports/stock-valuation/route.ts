@@ -15,15 +15,23 @@ type ItemWarehouseRow = {
     purchase_price?: number | string | null;
     category?: {
       name: string | null;
-    } | null;
+    } | { name: string | null }[] | null;
     uom?: {
       code: string | null;
-    } | null;
-  } | null;
+    } | { code: string | null }[] | null;
+  } | {
+    item_code: string | null;
+    item_name: string | null;
+    category_id: string | null;
+    cost_price?: number | string | null;
+    purchase_price?: number | string | null;
+    category?: { name: string | null } | { name: string | null }[] | null;
+    uom?: { code: string | null } | { code: string | null }[] | null;
+  }[] | null;
   warehouse?: {
     warehouse_code: string | null;
     warehouse_name: string | null;
-  } | null;
+  } | { warehouse_code: string | null; warehouse_name: string | null }[] | null;
 };
 
 type StockBalance = {
@@ -216,31 +224,35 @@ export async function GET(request: NextRequest) {
 
     const typedInventoryData = (inventoryData || []) as ItemWarehouseRow[];
     for (const entry of typedInventoryData) {
+      const item = Array.isArray(entry.item) ? entry.item[0] : entry.item;
+      const warehouse = Array.isArray(entry.warehouse) ? entry.warehouse[0] : entry.warehouse;
+      const category = Array.isArray(item?.category) ? item?.category[0] : item?.category;
+      const uom = Array.isArray(item?.uom) ? item?.uom[0] : item?.uom;
       const key = `${entry.item_id}_${entry.warehouse_id}`;
 
       if (!balancesMap.has(key)) {
         const currentStock = parseFloat(String(entry.current_stock || 0));
         const fallbackRate = Math.max(
           0,
-          Number(entry.item?.cost_price ?? 0),
-          Number(entry.item?.purchase_price ?? 0)
+          Number(item?.cost_price ?? 0),
+          Number(item?.purchase_price ?? 0)
         );
         const valuationRate = valuationRates.get(key) || fallbackRate;
         const stockValue = currentStock * valuationRate;
 
         balancesMap.set(key, {
           itemId: entry.item_id,
-          itemCode: entry.item?.item_code,
-          itemName: entry.item?.item_name,
-          categoryId: entry.item?.category_id,
-          category: entry.item?.category?.name || "Uncategorized",
+          itemCode: item?.item_code ?? null,
+          itemName: item?.item_name ?? null,
+          categoryId: item?.category_id ?? null,
+          category: category?.name || "Uncategorized",
           warehouseId: entry.warehouse_id,
-          warehouseCode: entry.warehouse?.warehouse_code,
-          warehouseName: entry.warehouse?.warehouse_name,
+          warehouseCode: warehouse?.warehouse_code ?? null,
+          warehouseName: warehouse?.warehouse_name ?? null,
           quantity: currentStock,
           valuationRate: valuationRate,
           stockValue: stockValue,
-          uom: entry.item?.uom?.code || "",
+          uom: uom?.code || "",
         });
       }
     }

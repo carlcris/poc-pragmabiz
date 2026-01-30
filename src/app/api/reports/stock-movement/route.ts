@@ -29,14 +29,21 @@ type StockMovementItem = {
   transaction?: {
     warehouse_id: string | null;
     transaction_type?: string | null;
-  } | null;
+  } | {
+    warehouse_id: string | null;
+    transaction_type?: string | null;
+  }[] | null;
   item?: {
     item_code: string | null;
     item_name: string | null;
     uom?: {
       code: string | null;
-    } | null;
-  } | null;
+    } | { code: string | null }[] | null;
+  } | {
+    item_code: string | null;
+    item_name: string | null;
+    uom?: { code: string | null } | { code: string | null }[] | null;
+  }[] | null;
 };
 
 type PrevTransactionItem = {
@@ -139,7 +146,16 @@ export async function GET(request: NextRequest) {
     // Need to fetch warehouse details separately since we're joining through transaction
     const typedItems = (transactionItems || []) as StockMovementItem[];
     const warehouseIds = [
-      ...new Set(typedItems.map((item) => item.transaction?.warehouse_id).filter(Boolean)),
+      ...new Set(
+        typedItems
+          .map((entry) => {
+            const transaction = Array.isArray(entry.transaction)
+              ? entry.transaction[0]
+              : entry.transaction;
+            return transaction?.warehouse_id;
+          })
+          .filter(Boolean)
+      ),
     ] as string[];
     const { data: warehouses } = await supabase
       .from("warehouses")
@@ -152,15 +168,20 @@ export async function GET(request: NextRequest) {
     const movementMap = new Map<string, StockMovementEntry>();
 
     for (const entry of typedItems) {
-      const warehouseId = entry.transaction?.warehouse_id;
-      const transactionType = entry.transaction?.transaction_type;
+      const transaction = Array.isArray(entry.transaction)
+        ? entry.transaction[0]
+        : entry.transaction;
+      const item = Array.isArray(entry.item) ? entry.item[0] : entry.item;
+      const uom = Array.isArray(item?.uom) ? item?.uom[0] : item?.uom;
+      const warehouseId = transaction?.warehouse_id;
+      const transactionType = transaction?.transaction_type;
 
       let key: string;
 
       if (groupBy === "item") {
         key = entry.item_id;
       } else if (groupBy === "warehouse") {
-        key = warehouseId;
+        key = warehouseId ?? "unknown";
       } else {
         // item-warehouse
         key = `${entry.item_id}_${warehouseId}`;
@@ -170,12 +191,12 @@ export async function GET(request: NextRequest) {
         const warehouse = warehouseMap.get(warehouseId);
         movementMap.set(key, {
           itemId: entry.item_id,
-          itemCode: entry.item?.item_code,
-          itemName: entry.item?.item_name,
-          warehouseId: warehouseId,
-          warehouseCode: warehouse?.warehouse_code,
-          warehouseName: warehouse?.warehouse_name,
-          uom: entry.item?.uom?.code || "",
+          itemCode: item?.item_code ?? null,
+          itemName: item?.item_name ?? null,
+          warehouseId: warehouseId ?? null,
+          warehouseCode: warehouse?.warehouse_code ?? null,
+          warehouseName: warehouse?.warehouse_name ?? null,
+          uom: uom?.code || "",
           totalIn: 0,
           totalOut: 0,
           netMovement: 0,

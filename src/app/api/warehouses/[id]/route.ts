@@ -3,9 +3,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { Warehouse, UpdateWarehouseRequest } from "@/types/warehouse";
-import type { Database } from "@/types/database.types";
-
-type DbWarehouse = Database["public"]["Tables"]["warehouses"]["Row"];
+type DbWarehouse = {
+  id: string;
+  company_id: string;
+  warehouse_code: string;
+  warehouse_name: string;
+  address_line1: string | null;
+  address_line2: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string | null;
+  contact_person: string | null;
+  is_active: boolean | null;
+  is_van: boolean | null;
+  created_at: string;
+  updated_at: string | null;
+};
 type WarehouseUpdate = Partial<DbWarehouse> & { updated_by: string };
 
 // Transform database warehouse to frontend Warehouse type
@@ -26,8 +42,9 @@ function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
     email: dbWarehouse.email || "",
     managerName: dbWarehouse.contact_person || undefined,
     isActive: dbWarehouse.is_active ?? true,
+    isVan: dbWarehouse.is_van ?? false,
     createdAt: dbWarehouse.created_at,
-    updatedAt: dbWarehouse.updated_at,
+    updatedAt: dbWarehouse.updated_at || dbWarehouse.created_at,
   };
 }
 
