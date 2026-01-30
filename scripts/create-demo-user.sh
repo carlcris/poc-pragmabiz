@@ -6,8 +6,13 @@
 echo "Creating demo user..."
 
 # Get Supabase credentials
-SUPABASE_URL="http://127.0.0.1:54321"
-ANON_KEY="sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH"
+SUPABASE_URL="${SUPABASE_URL:-http://127.0.0.1:54321}"
+ANON_KEY="${SUPABASE_ANON_KEY:-}"
+
+if [ -z "$ANON_KEY" ]; then
+  echo "❌ SUPABASE_ANON_KEY is not set"
+  exit 1
+fi
 
 # Create auth user
 RESPONSE=$(curl -s -X POST "${SUPABASE_URL}/auth/v1/signup" \
