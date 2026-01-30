@@ -249,11 +249,11 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-600">Username or email</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-600">Email</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="johnsmith007"
+                          placeholder="Enter a valid email address"
                           {...field}
                           disabled={isLoading}
                           className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white px-4 text-base text-gray-800 placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus-visible:ring-2 focus-visible:ring-purple-500/20"

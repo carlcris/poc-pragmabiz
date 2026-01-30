@@ -8,6 +8,7 @@ import type {
   UpdateUserPreferencesRequest,
 } from "@/types/user-preferences";
 import { FONT_SIZE_MAP } from "@/types/user-preferences";
+import { useAuthStore } from "@/stores/authStore";
 
 type UserPreferencesContextType = {
   preferences: UserPreferences | null;
@@ -23,6 +24,7 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
   const [preferences, setPreferences] = useState<UserPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   // Apply font size to document
   const applyFontSize = useCallback((fontSize: FontSize) => {
@@ -50,9 +52,13 @@ export function UserPreferencesProvider({ children }: { children: React.ReactNod
 
   // Load preferences on mount
   useEffect(() => {
-    loadPreferences();
     setMounted(true);
-  }, [loadPreferences]);
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+    loadPreferences();
+  }, [isAuthenticated, loadPreferences]);
 
   // Update preferences on the server
   const updatePreferences = useCallback(
