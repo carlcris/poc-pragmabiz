@@ -102,9 +102,9 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                 />
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
                 <Tooltip
-                  formatter={(value: number, name: string) => {
-                    if (name === "Transactions") return value;
-                    return formatCurrency(value);
+                  formatter={(value, name) => {
+                    if (name === "Transactions") return value ?? 0;
+                    return formatCurrency(typeof value === "number" ? value : 0);
                   }}
                   contentStyle={{ borderRadius: "8px" }}
                 />

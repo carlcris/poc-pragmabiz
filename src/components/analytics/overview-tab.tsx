@@ -147,7 +147,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                   tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip
-                  formatter={(value: number) => formatCurrency(value)}
+                  formatter={(value) => formatCurrency(typeof value === "number" ? value : 0)}
                   contentStyle={{ borderRadius: "8px" }}
                 />
                 <Legend />
@@ -209,7 +209,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                     tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(typeof value === "number" ? value : 0)}
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />
@@ -262,7 +262,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(typeof value === "number" ? value : 0)}
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />

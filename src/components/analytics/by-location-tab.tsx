@@ -123,9 +123,9 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                     tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    formatter={(value: number, name: string) => {
-                      if (name === "transactions" || name === "customers") return value;
-                      return formatCurrency(value);
+                    formatter={(value, name) => {
+                      if (name === "transactions" || name === "customers") return value ?? 0;
+                      return formatCurrency(typeof value === "number" ? value : 0);
                     }}
                     contentStyle={{ borderRadius: "8px" }}
                   />
@@ -173,7 +173,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(typeof value === "number" ? value : 0)}
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />

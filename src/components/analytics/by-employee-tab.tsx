@@ -142,9 +142,9 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                     tickFormatter={(value) => `₱${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
-                    formatter={(value: number, name: string) => {
-                      if (name === "transactions") return value;
-                      return formatCurrency(value);
+                    formatter={(value, name) => {
+                      if (name === "transactions") return value ?? 0;
+                      return formatCurrency(typeof value === "number" ? value : 0);
                     }}
                     contentStyle={{ borderRadius: "8px" }}
                   />
@@ -198,7 +198,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value) => formatCurrency(typeof value === "number" ? value : 0)}
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />
