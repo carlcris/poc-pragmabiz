@@ -12,9 +12,12 @@ export interface Item {
   uomId: string;
   category: string;
   standardCost: number;
+  purchasePrice?: number;
   listPrice: number;
   reorderLevel: number;
   reorderQty: number;
+  inTransit?: number;
+  estimatedArrivalDate?: string | null;
   imageUrl?: string;
   isActive: boolean;
   createdAt: string;
@@ -31,6 +34,7 @@ export interface CreateItemRequest {
   uom: string;
   category: string;
   standardCost: number;
+  purchasePrice?: number;
   listPrice: number;
   reorderLevel: number;
   reorderQty: number;
@@ -46,6 +50,7 @@ export interface UpdateItemRequest {
   uom?: string;
   category?: string;
   standardCost?: number;
+  purchasePrice?: number;
   listPrice?: number;
   reorderLevel?: number;
   reorderQty?: number;

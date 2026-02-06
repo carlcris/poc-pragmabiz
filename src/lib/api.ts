@@ -46,6 +46,7 @@ export class ApiClient {
     const response = await fetch(url, {
       method: "GET",
       headers: this.getHeaders(),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -64,6 +65,7 @@ export class ApiClient {
       method: "POST",
       headers: this.getHeaders(),
       body: JSON.stringify(data),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -80,6 +82,7 @@ export class ApiClient {
       method: "PUT",
       headers: this.getHeaders(),
       body: JSON.stringify(data),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -95,6 +98,7 @@ export class ApiClient {
       method: "PATCH",
       headers: this.getHeaders(),
       body: JSON.stringify(data),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -109,6 +113,7 @@ export class ApiClient {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: "DELETE",
       headers: this.getHeaders(),
+      credentials: "include",
     });
 
     if (!response.ok) {

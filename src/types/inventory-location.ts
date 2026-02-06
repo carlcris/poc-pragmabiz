@@ -11,6 +11,8 @@ export type ItemLocation = {
   qtyOnHand: number;
   qtyReserved: number;
   qtyAvailable: number;
+  inTransit?: number;
+  estimatedArrivalDate?: string | null;
   isDefault?: boolean;
   defaultLocationId?: string | null;
 };

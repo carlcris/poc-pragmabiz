@@ -14,12 +14,11 @@ type PickListQueueRow = {
 
 type IncomingDeliveriesQueueRow = {
   id: string;
-  order_code: string;
-  expected_delivery_date: string;
-  priority: Priority;
+  ll_number: string;
+  estimated_arrival_date: string | null;
   status: string;
   suppliers?: { supplier_name?: string | null } | null;
-  purchase_order_items?: Array<{ id: string }> | null;
+  load_list_items?: Array<{ id: string }> | null;
 };
 
 type StockRequestsQueueRow = {
@@ -89,12 +88,12 @@ export async function GET() {
       stockRequestsQueueResult,
       stockMovementsResult,
     ] = await Promise.all([
-      // Summary: Incoming deliveries (pending receipts)
+      // Summary: Incoming deliveries (load lists in transit/receiving)
       supabase
-        .from("purchase_orders")
+        .from("load_lists")
         .select("id", { count: "exact", head: true })
-        .in("business_unit_id", scopedBUIds)
-        .in("status", ["approved", "in_transit", "partially_received"])
+        .in("business_unit_id", accessibleBUIds)
+        .in("status", ["in_transit", "receiving"])
         .is("deleted_at", null),
 
       // Summary: Pending stock requests
@@ -162,25 +161,23 @@ export async function GET() {
         .order("required_date", { ascending: true })
         .limit(12),
 
-      // Incoming deliveries queue
+      // Incoming deliveries queue (load lists)
       supabase
-        .from("purchase_orders")
+        .from("load_lists")
         .select(
           `
           id,
-          order_code,
-          expected_delivery_date,
-          priority,
+          ll_number,
+          estimated_arrival_date,
           status,
           suppliers(supplier_name),
-          purchase_order_items(id)
+          load_list_items(id)
         `
         )
-        .in("business_unit_id", scopedBUIds)
-        .in("status", ["approved", "in_transit", "partially_received"])
+        .in("business_unit_id", accessibleBUIds)
+        .in("status", ["in_transit", "receiving"])
         .is("deleted_at", null)
-        .order("priority", { ascending: false })
-        .order("expected_delivery_date", { ascending: true })
+        .order("estimated_arrival_date", { ascending: true })
         .limit(12),
 
       // Stock requests queue
@@ -348,12 +345,12 @@ export async function GET() {
         })),
         incoming_deliveries: incomingDeliveriesQueue.map((item) => ({
           id: item.id,
-          order_code: item.order_code,
+          order_code: item.ll_number,
           supplier: item.suppliers?.supplier_name || "Unknown",
-          eta: item.expected_delivery_date,
+          eta: item.estimated_arrival_date || "",
           status: item.status,
-          priority: item.priority,
-          lines: item.purchase_order_items?.length || 0,
+          priority: "normal",
+          lines: item.load_list_items?.length || 0,
         })),
         stock_requests: stockRequestsQueue.map((item) => ({
           id: item.id,

@@ -72,7 +72,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -119,8 +119,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
 
+    let inTransit = 0;
+    let estimatedArrivalDate: string | null = null;
+
+    let inventoryQuery = supabase
+      .from("item_warehouse")
+      .select("in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)")
+      .eq("item_id", id)
+      .eq("company_id", data.company_id)
+      .is("deleted_at", null);
+
+    if (currentBusinessUnitId) {
+      inventoryQuery = inventoryQuery.eq("warehouses.business_unit_id", currentBusinessUnitId);
+    }
+
+    const { data: inventoryRows } = await inventoryQuery;
+    if (inventoryRows && inventoryRows.length > 0) {
+      for (const row of inventoryRows as { in_transit: number | string | null; estimated_arrival_date: string | null }[]) {
+        inTransit += Number(row.in_transit || 0);
+        if (row.estimated_arrival_date) {
+          if (!estimatedArrivalDate || row.estimated_arrival_date < estimatedArrivalDate) {
+            estimatedArrivalDate = row.estimated_arrival_date;
+          }
+        }
+      }
+    }
+
     // Transform and return
-    const item = transformDbItem(data as ItemRow);
+    const item = {
+      ...transformDbItem(data as ItemRow),
+      inTransit,
+      estimatedArrivalDate,
+    };
     return NextResponse.json({ data: item });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

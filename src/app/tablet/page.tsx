@@ -3,15 +3,14 @@
 import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { PackageOpen, PackagePlus, AlertCircle, BarChart3 } from "lucide-react";
 import Link from "next/link";
-import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
+import { useLoadLists } from "@/hooks/useLoadLists";
 import { useStockRequests } from "@/hooks/useStockRequests";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
-import type { PurchaseOrderStatus } from "@/types/purchase-order";
+import type { LoadListStatus } from "@/types/load-list";
 
 export default function TabletDashboardPage() {
-  const { data: purchaseOrdersData, isLoading } = usePurchaseOrders({
-    status: "all",
+  const { data: loadListsData, isLoading } = useLoadLists({
     page: 1,
     limit: 1000,
   });
@@ -23,10 +22,10 @@ export default function TabletDashboardPage() {
     limit: 1000,
   });
 
-  const receivingStatuses: PurchaseOrderStatus[] = ["approved", "in_transit", "partially_received"];
+  const receivingStatuses: LoadListStatus[] = ["in_transit", "receiving"];
 
   const pendingReceiptsCount =
-    purchaseOrdersData?.data?.filter((order) => receivingStatuses.includes(order.status)).length ||
+    loadListsData?.data?.filter((loadList) => receivingStatuses.includes(loadList.status)).length ||
     0;
 
   const pendingReceiptsLabel = isLoading ? "--" : pendingReceiptsCount.toString();
@@ -96,7 +95,7 @@ export default function TabletDashboardPage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900">Receiving</h3>
-                <p className="text-sm text-gray-500">Receive incoming purchase orders</p>
+                <p className="text-sm text-gray-500">Receive incoming Shipments</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
                 <span className="text-lg font-bold text-gray-700">{pendingReceiptsLabel}</span>

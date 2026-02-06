@@ -78,4 +78,17 @@
     @apply bg-background text-foreground;
     font-size: var(--app-font-size);
   }
+
+  /* Fix date input calendar icon alignment */
+  input[type="date"] {
+    position: relative;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+  }
 }

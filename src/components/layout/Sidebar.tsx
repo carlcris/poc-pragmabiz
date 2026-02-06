@@ -87,6 +87,26 @@ const menuItems = [
         resource: RESOURCES.SUPPLIERS as Resource,
       },
       {
+        title: "Stock Requisitions",
+        href: "/purchasing/stock-requisitions",
+        resource: RESOURCES.STOCK_REQUISITIONS as Resource,
+      },
+      {
+        title: "Load Lists",
+        href: "/purchasing/load-lists",
+        resource: RESOURCES.LOAD_LISTS as Resource,
+      },
+      {
+        title: "Goods Receipt Notes",
+        href: "/purchasing/grns",
+        resource: RESOURCES.GOODS_RECEIPT_NOTES as Resource,
+      },
+      {
+        title: "Putaway Station",
+        href: "/purchasing/grns/putaway",
+        resource: RESOURCES.GOODS_RECEIPT_NOTES as Resource,
+      },
+      {
         title: "Purchase Orders",
         href: "/purchasing/orders",
         resource: RESOURCES.PURCHASE_ORDERS as Resource,

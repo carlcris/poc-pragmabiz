@@ -32,9 +32,9 @@ export default function WarehouseDashboardPage() {
   return (
     <div className="container mx-auto space-y-6 p-4 md:p-6">
       {/* Page Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Warehouse Dashboard</h1>
-        <p className="text-muted-foreground">Monitor operations and inventory status</p>
+      <div className="border-b border-gray-200 pb-5">
+        <h1 className="text-3xl font-bold text-gray-900">Warehouse Dashboard</h1>
+        <p className="mt-2 text-sm text-gray-600">Monitor operations and inventory status</p>
       </div>
 
       {/* Summary Cards - 3 columns */}

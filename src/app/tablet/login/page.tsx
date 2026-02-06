@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { User, Lock, Loader2, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
 
 export default function TabletLoginPage() {
@@ -16,6 +16,7 @@ export default function TabletLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const { login } = useAuthStore();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,19 +24,7 @@ export default function TabletLoginPage() {
     setIsLoading(true);
 
     try {
-      // Sign in with Supabase
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) {
-        throw new Error(signInError.message);
-      }
-
-      if (!data.user) {
-        throw new Error("Login failed");
-      }
+      await login({ email, password });
 
       // Redirect to tablet dashboard
       router.push("/tablet");

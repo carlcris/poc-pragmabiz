@@ -47,6 +47,9 @@ export const RESOURCES = {
   SUPPLIERS: "suppliers",
   PURCHASE_ORDERS: "purchase_orders",
   PURCHASE_RECEIPTS: "purchase_receipts",
+  STOCK_REQUISITIONS: "stock_requisitions",
+  LOAD_LISTS: "load_lists",
+  GOODS_RECEIPT_NOTES: "goods_receipt_notes",
 
   // ============================================================================
   // ACCOUNTING & FINANCE
@@ -246,6 +249,24 @@ export const RESOURCE_METADATA: ResourceMetadata[] = [
     key: RESOURCES.PURCHASE_RECEIPTS,
     name: "Purchase Receipts",
     description: "Receive and manage goods receipts",
+    category: "Purchasing",
+  },
+  {
+    key: RESOURCES.STOCK_REQUISITIONS,
+    name: "Stock Requisitions",
+    description: "Manage stock requisitions without formal PO",
+    category: "Purchasing",
+  },
+  {
+    key: RESOURCES.LOAD_LISTS,
+    name: "Load Lists",
+    description: "Manage supplier shipments and load lists",
+    category: "Purchasing",
+  },
+  {
+    key: RESOURCES.GOODS_RECEIPT_NOTES,
+    name: "Goods Receipt Notes",
+    description: "Receive and verify goods from suppliers",
     category: "Purchasing",
   },
 

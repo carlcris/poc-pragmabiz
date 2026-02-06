@@ -18,10 +18,13 @@ export interface ItemWithStock {
   reorderPoint: number;
   onPO: number;
   onSO: number;
+  inTransit: number;
+  estimatedArrivalDate?: string | null;
   status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
   uom: string;
   uomId: string;
   standardCost: number;
+  purchasePrice?: number;
   listPrice: number;
   itemType: string;
   isActive: boolean;
@@ -83,6 +86,7 @@ export async function GET(request: NextRequest) {
       units_of_measure?: { code: string } | null;
       uom_id: string | null;
       cost_price: number | string | null;
+      purchase_price: number | string | null;
       sales_price: number | string | null;
       item_type: string;
       is_active: boolean | null;
@@ -98,6 +102,8 @@ export async function GET(request: NextRequest) {
       item_id: string;
       current_stock: number | string;
       reorder_level: number | string | null;
+      in_transit: number | string | null;
+      estimated_arrival_date: string | null;
     };
 
     type SalesOrderItemRow = {
@@ -212,7 +218,7 @@ export async function GET(request: NextRequest) {
     let stockQuery = supabase
       .from("item_warehouse")
       .select(
-        "item_id, warehouse_id, current_stock, reorder_level, warehouses!inner(business_unit_id)"
+        "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
       )
       .eq("company_id", userData.company_id)
       .in("item_id", itemIds)
@@ -231,6 +237,8 @@ export async function GET(request: NextRequest) {
     // Calculate On Hand per item (sum current_stock across warehouses)
     const onHandMap = new Map<string, number>();
     const reorderPointMap = new Map<string, number>();
+    const inTransitMap = new Map<string, number>();
+    const estimatedArrivalMap = new Map<string, string | null>();
 
     if (itemWarehouseData) {
       // Sum current_stock across warehouses for each item
@@ -238,6 +246,15 @@ export async function GET(request: NextRequest) {
         const itemId = entry.item_id;
         const currentQty = onHandMap.get(itemId) || 0;
         onHandMap.set(itemId, currentQty + Number(entry.current_stock));
+        const currentInTransit = inTransitMap.get(itemId) || 0;
+        inTransitMap.set(itemId, currentInTransit + Number(entry.in_transit || 0));
+
+        if (entry.estimated_arrival_date) {
+          const existingDate = estimatedArrivalMap.get(itemId);
+          if (!existingDate || entry.estimated_arrival_date < existingDate) {
+            estimatedArrivalMap.set(itemId, entry.estimated_arrival_date);
+          }
+        }
       }
     }
 
@@ -333,6 +350,8 @@ export async function GET(request: NextRequest) {
       const available = onHand - allocated;
       const onPO = onPOMap.get(item.id) || 0;
       const onSO = onSOMap.get(item.id) || 0;
+      const inTransit = inTransitMap.get(item.id) || 0;
+      const estimatedArrivalDate = estimatedArrivalMap.get(item.id) || null;
       // Get reorder level from item_warehouse data (max across warehouses)
       const reorderPoint = reorderPointMap.get(item.id) || 0;
 
@@ -366,10 +385,13 @@ export async function GET(request: NextRequest) {
         reorderPoint,
         onPO,
         onSO,
+        inTransit,
+        estimatedArrivalDate,
         status,
         uom: item.units_of_measure?.code || "",
         uomId: item.uom_id || "",
         standardCost: Number(item.cost_price) || 0,
+        purchasePrice: Number(item.purchase_price) || 0,
         listPrice: Number(item.sales_price) || 0,
         itemType: item.item_type,
         isActive: item.is_active ?? true,

@@ -206,9 +206,9 @@ export default function LoginPage() {
           <div className="space-y-3">
             <h1 className="text-3xl font-bold text-gray-800">Achlers Inventory System</h1>
             <p className="text-base text-gray-600 leading-relaxed">
-              Unleash Your Business Success with Achlers
+              Unified system for managing products and stock movements
               <br />
-              Integrated Inventory Management Platform
+              to ensure accurate inventory visibility across locations
             </p>
           </div>
 
@@ -237,7 +237,7 @@ export default function LoginPage() {
                 priority
               />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800">ACHLERS HUB</h2>
+            <h2 className="text-2xl font-bold text-gray-800">ACHLERS INTEGRATED</h2>
           </div>
 
           {/* Form Card */}
@@ -327,7 +327,7 @@ export default function LoginPage() {
             </Form>
 
             {/* Powered by */}
-            <div className="mt-8 flex flex-col items-center gap-4">
+            <div className="mt-8 flex flex-col items-center gap-2">
               <div className="text-center">
                 <span className="text-xs text-gray-400 uppercase tracking-wide">Powered by</span>
               </div>
@@ -335,9 +335,9 @@ export default function LoginPage() {
                 <Image
                   src="/pragmatica.jpeg"
                   alt="Pragmatica"
-                  width={200}
-                  height={60}
-                  className="h-14 w-auto object-contain opacity-70"
+                  width={260}
+                  height={80}
+                  className="h-[80px] w-auto object-contain opacity-70"
                 />
               </div>
             </div>

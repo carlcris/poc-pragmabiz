@@ -14,6 +14,7 @@ type DbItem = {
   item_type: string;
   uom_id: string;
   cost_price: number | string | null;
+  purchase_price: number | string | null;
   sales_price: number | string | null;
   image_url: string | null;
   is_active: boolean | null;
@@ -55,6 +56,7 @@ function transformDbItem(dbItem: ItemRow): Item {
     uomId: dbItem.uom_id, // Added uomId field
     category: category?.name || "",
     standardCost: Number(dbItem.cost_price) || 0,
+    purchasePrice: Number(dbItem.purchase_price) || 0,
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0, // Will come from item_warehouse table
     reorderQty: 0, // Will come from item_warehouse table

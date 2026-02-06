@@ -131,7 +131,7 @@ type IncomingDeliveryCardProps = {
 
 const IncomingDeliveryCard = ({ item }: IncomingDeliveryCardProps) => (
   <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
-    <Link href={`/purchase-orders/${item.id}`} className="flex-1">
+    <Link href={`/purchasing/load-lists/${item.id}`} className="flex-1">
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <p className="font-semibold">{item.order_code}</p>
@@ -143,7 +143,7 @@ const IncomingDeliveryCard = ({ item }: IncomingDeliveryCardProps) => (
           <span>•</span>
           <span>{item.lines} items</span>
           <span>•</span>
-          <span>ETA: {new Date(item.eta).toLocaleDateString()}</span>
+          <span>ETA: {item.eta ? new Date(item.eta).toLocaleDateString() : "--"}</span>
         </div>
       </div>
     </Link>

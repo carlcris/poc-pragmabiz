@@ -533,8 +533,8 @@ function ItemsPageContent() {
               No items found. Create your first item to get started.
             </div>
           ) : (
-            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
-              <Table containerClassName="overflow-visible">
+            <div className="h-full overflow-auto overscroll-contain rounded-md border">
+              <Table containerClassName="min-w-[1100px] overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
                     <TableHead className="w-[80px]">Image</TableHead>
@@ -577,7 +577,7 @@ function ItemsPageContent() {
                       <TableCell className="text-primary">
                         <div className="font-medium hover:underline">{item.name}</div>
                         {item.chineseName ? (
-                          <div className="text-xs text-muted-foreground">{item.chineseName}</div>
+                          <div className="font-medium text-muted-foreground">{item.chineseName}</div>
                         ) : null}
                       </TableCell>
                       <TableCell>{item.category}</TableCell>

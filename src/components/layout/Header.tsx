@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { CurrencySwitcher } from "@/components/shared/CurrencySwitcher";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationsMenu } from "@/components/notifications/NotificationsMenu";
 import { LogOut, User, Settings, KeyRound } from "lucide-react";
 import {
   DropdownMenu,
@@ -42,6 +43,7 @@ export function Header() {
       <div className="flex items-center gap-4">
         <LanguageSwitcher />
         <CurrencySwitcher />
+        <NotificationsMenu />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

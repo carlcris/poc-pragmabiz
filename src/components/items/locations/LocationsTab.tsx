@@ -201,6 +201,8 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                   <TableHead className="text-right">On Hand</TableHead>
                   <TableHead className="text-right">Reserved</TableHead>
                   <TableHead className="text-right">Available</TableHead>
+                  <TableHead className="text-right">In Transit</TableHead>
+                  <TableHead>Est Arrival</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -226,6 +228,14 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                     <TableCell className="text-right">{formatQty(location.qtyOnHand)}</TableCell>
                     <TableCell className="text-right">{formatQty(location.qtyReserved)}</TableCell>
                     <TableCell className="text-right">{formatQty(location.qtyAvailable)}</TableCell>
+                    <TableCell className="text-right">
+                      {formatQty(location.inTransit || 0)}
+                    </TableCell>
+                    <TableCell>
+                      {location.estimatedArrivalDate
+                        ? new Date(location.estimatedArrivalDate).toLocaleDateString()
+                        : "--"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
