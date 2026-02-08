@@ -13,7 +13,7 @@ export const useWarehouseDashboard = () => {
 
       return response.json();
     },
-    staleTime: 0, // Always fetch fresh data
+    staleTime: 30 * 1000, // Match polling window to avoid immediate focus-triggered refetches
     refetchInterval: 30000, // Auto-refresh every 30 seconds
     refetchOnWindowFocus: true, // Refresh when user returns to tab
     retry: 2, // Retry failed requests twice

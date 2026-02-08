@@ -23,13 +23,38 @@ type PackagingSummary = Pick<ItemPackagingRow, "id" | "pack_name" | "qty_per_pac
 type UnitSummary = Pick<UnitRow, "id" | "code" | "name">;
 
 type PurchaseOrderItemQueryRow = PurchaseOrderItemRow & {
-  item?: ItemSummary | null;
-  packaging?: PackagingSummary | null;
-  uom?: UnitSummary | null;
+  item?: ItemSummary | ItemSummary[] | null;
+  packaging?: PackagingSummary | PackagingSummary[] | null;
+  uom?: UnitSummary | UnitSummary[] | null;
 };
 
-type PurchaseOrderQueryRow = PurchaseOrderRow & {
-  supplier?: SupplierSummary | null;
+type PurchaseOrderQueryRow = Pick<
+  PurchaseOrderRow,
+  | "id"
+  | "company_id"
+  | "order_code"
+  | "supplier_id"
+  | "order_date"
+  | "expected_delivery_date"
+  | "delivery_address_line1"
+  | "delivery_address_line2"
+  | "delivery_city"
+  | "delivery_state"
+  | "delivery_country"
+  | "delivery_postal_code"
+  | "subtotal"
+  | "discount_amount"
+  | "tax_amount"
+  | "total_amount"
+  | "status"
+  | "notes"
+  | "approved_by"
+  | "approved_at"
+  | "created_by"
+  | "created_at"
+  | "updated_at"
+> & {
+  supplier?: SupplierSummary | SupplierSummary[] | null;
   items?: PurchaseOrderItemQueryRow[] | null;
 };
 
@@ -69,7 +94,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .from("purchase_orders")
       .select(
         `
-        *,
+        id,
+        company_id,
+        order_code,
+        supplier_id,
+        order_date,
+        expected_delivery_date,
+        delivery_address_line1,
+        delivery_address_line2,
+        delivery_city,
+        delivery_state,
+        delivery_country,
+        delivery_postal_code,
+        subtotal,
+        discount_amount,
+        tax_amount,
+        total_amount,
+        status,
+        notes,
+        approved_by,
+        approved_at,
+        created_by,
+        created_at,
+        updated_at,
         supplier:suppliers!purchase_orders_supplier_id_fkey(id, supplier_code, supplier_name, email, phone, contact_person),
         items:purchase_order_items(
           id,
@@ -97,6 +144,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Purchase order not found" }, { status: 404 });
     }
     const purchaseOrder = purchaseOrderData as PurchaseOrderQueryRow;
+    const supplier = Array.isArray(purchaseOrder.supplier)
+      ? purchaseOrder.supplier[0]
+      : purchaseOrder.supplier ?? null;
 
     // Format response
     const formattedOrder = {
@@ -104,14 +154,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       companyId: purchaseOrder.company_id,
       orderCode: purchaseOrder.order_code,
       supplierId: purchaseOrder.supplier_id,
-      supplier: purchaseOrder.supplier
+      supplier: supplier
         ? {
-            id: purchaseOrder.supplier.id,
-            code: purchaseOrder.supplier.supplier_code,
-            name: purchaseOrder.supplier.supplier_name,
-            email: purchaseOrder.supplier.email,
-            phone: purchaseOrder.supplier.phone,
-            contactPerson: purchaseOrder.supplier.contact_person,
+            id: supplier.id,
+            code: supplier.supplier_code,
+            name: supplier.supplier_name,
+            email: supplier.email,
+            phone: supplier.phone,
+            contactPerson: supplier.contact_person,
           }
         : null,
       orderDate: purchaseOrder.order_date,
@@ -130,40 +180,48 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       notes: purchaseOrder.notes,
       approvedBy: purchaseOrder.approved_by,
       approvedAt: purchaseOrder.approved_at,
-      items: purchaseOrder.items?.map((item) => ({
-        id: item.id,
-        itemId: item.item_id,
-        item: item.item
-          ? {
-              id: item.item.id,
-              code: item.item.item_code,
-              name: item.item.item_name,
-            }
-          : null,
-        quantity: Number(item.quantity),
-        packagingId: item.packaging_id,
-        packagingName: item.packaging?.pack_name,
-        packaging: item.packaging
-          ? {
-              id: item.packaging.id,
-              name: item.packaging.pack_name,
-              qtyPerPack: item.packaging.qty_per_pack,
-            }
-          : undefined,
-        uomId: item.uom_id,
-        uom: item.uom
-          ? {
-              id: item.uom.id,
-              code: item.uom.code,
-              name: item.uom.name,
-            }
-          : null,
-        rate: Number(item.rate),
-        discountPercent: Number(item.discount_percent || 0),
-        taxPercent: Number(item.tax_percent || 0),
-        lineTotal: Number(item.line_total),
-        quantityReceived: Number(item.quantity_received || 0),
-      })),
+      items: purchaseOrder.items?.map((item) => {
+        const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
+        const packaging = Array.isArray(item.packaging)
+          ? item.packaging[0]
+          : item.packaging ?? null;
+        const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
+
+        return {
+          id: item.id,
+          itemId: item.item_id,
+          item: itemDetails
+            ? {
+                id: itemDetails.id,
+                code: itemDetails.item_code,
+                name: itemDetails.item_name,
+              }
+            : null,
+          quantity: Number(item.quantity),
+          packagingId: item.packaging_id,
+          packagingName: packaging?.pack_name,
+          packaging: packaging
+            ? {
+                id: packaging.id,
+                name: packaging.pack_name,
+                qtyPerPack: packaging.qty_per_pack,
+              }
+            : undefined,
+          uomId: item.uom_id,
+          uom: uom
+            ? {
+                id: uom.id,
+                code: uom.code,
+                name: uom.name,
+              }
+            : null,
+          rate: Number(item.rate),
+          discountPercent: Number(item.discount_percent || 0),
+          taxPercent: Number(item.tax_percent || 0),
+          lineTotal: Number(item.line_total),
+          quantityReceived: Number(item.quantity_received || 0),
+        };
+      }),
       createdBy: purchaseOrder.created_by,
       createdAt: purchaseOrder.created_at,
       updatedAt: purchaseOrder.updated_at,

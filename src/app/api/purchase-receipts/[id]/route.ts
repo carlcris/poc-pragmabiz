@@ -24,15 +24,49 @@ type ItemPackagingRow = Tables<"item_packaging">;
 type UnitRow = Tables<"units_of_measure">;
 
 type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
-  item?: Pick<ItemRow, "id" | "item_code" | "item_name"> | null;
-  uom?: Pick<UnitRow, "id" | "code" | "name"> | null;
-  packaging?: Pick<ItemPackagingRow, "id" | "pack_name" | "qty_per_pack"> | null;
+  item?: Pick<ItemRow, "id" | "item_code" | "item_name"> | Pick<
+    ItemRow,
+    "id" | "item_code" | "item_name"
+  >[] | null;
+  uom?: Pick<UnitRow, "id" | "code" | "name"> | Pick<UnitRow, "id" | "code" | "name">[] | null;
+  packaging?: Pick<ItemPackagingRow, "id" | "pack_name" | "qty_per_pack"> | Pick<
+    ItemPackagingRow,
+    "id" | "pack_name" | "qty_per_pack"
+  >[] | null;
 };
 
-type PurchaseReceiptQueryRow = PurchaseReceiptRow & {
-  purchase_order?: Pick<PurchaseOrderRow, "id" | "order_code"> | null;
-  supplier?: Pick<SupplierRow, "id" | "supplier_code" | "supplier_name"> | null;
-  warehouse?: Pick<WarehouseRow, "id" | "warehouse_code" | "warehouse_name"> | null;
+type PurchaseReceiptQueryRow = Pick<
+  PurchaseReceiptRow,
+  | "id"
+  | "company_id"
+  | "receipt_code"
+  | "purchase_order_id"
+  | "supplier_id"
+  | "warehouse_id"
+  | "receipt_date"
+  | "batch_sequence_number"
+  | "supplier_invoice_number"
+  | "supplier_invoice_date"
+  | "status"
+  | "notes"
+  | "created_at"
+  | "created_by"
+  | "updated_at"
+  | "updated_by"
+  | "version"
+> & {
+  purchase_order?:
+    | Pick<PurchaseOrderRow, "id" | "order_code">
+    | Pick<PurchaseOrderRow, "id" | "order_code">[]
+    | null;
+  supplier?:
+    | Pick<SupplierRow, "id" | "supplier_code" | "supplier_name">
+    | Pick<SupplierRow, "id" | "supplier_code" | "supplier_name">[]
+    | null;
+  warehouse?:
+    | Pick<WarehouseRow, "id" | "warehouse_code" | "warehouse_name">
+    | Pick<WarehouseRow, "id" | "warehouse_code" | "warehouse_name">[]
+    | null;
   items?: PurchaseReceiptItemQueryRow[] | null;
 };
 
@@ -97,7 +131,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .from("purchase_receipts")
       .select(
         `
-        *,
+        id,
+        company_id,
+        receipt_code,
+        purchase_order_id,
+        supplier_id,
+        warehouse_id,
+        receipt_date,
+        batch_sequence_number,
+        supplier_invoice_number,
+        supplier_invoice_date,
+        status,
+        notes,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
+        version,
         purchase_order:purchase_orders!purchase_receipts_purchase_order_id_fkey(id, order_code),
         supplier:suppliers!purchase_receipts_supplier_id_fkey(id, supplier_code, supplier_name),
         warehouse:warehouses!purchase_receipts_warehouse_id_fkey(id, warehouse_code, warehouse_name),
@@ -126,6 +176,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
     }
     const receipt = receiptData as PurchaseReceiptQueryRow;
+    const purchaseOrder = Array.isArray(receipt.purchase_order)
+      ? receipt.purchase_order[0]
+      : receipt.purchase_order ?? null;
+    const supplier = Array.isArray(receipt.supplier) ? receipt.supplier[0] : receipt.supplier ?? null;
+    const warehouse = Array.isArray(receipt.warehouse)
+      ? receipt.warehouse[0]
+      : receipt.warehouse ?? null;
 
     // Format response
     const formattedReceipt = {
@@ -134,26 +191,26 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       receiptCode: receipt.receipt_code,
       purchaseOrderId: receipt.purchase_order_id,
       batchSequenceNumber: receipt.batch_sequence_number,
-      purchaseOrder: receipt.purchase_order
+      purchaseOrder: purchaseOrder
         ? {
-            id: receipt.purchase_order.id,
-            orderCode: receipt.purchase_order.order_code,
+            id: purchaseOrder.id,
+            orderCode: purchaseOrder.order_code,
           }
         : undefined,
       supplierId: receipt.supplier_id,
-      supplier: receipt.supplier
+      supplier: supplier
         ? {
-            id: receipt.supplier.id,
-            code: receipt.supplier.supplier_code,
-            name: receipt.supplier.supplier_name,
+            id: supplier.id,
+            code: supplier.supplier_code,
+            name: supplier.supplier_name,
           }
         : undefined,
       warehouseId: receipt.warehouse_id,
-      warehouse: receipt.warehouse
+      warehouse: warehouse
         ? {
-            id: receipt.warehouse.id,
-            code: receipt.warehouse.warehouse_code,
-            name: receipt.warehouse.warehouse_name,
+            id: warehouse.id,
+            code: warehouse.warehouse_code,
+            name: warehouse.warehouse_name,
           }
         : undefined,
       receiptDate: receipt.receipt_date,
@@ -161,38 +218,46 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       supplierInvoiceDate: receipt.supplier_invoice_date,
       status: receipt.status,
       notes: receipt.notes,
-      items: receipt.items?.map((item) => ({
-        id: item.id,
-        purchaseOrderItemId: item.purchase_order_item_id,
-        itemId: item.item_id,
-        item: item.item
-          ? {
-              id: item.item.id,
-              code: item.item.item_code,
-              name: item.item.item_name,
-            }
-          : undefined,
-        quantityOrdered: Number(item.quantity_ordered),
-        quantityReceived: Number(item.quantity_received),
-        uomId: item.uom_id,
-        uom: item.uom
-          ? {
-              id: item.uom.id,
-              code: item.uom.code,
-              name: item.uom.name,
-            }
-          : undefined,
-        packagingId: item.packaging_id,
-        packaging: item.packaging
-          ? {
-              id: item.packaging.id,
-              name: item.packaging.pack_name,
-              qtyPerPack: item.packaging.qty_per_pack,
-            }
-          : undefined,
-        rate: Number(item.rate),
-        notes: item.notes,
-      })),
+      items: receipt.items?.map((item) => {
+        const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
+        const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
+        const packaging = Array.isArray(item.packaging)
+          ? item.packaging[0]
+          : item.packaging ?? null;
+
+        return {
+          id: item.id,
+          purchaseOrderItemId: item.purchase_order_item_id,
+          itemId: item.item_id,
+          item: itemDetails
+            ? {
+                id: itemDetails.id,
+                code: itemDetails.item_code,
+                name: itemDetails.item_name,
+              }
+            : undefined,
+          quantityOrdered: Number(item.quantity_ordered),
+          quantityReceived: Number(item.quantity_received),
+          uomId: item.uom_id,
+          uom: uom
+            ? {
+                id: uom.id,
+                code: uom.code,
+                name: uom.name,
+              }
+            : undefined,
+          packagingId: item.packaging_id,
+          packaging: packaging
+            ? {
+                id: packaging.id,
+                name: packaging.pack_name,
+                qtyPerPack: packaging.qty_per_pack,
+              }
+            : undefined,
+          rate: Number(item.rate),
+          notes: item.notes,
+        };
+      }),
       createdAt: receipt.created_at,
       createdBy: receipt.created_by,
       updatedAt: receipt.updated_at,

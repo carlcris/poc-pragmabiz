@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
 // GET /api/tablet/purchase-receipts - List purchase receipts for receiving
 export async function GET(request: NextRequest) {
   try {
@@ -18,8 +21,13 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const fromDate = searchParams.get("from_date");
     const toDate = searchParams.get("to_date");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+    const parsedLimit = Number.parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`, 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, MAX_PAGE_SIZE)
+        : DEFAULT_PAGE_SIZE;
 
     const {
       data: { user },
@@ -45,7 +53,15 @@ export async function GET(request: NextRequest) {
       .from("purchase_receipts")
       .select(
         `
-        *,
+        id,
+        receipt_code,
+        receipt_date,
+        status,
+        supplier_invoice_number,
+        supplier_invoice_date,
+        notes,
+        created_at,
+        updated_at,
         supplier:suppliers(id, supplier_code, supplier_name),
         warehouse:warehouses(id, warehouse_code, warehouse_name),
         purchase_order:purchase_orders(id, order_code),
@@ -104,22 +120,28 @@ export async function GET(request: NextRequest) {
       const isPartiallyReceived = receivedItems > 0 && receivedItems < totalItems;
       const isFullyReceived = receivedItems === totalItems && totalItems > 0;
 
+      const supplier = Array.isArray(receipt.supplier) ? receipt.supplier[0] : receipt.supplier;
+      const warehouse = Array.isArray(receipt.warehouse) ? receipt.warehouse[0] : receipt.warehouse;
+      const purchaseOrder = Array.isArray(receipt.purchase_order)
+        ? receipt.purchase_order[0]
+        : receipt.purchase_order;
+
       return {
         id: receipt.id,
         receiptCode: receipt.receipt_code,
         receiptDate: receipt.receipt_date,
         status: receipt.status,
         supplier: {
-          id: receipt.supplier.id,
-          code: receipt.supplier.supplier_code,
-          name: receipt.supplier.supplier_name,
+          id: supplier.id,
+          code: supplier.supplier_code,
+          name: supplier.supplier_name,
         },
         warehouse: {
-          id: receipt.warehouse.id,
-          code: receipt.warehouse.warehouse_code,
-          name: receipt.warehouse.warehouse_name,
+          id: warehouse.id,
+          code: warehouse.warehouse_code,
+          name: warehouse.warehouse_name,
         },
-        purchaseOrder: receipt.purchase_order,
+        purchaseOrder: purchaseOrder,
         supplierInvoiceNumber: receipt.supplier_invoice_number,
         supplierInvoiceDate: receipt.supplier_invoice_date,
         notes: receipt.notes,

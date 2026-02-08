@@ -298,22 +298,28 @@ export async function GET(
     }
 
     // Format response
-    const formattedLinks = links?.map((link: any) => ({
+    const formattedLinks = links?.map((link: Record<string, unknown>) => ({
       id: link.id,
-      fulfilledQty: parseFloat(link.fulfilled_qty),
+      fulfilledQty: parseFloat(String(link.fulfilled_qty)),
       loadListItem: link.load_list_item
         ? {
-            id: link.load_list_item.id,
-            loadListQty: parseFloat(link.load_list_item.load_list_qty),
-            item: link.load_list_item.item,
+            id: (link.load_list_item as Record<string, unknown>).id as string,
+            loadListQty: parseFloat(
+              String((link.load_list_item as Record<string, unknown>).load_list_qty)
+            ),
+            item: (link.load_list_item as Record<string, unknown>).item,
           }
         : null,
       srItem: link.sr_item
         ? {
-            id: link.sr_item.id,
-            requestedQty: parseFloat(link.sr_item.requested_qty),
-            fulfilledQty: parseFloat(link.sr_item.fulfilled_qty),
-            sr: link.sr_item.sr,
+            id: (link.sr_item as Record<string, unknown>).id as string,
+            requestedQty: parseFloat(
+              String((link.sr_item as Record<string, unknown>).requested_qty)
+            ),
+            fulfilledQty: parseFloat(
+              String((link.sr_item as Record<string, unknown>).fulfilled_qty)
+            ),
+            sr: (link.sr_item as Record<string, unknown>).sr,
           }
         : null,
     }));

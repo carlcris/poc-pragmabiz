@@ -40,7 +40,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .from("purchase_receipts")
       .select(
         `
-        *,
+        id,
+        receipt_code,
+        receipt_date,
+        status,
+        supplier_invoice_number,
+        supplier_invoice_date,
+        notes,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
         supplier:suppliers(id, supplier_code, supplier_name, contact_person, phone, email),
         warehouse:warehouses(id, warehouse_code, warehouse_name),
         purchase_order:purchase_orders(
@@ -51,7 +61,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
           status
         ),
         purchase_receipt_items(
-          *,
+          id,
+          item_id,
+          quantity_ordered,
+          quantity_received,
+          rate,
+          notes,
           item:items(
             id,
             item_code,
@@ -81,6 +96,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Receipt not found" }, { status: 404 });
     }
 
+    const supplier = Array.isArray(receipt.supplier) ? receipt.supplier[0] : receipt.supplier;
+    const warehouse = Array.isArray(receipt.warehouse) ? receipt.warehouse[0] : receipt.warehouse;
+    const purchaseOrder = Array.isArray(receipt.purchase_order)
+      ? receipt.purchase_order[0]
+      : receipt.purchase_order;
+
     // Format response for tablet UI
     const formattedReceipt = {
       id: receipt.id,
@@ -90,19 +111,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       // Relations
       supplier: {
-        id: receipt.supplier.id,
-        code: receipt.supplier.supplier_code,
-        name: receipt.supplier.supplier_name,
-        contact_person: receipt.supplier.contact_person,
-        phone: receipt.supplier.phone,
-        email: receipt.supplier.email,
+        id: supplier.id,
+        code: supplier.supplier_code,
+        name: supplier.supplier_name,
+        contact_person: supplier.contact_person,
+        phone: supplier.phone,
+        email: supplier.email,
       },
       warehouse: {
-        id: receipt.warehouse.id,
-        code: receipt.warehouse.warehouse_code,
-        name: receipt.warehouse.warehouse_name,
+        id: warehouse.id,
+        code: warehouse.warehouse_code,
+        name: warehouse.warehouse_name,
       },
-      purchaseOrder: receipt.purchase_order,
+      purchaseOrder: purchaseOrder,
 
       // Invoice details
       supplierInvoiceNumber: receipt.supplier_invoice_number,
@@ -110,34 +131,31 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       // Items with calculated fields
       items:
-        receipt.purchase_receipt_items?.map(
-          (item: {
-            id: string;
-            item_id: string;
-            quantity_ordered: number;
-            quantity_received: number;
-            rate: number;
-            notes: string | null;
-            item: { id: string; item_code: string; item_name: string; item_name_cn: string | null };
-            uom: { id: string; code: string; name: string; symbol: string | null };
-            packaging: { id: string; pack_name: string; qty_per_pack: number } | null;
-          }) => ({
-            id: item.id,
-            itemId: item.item_id,
-            item: item.item,
-            quantityOrdered: Number(item.quantity_ordered),
-            quantityReceived: Number(item.quantity_received),
-            uom: item.uom,
-            packaging: item.packaging,
-            rate: Number(item.rate),
-            lineTotal: Number(item.quantity_received) * Number(item.rate),
-            notes: item.notes,
-            isFullyReceived: Number(item.quantity_received) === Number(item.quantity_ordered),
-            isPartiallyReceived:
-              Number(item.quantity_received) > 0 &&
-              Number(item.quantity_received) < Number(item.quantity_ordered),
-            remainingQty: Number(item.quantity_ordered) - Number(item.quantity_received),
-          })
+        receipt.purchase_receipt_items?.map((item) => {
+          const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item;
+          const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom;
+          const packaging = Array.isArray(item.packaging)
+            ? item.packaging[0]
+            : item.packaging;
+
+            return {
+              id: item.id,
+              itemId: item.item_id,
+              item: itemDetails,
+              quantityOrdered: Number(item.quantity_ordered),
+              quantityReceived: Number(item.quantity_received),
+              uom: uom,
+              packaging: packaging,
+              rate: Number(item.rate),
+              lineTotal: Number(item.quantity_received) * Number(item.rate),
+              notes: item.notes,
+              isFullyReceived: Number(item.quantity_received) === Number(item.quantity_ordered),
+              isPartiallyReceived:
+                Number(item.quantity_received) > 0 &&
+                Number(item.quantity_received) < Number(item.quantity_ordered),
+              remainingQty: Number(item.quantity_ordered) - Number(item.quantity_received),
+            };
+          }
         ) || [],
 
       // Notes

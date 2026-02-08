@@ -2,6 +2,16 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import type { Tables } from "@/types/supabase";
+
+type DamagedItemRow = Tables<"damaged_items">;
+type ItemRow = Tables<"items">;
+type UserRow = Tables<"users">;
+
+type DamagedItemQueryRow = DamagedItemRow & {
+  item?: Pick<ItemRow, "id" | "item_code" | "item_name"> | null;
+  reported_by_user?: Pick<UserRow, "id" | "email" | "first_name" | "last_name"> | null;
+};
 
 // GET /api/grns/[id]/damaged-items - List damaged items for a GRN
 export async function GET(
@@ -37,7 +47,18 @@ export async function GET(
       .from("damaged_items")
       .select(
         `
-        *,
+        id,
+        grn_id,
+        item_id,
+        qty,
+        damage_type,
+        description,
+        reported_by,
+        reported_date,
+        action_taken,
+        status,
+        created_at,
+        updated_at,
         item:items(id, item_code, item_name),
         reported_by_user:users!damaged_items_reported_by_fkey(id, email, first_name, last_name),
         grn:grns!inner(id, company_id)
@@ -52,34 +73,34 @@ export async function GET(
     }
 
     // Format response
-    const formattedItems = damagedItems?.map((item: any) => ({
+    const formattedItems = damagedItems?.map((item: Record<string, unknown>) => ({
       id: item.id,
-      grnId: item.grn_id,
-      itemId: item.item_id,
+      grnId: item.grn_id as string,
+      itemId: item.item_id as string,
       item: item.item
         ? {
-            id: item.item.id,
-            code: item.item.item_code,
-            name: item.item.item_name,
+            id: (item.item as Record<string, unknown>).id as string,
+            code: (item.item as Record<string, unknown>).item_code as string,
+            name: (item.item as Record<string, unknown>).item_name as string,
           }
         : null,
-      qty: parseFloat(item.qty),
-      damageType: item.damage_type,
-      description: item.description,
-      reportedBy: item.reported_by,
+      qty: parseFloat(String(item.qty)),
+      damageType: item.damage_type as string,
+      description: item.description as string | null,
+      reportedBy: item.reported_by as string | null,
       reportedByUser: item.reported_by_user
         ? {
-            id: item.reported_by_user.id,
-            email: item.reported_by_user.email,
-            firstName: item.reported_by_user.first_name,
-            lastName: item.reported_by_user.last_name,
+            id: (item.reported_by_user as Record<string, unknown>).id as string,
+            email: (item.reported_by_user as Record<string, unknown>).email as string,
+            firstName: (item.reported_by_user as Record<string, unknown>).first_name as string,
+            lastName: (item.reported_by_user as Record<string, unknown>).last_name as string,
           }
         : null,
-      reportedDate: item.reported_date,
-      actionTaken: item.action_taken,
-      status: item.status,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
+      reportedDate: item.reported_date as string,
+      actionTaken: item.action_taken as string | null,
+      status: item.status as string,
+      createdAt: item.created_at as string,
+      updatedAt: item.updated_at as string,
     }));
 
     return NextResponse.json({ data: formattedItems });
@@ -155,7 +176,18 @@ export async function POST(
       })
       .select(
         `
-        *,
+        id,
+        grn_id,
+        item_id,
+        qty,
+        damage_type,
+        description,
+        reported_by,
+        reported_date,
+        action_taken,
+        status,
+        created_at,
+        updated_at,
         item:items(id, item_code, item_name),
         reported_by_user:users!damaged_items_reported_by_fkey(id, email, first_name, last_name)
       `
@@ -170,35 +202,38 @@ export async function POST(
       );
     }
 
+    const createdItem = damagedItem as unknown as DamagedItemQueryRow;
     // Format response
+    const item = createdItem.item ?? null;
+    const reportedByUser = createdItem.reported_by_user ?? null;
     const formatted = {
-      id: damagedItem.id,
-      grnId: damagedItem.grn_id,
-      itemId: damagedItem.item_id,
-      item: damagedItem.item
+      id: createdItem.id,
+      grnId: createdItem.grn_id,
+      itemId: createdItem.item_id,
+      item: item
         ? {
-            id: damagedItem.item.id,
-            code: damagedItem.item.item_code,
-            name: damagedItem.item.item_name,
-          }
+          id: item.id,
+          code: item.item_code,
+          name: item.item_name,
+        }
         : null,
-      qty: parseFloat(damagedItem.qty),
-      damageType: damagedItem.damage_type,
-      description: damagedItem.description,
-      reportedBy: damagedItem.reported_by,
-      reportedByUser: damagedItem.reported_by_user
+      qty: Number(createdItem.qty),
+      damageType: createdItem.damage_type,
+      description: createdItem.description,
+      reportedBy: createdItem.reported_by,
+      reportedByUser: reportedByUser
         ? {
-            id: damagedItem.reported_by_user.id,
-            email: damagedItem.reported_by_user.email,
-            firstName: damagedItem.reported_by_user.first_name,
-            lastName: damagedItem.reported_by_user.last_name,
-          }
+          id: reportedByUser.id,
+          email: reportedByUser.email,
+          firstName: reportedByUser.first_name,
+          lastName: reportedByUser.last_name,
+        }
         : null,
-      reportedDate: damagedItem.reported_date,
-      actionTaken: damagedItem.action_taken,
-      status: damagedItem.status,
-      createdAt: damagedItem.created_at,
-      updatedAt: damagedItem.updated_at,
+      reportedDate: createdItem.reported_date,
+      actionTaken: createdItem.action_taken,
+      status: createdItem.status,
+      createdAt: createdItem.created_at,
+      updatedAt: createdItem.updated_at,
     };
 
     return NextResponse.json(formatted);

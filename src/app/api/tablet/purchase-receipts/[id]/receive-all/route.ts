@@ -100,7 +100,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .from("purchase_receipts")
       .select(
         `
-        *,
+        id,
+        company_id,
+        purchase_order_id,
+        warehouse_id,
+        receipt_code,
+        receipt_date,
+        status,
+        supplier_invoice_number,
+        supplier_invoice_date,
+        notes,
+        created_at,
+        created_by,
+        updated_at,
+        updated_by,
         purchase_receipt_items(
           id,
           quantity_ordered,

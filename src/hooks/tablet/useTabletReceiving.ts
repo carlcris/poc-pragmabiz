@@ -115,20 +115,35 @@ export type ReceiptListParams = {
   limit?: number;
 };
 
+const TABLET_RECEIPTS_STALE_TIME_MS = 30 * 1000;
+
+const normalizeReceiptListParams = (params: ReceiptListParams) => ({
+  status: params.status ?? "draft",
+  warehouse_id: params.warehouse_id ?? "",
+  search: params.search ?? "",
+  from_date: params.from_date ?? "",
+  to_date: params.to_date ?? "",
+  page: params.page ?? 1,
+  limit: params.limit ?? 20,
+});
+
 // Hook: List purchase receipts
 export function useTabletPurchaseReceipts(params: ReceiptListParams = {}) {
+  const normalizedParams = normalizeReceiptListParams(params);
+
   return useQuery({
-    queryKey: ["tablet", "purchase-receipts", params],
+    queryKey: ["tablet", "purchase-receipts", normalizedParams],
     queryFn: async () => {
       const searchParams = new URLSearchParams();
 
-      if (params.status) searchParams.set("status", params.status);
-      if (params.warehouse_id) searchParams.set("warehouse_id", params.warehouse_id);
-      if (params.search) searchParams.set("search", params.search);
-      if (params.from_date) searchParams.set("from_date", params.from_date);
-      if (params.to_date) searchParams.set("to_date", params.to_date);
-      if (params.page) searchParams.set("page", params.page.toString());
-      if (params.limit) searchParams.set("limit", params.limit.toString());
+      if (normalizedParams.status) searchParams.set("status", normalizedParams.status);
+      if (normalizedParams.warehouse_id)
+        searchParams.set("warehouse_id", normalizedParams.warehouse_id);
+      if (normalizedParams.search) searchParams.set("search", normalizedParams.search);
+      if (normalizedParams.from_date) searchParams.set("from_date", normalizedParams.from_date);
+      if (normalizedParams.to_date) searchParams.set("to_date", normalizedParams.to_date);
+      searchParams.set("page", normalizedParams.page.toString());
+      searchParams.set("limit", normalizedParams.limit.toString());
 
       const url = `/api/tablet/purchase-receipts?${searchParams.toString()}`;
       return apiClient.get<{
@@ -141,7 +156,7 @@ export function useTabletPurchaseReceipts(params: ReceiptListParams = {}) {
         };
       }>(url);
     },
-    staleTime: 0, // Always fetch fresh data
+    staleTime: TABLET_RECEIPTS_STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
 }
@@ -155,7 +170,7 @@ export function useTabletPurchaseReceipt(receiptId: string | undefined) {
       return apiClient.get<TabletReceiptDetail>(`/api/tablet/purchase-receipts/${receiptId}`);
     },
     enabled: !!receiptId,
-    staleTime: 0, // Always fetch fresh data
+    staleTime: TABLET_RECEIPTS_STALE_TIME_MS,
     refetchOnWindowFocus: true,
   });
 }

@@ -37,7 +37,25 @@ export async function GET(
       .from("grns")
       .select(
         `
-        *,
+        id,
+        grn_number,
+        load_list_id,
+        company_id,
+        business_unit_id,
+        warehouse_id,
+        container_number,
+        seal_number,
+        batch_number,
+        receiving_date,
+        delivery_date,
+        status,
+        notes,
+        received_by,
+        checked_by,
+        created_by,
+        created_at,
+        updated_at,
+        updated_by,
         load_list:load_lists(
           id, ll_number, supplier_ll_number, supplier_id,
           supplier:suppliers(id, supplier_name, supplier_code)
@@ -64,41 +82,63 @@ export async function GET(
     }
 
     // Format response
+    const loadList = Array.isArray(grn.load_list)
+      ? grn.load_list[0]
+      : grn.load_list ?? null;
+    const loadListSupplier = loadList
+      ? Array.isArray(loadList.supplier)
+        ? loadList.supplier[0]
+        : loadList.supplier ?? null
+      : null;
+    const businessUnit = Array.isArray(grn.business_unit)
+      ? grn.business_unit[0]
+      : grn.business_unit ?? null;
+    const warehouse = Array.isArray(grn.warehouse)
+      ? grn.warehouse[0]
+      : grn.warehouse ?? null;
+    const receivedByUser = Array.isArray(grn.received_by_user)
+      ? grn.received_by_user[0]
+      : grn.received_by_user ?? null;
+    const checkedByUser = Array.isArray(grn.checked_by_user)
+      ? grn.checked_by_user[0]
+      : grn.checked_by_user ?? null;
+    const createdByUser = Array.isArray(grn.created_by_user)
+      ? grn.created_by_user[0]
+      : grn.created_by_user ?? null;
     const formattedGRN = {
       id: grn.id,
-      batch: grn.batch,
       grnNumber: grn.grn_number,
       loadListId: grn.load_list_id,
-      loadList: grn.load_list
+      loadList: loadList
         ? {
-            id: grn.load_list.id,
-            llNumber: grn.load_list.ll_number,
-            supplierLlNumber: grn.load_list.supplier_ll_number,
-            supplierId: grn.load_list.supplier_id,
-            supplier: grn.load_list.supplier
+            id: loadList.id,
+            llNumber: loadList.ll_number,
+            supplierLlNumber: loadList.supplier_ll_number,
+            supplierId: loadList.supplier_id,
+            supplier: loadListSupplier
               ? {
-                  id: grn.load_list.supplier.id,
-                  name: grn.load_list.supplier.supplier_name,
-                  code: grn.load_list.supplier.supplier_code,
+                  id: loadListSupplier.id,
+                  name: loadListSupplier.supplier_name,
+                  code: loadListSupplier.supplier_code,
                 }
               : null,
           }
         : null,
       companyId: grn.company_id,
       businessUnitId: grn.business_unit_id,
-      businessUnit: grn.business_unit
+      businessUnit: businessUnit
         ? {
-            id: grn.business_unit.id,
-            name: grn.business_unit.name,
-            code: grn.business_unit.code,
+            id: businessUnit.id,
+            name: businessUnit.name,
+            code: businessUnit.code,
           }
         : null,
       warehouseId: grn.warehouse_id,
-      warehouse: grn.warehouse
+      warehouse: warehouse
         ? {
-            id: grn.warehouse.id,
-            name: grn.warehouse.warehouse_name,
-            code: grn.warehouse.warehouse_code,
+            id: warehouse.id,
+            name: warehouse.warehouse_name,
+            code: warehouse.warehouse_code,
           }
         : null,
       containerNumber: grn.container_number,
@@ -108,49 +148,54 @@ export async function GET(
       deliveryDate: grn.delivery_date,
       status: grn.status,
       notes: grn.notes,
-      items: grn.items?.map((item: any) => ({
-        id: item.id,
-        grnId: grn.id,
-        itemId: item.item_id,
-        item: item.item
-          ? {
-              id: item.item.id,
-              code: item.item.item_code,
-              name: item.item.item_name,
-            }
-          : null,
-        loadListQty: parseFloat(item.load_list_qty),
-        receivedQty: parseFloat(item.received_qty),
-        damagedQty: parseFloat(item.damaged_qty),
-        numBoxes: item.num_boxes,
-        barcodesPrinted: item.barcodes_printed,
-        notes: item.notes,
-      })),
+      items: grn.items?.map((item: Record<string, unknown>) => {
+        const itemDetails = Array.isArray(item.item)
+          ? (item.item[0] as Record<string, unknown> | undefined)
+          : (item.item as Record<string, unknown> | null);
+        return {
+          id: item.id,
+          grnId: grn.id,
+          itemId: item.item_id as string,
+          item: itemDetails
+            ? {
+                id: itemDetails.id as string,
+                code: itemDetails.item_code as string,
+                name: itemDetails.item_name as string,
+              }
+            : null,
+          loadListQty: parseFloat(String(item.load_list_qty)),
+          receivedQty: parseFloat(String(item.received_qty)),
+          damagedQty: parseFloat(String(item.damaged_qty)),
+          numBoxes: item.num_boxes as number | null,
+          barcodesPrinted: item.barcodes_printed as boolean | null,
+          notes: item.notes as string | null,
+        };
+      }),
       receivedBy: grn.received_by,
-      receivedByUser: grn.received_by_user
+      receivedByUser: receivedByUser
         ? {
-            id: grn.received_by_user.id,
-            email: grn.received_by_user.email,
-            firstName: grn.received_by_user.first_name,
-            lastName: grn.received_by_user.last_name,
+            id: receivedByUser.id,
+            email: receivedByUser.email,
+            firstName: receivedByUser.first_name,
+            lastName: receivedByUser.last_name,
           }
         : null,
       checkedBy: grn.checked_by,
-      checkedByUser: grn.checked_by_user
+      checkedByUser: checkedByUser
         ? {
-            id: grn.checked_by_user.id,
-            email: grn.checked_by_user.email,
-            firstName: grn.checked_by_user.first_name,
-            lastName: grn.checked_by_user.last_name,
+            id: checkedByUser.id,
+            email: checkedByUser.email,
+            firstName: checkedByUser.first_name,
+            lastName: checkedByUser.last_name,
           }
         : null,
       createdBy: grn.created_by,
-      createdByUser: grn.created_by_user
+      createdByUser: createdByUser
         ? {
-            id: grn.created_by_user.id,
-            email: grn.created_by_user.email,
-            firstName: grn.created_by_user.first_name,
-            lastName: grn.created_by_user.last_name,
+            id: createdByUser.id,
+            email: createdByUser.email,
+            firstName: createdByUser.first_name,
+            lastName: createdByUser.last_name,
           }
         : null,
       createdAt: grn.created_at,

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
+
 // GET /api/load-lists
 export async function GET(request: NextRequest) {
   try {
@@ -36,7 +39,28 @@ export async function GET(request: NextRequest) {
       .from("load_lists")
       .select(
         `
-        *,
+        id,
+        ll_number,
+        supplier_ll_number,
+        company_id,
+        business_unit_id,
+        supplier_id,
+        warehouse_id,
+        container_number,
+        seal_number,
+        batch_number,
+        estimated_arrival_date,
+        actual_arrival_date,
+        load_date,
+        status,
+        created_by,
+        received_by,
+        approved_by,
+        received_date,
+        approved_date,
+        notes,
+        created_at,
+        updated_at,
         supplier:suppliers(id, supplier_name, supplier_code),
         warehouse:warehouses(id, warehouse_name, warehouse_code),
         business_unit:business_units(id, name, code),
@@ -88,8 +112,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Pagination
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+    const parsedLimit = Number.parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`, 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, MAX_PAGE_SIZE)
+        : DEFAULT_PAGE_SIZE;
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
@@ -103,75 +132,92 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response
-    const formattedLoadLists = loadLists?.map((ll) => ({
-      id: ll.id,
-      llNumber: ll.ll_number,
-      supplierLlNumber: ll.supplier_ll_number,
-      companyId: ll.company_id,
-      businessUnitId: ll.business_unit_id,
-      businessUnit: ll.business_unit
-        ? {
-            id: ll.business_unit.id,
-            name: ll.business_unit.name,
-            code: ll.business_unit.code,
-          }
-        : null,
-      supplierId: ll.supplier_id,
-      supplier: ll.supplier
-        ? {
-            id: ll.supplier.id,
-            name: ll.supplier.supplier_name,
-            code: ll.supplier.supplier_code,
-          }
-        : null,
-      warehouseId: ll.warehouse_id,
-      warehouse: ll.warehouse
-        ? {
-            id: ll.warehouse.id,
-            name: ll.warehouse.warehouse_name,
-            code: ll.warehouse.warehouse_code,
-          }
-        : null,
-      containerNumber: ll.container_number,
-      sealNumber: ll.seal_number,
-      batchNumber: ll.batch_number,
-      estimatedArrivalDate: ll.estimated_arrival_date,
-      actualArrivalDate: ll.actual_arrival_date,
-      loadDate: ll.load_date,
-      status: ll.status,
-      createdBy: ll.created_by,
-      createdByUser: ll.created_by_user
-        ? {
-            id: ll.created_by_user.id,
-            email: ll.created_by_user.email,
-            firstName: ll.created_by_user.first_name,
-            lastName: ll.created_by_user.last_name,
-          }
-        : null,
-      receivedBy: ll.received_by,
-      receivedByUser: ll.received_by_user
-        ? {
-            id: ll.received_by_user.id,
-            email: ll.received_by_user.email,
-            firstName: ll.received_by_user.first_name,
-            lastName: ll.received_by_user.last_name,
-          }
-        : null,
-      approvedBy: ll.approved_by,
-      approvedByUser: ll.approved_by_user
-        ? {
-            id: ll.approved_by_user.id,
-            email: ll.approved_by_user.email,
-            firstName: ll.approved_by_user.first_name,
-            lastName: ll.approved_by_user.last_name,
-          }
-        : null,
-      receivedDate: ll.received_date,
-      approvedDate: ll.approved_date,
-      notes: ll.notes,
-      createdAt: ll.created_at,
-      updatedAt: ll.updated_at,
-    }));
+    const formattedLoadLists = loadLists?.map((ll) => {
+      const businessUnit = Array.isArray(ll.business_unit)
+        ? ll.business_unit[0]
+        : ll.business_unit ?? null;
+      const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : ll.supplier ?? null;
+      const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : ll.warehouse ?? null;
+      const createdByUser = Array.isArray(ll.created_by_user)
+        ? ll.created_by_user[0]
+        : ll.created_by_user ?? null;
+      const receivedByUser = Array.isArray(ll.received_by_user)
+        ? ll.received_by_user[0]
+        : ll.received_by_user ?? null;
+      const approvedByUser = Array.isArray(ll.approved_by_user)
+        ? ll.approved_by_user[0]
+        : ll.approved_by_user ?? null;
+
+      return {
+        id: ll.id,
+        llNumber: ll.ll_number,
+        supplierLlNumber: ll.supplier_ll_number,
+        companyId: ll.company_id,
+        businessUnitId: ll.business_unit_id,
+        businessUnit: businessUnit
+          ? {
+              id: businessUnit.id,
+              name: businessUnit.name,
+              code: businessUnit.code,
+            }
+          : null,
+        supplierId: ll.supplier_id,
+        supplier: supplier
+          ? {
+              id: supplier.id,
+              name: supplier.supplier_name,
+              code: supplier.supplier_code,
+            }
+          : null,
+        warehouseId: ll.warehouse_id,
+        warehouse: warehouse
+          ? {
+              id: warehouse.id,
+              name: warehouse.warehouse_name,
+              code: warehouse.warehouse_code,
+            }
+          : null,
+        containerNumber: ll.container_number,
+        sealNumber: ll.seal_number,
+        batchNumber: ll.batch_number,
+        estimatedArrivalDate: ll.estimated_arrival_date,
+        actualArrivalDate: ll.actual_arrival_date,
+        loadDate: ll.load_date,
+        status: ll.status,
+        createdBy: ll.created_by,
+        createdByUser: createdByUser
+          ? {
+              id: createdByUser.id,
+              email: createdByUser.email,
+              firstName: createdByUser.first_name,
+              lastName: createdByUser.last_name,
+            }
+          : null,
+        receivedBy: ll.received_by,
+        receivedByUser: receivedByUser
+          ? {
+              id: receivedByUser.id,
+              email: receivedByUser.email,
+              firstName: receivedByUser.first_name,
+              lastName: receivedByUser.last_name,
+            }
+          : null,
+        approvedBy: ll.approved_by,
+        approvedByUser: approvedByUser
+          ? {
+              id: approvedByUser.id,
+              email: approvedByUser.email,
+              firstName: approvedByUser.first_name,
+              lastName: approvedByUser.last_name,
+            }
+          : null,
+        receivedDate: ll.received_date,
+        approvedDate: ll.approved_date,
+        notes: ll.notes,
+        createdAt: ll.created_at,
+        updatedAt: ll.updated_at,
+      };
+    });
 
     return NextResponse.json({
       data: formattedLoadLists,

@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
+
 // GET /api/grns - List GRNs
 export async function GET(request: NextRequest) {
   try {
@@ -37,8 +40,13 @@ export async function GET(request: NextRequest) {
     const loadListId = searchParams.get("load_list_id") || "";
     const fromDate = searchParams.get("from_date") || "";
     const toDate = searchParams.get("to_date") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+    const parsedLimit = Number.parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`, 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, MAX_PAGE_SIZE)
+        : DEFAULT_PAGE_SIZE;
     const offset = (page - 1) * limit;
 
     // Build query
@@ -46,7 +54,24 @@ export async function GET(request: NextRequest) {
       .from("grns")
       .select(
         `
-        *,
+        id,
+        grn_number,
+        load_list_id,
+        company_id,
+        business_unit_id,
+        warehouse_id,
+        container_number,
+        seal_number,
+        batch_number,
+        receiving_date,
+        delivery_date,
+        status,
+        notes,
+        received_by,
+        checked_by,
+        created_by,
+        created_at,
+        updated_at,
         load_list:load_lists(id, ll_number, supplier_ll_number, supplier_id, supplier:suppliers(id, supplier_name, supplier_code)),
         warehouse:warehouses(id, warehouse_name, warehouse_code),
         business_unit:business_units(id, name, code),
@@ -96,79 +121,105 @@ export async function GET(request: NextRequest) {
     }
 
     // Format response
-    const formattedGRNs = grns?.map((grn: any) => ({
-      id: grn.id,
-      grnNumber: grn.grn_number,
-      loadListId: grn.load_list_id,
-      loadList: grn.load_list
-        ? {
-            id: grn.load_list.id,
-            llNumber: grn.load_list.ll_number,
-            supplierLlNumber: grn.load_list.supplier_ll_number,
-            supplierId: grn.load_list.supplier_id,
-            supplier: grn.load_list.supplier
-              ? {
-                  id: grn.load_list.supplier.id,
-                  name: grn.load_list.supplier.supplier_name,
-                  code: grn.load_list.supplier.supplier_code,
-                }
-              : null,
-          }
-        : null,
-      companyId: grn.company_id,
-      businessUnitId: grn.business_unit_id,
-      businessUnit: grn.business_unit
-        ? {
-            id: grn.business_unit.id,
-            name: grn.business_unit.name,
-            code: grn.business_unit.code,
-          }
-        : null,
-      warehouseId: grn.warehouse_id,
-      warehouse: grn.warehouse
-        ? {
-            id: grn.warehouse.id,
-            name: grn.warehouse.warehouse_name,
-            code: grn.warehouse.warehouse_code,
-          }
-        : null,
-      containerNumber: grn.container_number,
-      sealNumber: grn.seal_number,
-      batchNumber: grn.batch_number,
-      receivingDate: grn.receiving_date,
-      deliveryDate: grn.delivery_date,
-      status: grn.status,
-      notes: grn.notes,
-      receivedBy: grn.received_by,
-      receivedByUser: grn.received_by_user
-        ? {
-            id: grn.received_by_user.id,
-            email: grn.received_by_user.email,
-            firstName: grn.received_by_user.first_name,
-            lastName: grn.received_by_user.last_name,
-          }
-        : null,
-      checkedBy: grn.checked_by,
-      checkedByUser: grn.checked_by_user
-        ? {
-            id: grn.checked_by_user.id,
-            email: grn.checked_by_user.email,
-            firstName: grn.checked_by_user.first_name,
-            lastName: grn.checked_by_user.last_name,
-          }
-        : null,
-      createdBy: grn.created_by,
-      createdByUser: grn.created_by_user
-        ? {
-            id: grn.created_by_user.id,
-            email: grn.created_by_user.email,
-            firstName: grn.created_by_user.first_name,
-            lastName: grn.created_by_user.last_name,
-          }
-        : null,
-      createdAt: grn.created_at,
-      updatedAt: grn.updated_at,
-    }));
+    const formattedGRNs = grns?.map((grn) => {
+      const loadList = Array.isArray(grn.load_list)
+        ? grn.load_list[0]
+        : grn.load_list ?? null;
+      const loadListSupplier = loadList
+        ? Array.isArray(loadList.supplier)
+          ? loadList.supplier[0]
+          : loadList.supplier ?? null
+        : null;
+      const businessUnit = Array.isArray(grn.business_unit)
+        ? grn.business_unit[0]
+        : grn.business_unit ?? null;
+      const warehouse = Array.isArray(grn.warehouse)
+        ? grn.warehouse[0]
+        : grn.warehouse ?? null;
+      const receivedByUser = Array.isArray(grn.received_by_user)
+        ? grn.received_by_user[0]
+        : grn.received_by_user ?? null;
+      const checkedByUser = Array.isArray(grn.checked_by_user)
+        ? grn.checked_by_user[0]
+        : grn.checked_by_user ?? null;
+      const createdByUser = Array.isArray(grn.created_by_user)
+        ? grn.created_by_user[0]
+        : grn.created_by_user ?? null;
+
+      return {
+        id: grn.id,
+        grnNumber: grn.grn_number,
+        loadListId: grn.load_list_id,
+        loadList: loadList
+          ? {
+              id: loadList.id,
+              llNumber: loadList.ll_number,
+              supplierLlNumber: loadList.supplier_ll_number,
+              supplierId: loadList.supplier_id,
+              supplier: loadListSupplier
+                ? {
+                    id: loadListSupplier.id,
+                    name: loadListSupplier.supplier_name,
+                    code: loadListSupplier.supplier_code,
+                  }
+                : null,
+            }
+          : null,
+        companyId: grn.company_id,
+        businessUnitId: grn.business_unit_id,
+        businessUnit: businessUnit
+          ? {
+              id: businessUnit.id,
+              name: businessUnit.name,
+              code: businessUnit.code,
+            }
+          : null,
+        warehouseId: grn.warehouse_id,
+        warehouse: warehouse
+          ? {
+              id: warehouse.id,
+              name: warehouse.warehouse_name,
+              code: warehouse.warehouse_code,
+            }
+          : null,
+        containerNumber: grn.container_number,
+        sealNumber: grn.seal_number,
+        batchNumber: grn.batch_number,
+        receivingDate: grn.receiving_date,
+        deliveryDate: grn.delivery_date,
+        status: grn.status,
+        notes: grn.notes,
+        receivedBy: grn.received_by,
+        receivedByUser: receivedByUser
+          ? {
+              id: receivedByUser.id,
+              email: receivedByUser.email,
+              firstName: receivedByUser.first_name,
+              lastName: receivedByUser.last_name,
+            }
+          : null,
+        checkedBy: grn.checked_by,
+        checkedByUser: checkedByUser
+          ? {
+              id: checkedByUser.id,
+              email: checkedByUser.email,
+              firstName: checkedByUser.first_name,
+              lastName: checkedByUser.last_name,
+            }
+          : null,
+        createdBy: grn.created_by,
+        createdByUser: createdByUser
+          ? {
+              id: createdByUser.id,
+              email: createdByUser.email,
+              firstName: createdByUser.first_name,
+              lastName: createdByUser.last_name,
+            }
+          : null,
+        createdAt: grn.created_at,
+        updatedAt: grn.updated_at,
+      };
+    });
 
     return NextResponse.json({
       data: formattedGRNs,
@@ -272,15 +323,15 @@ export async function POST(request: NextRequest) {
 
     // Create GRN items from load list items
     if (body.items && body.items.length > 0) {
-      const itemsToInsert = body.items.map((item: any) => ({
+      const itemsToInsert = body.items.map((item: { [key: string]: unknown }) => ({
         grn_id: grn.id,
-        item_id: item.itemId,
-        load_list_qty: item.loadListQty,
-        received_qty: item.receivedQty || 0,
-        damaged_qty: item.damagedQty || 0,
-        num_boxes: item.numBoxes || 0,
+        item_id: item.itemId as string,
+        load_list_qty: item.loadListQty as number,
+        received_qty: (item.receivedQty as number | undefined) || 0,
+        damaged_qty: (item.damagedQty as number | undefined) || 0,
+        num_boxes: (item.numBoxes as number | undefined) || 0,
         barcodes_printed: false,
-        notes: item.notes,
+        notes: item.notes as string | undefined,
       }));
 
       const { error: itemsError } = await supabase.from("grn_items").insert(itemsToInsert);

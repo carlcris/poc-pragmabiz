@@ -14,7 +14,10 @@ import type { Tables } from "@/types/supabase";
 type PurchaseOrderRow = Tables<"purchase_orders">;
 type PurchaseOrderItemRow = Tables<"purchase_order_items">;
 
-type PurchaseOrderQueryRow = PurchaseOrderRow & {
+type PurchaseOrderQueryRow = Pick<
+  PurchaseOrderRow,
+  "id" | "supplier_id" | "order_code" | "status"
+> & {
   items: PurchaseOrderItemRow[];
 };
 
@@ -79,7 +82,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from("purchase_orders")
       .select(
         `
-        *,
+        id,
+        supplier_id,
+        order_code,
+        status,
         items:purchase_order_items(
           id,
           item_id,

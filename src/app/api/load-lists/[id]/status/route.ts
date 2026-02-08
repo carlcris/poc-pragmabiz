@@ -268,7 +268,7 @@ export async function PATCH(
       .from("load_lists")
       .update(updateData)
       .eq("id", id)
-      .select()
+      .select("id, ll_number, status")
       .single();
 
     if (updateError) {
@@ -377,7 +377,7 @@ export async function PATCH(
               created_by: user.id,
               updated_by: user.id,
             })
-            .select()
+            .select("id, grn_number")
             .single();
 
           if (grnError) {
@@ -385,10 +385,10 @@ export async function PATCH(
             // Don't fail the status update if GRN creation fails
           } else if (grn) {
             // Create GRN items from load list items
-            const grnItemsToInsert = ll.items.map((item: any) => ({
+            const grnItemsToInsert = ll.items.map((item: Record<string, unknown>) => ({
               grn_id: grn.id,
-              item_id: item.item_id,
-              load_list_qty: item.load_list_qty,
+              item_id: item.item_id as string,
+              load_list_qty: item.load_list_qty as number,
               received_qty: 0,
               damaged_qty: 0,
               num_boxes: 0,
@@ -415,7 +415,7 @@ export async function PATCH(
       }
     }
 
-    const response: any = {
+    const response: { id: string; llNumber: string; status: string; message: string; grnNumber?: string } = {
       id: updatedLL.id,
       llNumber: updatedLL.ll_number,
       status: updatedLL.status,

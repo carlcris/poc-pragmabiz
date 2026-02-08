@@ -39,7 +39,29 @@ export async function GET(
       .from("load_lists")
       .select(
         `
-        *,
+        id,
+        ll_number,
+        supplier_ll_number,
+        company_id,
+        business_unit_id,
+        supplier_id,
+        warehouse_id,
+        container_number,
+        seal_number,
+        batch_number,
+        estimated_arrival_date,
+        actual_arrival_date,
+        load_date,
+        status,
+        created_by,
+        received_by,
+        approved_by,
+        received_date,
+        approved_date,
+        notes,
+        created_at,
+        updated_at,
+        updated_by,
         supplier:suppliers(id, supplier_name, supplier_code, contact_person, email, phone),
         warehouse:warehouses(id, warehouse_name, warehouse_code),
         business_unit:business_units(id, name, code),
@@ -71,36 +93,50 @@ export async function GET(
     }
 
     // Format response
+    const businessUnit = Array.isArray(ll.business_unit)
+      ? ll.business_unit[0]
+      : ll.business_unit ?? null;
+    const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : ll.supplier ?? null;
+    const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : ll.warehouse ?? null;
+    const createdByUser = Array.isArray(ll.created_by_user)
+      ? ll.created_by_user[0]
+      : ll.created_by_user ?? null;
+    const receivedByUser = Array.isArray(ll.received_by_user)
+      ? ll.received_by_user[0]
+      : ll.received_by_user ?? null;
+    const approvedByUser = Array.isArray(ll.approved_by_user)
+      ? ll.approved_by_user[0]
+      : ll.approved_by_user ?? null;
     const formattedLL = {
       id: ll.id,
       llNumber: ll.ll_number,
       supplierLlNumber: ll.supplier_ll_number,
       companyId: ll.company_id,
       businessUnitId: ll.business_unit_id,
-      businessUnit: ll.business_unit
+      businessUnit: businessUnit
         ? {
-            id: ll.business_unit.id,
-            name: ll.business_unit.name,
-            code: ll.business_unit.code,
+            id: businessUnit.id,
+            name: businessUnit.name,
+            code: businessUnit.code,
           }
         : null,
       supplierId: ll.supplier_id,
-      supplier: ll.supplier
+      supplier: supplier
         ? {
-            id: ll.supplier.id,
-            name: ll.supplier.supplier_name,
-            code: ll.supplier.supplier_code,
-            contactPerson: ll.supplier.contact_person,
-            email: ll.supplier.email,
-            phone: ll.supplier.phone,
+            id: supplier.id,
+            name: supplier.supplier_name,
+            code: supplier.supplier_code,
+            contactPerson: supplier.contact_person,
+            email: supplier.email,
+            phone: supplier.phone,
           }
         : null,
       warehouseId: ll.warehouse_id,
-      warehouse: ll.warehouse
+      warehouse: warehouse
         ? {
-            id: ll.warehouse.id,
-            name: ll.warehouse.warehouse_name,
-            code: ll.warehouse.warehouse_code,
+            id: warehouse.id,
+            name: warehouse.warehouse_name,
+            code: warehouse.warehouse_code,
           }
         : null,
       containerNumber: ll.container_number,
@@ -111,53 +147,58 @@ export async function GET(
       loadDate: ll.load_date,
       status: ll.status,
       createdBy: ll.created_by,
-      createdByUser: ll.created_by_user
+      createdByUser: createdByUser
         ? {
-            id: ll.created_by_user.id,
-            email: ll.created_by_user.email,
-            firstName: ll.created_by_user.first_name,
-            lastName: ll.created_by_user.last_name,
+            id: createdByUser.id,
+            email: createdByUser.email,
+            firstName: createdByUser.first_name,
+            lastName: createdByUser.last_name,
           }
         : null,
       receivedBy: ll.received_by,
-      receivedByUser: ll.received_by_user
+      receivedByUser: receivedByUser
         ? {
-            id: ll.received_by_user.id,
-            email: ll.received_by_user.email,
-            firstName: ll.received_by_user.first_name,
-            lastName: ll.received_by_user.last_name,
+            id: receivedByUser.id,
+            email: receivedByUser.email,
+            firstName: receivedByUser.first_name,
+            lastName: receivedByUser.last_name,
           }
         : null,
       approvedBy: ll.approved_by,
-      approvedByUser: ll.approved_by_user
+      approvedByUser: approvedByUser
         ? {
-            id: ll.approved_by_user.id,
-            email: ll.approved_by_user.email,
-            firstName: ll.approved_by_user.first_name,
-            lastName: ll.approved_by_user.last_name,
+            id: approvedByUser.id,
+            email: approvedByUser.email,
+            firstName: approvedByUser.first_name,
+            lastName: approvedByUser.last_name,
           }
         : null,
       receivedDate: ll.received_date,
       approvedDate: ll.approved_date,
       notes: ll.notes,
-      items: ll.items?.map((item: any) => ({
-        id: item.id,
-        itemId: item.item_id,
-        item: item.item
-          ? {
-              id: item.item.id,
-              code: item.item.item_code,
-              name: item.item.item_name,
-            }
-          : null,
-        loadListQty: parseFloat(item.load_list_qty),
-        receivedQty: parseFloat(item.received_qty),
-        damagedQty: parseFloat(item.damaged_qty),
-        shortageQty: parseFloat(item.shortage_qty),
-        unitPrice: parseFloat(item.unit_price),
-        totalPrice: parseFloat(item.total_price),
-        notes: item.notes,
-      })),
+      items: ll.items?.map((item: Record<string, unknown>) => {
+        const itemDetails = Array.isArray(item.item)
+          ? (item.item[0] as Record<string, unknown> | undefined)
+          : (item.item as Record<string, unknown> | null);
+        return {
+          id: item.id,
+          itemId: item.item_id as string,
+          item: itemDetails
+            ? {
+                id: itemDetails.id as string,
+                code: itemDetails.item_code as string,
+                name: itemDetails.item_name as string,
+              }
+            : null,
+          loadListQty: parseFloat(String(item.load_list_qty)),
+          receivedQty: parseFloat(String(item.received_qty)),
+          damagedQty: parseFloat(String(item.damaged_qty)),
+          shortageQty: parseFloat(String(item.shortage_qty)),
+          unitPrice: parseFloat(String(item.unit_price)),
+          totalPrice: parseFloat(String(item.total_price)),
+          notes: item.notes as string | null,
+        };
+      }),
       createdAt: ll.created_at,
       updatedAt: ll.updated_at,
       updatedBy: ll.updated_by,
@@ -239,7 +280,7 @@ export async function PUT(
         updated_by: user.id,
       })
       .eq("id", id)
-      .select()
+      .select("id, ll_number, status")
       .single();
 
     if (updateError) {

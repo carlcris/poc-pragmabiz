@@ -39,7 +39,16 @@ export async function GET(
       .from("grn_boxes")
       .select(
         `
-        *,
+        id,
+        grn_item_id,
+        box_number,
+        barcode,
+        qty_per_box,
+        warehouse_location_id,
+        delivery_date,
+        container_number,
+        seal_number,
+        created_at,
         grn_item:grn_items!inner(
           id,
           grn_id,
@@ -63,24 +72,24 @@ export async function GET(
     }
 
     // Format response
-    const formattedBoxes = boxes?.map((box: any) => ({
+    const formattedBoxes = boxes?.map((box: Record<string, unknown>) => ({
       id: box.id,
-      grnItemId: box.grn_item_id,
-      boxNumber: box.box_number,
-      barcode: box.barcode,
-      qtyPerBox: parseFloat(box.qty_per_box),
-      warehouseLocationId: box.warehouse_location_id,
+      grnItemId: box.grn_item_id as string,
+      boxNumber: box.box_number as number,
+      barcode: box.barcode as string,
+      qtyPerBox: parseFloat(String(box.qty_per_box)),
+      warehouseLocationId: box.warehouse_location_id as string | null,
       warehouseLocation: box.warehouse_location
         ? {
-            id: box.warehouse_location.id,
-            code: box.warehouse_location.code,
-            name: box.warehouse_location.name,
+            id: (box.warehouse_location as Record<string, unknown>).id as string,
+            code: (box.warehouse_location as Record<string, unknown>).code as string,
+            name: (box.warehouse_location as Record<string, unknown>).name as string,
           }
         : null,
-      deliveryDate: box.delivery_date,
-      containerNumber: box.container_number,
-      sealNumber: box.seal_number,
-      createdAt: box.created_at,
+      deliveryDate: box.delivery_date as string | null,
+      containerNumber: box.container_number as string | null,
+      sealNumber: box.seal_number as string | null,
+      createdAt: box.created_at as string,
     }));
 
     return NextResponse.json({ data: formattedBoxes });
@@ -192,7 +201,7 @@ export async function POST(
     const { data: boxes, error: insertError } = await supabase
       .from("grn_boxes")
       .insert(boxesToInsert)
-      .select();
+      .select("id");
 
     if (insertError) {
       console.error("Error creating boxes:", insertError);

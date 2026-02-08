@@ -4,6 +4,9 @@ import type { Item, CreateItemRequest } from "@/types/item";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
+
 type DbItem = {
   id: string;
   company_id: string;
@@ -106,15 +109,34 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const itemType = searchParams.get("itemType");
     const isActive = searchParams.get("isActive");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+    const parsedLimit = Number.parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`, 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit =
+      Number.isFinite(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, MAX_PAGE_SIZE)
+        : DEFAULT_PAGE_SIZE;
 
     // Build query
     let query = supabase
       .from("items")
       .select(
         `
-        *,
+        id,
+        company_id,
+        item_code,
+        item_name,
+        item_name_cn,
+        description,
+        item_type,
+        uom_id,
+        cost_price,
+        purchase_price,
+        sales_price,
+        image_url,
+        is_active,
+        created_at,
+        updated_at,
         item_categories (
           id,
           name,

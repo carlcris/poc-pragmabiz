@@ -103,7 +103,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .eq("id", itemId)
       .select(
         `
-        *,
+        id,
+        item_id,
+        quantity_ordered,
+        quantity_received,
+        rate,
+        notes,
         item:items(
           id,
           item_code,
