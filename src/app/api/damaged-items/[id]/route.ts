@@ -46,7 +46,7 @@ export async function PUT(
     }
 
     // Update damaged item
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (body.actionTaken !== undefined) updateData.action_taken = body.actionTaken;
     if (body.status !== undefined) updateData.status = body.status;
 

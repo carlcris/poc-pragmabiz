@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useAuthStore } from "@/stores/authStore";
-import { customerFormSchema, type CustomerFormValues } from "@/lib/validations/customer";
+import { customerFormSchema } from "@/lib/validations/customer";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {

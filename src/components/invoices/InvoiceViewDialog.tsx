@@ -276,7 +276,7 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                         <td className="p-3 text-right">{item.quantity}</td>
                         <td className="p-3 text-center">
                           <span className="text-muted-foreground">
-                            {item.packaging?.name || "—"}
+                            {item.uomId || "—"}
                           </span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>

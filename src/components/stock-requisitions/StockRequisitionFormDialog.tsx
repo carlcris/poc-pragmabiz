@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronsUpDown, Plus, Trash2, FileText, User, Package, DollarSign, ShoppingCart } from "lucide-react";
+import { Check, ChevronsUpDown, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
@@ -18,8 +18,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -98,7 +96,7 @@ export function StockRequisitionFormDialog({
   const suppliers = suppliersData?.data || [];
 
   const { data: itemsData } = useItems({ limit: 1000 });
-  const items = itemsData?.data || [];
+  const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
 
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -248,9 +246,6 @@ export function StockRequisitionFormDialog({
       );
     }
   }
-
-  const getErrorMessage = (err: unknown, fallback: string) =>
-    err instanceof Error ? err.message : fallback;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -603,7 +598,7 @@ export function StockRequisitionFormDialog({
                         </div>
                         <h3 className="mb-2 text-base font-semibold text-gray-900">No items added yet</h3>
                         <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                          Start by selecting an item, entering quantity and price, then click "Add Item"
+                          Start by selecting an item, entering quantity and price, then click &quot;Add Item&quot;
                         </p>
                       </div>
                     </div>

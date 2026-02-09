@@ -10,7 +10,6 @@ type StockTransferItemRow = {
   item_name: string | null;
   quantity: number | string;
   received_quantity: number | string | null;
-  packaging_id: string | null;
   uom_id: string | null;
   uom_name: string | null;
   sort_order: number | null;
@@ -42,7 +41,6 @@ type StockTransferItemInput = {
   uomId: string;
   code?: string | null;
   name?: string | null;
-  packagingId?: string | null;
   uomName?: string | null;
 };
 
@@ -109,7 +107,6 @@ export async function GET(request: NextRequest) {
           item_name,
           quantity,
           received_quantity,
-          packaging_id,
           uom_id,
           uom_name,
           sort_order
@@ -170,7 +167,6 @@ export async function GET(request: NextRequest) {
                 name: item.item_name,
                 quantity: parseFloat(String(item.quantity)),
                 receivedQuantity: parseFloat(String(item.received_quantity ?? 0)) || 0,
-                packagingId: item.packaging_id,
                 uomId: item.uom_id,
                 uom: item.uom_name,
                 sortOrder: item.sort_order ?? 0,
@@ -311,7 +307,6 @@ export async function POST(request: NextRequest) {
       item_name: item.name,
       quantity: item.quantity,
       received_quantity: 0,
-      packaging_id: item.packagingId || null,
       uom_id: item.uomId,
       uom_name: item.uomName,
       sort_order: index + 1,

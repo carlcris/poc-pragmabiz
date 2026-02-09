@@ -116,7 +116,6 @@ export default function ReorderManagementPage() {
         itemCode: item.code,
         itemName: item.name,
         quantity,
-        packagingId: null,
         rate: item.standardCost || item.listPrice || 0,
         uomId: item.uomId,
         discountPercent: 0,

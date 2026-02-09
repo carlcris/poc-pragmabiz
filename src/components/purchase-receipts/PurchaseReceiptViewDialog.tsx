@@ -151,11 +151,7 @@ export function PurchaseReceiptViewDialog({
                 </thead>
                 <tbody>
                   {receipt.items?.map((item, index) => {
-                    const conversionFactor = item.packaging?.qtyPerPack ?? 1;
-                    const totalValue = item.quantityReceived * conversionFactor * item.rate;
-                    const showConversion =
-                      item.packaging?.qtyPerPack && item.packaging.qtyPerPack !== 1;
-                    const baseUnitLabel = item.uom?.code || item.uom?.name || "base units";
+                    const totalValue = item.quantityReceived * item.rate;
 
                     return (
                       <tr key={index} className="border-t">
@@ -170,16 +166,10 @@ export function PurchaseReceiptViewDialog({
                           <span className="font-medium text-green-600">
                             {item.quantityReceived}
                           </span>
-                          {showConversion && (
-                            <div className="text-xs text-muted-foreground">
-                              = {(item.quantityReceived * conversionFactor).toFixed(4)}{" "}
-                              {baseUnitLabel}
-                            </div>
-                          )}
                         </td>
                         <td className="p-3 text-center">
                           <span className="text-muted-foreground">
-                            {item.packaging?.name || "—"}
+                            {item.uom?.code || item.uom?.name || "—"}
                           </span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.rate)}</td>
@@ -202,8 +192,7 @@ export function PurchaseReceiptViewDialog({
                 <span>
                   {formatCurrency(
                     receipt.items?.reduce((sum, item) => {
-                      const conversionFactor = item.packaging?.qtyPerPack ?? 1;
-                      return sum + item.quantityReceived * conversionFactor * item.rate;
+                      return sum + item.quantityReceived * item.rate;
                     }, 0) || 0
                   )}
                 </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -10,9 +10,8 @@ import { useGRNs, useGRN, useCreateGRN, useSubmitGRN } from "@/hooks/useGRNs";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { GRNItem, GRNStatus } from "@/types/grn";
+import type { GRNStatus } from "@/types/grn";
 
 interface TabletGRNPageProps {
   params: Promise<{ id: string }>;

@@ -62,8 +62,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         stock_request_items(
           *,
           items(item_code, item_name),
-          units_of_measure(code, symbol),
-          packaging:item_packaging(id, pack_name, qty_per_pack)
+          units_of_measure(code, symbol)
         )
       `
       )
@@ -162,7 +161,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         requested_qty: item.requested_qty,
         picked_qty: 0,
         uom_id: item.uom_id,
-        packaging_id: item.packagingId || null,
         notes: item.notes || null,
       }));
 
@@ -207,8 +205,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         stock_request_items(
           *,
           items(item_code, item_name),
-          units_of_measure(code, symbol),
-          packaging:item_packaging(id, pack_name, qty_per_pack)
+          units_of_measure(code, symbol)
         )
       `
       )

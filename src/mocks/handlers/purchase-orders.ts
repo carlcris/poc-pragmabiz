@@ -11,7 +11,6 @@ const purchaseOrdersData = [...purchaseOrders];
 type PurchaseOrderLineItemInput = {
   id?: string;
   itemId: string;
-  packagingId?: string | null;
   uomId?: string;
   quantity: number;
   rate: number;

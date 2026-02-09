@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Scan, MapPin, CheckCircle, Package, ArrowLeft, Search, Check, ChevronsUpDown } from "lucide-react";
+import { Scan, MapPin, CheckCircle, Package, ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -129,7 +129,7 @@ export default function PutawayPage() {
         if (boxData.warehouseLocation) {
           toast.info(`Box already assigned to ${boxData.warehouseLocation.code}`);
         }
-      } catch (parseError) {
+      } catch {
         // If not JSON, treat as simple barcode
         // Search for box by barcode string
         const response = await fetch(`/api/grn-boxes?barcode=${encodeURIComponent(barcodeInput)}`);
@@ -252,7 +252,7 @@ export default function PutawayPage() {
       <Card>
         <CardHeader>
           <CardTitle>Select Warehouse</CardTitle>
-          <CardDescription>Choose the warehouse you're working in</CardDescription>
+          <CardDescription>Choose the warehouse you are working in</CardDescription>
         </CardHeader>
         <CardContent>
           <Select value={warehouseId} onValueChange={setWarehouseId}>

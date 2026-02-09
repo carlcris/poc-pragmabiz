@@ -21,12 +21,6 @@ type StockRequestItem = {
   requested_qty: number;
   picked_qty: number;
   uom_id: string;
-  packaging_id?: string | null;
-  packaging?: {
-    id: string;
-    pack_name: string;
-    qty_per_pack: number;
-  } | { id: string; pack_name: string; qty_per_pack: number }[] | null;
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -123,23 +117,14 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
     requested_by_user: requestedByUser ?? undefined,
     received_by_user: receivedByUser ?? undefined,
     stock_request_items: stock_request_items?.map((item) => {
-      const { packaging_id, packaging, ...restItem } = item;
+      const { ...restItem } = item;
       const itemDetails = Array.isArray(item.items) ? item.items[0] ?? null : item.items ?? null;
       const uomDetails = Array.isArray(item.units_of_measure)
         ? item.units_of_measure[0] ?? null
         : item.units_of_measure ?? null;
-      const packagingDetails = Array.isArray(packaging) ? packaging[0] ?? null : packaging ?? null;
 
       return {
         ...restItem,
-        packagingId: packaging_id ?? null,
-        packaging: packagingDetails
-          ? {
-              id: packagingDetails.id,
-              name: packagingDetails.pack_name,
-              qtyPerPack: packagingDetails.qty_per_pack,
-            }
-          : undefined,
         items: itemDetails
           ? {
               id: itemDetails.id ?? item.item_id,

@@ -16,13 +16,6 @@ export interface PurchaseOrderLineItem {
     name: string;
   };
   quantity: number;
-  packagingId?: string | null;
-  packagingName?: string;
-  packaging?: {
-    id: string;
-    name: string;
-    qtyPerPack: number;
-  };
   uomId?: string;
   uom?: {
     id: string;
@@ -78,7 +71,6 @@ export interface CreatePurchaseOrderRequest {
   items: {
     itemId: string;
     quantity: number;
-    packagingId?: string | null;
     uomId: string;
     rate: number;
     discountPercent: number;

@@ -61,7 +61,6 @@ const invoiceFormSchema = z.object({
 });
 
 type InvoiceFormInput = z.input<typeof invoiceFormSchema>;
-type InvoiceFormValues = z.output<typeof invoiceFormSchema>;
 
 interface InvoiceFormDialogProps {
   open: boolean;
@@ -172,8 +171,6 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
         itemName: item.itemName,
         description: item.description,
         quantity: item.quantity,
-        packagingId: item.packagingId ?? null,
-        packagingName: item.packaging?.name,
         unitPrice: item.unitPrice,
         uomId: item.uomId,
         discount: item.discount,
@@ -238,7 +235,6 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
           itemName: item.itemName || "",
           description: item.description,
           quantity: item.quantity,
-          packagingId: item.packagingId ?? null,
           uomId: item.uomId,
           unitPrice: item.unitPrice,
           discount: item.discount,
@@ -491,7 +487,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
                                     <span className="text-muted-foreground">
-                                      {item.packagingName || "—"}
+                                      {item.uomId || "—"}
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right">

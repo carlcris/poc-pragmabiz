@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, FileText, Package, MapPin, Truck } from "lucide-react";
+import { Calendar, Package, MapPin, Truck } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { LoadList } from "@/types/load-list";

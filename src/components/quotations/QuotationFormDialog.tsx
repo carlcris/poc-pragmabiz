@@ -150,8 +150,6 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
         itemName: item.itemName,
         description: item.description,
         quantity: item.quantity,
-        packagingId: item.packagingId ?? null,
-        packagingName: item.packagingName,
         unitPrice: item.unitPrice,
         uomId: item.uomId,
         discount: item.discount,
@@ -206,7 +204,6 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
           itemId: item.itemId,
           description: item.description,
           quantity: item.quantity,
-          packagingId: item.packagingId ?? null,
           uomId: item.uomId, // Should always be set from the item
           rate: item.unitPrice, // Transform unitPrice -> rate
           discountPercent: item.discount, // Transform discount -> discountPercent
@@ -368,7 +365,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
                                     <span className="text-muted-foreground">
-                                      {item.packagingName || "—"}
+                                      {item.uomId || "—"}
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right">

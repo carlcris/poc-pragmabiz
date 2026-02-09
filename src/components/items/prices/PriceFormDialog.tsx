@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -41,18 +41,21 @@ type PriceFormDialogProps = {
 type FormData = {
   priceTier: string;
   priceTierName: string;
-  price: number;
+  price: string;
   currencyCode: string;
   effectiveFrom: string;
   effectiveTo: string;
   isActive: boolean;
 };
 
+type PricePayload = Omit<FormData, "price"> & { price: number };
+
 export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceFormDialogProps) => {
   const queryClient = useQueryClient();
   const isEditing = !!price;
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -63,7 +66,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
     defaultValues: {
       priceTier: "",
       priceTierName: "",
-      price: 0,
+      price: "",
       currencyCode: "PHP",
       effectiveFrom: new Date().toISOString().split("T")[0],
       effectiveTo: "",
@@ -78,7 +81,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
     if (price) {
       setValue("priceTier", price.priceTier);
       setValue("priceTierName", price.priceTierName);
-      setValue("price", price.price);
+      setValue("price", price.price.toString());
       setValue("currencyCode", price.currencyCode);
       setValue("effectiveFrom", price.effectiveFrom);
       setValue("effectiveTo", price.effectiveTo || "");
@@ -90,7 +93,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: PricePayload) => {
       const response = await apiClient.post<{ data: ItemPrice }>(
         `/api/items/${itemId}/prices`,
         data
@@ -111,7 +114,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+    mutationFn: async (data: PricePayload) => {
       if (!price) throw new Error("No price selected");
       const response = await apiClient.put<{ data: ItemPrice }>(
         `/api/items/${itemId}/prices/${price.id}`,
@@ -131,10 +134,10 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
   });
 
   const onSubmit = (data: FormData) => {
-    const payload = {
+    const payload: PricePayload = {
       priceTier: data.priceTier,
       priceTierName: data.priceTierName,
-      price: Number(data.price),
+      price: data.price === "" ? 0 : Number(data.price),
       currencyCode: data.currencyCode,
       effectiveFrom: data.effectiveFrom,
       effectiveTo: data.effectiveTo || "",
@@ -211,16 +214,26 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
             <Label htmlFor="price">
               Price <span className="text-destructive">*</span>
             </Label>
-            <Input
-              id="price"
-              type="number"
-              step="0.0001"
-              {...register("price", {
+            <Controller
+              name="price"
+              control={control}
+              rules={{
                 required: "Price is required",
-                min: { value: 0, message: "Price must be 0 or greater" },
-              })}
-              placeholder="0.0000"
-              disabled={isPending}
+                validate: (value) =>
+                  value === "" || Number(value) >= 0 || "Price must be 0 or greater",
+              }}
+              render={({ field }) => (
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.0001"
+                  placeholder="0.0000"
+                  disabled={isPending}
+                  value={field.value ?? ""}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                />
+              )}
             />
             {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
           </div>

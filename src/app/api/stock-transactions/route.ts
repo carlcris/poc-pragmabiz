@@ -123,7 +123,6 @@ type StockTransactionBody = {
     itemId: string;
     quantity: number | string;
     unitCost?: number | string | null;
-    packagingId?: string | null;
     uomId?: string | null;
     batchNo?: string | null;
     serialNo?: string | null;
@@ -485,7 +484,6 @@ export async function POST(request: NextRequest) {
     // Normalize item quantities from packages to base units
     const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId || null,
       inputQty: Number(item.quantity),
       unitCost: item.unitCost ? parseFloat(String(item.unitCost)) : 0,
     }));
@@ -551,10 +549,8 @@ export async function POST(request: NextRequest) {
           item_id: item.itemId,
           // Normalization fields
           input_qty: item.inputQty,
-          input_packaging_id: item.inputPackagingId,
           conversion_factor: item.conversionFactor,
           normalized_qty: item.normalizedQty,
-          base_package_id: item.basePackageId,
           // Standard fields
           quantity: item.normalizedQty,
           uom_id: item.uomId,

@@ -118,13 +118,14 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     field: "receivedQty" | "damagedQty" | "numBoxes" | "notes",
     value: number | string
   ) => {
+    const currentItem = grn?.items.find((item) => item.id === itemId);
     setEditedItems((prev) => ({
       ...prev,
       [itemId]: {
-        receivedQty: prev[itemId]?.receivedQty ?? 0,
-        damagedQty: prev[itemId]?.damagedQty ?? 0,
-        numBoxes: prev[itemId]?.numBoxes ?? 0,
-        notes: prev[itemId]?.notes ?? "",
+        receivedQty: prev[itemId]?.receivedQty ?? currentItem?.receivedQty ?? 0,
+        damagedQty: prev[itemId]?.damagedQty ?? currentItem?.damagedQty ?? 0,
+        numBoxes: prev[itemId]?.numBoxes ?? currentItem?.numBoxes ?? 0,
+        notes: prev[itemId]?.notes ?? currentItem?.notes ?? "",
         [field]: value,
       },
     }));
@@ -211,7 +212,6 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const isEditable = grn?.status === "draft" || grn?.status === "receiving";
   const canSubmit = grn?.status === "draft" || grn?.status === "receiving";
   const canApprove = grn?.status === "pending_approval";
-  const hasChanges = Object.keys(editedItems).length > 0;
 
   if (isLoading) {
     return (

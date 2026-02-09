@@ -122,8 +122,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         stock_request_items(
           *,
           items(item_code, item_name),
-          units_of_measure(code, symbol),
-          packaging:item_packaging(id, pack_name, qty_per_pack)
+          units_of_measure(code, symbol)
         )
       `
       )

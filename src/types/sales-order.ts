@@ -14,12 +14,6 @@ export interface SalesOrderLineItem {
   itemName: string;
   description: string;
   quantity: number;
-  packagingId?: string | null;
-  packaging?: {
-    id: string;
-    name: string;
-    qtyPerPack: number;
-  };
   uomId: string; // Unit of measure ID
   unitPrice: number;
   discount: number; // Percentage

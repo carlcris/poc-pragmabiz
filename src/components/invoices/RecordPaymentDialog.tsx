@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { recordPaymentSchema, type RecordPaymentValues } from "@/lib/validations/invoice";
+import { recordPaymentSchema } from "@/lib/validations/invoice";
 import type { z } from "zod";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Invoice } from "@/types/invoice";

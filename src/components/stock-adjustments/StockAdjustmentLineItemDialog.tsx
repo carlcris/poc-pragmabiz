@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,7 +31,6 @@ import {
 } from "@/components/ui/select";
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
-import { PackageSelector } from "@/components/inventory/PackageSelector";
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
@@ -40,25 +39,12 @@ const lineItemSchema = z.object({
   uomId: z.string().min(1, "Unit of measure is required"),
   currentQty: z.number().min(0, "Current quantity cannot be negative"),
   adjustedQty: z.number().min(0, "Adjusted quantity cannot be negative"), // This will store the FINAL quantity
-  packagingId: z.string().nullable().optional(), // null = use base package
   unitCost: z.number().min(0, "Unit cost cannot be negative"),
   adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
   adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
 });
 
 export type StockAdjustmentLineItemFormValues = z.infer<typeof lineItemSchema>;
-
-type ItemPackageSummary = {
-  id: string;
-  isBasePackage?: boolean;
-  packageName?: string;
-  qtyPerPack?: number;
-  uomCode?: string | null;
-};
-
-type ItemPackagesResponse = {
-  data?: ItemPackageSummary[];
-};
 
 interface StockAdjustmentLineItemDialogProps {
   open: boolean;
@@ -82,15 +68,10 @@ export function StockAdjustmentLineItemDialog({
   onItemSelect,
 }: StockAdjustmentLineItemDialogProps) {
   const { data: itemsData } = useItems({ limit: 1000 });
-  const items = itemsData?.data || [];
+  const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
   const { formatCurrency } = useCurrency();
-
-  // Track package info for conversion display
-  const [packageInfo, setPackageInfo] = useState<{
-    name: string;
-    conversionFactor: number;
-    baseUom: string;
-  } | null>(null);
+  const [uomLabel, setUomLabel] = useState<string>("");
+  const [itemSearch, setItemSearch] = useState("");
 
   const form = useForm<StockAdjustmentLineItemFormValues>({
     resolver: zodResolver(lineItemSchema),
@@ -101,7 +82,6 @@ export function StockAdjustmentLineItemDialog({
       uomId: "",
       currentQty: 0,
       adjustedQty: 0,
-      packagingId: null,
       unitCost: 0,
       adjustmentAmount: 0,
       adjustmentType: "add",
@@ -120,45 +100,34 @@ export function StockAdjustmentLineItemDialog({
         uomId: "",
         currentQty: 0,
         adjustedQty: 0,
-        packagingId: null,
         unitCost: 0,
         adjustmentAmount: 0,
         adjustmentType: "add",
       });
-      setPackageInfo(null);
     }
   }, [open, item, form]);
+
+  const watchedItemId = form.watch("itemId");
+
+  useEffect(() => {
+    if (!watchedItemId) {
+      setUomLabel("");
+      return;
+    }
+    const selectedItem = items.find((candidate) => candidate.id === watchedItemId);
+    setUomLabel(selectedItem?.uom || "");
+  }, [watchedItemId, items]);
 
   const handleItemSelect = async (itemId: string) => {
     const selectedItem = items.find((i) => i.id === itemId);
     if (selectedItem) {
+      setItemSearch("");
       form.setValue("itemId", selectedItem.id);
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
       form.setValue("uomId", selectedItem.uomId);
+      setUomLabel(selectedItem.uom || "");
       form.setValue("unitCost", selectedItem.standardCost);
-
-      // Fetch item packages and set default to base package
-      try {
-        const response = await fetch(`/api/items/${itemId}/packages`);
-        if (response.ok) {
-          const packagesData = (await response.json()) as ItemPackagesResponse;
-          const basePackage = packagesData.data?.find((pkg) => pkg.isBasePackage);
-          if (basePackage) {
-            form.setValue("packagingId", basePackage.id);
-
-            // Set package info for display
-            setPackageInfo({
-              name: basePackage.packageName || "Base Package",
-              conversionFactor: basePackage.qtyPerPack ?? 1,
-              baseUom: basePackage.uomCode || "Unit",
-            });
-          }
-        }
-      } catch {
-        // If fetching packages fails, leave packagingId as null
-        setPackageInfo(null);
-      }
 
       // Fetch current stock quantity if warehouse is selected
       if (warehouseId && onItemSelect) {
@@ -169,37 +138,9 @@ export function StockAdjustmentLineItemDialog({
     }
   };
 
-  // Update package info when packaging changes
-  const handlePackageChange = async (packagingId: string | null) => {
-    const itemId = form.watch("itemId");
-    if (!itemId) return;
-
-    try {
-      const response = await fetch(`/api/items/${itemId}/packages`);
-      if (response.ok) {
-        const packagesData = (await response.json()) as ItemPackagesResponse;
-        const selectedPackage = packagesData.data?.find((pkg) => pkg.id === packagingId);
-        if (selectedPackage) {
-          setPackageInfo({
-            name: selectedPackage.packageName || "Package",
-            conversionFactor: selectedPackage.qtyPerPack ?? 1,
-            baseUom: selectedPackage.uomCode || "Unit",
-          });
-        } else {
-          setPackageInfo(null);
-        }
-      }
-    } catch {
-      setPackageInfo(null);
-    }
-  };
-
   const onSubmit = (data: StockAdjustmentLineItemFormValues) => {
-    // Calculate final stock in BASE UNITS
-    const conversionFactor = packageInfo?.conversionFactor || 1;
-
-    // Convert adjustment amount to base units
-    const adjustmentInBaseUnits = (data.adjustmentAmount || 0) * conversionFactor;
+    // Calculate final stock in base units
+    const adjustmentInBaseUnits = data.adjustmentAmount || 0;
 
     // Apply sign based on adjustment type
     const signedAdjustment =
@@ -221,10 +162,10 @@ export function StockAdjustmentLineItemDialog({
   const adjustmentAmount = form.watch("adjustmentAmount") || 0; // This is always positive
   const adjustmentType = form.watch("adjustmentType") || "add";
   const unitCost = form.watch("unitCost") || 0;
+  const isItemSelected = Boolean(form.watch("itemId"));
 
   // Calculate adjustment in base units (with sign based on type)
-  const conversionFactor = packageInfo?.conversionFactor || 1;
-  const absAdjustmentInBaseUnits = adjustmentAmount * conversionFactor;
+  const absAdjustmentInBaseUnits = adjustmentAmount;
   const adjustmentInBaseUnits =
     adjustmentType === "remove" ? -absAdjustmentInBaseUnits : absAdjustmentInBaseUnits;
 
@@ -234,118 +175,81 @@ export function StockAdjustmentLineItemDialog({
   // Calculate difference and value (in base units)
   const difference = adjustmentInBaseUnits;
   const totalValue = difference * unitCost;
+  const displayTotalValue = Math.abs(totalValue) < 0.005 ? 0 : totalValue;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === "edit" ? "Edit Adjustment Item" : "Add Adjustment Item"}
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogHeader className="border-b pb-4">
+          <DialogTitle className="text-xl">
+            {mode === "edit" ? "Edit Stock Adjustment" : "New Stock Adjustment"}
           </DialogTitle>
           <DialogDescription>
             {mode === "edit"
-              ? "Update the adjustment item details."
-              : "Fill in the details for the new adjustment item."}
+              ? "Update the adjustment details below"
+              : "Adjust inventory levels for a specific item"}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="itemId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Item *</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      handleItemSelect(value);
-                    }}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an item" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {items
-                        .filter((i) => i.isActive)
-                        .map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.code} - {item.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Compact Package and Current Stock Row - Always visible */}
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="packagingId"
-                render={({ field }) => (
-                  <FormItem>
-                    <PackageSelector
-                      itemId={form.watch("itemId") || ""}
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        handlePackageChange(value);
-                      }}
-                      quantity={adjustmentAmount !== 0 ? Math.abs(adjustmentAmount) : undefined}
-                      label="Package"
-                      required={false}
-                    />
-                  </FormItem>
-                )}
-              />
-
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">Current Stock</label>
-                <div className="flex h-10 items-center justify-end rounded-md border bg-muted/50 p-2.5">
-                  <span className="font-semibold">
-                    {currentQty.toFixed(4)}{" "}
-                    <span className="text-xs text-muted-foreground">
-                      {packageInfo?.baseUom || "units"}
-                    </span>
-                  </span>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-2">
+            {/* Item Selection */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                  <span className="text-lg font-bold text-purple-700">1</span>
                 </div>
+                <h3 className="text-base font-semibold text-gray-900">Select Item</h3>
               </div>
-            </div>
 
-            {/* Adjustment Type and Quantity */}
-            <div className="space-y-3">
               <FormField
                 control={form.control}
-                name="adjustmentType"
+                name="itemId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Adjustment Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Inventory Item <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handleItemSelect(value);
+                      }}
+                      value={field.value}
+                    >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select adjustment type" />
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Choose an item to adjust" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="add">
-                          <span className="flex items-center gap-2">
-                            <span className="text-green-600">+</span>
-                            Add Stock
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="remove">
-                          <span className="flex items-center gap-2">
-                            <span className="text-red-600">−</span>
-                            Remove Stock
-                          </span>
-                        </SelectItem>
+                    <SelectContent>
+                      <div className="p-2">
+                        <Input
+                          placeholder="Search by code or name..."
+                          value={itemSearch}
+                          onChange={(e) => setItemSearch(e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      {items
+                        .filter((i) => i.isActive)
+                        .filter((item) => {
+                          if (!itemSearch.trim()) return true;
+                          const term = itemSearch.trim().toLowerCase();
+                          return (
+                            item.code.toLowerCase().includes(term) ||
+                            item.name.toLowerCase().includes(term)
+                          );
+                        })
+                        .map((item) => (
+                          <SelectItem key={item.id} value={item.id}>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs text-gray-500">{item.code}</span>
+                              <span>•</span>
+                              <span>{item.name}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -353,36 +257,130 @@ export function StockAdjustmentLineItemDialog({
                 )}
               />
 
+              {/* Current Stock Display */}
+              <div className="rounded-lg bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Current Stock on Hand</span>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {currentQty.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500">{uomLabel || "units"}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Adjustment Type & Amount */}
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                  <span className="text-lg font-bold text-purple-700">2</span>
+                </div>
+                <h3 className="text-base font-semibold text-gray-900">Adjustment Details</h3>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="adjustmentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Type <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        disabled={!isItemSelected}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-11" disabled={!isItemSelected}>
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="add">
+                            <div className="flex items-center gap-2 py-1">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-100">
+                                <span className="text-sm font-bold text-green-700">+</span>
+                              </div>
+                              <div>
+                                <p className="font-medium">Increase Stock</p>
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="remove">
+                            <div className="flex items-center gap-2 py-1">
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100">
+                                <span className="text-sm font-bold text-red-700">−</span>
+                              </div>
+                              <div>
+                                <p className="font-medium">Decrease Stock</p>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="adjustmentAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        Quantity <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            placeholder="0.00"
+                            className="h-11 pr-20 text-right text-base font-semibold"
+                            disabled={!isItemSelected}
+                          />
+                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
+                            {uomLabel || "units"}
+                          </div>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="adjustmentAmount"
+                name="unitCost"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center justify-between">
-                      <span>Quantity</span>
-                      {packageInfo &&
-                        packageInfo.conversionFactor !== 1 &&
-                        adjustmentAmount !== 0 && (
-                          <span className="text-xs font-normal text-blue-600 dark:text-blue-400">
-                            ≈ {adjustmentInBaseUnits > 0 ? "+" : ""}
-                            {adjustmentInBaseUnits.toFixed(4)} {packageInfo.baseUom}
-                          </span>
-                        )}
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      Unit Cost <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
+                          ¥
+                        </span>
                         <Input
                           type="number"
                           step="0.01"
                           min="0"
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          placeholder="Enter quantity"
-                          className="pr-16"
+                          placeholder="0.00"
+                          className="h-11 pl-8 pr-4 text-right text-base font-semibold"
+                          disabled={!isItemSelected}
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                          {packageInfo?.name || "units"}
-                        </div>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -391,88 +389,102 @@ export function StockAdjustmentLineItemDialog({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="unitCost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unit Cost *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Summary Display - Always visible */}
-            <div className="space-y-3">
-              <div className="rounded-md border-2 border-primary/20 bg-primary/5 p-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">New Stock Level:</span>
-                    <span className="text-2xl font-bold">
-                      {newStockQty.toFixed(4)} {packageInfo?.baseUom || "units"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1 border-t pt-2 text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Current:</span>
-                      <span>{currentQty.toFixed(4)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Adjustment:</span>
-                      <span
-                        className={
-                          adjustmentInBaseUnits > 0
-                            ? "font-medium text-green-600"
-                            : adjustmentInBaseUnits < 0
-                              ? "font-medium text-red-600"
-                              : ""
-                        }
-                      >
-                        {adjustmentInBaseUnits > 0 ? "+" : ""}
-                        {adjustmentInBaseUnits.toFixed(4)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t pt-1 font-medium">
-                      <span>New:</span>
-                      <span>{newStockQty.toFixed(4)}</span>
-                    </div>
-                  </div>
+            {/* Summary Section */}
+            <div className="space-y-4 border-t pt-6">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
+                  <span className="text-lg font-bold text-purple-700">3</span>
                 </div>
+                <h3 className="text-base font-semibold text-gray-900">Summary</h3>
               </div>
 
-              <div className="rounded-md bg-muted p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Value Impact:</span>
-                  <span
-                    className={`text-lg font-bold ${
-                      totalValue > 0 ? "text-green-600" : totalValue < 0 ? "text-red-600" : ""
-                    }`}
-                  >
-                    {totalValue > 0 ? "+" : ""}
-                    {formatCurrency(totalValue)}
-                  </span>
+              <div className={`space-y-3 ${isItemSelected ? "" : "opacity-60"}`}>
+                {/* New Stock Level Card */}
+                <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-5">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">New Stock Level</span>
+                      <div className="text-right">
+                        <p className="text-3xl font-bold text-purple-900">
+                          {newStockQty.toFixed(2)}
+                        </p>
+                        <p className="text-xs font-medium text-purple-600">
+                          {uomLabel || "units"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 border-t border-purple-200 pt-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Current Stock</span>
+                        <span className="font-semibold text-gray-900">
+                          {currentQty.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Adjustment</span>
+                        <span
+                          className={`font-bold ${
+                            adjustmentInBaseUnits > 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {adjustmentInBaseUnits > 0 ? "+" : ""}
+                          {adjustmentInBaseUnits.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between border-t border-purple-200 pt-2 text-sm">
+                        <span className="font-semibold text-gray-700">New Stock</span>
+                        <span className="font-bold text-purple-900">
+                          {newStockQty.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {Math.abs(adjustmentInBaseUnits).toFixed(4)} {packageInfo?.baseUom || "units"} ×{" "}
-                  {formatCurrency(unitCost)}
-                </p>
+
+                {/* Value Impact Card */}
+                <div className="rounded-lg bg-gray-50 p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Value Impact</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {Math.abs(adjustmentInBaseUnits).toFixed(2)} {uomLabel || "units"} ×{" "}
+                        {formatCurrency(unitCost)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={`text-2xl font-bold ${
+                          displayTotalValue > 0
+                            ? "text-green-600"
+                            : displayTotalValue < 0
+                              ? "text-red-600"
+                              : "text-gray-600"
+                        }`}
+                      >
+                        {displayTotalValue < 0
+                          ? `(${formatCurrency(Math.abs(displayTotalValue))})`
+                          : formatCurrency(displayTotalValue)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="border-t pt-6">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} size="lg">
                 Cancel
               </Button>
-              <Button type="submit">{mode === "edit" ? "Update Item" : "Add Item"}</Button>
+              <Button
+                type="submit"
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700"
+              >
+                {mode === "edit" ? "Update Adjustment" : "Add Adjustment"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

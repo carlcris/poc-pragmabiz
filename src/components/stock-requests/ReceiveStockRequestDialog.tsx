@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useReceiveStockRequest } from "@/hooks/useStockRequests";
-import { CompactPackageSelector } from "@/components/inventory/PackageSelector";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +55,6 @@ const receiveStockRequestSchema = z.object({
       itemId: z.string(),
       requestedQty: z.number(),
       receivedQty: z.number().min(0, "Quantity cannot be negative"),
-      packagingId: z.string().nullable().optional(),
       uomId: z.string(),
       locationId: z.string().nullable().optional(),
     })
@@ -113,7 +111,6 @@ export function ReceiveStockRequestDialog({
         itemId: item.item_id,
         requestedQty: item.requested_qty,
         receivedQty: item.requested_qty,
-        packagingId: item.packagingId ?? null,
         uomId: item.uom_id,
         locationId: defaultLocationId || null,
       }));
@@ -163,15 +160,6 @@ export function ReceiveStockRequestDialog({
     currentItems[index] = {
       ...currentItems[index],
       receivedQty: Number.isFinite(quantity) ? quantity : 0,
-    };
-    form.setValue("items", currentItems, { shouldValidate: false });
-  };
-
-  const updateItemPackaging = (index: number, packagingId: string | null) => {
-    const currentItems = [...form.getValues("items")];
-    currentItems[index] = {
-      ...currentItems[index],
-      packagingId,
     };
     form.setValue("items", currentItems, { shouldValidate: false });
   };
@@ -247,7 +235,6 @@ export function ReceiveStockRequestDialog({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead>Package</TableHead>
                       <TableHead className="text-right">Requested</TableHead>
                       <TableHead className="text-right">Receive Now *</TableHead>
                       <TableHead>Location</TableHead>
@@ -256,7 +243,6 @@ export function ReceiveStockRequestDialog({
                   <TableBody>
                     {(stockRequest.stock_request_items || []).map((requestItem, index) => {
                       const receivingNow = items[index]?.receivedQty || 0;
-                      const packagingId = items[index]?.packagingId || null;
                       const locationId = items[index]?.locationId || "";
 
                       return (
@@ -270,13 +256,8 @@ export function ReceiveStockRequestDialog({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <CompactPackageSelector
-                              itemId={requestItem.item_id}
-                              value={packagingId}
-                              onChange={(pkgId) => updateItemPackaging(index, pkgId)}
-                            />
+                            {requestItem.requested_qty}
                           </TableCell>
-                          <TableCell className="text-right">{requestItem.requested_qty}</TableCell>
                           <TableCell className="text-right">
                             <Input
                               type="number"

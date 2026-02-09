@@ -107,6 +107,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    type StockRequisitionListItemRow = {
+      id: string;
+      sr_id: string;
+      item_id: string;
+      item?: {
+        id: string;
+        item_code: string;
+        item_name: string;
+      } | null;
+      requested_qty: number | string;
+      unit_price: number | string;
+      total_price: number | string;
+      fulfilled_qty: number | string;
+      outstanding_qty: number | string;
+      notes: string | null;
+    };
+
     // Format response
     const formattedRequisitions = requisitions?.map((sr) => ({
       id: sr.id,
@@ -142,7 +159,7 @@ export async function GET(request: NextRequest) {
       status: sr.status,
       notes: sr.notes,
       totalAmount: sr.total_amount ? parseFloat(sr.total_amount) : 0,
-      items: sr.items?.map((item: any) => ({
+      items: (sr.items as StockRequisitionListItemRow[] | null)?.map((item) => ({
         id: item.id,
         srId: item.sr_id,
         itemId: item.item_id,
@@ -153,11 +170,11 @@ export async function GET(request: NextRequest) {
               name: item.item.item_name,
             }
           : null,
-        requestedQty: parseFloat(item.requested_qty),
-        unitPrice: parseFloat(item.unit_price),
-        totalPrice: parseFloat(item.total_price),
-        fulfilledQty: parseFloat(item.fulfilled_qty),
-        outstandingQty: parseFloat(item.outstanding_qty),
+        requestedQty: Number(item.requested_qty ?? 0),
+        unitPrice: Number(item.unit_price ?? 0),
+        totalPrice: Number(item.total_price ?? 0),
+        fulfilledQty: Number(item.fulfilled_qty ?? 0),
+        outstandingQty: Number(item.outstanding_qty ?? 0),
         notes: item.notes,
       })),
       createdAt: sr.created_at,

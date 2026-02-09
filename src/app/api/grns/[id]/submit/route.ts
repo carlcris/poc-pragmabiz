@@ -54,12 +54,15 @@ export async function POST(
     }
 
     // Validate all items have received quantities
-    const items = grn.items as any[];
-    if (!items || items.length === 0) {
+    type GrnSubmitItem = {
+      received_qty: number | string | null;
+    };
+    const items = Array.isArray(grn.items) ? (grn.items as GrnSubmitItem[]) : [];
+    if (items.length === 0) {
       return NextResponse.json({ error: "GRN has no items" }, { status: 400 });
     }
 
-    const hasReceivedQty = items.every((item) => item.received_qty > 0);
+    const hasReceivedQty = items.every((item) => Number(item.received_qty ?? 0) > 0);
     if (!hasReceivedQty) {
       return NextResponse.json(
         { error: "All items must have received quantities" },

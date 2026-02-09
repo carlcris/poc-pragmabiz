@@ -15,7 +15,6 @@ type PurchaseOrderRow = Tables<"purchase_orders">;
 type SupplierRow = Tables<"suppliers">;
 type WarehouseRow = Tables<"warehouses">;
 type ItemRow = Tables<"items">;
-type ItemPackagingRow = Tables<"item_packaging">;
 type UnitRow = Tables<"units_of_measure">;
 
 type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
@@ -24,10 +23,6 @@ type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
     "id" | "item_code" | "item_name"
   >[] | null;
   uom?: Pick<UnitRow, "id" | "code" | "name"> | Pick<UnitRow, "id" | "code" | "name">[] | null;
-  packaging?: Pick<ItemPackagingRow, "id" | "pack_name" | "qty_per_pack"> | Pick<
-    ItemPackagingRow,
-    "id" | "pack_name" | "qty_per_pack"
-  >[] | null;
 };
 
 type PurchaseReceiptQueryRow = Pick<
@@ -70,7 +65,6 @@ type PurchaseReceiptItemInput = {
   itemId: string;
   quantityOrdered: number;
   quantityReceived: number;
-  packagingId?: string | null;
   uomId?: string | null;
   rate: number;
   notes?: string | null;
@@ -151,8 +145,6 @@ export async function GET(request: NextRequest) {
           quantity_received,
           uom_id,
           uom:units_of_measure(id, code, name),
-          packaging_id,
-          packaging:item_packaging(id, pack_name, qty_per_pack),
           rate,
           notes
         )
@@ -266,9 +258,6 @@ export async function GET(request: NextRequest) {
         items: receipt.items?.map((item) => {
           const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
           const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
-          const packaging = Array.isArray(item.packaging)
-            ? item.packaging[0]
-            : item.packaging ?? null;
 
           return {
             id: item.id,
@@ -289,14 +278,6 @@ export async function GET(request: NextRequest) {
                   id: uom.id,
                   code: uom.code,
                   name: uom.name,
-                }
-              : undefined,
-            packagingId: item.packaging_id,
-            packaging: packaging
-              ? {
-                  id: packaging.id,
-                  name: packaging.pack_name,
-                  qtyPerPack: packaging.qty_per_pack,
                 }
               : undefined,
             rate: Number(item.rate),
@@ -422,7 +403,6 @@ export async function POST(request: NextRequest) {
         item_id: item.itemId,
         quantity_ordered: item.quantityOrdered,
         quantity_received: item.quantityReceived,
-        packaging_id: item.packagingId || null,
         uom_id: item.uomId,
         rate: item.rate,
         notes: item.notes,

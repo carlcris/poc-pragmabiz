@@ -37,7 +37,6 @@ type DbSalesOrderItem = {
   item_id: string;
   item_description: string | null;
   quantity: number | string;
-  packaging_id: string | null;
   uom_id: string | null;
   rate: number | string;
   discount_percent: number | string | null;
@@ -57,7 +56,6 @@ type DbUoM = { id: string; code: string; name: string };
 type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
   items?: DbItem | DbItem[] | null;
   units_of_measure?: DbUoM | DbUoM[] | null;
-  item_packaging?: { id: string; pack_name: string; qty_per_pack: number | string } | null;
 };
 type SalesOrderLineItemInput = Omit<
   SalesOrderLineItem,
@@ -119,9 +117,6 @@ function transformDbSalesOrder(
 // Transform database sales order item to frontend type
 function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): SalesOrderLineItem {
   const item = Array.isArray(dbItem.items) ? dbItem.items[0] ?? null : dbItem.items;
-  const packaging = Array.isArray(dbItem.item_packaging)
-    ? dbItem.item_packaging[0] ?? null
-    : dbItem.item_packaging;
 
   return {
     id: dbItem.id,
@@ -130,14 +125,6 @@ function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): Sales
     itemName: item?.item_name || "",
     description: dbItem.item_description || "",
     quantity: Number(dbItem.quantity),
-    packagingId: dbItem.packaging_id,
-    packaging: packaging
-      ? {
-          id: packaging.id,
-          name: packaging.pack_name,
-          qtyPerPack: Number(packaging.qty_per_pack),
-        }
-      : undefined,
     uomId: dbItem.uom_id || "",
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
@@ -259,11 +246,6 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name
         ),
-        item_packaging (
-          id,
-          pack_name,
-          qty_per_pack
-        ),
         units_of_measure (
           id,
           code,
@@ -382,7 +364,6 @@ export async function POST(request: NextRequest) {
     // Normalize quantities to base units for pricing
     const itemInputs: StockTransactionItemInput[] = orderData.lineItems.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId ?? null,
       inputQty: item.quantity,
       unitCost: item.unitPrice,
     }));
@@ -462,7 +443,6 @@ export async function POST(request: NextRequest) {
       item_id: item.itemId,
       item_description: item.description,
       quantity: item.quantity,
-      packaging_id: item.packagingId ?? null,
       uom_id: item.uomId,
       rate: item.unitPrice,
       discount_percent: item.discount || 0,

@@ -86,7 +86,6 @@ export function useReceiveGoodsFromPO() {
           itemId: string;
           quantityOrdered: number;
           quantityReceived: number;
-          packagingId?: string | null;
           uomId: string;
           rate: number;
           notes?: string;

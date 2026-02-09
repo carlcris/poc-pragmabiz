@@ -9,8 +9,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -479,7 +477,7 @@ export function LinkStockRequisitionsDialog({
                   </div>
                   <h3 className="mb-2 text-base font-semibold text-gray-900">No links added yet</h3>
                   <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                    Select load list and SR items above, enter quantity, then click "Add Link"
+                    Select load list and SR items above, enter quantity, then click &quot;Add Link&quot;
                   </p>
                 </div>
               </div>

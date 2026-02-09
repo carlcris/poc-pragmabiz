@@ -18,12 +18,6 @@ export interface StockRequestItem {
   requested_qty: number;
   picked_qty: number;
   uom_id: string;
-  packagingId?: string | null;
-  packaging?: {
-    id: string;
-    name: string;
-    qtyPerPack: number;
-  };
   notes?: string | null;
   created_at: string;
   updated_at: string;
@@ -111,7 +105,6 @@ export interface CreateStockRequestPayload {
     item_id: string;
     requested_qty: number;
     uom_id: string;
-    packagingId?: string | null;
     notes?: string;
   }>;
 }
@@ -145,7 +138,6 @@ export type ReceiveStockRequestPayload = {
     itemId: string;
     requestedQty: number;
     receivedQty: number;
-    packagingId?: string | null;
     uomId: string;
     locationId?: string | null;
   }>;

@@ -13,7 +13,6 @@ type StockTransferItemRow = {
   id: string;
   item_id: string;
   quantity: number | string;
-  packaging_id: string | null;
   uom_id: string | null;
 };
 
@@ -122,7 +121,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const itemInputs: StockTransactionItemInput[] = typedTransfer.stock_transfer_items.map(
       (item) => ({
         itemId: item.item_id,
-        packagingId: item.packaging_id || null, // null = use base package
         inputQty: parseFloat(String(item.quantity)),
         unitCost: 0, // Transfers don't have cost (internal movement)
       })
@@ -290,10 +288,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         item_id: item.itemId,
         // Normalization fields (NEW)
         input_qty: item.inputQty,
-        input_packaging_id: item.inputPackagingId,
         conversion_factor: item.conversionFactor,
         normalized_qty: item.normalizedQty,
-        base_package_id: item.basePackageId,
         // Standard fields
         quantity: item.normalizedQty, // Backward compat
         uom_id: item.uomId,

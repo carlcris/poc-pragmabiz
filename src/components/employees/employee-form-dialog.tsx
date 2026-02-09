@@ -52,7 +52,6 @@ const employeeFormSchema = z.object({
 });
 
 type EmployeeFormInput = z.input<typeof employeeFormSchema>;
-type EmployeeFormValues = z.output<typeof employeeFormSchema>;
 
 interface EmployeeFormDialogProps {
   open: boolean;

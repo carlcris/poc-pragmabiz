@@ -198,10 +198,6 @@ export function PurchaseOrderViewDialog({
                 <tbody>
                   {purchaseOrder.items?.map((item, index) => {
                     const total = item.lineTotal ?? item.quantity * item.rate;
-                    const conversionFactor = item.packaging?.qtyPerPack ?? 1;
-                    const showConversion =
-                      item.packaging?.qtyPerPack && item.packaging.qtyPerPack !== 1;
-                    const baseUnitLabel = item.uom?.code || item.uom?.name || "base units";
 
                     return (
                       <tr key={index} className="border-t">
@@ -213,14 +209,11 @@ export function PurchaseOrderViewDialog({
                         </td>
                         <td className="p-3 text-right">
                           {item.quantity}
-                          {showConversion && (
-                            <div className="text-xs text-muted-foreground">
-                              = {(item.quantity * conversionFactor).toFixed(4)} {baseUnitLabel}
-                            </div>
-                          )}
                         </td>
                         <td className="p-3 text-center">
-                          <span className="text-muted-foreground">{item.packagingName || "—"}</span>
+                          <span className="text-muted-foreground">
+                            {item.uom?.code || item.uom?.name || "—"}
+                          </span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.rate)}</td>
                         <td className="p-3 text-right">{item.discountPercent}%</td>
@@ -242,12 +235,6 @@ export function PurchaseOrderViewDialog({
                             >
                               {receivedQty} / {item.quantity}
                             </span>
-                            {showConversion && (
-                              <div className="text-xs text-muted-foreground">
-                                = {(receivedQty * conversionFactor).toFixed(4)}{" "}
-                                {baseUnitLabel}
-                              </div>
-                            )}
                                 </>
                               );
                             })()}

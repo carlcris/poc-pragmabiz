@@ -1,5 +1,3 @@
-export type ItemPackaging = import("./inventory-normalization").ItemPackaging;
-
 export type ItemPrice = {
   id: string;
   itemId: string;

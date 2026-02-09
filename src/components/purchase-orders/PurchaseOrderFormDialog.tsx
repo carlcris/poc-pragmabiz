@@ -172,8 +172,6 @@ export function PurchaseOrderFormDialog({
           itemCode: item.item?.code,
           itemName: item.item?.name,
           quantity: item.quantity,
-          packagingId: item.packagingId || null,
-          packagingName: item.packagingName,
           rate: item.rate,
           uomId: item.uomId || "",
           discountPercent: item.discountPercent,
@@ -245,7 +243,6 @@ export function PurchaseOrderFormDialog({
         items: lineItems.map((item) => ({
           itemId: item.itemId,
           quantity: item.quantity,
-          packagingId: item.packagingId || null,
           uomId: item.uomId,
           rate: item.rate,
           discountPercent: item.discountPercent || 0,
@@ -503,7 +500,7 @@ export function PurchaseOrderFormDialog({
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
                                     <span className="text-muted-foreground">
-                                      {item.packagingName || "—"}
+                                      {item.uomId || "—"}
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right">

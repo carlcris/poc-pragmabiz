@@ -46,8 +46,7 @@ export async function POST(
           damaged_qty,
           item:items(
             id,
-            package_id,
-            base_package:item_packaging!package_id(id, uom_id, qty_per_pack)
+            uom_id
           )
         )
       `
@@ -70,8 +69,14 @@ export async function POST(
     }
 
     // Validate all items have been received
-    const items = grn.items as any[];
-    if (!items || items.length === 0) {
+    type GrnApproveItem = {
+      item_id: string;
+      received_qty: number | string | null;
+      damaged_qty?: number | string | null;
+      item?: { uom_id: string | null } | Array<{ uom_id: string | null }> | null;
+    };
+    const items = Array.isArray(grn.items) ? (grn.items as GrnApproveItem[]) : [];
+    if (items.length === 0) {
       return NextResponse.json({ error: "GRN has no items" }, { status: 400 });
     }
 
@@ -126,18 +131,18 @@ export async function POST(
         ? parseFloat(String(existingInventory.current_stock))
         : 0;
       const receivedQty = parseFloat(String(item.received_qty));
+      const damagedQty = Number(item.damaged_qty ?? 0);
       const newBalance = currentBalance + receivedQty;
 
       const postingDate = now.toISOString().split("T")[0];
       const postingTime = now.toTimeString().split(" ")[0];
-      const basePackage = item.item?.base_package;
-      const basePackageId = item.item?.package_id || basePackage?.id || null;
-      const uomId = basePackage?.uom_id || null;
-      const conversionFactor = basePackage?.qty_per_pack || 1.0;
+      const itemUom = Array.isArray(item.item) ? item.item[0] : item.item;
+      const uomId = itemUom?.uom_id ?? null;
+      const conversionFactor = 1.0;
 
-      if (!uomId || !basePackageId) {
+      if (!uomId) {
         return NextResponse.json(
-          { error: "Item base package not found for stock transaction" },
+          { error: "Item UOM not found for stock transaction" },
           { status: 400 }
         );
       }
@@ -149,17 +154,15 @@ export async function POST(
           transaction_id: stockTransaction.id,
           item_id: item.item_id,
           input_qty: receivedQty,
-          input_packaging_id: basePackageId,
           conversion_factor: conversionFactor,
           normalized_qty: receivedQty,
-          base_package_id: basePackageId,
           quantity: receivedQty,
           uom_id: uomId,
           qty_before: currentBalance,
           qty_after: newBalance,
           posting_date: postingDate,
           posting_time: postingTime,
-          notes: item.damaged_qty > 0 ? `Damaged: ${item.damaged_qty}` : null,
+          notes: damagedQty > 0 ? `Damaged: ${damagedQty}` : null,
           created_by: user.id,
           updated_by: user.id,
         });

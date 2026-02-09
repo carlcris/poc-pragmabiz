@@ -156,7 +156,7 @@ export function StockRequestViewDialog({
                   <tr>
                     <th className="p-3 text-left">Item</th>
                     <th className="p-3 text-right">Quantity</th>
-                    <th className="p-3 text-left">Package</th>
+                    <th className="p-3 text-left">Unit</th>
                     <th className="p-3 text-left">Notes</th>
                   </tr>
                 </thead>
@@ -172,7 +172,7 @@ export function StockRequestViewDialog({
                       <td className="p-3 text-right">{item.requested_qty.toFixed(2)}</td>
                       <td className="p-3">
                         <span className="text-muted-foreground">
-                          {item.packaging?.name || "--"}
+                          {item.units_of_measure?.code || "--"}
                         </span>
                       </td>
                       <td className="p-3">

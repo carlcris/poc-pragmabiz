@@ -33,30 +33,20 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useItems } from "@/hooks/useItems";
-import { useActivePackages } from "@/hooks/useItemPackages";
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
   itemCode: z.string().optional(),
   itemName: z.string().optional(),
   uomId: z.string().min(1, "Unit of measure is required"),
-  packagingId: z.string().nullable().optional(),
   requestedQty: z.number().min(0.01, "Requested quantity must be greater than 0"),
   notes: z.string().optional(),
 });
 
 export type StockRequestLineItemFormValues = z.infer<typeof lineItemSchema>;
 export type StockRequestLineItemPayload = StockRequestLineItemFormValues & {
-  packagingName?: string;
 };
 
 interface StockRequestLineItemDialogProps {
@@ -85,7 +75,6 @@ export function StockRequestLineItemDialog({
       itemCode: "",
       itemName: "",
       uomId: "",
-      packagingId: null,
       requestedQty: 1,
       notes: "",
     },
@@ -95,7 +84,6 @@ export function StockRequestLineItemDialog({
   useEffect(() => {
     if (open && item) {
       const formItem = { ...item };
-      delete formItem.packagingName;
       form.reset(formItem);
     } else if (open) {
       form.reset({
@@ -103,7 +91,6 @@ export function StockRequestLineItemDialog({
         itemCode: "",
         itemName: "",
         uomId: "",
-        packagingId: null,
         requestedQty: 1,
         notes: "",
       });
@@ -117,37 +104,17 @@ export function StockRequestLineItemDialog({
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
       form.setValue("uomId", selectedItem.uomId);
-      form.setValue("packagingId", null);
     }
   };
 
   const onSubmit = (data: StockRequestLineItemFormValues) => {
-    const selectedPackage = packages?.find((pkg) => pkg.id === data.packagingId);
-
     onSave({
       ...data,
-      packagingName: selectedPackage?.packName,
     });
     onOpenChange(false);
   };
 
   const requestedQty = form.watch("requestedQty") || 0;
-  const itemId = form.watch("itemId");
-  const packagingId = form.watch("packagingId");
-  const { data: packages } = useActivePackages(itemId);
-
-  useEffect(() => {
-    if (!itemId || packagingId) {
-      return;
-    }
-
-    const basePackage =
-      packages?.find((pkg) => pkg.isBasePackage) || packages?.find((pkg) => pkg.isDefault);
-
-    if (basePackage) {
-      form.setValue("packagingId", basePackage.id);
-    }
-  }, [itemId, packagingId, packages, form]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -261,40 +228,6 @@ export function StockRequestLineItemDialog({
                       placeholder="Enter quantity"
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="packagingId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Package (Optional)</FormLabel>
-                  <Select
-                    onValueChange={(value) => field.onChange(value || null)}
-                    value={field.value || ""}
-                    disabled={!itemId}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={
-                            itemId ? "Select package (optional)" : "Select an item first"
-                          }
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {(packages || []).map((pkg) => (
-                        <SelectItem key={pkg.id} value={pkg.id}>
-                          {pkg.packName}
-                          {pkg.isBasePackage ? " [Base]" : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

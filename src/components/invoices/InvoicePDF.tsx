@@ -261,12 +261,13 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
             <Text style={styles.title}>INVOICE</Text>
             <Text style={styles.invoiceNumber}>Invoice #{invoice.invoiceNumber}</Text>
           </View>
-          {qrCodeDataUrl && (
-            <View style={styles.qrCodeContainer}>
-              <Image style={styles.qrCode} src={qrCodeDataUrl} />
-              <Text style={styles.qrCodeLabel}>Scan for details</Text>
-            </View>
-          )}
+            {qrCodeDataUrl && (
+              <View style={styles.qrCodeContainer}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image style={styles.qrCode} src={qrCodeDataUrl} />
+                <Text style={styles.qrCodeLabel}>Scan for details</Text>
+              </View>
+            )}
         </View>
 
         {/* Invoice Details and Customer Info */}
@@ -338,7 +339,7 @@ export const InvoicePDF: React.FC<InvoicePDFProps> = ({
                 )}
               </View>
               <Text style={[styles.tableCell, styles.qtyCol]}>{item.quantity}</Text>
-              <Text style={[styles.tableCell, styles.unitCol]}>{item.packaging?.name || "-"}</Text>
+              <Text style={[styles.tableCell, styles.unitCol]}>{item.uomId || "-"}</Text>
               <Text style={[styles.tableCell, styles.priceCol]}>
                 {formatCurrency(item.unitPrice)}
               </Text>

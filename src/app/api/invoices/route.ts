@@ -143,11 +143,6 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name
         ),
-        item_packaging:packaging_id (
-          id,
-          pack_name,
-          qty_per_pack
-        ),
         units_of_measure:uom_id (
           code,
           name
@@ -189,14 +184,6 @@ export async function GET(request: NextRequest) {
           itemName: item.items?.item_name || "",
           description: item.item_description || "",
           quantity: parseFloat(item.quantity),
-          packagingId: item.packaging_id,
-          packaging: item.item_packaging
-            ? {
-                id: item.item_packaging.id,
-                name: item.item_packaging.pack_name,
-                qtyPerPack: parseFloat(item.item_packaging.qty_per_pack),
-              }
-            : undefined,
           uomId: item.uom_id,
           unitPrice: parseFloat(item.rate),
           discount: parseFloat(item.discount_percent),
@@ -298,7 +285,6 @@ export async function POST(request: NextRequest) {
 
     const itemInputs: StockTransactionItemInput[] = lineItems.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId ?? null,
       inputQty: Number(item.quantity),
       unitCost: Number(item.unitPrice),
     }));
@@ -327,7 +313,6 @@ export async function POST(request: NextRequest) {
         item_id: item.itemId,
         item_description: item.description || "",
         quantity,
-        packaging_id: item.packagingId ?? null,
         uom_id: item.uomId,
         rate,
         discount_percent: discountPercent,

@@ -11,7 +11,6 @@ type PurchaseOrderRow = Tables<"purchase_orders">;
 type PurchaseOrderItemRow = Tables<"purchase_order_items">;
 type SupplierRow = Tables<"suppliers">;
 type ItemRow = Tables<"items">;
-type ItemPackagingRow = Tables<"item_packaging">;
 type UnitRow = Tables<"units_of_measure">;
 
 type SupplierSummary = Pick<
@@ -19,12 +18,10 @@ type SupplierSummary = Pick<
   "id" | "supplier_code" | "supplier_name" | "email" | "phone" | "contact_person"
 >;
 type ItemSummary = Pick<ItemRow, "id" | "item_code" | "item_name">;
-type PackagingSummary = Pick<ItemPackagingRow, "id" | "pack_name" | "qty_per_pack">;
 type UnitSummary = Pick<UnitRow, "id" | "code" | "name">;
 
 type PurchaseOrderItemQueryRow = PurchaseOrderItemRow & {
   item?: ItemSummary | ItemSummary[] | null;
-  packaging?: PackagingSummary | PackagingSummary[] | null;
   uom?: UnitSummary | UnitSummary[] | null;
 };
 
@@ -123,10 +120,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           item_id,
           item:items(id, item_code, item_name),
           quantity,
-          packaging_id,
           uom_id,
           uom:units_of_measure(id, code, name),
-          packaging:item_packaging(id, pack_name, qty_per_pack),
           rate,
           discount_percent,
           tax_percent,
@@ -182,9 +177,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       approvedAt: purchaseOrder.approved_at,
       items: purchaseOrder.items?.map((item) => {
         const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
-        const packaging = Array.isArray(item.packaging)
-          ? item.packaging[0]
-          : item.packaging ?? null;
         const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
 
         return {
@@ -198,15 +190,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               }
             : null,
           quantity: Number(item.quantity),
-          packagingId: item.packaging_id,
-          packagingName: packaging?.pack_name,
-          packaging: packaging
-            ? {
-                id: packaging.id,
-                name: packaging.pack_name,
-                qtyPerPack: packaging.qty_per_pack,
-              }
-            : undefined,
           uomId: item.uom_id,
           uom: uom
             ? {
@@ -294,7 +277,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const itemInputs: StockTransactionItemInput[] = body.items.map(
       (item: PurchaseOrderItemInput) => ({
         itemId: item.itemId,
-        packagingId: item.packagingId ?? null,
         inputQty: Number(item.quantity),
         unitCost: Number(item.rate),
       })
@@ -373,7 +355,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       purchase_order_id: purchaseOrder.id,
       item_id: item.itemId,
       quantity: item.quantity,
-      packaging_id: item.packagingId || null,
       uom_id: item.uomId,
       rate: item.rate,
       discount_percent: item.discountPercent || 0,

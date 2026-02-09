@@ -20,7 +20,6 @@ type PurchaseOrderItemRow = Tables<"purchase_order_items">;
 type SupplierRow = Tables<"suppliers">;
 type WarehouseRow = Tables<"warehouses">;
 type ItemRow = Tables<"items">;
-type ItemPackagingRow = Tables<"item_packaging">;
 type UnitRow = Tables<"units_of_measure">;
 
 type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
@@ -29,10 +28,6 @@ type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
     "id" | "item_code" | "item_name"
   >[] | null;
   uom?: Pick<UnitRow, "id" | "code" | "name"> | Pick<UnitRow, "id" | "code" | "name">[] | null;
-  packaging?: Pick<ItemPackagingRow, "id" | "pack_name" | "qty_per_pack"> | Pick<
-    ItemPackagingRow,
-    "id" | "pack_name" | "qty_per_pack"
-  >[] | null;
 };
 
 type PurchaseReceiptQueryRow = Pick<
@@ -160,8 +155,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           quantity_received,
           uom_id,
           uom:units_of_measure(id, code, name),
-          packaging_id,
-          packaging:item_packaging(id, pack_name, qty_per_pack),
           rate,
           notes
         )
@@ -221,9 +214,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       items: receipt.items?.map((item) => {
         const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
         const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
-        const packaging = Array.isArray(item.packaging)
-          ? item.packaging[0]
-          : item.packaging ?? null;
 
         return {
           id: item.id,
@@ -244,14 +234,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
                 id: uom.id,
                 code: uom.code,
                 name: uom.name,
-              }
-            : undefined,
-          packagingId: item.packaging_id,
-          packaging: packaging
-            ? {
-                id: packaging.id,
-                name: packaging.pack_name,
-                qtyPerPack: packaging.qty_per_pack,
               }
             : undefined,
           rate: Number(item.rate),
@@ -466,7 +448,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           purchase_receipt_items(
             item_id,
             quantity_received,
-            packaging_id,
             uom_id,
             rate
           )
@@ -477,15 +458,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
       if (receiptData?.warehouse_id) {
         const items = receiptData.purchase_receipt_items as Array<
-          Pick<
-            PurchaseReceiptItemRow,
-            "item_id" | "quantity_received" | "packaging_id" | "uom_id" | "rate"
-          >
+          Pick<PurchaseReceiptItemRow, "item_id" | "quantity_received" | "uom_id" | "rate">
         >;
 
         const itemInputs: StockTransactionItemInput[] = items.map((item) => ({
           itemId: item.item_id,
-          packagingId: item.packaging_id || null,
           inputQty: Number(item.quantity_received || 0),
           unitCost: Number(item.rate || 0),
         }));
@@ -557,10 +534,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               transaction_id: stockTransaction.id,
               item_id: item.itemId,
               input_qty: item.inputQty,
-              input_packaging_id: item.inputPackagingId,
               conversion_factor: item.conversionFactor,
               normalized_qty: item.normalizedQty,
-              base_package_id: item.basePackageId,
               quantity: item.normalizedQty,
               uom_id: item.uomId,
               unit_cost: item.unitCost,
@@ -629,8 +604,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           receipt_date,
           purchase_receipt_items(
             quantity_received,
-            rate,
-            packaging:item_packaging(qty_per_pack)
+            rate
           )
         `
         )
@@ -642,12 +616,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const items = receiptData.purchase_receipt_items as Array<{
           quantity_received: number;
           rate: number;
-          packaging?: { qty_per_pack: number } | { qty_per_pack: number }[] | null;
         }>;
         const totalAmount = items.reduce((sum, item) => {
-          const packaging = Array.isArray(item.packaging) ? item.packaging[0] : item.packaging;
-          const conversionFactor = packaging?.qty_per_pack ?? 1;
-          return sum + Number(item.quantity_received) * conversionFactor * Number(item.rate);
+          return sum + Number(item.quantity_received) * Number(item.rate);
         }, 0);
 
         const apResult = await postAPBill(userData.company_id, user.id, {

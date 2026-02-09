@@ -54,7 +54,7 @@ export async function PUT(
     }
 
     // Update box
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (body.warehouseLocationId !== undefined)
       updateData.warehouse_location_id = body.warehouseLocationId;
 

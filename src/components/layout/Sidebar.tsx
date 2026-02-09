@@ -101,21 +101,21 @@ const menuItems = [
         href: "/purchasing/grns",
         resource: RESOURCES.GOODS_RECEIPT_NOTES as Resource,
       },
-      {
-        title: "Putaway Station",
-        href: "/purchasing/grns/putaway",
-        resource: RESOURCES.GOODS_RECEIPT_NOTES as Resource,
-      },
-      {
-        title: "Purchase Orders",
-        href: "/purchasing/orders",
-        resource: RESOURCES.PURCHASE_ORDERS as Resource,
-      },
-      {
-        title: "Purchase Receipts",
-        href: "/purchasing/receipts",
-        resource: RESOURCES.PURCHASE_RECEIPTS as Resource,
-      },
+      // {
+      //   title: "Putaway Station",
+      //   href: "/purchasing/grns/putaway",
+      //   resource: RESOURCES.GOODS_RECEIPT_NOTES as Resource,
+      // },
+      // {
+      //   title: "Purchase Orders",
+      //   href: "/purchasing/orders",
+      //   resource: RESOURCES.PURCHASE_ORDERS as Resource,
+      // },
+      // {
+      //   title: "Purchase Receipts",
+      //   href: "/purchasing/receipts",
+      //   resource: RESOURCES.PURCHASE_RECEIPTS as Resource,
+      // },
     ],
   },
   // {

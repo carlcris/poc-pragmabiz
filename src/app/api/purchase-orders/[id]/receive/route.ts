@@ -26,7 +26,6 @@ type PurchaseOrderReceiptItemInput = {
   itemId: string;
   quantityOrdered: number;
   quantityReceived: number;
-  packagingId?: string | null;
   uomId?: string | null;
   rate: number;
   notes?: string | null;
@@ -91,7 +90,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           item_id,
           quantity,
           quantity_received,
-          packaging_id,
           uom_id,
           rate
         )
@@ -175,7 +173,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         itemId: item.item_id,
         quantityOrdered: Number(item.quantity),
         quantityReceived: Number(item.quantity) - Number(item.quantity_received || 0), // Remaining quantity
-        packagingId: item.packaging_id || null, // Package selected by user (null = use base package)
         uomId: item.uom_id, // Deprecated: kept for backward compatibility
         rate: Number(item.rate),
       }));
@@ -183,21 +180,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // STEP 1: Normalize all item quantities from packages to base units
     const itemInputs: StockTransactionItemInput[] = itemsToReceive.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId || null, // null = use base package
       inputQty: item.quantityReceived,
       unitCost: item.rate,
     }));
 
     const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
 
-    const receiptItems = itemsToReceive.map((item, index: number) => ({
+    const receiptItems = itemsToReceive.map((item) => ({
       company_id: userData.company_id,
       receipt_id: receipt.id,
       purchase_order_item_id: item.purchaseOrderItemId,
       item_id: item.itemId,
       quantity_ordered: item.quantityOrdered,
       quantity_received: item.quantityReceived,
-      packaging_id: normalizedItems[index]?.inputPackagingId || item.packagingId || null,
       uom_id: item.uomId,
       rate: item.rate,
       notes: item.notes,
@@ -293,10 +288,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           item_id: item.itemId,
           // Normalization fields (NEW)
           input_qty: item.inputQty,
-          input_packaging_id: item.inputPackagingId,
           conversion_factor: item.conversionFactor,
           normalized_qty: item.normalizedQty,
-          base_package_id: item.basePackageId,
           // Standard fields
           quantity: item.normalizedQty, // Backward compat
           uom_id: item.uomId,

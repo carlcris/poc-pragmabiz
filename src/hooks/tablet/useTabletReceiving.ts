@@ -51,11 +51,6 @@ export type TabletReceiptItem = {
     name: string;
     symbol?: string;
   };
-  packaging?: {
-    id: string;
-    pack_name: string;
-    qty_per_pack: number;
-  } | null;
   rate: number;
   lineTotal: number;
   notes?: string;

@@ -78,11 +78,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
             code,
             name,
             symbol
-          ),
-          packaging:item_packaging(
-            id,
-            pack_name,
-            qty_per_pack
           )
         )
       `
@@ -134,28 +129,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
         receipt.purchase_receipt_items?.map((item) => {
           const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item;
           const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom;
-          const packaging = Array.isArray(item.packaging)
-            ? item.packaging[0]
-            : item.packaging;
 
-            return {
-              id: item.id,
-              itemId: item.item_id,
-              item: itemDetails,
-              quantityOrdered: Number(item.quantity_ordered),
-              quantityReceived: Number(item.quantity_received),
-              uom: uom,
-              packaging: packaging,
-              rate: Number(item.rate),
-              lineTotal: Number(item.quantity_received) * Number(item.rate),
-              notes: item.notes,
-              isFullyReceived: Number(item.quantity_received) === Number(item.quantity_ordered),
-              isPartiallyReceived:
-                Number(item.quantity_received) > 0 &&
-                Number(item.quantity_received) < Number(item.quantity_ordered),
-              remainingQty: Number(item.quantity_ordered) - Number(item.quantity_received),
-            };
-          }
+          return {
+            id: item.id,
+            itemId: item.item_id,
+            item: itemDetails,
+            quantityOrdered: Number(item.quantity_ordered),
+            quantityReceived: Number(item.quantity_received),
+            uom: uom,
+            rate: Number(item.rate),
+            lineTotal: Number(item.quantity_received) * Number(item.rate),
+            notes: item.notes,
+            isFullyReceived: Number(item.quantity_received) === Number(item.quantity_ordered),
+            isPartiallyReceived:
+              Number(item.quantity_received) > 0 &&
+              Number(item.quantity_received) < Number(item.quantity_ordered),
+            remainingQty: Number(item.quantity_ordered) - Number(item.quantity_received),
+          };
+        }
         ) || [],
 
       // Notes

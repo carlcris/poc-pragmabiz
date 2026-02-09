@@ -49,7 +49,6 @@ const territoryFormSchema = z.object({
 });
 
 type TerritoryFormInput = z.input<typeof territoryFormSchema>;
-type TerritoryFormValues = z.output<typeof territoryFormSchema>;
 
 interface TerritoryManagementDialogProps {
   open: boolean;

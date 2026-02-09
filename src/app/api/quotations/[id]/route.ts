@@ -31,7 +31,6 @@ type DbQuotationItem = {
   item_id: string;
   item_description: string | null;
   quantity: number | string;
-  packaging_id: string | null;
   uom_id: string | null;
   rate: number | string;
   discount_percent: number | string | null;
@@ -45,7 +44,6 @@ type DbCustomer = { id: string; customer_name: string | null; email: string | nu
 type DbItem = { id: string; item_code: string | null; item_name: string | null };
 type DbUser = { id: string; first_name: string | null; last_name: string | null };
 type DbUoM = { id: string; code: string | null; name: string | null };
-type DbPackaging = { id: string; pack_name: string | null; qty_per_pack: number | string | null };
 
 type DbQuotationWithJoins = DbQuotation & {
   customers?: DbCustomer | DbCustomer[] | null;
@@ -55,7 +53,6 @@ type DbQuotationWithJoins = DbQuotation & {
 type DbQuotationItemWithJoins = DbQuotationItem & {
   items?: DbItem | DbItem[] | null;
   units_of_measure?: DbUoM | DbUoM[] | null;
-  item_packaging?: DbPackaging | DbPackaging[] | null;
 };
 
 type QuotationItemInput = NonNullable<UpdateQuotationRequest["items"]>[number];
@@ -103,9 +100,6 @@ function transformDbQuotation(
 // Transform database quotation item to frontend type
 function transformDbQuotationItem(dbItem: DbQuotationItemWithJoins): QuotationLineItem {
   const item = Array.isArray(dbItem.items) ? dbItem.items[0] : dbItem.items;
-  const packaging = Array.isArray(dbItem.item_packaging)
-    ? dbItem.item_packaging[0]
-    : dbItem.item_packaging;
   return {
     id: dbItem.id,
     itemId: dbItem.item_id,
@@ -113,8 +107,6 @@ function transformDbQuotationItem(dbItem: DbQuotationItemWithJoins): QuotationLi
     itemName: item?.item_name || undefined,
     description: dbItem.item_description || "",
     quantity: Number(dbItem.quantity),
-    packagingId: dbItem.packaging_id,
-    packagingName: packaging?.pack_name || undefined,
     uomId: dbItem.uom_id || "",
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
@@ -184,11 +176,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           id,
           item_code,
           item_name
-        ),
-        item_packaging:packaging_id (
-          id,
-          pack_name,
-          qty_per_pack
         ),
         units_of_measure (
           id,
@@ -284,7 +271,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const itemInputs: StockTransactionItemInput[] = body.items.map(
         (item: QuotationItemInput) => ({
           itemId: item.itemId,
-          packagingId: item.packagingId ?? null,
           inputQty: Number(item.quantity),
           unitCost: Number(item.rate),
         })
@@ -351,7 +337,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         item_description: item.description,
         quantity: item.quantity,
         uom_id: item.uomId,
-        packaging_id: item.packagingId ?? null,
         rate: item.rate,
         discount_percent: item.discountPercent || 0,
         discount_amount: item.discountAmount,
@@ -413,11 +398,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           id,
           item_code,
           item_name
-        ),
-        item_packaging:packaging_id (
-          id,
-          pack_name,
-          qty_per_pack
         ),
         units_of_measure (
           id,

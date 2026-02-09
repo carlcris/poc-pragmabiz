@@ -14,12 +14,8 @@ import { useItems } from "@/hooks/useItems";
 import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
-import {
-  stockTransactionFormSchema,
-  type StockTransactionFormValues,
-} from "@/lib/validations/stock-transaction";
+import { stockTransactionFormSchema } from "@/lib/validations/stock-transaction";
 import type { z } from "zod";
-import { PackageSelector } from "@/components/inventory/PackageSelector";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -106,7 +102,6 @@ export function StockTransactionFormDialog({
       fromLocationId: "",
       toLocationId: "",
       quantity: 1,
-      packagingId: null,
       uomId: "",
       referenceType: "",
       referenceId: "",
@@ -180,9 +175,8 @@ export function StockTransactionFormDialog({
   }, [selectedToWarehouseId, form]);
 
   useEffect(() => {
-    // Reset packaging and set uomId when item changes
+    // Set uomId when item changes
     if (selectedItemId) {
-      form.setValue("packagingId", null);
       const selectedItem = basicItems.find((item) => item.id === selectedItemId);
       if (selectedItem?.uomId) {
         form.setValue("uomId", selectedItem.uomId);
@@ -225,7 +219,6 @@ export function StockTransactionFormDialog({
               code: selectedItem.code,
               name: selectedItem.name,
               quantity: parsed.quantity,
-              packagingId: parsed.packagingId || null,
               uomId: parsed.uomId,
               uomName: selectedItem.uom,
             },
@@ -251,7 +244,6 @@ export function StockTransactionFormDialog({
             {
               itemId: parsed.itemId,
               quantity: parsed.quantity,
-              packagingId: parsed.packagingId || null,
               uomId: parsed.uomId,
               notes: parsed.notes || undefined,
             },
@@ -579,26 +571,6 @@ export function StockTransactionFormDialog({
                   </FormItem>
                 );
               }}
-            />
-
-            <FormField
-              control={form.control}
-              name="packagingId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <PackageSelector
-                      itemId={selectedItemId}
-                      value={field.value}
-                      onChange={field.onChange}
-                      quantity={form.watch("quantity")}
-                      disabled={!selectedItemId}
-                      label="Package"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
             />
 
             <FormField

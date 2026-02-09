@@ -343,7 +343,6 @@ export async function executeTransformation(
 
         return {
           itemId: inputLine.item_id,
-          packagingId: null, // null = use base package
           inputQty: inputData.consumedQuantity,
           unitCost: 0, // Will be fetched from item
         };
@@ -455,10 +454,8 @@ export async function executeTransformation(
         item_id: inputLine.item_id,
         // Normalization fields (NEW)
         input_qty: normalizedInput.inputQty,
-        input_packaging_id: normalizedInput.inputPackagingId,
         conversion_factor: normalizedInput.conversionFactor,
         normalized_qty: normalizedInput.normalizedQty,
-        base_package_id: normalizedInput.basePackageId,
         // Standard fields
         quantity: normalizedInput.normalizedQty, // Backward compat
         uom_id: normalizedInput.uomId,
@@ -522,7 +519,6 @@ export async function executeTransformation(
 
         return {
           itemId: outputLine.item_id,
-          packagingId: null, // null = use base package
           inputQty: outputData.producedQuantity,
           unitCost: 0, // Will be allocated from input costs
         };
@@ -543,7 +539,6 @@ export async function executeTransformation(
 
         return {
           itemId: outputLine.item_id,
-          packagingId: null,
           inputQty: outputData.wastedQuantity || 0,
           unitCost: 0,
         };
@@ -656,10 +651,8 @@ export async function executeTransformation(
         item_id: outputLine.item_id,
         // Normalization fields (NEW)
         input_qty: normalizedOutput.inputQty,
-        input_packaging_id: normalizedOutput.inputPackagingId,
         conversion_factor: normalizedOutput.conversionFactor,
         normalized_qty: normalizedOutput.normalizedQty,
-        base_package_id: normalizedOutput.basePackageId,
         // Standard fields
         quantity: normalizedOutput.normalizedQty, // Backward compat
         uom_id: normalizedOutput.uomId,
@@ -777,10 +770,8 @@ export async function executeTransformation(
             item_id: outputLine.item_id,
             // Normalization fields
             input_qty: normalizedWaste.inputQty,
-            input_packaging_id: normalizedWaste.inputPackagingId,
             conversion_factor: normalizedWaste.conversionFactor,
             normalized_qty: normalizedWaste.normalizedQty,
-            base_package_id: normalizedWaste.basePackageId,
             // Standard fields
             quantity: normalizedWaste.normalizedQty,
             uom_id: normalizedWaste.uomId,

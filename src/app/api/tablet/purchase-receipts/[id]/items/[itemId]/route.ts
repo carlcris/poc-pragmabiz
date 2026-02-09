@@ -119,11 +119,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           code,
           name,
           symbol
-        ),
-        packaging:item_packaging(
-          id,
-          pack_name,
-          qty_per_pack
         )
       `
       )
@@ -142,7 +137,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       quantityOrdered: Number(updatedItem.quantity_ordered),
       quantityReceived: Number(updatedItem.quantity_received),
       uom: updatedItem.uom,
-      packaging: updatedItem.packaging,
       rate: Number(updatedItem.rate),
       lineTotal: Number(updatedItem.quantity_received) * Number(updatedItem.rate),
       notes: updatedItem.notes,

@@ -1,16 +1,16 @@
 /**
- * React Hook for managing item packages
- * Provides CRUD operations for item packaging
+ * Stubs for removed packaging functionality.
+ * Packaging is deprecated in favor of item UOM, so these hooks return
+ * empty data and no-op mutations to keep callers stable.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export type ItemPackage = {
   id: string;
-  packType: string;
-  packName: string;
-  qtyPerPack: number;
+  packType?: string;
+  packName?: string;
+  qtyPerPack?: number;
   uomId?: string;
   uom?: {
     id: string;
@@ -19,130 +19,86 @@ export type ItemPackage = {
     symbol?: string;
   };
   barcode?: string;
-  isDefault: boolean;
-  isBasePackage: boolean;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type CreatePackageInput = {
-  packType: string;
-  packName: string;
-  qtyPerPack: number;
-  uomId?: string;
-  barcode?: string;
   isDefault?: boolean;
+  isBasePackage?: boolean;
   isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
-export type UpdatePackageInput = Partial<CreatePackageInput>;
+export type CreatePackageInput = Record<string, never>;
+export type UpdatePackageInput = Record<string, never>;
 
-// Fetch all packages for an item
 export function useItemPackages(itemId: string) {
   return useQuery({
     queryKey: ["items", itemId, "packages"],
-    queryFn: async () => {
-      const response = await apiClient.get<{ data: ItemPackage[] }>(
-        `/api/items/${itemId}/packages`
-      );
-      return response.data;
-    },
+    queryFn: async () => [] as ItemPackage[],
     enabled: !!itemId,
+    staleTime: Infinity,
   });
 }
 
-// Fetch a specific package
 export function useItemPackage(itemId: string, packageId: string) {
   return useQuery({
     queryKey: ["items", itemId, "packages", packageId],
-    queryFn: async () => {
-      const response = await apiClient.get<{ data: ItemPackage }>(
-        `/api/items/${itemId}/packages/${packageId}`
-      );
-      return response.data;
-    },
+    queryFn: async () => null as ItemPackage | null,
     enabled: !!itemId && !!packageId,
+    staleTime: Infinity,
   });
 }
 
-// Create a new package
 export function useCreateItemPackage(itemId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreatePackageInput) => {
-      const response = await apiClient.post<{ data: ItemPackage; message: string }>(
-        `/api/items/${itemId}/packages`,
-        input
-      );
-      return response;
+    mutationFn: async () => {
+      throw new Error("Packaging is deprecated and cannot be created.");
     },
-    onSuccess: () => {
-      // Invalidate packages list
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages"] });
     },
   });
 }
 
-// Update a package
 export function useUpdateItemPackage(itemId: string, packageId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: UpdatePackageInput) => {
-      const response = await apiClient.put<{ data: ItemPackage; message: string }>(
-        `/api/items/${itemId}/packages/${packageId}`,
-        input
-      );
-      return response;
+    mutationFn: async () => {
+      throw new Error("Packaging is deprecated and cannot be updated.");
     },
-    onSuccess: () => {
-      // Invalidate both the specific package and the list
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages", packageId] });
       queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages"] });
     },
   });
 }
 
-// Delete a package
 export function useDeleteItemPackage(itemId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (packageId: string) => {
-      const response = await apiClient.delete<{ message: string }>(
-        `/api/items/${itemId}/packages/${packageId}`
-      );
-      return response;
+    mutationFn: async () => {
+      throw new Error("Packaging is deprecated and cannot be deleted.");
     },
-    onSuccess: () => {
-      // Invalidate packages list
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages"] });
     },
   });
 }
 
-// Get the base package for an item (helper)
-export function useBasePackage(itemId: string) {
-  const { data: packages, ...query } = useItemPackages(itemId);
-
-  const basePackage = packages?.find((pkg) => pkg.isBasePackage);
-
+export function useBasePackage() {
   return {
-    ...query,
-    data: basePackage,
+    data: null as ItemPackage | null,
+    isLoading: false,
+    isError: false,
   };
 }
 
-// Get active packages for an item (helper for UI selectors)
-export function useActivePackages(itemId: string) {
-  const { data: packages, ...query } = useItemPackages(itemId);
-
-  const activePackages = packages?.filter((pkg) => pkg.isActive) || [];
-
+export function useActivePackages() {
   return {
-    ...query,
-    data: activePackages,
+    data: [] as ItemPackage[],
+    isLoading: false,
+    isError: false,
   };
 }

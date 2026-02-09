@@ -144,7 +144,7 @@ export default function TabletPickingDetailPage() {
                   <TableBody>
                     {items.map((item) => {
                       const itemName = item.items?.item_name || "Unknown item";
-                      const packagingName = item.packaging?.name;
+                      const uomName = item.units_of_measure?.code || item.units_of_measure?.symbol;
                       const uom = item.units_of_measure?.symbol || "";
                       const isPicked = pickedItemIds.has(item.id);
 
@@ -152,8 +152,8 @@ export default function TabletPickingDetailPage() {
                         <TableRow key={item.id}>
                           <TableCell>
                             <div className="font-medium text-gray-900">{itemName}</div>
-                            {packagingName && (
-                              <div className="text-xs text-gray-500">{packagingName}</div>
+                            {uomName && (
+                              <div className="text-xs text-gray-500">{uomName}</div>
                             )}
                           </TableCell>
                           <TableCell className="text-right text-gray-700">

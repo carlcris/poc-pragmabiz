@@ -179,6 +179,17 @@ export async function POST(
       );
     }
 
+    // Remove existing boxes for this GRN item to allow regeneration
+    const { error: deleteError } = await supabase
+      .from("grn_boxes")
+      .delete()
+      .eq("grn_item_id", body.grnItemId);
+
+    if (deleteError) {
+      console.error("Error deleting existing boxes:", deleteError);
+      return NextResponse.json({ error: "Failed to regenerate boxes" }, { status: 500 });
+    }
+
     // Generate boxes with barcodes
     const boxesToInsert = [];
     for (let i = 1; i <= body.numBoxes; i++) {

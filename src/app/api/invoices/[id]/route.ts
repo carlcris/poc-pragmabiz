@@ -76,11 +76,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         items:item_id (
           item_code,
           item_name
-        ),
-        item_packaging:packaging_id (
-          id,
-          pack_name,
-          qty_per_pack
         )
       `
       )
@@ -114,14 +109,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           itemName: item.items?.item_name || "",
           description: item.item_description || "",
           quantity: parseFloat(item.quantity),
-          packagingId: item.packaging_id,
-          packaging: item.item_packaging
-            ? {
-                id: item.item_packaging.id,
-                name: item.item_packaging.pack_name,
-                qtyPerPack: parseFloat(item.item_packaging.qty_per_pack),
-              }
-            : undefined,
           uomId: item.uom_id,
           unitPrice: parseFloat(item.rate),
           discount: parseFloat(item.discount_percent),
@@ -208,7 +195,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
       const itemInputs: StockTransactionItemInput[] = lineItems.map((item) => ({
         itemId: item.itemId,
-        packagingId: item.packagingId ?? null,
         inputQty: Number(item.quantity),
         unitCost: Number(item.unitPrice),
       }));
@@ -241,7 +227,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           item_id: item.itemId,
           item_description: item.description || "",
           quantity,
-          packaging_id: item.packagingId ?? null,
           uom_id: item.uomId,
           rate,
           discount_percent: discountPercent,

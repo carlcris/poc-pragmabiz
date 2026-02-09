@@ -147,7 +147,12 @@ export async function PATCH(
             console.warn(`Supplier for SR ${srComplete.sr_number} does not have an email address`);
           } else {
             // Format data for email
-            const createdByUser = srComplete.users as any;
+            type SrCreatedByUser = {
+              first_name?: string | null;
+              last_name?: string | null;
+              email?: string | null;
+            };
+            const createdByUser = srComplete.users as SrCreatedByUser | null;
             const createdByName = [createdByUser?.first_name, createdByUser?.last_name]
               .filter(Boolean)
               .join(" ") || createdByUser?.email || "Unknown";
@@ -181,18 +186,27 @@ export async function PATCH(
                 style: 'currency',
                 currency: 'CNY'
               }).format(srComplete.total_amount || 0),
-              items: (srComplete.stock_requisition_items || []).map((item: any) => ({
+              items: ((
+                srComplete.stock_requisition_items as
+                  | Array<{
+                      requested_qty?: number | string | null;
+                      unit_price?: number | string | null;
+                      total_price?: number | string | null;
+                      items?: { item_code?: string | null; item_name?: string | null } | null;
+                    }>
+                  | null
+              ) || []).map((item) => ({
                 itemCode: item.items?.item_code || "N/A",
                 itemName: item.items?.item_name || "Unknown Item",
-                requestedQty: item.requested_qty,
+                requestedQty: Number(item.requested_qty ?? 0),
                 unitPrice: new Intl.NumberFormat('zh-CN', {
                   style: 'currency',
                   currency: 'CNY'
-                }).format(item.unit_price || 0),
+                }).format(Number(item.unit_price ?? 0)),
                 totalPrice: new Intl.NumberFormat('zh-CN', {
                   style: 'currency',
                   currency: 'CNY'
-                }).format(item.total_price || 0),
+                }).format(Number(item.total_price ?? 0)),
               })),
               notes: srComplete.notes || undefined,
               createdBy: createdByName,

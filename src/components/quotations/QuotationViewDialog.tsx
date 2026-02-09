@@ -174,7 +174,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                         </td>
                         <td className="p-3 text-right">{item.quantity}</td>
                         <td className="p-3 text-center">
-                          <span className="text-muted-foreground">{item.packagingName || "—"}</span>
+                          <span className="text-muted-foreground">{item.uomId || "—"}</span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>
                         <td className="p-3 text-right">{item.discount}%</td>

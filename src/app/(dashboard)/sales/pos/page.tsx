@@ -163,8 +163,7 @@ export default function POSPage() {
         itemCode: item.code,
         itemName: item.name,
         quantity: 1,
-        packagingId: null, // Default to base package
-        uom: item.uom, // Store UOM for display fallback
+        uom: item.uom || "",
         unitPrice: item.listPrice,
         discount: 0,
         lineTotal: item.listPrice,

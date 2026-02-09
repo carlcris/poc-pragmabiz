@@ -36,8 +36,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
-import { PackageSelector } from "@/components/inventory/PackageSelector";
-import { useActivePackages } from "@/hooks/useItemPackages";
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
@@ -45,7 +43,6 @@ const lineItemSchema = z.object({
   itemName: z.string().optional(),
   description: z.string().default(""),
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  packagingId: z.string().nullable().optional(), // null = use base package
   unitPrice: z.number().min(0, "Unit price cannot be negative"),
   uomId: z.string().min(1, "Unit of measure is required"),
   discount: z.number().min(0).max(100).default(0),
@@ -54,17 +51,7 @@ const lineItemSchema = z.object({
 
 type LineItemFormInput = z.input<typeof lineItemSchema>;
 export type LineItemFormValues = z.output<typeof lineItemSchema> & {
-  packagingName?: string;
   lineTotal?: number;
-};
-
-type ItemPackageSummary = {
-  id: string;
-  isBasePackage?: boolean;
-};
-
-type ItemPackagesResponse = {
-  data?: ItemPackageSummary[];
 };
 
 interface QuotationLineItemDialogProps {
@@ -100,7 +87,6 @@ export function QuotationLineItemDialog({
       itemName: "",
       description: "",
       quantity: 1,
-      packagingId: null,
       unitPrice: 0,
       uomId: "",
       discount: 0,
@@ -119,7 +105,6 @@ export function QuotationLineItemDialog({
         itemName: "",
         description: "",
         quantity: 1,
-        packagingId: null,
         unitPrice: 0,
         uomId: "",
         discount: 0,
@@ -138,20 +123,6 @@ export function QuotationLineItemDialog({
       form.setValue("description", itemDescription);
       form.setValue("unitPrice", basicItem.listPrice);
       form.setValue("uomId", basicItem.uomId);
-
-      // Fetch item packages and set default to base package
-      try {
-        const response = await fetch(`/api/items/${itemId}/packages`);
-        if (response.ok) {
-          const packagesData = (await response.json()) as ItemPackagesResponse;
-          const basePackage = packagesData.data?.find((pkg) => pkg.isBasePackage);
-          if (basePackage) {
-            form.setValue("packagingId", basePackage.id);
-          }
-        }
-      } catch {
-        // If fetching packages fails, leave packagingId as null
-      }
     }
   };
 
@@ -160,7 +131,6 @@ export function QuotationLineItemDialog({
     onSave({
       ...parsed,
       lineTotal,
-      packagingName: selectedPackage?.packName,
     });
     onOpenChange(false);
   };
@@ -169,15 +139,9 @@ export function QuotationLineItemDialog({
   const unitPrice = form.watch("unitPrice");
   const discount = form.watch("discount");
   const taxRate = form.watch("taxRate");
-  const itemId = form.watch("itemId");
-  const packagingId = form.watch("packagingId");
-  const { data: packages } = useActivePackages(itemId);
-  const selectedPackage = packages?.find((pkg) => pkg.id === packagingId);
-  const conversionFactor = selectedPackage?.qtyPerPack ?? 1;
-  const normalizedQty = (quantity || 0) * conversionFactor;
 
   // Calculate line total
-  const lineSubtotal = normalizedQty * (unitPrice || 0);
+  const lineSubtotal = (quantity || 0) * (unitPrice || 0);
   const discountAmount = (lineSubtotal * (discount || 0)) / 100;
   const taxableAmount = lineSubtotal - discountAmount;
   const taxAmount = (taxableAmount * (taxRate || 0)) / 100;
@@ -301,33 +265,6 @@ export function QuotationLineItemDialog({
                     <Textarea {...field} rows={2} />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Package selector */}
-            <FormField
-              control={form.control}
-              name="packagingId"
-              render={({ field }) => (
-                <FormItem>
-                  {itemId ? (
-                    <PackageSelector
-                      itemId={itemId}
-                      value={field.value}
-                      onChange={field.onChange}
-                      quantity={form.watch("quantity")}
-                      label="Package"
-                      required={false}
-                    />
-                  ) : (
-                    <>
-                      <FormLabel>Package</FormLabel>
-                      <div className="w-full rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                        Select an item to choose a package.
-                      </div>
-                    </>
-                  )}
                 </FormItem>
               )}
             />

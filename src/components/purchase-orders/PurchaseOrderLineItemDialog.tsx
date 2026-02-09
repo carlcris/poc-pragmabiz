@@ -35,15 +35,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
-import { PackageSelector } from "@/components/inventory/PackageSelector";
-import { useActivePackages } from "@/hooks/useItemPackages";
 
 const lineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
   itemCode: z.string().optional(),
   itemName: z.string().optional(),
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  packagingId: z.string().nullable().optional(), // null = use base package
   rate: z.number().min(0, "Rate cannot be negative"),
   uomId: z.string().min(1, "Unit of measure is required"),
   discountPercent: z.number().min(0).max(100).default(0),
@@ -52,7 +49,6 @@ const lineItemSchema = z.object({
 
 type PurchaseOrderLineItemInput = z.input<typeof lineItemSchema>;
 export type PurchaseOrderLineItemFormValues = z.output<typeof lineItemSchema> & {
-  packagingName?: string;
   lineTotal?: number;
 };
 
@@ -83,7 +79,6 @@ export function PurchaseOrderLineItemDialog({
       itemCode: "",
       itemName: "",
       quantity: 1,
-      packagingId: null,
       rate: 0,
       uomId: "",
       discountPercent: 0,
@@ -100,7 +95,6 @@ export function PurchaseOrderLineItemDialog({
         itemCode: "",
         itemName: "",
         quantity: 1,
-        packagingId: null,
         rate: 0,
         uomId: "",
         discountPercent: 0,
@@ -126,7 +120,6 @@ export function PurchaseOrderLineItemDialog({
     onSave({
       ...parsed,
       lineTotal,
-      packagingName: selectedPackage?.packName,
     });
     onOpenChange(false);
   };
@@ -135,14 +128,7 @@ export function PurchaseOrderLineItemDialog({
   const rate = form.watch("rate");
   const discountPercent = form.watch("discountPercent");
   const taxPercent = form.watch("taxPercent");
-  const itemId = form.watch("itemId");
-  const packagingId = form.watch("packagingId");
-  const { data: packages } = useActivePackages(itemId);
-  const selectedPackage = packages?.find((pkg) => pkg.id === packagingId);
-  const conversionFactor = selectedPackage?.qtyPerPack ?? 1;
-  const normalizedQty = (quantity || 0) * conversionFactor;
-
-  const lineSubtotal = normalizedQty * (rate || 0);
+  const lineSubtotal = (quantity || 0) * (rate || 0);
   const discountAmount = (lineSubtotal * (discountPercent || 0)) / 100;
   const taxableAmount = lineSubtotal - discountAmount;
   const taxAmount = (taxableAmount * (taxPercent || 0)) / 100;
@@ -246,26 +232,6 @@ export function PurchaseOrderLineItemDialog({
                 </FormItem>
               )}
             />
-
-            {/* Package selector */}
-            {form.watch("itemId") && (
-              <FormField
-                control={form.control}
-                name="packagingId"
-                render={({ field }) => (
-                  <FormItem>
-                    <PackageSelector
-                      itemId={form.watch("itemId")}
-                      value={field.value}
-                      onChange={field.onChange}
-                      quantity={form.watch("quantity")}
-                      label="Package"
-                      required={false}
-                    />
-                  </FormItem>
-                )}
-              />
-            )}
 
             <div className="grid grid-cols-2 gap-4">
               <FormField

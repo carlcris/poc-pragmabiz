@@ -121,7 +121,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const itemInputs: StockTransactionItemInput[] = salesOrderItems.map((item) => ({
       itemId: item.item_id,
-      packagingId: item.packaging_id || null,
       inputQty: parseFloat(item.quantity),
       unitCost: parseFloat(item.rate),
     }));
@@ -208,7 +207,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         item_id: item.item_id,
         item_description: item.item_description,
         quantity: parseFloat(item.quantity),
-        packaging_id: item.packaging_id || null,
         uom_id: item.uom_id,
         rate: item.rate,
         discount_percent: item.discount_percent || 0,
@@ -305,10 +303,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         unit_cost: parseFloat(item.rate),
         total_cost: normalizedQty * parseFloat(item.rate),
         input_qty: normalizedItem?.inputQty ?? parseFloat(item.quantity),
-        input_packaging_id: normalizedItem?.inputPackagingId ?? item.packaging_id ?? null,
         conversion_factor: normalizedItem?.conversionFactor ?? 1.0,
         normalized_qty: normalizedQty,
-        base_package_id: normalizedItem?.basePackageId ?? null,
         created_by: user.id,
         updated_by: user.id,
       };

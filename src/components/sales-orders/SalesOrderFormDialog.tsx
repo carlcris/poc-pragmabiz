@@ -67,7 +67,6 @@ const salesOrderFormSchema = z.object({
 });
 
 type SalesOrderFormInput = z.input<typeof salesOrderFormSchema>;
-type SalesOrderFormValues = z.output<typeof salesOrderFormSchema>;
 
 interface SalesOrderFormDialogProps {
   open: boolean;
@@ -168,8 +167,6 @@ export function SalesOrderFormDialog({
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         uomId: item.uomId,
-        packagingId: item.packagingId ?? null,
-        packagingName: item.packaging?.name,
         discount: item.discount,
         taxRate: item.taxRate,
       }));
@@ -223,7 +220,6 @@ export function SalesOrderFormDialog({
           itemName: item.itemName || "",
           description: item.description,
           quantity: item.quantity,
-          packagingId: item.packagingId ?? null,
           uomId: item.uomId, // Include unit of measure ID
           unitPrice: item.unitPrice,
           discount: item.discount,
@@ -431,7 +427,7 @@ export function SalesOrderFormDialog({
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
                                     <span className="text-muted-foreground">
-                                      {item.packagingName || "—"}
+                                      {item.uomId || "—"}
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right">

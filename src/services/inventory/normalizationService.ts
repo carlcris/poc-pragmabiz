@@ -15,7 +15,6 @@ import type {
   StockTransactionItemInput,
   NormalizedStockTransactionItem,
   PackageConversionError,
-  ItemBasePackageInfo,
 } from "@/types/inventory-normalization";
 
 // ============================================================================
@@ -23,14 +22,13 @@ import type {
 // ============================================================================
 
 /**
- * Normalize quantity from user-selected package to base package units
+ * Normalize quantity from user input to base UOM units
  *
  * Algorithm:
- * 1. Get item's base package (items.package_id)
- * 2. Determine which package to use (specified or default to base)
- * 3. Get conversion factor (qty_per_pack)
- * 4. Calculate: normalized_qty = input_qty × conversion_factor
- * 5. Return full conversion metadata for audit trail
+ * 1. Fetch item UOM
+ * 2. Validate input quantity
+ * 3. Calculate: normalized_qty = input_qty × 1
+ * 4. Return conversion metadata for audit trail
  *
  * @param companyId - Company context
  * @param input - Conversion input (item, package, quantity)
@@ -48,20 +46,12 @@ export async function normalizeQuantity(
     .from("items")
     .select(
       `
-      package_id,
-      base_package:item_packaging!package_id(
-        id,
-        pack_name,
-        pack_type,
-        qty_per_pack,
-        uom_id,
-        units_of_measure(name)
-      )
+      uom_id,
+      units_of_measure(name, symbol)
     `
     )
     .eq("id", input.itemId)
     .eq("company_id", companyId)
-    .eq("setup_complete", true)
     .is("deleted_at", null)
     .single();
 
@@ -74,71 +64,17 @@ export async function normalizeQuantity(
     throw new Error(error.message);
   }
 
-  const basePackage = item.base_package as unknown as {
-    id: string;
-    pack_name: string;
-    pack_type: string;
-    qty_per_pack: number;
-    uom_id: string;
-    units_of_measure: { name: string } | null;
-  };
+  const uom = Array.isArray(item.units_of_measure)
+    ? item.units_of_measure[0]
+    : item.units_of_measure ?? null;
 
-  if (!basePackage) {
-    throw new Error("Item base package not found");
-  }
-
-  // STEP 2: Determine input package
-  let inputPackageId = input.packagingId;
-
-  if (!inputPackageId) {
-    // Use base package as default
-    inputPackageId = item.package_id as string;
-  }
-
-  // STEP 3: Get input package details (if different from base)
-  let inputPackage: {
-    id: string;
-    pack_name: string;
-    pack_type: string;
-    qty_per_pack: number;
-  };
-
-  if (inputPackageId === item.package_id) {
-    // Using base package
-    inputPackage = basePackage;
-  } else {
-    // Using different package - fetch it
-    const { data: pkg, error: pkgError } = await supabase
-      .from("item_packaging")
-      .select("id, pack_name, pack_type, qty_per_pack")
-      .eq("id", inputPackageId)
-      .eq("company_id", companyId)
-      .eq("item_id", input.itemId)
-      .eq("is_active", true)
-      .is("deleted_at", null)
-      .single();
-
-    if (pkgError || !pkg) {
-      const error: PackageConversionError = {
-        code: "INVALID_PACKAGE",
-        message: "Input package not found or does not belong to item",
-        itemId: input.itemId,
-        packagingId: inputPackageId,
-      };
-      throw new Error(error.message);
-    }
-
-    inputPackage = pkg;
-  }
-
-  // STEP 4: Validate conversion factor
-  const conversionFactor = parseFloat(String(inputPackage.qty_per_pack));
+  // STEP 2: Validate conversion factor (fixed to 1 for UOM-based flow)
+  const conversionFactor = 1;
 
   if (conversionFactor <= 0 || !isFinite(conversionFactor)) {
     const error: PackageConversionError = {
       code: "INVALID_CONVERSION_FACTOR",
       message: `Invalid conversion factor: ${conversionFactor}. Must be a positive number.`,
-      packagingId: inputPackageId,
     };
     throw new Error(error.message);
   }
@@ -159,15 +95,11 @@ export async function normalizeQuantity(
   return {
     normalizedQty,
     conversionFactor,
-    inputPackagingId: inputPackage.id,
-    basePackageId: item.package_id as string,
     inputQty: input.inputQty,
+    uomId: item.uom_id,
     metadata: {
-      inputPackageName: inputPackage.pack_name,
-      inputPackageType: inputPackage.pack_type,
-      basePackageName: basePackage.pack_name,
-      baseUomId: basePackage.uom_id,
-      baseUomName: basePackage.units_of_measure?.name || "unit",
+      uomName: uom?.name || "unit",
+      uomSymbol: uom?.symbol || undefined,
     },
   };
 }
@@ -197,18 +129,15 @@ export async function normalizeTransactionItems(
   for (const item of items) {
     const conversion = await normalizeQuantity(companyId, {
       itemId: item.itemId,
-      packagingId: item.packagingId,
       inputQty: item.inputQty,
     });
 
     normalizedItems.push({
       itemId: item.itemId,
       inputQty: item.inputQty,
-      inputPackagingId: conversion.inputPackagingId,
       conversionFactor: conversion.conversionFactor,
       normalizedQty: conversion.normalizedQty,
-      basePackageId: conversion.basePackageId,
-      uomId: conversion.metadata.baseUomId,
+      uomId: conversion.uomId,
       unitCost: item.unitCost,
       totalCost: conversion.normalizedQty * item.unitCost,
       notes: item.notes,
@@ -226,37 +155,11 @@ export async function normalizeTransactionItems(
 // ============================================================================
 
 /**
- * Get item's base package information
- * Wrapper around database function for convenience
- *
- * @param itemId - Item UUID
- * @returns Base package information
- */
-export async function getItemBasePackage(itemId: string): Promise<ItemBasePackageInfo | null> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("get_item_base_package", {
-    p_item_id: itemId,
-  });
-
-  if (error) {
-    console.error("Error fetching base package:", error);
-    return null;
-  }
-
-  if (!data || data.length === 0) {
-    return null;
-  }
-
-  return data[0] as ItemBasePackageInfo;
-}
-
-/**
  * Reverse conversion: Convert base units to package units
  * Useful for displaying stock levels in user-friendly units
  *
  * @param baseQty - Quantity in base units
- * @param conversionFactor - qty_per_pack from package
+ * @param conversionFactor - conversion factor
  * @returns Quantity in package units
  */
 export function denormalizeQuantity(
@@ -317,54 +220,4 @@ export async function checkStockAvailability(
     currentStock,
     shortfall,
   };
-}
-
-/**
- * Get all packages for an item
- * Useful for displaying package selector in UI
- *
- * @param companyId - Company context
- * @param itemId - Item UUID
- * @returns Array of packages with display info
- */
-export async function getItemPackages(
-  companyId: string,
-  itemId: string
-): Promise<
-  Array<{
-    id: string;
-    packName: string;
-    packType: string;
-    qtyPerPack: number;
-    isDefault: boolean;
-    barcode?: string;
-  }>
-> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("item_packaging")
-    .select("id, pack_name, pack_type, qty_per_pack, is_default, barcode")
-    .eq("company_id", companyId)
-    .eq("item_id", itemId)
-    .eq("is_active", true)
-    .is("deleted_at", null)
-    .order("is_default", { ascending: false })
-    .order("qty_per_pack", { ascending: true });
-
-  if (error) {
-    console.error("Error fetching item packages:", error);
-    return [];
-  }
-
-  return (
-    data?.map((pkg) => ({
-      id: pkg.id,
-      packName: pkg.pack_name,
-      packType: pkg.pack_type,
-      qtyPerPack: parseFloat(String(pkg.qty_per_pack)),
-      isDefault: pkg.is_default,
-      barcode: pkg.barcode || undefined,
-    })) || []
-  );
 }

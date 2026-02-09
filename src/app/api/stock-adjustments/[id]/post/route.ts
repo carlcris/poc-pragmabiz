@@ -23,10 +23,8 @@ type DbStockAdjustmentItem = {
   created_at: string;
   updated_at: string | null;
   input_qty?: number | string | null;
-  input_packaging_id?: string | null;
   conversion_factor?: number | string | null;
   normalized_qty?: number | string | null;
-  base_package_id?: string | null;
 };
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
@@ -205,10 +203,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           item_id: item.item_id,
           // Normalization fields (copied from stock_adjustment_items, with fallbacks)
           input_qty: item.input_qty || Math.abs(normalizedDifference),
-          input_packaging_id: item.input_packaging_id || null,
           conversion_factor: item.conversion_factor || 1.0,
           normalized_qty: item.normalized_qty || Math.abs(normalizedDifference),
-          base_package_id: item.base_package_id || null,
           // Standard fields
           quantity: Math.abs(normalizedDifference), // Backward compat
           uom_id: item.uom_id,

@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { useItem } from "@/hooks/useItems";
@@ -103,7 +102,6 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="packaging">Packaging</TabsTrigger>
             <TabsTrigger value="prices">Prices</TabsTrigger>
             <TabsTrigger value="locations" className="flex items-center gap-2">
               <Layers className="h-4 w-4" />
@@ -241,11 +239,6 @@ export function ItemDetailsDialog({ open, onOpenChange, itemId, onEdit }: ItemDe
                 </div>
               )}
             </div>
-          </TabsContent>
-
-          {/* Packaging Tab */}
-          <TabsContent value="packaging" className="mt-4">
-            <PackagingTab itemId={itemId} />
           </TabsContent>
 
           {/* Prices Tab */}

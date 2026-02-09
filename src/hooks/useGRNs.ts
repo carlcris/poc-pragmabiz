@@ -45,8 +45,9 @@ export function useUpdateGRN() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateGRNRequest }) =>
       grnsApi.updateGRN(id, data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY, variables.id] });
     },
   });
 }

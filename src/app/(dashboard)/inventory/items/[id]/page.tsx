@@ -17,7 +17,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
 
@@ -198,10 +197,6 @@ export default function ItemDetailPage() {
             <Package className="h-4 w-4" />
             General
           </TabsTrigger>
-          <TabsTrigger value="packaging" className="gap-2">
-            <Package className="h-4 w-4" />
-            Packaging
-          </TabsTrigger>
           <TabsTrigger value="prices" className="gap-2">
             <DollarSign className="h-4 w-4" />
             Prices
@@ -313,9 +308,6 @@ export default function ItemDetailPage() {
         </TabsContent>
 
         {/* Packaging Tab */}
-        <TabsContent value="packaging">
-          <PackagingTab itemId={itemId} />
-        </TabsContent>
 
         {/* Prices Tab */}
         <TabsContent value="prices">

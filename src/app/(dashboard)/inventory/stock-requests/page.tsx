@@ -215,8 +215,6 @@ export default function StockRequestsPage() {
           itemCode: item.items?.item_code || "",
           itemName: item.items?.item_name || "",
           uomId: item.uom_id,
-          packagingId: item.packagingId ?? null,
-          packagingName: item.packaging?.name,
           requestedQty: item.requested_qty,
           notes: item.notes || "",
         })) || [];
@@ -448,7 +446,6 @@ export default function StockRequestsPage() {
           item_id: item.itemId,
           requested_qty: item.requestedQty,
           uom_id: item.uomId,
-          packagingId: item.packagingId ?? null,
           notes: item.notes,
         })),
       };
@@ -1005,7 +1002,7 @@ export default function StockRequestsPage() {
                                     {item.requestedQty.toFixed(2)}
                                   </TableCell>
                                   <TableCell className="py-2 text-sm">
-                                    {item.packagingName || "--"}
+                                    {item.uomId || "--"}
                                   </TableCell>
                                   <TableCell className="py-2">
                                     <div className="max-w-[150px] truncate text-sm">

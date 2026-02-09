@@ -102,7 +102,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const warehouses = warehousesData?.data || [];
 
   const { data: itemsData } = useItems({ limit: 1000 });
-  const items = itemsData?.data || [];
+  const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
 
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -247,18 +247,6 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       toast.error(error instanceof Error ? error.message : "Failed to save load list");
     }
   }
-
-  const handleItemSelect = (itemId: string) => {
-    const selectedItem = items.find((item) => item.id === itemId);
-    if (!selectedItem) return;
-    setSelectedItemId(itemId);
-    const cost =
-      selectedItem.purchasePrice ??
-      selectedItem.standardCost ??
-      selectedItem.listPrice ??
-      0;
-    setUnitCost(Number(cost).toFixed(2));
-  };
 
   useEffect(() => {
     if (!selectedItemId) return;

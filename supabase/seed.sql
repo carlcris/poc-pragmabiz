@@ -181,14 +181,13 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- SEED DATA: Create Packages for All Items (REQUIRED AFTER MIGRATION)
+-- SEED DATA: Validate UOM Setup for Items
 -- ============================================================================
 
 DO $$
 DECLARE
     v_company_id UUID := '00000000-0000-0000-0000-000000000001';
     v_item RECORD;
-    v_package_id UUID;
     v_items_processed INT := 0;
 BEGIN
     RAISE NOTICE '============================================';
@@ -208,45 +207,13 @@ BEGIN
         JOIN units_of_measure u ON i.uom_id = u.id
         WHERE i.company_id = v_company_id
           AND i.deleted_at IS NULL
-          AND (i.package_id IS NULL OR i.setup_complete = FALSE)
     LOOP
-        -- Create base package using UOM name and code
-        INSERT INTO item_packaging (
-            company_id,
-            item_id,
-            pack_type,
-            pack_name,
-            qty_per_pack,
-            uom_id,
-            barcode,
-            is_default,
-            is_active
-        ) VALUES (
-            v_company_id,
-            v_item.id,
-            v_item.uom_code,  -- Use UOM code as pack_type (e.g., 'PCS', 'FT', 'SHEET')
-            v_item.uom_name,  -- Use UOM name as pack_name (e.g., 'Pieces', 'Feet', 'Sheet')
-            1.0,
-            v_item.uom_id,
-            v_item.item_code,
-            true,
-            true
-        )
-        RETURNING id INTO v_package_id;
-
-        -- Link item to its base package and mark as complete
-        UPDATE items
-        SET package_id = v_package_id,
-            setup_complete = TRUE
-        WHERE id = v_item.id;
-
         v_items_processed := v_items_processed + 1;
     END LOOP;
 
     RAISE NOTICE '============================================';
-    RAISE NOTICE 'Package setup complete!';
+    RAISE NOTICE 'UOM setup complete!';
     RAISE NOTICE 'Items processed: %', v_items_processed;
-    RAISE NOTICE 'Total items with packages: %', (SELECT COUNT(*) FROM items WHERE setup_complete = TRUE AND company_id = v_company_id);
     RAISE NOTICE '============================================';
 END $$;
 

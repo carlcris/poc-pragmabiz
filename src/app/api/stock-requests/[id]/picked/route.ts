@@ -18,7 +18,6 @@ type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 type StockRequestItemRow = {
   item_id: string;
   requested_qty: number | string;
-  packaging_id: string | null;
   uom_id: string | null;
 };
 
@@ -79,7 +78,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
           id,
           item_id,
           requested_qty,
-          packaging_id,
           uom_id
         )
       `
@@ -123,7 +121,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const requestItems = (stockRequest.stock_request_items as StockRequestItemRow[] | null) || [];
     const itemsToDeliver: StockTransactionItemInput[] = requestItems.map((item) => ({
       itemId: item.item_id,
-      packagingId: item.packaging_id ?? null,
       inputQty: Number(item.requested_qty),
       unitCost: 0,
       notes: `Stock request ${stockRequest.request_code} delivered`,
@@ -262,10 +259,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
         input_qty: item.inputQty,
-        input_packaging_id: item.inputPackagingId,
         conversion_factor: item.conversionFactor,
         normalized_qty: item.normalizedQty,
-        base_package_id: item.basePackageId,
         quantity: item.normalizedQty,
         uom_id: item.uomId,
         unit_cost: 0,
@@ -333,8 +328,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         stock_request_items(
           *,
           items(item_code, item_name),
-          units_of_measure(code, symbol),
-          packaging:item_packaging(id, pack_name, qty_per_pack)
+          units_of_measure(code, symbol)
         )
       `
       )

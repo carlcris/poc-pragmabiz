@@ -44,15 +44,12 @@ type DbStockAdjustmentItem = {
   created_at: string;
   updated_at: string | null;
   input_qty?: number | string | null;
-  input_packaging_id?: string | null;
   conversion_factor?: number | string | null;
   normalized_qty?: number | string | null;
-  base_package_id?: string | null;
 };
 
 type StockAdjustmentItemInput = {
   itemId: string;
-  packagingId?: string | null;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -423,7 +420,6 @@ export async function POST(request: NextRequest) {
     // Normalize item quantities from packages to base units
     const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId || null,
       inputQty: item.adjustedQty,
       unitCost: item.unitCost || 0,
     }));
@@ -511,10 +507,8 @@ export async function POST(request: NextRequest) {
         adjusted_qty: normalizedAdjusted, // Use normalized quantity
         // Normalization fields
         input_qty: normalizedItem.inputQty,
-        input_packaging_id: normalizedItem.inputPackagingId,
         conversion_factor: normalizedItem.conversionFactor,
         normalized_qty: normalizedItem.normalizedQty,
-        base_package_id: normalizedItem.basePackageId,
         // Other fields
         difference: difference,
         unit_cost: item.unitCost,

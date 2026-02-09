@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         `
       : "*";
 
-    const rolesQuery = supabase.from("roles") as any;
+    const rolesQuery = supabase.from("roles");
     let query = rolesQuery
       .select(selectQuery, { count: "exact" })
       .eq("company_id", user.companyId)
@@ -84,14 +84,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform data if permissions are included
+    const rawRoles = Array.isArray(data) ? data : [];
     const roles = includePermissions
-      ? ((data as RoleWithPermissions[] | null) || []).map((role) => ({
+      ? (rawRoles as unknown as RoleWithPermissions[]).map((role) => ({
           ...role,
           permissions: (role.role_permissions || [])
             .flatMap((rp) => (Array.isArray(rp.permissions) ? rp.permissions : [rp.permissions]))
             .filter(Boolean),
         }))
-      : data || [];
+      : rawRoles;
 
     return NextResponse.json({
       data: roles,

@@ -28,7 +28,6 @@ export type POSStockTransactionData = {
   items: Array<{
     itemId: string;
     quantity: number; // Input quantity in selected package
-    packagingId?: string | null; // Package selected by user (null = use base package)
     uomId?: string; // Deprecated: kept for backward compatibility
     rate: number;
   }>;
@@ -53,7 +52,6 @@ export async function createPOSStockTransaction(
     // STEP 1: Normalize all item quantities from packages to base units
     const itemInputs: StockTransactionItemInput[] = data.items.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId || null, // null = use base package
       inputQty: item.quantity,
       unitCost: item.rate,
     }));
@@ -145,10 +143,8 @@ export async function createPOSStockTransaction(
           item_id: item.itemId,
           // Normalization fields (NEW)
           input_qty: item.inputQty,
-          input_packaging_id: item.inputPackagingId,
           conversion_factor: item.conversionFactor,
           normalized_qty: item.normalizedQty,
-          base_package_id: item.basePackageId,
           // Standard fields
           quantity: item.normalizedQty, // Backward compat
           uom_id: item.uomId,

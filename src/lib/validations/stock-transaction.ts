@@ -12,7 +12,6 @@ export const stockTransactionFormSchema = z
     fromLocationId: z.string().optional(),
     toLocationId: z.string().optional(),
     quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-    packagingId: z.string().nullable().optional(),
     uomId: z.string().min(1, "Unit of measure is required"),
     referenceType: z.string().optional(),
     referenceId: z.string().optional(),

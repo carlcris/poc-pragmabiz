@@ -7,12 +7,6 @@ export interface InvoiceLineItem {
   itemName: string;
   description: string;
   quantity: number;
-  packagingId?: string | null;
-  packaging?: {
-    id: string;
-    name: string;
-    qtyPerPack: number;
-  };
   uomId: string;
   unitPrice: number;
   discount: number; // Percentage

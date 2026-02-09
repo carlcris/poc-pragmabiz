@@ -21,7 +21,6 @@ type StockRequestItemRow = {
   id: string;
   item_id: string;
   requested_qty: number | string;
-  packaging_id?: string | null;
   uom_id?: string | null;
 };
 type StockRequestWarehouse = {
@@ -42,7 +41,6 @@ type ReceiveStockRequestItemInput = {
   itemId: string;
   requestedQty: number;
   receivedQty: number;
-  packagingId?: string | null;
   uomId?: string | null;
   locationId?: string | null;
 };
@@ -111,7 +109,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
           id,
           item_id,
           requested_qty,
-          packaging_id,
           uom_id
         )
       `
@@ -156,7 +153,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         itemId: item.item_id,
         requestedQty: Number(item.requested_qty),
         receivedQty: Number(item.requested_qty),
-        packagingId: item.packaging_id ?? null,
         uomId: item.uom_id ?? null,
         locationId: null,
       }));
@@ -169,7 +165,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const itemInputs: StockTransactionItemInput[] = nonZeroItems.map((item) => ({
       itemId: item.itemId,
-      packagingId: item.packagingId || null,
       inputQty: item.receivedQty,
       unitCost: 0,
       notes: body.notes || undefined,
@@ -276,10 +271,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
         input_qty: item.inputQty,
-        input_packaging_id: item.inputPackagingId,
         conversion_factor: item.conversionFactor,
         normalized_qty: item.normalizedQty,
-        base_package_id: item.basePackageId,
         quantity: item.normalizedQty,
         uom_id: item.uomId,
         unit_cost: 0,

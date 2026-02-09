@@ -67,7 +67,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Verify all items have quantity_received > 0
     const { data: items, error: itemsError } = await supabase
       .from("purchase_receipt_items")
-      .select("id, purchase_order_item_id, quantity_received, item_id, packaging_id, uom_id, rate")
+      .select("id, purchase_order_item_id, quantity_received, item_id, uom_id, rate")
       .eq("receipt_id", id)
       .is("deleted_at", null);
 
@@ -170,7 +170,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Step 4: Create stock transaction and update inventory
     const itemInputs: StockTransactionItemInput[] = items.map((item) => ({
       itemId: item.item_id,
-      packagingId: item.packaging_id || null,
       inputQty: Number(item.quantity_received || 0),
       unitCost: Number(item.rate || 0),
     }));
@@ -238,10 +237,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
         input_qty: item.inputQty,
-        input_packaging_id: item.inputPackagingId,
         conversion_factor: item.conversionFactor,
         normalized_qty: item.normalizedQty,
-        base_package_id: item.basePackageId,
         quantity: item.normalizedQty,
         uom_id: item.uomId,
         unit_cost: item.unitCost,

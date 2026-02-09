@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useCreateWarehouse, useUpdateWarehouse } from "@/hooks/useWarehouses";
 import { useAuthStore } from "@/stores/authStore";
-import { warehouseFormSchema, type WarehouseFormValues } from "@/lib/validations/warehouse";
+import { warehouseFormSchema } from "@/lib/validations/warehouse";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {

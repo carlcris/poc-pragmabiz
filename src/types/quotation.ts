@@ -7,8 +7,6 @@ export interface QuotationLineItem {
   itemName?: string; // Joined from items table
   description: string;
   quantity: number;
-  packagingId?: string | null;
-  packagingName?: string;
   uomId: string;
   unitPrice: number;
   discount: number; // Percentage
@@ -52,7 +50,6 @@ export interface CreateQuotationItemRequest {
   itemId: string;
   description?: string;
   quantity: number;
-  packagingId?: string | null;
   uomId: string;
   rate: number;
   discountPercent?: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -8,9 +8,18 @@ import { useCreateItem, useItem, useUpdateItem } from "@/hooks/useItems";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useAuthStore } from "@/stores/authStore";
-import { itemFormSchema, type ItemFormValues } from "@/lib/validations/item";
+import { itemFormSchema } from "@/lib/validations/item";
 import type { z } from "zod";
+import {
+  Package,
+  Tag,
+  DollarSign,
+  BarChart3,
+  Image as ImageIcon,
+  Info
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +46,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PackagingTab } from "@/components/items/packaging/PackagingTab";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -72,8 +80,11 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
   const [createdItemId, setCreatedItemId] = useState<string | null>(null);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [dialogMode, setDialogMode] = useState<ItemDialogMode>("create");
-  const categories = categoriesData?.data || [];
-  const unitsOfMeasure = (uomsData?.data || []).filter((unit) => unit.isActive !== false);
+  const categories = useMemo(() => categoriesData?.data || [], [categoriesData?.data]);
+  const unitsOfMeasure = useMemo(
+    () => (uomsData?.data || []).filter((unit) => unit.isActive !== false),
+    [uomsData?.data]
+  );
   type ItemFormInput = z.input<typeof itemFormSchema>;
 
   const form = useForm<ItemFormInput>({
@@ -150,6 +161,16 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
     }
   }, [open, resolvedItem, unitsOfMeasure, form]);
 
+  useEffect(() => {
+    if (!open || resolvedItem) return;
+    if (categories.length === 0) return;
+    const currentCategory = form.getValues("category");
+    const hasMatch = categories.some((category) => category.name === currentCategory);
+    if (!currentCategory || !hasMatch) {
+      form.setValue("category", categories[0].name);
+    }
+  }, [open, resolvedItem, categories, form]);
+
   const onSubmit = async (values: ItemFormInput) => {
     try {
       const parsed = itemFormSchema.parse(values);
@@ -203,10 +224,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
         if (itemId) {
           setCreatedItemId(itemId);
           toast.success("Item created successfully!", {
-            description: "You can now add variants, packaging, and price tiers",
+            description: "You can now add pricing and locations",
           });
-          // Switch to variants tab to continue adding details
-          setActiveTab("variants");
+          // Switch to prices tab to continue adding details
+          setActiveTab("prices");
         }
       }
     } catch {
@@ -287,20 +308,19 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
           <DialogDescription>
             {resolvedItem
               ? isReadOnly
-                ? "Review item information, packaging, pricing, and locations."
-                : "Update the item information and manage variants, packaging, and pricing"
+                ? "Review item information, pricing tiers, and stock locations."
+                : "Update item information and manage pricing tiers across tabs."
               : createdItemId
-                ? "Item created successfully. Now add variants, packaging, and price tiers."
-                : "Fill in the item details below to create a new item"}
+                ? "Item created successfully! Continue to the Prices and Locations tabs to complete setup."
+                : "Create a new item by filling in the basic information. You will be able to add pricing and locations after saving."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {showTabs ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="packaging">Packaging</TabsTrigger>
                 <TabsTrigger value="prices">Prices</TabsTrigger>
                 <TabsTrigger value="locations">Locations</TabsTrigger>
               </TabsList>
@@ -308,16 +328,19 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
               {/* General Tab */}
               <TabsContent value="general" className="mt-4 flex-1 overflow-y-auto pr-1">
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                      <div
                       className={`space-y-6 ${isReadOnly ? "pointer-events-none opacity-90" : ""}`}
-                    >
+                      >
                       {/* Basic Information with Image */}
-                      <div>
-                        <h4 className="mb-4 text-sm font-medium">Basic Information</h4>
+                      <div className="rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="font-semibold text-sm">Basic Information</h4>
+                        </div>
 
                         {/* Two Column Layout: Form Fields | Image Upload */}
-                        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                        <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
                           {/* Left Column - Form Fields (2/3 width) */}
                           <div className="space-y-4 lg:col-span-2">
                             <div className="grid grid-cols-2 gap-4">
@@ -332,6 +355,9 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                         placeholder="ITEM-001"
                                         {...field}
                                         disabled={!!resolvedItem || !!createdItemId || isReadOnly}
+                                        onChange={(event) =>
+                                          field.onChange(event.target.value.toUpperCase())
+                                        }
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -431,7 +457,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               name="imageUrl"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Item Image</FormLabel>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <ImageIcon className="h-3.5 w-3.5" />
+                                    Item Image
+                                  </FormLabel>
                                   <FormControl>
                                     <ImageUpload
                                       value={field.value}
@@ -448,10 +477,13 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                         </div>
                       </div>
 
-                      {/* Divider */}
-                      <div className="border-t pt-6">
-                        <h4 className="mb-4 text-sm font-medium">Classification & Pricing</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                      {/* Classification & Unit */}
+                      <div className="rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="font-semibold text-sm">Classification & Unit of Measure</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 p-6">
                           <FormField
                             control={form.control}
                             name="category"
@@ -513,9 +545,12 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       </div>
 
                       {/* Pricing */}
-                      <div className="border-t pt-4">
-                        <h4 className="mb-4 text-sm font-medium">Pricing Information</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="font-semibold text-sm">Pricing Information</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 p-6">
                           <FormField
                             control={form.control}
                             name="standardCost"
@@ -565,9 +600,12 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       </div>
 
                       {/* Inventory Management */}
-                      <div className="border-t pt-4">
-                        <h4 className="mb-4 text-sm font-medium">Inventory Management</h4>
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="rounded-lg border bg-card">
+                        <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="font-semibold text-sm">Inventory Management</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 p-6">
                           <FormField
                             control={form.control}
                             name="reorderLevel"
@@ -611,46 +649,39 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               </FormItem>
                             )}
                           />
-                        </div>
+                      </div>
                       </div>
                     </div>
 
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={handleClose}>
-                        {createdItemId ? "Close" : "Cancel"}
-                      </Button>
-                      {isReadOnly ? (
-                        <Button
-                          type="button"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            setDialogMode("edit");
-                          }}
-                        >
-                          Edit
+                        <Button type="button" variant="outline" onClick={handleClose}>
+                          {createdItemId ? "Close" : "Cancel"}
                         </Button>
-                      ) : (
-                        <Button
-                          type="submit"
-                          disabled={createItem.isPending || updateItem.isPending}
-                        >
-                          {createItem.isPending || updateItem.isPending
-                            ? "Saving..."
-                            : resolvedItem
-                              ? "Update Item"
-                              : "Save & Continue"}
-                        </Button>
-                      )}
+                        {isReadOnly ? (
+                          <Button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              setDialogMode("edit");
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        ) : (
+                          <Button
+                            type="submit"
+                            disabled={createItem.isPending || updateItem.isPending}
+                          >
+                            {createItem.isPending || updateItem.isPending
+                              ? "Saving..."
+                              : resolvedItem
+                                ? "Update Item"
+                                : "Save & Continue"}
+                          </Button>
+                        )}
                     </DialogFooter>
                   </form>
                 </Form>
-              </TabsContent>
-
-              {/* Packaging Tab */}
-              <TabsContent value="packaging" className="mt-4 flex-1 overflow-y-auto pr-1">
-                {currentItemId ? (
-                  <PackagingTab itemId={currentItemId} readOnly={isReadOnly} />
-                ) : null}
               </TabsContent>
 
               {/* Prices Tab */}
@@ -660,14 +691,36 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
 
               {/* Locations Tab */}
               <TabsContent value="locations" className="mt-4 flex-1 overflow-y-auto pr-1">
-                {currentItemId ? <LocationsTab itemId={currentItemId} /> : null}
+                  {currentItemId ? <LocationsTab itemId={currentItemId} /> : null}
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="mt-4 flex-1 overflow-y-auto pr-1">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col">
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <div className="flex-1 overflow-y-auto pr-1">
+                  <div className="space-y-6 pb-6">
+                    {/* Workflow Info Alert */}
+                    <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+                      <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+                        Fill in the basic item information below. After saving, you will be able to add pricing tiers and location details.
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Basic Information Card */}
+                    <div className="rounded-lg border bg-card">
+                      <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <h4 className="font-semibold text-sm">Basic Information</h4>
+                      </div>
+                      <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
+                        {/* Left Column - Form Fields */}
+                        <div className="space-y-4 lg:col-span-2">
+                    <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
                       name="code"
@@ -675,7 +728,13 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                         <FormItem>
                           <FormLabel>Item Code *</FormLabel>
                           <FormControl>
-                            <Input placeholder="ITEM-001" {...field} />
+                            <Input
+                              placeholder="ITEM-001"
+                              {...field}
+                              onChange={(event) =>
+                                field.onChange(event.target.value.toUpperCase())
+                              }
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -706,7 +765,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                         </FormItem>
                       )}
                     />
-                  </div>
+                    </div>
 
                   <FormField
                     control={form.control}
@@ -749,7 +808,42 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       </FormItem>
                     )}
                   />
+                        </div>
 
+                        {/* Right Column - Image Upload */}
+                        <div className="lg:col-span-1">
+                          <FormField
+                            control={form.control}
+                            name="imageUrl"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                  Item Image
+                                </FormLabel>
+                                <FormControl>
+                                  <ImageUpload
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    itemId={currentItemId || undefined}
+                                    disabled={false}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                  {/* Classification & Unit Card */}
+                  <div className="rounded-lg border bg-card">
+                    <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="font-semibold text-sm">Classification & Unit of Measure</h4>
+                    </div>
+                    <div className="p-6">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -801,7 +895,16 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       )}
                     />
                   </div>
+                    </div>
+                  </div>
 
+                  {/* Pricing Information Card */}
+                  <div className="rounded-lg border bg-card">
+                    <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="font-semibold text-sm">Pricing Information</h4>
+                    </div>
+                    <div className="p-6">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -843,7 +946,16 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       )}
                     />
                   </div>
+                    </div>
+                  </div>
 
+                  {/* Inventory Management Card */}
+                  <div className="rounded-lg border bg-card">
+                    <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <h4 className="font-semibold text-sm">Inventory Management</h4>
+                    </div>
+                    <div className="p-6">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -885,25 +997,31 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       )}
                     />
                   </div>
+                    </div>
+                  </div>
 
-                  {isReadOnly ? (
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={handleClose}>
-                        Close
-                      </Button>
-                    </DialogFooter>
-                  ) : (
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={handleClose}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
-                        {createItem.isPending || updateItem.isPending
-                          ? "Saving..."
-                          : "Save & Continue"}
-                      </Button>
-                    </DialogFooter>
-                  )}
+                  </div>
+                </div>
+
+                {/* Fixed Footer - Outside scroll container */}
+                {isReadOnly ? (
+                  <DialogFooter className="shrink-0 border-t bg-background pt-4">
+                    <Button type="button" variant="outline" onClick={handleClose}>
+                      Close
+                    </Button>
+                  </DialogFooter>
+                ) : (
+                  <DialogFooter className="shrink-0 border-t bg-background pt-4">
+                    <Button type="button" variant="outline" onClick={handleClose}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
+                      {createItem.isPending || updateItem.isPending
+                        ? "Saving..."
+                        : "Save & Continue"}
+                    </Button>
+                  </DialogFooter>
+                )}
                 </form>
               </Form>
             </div>

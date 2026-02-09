@@ -193,8 +193,7 @@ export default function PurchaseReceiptsPage() {
                   {receipts.map((receipt) => {
                     const totalValue =
                       receipt.items?.reduce((sum, item) => {
-                        const conversionFactor = item.packaging?.qtyPerPack ?? 1;
-                        return sum + item.quantityReceived * conversionFactor * item.rate;
+                        return sum + item.quantityReceived * item.rate;
                       }, 0) || 0;
 
                     return (

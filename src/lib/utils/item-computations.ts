@@ -8,59 +8,7 @@
  * - Calculating costs and totals
  */
 
-import type { ItemPackaging, ItemPrice } from "@/types/item-variant";
-
-// ============================================================================
-// PACKAGING COMPUTATIONS
-// ============================================================================
-
-/**
- * Convert packaging quantity to base quantity (UOM)
- * @param qty - Quantity in packaging units
- * @param packaging - Packaging information with conversion factor
- * @returns Quantity in base UOM
- * @example
- * // If 1 carton = 100 pieces
- * calculateBaseQuantity(2, { qtyPerPack: 100 }) // returns 200
- */
-export function calculateBaseQuantity(qty: number, packaging: { qtyPerPack: number }): number {
-  return qty * packaging.qtyPerPack;
-}
-
-/**
- * Convert base quantity (UOM) to packaging quantity
- * @param baseQty - Quantity in base UOM
- * @param packaging - Packaging information with conversion factor
- * @returns Quantity in packaging units
- * @example
- * // If 1 carton = 100 pieces
- * calculatePackageQuantity(250, { qtyPerPack: 100 }) // returns 2.5
- */
-export function calculatePackageQuantity(
-  baseQty: number,
-  packaging: { qtyPerPack: number }
-): number {
-  if (packaging.qtyPerPack === 0) return 0;
-  return baseQty / packaging.qtyPerPack;
-}
-
-/**
- * Get the default packaging for a variant
- * @param packagingList - List of packaging options
- * @returns Default packaging or undefined if none exists
- */
-export function getDefaultPackaging(packagingList: ItemPackaging[]): ItemPackaging | undefined {
-  return packagingList.find((pkg) => pkg.isDefault && pkg.isActive);
-}
-
-/**
- * Get active packaging options for a variant
- * @param packagingList - List of packaging options
- * @returns Active packaging options
- */
-export function getActivePackaging(packagingList: ItemPackaging[]): ItemPackaging[] {
-  return packagingList.filter((pkg) => pkg.isActive);
-}
+import type { ItemPrice } from "@/types/item-variant";
 
 // ============================================================================
 // PRICING COMPUTATIONS
@@ -230,15 +178,6 @@ export function isPriceValid(price: ItemPrice, asOfDate?: Date): boolean {
   const to = price.effectiveTo ? new Date(price.effectiveTo) : null;
 
   return from <= checkDate && (!to || to >= checkDate);
-}
-
-/**
- * Check if a packaging option can be deleted
- * @param packaging - Packaging to check
- * @returns True if packaging can be deleted
- */
-export function canDeletePackaging(packaging: ItemPackaging): boolean {
-  return !packaging.isDefault;
 }
 
 /**

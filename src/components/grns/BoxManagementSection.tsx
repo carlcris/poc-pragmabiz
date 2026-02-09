@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Printer, MapPin, Trash2, Package } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, Printer, MapPin, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,6 @@ import {
 import type { GRN, GRNItem, GRNBox } from "@/types/grn";
 import type { WarehouseLocation } from "@/types/inventory-location";
 import { printBarcodeLabels, type BarcodeData } from "@/lib/barcode";
-import { useEffect } from "react";
 
 interface BoxManagementSectionProps {
   grn: GRN;
@@ -52,7 +51,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
   // Fetch boxes when component mounts or GRN changes
-  const fetchBoxes = async () => {
+  const fetchBoxes = useCallback(async () => {
     try {
       const response = await fetch(`/api/grns/${grn.id}/boxes`);
       if (!response.ok) throw new Error("Failed to fetch boxes");
@@ -61,14 +60,14 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
     } catch (error) {
       console.error("Error fetching boxes:", error);
     }
-  };
+  }, [grn.id]);
 
   useEffect(() => {
     fetchBoxes();
-  }, [grn.id]);
+  }, [fetchBoxes]);
 
   // Fetch warehouse locations for the GRN warehouse
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     if (!grn.warehouseId) return;
 
     try {
@@ -83,14 +82,14 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
     } finally {
       setIsLoadingLocations(false);
     }
-  };
+  }, [grn.warehouseId]);
 
   // Load locations when dialog opens
   useEffect(() => {
     if (generateDialogOpen) {
       fetchLocations();
     }
-  }, [generateDialogOpen, grn.warehouseId]);
+  }, [generateDialogOpen, fetchLocations]);
 
   const handleOpenDialog = (item: GRNItem) => {
     setSelectedItem(item);
