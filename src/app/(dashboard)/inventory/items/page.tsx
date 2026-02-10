@@ -100,7 +100,7 @@ function ItemsPageContent() {
   );
 
   // Fetch items with stock data after warehouse auto-selection
-  const { data, isLoading, error } = useItems({
+  const { data, isLoading, isFetching, error } = useItems({
     ...itemsQueryParams,
     enabled: isWarehouseAutoResolved,
   });
@@ -475,7 +475,7 @@ function ItemsPageContent() {
 
         {/* Table */}
         <div className="min-h-0 flex-1">
-          {isLoading ? (
+          {isLoading || isFetching ? (
             <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
