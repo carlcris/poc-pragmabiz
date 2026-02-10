@@ -68,7 +68,6 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const category = searchParams.get("category");
     const warehouseId = searchParams.get("warehouseId");
-    const supplierId = searchParams.get("supplierId");
     const stockStatus = searchParams.get("status");
     const itemType = searchParams.get("itemType");
     const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
@@ -82,8 +81,6 @@ export async function GET(request: NextRequest) {
       item_name: string;
       item_name_cn: string | null;
       category_id?: string | null;
-      item_category_id?: string | null;
-      supplier_id?: string | null;
       item_categories?: { id: string; name: string } | null;
       units_of_measure?: { code: string } | null;
       uom_id: string | null;
@@ -95,10 +92,6 @@ export async function GET(request: NextRequest) {
       image_url: string | null;
     };
 
-    type SupplierRow = {
-      id: string;
-      supplier_name: string;
-    };
 
     type ItemWarehouseRow = {
       item_id: string;
@@ -125,7 +118,18 @@ export async function GET(request: NextRequest) {
       .from("items")
       .select(
         `
-        *,
+        id,
+        item_code,
+        item_name,
+        item_name_cn,
+        category_id,
+        uom_id,
+        cost_price,
+        purchase_price,
+        sales_price,
+        item_type,
+        is_active,
+        image_url,
         item_categories (
           id,
           name
@@ -147,14 +151,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (category) {
-      itemsQuery = itemsQuery.or(
-        `item_category_id.eq.${category},category_id.eq.${category},item_categories.name.eq.${category}`
-      );
+      itemsQuery = itemsQuery.or(`category_id.eq.${category},item_categories.name.eq.${category}`);
     }
 
-    if (supplierId) {
-      itemsQuery = itemsQuery.eq("supplier_id", supplierId);
-    }
 
     if (itemType) {
       itemsQuery = itemsQuery.eq("item_type", itemType);
@@ -170,7 +169,10 @@ export async function GET(request: NextRequest) {
     const { data: items, error: itemsError, count } = await itemsQuery;
 
     if (itemsError) {
-      return NextResponse.json({ error: "Failed to fetch items" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to fetch items", details: itemsError.message },
+        { status: 500 }
+      );
     }
 
     if (!items || items.length === 0) {
@@ -185,28 +187,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const itemIds = (items as ItemRow[]).map((i) => i.id);
+    const itemRows = items as unknown as ItemRow[];
+    const itemIds = itemRows.map((i) => i.id);
 
-    // Fetch supplier data separately
-    const supplierIds = (items as ItemRow[])
-      .map((i) => i.supplier_id || null)
-      .filter((id): id is string => id !== null && id !== undefined);
-
-    const suppliersMap = new Map<string, string>();
-
-    if (supplierIds.length > 0) {
-      const { data: suppliers } = await supabase
-        .from("suppliers")
-        .select("id, supplier_name")
-        .eq("company_id", userData.company_id)
-        .in("id", supplierIds);
-
-      if (suppliers) {
-        for (const supplier of suppliers as SupplierRow[]) {
-          suppliersMap.set(supplier.id, supplier.supplier_name);
-        }
-      }
-    }
+    // Supplier data not available on items (no supplier_id column)
 
     let effectiveBusinessUnitId = currentBusinessUnitId;
     if (warehouseId) {
@@ -246,7 +230,78 @@ export async function GET(request: NextRequest) {
       stockQuery = stockQuery.eq("warehouse_id", warehouseId);
     }
 
-    const { data: itemWarehouseData } = await stockQuery;
+    // Prepare other stock-related queries (in parallel)
+    let salesOrderItemsQuery = supabase
+      .from("sales_order_items")
+      .select(
+        `
+        item_id,
+        quantity,
+        quantity_delivered,
+        sales_orders!inner (
+          status
+        )
+      `
+      )
+      .eq("sales_orders.company_id", userData.company_id)
+      .in("item_id", itemIds)
+      .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
+
+    if (effectiveBusinessUnitId) {
+      salesOrderItemsQuery = salesOrderItemsQuery.eq(
+        "sales_orders.business_unit_id",
+        effectiveBusinessUnitId
+      );
+    }
+
+    let poItemsQuery = supabase
+      .from("purchase_order_items")
+      .select(
+        `
+        item_id,
+        quantity,
+        quantity_received,
+        purchase_orders!inner (
+          status
+        )
+      `
+      )
+      .eq("purchase_orders.company_id", userData.company_id)
+      .in("item_id", itemIds)
+      .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
+
+    if (effectiveBusinessUnitId) {
+      poItemsQuery = poItemsQuery.eq("purchase_orders.business_unit_id", effectiveBusinessUnitId);
+    }
+
+    const [
+      { data: itemWarehouseData, error: stockError },
+      { data: salesOrderItems, error: salesOrderError },
+      { data: poItems, error: poItemsError },
+    ] = await Promise.all([stockQuery, salesOrderItemsQuery, poItemsQuery]);
+
+    if (stockError) {
+      return NextResponse.json(
+        { error: "Failed to fetch item stock data", details: stockError.message },
+        { status: 500 }
+      );
+    }
+
+    if (salesOrderError) {
+      return NextResponse.json(
+        { error: "Failed to fetch sales order allocations", details: salesOrderError.message },
+        { status: 500 }
+      );
+    }
+
+    if (poItemsError) {
+      return NextResponse.json(
+        { error: "Failed to fetch purchase order quantities", details: poItemsError.message },
+        { status: 500 }
+      );
+    }
+
+    const suppliersMap = new Map<string, string>();
 
     // Calculate On Hand per item (sum current_stock across warehouses)
     const onHandMap = new Map<string, number>();
@@ -284,32 +339,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get allocated quantity (from sales_order_items where order not yet delivered)
-    let salesOrderItemsQuery = supabase
-      .from("sales_order_items")
-      .select(
-        `
-        item_id,
-        quantity,
-        quantity_delivered,
-        sales_orders!inner (
-          status
-        )
-      `
-      )
-      .eq("sales_orders.company_id", userData.company_id)
-      .in("item_id", itemIds)
-      .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
-
-    if (effectiveBusinessUnitId) {
-      salesOrderItemsQuery = salesOrderItemsQuery.eq(
-        "sales_orders.business_unit_id",
-        effectiveBusinessUnitId
-      );
-    }
-
-    const { data: salesOrderItems } = await salesOrderItemsQuery;
-
     const allocatedMap = new Map<string, number>();
     const onSOMap = new Map<string, number>();
 
@@ -323,29 +352,6 @@ export async function GET(request: NextRequest) {
         onSOMap.set(itemId, currentOnSO + Number(item.quantity));
       }
     }
-    // Get On PO (from purchase_order_items where order not yet fully received)
-    let poItemsQuery = supabase
-      .from("purchase_order_items")
-      .select(
-        `
-        item_id,
-        quantity,
-        quantity_received,
-        purchase_orders!inner (
-          status
-        )
-      `
-      )
-      .eq("purchase_orders.company_id", userData.company_id)
-      .in("item_id", itemIds)
-      .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
-
-    if (effectiveBusinessUnitId) {
-      poItemsQuery = poItemsQuery.eq("purchase_orders.business_unit_id", effectiveBusinessUnitId);
-    }
-
-    const { data: poItems } = await poItemsQuery;
-
     const onPOMap = new Map<string, number>();
 
     if (poItems) {
@@ -358,7 +364,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build enhanced items with stock data
-    const itemsWithStock: ItemWithStock[] = (items as ItemRow[]).map((item) => {
+    const itemsWithStock: ItemWithStock[] = itemRows.map((item) => {
       const onHand = onHandMap.get(item.id) || 0;
       const allocated = allocatedMap.get(item.id) || 0;
       const available = onHand - allocated;
@@ -382,8 +388,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Get category_id and supplier_id from the actual database columns
-      const categoryId = item.category_id || item.item_category_id || "";
-      const supplierId = item.supplier_id || "";
+      const categoryId = item.category_id || "";
+      const supplierId = "";
       return {
         id: item.id,
         code: item.item_code,

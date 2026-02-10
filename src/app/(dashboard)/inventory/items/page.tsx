@@ -18,7 +18,6 @@ import Image from "next/image";
 import { useDeleteItem, useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
-import { useSuppliers } from "@/hooks/useSuppliers";
 import { useCurrency } from "@/hooks/useCurrency";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -59,7 +58,6 @@ function ItemsPageContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemDialogMode, setItemDialogMode] = useState<ItemDialogMode>("create");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,7 +74,6 @@ function ItemsPageContent() {
     page,
     limit: pageSize,
     category: categoryFilter !== "all" ? categoryFilter : undefined,
-    supplierId: supplierFilter !== "all" ? supplierFilter : undefined,
     warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
     status:
       statusFilter !== "all"
@@ -116,9 +113,6 @@ function ItemsPageContent() {
   const { data: categoriesData } = useItemCategories();
   const categories = categoriesData?.data || [];
 
-  // Fetch suppliers for filter
-  const { data: suppliersData } = useSuppliers({ limit: 1000 });
-  const suppliers = suppliersData?.data?.filter((s) => s.status === "active") || [];
 
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
@@ -393,26 +387,6 @@ function ItemsPageContent() {
               {categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={supplierFilter}
-            onValueChange={(value) => {
-              setSupplierFilter(value);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-[180px]">
-              <Filter className="mr-2 h-4 w-4 shrink-0" />
-              <SelectValue placeholder="Supplier" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Suppliers</SelectItem>
-              {suppliers.map((sup) => (
-                <SelectItem key={sup.id} value={sup.id}>
-                  {sup.name}
                 </SelectItem>
               ))}
             </SelectContent>
