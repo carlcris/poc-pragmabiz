@@ -52,6 +52,8 @@ import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 function ItemsPageContent() {
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [isWarehouseAutoResolved, setIsWarehouseAutoResolved] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -68,18 +70,31 @@ function ItemsPageContent() {
   const { currentBusinessUnit } = useBusinessUnitStore();
   const lastAutoSetBuId = useRef<string | null>(null);
 
-  // Fetch items with stock data
+  const itemsQueryParams = useMemo(
+    () => ({
+      search,
+      page,
+      limit: pageSize,
+      category: categoryFilter !== "all" ? categoryFilter : undefined,
+      warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
+      status:
+        statusFilter !== "all"
+          ? (statusFilter as
+              | "normal"
+              | "low_stock"
+              | "out_of_stock"
+              | "overstock"
+              | "discontinued")
+          : "all",
+      includeStock: true,
+    }),
+    [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
+  );
+
+  // Fetch items with stock data after warehouse auto-selection
   const { data, isLoading, error } = useItems({
-    search,
-    page,
-    limit: pageSize,
-    category: categoryFilter !== "all" ? categoryFilter : undefined,
-    warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
-    status:
-      statusFilter !== "all"
-        ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
-        : "all",
-    includeStock: true,
+    ...itemsQueryParams,
+    enabled: isWarehouseAutoResolved,
   });
 
   // Fetch warehouses for filter
@@ -107,7 +122,18 @@ function ItemsPageContent() {
       setPage(1);
       lastAutoSetBuId.current = currentBusinessUnit.id;
     }
+
+    setIsWarehouseAutoResolved(true);
   }, [currentBusinessUnit, warehouseFilter, warehouses]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
 
   // Fetch categories for filter
   const { data: categoriesData } = useItemCategories();
@@ -157,7 +183,7 @@ function ItemsPageContent() {
     },
   ];
 
-  const getStatusBadge = (status: ItemWithStock["status"]) => {
+  const getStatusBadge = (status?: ItemWithStock["status"]) => {
     const variants: Record<ItemWithStock["status"], { label: string; className: string }> = {
       normal: { label: "Normal", className: "text-emerald-700" },
       low_stock: { label: "Low Stock", className: "text-amber-700" },
@@ -166,12 +192,19 @@ function ItemsPageContent() {
       discontinued: { label: "Discontinued", className: "text-slate-500" },
     };
 
-    const config = variants[status];
+    const config = status ? variants[status] : undefined;
+    const fallback = { label: "Unknown", className: "text-slate-500" };
+    const resolved = config ?? fallback;
     return (
-      <span className={`text-xs font-semibold tracking-wide ${config.className}`}>
-        {config.label}
+      <span className={`text-xs font-semibold tracking-wide ${resolved.className}`}>
+        {resolved.label}
       </span>
     );
+  };
+
+  const toNumber = (value: number | string | null | undefined) => {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
   };
 
   const handleCreateItem = () => {
@@ -363,10 +396,9 @@ function ItemsPageContent() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by item code or name..."
-              value={search}
+              value={searchInput}
               onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
+                setSearchInput(e.target.value);
               }}
               className="pl-8"
             />
@@ -556,22 +588,28 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell className="text-muted-foreground">{item.uom || "-"}</TableCell>
-                      <TableCell className="text-right">{Math.trunc(item.onHand)}</TableCell>
+                      <TableCell className="text-right">{Math.trunc(toNumber(item.onHand))}</TableCell>
                       <TableCell className="text-right text-orange-600">
-                        {Math.trunc(item.allocated)}
+                        {Math.trunc(toNumber(item.allocated))}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
+                        {(() => {
+                          const availableValue = toNumber(item.available);
+                          const reorderPointValue = toNumber(item.reorderPoint);
+                          return (
                         <span
                           className={
-                            item.available <= 0
+                            availableValue <= 0
                               ? "text-red-600"
-                              : item.available <= item.reorderPoint
+                              : availableValue <= reorderPointValue
                                 ? "text-yellow-600"
                                 : "text-green-600"
                           }
                         >
-                          {Math.trunc(item.available)}
+                          {Math.trunc(availableValue)}
                         </span>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">

@@ -37,23 +37,30 @@ export interface ItemsWithStockResponse {
   };
 }
 
-export function useItems(filters?: ItemsFilters) {
-  const includeStock = filters?.includeStock ?? false;
+type ItemsQueryOptions = ItemsFilters & {
+  enabled?: boolean;
+};
+
+export function useItems(filters?: ItemsQueryOptions) {
+  const { enabled, ...restFilters } = filters ?? {};
+  const includeStock = restFilters.includeStock ?? false;
 
   return useQuery({
-    queryKey: [ITEMS_QUERY_KEY, filters],
+    queryKey: [ITEMS_QUERY_KEY, restFilters],
+    enabled: enabled ?? true,
     queryFn: async () => {
       if (includeStock) {
         // Use items-enhanced API for stock information
         const params = new URLSearchParams();
-        if (filters?.search) params.append("search", filters.search);
-        if (filters?.category) params.append("category", filters.category);
-        if (filters?.warehouseId) params.append("warehouseId", filters.warehouseId);
-        if (filters?.supplierId) params.append("supplierId", filters.supplierId);
-        if (filters?.status && filters.status !== "all") params.append("status", filters.status);
-        if (filters?.itemType) params.append("itemType", filters.itemType);
-        if (filters?.page) params.append("page", filters.page.toString());
-        if (filters?.limit) params.append("limit", filters.limit.toString());
+        if (restFilters.search) params.append("search", restFilters.search);
+        if (restFilters.category) params.append("category", restFilters.category);
+        if (restFilters.warehouseId) params.append("warehouseId", restFilters.warehouseId);
+        if (restFilters.supplierId) params.append("supplierId", restFilters.supplierId);
+        if (restFilters.status && restFilters.status !== "all")
+          params.append("status", restFilters.status);
+        if (restFilters.itemType) params.append("itemType", restFilters.itemType);
+        if (restFilters.page) params.append("page", restFilters.page.toString());
+        if (restFilters.limit) params.append("limit", restFilters.limit.toString());
 
         const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
         const response = await fetch(`${API_BASE_URL}/items-enhanced?${params.toString()}`, {
@@ -71,10 +78,11 @@ export function useItems(filters?: ItemsFilters) {
         return response.json() as Promise<ItemsWithStockResponse>;
       } else {
         // Use regular items API
-        return itemsApi.getItems(filters) as Promise<ItemsResponse>;
+        return itemsApi.getItems(restFilters) as Promise<ItemsResponse>;
       }
     },
     placeholderData: keepPreviousData,
+    staleTime: 30_000,
   });
 }
 
