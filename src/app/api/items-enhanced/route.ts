@@ -71,8 +71,10 @@ export async function GET(request: NextRequest) {
     const supplierId = searchParams.get("supplierId");
     const stockStatus = searchParams.get("status");
     const itemType = searchParams.get("itemType");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
+    const parsedLimit = Number.parseInt(searchParams.get("limit") || "10", 10);
+    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
 
     type ItemRow = {
       id: string;
@@ -131,7 +133,8 @@ export async function GET(request: NextRequest) {
         units_of_measure (
           code
         )
-      `
+      `,
+        { count: "exact" }
       )
       .eq("company_id", userData.company_id)
       .is("deleted_at", null);
@@ -143,17 +146,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Category and supplier filtering will be done after fetching
-    // since we need to work with the actual database column names
+    if (category) {
+      itemsQuery = itemsQuery.or(
+        `item_category_id.eq.${category},category_id.eq.${category},item_categories.name.eq.${category}`
+      );
+    }
+
+    if (supplierId) {
+      itemsQuery = itemsQuery.eq("supplier_id", supplierId);
+    }
 
     if (itemType) {
       itemsQuery = itemsQuery.eq("item_type", itemType);
     }
 
-    // Order by item_name ascending
-    itemsQuery = itemsQuery.order("item_name", { ascending: true });
+    // Apply pagination before fetching
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
-    const { data: items, error: itemsError } = await itemsQuery;
+    // Order by item_name ascending
+    itemsQuery = itemsQuery.order("item_name", { ascending: true }).range(from, to);
+
+    const { data: items, error: itemsError, count } = await itemsQuery;
 
     if (itemsError) {
       return NextResponse.json({ error: "Failed to fetch items" }, { status: 500 });
@@ -165,8 +179,8 @@ export async function GET(request: NextRequest) {
         pagination: {
           page,
           limit,
-          total: 0,
-          totalPages: 0,
+          total: count || 0,
+          totalPages: count ? Math.ceil(count / limit) : 0,
         },
       });
     }
@@ -402,16 +416,6 @@ export async function GET(request: NextRequest) {
     // Apply filters
     let filteredItems = itemsWithStock;
 
-    // Filter by category
-    if (category) {
-      filteredItems = filteredItems.filter((item) => item.categoryId === category);
-    }
-
-    // Filter by supplier
-    if (supplierId) {
-      filteredItems = filteredItems.filter((item) => item.supplierId === supplierId);
-    }
-
     // Filter by status
     if (stockStatus && stockStatus !== "all") {
       filteredItems = filteredItems.filter((item) => item.status === stockStatus);
@@ -425,15 +429,11 @@ export async function GET(request: NextRequest) {
     const lowStockCount = filteredItems.filter((item) => item.status === "low_stock").length;
     const outOfStockCount = filteredItems.filter((item) => item.status === "out_of_stock").length;
 
-    // Apply pagination
-    const total = filteredItems.length;
+    const total = count || 0;
     const totalPages = Math.ceil(total / limit);
-    const from = (page - 1) * limit;
-    const to = from + limit;
-    const paginatedItems = filteredItems.slice(from, to);
 
     return NextResponse.json({
-      data: paginatedItems,
+      data: filteredItems,
       pagination: {
         page,
         limit,
