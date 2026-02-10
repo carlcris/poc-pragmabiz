@@ -70,7 +70,15 @@ function ItemsPageContent() {
   const { currentBusinessUnit } = useBusinessUnitStore();
   const lastAutoSetBuId = useRef<string | null>(null);
 
-  const itemsQueryParams = useMemo(
+  const itemsQueryParams = useMemo<{
+    search: string;
+    page: number;
+    limit: number;
+    category: string | undefined;
+    warehouseId: string | undefined;
+    status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued" | "all";
+    includeStock: true;
+  }>(
     () => ({
       search,
       page,
