@@ -266,7 +266,7 @@ export default function StockRequestDetailPage() {
                     <tr>
                       <th className="p-3 text-left">Item</th>
                       <th className="p-3 text-right">Quantity</th>
-                      <th className="p-3 text-left">Package</th>
+                      <th className="p-3 text-left">Unit</th>
                       <th className="p-3 text-left">Notes</th>
                     </tr>
                   </thead>

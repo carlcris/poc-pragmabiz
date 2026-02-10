@@ -3,12 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { postAPBill } from "@/services/accounting/apPosting";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 import type { Tables } from "@/types/supabase";
 
 type PurchaseOrderRow = Tables<"purchase_orders">;
@@ -177,14 +175,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         rate: Number(item.rate),
       }));
 
-    // STEP 1: Normalize all item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = itemsToReceive.map((item) => ({
-      itemId: item.itemId,
-      inputQty: item.quantityReceived,
-      unitCost: item.rate,
-    }));
+    const receiveItemIds = itemsToReceive.map((item) => item.itemId);
+    const { data: receiveItemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", receiveItemIds);
+    const receiveUomMap = new Map(
+      (receiveItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
 
-    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
+    const resolvedItems = itemsToReceive.map((item) => {
+      const quantity = Number(item.quantityReceived);
+      const unitCost = Number(item.rate);
+      return {
+        itemId: item.itemId,
+        quantity,
+        unitCost,
+        totalCost: quantity * unitCost,
+        uomId: item.uomId ?? receiveUomMap.get(item.itemId) ?? null,
+      };
+    });
 
     const receiptItems = itemsToReceive.map((item) => ({
       company_id: userData.company_id,
@@ -260,12 +273,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // STEP 3: Create stock transaction items with normalization metadata and update inventory
+    // STEP 3: Create stock transaction items and update inventory
     const postingDate = body.receiptDate || new Date().toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
-    for (let i = 0; i < normalizedItems.length; i++) {
-      const item = normalizedItems[i];
+    for (let i = 0; i < resolvedItems.length; i++) {
+      const item = resolvedItems[i];
+      if (!item.uomId) {
+        return NextResponse.json({ error: "Item UOM not found for purchase receipt" }, { status: 400 });
+      }
       // Get current stock balance from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
@@ -277,21 +293,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
 
-      const newBalance = currentBalance + item.normalizedQty;
+      const newBalance = currentBalance + item.quantity;
 
-      // Create stock transaction item with full normalization metadata
+      // Create stock transaction item
       const { error: stockTxItemError } = await supabase
         .from("stock_transaction_items")
         .insert({
           company_id: userData.company_id,
           transaction_id: stockTransaction.id,
           item_id: item.itemId,
-          // Normalization fields (NEW)
-          input_qty: item.inputQty,
-          conversion_factor: item.conversionFactor,
-          normalized_qty: item.normalizedQty,
           // Standard fields
-          quantity: item.normalizedQty, // Backward compat
+          quantity: item.quantity,
           uom_id: item.uomId,
           unit_cost: item.unitCost,
           total_cost: item.totalCost,
@@ -322,10 +334,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         warehouseId: body.warehouseId,
         locationId: body.locationId || warehouseStock?.default_location_id || null,
         userId: user.id,
-        qtyOnHandDelta: item.normalizedQty,
+        qtyOnHandDelta: item.quantity,
       });
 
-      // STEP 4: Update item_warehouse with normalized quantity (base units)
+      // STEP 4: Update item_warehouse with base quantity
       if (warehouseStock) {
         // Update existing record
         await supabase
@@ -439,8 +451,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Post AP Bill to General Ledger
     try {
-      // Calculate total amount from normalized items (actual cost based on base units)
-      const totalAmount = normalizedItems.reduce((sum: number, item) => sum + item.totalCost, 0);
+      // Calculate total amount from received items (actual cost)
+      const totalAmount = resolvedItems.reduce((sum: number, item) => sum + item.totalCost, 0);
 
       const apResult = await postAPBill(userData.company_id, user.id, {
         purchaseReceiptId: receipt.id,

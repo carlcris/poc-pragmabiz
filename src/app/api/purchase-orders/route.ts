@@ -2,8 +2,6 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 import type { CreatePurchaseOrderRequest } from "@/types/purchase-order";
 import type { Tables } from "@/types/supabase";
 
@@ -330,21 +328,10 @@ export async function POST(request: NextRequest) {
       orderCode = `PO-${year}-${String(nextNum).padStart(4, "0")}`;
     }
 
-    const itemInputs: StockTransactionItemInput[] = body.items.map(
-      (item: PurchaseOrderItemInput) => ({
-        itemId: item.itemId,
-        inputQty: Number(item.quantity),
-        unitCost: Number(item.rate),
-      })
-    );
-
-    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
-
     // Calculate totals
     let subtotal = 0;
-    const items = body.items.map((item: PurchaseOrderItemInput, index: number) => {
-      const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity;
-      const itemSubtotal = normalizedQty * item.rate;
+    const items = body.items.map((item: PurchaseOrderItemInput) => {
+      const itemSubtotal = Number(item.quantity) * item.rate;
       const discountAmount = (itemSubtotal * (item.discountPercent || 0)) / 100;
       const taxableAmount = itemSubtotal - discountAmount;
       const taxAmount = (taxableAmount * (item.taxPercent || 0)) / 100;

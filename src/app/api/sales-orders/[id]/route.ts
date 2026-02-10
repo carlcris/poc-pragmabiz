@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { SalesOrder, SalesOrderLineItem, UpdateSalesOrderRequest } from "@/types/sales-order";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 type DbSalesOrder = {
   id: string;
@@ -81,7 +79,6 @@ type SalesOrderLineItemInput = Omit<
   "id" | "lineTotal" | "quantityShipped" | "quantityDelivered"
 >;
 type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
-  normalizedQty: number;
   discountAmount: number;
   taxAmount: number;
   lineTotal: number;
@@ -288,17 +285,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     let itemsWithCalculations: CalculatedSalesOrderLineItem[] = [];
 
     if (updateData.lineItems && updateData.lineItems.length > 0) {
-      const itemInputs: StockTransactionItemInput[] = updateData.lineItems.map((item) => ({
-        itemId: item.itemId,
-        inputQty: item.quantity,
-        unitCost: item.unitPrice,
-      }));
-
-      const normalizedItems = await normalizeTransactionItems(existingOrder.company_id, itemInputs);
-
-      itemsWithCalculations = updateData.lineItems.map((item, index) => {
-        const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity;
-        const itemSubtotal = normalizedQty * item.unitPrice;
+      itemsWithCalculations = updateData.lineItems.map((item) => {
+        const itemSubtotal = Number(item.quantity) * item.unitPrice;
         const discountAmount = (itemSubtotal * (item.discount || 0)) / 100;
         const taxableAmount = itemSubtotal - discountAmount;
         const taxAmount = (taxableAmount * (item.taxRate || 0)) / 100;
@@ -310,7 +298,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
         return {
           ...item,
-          normalizedQty,
           discountAmount,
           taxAmount,
           lineTotal,

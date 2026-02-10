@@ -138,8 +138,6 @@ export async function POST(
       const postingTime = now.toTimeString().split(" ")[0];
       const itemUom = Array.isArray(item.item) ? item.item[0] : item.item;
       const uomId = itemUom?.uom_id ?? null;
-      const conversionFactor = 1.0;
-
       if (!uomId) {
         return NextResponse.json(
           { error: "Item UOM not found for stock transaction" },
@@ -153,9 +151,6 @@ export async function POST(
           company_id: grn.company_id,
           transaction_id: stockTransaction.id,
           item_id: item.item_id,
-          input_qty: receivedQty,
-          conversion_factor: conversionFactor,
-          normalized_qty: receivedQty,
           quantity: receivedQty,
           uom_id: uomId,
           qty_before: currentBalance,

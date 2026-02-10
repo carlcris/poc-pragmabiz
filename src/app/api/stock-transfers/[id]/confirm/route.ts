@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 type StockTransferItemRow = {
   id: string;
@@ -117,16 +115,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         .eq("id", itemUpdate.id);
     }
 
-    // STEP 1: Normalize all item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = typedTransfer.stock_transfer_items.map(
-      (item) => ({
-        itemId: item.item_id,
-        inputQty: parseFloat(String(item.quantity)),
-        unitCost: 0, // Transfers don't have cost (internal movement)
-      })
+    const transferItemIds = typedTransfer.stock_transfer_items.map((item) => item.item_id);
+    const { data: transferItemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", transferItemIds);
+    const transferUomMap = new Map(
+      (transferItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
     );
 
-    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
+    // STEP 1: Resolve all item quantities (already in base UOM)
+    const resolvedItems = typedTransfer.stock_transfer_items.map((item) => ({
+      itemId: item.item_id,
+      quantity: parseFloat(String(item.quantity)),
+      uomId: item.uom_id ?? transferUomMap.get(item.item_id) ?? null,
+    }));
 
     // STEP 2: Create stock transaction for the transfer
     const currentYear = new Date().getFullYear();
@@ -190,12 +196,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Failed to create stock transaction" }, { status: 500 });
     }
 
-    // STEP 3: Update stock levels using normalized quantities (base units)
+    // STEP 3: Update stock levels using base quantities
     const postingDate = new Date().toISOString().split("T")[0];
     const postingTime = new Date().toISOString().split("T")[1].substring(0, 8);
 
-    for (let i = 0; i < normalizedItems.length; i++) {
-      const item = normalizedItems[i];
+    for (let i = 0; i < resolvedItems.length; i++) {
+      const item = resolvedItems[i];
+      if (!item.uomId) {
+        return NextResponse.json({ error: "Item UOM not found for stock transfer" }, { status: 400 });
+      }
       // OUT from source warehouse (reduce stock)
       const { data: sourceStock } = await supabase
         .from("item_warehouse")
@@ -207,7 +216,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         .single();
 
       const sourceCurrentStock = sourceStock ? parseFloat(String(sourceStock.current_stock)) : 0;
-      const newSourceStock = Math.max(0, sourceCurrentStock - item.normalizedQty);
+      const newSourceStock = Math.max(0, sourceCurrentStock - item.quantity);
 
       await adjustItemLocation({
         supabase,
@@ -216,7 +225,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         warehouseId: typedTransfer.from_warehouse_id,
         locationId: fromLocationId || sourceStock?.default_location_id || null,
         userId: user.id,
-        qtyOnHandDelta: -item.normalizedQty,
+        qtyOnHandDelta: -item.quantity,
       });
 
       if (sourceStock) {
@@ -247,7 +256,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         .maybeSingle();
 
       const destCurrentStock = destStock ? parseFloat(String(destStock.current_stock)) : 0;
-      const newDestStock = destCurrentStock + item.normalizedQty;
+      const newDestStock = destCurrentStock + item.quantity;
 
       const { error: destUpsertError } = await supabase.from("item_warehouse").upsert(
         {
@@ -278,20 +287,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         warehouseId: typedTransfer.to_warehouse_id,
         locationId: toLocationId || destStock?.default_location_id || null,
         userId: user.id,
-        qtyOnHandDelta: item.normalizedQty,
+        qtyOnHandDelta: item.quantity,
       });
 
-      // STEP 4: Create stock transaction item with full normalization metadata
+      // STEP 4: Create stock transaction item
       await supabase.from("stock_transaction_items").insert({
         company_id: userData.company_id,
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
-        // Normalization fields (NEW)
-        input_qty: item.inputQty,
-        conversion_factor: item.conversionFactor,
-        normalized_qty: item.normalizedQty,
         // Standard fields
-        quantity: item.normalizedQty, // Backward compat
+        quantity: item.quantity,
         uom_id: item.uomId,
         unit_cost: 0, // Transfers don't have cost
         total_cost: 0,

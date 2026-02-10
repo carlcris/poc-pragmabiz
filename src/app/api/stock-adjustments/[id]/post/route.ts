@@ -22,9 +22,6 @@ type DbStockAdjustmentItem = {
   reason: string | null;
   created_at: string;
   updated_at: string | null;
-  input_qty?: number | string | null;
-  conversion_factor?: number | string | null;
-  normalized_qty?: number | string | null;
 };
 
 // POST /api/stock-adjustments/[id]/post - Post/approve stock adjustment (creates stock transaction)
@@ -91,8 +88,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "No items found for this adjustment" }, { status: 400 });
     }
 
-    // STEP 1: Use already-normalized data from stock_adjustment_items
-    // The adjustment items were normalized when created, so we use that data
+    // STEP 1: Use base quantities from stock_adjustment_items
     const typedItems = (items || []) as DbStockAdjustmentItem[];
     const itemsWithChanges = typedItems.filter(
       (item) => parseFloat(String(item.difference ?? 0)) !== 0
@@ -105,17 +101,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // Calculate total normalized difference to determine transaction type
-    // The difference is already in normalized (base) units
-    const totalNormalizedDifference = itemsWithChanges.reduce((sum, item) => {
+    // Calculate total difference to determine transaction type
+    const totalDifference = itemsWithChanges.reduce((sum, item) => {
       return sum + parseFloat(String(item.difference ?? 0));
     }, 0);
 
-    // Determine transaction type based on total normalized difference
+    // Determine transaction type based on total difference
     let transactionType: "in" | "out";
-    if (totalNormalizedDifference > 0) {
+    if (totalDifference > 0) {
       transactionType = "in";
-    } else if (totalNormalizedDifference < 0) {
+    } else if (totalDifference < 0) {
       transactionType = "out";
     } else {
       return NextResponse.json(
@@ -170,15 +165,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // STEP 3: Create stock transaction items with normalization metadata and update inventory
+    // STEP 3: Create stock transaction items and update inventory
     const postingDate = adjustment.adjustment_date;
     const postingTime = now.toTimeString().split(" ")[0];
 
     for (const item of typedItems) {
-      const normalizedDifference = parseFloat(String(item.difference ?? 0));
+      const difference = parseFloat(String(item.difference ?? 0));
 
       // Skip items with zero difference
-      if (normalizedDifference === 0) continue;
+      if (difference === 0) continue;
 
       // Get current stock from item_warehouse (source of truth)
       const { data: existingStock } = await supabase
@@ -192,24 +187,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       const currentBalance = existingStock ? parseFloat(String(existingStock.current_stock)) : 0;
 
-      const newBalance = currentBalance + normalizedDifference;
+      const newBalance = currentBalance + difference;
 
-      // Create stock transaction item with normalization metadata from adjustment item
+      if (!item.uom_id) {
+        return NextResponse.json({ error: "Item UOM missing on adjustment item" }, { status: 400 });
+      }
+
+      // Create stock transaction item
       const { error: stockTxItemError } = await supabase
         .from("stock_transaction_items")
         .insert({
           company_id: userData.company_id,
           transaction_id: stockTransaction.id,
           item_id: item.item_id,
-          // Normalization fields (copied from stock_adjustment_items, with fallbacks)
-          input_qty: item.input_qty || Math.abs(normalizedDifference),
-          conversion_factor: item.conversion_factor || 1.0,
-          normalized_qty: item.normalized_qty || Math.abs(normalizedDifference),
           // Standard fields
-          quantity: Math.abs(normalizedDifference), // Backward compat
+          quantity: Math.abs(difference),
           uom_id: item.uom_id,
           unit_cost: parseFloat(String(item.unit_cost ?? 0)),
-          total_cost: Math.abs(normalizedDifference) * parseFloat(String(item.unit_cost ?? 0)),
+          total_cost: Math.abs(difference) * parseFloat(String(item.unit_cost ?? 0)),
           // Audit fields
           qty_before: currentBalance,
           qty_after: newBalance,
@@ -241,10 +236,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         warehouseId: adjustment.warehouse_id,
         locationId: selectedLocationId || existingStock?.default_location_id || null,
         userId: user.id,
-        qtyOnHandDelta: normalizedDifference,
+        qtyOnHandDelta: difference,
       });
 
-      // STEP 4: Update item_warehouse with normalized difference (base units)
+      // STEP 4: Update item_warehouse with base difference
       if (existingStock) {
         // Update existing stock record
         await supabase

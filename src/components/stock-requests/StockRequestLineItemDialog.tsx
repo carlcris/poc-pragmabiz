@@ -47,6 +47,7 @@ const lineItemSchema = z.object({
 
 export type StockRequestLineItemFormValues = z.infer<typeof lineItemSchema>;
 export type StockRequestLineItemPayload = StockRequestLineItemFormValues & {
+  uomLabel?: string;
 };
 
 interface StockRequestLineItemDialogProps {
@@ -108,8 +109,12 @@ export function StockRequestLineItemDialog({
   };
 
   const onSubmit = (data: StockRequestLineItemFormValues) => {
+    const selectedItem = items.find((i) => i.id === data.itemId);
+    const uomLabel = selectedItem?.uom || item?.uomLabel || "";
+
     onSave({
       ...data,
+      uomLabel,
     });
     onOpenChange(false);
   };

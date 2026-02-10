@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Quotation, QuotationLineItem, UpdateQuotationRequest } from "@/types/quotation";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 type DbQuotation = {
   id: string;
@@ -268,22 +266,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       let totalDiscount = 0;
       let totalTax = 0;
 
-      const itemInputs: StockTransactionItemInput[] = body.items.map(
-        (item: QuotationItemInput) => ({
-          itemId: item.itemId,
-          inputQty: Number(item.quantity),
-          unitCost: Number(item.rate),
-        })
-      );
-
-      const normalizedItems = await normalizeTransactionItems(
-        existingQuotation.company_id,
-        itemInputs
-      );
-
-      const itemsWithCalculations = body.items.map((item, index) => {
-        const normalizedQty = normalizedItems[index]?.normalizedQty ?? item.quantity;
-        const itemSubtotal = normalizedQty * item.rate;
+      const itemsWithCalculations = body.items.map((item: QuotationItemInput) => {
+        const itemSubtotal = Number(item.quantity) * item.rate;
         const discountAmount =
           item.discountAmount || (itemSubtotal * (item.discountPercent || 0)) / 100;
         const taxableAmount = itemSubtotal - discountAmount;

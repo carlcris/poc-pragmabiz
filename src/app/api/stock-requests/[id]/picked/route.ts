@@ -3,16 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   consumeItemLocationsFIFO,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type {
-  NormalizedStockTransactionItem,
-  StockTransactionItemInput,
-} from "@/types/inventory-normalization";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 type StockRequestItemRow = {
@@ -119,20 +114,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const requestItems = (stockRequest.stock_request_items as StockRequestItemRow[] | null) || [];
-    const itemsToDeliver: StockTransactionItemInput[] = requestItems.map((item) => ({
+    const requestItemIds = requestItems.map((item) => item.item_id);
+    const { data: requestItemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", requestItemIds);
+    const requestUomMap = new Map(
+      (requestItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
+
+    const itemsToDeliver = requestItems.map((item) => ({
       itemId: item.item_id,
-      inputQty: Number(item.requested_qty),
-      unitCost: 0,
+      quantity: Number(item.requested_qty),
+      uomId: item.uom_id ?? requestUomMap.get(item.item_id) ?? null,
       notes: `Stock request ${stockRequest.request_code} delivered`,
     }));
-
-    let normalizedItems: NormalizedStockTransactionItem[] = [];
-    try {
-      normalizedItems = await normalizeTransactionItems(userData.company_id, itemsToDeliver);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to normalize items";
-      return NextResponse.json({ error: message }, { status: 400 });
-    }
 
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
@@ -177,7 +176,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const postingDate = now.toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
-    for (const item of normalizedItems) {
+    for (const item of itemsToDeliver) {
+      if (!item.uomId) {
+        return NextResponse.json({ error: "Item UOM not found for stock request" }, { status: 400 });
+      }
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
         .select("id, current_stock, default_location_id")
@@ -189,14 +191,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
 
-      if (currentBalance < item.normalizedQty) {
+      if (currentBalance < item.quantity) {
         return NextResponse.json(
           { error: `Insufficient stock for item ${item.itemId}` },
           { status: 400 }
         );
       }
 
-      const newBalance = currentBalance - item.normalizedQty;
+      const newBalance = currentBalance - item.quantity;
 
       const { data: locationRows } = await supabase
         .from("item_location")
@@ -229,7 +231,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         companyId: userData.company_id,
         itemId: item.itemId,
         warehouseId: destinationWarehouse.id,
-        quantity: item.normalizedQty,
+        quantity: item.quantity,
         userId: user.id,
       });
 
@@ -258,10 +260,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         company_id: userData.company_id,
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
-        input_qty: item.inputQty,
-        conversion_factor: item.conversionFactor,
-        normalized_qty: item.normalizedQty,
-        quantity: item.normalizedQty,
+        quantity: item.quantity,
         uom_id: item.uomId,
         unit_cost: 0,
         total_cost: 0,

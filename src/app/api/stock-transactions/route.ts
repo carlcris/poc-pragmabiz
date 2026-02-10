@@ -2,12 +2,10 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 type TransactionListItemRow = {
   id: string;
@@ -481,33 +479,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
-      itemId: item.itemId,
-      inputQty: Number(item.quantity),
-      unitCost: item.unitCost ? parseFloat(String(item.unitCost)) : 0,
-    }));
+    const itemIds = body.items.map((item) => item.itemId);
+    const { data: itemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", itemIds);
+    const itemUomMap = new Map(
+      (itemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
 
-    let normalizedItems;
-    try {
-      normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
-    } catch (normError) {
-      await supabase.from("stock_transactions").delete().eq("id", transaction.id);
-      return NextResponse.json(
-        {
-          error:
-            normError instanceof Error ? normError.message : "Failed to normalize item quantities",
-        },
-        { status: 400 }
-      );
-    }
+    const resolvedItems = body.items.map((item) => {
+      const quantity = Number(item.quantity);
+      const unitCost = item.unitCost ? parseFloat(String(item.unitCost)) : 0;
+      const uomId = item.uomId ?? itemUomMap.get(item.itemId) ?? null;
+
+      return {
+        itemId: item.itemId,
+        quantity,
+        unitCost,
+        totalCost: quantity * unitCost,
+        uomId,
+      };
+    });
 
     const postingDate = body.transactionDate || new Date().toISOString().split("T")[0];
     const postingTime = new Date().toTimeString().split(" ")[0];
 
-    // Update stock and create transaction items with normalization metadata
-    for (let i = 0; i < normalizedItems.length; i++) {
-      const item = normalizedItems[i];
+    // Update stock and create transaction items
+    for (let i = 0; i < resolvedItems.length; i++) {
+      const item = resolvedItems[i];
       const originalItem = body.items[i];
 
       // Get current stock balance from item_warehouse (source of truth)
@@ -520,12 +523,17 @@ export async function POST(request: NextRequest) {
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
 
-      // Calculate actual quantity change based on transaction type (use normalized qty)
-      let actualQty = item.normalizedQty;
+      if (!item.uomId) {
+        await supabase.from("stock_transactions").delete().eq("id", transaction.id);
+        return NextResponse.json({ error: "Item UOM not found for stock transaction" }, { status: 400 });
+      }
+
+      // Calculate actual quantity change based on transaction type
+      let actualQty = item.quantity;
       if (body.transactionType === "out") {
-        actualQty = -item.normalizedQty;
+        actualQty = -item.quantity;
       } else if (body.transactionType === "transfer" && body.warehouseId) {
-        actualQty = -item.normalizedQty;
+        actualQty = -item.quantity;
       }
 
       const newBalance = currentBalance + actualQty;
@@ -534,25 +542,21 @@ export async function POST(request: NextRequest) {
       if (newBalance < 0 && body.transactionType === "out") {
         return NextResponse.json(
           {
-            error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${item.normalizedQty}`,
+            error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${item.quantity}`,
           },
           { status: 400 }
         );
       }
 
-      // Create stock transaction item with full normalization metadata
+      // Create stock transaction item
       const { error: stockTxItemError } = await supabase
         .from("stock_transaction_items")
         .insert({
           company_id: userData.company_id,
           transaction_id: transaction.id,
           item_id: item.itemId,
-          // Normalization fields
-          input_qty: item.inputQty,
-          conversion_factor: item.conversionFactor,
-          normalized_qty: item.normalizedQty,
           // Standard fields
-          quantity: item.normalizedQty,
+          quantity: item.quantity,
           uom_id: item.uomId,
           unit_cost: item.unitCost,
           total_cost: item.totalCost,
@@ -625,7 +629,7 @@ export async function POST(request: NextRequest) {
           ? parseFloat(String(destWarehouseStock.current_stock))
           : 0;
 
-        const destNewBalance = destCurrentBalance + item.normalizedQty;
+        const destNewBalance = destCurrentBalance + item.quantity;
 
         // Update destination warehouse stock
         if (destWarehouseStock) {
@@ -659,7 +663,7 @@ export async function POST(request: NextRequest) {
           warehouseId: body.toWarehouseId,
           locationId: toLocationId || destWarehouseStock?.default_location_id || null,
           userId: user.id,
-          qtyOnHandDelta: item.normalizedQty,
+          qtyOnHandDelta: item.quantity,
         });
       }
     }

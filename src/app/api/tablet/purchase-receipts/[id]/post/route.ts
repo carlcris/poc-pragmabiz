@@ -2,12 +2,10 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -168,13 +166,29 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Step 4: Create stock transaction and update inventory
-    const itemInputs: StockTransactionItemInput[] = items.map((item) => ({
-      itemId: item.item_id,
-      inputQty: Number(item.quantity_received || 0),
-      unitCost: Number(item.rate || 0),
-    }));
+    const receiptItemIds = items.map((item) => item.item_id);
+    const { data: receiptItemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", receiptItemIds);
+    const receiptUomMap = new Map(
+      (receiptItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
 
-    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
+    const resolvedItems = items.map((item) => {
+      const quantity = Number(item.quantity_received || 0);
+      const unitCost = Number(item.rate || 0);
+      return {
+        itemId: item.item_id,
+        quantity,
+        unitCost,
+        totalCost: quantity * unitCost,
+        uomId: item.uom_id ?? receiptUomMap.get(item.item_id) ?? null,
+      };
+    });
 
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
@@ -220,7 +234,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const postingTime = now.toTimeString().split(" ")[0];
 
     // Step 5: Create stock transaction items and update item_warehouse
-    for (const item of normalizedItems) {
+    for (const item of resolvedItems) {
+      if (!item.uomId) {
+        return NextResponse.json({ error: "Item UOM not found for receipt" }, { status: 400 });
+      }
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
         .select("current_stock, default_location_id")
@@ -230,16 +247,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .single();
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
-      const newBalance = currentBalance + item.normalizedQty;
+      const newBalance = currentBalance + item.quantity;
 
       await supabase.from("stock_transaction_items").insert({
         company_id: userData.company_id,
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
-        input_qty: item.inputQty,
-        conversion_factor: item.conversionFactor,
-        normalized_qty: item.normalizedQty,
-        quantity: item.normalizedQty,
+        quantity: item.quantity,
         uom_id: item.uomId,
         unit_cost: item.unitCost,
         total_cost: item.totalCost,
@@ -262,7 +276,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         warehouseId: existingReceipt.warehouse_id,
         locationId: defaultLocationId || warehouseStock?.default_location_id || null,
         userId: user.id,
-        qtyOnHandDelta: item.normalizedQty,
+        qtyOnHandDelta: item.quantity,
       });
 
       // Update or insert item_warehouse

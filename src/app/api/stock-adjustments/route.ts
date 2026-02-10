@@ -2,8 +2,6 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 type DbStockAdjustmentRow = {
   id: string;
   company_id: string;
@@ -43,9 +41,6 @@ type DbStockAdjustmentItem = {
   reason: string | null;
   created_at: string;
   updated_at: string | null;
-  input_qty?: number | string | null;
-  conversion_factor?: number | string | null;
-  normalized_qty?: number | string | null;
 };
 
 type StockAdjustmentItemInput = {
@@ -417,31 +412,10 @@ export async function POST(request: NextRequest) {
     const milliseconds = now.getTime().toString().slice(-4);
     const adjustmentCode = `ADJ-${dateStr}${milliseconds}`;
 
-    // Normalize item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = body.items.map((item) => ({
-      itemId: item.itemId,
-      inputQty: item.adjustedQty,
-      unitCost: item.unitCost || 0,
-    }));
-
-    let normalizedItems;
-    try {
-      normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
-    } catch (normError) {
-      return NextResponse.json(
-        {
-          error:
-            normError instanceof Error ? normError.message : "Failed to normalize item quantities",
-        },
-        { status: 400 }
-      );
-    }
-
-    // Calculate total value using normalized quantities
-    const totalValue = body.items.reduce((sum, item, index) => {
-      const normalizedItem = normalizedItems[index];
-      const normalizedAdjusted = normalizedItem.normalizedQty;
-      const difference = normalizedAdjusted - item.currentQty;
+    // Calculate total value using base quantities
+    const totalValue = body.items.reduce((sum, item) => {
+      const adjustedQty = Number(item.adjustedQty);
+      const difference = adjustedQty - item.currentQty;
       return sum + difference * item.unitCost;
     }, 0);
 
@@ -488,13 +462,12 @@ export async function POST(request: NextRequest) {
 
     const uomsMap = new Map((uomsData as UomRow[] | null)?.map((uom) => [uom.id, uom]) || []);
 
-    // Create adjustment items with normalization metadata
-    const adjustmentItems = body.items.map((item, index) => {
+    // Create adjustment items
+    const adjustmentItems = body.items.map((item) => {
       const itemData = itemsMap.get(item.itemId);
       const uomData = uomsMap.get(item.uomId);
-      const normalizedItem = normalizedItems[index];
-      const normalizedAdjusted = normalizedItem.normalizedQty;
-      const difference = normalizedAdjusted - item.currentQty;
+      const adjustedQty = Number(item.adjustedQty);
+      const difference = adjustedQty - item.currentQty;
       const totalCost = difference * item.unitCost;
 
       return {
@@ -504,16 +477,12 @@ export async function POST(request: NextRequest) {
         item_code: itemData?.item_code || "",
         item_name: itemData?.item_name || "",
         current_qty: item.currentQty,
-        adjusted_qty: normalizedAdjusted, // Use normalized quantity
-        // Normalization fields
-        input_qty: normalizedItem.inputQty,
-        conversion_factor: normalizedItem.conversionFactor,
-        normalized_qty: normalizedItem.normalizedQty,
+        adjusted_qty: adjustedQty,
         // Other fields
         difference: difference,
         unit_cost: item.unitCost,
         total_cost: totalCost,
-        uom_id: normalizedItem.uomId,
+        uom_id: item.uomId,
         uom_name: uomData?.code || "",
         reason: item.reason || null,
         created_by: user.id,

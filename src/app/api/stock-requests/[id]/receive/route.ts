@@ -2,12 +2,10 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 type StockRequestRow = {
   id: string;
@@ -163,14 +161,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Please provide quantities to receive" }, { status: 400 });
     }
 
-    const itemInputs: StockTransactionItemInput[] = nonZeroItems.map((item) => ({
+    const receiveItemIds = nonZeroItems.map((item) => item.itemId);
+    const { data: receiveItemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", receiveItemIds);
+    const receiveUomMap = new Map(
+      (receiveItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
+
+    const resolvedItems = nonZeroItems.map((item) => ({
       itemId: item.itemId,
-      inputQty: item.receivedQty,
-      unitCost: 0,
+      quantity: item.receivedQty,
+      uomId: item.uomId ?? receiveUomMap.get(item.itemId) ?? null,
       notes: body.notes || undefined,
     }));
-
-    const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
 
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
@@ -215,9 +223,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const postingDate = body.receivedDate || now.toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
-    for (let i = 0; i < normalizedItems.length; i++) {
-      const item = normalizedItems[i];
+    for (let i = 0; i < resolvedItems.length; i++) {
+      const item = resolvedItems[i];
       const receiveInput = nonZeroItems[i];
+      if (!item.uomId) {
+        return NextResponse.json({ error: "Item UOM not found for stock request" }, { status: 400 });
+      }
 
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
@@ -229,7 +240,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .maybeSingle();
 
       const currentStock = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
-      const newStock = currentStock + item.normalizedQty;
+      const newStock = currentStock + item.quantity;
 
       await adjustItemLocation({
         supabase,
@@ -242,7 +253,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           warehouseStock?.default_location_id ||
           null,
         userId: user.id,
-        qtyOnHandDelta: item.normalizedQty,
+        qtyOnHandDelta: item.quantity,
       });
 
       if (warehouseStock?.id) {
@@ -270,10 +281,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         company_id: userData.company_id,
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
-        input_qty: item.inputQty,
-        conversion_factor: item.conversionFactor,
-        normalized_qty: item.normalizedQty,
-        quantity: item.normalizedQty,
+        quantity: item.quantity,
         uom_id: item.uomId,
         unit_cost: 0,
         total_cost: 0,

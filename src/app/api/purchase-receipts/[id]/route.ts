@@ -3,12 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { postAPBill } from "@/services/accounting/apPosting";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 import type { Tables } from "@/types/supabase";
 
 type PurchaseReceiptRow = Tables<"purchase_receipts"> & {
@@ -461,13 +459,29 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           Pick<PurchaseReceiptItemRow, "item_id" | "quantity_received" | "uom_id" | "rate">
         >;
 
-        const itemInputs: StockTransactionItemInput[] = items.map((item) => ({
-          itemId: item.item_id,
-          inputQty: Number(item.quantity_received || 0),
-          unitCost: Number(item.rate || 0),
-        }));
+        const receiptItemIds = items.map((item) => item.item_id);
+        const { data: receiptItemUoms } = await supabase
+          .from("items")
+          .select("id, uom_id")
+          .in("id", receiptItemIds);
+        const receiptUomMap = new Map(
+          (receiptItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+            row.id,
+            row.uom_id,
+          ]) || []
+        );
 
-        const normalizedItems = await normalizeTransactionItems(userData.company_id, itemInputs);
+        const resolvedItems = items.map((item) => {
+          const quantity = Number(item.quantity_received || 0);
+          const unitCost = Number(item.rate || 0);
+          return {
+            itemId: item.item_id,
+            quantity,
+            unitCost,
+            totalCost: quantity * unitCost,
+            uomId: item.uom_id ?? receiptUomMap.get(item.item_id) ?? null,
+          };
+        });
 
         const now = new Date();
         const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
@@ -511,8 +525,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const postingDate = receiptData.receipt_date;
         const postingTime = now.toTimeString().split(" ")[0];
 
-        for (let i = 0; i < normalizedItems.length; i++) {
-          const item = normalizedItems[i];
+        for (let i = 0; i < resolvedItems.length; i++) {
+          const item = resolvedItems[i];
+          if (!item.uomId) {
+            return NextResponse.json({ error: "Item UOM not found for receipt" }, { status: 400 });
+          }
 
           const { data: warehouseStock } = await supabase
             .from("item_warehouse")
@@ -525,7 +542,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           const currentBalance = warehouseStock
             ? parseFloat(String(warehouseStock.current_stock))
             : 0;
-          const newBalance = currentBalance + item.normalizedQty;
+          const newBalance = currentBalance + item.quantity;
 
           const { error: stockTxItemError } = await supabase
             .from("stock_transaction_items")
@@ -533,10 +550,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               company_id: userData.company_id,
               transaction_id: stockTransaction.id,
               item_id: item.itemId,
-              input_qty: item.inputQty,
-              conversion_factor: item.conversionFactor,
-              normalized_qty: item.normalizedQty,
-              quantity: item.normalizedQty,
+              quantity: item.quantity,
               uom_id: item.uomId,
               unit_cost: item.unitCost,
               total_cost: item.totalCost,
@@ -563,7 +577,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             warehouseId: receiptData.warehouse_id,
             locationId: defaultLocationId || warehouseStock?.default_location_id || null,
             userId: user.id,
-            qtyOnHandDelta: item.normalizedQty,
+            qtyOnHandDelta: item.quantity,
           });
 
           if (warehouseStock) {

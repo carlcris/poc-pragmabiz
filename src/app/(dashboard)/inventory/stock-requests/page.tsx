@@ -215,6 +215,7 @@ export default function StockRequestsPage() {
           itemCode: item.items?.item_code || "",
           itemName: item.items?.item_name || "",
           uomId: item.uom_id,
+          uomLabel: item.units_of_measure?.code || item.units_of_measure?.symbol || "",
           requestedQty: item.requested_qty,
           notes: item.notes || "",
         })) || [];
@@ -982,7 +983,7 @@ export default function StockRequestsPage() {
                               <TableRow>
                                 <TableHead className="py-2 text-xs">Item</TableHead>
                                 <TableHead className="py-2 text-right text-xs">Qty</TableHead>
-                                <TableHead className="py-2 text-xs">Package</TableHead>
+                                <TableHead className="py-2 text-xs">Unit</TableHead>
                                 <TableHead className="py-2 text-xs">Notes</TableHead>
                                 <TableHead className="w-[80px] py-2 text-xs">Actions</TableHead>
                               </TableRow>
@@ -1002,7 +1003,7 @@ export default function StockRequestsPage() {
                                     {item.requestedQty.toFixed(2)}
                                   </TableCell>
                                   <TableCell className="py-2 text-sm">
-                                    {item.uomId || "--"}
+                                    {item.uomLabel || "--"}
                                   </TableCell>
                                   <TableCell className="py-2">
                                     <div className="max-w-[150px] truncate text-sm">

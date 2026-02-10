@@ -4,12 +4,10 @@ import { postARInvoice } from "@/services/accounting/arPosting";
 import { calculateCOGS, postCOGS } from "@/services/accounting/cogsPosting";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { normalizeTransactionItems } from "@/services/inventory/normalizationService";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
 } from "@/services/inventory/locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 // POST /api/sales-orders/[id]/convert-to-invoice
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -119,13 +117,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    const itemInputs: StockTransactionItemInput[] = salesOrderItems.map((item) => ({
-      itemId: item.item_id,
-      inputQty: parseFloat(item.quantity),
-      unitCost: parseFloat(item.rate),
-    }));
-
-    const normalizedItems = await normalizeTransactionItems(salesOrder.company_id, itemInputs);
+    const salesItemIds = salesOrderItems.map((item) => item.item_id);
+    const { data: salesItemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", salesItemIds);
+    const salesUomMap = new Map(
+      (salesItemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
 
     // Step 3: Generate invoice number (handle both old INV-NNNNN and new INV-YYYY-NNNN formats)
     const { data: invoices } = await supabase
@@ -289,22 +291,29 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Failed to create stock transaction" }, { status: 500 });
     }
 
+    const missingUomItem = salesOrderItems.find(
+      (item) => !(item.uom_id ?? salesUomMap.get(item.item_id))
+    );
+    if (missingUomItem) {
+      await supabase.from("stock_transactions").delete().eq("id", stockTransaction.id);
+      await supabase.from("sales_invoice_items").delete().eq("invoice_id", invoice.id);
+      await supabase.from("sales_invoices").delete().eq("id", invoice.id);
+      return NextResponse.json({ error: "Item UOM not found for invoice" }, { status: 400 });
+    }
+
     // Create stock transaction items
-    const transactionItemsToInsert = salesOrderItems.map((item, index) => {
-      const normalizedItem = normalizedItems[index];
-      const normalizedQty = normalizedItem?.normalizedQty ?? parseFloat(item.quantity);
+    const transactionItemsToInsert = salesOrderItems.map((item) => {
+      const quantity = parseFloat(item.quantity);
+      const uomId = item.uom_id ?? salesUomMap.get(item.item_id) ?? null;
 
       return {
         company_id: salesOrder.company_id,
         transaction_id: stockTransaction.id,
         item_id: item.item_id,
-        quantity: normalizedQty,
-        uom_id: normalizedItem?.uomId ?? item.uom_id,
+        quantity,
+        uom_id: uomId,
         unit_cost: parseFloat(item.rate),
-        total_cost: normalizedQty * parseFloat(item.rate),
-        input_qty: normalizedItem?.inputQty ?? parseFloat(item.quantity),
-        conversion_factor: normalizedItem?.conversionFactor ?? 1.0,
-        normalized_qty: normalizedQty,
+        total_cost: quantity * parseFloat(item.rate),
         created_by: user.id,
         updated_by: user.id,
       };
@@ -334,7 +343,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     for (let i = 0; i < salesOrderItems.length; i++) {
       const item = salesOrderItems[i];
       const transactionItem = transactionItems[i];
-      const normalizedQty = normalizedItems[i]?.normalizedQty ?? parseFloat(item.quantity);
+      const quantity = parseFloat(item.quantity);
       const rate = parseFloat(item.rate);
 
       // Get current stock from item_warehouse (source of truth)
@@ -347,7 +356,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
 
-      const newBalance = currentBalance - normalizedQty;
+      const newBalance = currentBalance - quantity;
 
       // Validate sufficient stock
       if (newBalance < 0) {
@@ -361,7 +370,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         await supabase.from("sales_invoices").delete().eq("id", invoice.id);
         return NextResponse.json(
           {
-            error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${normalizedQty}`,
+            error: `Insufficient stock for item. Available: ${currentBalance}, Requested: ${quantity}`,
           },
           { status: 400 }
         );
@@ -403,7 +412,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         warehouseId: body.warehouseId,
         locationId: selectedLocationId || warehouseStock?.default_location_id || null,
         userId: user.id,
-        qtyOnHandDelta: -normalizedQty,
+        qtyOnHandDelta: -quantity,
       });
 
       // Update item_warehouse current_stock
@@ -465,9 +474,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const cogsCalculation = await calculateCOGS(
       salesOrder.company_id,
       body.warehouseId,
-      salesOrderItems.map((item, index) => ({
+      salesOrderItems.map((item) => ({
         itemId: item.item_id,
-        quantity: normalizedItems[index]?.normalizedQty ?? parseFloat(item.quantity),
+        quantity: parseFloat(item.quantity),
       }))
     );
 

@@ -4060,18 +4060,15 @@ export type Database = {
           adjusted_qty: number
           adjustment_id: string
           company_id: string
-          conversion_factor: number
           created_at: string
           created_by: string
           current_qty: number
           deleted_at: string | null
           difference: number
           id: string
-          input_qty: number
           item_code: string
           item_id: string
           item_name: string
-          normalized_qty: number
           reason: string | null
           total_cost: number
           unit_cost: number
@@ -4084,18 +4081,15 @@ export type Database = {
           adjusted_qty: number
           adjustment_id: string
           company_id: string
-          conversion_factor?: number
           created_at?: string
           created_by: string
           current_qty?: number
           deleted_at?: string | null
           difference: number
           id?: string
-          input_qty: number
           item_code: string
           item_id: string
           item_name: string
-          normalized_qty: number
           reason?: string | null
           total_cost: number
           unit_cost: number
@@ -4108,18 +4102,15 @@ export type Database = {
           adjusted_qty?: number
           adjustment_id?: string
           company_id?: string
-          conversion_factor?: number
           created_at?: string
           created_by?: string
           current_qty?: number
           deleted_at?: string | null
           difference?: number
           id?: string
-          input_qty?: number
           item_code?: string
           item_id?: string
           item_name?: string
-          normalized_qty?: number
           reason?: string | null
           total_cost?: number
           unit_cost?: number
@@ -4717,15 +4708,12 @@ export type Database = {
         Row: {
           batch_no: string | null
           company_id: string
-          conversion_factor: number
           created_at: string
           created_by: string
           deleted_at: string | null
           expiry_date: string | null
           id: string
-          input_qty: number
           item_id: string
-          normalized_qty: number
           notes: string | null
           posting_date: string
           posting_time: string
@@ -4746,15 +4734,12 @@ export type Database = {
         Insert: {
           batch_no?: string | null
           company_id: string
-          conversion_factor?: number
           created_at?: string
           created_by: string
           deleted_at?: string | null
           expiry_date?: string | null
           id?: string
-          input_qty: number
           item_id: string
-          normalized_qty: number
           notes?: string | null
           posting_date?: string
           posting_time?: string
@@ -4775,15 +4760,12 @@ export type Database = {
         Update: {
           batch_no?: string | null
           company_id?: string
-          conversion_factor?: number
           created_at?: string
           created_by?: string
           deleted_at?: string | null
           expiry_date?: string | null
           id?: string
-          input_qty?: number
           item_id?: string
-          normalized_qty?: number
           notes?: string | null
           posting_date?: string
           posting_time?: string

@@ -31,7 +31,7 @@ export default function TabletDashboardPage() {
   const pendingReceiptsLabel = isLoading ? "--" : pendingReceiptsCount.toString();
   const readyToPickCount =
     stockRequestsData?.data?.filter((request) => {
-      if (!currentBusinessUnit?.id) return false;
+      if (!currentBusinessUnit?.id) return true;
       return request.to_location?.businessUnitId === currentBusinessUnit.id;
     }).length || 0;
   const readyToPickLabel = isLoadingStockRequests ? "--" : readyToPickCount.toString();

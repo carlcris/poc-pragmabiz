@@ -1,24 +1,20 @@
 /**
  * POS Stock Transaction Service
  *
- * Handles stock transactions for POS sales with inventory normalization:
+ * Handles stock transactions for POS sales:
  * - Creates outbound stock transactions when items are sold
- * - Normalizes quantities from selected packages to base units
- * - Updates stock_transaction_items with full conversion metadata
  * - Reduces inventory quantities in item_warehouse (in base units)
  * - Creates reversal transactions for voided sales
  *
- * @see /docs/inv-normalization-implementation-plan.md
+ * @see /docs/inventory-acquisition-workflow-v2.md
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { normalizeTransactionItems } from "./normalizationService";
 import {
   adjustItemLocation,
   consumeItemLocationsFIFO,
   ensureWarehouseDefaultLocation,
 } from "./locationService";
-import type { StockTransactionItemInput } from "@/types/inventory-normalization";
 
 export type POSStockTransactionData = {
   transactionId: string;
@@ -34,10 +30,8 @@ export type POSStockTransactionData = {
 };
 
 /**
- * Create stock transaction for POS sale with inventory normalization
- * - Normalizes quantities from selected packages to base units
+ * Create stock transaction for POS sale
  * - Creates stock_transactions record (type: 'out')
- * - Creates stock_transaction_items with full conversion metadata
  * - Updates item_warehouse quantities (in base units)
  */
 export async function createPOSStockTransaction(
@@ -49,17 +43,35 @@ export async function createPOSStockTransaction(
   try {
     const supabase = await createClient();
 
-    // STEP 1: Normalize all item quantities from packages to base units
-    const itemInputs: StockTransactionItemInput[] = data.items.map((item) => ({
-      itemId: item.itemId,
-      inputQty: item.quantity,
-      unitCost: item.rate,
-    }));
+    const itemIds = data.items.map((item) => item.itemId);
+    const { data: itemUoms } = await supabase
+      .from("items")
+      .select("id, uom_id")
+      .in("id", itemIds);
+    const itemUomMap = new Map(
+      (itemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
+        row.id,
+        row.uom_id,
+      ]) || []
+    );
 
-    const normalizedItems = await normalizeTransactionItems(companyId, itemInputs);
+    // STEP 1: Resolve item quantities (already in base UOM)
+    const resolvedItems = data.items.map((item) => {
+      const quantity = Number(item.quantity);
+      const unitCost = Number(item.rate);
+      const uomId = item.uomId ?? itemUomMap.get(item.itemId) ?? null;
 
-    // STEP 2: Validate stock availability (using normalized quantities in base units)
-    for (const item of normalizedItems) {
+      return {
+        itemId: item.itemId,
+        quantity,
+        unitCost,
+        totalCost: quantity * unitCost,
+        uomId,
+      };
+    });
+
+    // STEP 2: Validate stock availability (using base UOM quantities)
+    for (const item of resolvedItems) {
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
         .select("current_stock")
@@ -70,10 +82,17 @@ export async function createPOSStockTransaction(
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
 
-      if (currentBalance < item.normalizedQty) {
+      if (!item.uomId) {
         return {
           success: false,
-          error: `Insufficient stock. Available: ${currentBalance} (base units), Requested: ${item.normalizedQty} (base units)`,
+          error: "Item UOM not found for POS transaction",
+        };
+      }
+
+      if (currentBalance < item.quantity) {
+        return {
+          success: false,
+          error: `Insufficient stock. Available: ${currentBalance}, Requested: ${item.quantity}`,
         };
       }
     }
@@ -116,12 +135,12 @@ export async function createPOSStockTransaction(
       };
     }
 
-    // STEP 4: Create stock transaction items with normalization metadata
+    // STEP 4: Create stock transaction items
     const now = new Date();
     const postingDate = now.toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
-    for (const item of normalizedItems) {
+    for (const item of resolvedItems) {
       // Get current stock from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase
         .from("item_warehouse")
@@ -132,21 +151,17 @@ export async function createPOSStockTransaction(
 
       const currentBalance = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
 
-      const newBalance = currentBalance - item.normalizedQty;
+      const newBalance = currentBalance - item.quantity;
 
-      // Create transaction item with full normalization metadata
+      // Create transaction item
       const { data: stockTxItem, error: itemError } = await supabase
         .from("stock_transaction_items")
         .insert({
           company_id: companyId,
           transaction_id: stockTransaction.id,
           item_id: item.itemId,
-          // Normalization fields (NEW)
-          input_qty: item.inputQty,
-          conversion_factor: item.conversionFactor,
-          normalized_qty: item.normalizedQty,
           // Standard fields
-          quantity: item.normalizedQty, // Backward compat
+          quantity: item.quantity,
           uom_id: item.uomId,
           unit_cost: item.unitCost,
           total_cost: item.totalCost,
@@ -178,11 +193,11 @@ export async function createPOSStockTransaction(
         companyId,
         itemId: item.itemId,
         warehouseId: data.warehouseId,
-        quantity: item.normalizedQty,
+        quantity: item.quantity,
         userId,
       });
 
-      // STEP 5: Update item_warehouse with normalized quantity (base units)
+      // STEP 5: Update item_warehouse with base units
       const { error: warehouseUpdateError } = await supabase
         .from("item_warehouse")
         .update({
