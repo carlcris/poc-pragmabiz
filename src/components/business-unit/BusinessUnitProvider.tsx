@@ -10,7 +10,6 @@
 import { useEffect, useRef } from "react";
 import { useBusinessUnits, useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
-import { Loader2 } from "lucide-react";
 
 type BusinessUnitProviderProps = {
   children: React.ReactNode;
@@ -18,10 +17,14 @@ type BusinessUnitProviderProps = {
 
 export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) => {
   const { data: businessUnits, isLoading, error } = useBusinessUnits();
-  const { currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit } =
+  const { currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit, setLoading } =
     useBusinessUnitStore();
   const { mutate: setContext } = useSetBusinessUnitContext({ silent: true });
   const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading, setLoading]);
 
   // Initialize business unit when data is loaded
   useEffect(() => {
@@ -63,18 +66,6 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
     setCurrentBusinessUnit,
     setContext,
   ]);
-
-  // Show loading state while initializing
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading business units...</p>
-        </div>
-      </div>
-    );
-  }
 
   // Log error but don't block the app
   if (error) {

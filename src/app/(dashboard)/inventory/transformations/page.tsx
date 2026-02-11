@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ClientOnly } from "@/components/shared/ClientOnly";
 import {
   Select,
   SelectContent,
@@ -111,18 +113,20 @@ export default function TransformationOrdersPage() {
             className="pl-10"
           />
         </div>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder={t.common.allStatuses} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">{t.common.allStatuses}</SelectItem>
-            <SelectItem value="DRAFT">{t.common.draft}</SelectItem>
-            <SelectItem value="PREPARING">{t.common.preparing}</SelectItem>
-            <SelectItem value="COMPLETED">{t.common.completed}</SelectItem>
-            <SelectItem value="CANCELLED">{t.common.cancelled}</SelectItem>
-          </SelectContent>
-        </Select>
+        <ClientOnly fallback={<Skeleton className="h-10 w-[180px]" />}>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={t.common.allStatuses} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">{t.common.allStatuses}</SelectItem>
+              <SelectItem value="DRAFT">{t.common.draft}</SelectItem>
+              <SelectItem value="PREPARING">{t.common.preparing}</SelectItem>
+              <SelectItem value="COMPLETED">{t.common.completed}</SelectItem>
+              <SelectItem value="CANCELLED">{t.common.cancelled}</SelectItem>
+            </SelectContent>
+          </Select>
+        </ClientOnly>
       </div>
 
       {/* Orders Table */}
@@ -142,13 +146,44 @@ export default function TransformationOrdersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center">
-                  {t.common.loading}
-                </TableCell>
-              </TableRow>
-            ) : ordersData?.data.length === 0 ? (
+          {isLoading ? (
+            <>
+              {[...Array(8)].map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-20" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Skeleton className="ml-auto h-4 w-20" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8" />
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </>
+          ) : ordersData?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center">
                   {t.transformation.noOrdersFound}

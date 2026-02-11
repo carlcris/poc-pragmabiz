@@ -39,8 +39,10 @@ type SetSessionPayload = {
  * Fetch business units accessible by current user
  */
 export function useBusinessUnits() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: ["business-units"],
+    enabled: isAuthenticated,
     queryFn: async () => {
       // apiClient.get returns the JSON response directly, not wrapped
       const response = await apiClient.get<BusinessUnitsResponse>("/api/business-units");

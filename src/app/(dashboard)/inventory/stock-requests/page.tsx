@@ -31,6 +31,7 @@ import {
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -605,8 +606,65 @@ export default function StockRequestsPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+            <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-background">
+                  <TableRow>
+                    <TableHead>Request #</TableHead>
+                    <TableHead>Request Date</TableHead>
+                    <TableHead>Required Date</TableHead>
+                    <TableHead>From Location</TableHead>
+                    <TableHead>To Location</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Status</TableHead>
+                    {!hasAnyActions && <TableHead>Received</TableHead>}
+                    <TableHead>Requested By</TableHead>
+                    {hasAnyActions && <TableHead className="text-right">Actions</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(8)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      {!hasAnyActions && (
+                        <TableCell>
+                          <Skeleton className="h-4 w-20" />
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      {hasAnyActions && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end">
+                            <Skeleton className="h-8 w-8" />
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : error ? (
             <div className="py-8 text-center text-destructive">

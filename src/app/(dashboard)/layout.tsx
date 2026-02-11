@@ -25,17 +25,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading || !isAuthenticated) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <BusinessUnitProvider>
       <div className="flex h-screen overflow-hidden">

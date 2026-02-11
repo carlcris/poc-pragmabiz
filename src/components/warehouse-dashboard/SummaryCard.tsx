@@ -25,7 +25,7 @@ export const SummaryCard = ({
         <CardContent className="p-6">
           {/* Icon Badge */}
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 shadow-sm">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white shadow-sm">
               <Icon className={`h-6 w-6 ${iconColor}`} />
             </div>
             <ArrowUpRight className="h-5 w-5 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100" />

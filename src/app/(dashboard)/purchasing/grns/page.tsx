@@ -10,6 +10,7 @@ import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -178,8 +179,58 @@ export default function GRNsPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+          <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                <TableRow>
+                  <TableHead>GRN Number</TableHead>
+                  <TableHead>Load List</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Warehouse</TableHead>
+                  <TableHead>Container / Seal</TableHead>
+                  <TableHead>Receiving Date</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead>Received By</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(8)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Skeleton className="mx-auto h-5 w-20 rounded-full" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">

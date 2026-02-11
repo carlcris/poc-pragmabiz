@@ -398,6 +398,29 @@ const itemsInStock = inventoryData?.summary?.itemsInStock  // ✅ CORRECT
 
 ### Mandatory Checklist
 
+## UI Loading & Hydration Rules (Required for New Pages)
+
+These are mandatory for new pages and when refactoring existing pages:
+
+### 1) No Full-Page Blocking Loaders
+- Always render the static layout immediately (header, sidebar, page title, filters).
+- Do **not** show full-screen or full-page “Loading…” overlays for data fetches.
+
+### 2) Skeletons for Dynamic Content
+- Use skeleton loaders for dynamic sections (tables, cards, widgets, lists).
+- On first load, show skeleton rows/cards instead of blank space or spinners.
+- Keep filter controls visible; only the data portion should show skeletons.
+
+### 3) Prevent Hydration Mismatch with Radix UI
+- Radix components (Select, DropdownMenu, Popover) can cause hydration mismatch.
+- Wrap Radix triggers/content in a `ClientOnly` wrapper and provide skeleton fallback.
+- Prefer `ClientOnly` for header controls and filter selects on new pages.
+
+### 4) Permission/BU Loading Behavior
+- Do not block rendering while permissions or business units load.
+- Allow rendering while permissions load, and use skeletons or disabled controls.
+- Avoid redirecting to `/403` until permissions are fully loaded.
+
 Before writing code that uses external data:
 
 - [ ] I have READ the hook/function source code

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -174,8 +175,54 @@ export default function WarehousesPage() {
 
         <div className="min-h-0 flex-1">
           {isLoading ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
+              <Table containerClassName="overflow-visible">
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Manager</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(8)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded-full" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-36" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-20" />
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center text-center text-destructive">

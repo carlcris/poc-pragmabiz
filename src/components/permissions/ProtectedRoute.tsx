@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import type { Resource } from "@/constants/resources";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 type ProtectedRouteProps = {
   resource: Resource;
@@ -18,6 +19,7 @@ type ProtectedRouteProps = {
   redirectTo?: string;
   showLoading?: boolean;
   loadingComponent?: ReactNode;
+  allowRenderWhileLoading?: boolean;
 };
 
 /**
@@ -37,39 +39,34 @@ export function ProtectedRoute({
   redirectTo = "/403",
   showLoading = true,
   loadingComponent,
+  allowRenderWhileLoading = false,
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { canView, isLoading } = usePermissions();
+  const { canView, isLoading, permissions } = usePermissions();
+  const { isLoading: isBusinessUnitLoading } = useBusinessUnitStore();
+  const isPermissionPending = isLoading || !permissions || isBusinessUnitLoading;
 
   useEffect(() => {
     // Wait for permissions to load
-    if (isLoading) return;
+    if (isPermissionPending) return;
 
     // Check if user has view permission
     if (!canView(resource)) {
       // Redirect to access denied page
       router.push(`${redirectTo}?resource=${resource}`);
     }
-  }, [canView, resource, isLoading, redirectTo, router]);
+  }, [canView, resource, isPermissionPending, redirectTo, router]);
 
   // Show loading state while permissions are being fetched
-  if (isLoading && showLoading) {
+  if (isPermissionPending && showLoading) {
     if (loadingComponent) {
       return <>{loadingComponent}</>;
     }
-
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-gray-600">Loading permissions...</p>
-        </div>
-      </div>
-    );
+    return allowRenderWhileLoading ? <>{children}</> : null;
   }
 
   // Don't render children if user doesn't have permission
-  if (!canView(resource)) {
+  if (!isPermissionPending && !canView(resource)) {
     return null;
   }
 
@@ -83,6 +80,7 @@ type MultiResourceProtectedRouteProps = {
   redirectTo?: string;
   showLoading?: boolean;
   loadingComponent?: ReactNode;
+  allowRenderWhileLoading?: boolean;
 };
 
 /**
@@ -109,12 +107,15 @@ export function MultiResourceProtectedRoute({
   redirectTo = "/403",
   showLoading = true,
   loadingComponent,
+  allowRenderWhileLoading = false,
 }: MultiResourceProtectedRouteProps) {
   const router = useRouter();
-  const { canView, isLoading } = usePermissions();
+  const { canView, isLoading, permissions } = usePermissions();
+  const { isLoading: isBusinessUnitLoading } = useBusinessUnitStore();
+  const isPermissionPending = isLoading || !permissions || isBusinessUnitLoading;
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isPermissionPending) return;
 
     let hasPermission = false;
 
@@ -130,21 +131,13 @@ export function MultiResourceProtectedRoute({
       const resourcesParam = resources.join(",");
       router.push(`${redirectTo}?resources=${resourcesParam}&requireAll=${requireAll}`);
     }
-  }, [canView, resources, requireAll, isLoading, redirectTo, router]);
+  }, [canView, resources, requireAll, isPermissionPending, redirectTo, router]);
 
-  if (isLoading && showLoading) {
+  if (isPermissionPending && showLoading) {
     if (loadingComponent) {
       return <>{loadingComponent}</>;
     }
-
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-gray-900"></div>
-          <p className="text-gray-600">Loading permissions...</p>
-        </div>
-      </div>
-    );
+    return allowRenderWhileLoading ? <>{children}</> : null;
   }
 
   let hasPermission = false;
@@ -155,7 +148,7 @@ export function MultiResourceProtectedRoute({
     hasPermission = resources.some((resource) => canView(resource));
   }
 
-  if (!hasPermission) {
+  if (!isPermissionPending && !hasPermission) {
     return null;
   }
 

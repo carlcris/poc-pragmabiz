@@ -7,6 +7,8 @@ import { usePurchaseReceipts, useDeletePurchaseReceipt } from "@/hooks/usePurcha
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ClientOnly } from "@/components/shared/ClientOnly";
 import {
   Select,
   SelectContent,
@@ -146,23 +148,75 @@ export default function PurchaseReceiptsPage() {
               className="pl-8"
             />
           </div>
-          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-[200px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="received">Received</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+          <ClientOnly fallback={<Skeleton className="h-10 w-[200px]" />}>
+            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+              <SelectTrigger className="w-[200px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="received">Received</SelectItem>
+                <SelectItem value="cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </ClientOnly>
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+          <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                <TableRow>
+                  <TableHead>Receipt Code</TableHead>
+                  <TableHead>Purchase Order</TableHead>
+                  <TableHead>Supplier</TableHead>
+                  <TableHead>Warehouse</TableHead>
+                  <TableHead>Batch</TableHead>
+                  <TableHead>Receipt Date</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(8)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="ml-auto h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">

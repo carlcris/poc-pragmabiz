@@ -38,10 +38,16 @@ type UserPermissionsResponse = {
 export function useLoadPermissions() {
   const user = useAuthStore((state) => state.user);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const availableBusinessUnits = useBusinessUnitStore((state) => state.availableBusinessUnits);
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
   const { setPermissions, setLoading, setError } = usePermissionStore();
 
   const userId = user?.id;
   const businessUnitId = currentBusinessUnit?.id || null;
+
+  const isBusinessUnitReady =
+    !isBusinessUnitLoading &&
+    (Boolean(currentBusinessUnit) || availableBusinessUnits.length === 0);
 
   const query = useQuery({
     queryKey: ["permissions", userId, businessUnitId],
@@ -81,7 +87,7 @@ export function useLoadPermissions() {
 
       return permissions;
     },
-    enabled: !!userId, // Only run if user is authenticated
+    enabled: !!userId && isBusinessUnitReady, // Only run if user is authenticated and BU resolved
     // SECURITY: No caching for permissions - they are security-critical
     staleTime: 0, // Data is immediately stale
     gcTime: 0, // Don't keep in cache after component unmounts
@@ -100,8 +106,19 @@ export function useLoadPermissions() {
     } else if (query.data) {
       setPermissions(query.data);
       setLoading(false);
+    } else if (!query.isLoading && !query.isFetching && !isBusinessUnitReady) {
+      setLoading(true);
     }
-  }, [query.data, query.isLoading, query.error, setPermissions, setLoading, setError]);
+  }, [
+    query.data,
+    query.isLoading,
+    query.isFetching,
+    query.error,
+    isBusinessUnitReady,
+    setPermissions,
+    setLoading,
+    setError,
+  ]);
 
   return {
     permissions: query.data,

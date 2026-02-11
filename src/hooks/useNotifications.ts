@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import type { Notification } from "@/types/notifications";
+import { useAuthStore } from "@/stores/authStore";
 
 const NOTIFICATIONS_QUERY_KEY = "notifications";
 
@@ -22,8 +23,10 @@ export function useNotifications({
   limit?: number;
   offset?: number;
 } = {}) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: [NOTIFICATIONS_QUERY_KEY, { unreadOnly, limit, offset }],
+    enabled: isAuthenticated,
     queryFn: async () => {
       const response = await apiClient.get<NotificationsResponse>("/api/notifications", {
         params: {

@@ -148,6 +148,7 @@ function ItemsPageContent() {
   const categories = categoriesData?.data || [];
 
 
+  const isInitialLoading = !isWarehouseAutoResolved || isLoading;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
   const statistics =
@@ -316,18 +317,16 @@ function ItemsPageContent() {
             <Download className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
-          <CreateGuard resource={RESOURCES.ITEMS}>
-            <Button onClick={handleCreateItem}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Item
-            </Button>
-          </CreateGuard>
+          <Button onClick={handleCreateItem}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Item
+          </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {isLoading ? (
+        {isInitialLoading ? (
           <>
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}>
@@ -475,7 +474,7 @@ function ItemsPageContent() {
 
         {/* Table */}
         <div className="min-h-0 flex-1">
-          {isLoading || isFetching ? (
+          {isInitialLoading || isFetching ? (
             <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
@@ -692,7 +691,7 @@ function ItemsPageContent() {
 
 export default function ItemsPage() {
   return (
-    <ProtectedRoute resource={RESOURCES.ITEMS}>
+    <ProtectedRoute resource={RESOURCES.ITEMS} allowRenderWhileLoading>
       <ItemsPageContent />
     </ProtectedRoute>
   );
