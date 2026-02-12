@@ -2,6 +2,7 @@
 
 import { Package, ClipboardList, TruckIcon } from "lucide-react";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
+import { useAuthStore } from "@/stores/authStore";
 import { SummaryCard } from "@/components/warehouse-dashboard/SummaryCard";
 import { InventoryHealthPanel } from "@/components/warehouse-dashboard/InventoryHealthPanel";
 import { OperationalQueueTabs } from "@/components/warehouse-dashboard/OperationalQueueTabs";
@@ -11,8 +12,18 @@ import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientOnly } from "@/components/shared/ClientOnly";
 
+// Get time-based greeting
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+};
+
 export default function WarehouseDashboardPage() {
   const { data, isLoading, error, refetch } = useWarehouseDashboard();
+  const user = useAuthStore((state) => state.user);
+  const greeting = getGreeting();
 
   if (error) {
     return (
@@ -34,8 +45,12 @@ export default function WarehouseDashboardPage() {
     <div className="container mx-auto space-y-6 p-4 md:p-6">
       {/* Page Header */}
       <div className="border-b border-gray-200 pb-5">
-        <h1 className="text-3xl font-bold text-gray-900">Warehouse Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600">Monitor operations and inventory status</p>
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
+          {greeting}, {user?.firstName || "User"}!
+        </h1>
+        <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+          Here&apos;s what&apos;s happening in your warehouse today
+        </p>
       </div>
 
       {/* Summary Cards - 3 columns */}

@@ -2,6 +2,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: string;
   companyId: string;
   employeeId?: string | null; // Link to employee record for commission tracking

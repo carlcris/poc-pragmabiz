@@ -67,10 +67,23 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         throw new Error(sessionError.message || "Failed to establish session");
       }
 
+      // Refresh name fields from public.users using the authenticated user id.
+      const { data: userProfile } = await supabase
+        .from("users")
+        .select("first_name, last_name")
+        .eq("id", payload.user.id)
+        .maybeSingle();
+
+      const firstName = userProfile?.first_name || payload.user.firstName || "";
+      const lastName = userProfile?.last_name || payload.user.lastName || "";
+      const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
       const user: User = {
         id: payload.user.id,
         email: payload.user.email,
-        name: payload.user.name,
+        name: fullName || payload.user.name,
+        firstName,
+        lastName,
         role: payload.user.role,
         companyId: payload.user.companyId,
       };
@@ -162,7 +175,7 @@ export const useAuthStore = create<AuthStore>()((set) => ({
       // Fetch company_id from public.users table
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("company_id")
+        .select("company_id, first_name, last_name")
         .eq("id", user.id)
         .single();
 
@@ -175,10 +188,19 @@ export const useAuthStore = create<AuthStore>()((set) => ({
       } = await supabase.auth.getSession();
 
       // Map Supabase user to our User type
+      const firstName = userData?.first_name || user.user_metadata?.first_name || "";
+      const lastName = userData?.last_name || user.user_metadata?.last_name || "";
+      const fullName =
+        [firstName, lastName].filter(Boolean).join(" ") ||
+        user.user_metadata?.full_name ||
+        user.email!;
+
       const mappedUser: User = {
         id: user.id,
         email: user.email!,
-        name: user.user_metadata?.full_name || user.email!,
+        name: fullName,
+        firstName,
+        lastName,
         role: user.user_metadata?.role || "user",
         companyId: userData?.company_id || "",
       };
