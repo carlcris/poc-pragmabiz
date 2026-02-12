@@ -134,7 +134,7 @@ export function LocationAssignmentWidget() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Assignment Rate</span>
-            <span className={cn("text-2xl font-bold", statusConfig.color)}>
+            <span className={cn("text-xl sm:text-2xl font-bold", statusConfig.color)}>
               {assignmentPercent.toFixed(1)}%
             </span>
           </div>
@@ -152,18 +152,18 @@ export function LocationAssignmentWidget() {
         </div>
 
         {/* Box Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border bg-muted/50 p-3 text-center">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
             <div className="text-xs text-muted-foreground">Total</div>
-            <p className="mt-1 text-lg font-bold">{data.totalBoxes}</p>
+            <p className="mt-1 text-base sm:text-lg font-bold">{data.totalBoxes}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
             <div className="text-xs text-muted-foreground">Assigned</div>
-            <p className="mt-1 text-lg font-bold text-green-600">{data.assignedBoxes}</p>
+            <p className="mt-1 text-base sm:text-lg font-bold text-green-600">{data.assignedBoxes}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
             <div className="text-xs text-muted-foreground">Unassigned</div>
-            <p className="mt-1 text-lg font-bold text-red-600">{data.unassignedBoxes}</p>
+            <p className="mt-1 text-base sm:text-lg font-bold text-red-600">{data.unassignedBoxes}</p>
           </div>
         </div>
 

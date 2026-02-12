@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Search, Eye, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Package } from "lucide-react";
 import Link from "next/link";
 import {
   useTransformationOrders,
@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type {
   TransformationOrderApi,
   TransformationOrderStatus,
@@ -82,18 +83,18 @@ export default function TransformationOrdersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">{t.transformation.transformationOrder}s</h1>
-          <p className="text-muted-foreground">{t.transformation.manageMaterialTransformations}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">{t.transformation.transformationOrder}s</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">{t.transformation.manageMaterialTransformations}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/inventory/transformations/templates">
               {t.transformation.manageTemplates}
             </Link>
           </Button>
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/inventory/transformations/new">
               <Plus className="mr-2 h-4 w-4" />
               {t.transformation.newTransformation}
@@ -103,8 +104,8 @@ export default function TransformationOrdersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+        <div className="relative w-full sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={t.transformation.searchOrdersPlaceholder}
@@ -113,9 +114,9 @@ export default function TransformationOrdersPage() {
             className="pl-10"
           />
         </div>
-        <ClientOnly fallback={<Skeleton className="h-10 w-[180px]" />}>
+        <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder={t.common.allStatuses} />
             </SelectTrigger>
             <SelectContent>
@@ -130,24 +131,23 @@ export default function TransformationOrdersPage() {
       </div>
 
       {/* Orders Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t.transformation.orderCode}</TableHead>
-              <TableHead>{t.transformation.template}</TableHead>
-              <TableHead>{t.common.status}</TableHead>
-              <TableHead>{t.transformation.orderDate}</TableHead>
-              <TableHead>{t.common.warehouse}</TableHead>
-              <TableHead>{t.transformation.plannedQuantity}</TableHead>
-              <TableHead className="text-right">{t.transformation.totalInputCost}</TableHead>
-              <TableHead className="text-right">{t.transformation.totalOutputCost}</TableHead>
-              <TableHead className="text-right">{t.common.actions}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-          {isLoading ? (
-            <>
+      {isLoading ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t.transformation.orderCode}</TableHead>
+                <TableHead>{t.transformation.template}</TableHead>
+                <TableHead>{t.common.status}</TableHead>
+                <TableHead>{t.transformation.orderDate}</TableHead>
+                <TableHead>{t.common.warehouse}</TableHead>
+                <TableHead>{t.transformation.plannedQuantity}</TableHead>
+                <TableHead className="text-right">{t.transformation.totalInputCost}</TableHead>
+                <TableHead className="text-right">{t.transformation.totalOutputCost}</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {[...Array(8)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell>
@@ -182,15 +182,33 @@ export default function TransformationOrdersPage() {
                   </TableCell>
                 </TableRow>
               ))}
-            </>
-          ) : ordersData?.data.length === 0 ? (
+            </TableBody>
+          </Table>
+        </div>
+      ) : !ordersData?.data || ordersData.data.length === 0 ? (
+        <EmptyStatePanel
+          icon={Package}
+          title={t.transformation.noOrdersFound}
+          description="Try adjusting your search or status filter."
+        />
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={9} className="py-8 text-center">
-                  {t.transformation.noOrdersFound}
-                </TableCell>
+                <TableHead>{t.transformation.orderCode}</TableHead>
+                <TableHead>{t.transformation.template}</TableHead>
+                <TableHead>{t.common.status}</TableHead>
+                <TableHead>{t.transformation.orderDate}</TableHead>
+                <TableHead>{t.common.warehouse}</TableHead>
+                <TableHead>{t.transformation.plannedQuantity}</TableHead>
+                <TableHead className="text-right">{t.transformation.totalInputCost}</TableHead>
+                <TableHead className="text-right">{t.transformation.totalOutputCost}</TableHead>
+                <TableHead className="text-right">{t.common.actions}</TableHead>
               </TableRow>
-            ) : (
-              ordersData?.data.map((order: TransformationOrderApi) => (
+            </TableHeader>
+            <TableBody>
+              {ordersData.data.map((order: TransformationOrderApi) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.order_code}</TableCell>
                   <TableCell>{order.template?.template_code || "N/A"}</TableCell>
@@ -225,11 +243,11 @@ export default function TransformationOrdersPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Pagination */}
       {ordersData && ordersData.total > limit && (

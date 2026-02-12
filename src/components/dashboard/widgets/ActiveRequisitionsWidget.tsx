@@ -126,7 +126,7 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
         <div className="rounded-lg border bg-muted/50 p-4">
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <span>Total Requisitions</span>
-            <span className="text-3xl font-bold text-right text-gray-900">{data.total}</span>
+            <span className="text-2xl sm:text-3xl font-bold text-right text-gray-900">{data.total}</span>
           </div>
         </div>
 
@@ -175,11 +175,11 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
                   href={`/purchasing/stock-requisitions?status=${key}`}
                   className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
-                    <span className="text-sm font-medium">{label}</span>
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-sm font-medium truncate">{label}</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                     <span className="text-sm text-muted-foreground">{percentage}%</span>
                     <span className="text-sm font-bold">{value}</span>
                   </div>

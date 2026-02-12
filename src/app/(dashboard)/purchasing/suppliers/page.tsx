@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SupplierFormDialog } from "@/components/suppliers/SupplierFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Supplier } from "@/types/supplier";
 
@@ -150,22 +151,22 @@ export default function SuppliersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Supplier Master</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Supplier Master</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">
             Manage your supplier accounts and vendor relationships
           </p>
         </div>
-        <Button onClick={handleCreateSupplier}>
+        <Button onClick={handleCreateSupplier} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
           Create Supplier
         </Button>
       </div>
 
       <div className="space-y-4">
-        <div className="mb-4 flex gap-3">
-          <div className="relative flex-1">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search suppliers..."
@@ -174,9 +175,9 @@ export default function SuppliersPage() {
               className="pl-8"
             />
           </div>
-          <ClientOnly fallback={<Skeleton className="h-10 w-[180px]" />}>
+          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -253,9 +254,11 @@ export default function SuppliersPage() {
             Error loading suppliers. Please try again.
           </div>
         ) : suppliers.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No suppliers found. Create your first supplier to get started.
-          </div>
+          <EmptyStatePanel
+            icon={Package}
+            title="No suppliers found"
+            description="Create your first supplier to get started."
+          />
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">

@@ -123,21 +123,21 @@ export default function WarehousesPage() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Warehouse Management</h1>
-          <p className="text-muted-foreground">Manage warehouse locations and storage facilities</p>
+    <div className="flex h-full flex-col gap-4 sm:gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Warehouse Management</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage warehouse locations and storage facilities</p>
         </div>
-        <Button onClick={handleCreateWarehouse}>
+        <Button onClick={handleCreateWarehouse} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          Create Warehouse
+          <span className="sm:inline">Create Warehouse</span>
         </Button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="relative min-w-[200px] flex-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search warehouses..."
@@ -147,7 +147,7 @@ export default function WarehousesPage() {
             />
           </div>
           <Select value={countryFilter} onValueChange={handleCountryFilterChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Country" />
             </SelectTrigger>
@@ -161,7 +161,7 @@ export default function WarehousesPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -175,8 +175,8 @@ export default function WarehousesPage() {
 
         <div className="min-h-0 flex-1">
           {isLoading ? (
-            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
-              <Table containerClassName="overflow-visible">
+            <div className="h-full overflow-auto overscroll-contain rounded-md border">
+              <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
                     <TableHead>Code</TableHead>
@@ -233,8 +233,8 @@ export default function WarehousesPage() {
               No warehouses found
             </div>
           ) : (
-            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
-              <Table containerClassName="overflow-visible">
+            <div className="h-full overflow-auto overscroll-contain rounded-md border">
+              <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
                     <TableHead>Code</TableHead>

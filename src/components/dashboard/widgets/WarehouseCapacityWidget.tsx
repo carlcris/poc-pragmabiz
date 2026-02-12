@@ -127,7 +127,7 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Utilization</span>
-            <span className={cn("text-2xl font-bold", statusConfig.color)}>
+            <span className={cn("text-xl sm:text-2xl font-bold", statusConfig.color)}>
               {utilizationPercent.toFixed(1)}%
             </span>
           </div>
@@ -145,18 +145,18 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
         </div>
 
         {/* Location Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="rounded-lg border bg-muted/50 p-3 text-center">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
             <div className="text-xs text-muted-foreground">Total</div>
-            <p className="mt-1 text-lg font-bold">{data.totalLocations}</p>
+            <p className="mt-1 text-base sm:text-lg font-bold">{data.totalLocations}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
             <div className="text-xs text-muted-foreground">Occupied</div>
-            <p className="mt-1 text-lg font-bold">{data.occupiedLocations}</p>
+            <p className="mt-1 text-base sm:text-lg font-bold">{data.occupiedLocations}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
             <div className="text-xs text-muted-foreground">Available</div>
-            <p className="mt-1 text-lg font-bold text-green-600">{data.availableSpace}</p>
+            <p className="mt-1 text-base sm:text-lg font-bold text-green-600">{data.availableSpace}</p>
           </div>
         </div>
 

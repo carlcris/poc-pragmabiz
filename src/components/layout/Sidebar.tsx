@@ -11,6 +11,8 @@ import {
   FileText,
   ChevronRight,
   Shield,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
@@ -168,6 +170,7 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { can, isLoading: permissionsLoading, permissions } = usePermissions();
 
   const toggleMenu = (title: string) => {
@@ -183,11 +186,11 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex min-h-screen w-64 flex-col border-r border-gray-800"
+      className="flex w-full flex-col border-b border-gray-800 md:min-h-screen md:w-64 md:border-b-0 md:border-r"
       style={{ backgroundColor: "#240032" }}
     >
-      <div className="border-b border-white/10 p-6">
-        <div className="flex items-center gap-4">
+      <div className="border-b border-white/10 p-4 md:p-6">
+        <div className="flex items-center justify-between gap-4">
           <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/15 via-white/10 to-white/5 shadow-[0_12px_30px_rgba(15,23,42,0.35)] ring-1 ring-white/15">
             <Image
               src="/achlers_circle.png"
@@ -202,118 +205,136 @@ export function Sidebar() {
             <div className="h-px w-10 bg-white/20" />
             <p className="text-[9px] uppercase tracking-[0.3em] text-white/45">Inventory System</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen((prev) => !prev)}
+            className="ml-auto inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/20 text-white/80 transition-colors hover:bg-white/10 md:hidden"
+            aria-label={isMobileOpen ? "Close menu" : "Open menu"}
+          >
+            {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
       </div>
 
-      {/* Business Unit Switcher */}
-      <div className="border-b border-white/10 p-3">
-        <BusinessUnitSwitcher />
-      </div>
-
-      <nav
-        className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 pb-6"
-        suppressHydrationWarning
+      <div
+        className={cn(
+          "overflow-hidden transition-[max-height,opacity] duration-200 md:overflow-visible",
+          isMobileOpen ? "max-h-[75vh] opacity-100" : "max-h-0 opacity-0",
+          "md:max-h-none md:opacity-100"
+        )}
       >
-        {!shouldShowMenu ? (
-          <div className="animate-pulse space-y-2 py-4">
-            {/* Skeleton loader for menu items */}
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="space-y-2">
-                <div className="flex items-center gap-3 rounded-md px-3 py-2.5">
-                  <div className="h-5 w-5 rounded bg-white/10"></div>
-                  <div className="h-4 max-w-[120px] flex-1 rounded bg-white/10"></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          menuItems.map((item) => {
-            const Icon = item.icon;
-            // Only highlight parent if it's an exact match (no children) or if it's a page without children
-            const isParentActive = !item.children && pathname === item.href;
-            const hasActiveChild = item.children?.some((child) => pathname === child.href);
-            const isOpen = openMenus[item.title] ?? hasActiveChild;
+        {/* Business Unit Switcher */}
+        <div className="border-b border-white/10 p-3">
+          <BusinessUnitSwitcher />
+        </div>
 
-            // For parent items with children, only show if user has access to at least one child
-            if (item.children) {
-              // Check if user has access to any child
-              const hasAccessToAnyChild = item.children.some((child) =>
-                can(child.resource, "view")
-              );
-
-              // Don't render parent if user has no access to any children
-              if (!hasAccessToAnyChild) {
-                return null;
-              }
-
-              return (
-                <div key={item.href}>
-                  <div>
-                    <button
-                      onClick={() => toggleMenu(item.title)}
-                      className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="h-5 w-5" />
-                        {item.title}
-                      </div>
-                      <ChevronRight
-                        className={cn("h-4 w-4 transition-transform", isOpen && "rotate-90")}
-                      />
-                    </button>
-
-                    {isOpen && (
-                      <div className="ml-8 mt-1 space-y-1">
-                        {item.children.map((child) => {
-                          // Only show child if user has permission
-                          if (can(child.resource, "view")) {
-                            return (
-                              <Link
-                                key={child.href}
-                                href={child.href}
-                                className={cn(
-                                  "block rounded-md px-3 py-2 text-sm transition-colors",
-                                  pathname === child.href
-                                    ? "bg-white/20 font-medium text-white"
-                                    : "text-gray-300 hover:bg-white/10 hover:text-white"
-                                )}
-                              >
-                                {child.title}
-                              </Link>
-                            );
-                          }
-                          return null;
-                        })}
-                      </div>
-                    )}
+        <nav
+          className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 pb-6"
+          suppressHydrationWarning
+        >
+          {!shouldShowMenu ? (
+            <div className="animate-pulse space-y-2 py-4">
+              {/* Skeleton loader for menu items */}
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-center gap-3 rounded-md px-3 py-2.5">
+                    <div className="h-5 w-5 rounded bg-white/10"></div>
+                    <div className="h-4 max-w-[120px] flex-1 rounded bg-white/10"></div>
                   </div>
                 </div>
-              );
-            }
+              ))}
+            </div>
+          ) : (
+            menuItems.map((item) => {
+              const Icon = item.icon;
+              // Only highlight parent if it's an exact match (no children) or if it's a page without children
+              const isParentActive = !item.children && pathname === item.href;
+              const hasActiveChild = item.children?.some((child) => pathname === child.href);
+              const isOpen = openMenus[item.title] ?? hasActiveChild;
 
-            // For items without children, only show if user has permission
-            if (can(item.resource!, "view")) {
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    isParentActive
-                      ? "bg-white/20 font-medium text-white"
-                      : "text-gray-300 hover:bg-white/10 hover:text-white"
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.title}
-                </Link>
-              );
-            }
+              // For parent items with children, only show if user has access to at least one child
+              if (item.children) {
+                // Check if user has access to any child
+                const hasAccessToAnyChild = item.children.some((child) =>
+                  can(child.resource, "view")
+                );
 
-            return null;
-          })
-        )}
-      </nav>
+                // Don't render parent if user has no access to any children
+                if (!hasAccessToAnyChild) {
+                  return null;
+                }
+
+                return (
+                  <div key={item.href}>
+                    <div>
+                      <button
+                        onClick={() => toggleMenu(item.title)}
+                        className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className="h-5 w-5" />
+                          {item.title}
+                        </div>
+                        <ChevronRight
+                          className={cn("h-4 w-4 transition-transform", isOpen && "rotate-90")}
+                        />
+                      </button>
+
+                      {isOpen && (
+                        <div className="ml-8 mt-1 space-y-1">
+                          {item.children.map((child) => {
+                            // Only show child if user has permission
+                            if (can(child.resource, "view")) {
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  onClick={() => setIsMobileOpen(false)}
+                                  className={cn(
+                                    "block rounded-md px-3 py-2 text-sm transition-colors",
+                                    pathname === child.href
+                                      ? "bg-white/20 font-medium text-white"
+                                      : "text-gray-300 hover:bg-white/10 hover:text-white"
+                                  )}
+                                >
+                                  {child.title}
+                                </Link>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+
+              // For items without children, only show if user has permission
+              if (can(item.resource!, "view")) {
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      isParentActive
+                        ? "bg-white/20 font-medium text-white"
+                        : "text-gray-300 hover:bg-white/10 hover:text-white"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {item.title}
+                  </Link>
+                );
+              }
+
+              return null;
+            })
+          )}
+        </nav>
+      </div>
     </aside>
   );
 }

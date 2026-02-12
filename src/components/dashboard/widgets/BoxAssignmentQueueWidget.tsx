@@ -104,7 +104,7 @@ export function BoxAssignmentQueueWidget() {
             <Package className="h-4 w-4" />
             <span>Items Pending</span>
           </div>
-          <p className="mt-2 text-2xl font-bold">{data.count}</p>
+          <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
         </div>
 
         {/* Queue Items */}
@@ -117,22 +117,22 @@ export function BoxAssignmentQueueWidget() {
                 href={`/purchasing/grns/${item.grnId}/boxes`}
                 className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
               >
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium">{item.grnNumber}</span>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs flex-shrink-0">
                       {item.itemCode}
                     </Badge>
                   </div>
-                  <span className="text-xs text-muted-foreground">{item.itemName}</span>
+                  <span className="text-xs text-muted-foreground truncate">{item.itemName}</span>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Package className="h-3 w-3" />
+                    <Package className="h-3 w-3 flex-shrink-0" />
                     <span>
                       {item.receivedQty} {item.receivedQty === 1 ? "unit" : "units"} received
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <Button size="sm" variant="default">
                     Assign
                   </Button>

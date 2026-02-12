@@ -130,7 +130,7 @@ export function IncomingDeliveriesWidget({
               <Truck className="h-4 w-4" />
               <span>Deliveries</span>
             </div>
-            <span className="text-2xl font-bold text-right text-gray-900">{data.count}</span>
+            <span className="text-xl sm:text-2xl font-bold text-right text-gray-900">{data.count}</span>
           </div>
         </div>
 
@@ -152,30 +152,30 @@ export function IncomingDeliveriesWidget({
                   href={`/purchasing/load-lists/${ll.id}`}
                   className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium">{ll.ll_number}</span>
-                      <Badge variant="outline" className="gap-1">
+                      <Badge variant="outline" className="gap-1 flex-shrink-0">
                         <FileText className="h-3 w-3" />
                         {srCount} {srCount === 1 ? "SR" : "SRs"}
                       </Badge>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate">
                       {ll.supplier?.supplier_name || "Unknown Supplier"}
                     </span>
                     {ll.estimated_arrival_date && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
+                        <Calendar className="h-3 w-3 flex-shrink-0" />
                         <span>
                           ETA: {format(parseISO(ll.estimated_arrival_date), "MMM d, yyyy")}
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
                     {ll.container_number && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground truncate max-w-[120px]">
                         {ll.container_number}
                       </span>
                     )}

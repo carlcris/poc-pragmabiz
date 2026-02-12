@@ -126,7 +126,7 @@ export function TodaysReceivingQueueWidget({
               <PackageCheck className="h-4 w-4" />
               <span>To Receive</span>
             </div>
-            <span className="text-2xl font-bold text-right text-primary">{data.count}</span>
+            <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
           </div>
         </div>
 
@@ -150,17 +150,17 @@ export function TodaysReceivingQueueWidget({
                     isArrived && "border-l-4 border-l-amber-500"
                   )}
                 >
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{item.ll_number}</span>
+                      <span className="text-sm font-medium truncate">{item.ll_number}</span>
                       {isArrived && (
-                        <Badge variant="outline" className="gap-1 text-xs">
+                        <Badge variant="outline" className="gap-1 text-xs flex-shrink-0">
                           <Clock className="h-3 w-3" />
                           Pending
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate">
                       {item.supplier?.supplier_name || "Unknown Supplier"}
                     </span>
                     {item.actual_arrival_date && (
@@ -169,7 +169,7 @@ export function TodaysReceivingQueueWidget({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 flex-shrink-0">
                     <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
                     <Button size="sm" variant={isArrived ? "default" : "outline"}>
                       {isArrived ? (

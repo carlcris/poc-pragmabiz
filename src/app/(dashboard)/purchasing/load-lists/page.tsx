@@ -39,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { LoadListFormDialog } from "@/components/load-lists/LoadListFormDialog";
 import type { LoadList, LoadListStatus } from "@/types/load-list";
 
@@ -174,20 +175,20 @@ export default function LoadListsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Load Lists</h1>
-          <p className="text-muted-foreground">Manage supplier shipments and deliveries</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Load Lists</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage supplier shipments and deliveries</p>
         </div>
-        <Button onClick={handleCreateLL}>
+        <Button onClick={handleCreateLL} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
           Create Load List
         </Button>
       </div>
 
       <div className="space-y-4">
-        <div className="mb-4 flex gap-3">
-          <div className="relative flex-1">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by LL number, container, seal, batch..."
@@ -196,9 +197,9 @@ export default function LoadListsPage() {
               className="pl-8"
             />
           </div>
-          <ClientOnly fallback={<Skeleton className="h-10 w-[200px]" />}>
+          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -215,9 +216,9 @@ export default function LoadListsPage() {
               </SelectContent>
             </Select>
           </ClientOnly>
-          <ClientOnly fallback={<Skeleton className="h-10 w-[200px]" />}>
+          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
             <Select value={supplierFilter} onValueChange={(value) => setSupplierFilter(value)}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
@@ -231,9 +232,9 @@ export default function LoadListsPage() {
               </SelectContent>
             </Select>
           </ClientOnly>
-          <ClientOnly fallback={<Skeleton className="h-10 w-[200px]" />}>
+          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
             <Select value={warehouseFilter} onValueChange={(value) => setWarehouseFilter(value)}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Warehouse" />
               </SelectTrigger>
@@ -309,9 +310,11 @@ export default function LoadListsPage() {
             Error loading load lists. Please try again.
           </div>
         ) : !data?.data || data.data.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No load lists found. Create your first load list to get started.
-          </div>
+          <EmptyStatePanel
+            icon={Package}
+            title="No load lists found"
+            description="Create your first load list to get started."
+          />
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">

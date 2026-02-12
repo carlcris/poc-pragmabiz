@@ -145,22 +145,24 @@ export default function StockRequisitionsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stock Requisitions</h1>
-          <p className="text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">
+            Stock Requisitions
+          </h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">
             Manage stock requisitions for your suppliers
           </p>
         </div>
-        <Button onClick={handleCreateSR}>
+        <Button onClick={handleCreateSR} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          Create Stock Requisition
+          <span className="sm:inline">Create Stock Requisition</span>
         </Button>
       </div>
 
-      <div className="space-y-4">
-        <div className="mb-4 flex gap-3">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -170,9 +172,9 @@ export default function StockRequisitionsPage() {
               className="pl-8"
             />
           </div>
-          <ClientOnly fallback={<Skeleton className="h-10 w-[200px]" />}>
+          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -186,9 +188,9 @@ export default function StockRequisitionsPage() {
               </SelectContent>
             </Select>
           </ClientOnly>
-          <ClientOnly fallback={<Skeleton className="h-10 w-[200px]" />}>
+          <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
             <Select value={supplierFilter} onValueChange={(value) => setSupplierFilter(value)}>
-              <SelectTrigger className="w-[200px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
@@ -205,8 +207,8 @@ export default function StockRequisitionsPage() {
         </div>
 
         {isLoading ? (
-          <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-            <Table>
+          <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-md border">
+            <Table className="min-w-[800px]">
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>SR Number</TableHead>
@@ -265,8 +267,8 @@ export default function StockRequisitionsPage() {
           </div>
         ) : (
           <>
-            <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-              <Table>
+            <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-md border">
+              <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead>SR Number</TableHead>
@@ -322,16 +324,34 @@ export default function StockRequisitionsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewSR(sr)}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewSR(sr)}
+                            className="h-8 w-8 p-0"
+                            aria-label="View"
+                          >
                             <Eye className="h-4 w-4" />
                           </Button>
                           {sr.status === "draft" && (
                             <>
-                              <Button variant="ghost" size="sm" onClick={() => handleEditSR(sr)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditSR(sr)}
+                                className="h-8 w-8 p-0"
+                                aria-label="Edit"
+                              >
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteSR(sr)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteSR(sr)}
+                                className="h-8 w-8 p-0"
+                                aria-label="Delete"
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>

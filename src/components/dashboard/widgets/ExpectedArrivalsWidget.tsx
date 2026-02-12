@@ -140,7 +140,7 @@ export function ExpectedArrivalsWidget({
               <Truck className="h-4 w-4" />
               <span>Total Deliveries</span>
             </div>
-            <span className="text-2xl font-bold text-right text-primary">{data.count}</span>
+            <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
           </div>
         </div>
 
@@ -156,8 +156,8 @@ export function ExpectedArrivalsWidget({
                   dayData.isToday && "border-primary bg-primary/5"
                 )}
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-center">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className="flex flex-col items-center flex-shrink-0">
                     <span className={cn("text-xs font-medium", dayData.isToday && "text-primary")}>
                       {dayData.dayName}
                     </span>
@@ -165,9 +165,9 @@ export function ExpectedArrivalsWidget({
                       {dayData.date}
                     </span>
                   </div>
-                  <div className="h-8 w-px bg-border" />
+                  <div className="h-8 w-px bg-border flex-shrink-0" />
                   {dayData.count > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 min-w-0">
                       {dayData.items.slice(0, 3).map((item) => (
                         <Link
                           key={item.id}
@@ -191,11 +191,11 @@ export function ExpectedArrivalsWidget({
                       )}
                     </div>
                   ) : (
-                    <span className="text-sm text-muted-foreground">No deliveries</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">No deliveries</span>
                   )}
                 </div>
                 {dayData.count > 0 && (
-                  <div className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                  <div className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary flex-shrink-0">
                     {dayData.count}
                   </div>
                 )}

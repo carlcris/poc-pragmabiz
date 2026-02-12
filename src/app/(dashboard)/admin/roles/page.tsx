@@ -29,6 +29,7 @@ import {
 import { RolePermissionsDialog } from "@/components/admin/RolePermissionsDialog";
 import { CreateRoleDialog } from "@/components/admin/CreateRoleDialog";
 import { EditRoleDialog } from "@/components/admin/EditRoleDialog";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
@@ -99,13 +100,13 @@ function RoleManagementContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Role Management</h1>
-          <p className="text-muted-foreground">Manage roles and their permissions</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Role Management</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage roles and their permissions</p>
         </div>
         <CreateGuard resource={RESOURCES.ROLES}>
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
             Create Role
           </Button>
@@ -113,7 +114,7 @@ function RoleManagementContent() {
       </div>
 
       <div className="space-y-4">
-        <div className="relative">
+        <div className="relative w-full">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search roles by name or description..."
@@ -163,7 +164,11 @@ function RoleManagementContent() {
             Error loading roles. Please try again.
           </div>
         ) : filteredRoles.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">No roles found.</div>
+          <EmptyStatePanel
+            icon={Shield}
+            title="No roles found"
+            description="Try adjusting your search terms."
+          />
         ) : (
           <div className="rounded-md border">
             <Table>

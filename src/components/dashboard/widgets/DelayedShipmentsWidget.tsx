@@ -145,7 +145,7 @@ export function DelayedShipmentsWidget({
               <Clock className="h-4 w-4" />
               <span>Overdue Shipments</span>
             </div>
-            <span className="text-2xl font-bold text-right text-destructive">{data.count}</span>
+            <span className="text-xl sm:text-2xl font-bold text-right text-destructive">{data.count}</span>
           </div>
         </div>
 
@@ -164,14 +164,14 @@ export function DelayedShipmentsWidget({
                   item.severity === "medium" && "border-yellow-500/50 bg-yellow-50"
                 )}
               >
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{item.ll_number}</span>
+                    <span className="text-sm font-medium truncate">{item.ll_number}</span>
                     {item.severity === "critical" && (
-                      <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+                      <AlertCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground truncate">
                     {item.supplier?.supplier_name || "Unknown Supplier"}
                   </span>
                   {item.estimated_arrival_date && (
@@ -180,10 +180,10 @@ export function DelayedShipmentsWidget({
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1">
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
                   <div
                     className={cn(
-                      "rounded-full px-2.5 py-1 text-xs font-bold",
+                      "rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap",
                       item.severity === "critical" && "bg-red-600 text-white",
                       item.severity === "high" && "bg-orange-600 text-white",
                       item.severity === "medium" && "bg-yellow-600 text-white"

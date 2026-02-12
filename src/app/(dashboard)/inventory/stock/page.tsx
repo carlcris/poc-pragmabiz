@@ -5,6 +5,7 @@ import {
   Plus,
   Search,
   Filter,
+  Calendar,
   ArrowUpCircle,
   ArrowDownCircle,
   ArrowRightLeft,
@@ -33,6 +34,7 @@ import {
 import { StockTransactionFormDialog } from "@/components/stock/StockTransactionFormDialog";
 import { StockTransactionDetailDialog } from "@/components/stock/StockTransactionDetailDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type { TransactionType } from "@/types/stock-transaction";
 
 export default function StockTransactionsPage() {
@@ -137,20 +139,20 @@ export default function StockTransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Stock Transactions</h1>
-          <p className="text-muted-foreground">Track all inventory movements and adjustments</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Stock Transactions</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Track all inventory movements and adjustments</p>
         </div>
-        <Button onClick={handleCreateTransaction}>
+        <Button onClick={handleCreateTransaction} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
           New Transaction
         </Button>
       </div>
 
       <div className="space-y-4">
-        <div className="mb-4 flex gap-3">
-          <div className="relative flex-1">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search transactions..."
@@ -160,7 +162,7 @@ export default function StockTransactionsPage() {
             />
           </div>
           <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Type" />
             </SelectTrigger>
@@ -233,7 +235,11 @@ export default function StockTransactionsPage() {
             Error loading stock transactions. Please try again.
           </div>
         ) : transactions.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">No stock transactions found.</div>
+          <EmptyStatePanel
+            icon={Calendar}
+            title="No stock transactions found"
+            description="Try adjusting your search or filters."
+          />
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">

@@ -119,7 +119,7 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
             <Ship className="h-4 w-4" />
             <span>In Transit</span>
           </div>
-          <p className="mt-2 text-2xl font-bold">{data.count}</p>
+          <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
         </div>
 
         {/* Containers List */}
@@ -145,18 +145,18 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
                     isOverdue && "border-l-4 border-l-destructive"
                   )}
                 >
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <Container className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{container.containerNumber}</span>
+                      <Container className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">{container.containerNumber}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{container.llNumber}</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground truncate">{container.llNumber}</span>
+                    <span className="text-xs text-muted-foreground truncate">
                       {container.supplierName || "Unknown Supplier"}
                     </span>
                     {eta && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
+                        <Calendar className="h-3 w-3 flex-shrink-0" />
                         <span className={cn(isOverdue && "text-destructive font-medium")}>
                           {isOverdue ? "Overdue: " : "ETA: "}
                           {format(eta, "MMM d, yyyy")}
@@ -164,7 +164,7 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
                       </div>
                     )}
                   </div>
-                  <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
+                  <Badge className={cn(statusConfig.className, "flex-shrink-0")}>{statusConfig.label}</Badge>
                 </Link>
               );
             })}

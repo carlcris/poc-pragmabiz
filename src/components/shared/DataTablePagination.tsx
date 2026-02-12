@@ -70,11 +70,11 @@ export function DataTablePagination({
   };
 
   return (
-    <div className="flex items-center justify-between px-2">
-      <div className="flex items-center space-x-6 lg:space-x-8">
+    <div className="flex flex-col gap-2 px-1 md:gap-3 md:px-2 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-1 text-center md:gap-2 md:flex-row md:items-center md:space-x-6 lg:space-x-8 md:text-left">
         {onPageSizeChange && (
-          <div className="flex items-center space-x-2">
-            <p className="text-sm font-medium">Rows per page</p>
+          <div className="flex items-center justify-center space-x-2 md:justify-start">
+            <p className="text-xs md:text-sm font-medium">Rows per page</p>
             <Select
               value={`${pageSize}`}
               onValueChange={(value) => {
@@ -82,7 +82,7 @@ export function DataTablePagination({
                 onPageChange(1); // Reset to first page when changing page size
               }}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger className="h-7 w-[60px] md:h-8 md:w-[70px]">
                 <SelectValue placeholder={pageSize} />
               </SelectTrigger>
               <SelectContent side="top">
@@ -95,14 +95,14 @@ export function DataTablePagination({
             </Select>
           </div>
         )}
-        <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+        <div className="flex items-center justify-center text-xs md:text-sm font-medium md:w-[100px]">
           Page {currentPage} of {totalPages}
         </div>
-        <div className="text-sm text-muted-foreground">
+        <div className="hidden md:block text-sm text-muted-foreground">
           Showing {startItem} to {endItem} of {totalItems} items
         </div>
       </div>
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-center space-x-1 md:space-x-2">
         <Button
           variant="outline"
           className="hidden h-8 w-8 p-0 lg:flex"
@@ -114,12 +114,12 @@ export function DataTablePagination({
         </Button>
         <Button
           variant="outline"
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0 md:h-8 md:w-8"
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
           <span className="sr-only">Go to previous page</span>
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-3 w-3 md:h-4 md:w-4" />
         </Button>
 
         {/* Page Numbers */}
@@ -127,7 +127,7 @@ export function DataTablePagination({
           {getPageNumbers().map((pageNum, idx) => {
             if (pageNum === "...") {
               return (
-                <span key={`ellipsis-${idx}`} className="px-2 text-sm text-muted-foreground">
+                <span key={`ellipsis-${idx}`} className="px-1 md:px-2 text-xs md:text-sm text-muted-foreground">
                   ...
                 </span>
               );
@@ -136,7 +136,7 @@ export function DataTablePagination({
               <Button
                 key={pageNum}
                 variant={currentPage === pageNum ? "default" : "outline"}
-                className="h-8 w-8 p-0"
+                className="h-7 w-7 p-0 text-xs md:h-8 md:w-8 md:text-sm"
                 onClick={() => onPageChange(pageNum as number)}
               >
                 {pageNum}
@@ -147,12 +147,12 @@ export function DataTablePagination({
 
         <Button
           variant="outline"
-          className="h-8 w-8 p-0"
+          className="h-7 w-7 p-0 md:h-8 md:w-8"
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
           <span className="sr-only">Go to next page</span>
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-3 w-3 md:h-4 md:w-4" />
         </Button>
         <Button
           variant="outline"

@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type { GRN, GRNStatus } from "@/types/grn";
 
 export default function GRNsPage() {
@@ -129,16 +130,16 @@ export default function GRNsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Goods Receipt Notes</h1>
-          <p className="text-muted-foreground">Manage warehouse receiving and stock entry</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Goods Receipt Notes</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage warehouse receiving and stock entry</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="mb-4 flex gap-3">
-          <div className="relative flex-1">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by GRN number, container, seal number..."
@@ -148,7 +149,7 @@ export default function GRNsPage() {
             />
           </div>
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -163,7 +164,7 @@ export default function GRNsPage() {
             </SelectContent>
           </Select>
           <Select value={warehouseFilter} onValueChange={(value) => setWarehouseFilter(value)}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Warehouse" />
             </SelectTrigger>
@@ -237,9 +238,11 @@ export default function GRNsPage() {
             Error loading GRNs. Please try again.
           </div>
         ) : !data?.data || data.data.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No GRNs found. GRNs are automatically created when load lists arrive.
-          </div>
+          <EmptyStatePanel
+            icon={Package}
+            title="No GRNs found"
+            description="GRNs are automatically created when load lists arrive."
+          />
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">

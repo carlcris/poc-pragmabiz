@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { UserRolesDialog } from "@/components/admin/UserRolesDialog";
 import { UserPermissionsDialog } from "@/components/admin/UserPermissionsDialog";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
 
@@ -85,16 +86,16 @@ function UserManagementContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground">Manage users and assign roles</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">User Management</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage users and assign roles</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search users by email, username, or name..."
@@ -103,11 +104,12 @@ function UserManagementContent() {
               className="pl-8"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:gap-2">
             <Button
               variant={statusFilter === "all" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("all")}
+              className="w-full sm:w-auto"
             >
               All ({users.length})
             </Button>
@@ -115,6 +117,7 @@ function UserManagementContent() {
               variant={statusFilter === "active" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("active")}
+              className="w-full sm:w-auto"
             >
               Active ({users.filter((u) => u.is_active).length})
             </Button>
@@ -122,6 +125,7 @@ function UserManagementContent() {
               variant={statusFilter === "inactive" ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter("inactive")}
+              className="w-full sm:w-auto"
             >
               Inactive ({users.filter((u) => !u.is_active).length})
             </Button>
@@ -168,7 +172,11 @@ function UserManagementContent() {
             Error loading users. Please try again.
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">No users found.</div>
+          <EmptyStatePanel
+            icon={UserCheck}
+            title="No users found"
+            description="Try adjusting your search or filters."
+          />
         ) : (
           <div className="rounded-md border">
             <Table>

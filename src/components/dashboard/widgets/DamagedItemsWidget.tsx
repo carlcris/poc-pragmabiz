@@ -127,25 +127,25 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
         )}
 
         {/* KPI Summary */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-lg border bg-muted/50 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <AlertTriangle className="h-4 w-4" />
               <span>Count</span>
             </div>
-            <p className="mt-2 text-2xl font-bold text-destructive">{data.count}</p>
+            <p className="mt-2 text-xl sm:text-2xl font-bold text-destructive">{data.count}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-4">
+          <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TrendingDown className="h-4 w-4" />
               <span>Total Value</span>
             </div>
-            <p className="mt-2 text-2xl font-bold text-destructive">{formatCurrency(data.totalValue)}</p>
+            <p className="mt-2 text-xl sm:text-2xl font-bold text-destructive">{formatCurrency(data.totalValue)}</p>
           </div>
         </div>
 
         {/* Charts */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
           {/* By Supplier Pie Chart */}
           {topSuppliers.length > 0 && (
             <div className="space-y-2">

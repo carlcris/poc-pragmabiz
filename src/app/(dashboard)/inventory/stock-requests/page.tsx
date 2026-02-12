@@ -81,6 +81,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -551,20 +552,20 @@ export default function StockRequestsPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Stock Requests</h1>
-            <p className="text-muted-foreground">Manage stock requests and fulfillment workflow</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Stock Requests</h1>
+            <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage stock requests and fulfillment workflow</p>
           </div>
-          <Button onClick={handleCreateRequest}>
+          <Button onClick={handleCreateRequest} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
             Create Request
           </Button>
         </div>
 
         <div className="space-y-4">
-          <div className="mb-4 flex gap-3">
-            <div className="relative flex-1">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <div className="relative w-full sm:flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search stock requests..."
@@ -574,7 +575,7 @@ export default function StockRequestsPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -591,7 +592,7 @@ export default function StockRequestsPage() {
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={handlePriorityFilterChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
@@ -671,9 +672,11 @@ export default function StockRequestsPage() {
               Error loading stock requests. Please try again.
             </div>
           ) : requests.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              No stock requests found. Create your first request to get started.
-            </div>
+            <EmptyStatePanel
+              icon={Package}
+              title="No stock requests found"
+              description="Create your first request to get started."
+            />
           ) : (
             <>
               <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">

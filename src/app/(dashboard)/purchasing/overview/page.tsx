@@ -45,21 +45,21 @@ export default function PurchasingOverviewPage() {
   const warehouseId = selectedWarehouse === "all" ? undefined : selectedWarehouse;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-6 w-6 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
+            <LayoutDashboard className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Overview</h1>
           </div>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground">
             Strategic and operational overview of purchasing
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue placeholder="All Warehouses" />
             </SelectTrigger>
@@ -73,7 +73,7 @@ export default function PurchasingOverviewPage() {
             </SelectContent>
           </Select>
 
-          <Button onClick={handleRefresh} variant="outline" size="sm">
+          <Button onClick={handleRefresh} variant="outline" size="sm" className="w-full sm:w-auto">
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
@@ -81,16 +81,16 @@ export default function PurchasingOverviewPage() {
       </div>
 
       {/* Owner Overview */}
-      <section className="space-y-4">
+      <section className="space-y-3 sm:space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Owner Overview</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-lg sm:text-xl font-semibold">Owner Overview</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Executive indicators for purchasing health
             </p>
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
           <OutstandingRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
           <DamagedItemsWidget businessUnitId={currentBusinessUnit?.id} />
           <ExpectedArrivalsWidget businessUnitId={currentBusinessUnit?.id} />
@@ -99,14 +99,14 @@ export default function PurchasingOverviewPage() {
       </section>
 
       {/* Warehouse Operations */}
-      <section className="space-y-4">
+      <section className="space-y-3 sm:space-y-4">
         <div>
-          <h2 className="text-xl font-semibold">Warehouse Operations</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-lg sm:text-xl font-semibold">Warehouse Operations</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Live operational queues and capacity status
           </p>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           <TodaysReceivingQueueWidget warehouseId={warehouseId} businessUnitId={currentBusinessUnit?.id} />
           <PendingApprovalsWidget />
           <BoxAssignmentQueueWidget />
@@ -119,8 +119,8 @@ export default function PurchasingOverviewPage() {
       </section>
 
       {/* Footer Info */}
-      <div className="rounded-lg border bg-muted/50 p-4 text-center">
-        <p className="text-sm text-muted-foreground">
+      <div className="rounded-lg border bg-muted/50 p-3 sm:p-4 text-center">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Dashboard auto-refreshes every 2-5 minutes depending on the widget. Click refresh for
           immediate updates.
         </p>

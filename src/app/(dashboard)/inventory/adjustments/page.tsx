@@ -67,6 +67,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -458,20 +459,20 @@ export default function StockAdjustmentsPage() {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Stock Adjustments</h1>
-            <p className="text-muted-foreground">Manage stock corrections and adjustments</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Stock Adjustments</h1>
+            <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage stock corrections and adjustments</p>
           </div>
-          <Button onClick={handleCreateAdjustment}>
+          <Button onClick={handleCreateAdjustment} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
             Create Adjustment
           </Button>
         </div>
 
         <div className="space-y-4">
-          <div className="mb-4 flex gap-3">
-            <div className="relative flex-1">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+            <div className="relative w-full sm:flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search adjustments..."
@@ -481,7 +482,7 @@ export default function StockAdjustmentsPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -495,7 +496,7 @@ export default function StockAdjustmentsPage() {
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
@@ -571,9 +572,11 @@ export default function StockAdjustmentsPage() {
               Error loading stock adjustments. Please try again.
             </div>
           ) : adjustments.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              No stock adjustments found. Create your first adjustment to get started.
-            </div>
+            <EmptyStatePanel
+              icon={Calculator}
+              title="No stock adjustments found"
+              description="Create your first adjustment to get started."
+            />
           ) : (
             <>
               <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">

@@ -113,6 +113,12 @@ function ItemsPageContent() {
   );
 
   useEffect(() => {
+    // Always mark as resolved once we have warehouses data
+    if (warehouses.length > 0) {
+      setIsWarehouseAutoResolved(true);
+    }
+
+    // Only auto-select warehouse if we have a business unit and no manual selection
     if (!currentBusinessUnit || warehouseFilter !== "all" || warehouses.length === 0) {
       return;
     }
@@ -130,8 +136,6 @@ function ItemsPageContent() {
       setPage(1);
       lastAutoSetBuId.current = currentBusinessUnit.id;
     }
-
-    setIsWarehouseAutoResolved(true);
   }, [currentBusinessUnit, warehouseFilter, warehouses]);
 
   useEffect(() => {
@@ -306,26 +310,26 @@ function ItemsPageContent() {
   };
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Inventory Master</h1>
-          <p className="text-muted-foreground">Manage items with real-time stock levels</p>
+    <div className="flex flex-col gap-2 sm:gap-4 md:gap-6 md:h-full">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Inventory Master</h1>
+          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage items with real-time stock levels</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExportCSV}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+          <Button variant="outline" onClick={handleExportCSV} className="w-full sm:w-auto flex-shrink-0">
             <Download className="mr-2 h-4 w-4" />
-            Export CSV
+            <span className="sm:inline">Export CSV</span>
           </Button>
-          <Button onClick={handleCreateItem}>
+          <Button onClick={handleCreateItem} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
-            Create Item
+            <span className="sm:inline">Create Item</span>
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 grid-cols-2 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
         {isInitialLoading ? (
           <>
             {[1, 2, 3, 4].map((i) => (
@@ -382,13 +386,13 @@ function ItemsPageContent() {
                     : undefined
                 }
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <Icon className={`h-4 w-4 ${stat.iconColor}`} />
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
+                  <CardTitle className="text-xs md:text-sm font-medium">{stat.title}</CardTitle>
+                  <Icon className={`h-3 w-3 md:h-4 md:w-4 ${stat.iconColor}`} />
                 </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                <CardContent className="pb-3 md:pb-6">
+                  <div className="text-lg md:text-2xl font-bold">{stat.value}</div>
+                  <p className="text-[10px] md:text-xs text-muted-foreground">{stat.description}</p>
                 </CardContent>
               </Card>
             );
@@ -396,10 +400,10 @@ function ItemsPageContent() {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
+      <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 md:min-h-0 md:flex-1">
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 lg:flex-nowrap">
-          <div className="relative min-w-[220px] flex-1">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by item code or name..."
@@ -417,7 +421,7 @@ function ItemsPageContent() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Category" />
             </SelectTrigger>
@@ -437,7 +441,7 @@ function ItemsPageContent() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Warehouse" />
             </SelectTrigger>
@@ -457,7 +461,7 @@ function ItemsPageContent() {
               setPage(1);
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -473,9 +477,9 @@ function ItemsPageContent() {
         </div>
 
         {/* Table */}
-        <div className="min-h-0 flex-1">
+        <div className="md:min-h-0 md:flex-1">
           {isInitialLoading || isFetching ? (
-            <div className="h-full overflow-y-auto overscroll-contain rounded-md border">
+            <div className="h-[200px] md:h-full overflow-y-auto overscroll-contain rounded-md border">
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
@@ -527,7 +531,7 @@ function ItemsPageContent() {
               </Table>
             </div>
           ) : error ? (
-            <div className="flex h-full items-center justify-center text-center">
+            <div className="flex h-[200px] md:h-full items-center justify-center text-center">
               <div>
                 <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
                 <h3 className="mb-2 text-lg font-semibold text-destructive">Error Loading Items</h3>
@@ -542,11 +546,11 @@ function ItemsPageContent() {
               </div>
             </div>
           ) : items.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
+            <div className="flex h-[200px] md:h-full items-center justify-center text-muted-foreground">
               No items found. Create your first item to get started.
             </div>
           ) : (
-            <div className="h-full overflow-auto overscroll-contain rounded-md border">
+            <div className="h-[200px] md:h-full overflow-auto overscroll-contain rounded-md border">
               <Table containerClassName="min-w-[1100px] overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
@@ -625,7 +629,7 @@ function ItemsPageContent() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <EditGuard resource={RESOURCES.ITEMS}>
-                            <Button variant="ghost" size="sm" onClick={() => handleEditItem(item)}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditItem(item)} aria-label="Edit">
                               <Pencil className="h-4 w-4" />
                             </Button>
                           </EditGuard>
@@ -633,8 +637,10 @@ function ItemsPageContent() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="h-8 w-8 p-0"
                               onClick={() => handleDeleteItem(item)}
                               disabled={deleteItem.isPending}
+                              aria-label="Delete"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -650,7 +656,7 @@ function ItemsPageContent() {
         </div>
 
         {pagination && pagination.total > 0 && (
-          <div className="shrink-0">
+          <div className="shrink-0 sticky bottom-0 z-10 rounded-md border bg-card p-2 shadow-lg md:static md:shadow-none">
             <DataTablePagination
               currentPage={page}
               totalPages={pagination.totalPages}

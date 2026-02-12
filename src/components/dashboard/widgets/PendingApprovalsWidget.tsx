@@ -135,7 +135,7 @@ export function PendingApprovalsWidget() {
               <CheckCircle className="h-4 w-4" />
               <span>Awaiting Approval</span>
             </div>
-            <span className="text-2xl font-bold text-right text-primary">{data.count}</span>
+            <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
           </div>
         </div>
 
@@ -155,14 +155,14 @@ export function PendingApprovalsWidget() {
                     grn.isOverdue && "border-l-4 border-l-destructive bg-destructive/5"
                   )}
                 >
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{grn.grn_number}</span>
-                      {grn.isOverdue && <AlertCircle className="h-4 w-4 text-destructive" />}
+                      <span className="text-sm font-medium truncate">{grn.grn_number}</span>
+                      {grn.isOverdue && <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />}
                     </div>
-                    <span className="text-xs text-muted-foreground">Load List: {llNumber}</span>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
+                    <span className="text-xs text-muted-foreground truncate">Load List: {llNumber}</span>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+                      <Clock className="h-3 w-3 flex-shrink-0" />
                       <span>{grn.timeAgo}</span>
                       {grn.hoursPending > 0 && (
                         <span className="text-muted-foreground/70">
@@ -171,10 +171,10 @@ export function PendingApprovalsWidget() {
                       )}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 flex-shrink-0">
                     <Badge
                       variant={grn.isOverdue ? "destructive" : "secondary"}
-                      className="justify-center"
+                      className="justify-center whitespace-nowrap"
                     >
                       {grn.isOverdue ? "Overdue" : "Pending"}
                     </Badge>
