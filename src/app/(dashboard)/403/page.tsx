@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { RESOURCE_METADATA } from "@/constants/resources";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -8,7 +9,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
 
-export default function AccessDeniedPage() {
+function AccessDeniedContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { permissions, isLoading: permissionsLoading } = usePermissions();
@@ -181,5 +182,13 @@ export default function AccessDeniedPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AccessDeniedPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-4rem)] bg-gray-50" />}>
+      <AccessDeniedContent />
+    </Suspense>
   );
 }

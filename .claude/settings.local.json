@@ -75,7 +75,9 @@
       "Bash(for file in /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/cancel/route.ts /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/submit/route.ts /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/reject/route.ts /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/complete/route.ts /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/ready-for-pick/route.ts /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/approve/route.ts /Users/carl/workspace/react-app/poc-pragmabiz/app/src/app/api/stock-requests/[id]/picked/route.ts)",
       "Read(//Users/carl/Downloads/**)",
       "Bash(tail:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(xargs basename:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

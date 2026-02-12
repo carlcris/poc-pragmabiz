@@ -44,7 +44,7 @@ import type { ItemDialogMode } from "@/components/items/ItemFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
-import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
+import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items-enhanced/route";
 import type { Item } from "@/types/item";

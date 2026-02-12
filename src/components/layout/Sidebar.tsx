@@ -82,6 +82,11 @@ const menuItems = [
     href: "/purchasing",
     children: [
       {
+        title: "Overview",
+        href: "/purchasing/overview",
+        resource: RESOURCES.DASHBOARD as Resource,
+      },
+      {
         title: "Suppliers",
         href: "/purchasing/suppliers",
         resource: RESOURCES.SUPPLIERS as Resource,
@@ -205,7 +210,10 @@ export function Sidebar() {
         <BusinessUnitSwitcher />
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-6">
+      <nav
+        className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 pb-6"
+        suppressHydrationWarning
+      >
         {!shouldShowMenu ? (
           <div className="animate-pulse space-y-2 py-4">
             {/* Skeleton loader for menu items */}

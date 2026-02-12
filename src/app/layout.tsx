@@ -11,6 +11,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Achlers Integrated Sales - Inventory Management System",
   description: "Enterprise Resource Planning System for Sales and Inventory Management",
+  icons: {
+    icon: "/achlers_circle.png",
+    shortcut: "/achlers_circle.png",
+    apple: "/achlers_circle.png",
+  },
 };
 
 export default function RootLayout({

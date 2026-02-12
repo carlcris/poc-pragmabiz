@@ -9,6 +9,7 @@ import { StockMovementsList } from "@/components/warehouse-dashboard/StockMoveme
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ClientOnly } from "@/components/shared/ClientOnly";
 
 export default function WarehouseDashboardPage() {
   const { data, isLoading, error, refetch } = useWarehouseDashboard();
@@ -83,16 +84,31 @@ export default function WarehouseDashboardPage() {
       />
 
       {/* Operational Queue - Tabs */}
-      <OperationalQueueTabs
-        queues={
-          data?.queues || {
-            pick_list: [],
-            incoming_deliveries: [],
-            stock_requests: [],
-          }
+      <ClientOnly
+        fallback={
+          <div className="rounded-lg border bg-background p-6">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded-full" />
+              <Skeleton className="h-5 w-40" />
+            </div>
+            <div className="mt-4 space-y-3">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
         }
-        isLoading={isLoading}
-      />
+      >
+        <OperationalQueueTabs
+          queues={
+            data?.queues || {
+              pick_list: [],
+              incoming_deliveries: [],
+              stock_requests: [],
+            }
+          }
+          isLoading={isLoading}
+        />
+      </ClientOnly>
 
       {/* Last 5 Stock Movements */}
       <StockMovementsList movements={data?.last_stock_movements || []} isLoading={isLoading} />
