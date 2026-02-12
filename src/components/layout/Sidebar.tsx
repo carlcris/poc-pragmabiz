@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
 import { usePermissions } from "@/hooks/usePermissions";
 import { RESOURCES } from "@/constants/resources";
+import { useSidebarStore } from "@/stores/sidebarStore";
 import type { Resource } from "@/constants/resources";
 
 const menuItems = [
@@ -171,6 +172,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const isOpen = useSidebarStore((state) => state.isOpen);
   const { can, isLoading: permissionsLoading, permissions } = usePermissions();
 
   const toggleMenu = (title: string) => {
@@ -186,7 +188,11 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex w-full flex-col border-b border-gray-800 md:min-h-screen md:w-64 md:border-b-0 md:border-r"
+      className={cn(
+        "flex w-full flex-col border-b border-gray-800 transition-all duration-300",
+        "md:min-h-screen md:border-b-0 md:border-r",
+        isOpen ? "md:w-64" : "md:w-0 md:overflow-hidden"
+      )}
       style={{ backgroundColor: "#240032" }}
     >
       <div className="border-b border-white/10 p-4 md:p-6">

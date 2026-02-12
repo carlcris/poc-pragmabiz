@@ -175,8 +175,8 @@ export default function ReorderManagementPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Reorder Management</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Reorder Management</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Monitor stock levels, manage reorder suggestions, and configure automated restocking
         </p>
       </div>

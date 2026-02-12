@@ -50,10 +50,10 @@ export default function PurchasingOverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Overview</h1>
+            <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Overview</h1>
           </div>
-          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-muted-foreground">
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
             Strategic and operational overview of purchasing
           </p>
         </div>
@@ -82,14 +82,6 @@ export default function PurchasingOverviewPage() {
 
       {/* Owner Overview */}
       <section className="space-y-3 sm:space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold">Owner Overview</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Executive indicators for purchasing health
-            </p>
-          </div>
-        </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
           <OutstandingRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
           <DamagedItemsWidget businessUnitId={currentBusinessUnit?.id} />

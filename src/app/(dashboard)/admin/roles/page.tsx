@@ -102,8 +102,8 @@ function RoleManagementContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Role Management</h1>
-          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage roles and their permissions</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Role Management</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage roles and their permissions</p>
         </div>
         <CreateGuard resource={RESOURCES.ROLES}>
           <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">

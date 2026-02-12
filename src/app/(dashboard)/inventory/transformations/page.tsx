@@ -85,8 +85,8 @@ export default function TransformationOrdersPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">{t.transformation.transformationOrder}s</h1>
-          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">{t.transformation.manageMaterialTransformations}</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t.transformation.transformationOrder}s</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t.transformation.manageMaterialTransformations}</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
           <Button variant="outline" asChild className="w-full sm:w-auto">

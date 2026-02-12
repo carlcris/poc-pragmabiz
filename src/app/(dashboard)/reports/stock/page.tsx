@@ -85,8 +85,8 @@ export default function StockReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Stock Reports</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Stock Reports</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Comprehensive inventory reports for movement and valuation analysis
         </p>
       </div>

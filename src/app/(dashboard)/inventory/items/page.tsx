@@ -313,8 +313,8 @@ function ItemsPageContent() {
     <div className="flex flex-col gap-2 sm:gap-4 md:gap-6 md:h-full">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Inventory Master</h1>
-          <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage items with real-time stock levels</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Inventory Master</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage items with real-time stock levels</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
           <Button variant="outline" onClick={handleExportCSV} className="w-full sm:w-auto flex-shrink-0">

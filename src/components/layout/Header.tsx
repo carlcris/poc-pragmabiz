@@ -1,34 +1,47 @@
 "use client";
 
-import { useAuthStore } from "@/stores/authStore";
+import { Menu } from "lucide-react";
+import { useSidebarStore } from "@/stores/sidebarStore";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { CurrencySwitcher } from "@/components/shared/CurrencySwitcher";
 import { NotificationsMenu } from "@/components/notifications/NotificationsMenu";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { Breadcrumb } from "@/components/layout/Breadcrumb";
 import { ClientOnly } from "@/components/shared/ClientOnly";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 export function Header() {
-  const user = useAuthStore((state) => state.user);
+  const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
 
   return (
-    <header className="flex h-14 sm:h-16 items-center justify-between border-b border-border bg-background px-4 sm:px-6">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <h2 className="text-sm sm:text-lg font-semibold truncate">
-          Welcome, {user?.name || "User"}
-        </h2>
-      </div>
-
-      <div className="flex items-center gap-2 sm:gap-4">
-        <div className="hidden sm:flex items-center gap-4">
-          <LanguageSwitcher />
-          <CurrencySwitcher />
+    <header className="border-b border-border bg-background">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+        {/* Left: Menu Toggle + Breadcrumb */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="flex-shrink-0 h-8 w-8 sm:h-9 sm:w-9"
+            aria-label="Toggle sidebar"
+          >
+            <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+          <Breadcrumb />
         </div>
-        <ClientOnly fallback={<Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />}>
-          <NotificationsMenu />
-        </ClientOnly>
 
-        <UserMenu />
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-4">
+            <LanguageSwitcher />
+            <CurrencySwitcher />
+          </div>
+          <ClientOnly fallback={<Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />}>
+            <NotificationsMenu />
+          </ClientOnly>
+          <UserMenu />
+        </div>
       </div>
     </header>
   );

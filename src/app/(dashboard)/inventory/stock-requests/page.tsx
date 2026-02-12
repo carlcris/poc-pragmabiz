@@ -554,8 +554,8 @@ export default function StockRequestsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl md:text-3xl whitespace-nowrap">Stock Requests</h1>
-            <p className="text-sm text-muted-foreground sm:text-base whitespace-nowrap">Manage stock requests and fulfillment workflow</p>
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Stock Requests</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage stock requests and fulfillment workflow</p>
           </div>
           <Button onClick={handleCreateRequest} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
