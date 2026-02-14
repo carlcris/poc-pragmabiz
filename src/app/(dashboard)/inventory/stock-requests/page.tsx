@@ -100,8 +100,8 @@ const requestFormSchema = z
   .object({
     request_date: z.string().min(1, "Request date is required"),
     required_date: z.string().min(1, "Required date is required"),
-    from_location_id: z.string().min(1, "From location is required"),
-    to_location_id: z.string().optional(),
+    from_location_id: z.string().min(1, "Requested by is required"),
+    to_location_id: z.string().min(1, "Requested to is required"),
     priority: z.enum(["low", "normal", "high", "urgent"]),
     purpose: z.string().optional(),
     notes: z.string().optional(),
@@ -110,7 +110,7 @@ const requestFormSchema = z
     if (values.to_location_id && values.to_location_id === values.from_location_id) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "To location must be different from from location",
+        message: "Requested to must be different from requested by",
         path: ["to_location_id"],
       });
     }
@@ -614,8 +614,8 @@ export default function StockRequestsPage() {
                     <TableHead>Request #</TableHead>
                     <TableHead>Request Date</TableHead>
                     <TableHead>Required Date</TableHead>
-                    <TableHead>From Location</TableHead>
-                    <TableHead>To Location</TableHead>
+                    <TableHead>Requested By</TableHead>
+                    <TableHead>Requested To</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     {!hasAnyActions && <TableHead>Received</TableHead>}
@@ -686,8 +686,8 @@ export default function StockRequestsPage() {
                       <TableHead>Request #</TableHead>
                       <TableHead>Request Date</TableHead>
                       <TableHead>Required Date</TableHead>
-                      <TableHead>From Location</TableHead>
-                      <TableHead>To Location</TableHead>
+                      <TableHead>Requested By</TableHead>
+                      <TableHead>Requested To</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
                       {!hasAnyActions && <TableHead>Received</TableHead>}
@@ -883,7 +883,9 @@ export default function StockRequestsPage() {
                         name="request_date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Request Date</FormLabel>
+                            <FormLabel className="text-xs">
+                              Request Date<span className="ml-0.5 text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input type="date" {...field} className="h-9" />
                             </FormControl>
@@ -897,7 +899,9 @@ export default function StockRequestsPage() {
                         name="required_date"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Required Date</FormLabel>
+                            <FormLabel className="text-xs">
+                              Required Date<span className="ml-0.5 text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input type="date" {...field} className="h-9" />
                             </FormControl>
@@ -911,7 +915,9 @@ export default function StockRequestsPage() {
                         name="priority"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Priority</FormLabel>
+                            <FormLabel className="text-xs">
+                              Priority<span className="ml-0.5 text-destructive">*</span>
+                            </FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="h-9">
@@ -936,11 +942,13 @@ export default function StockRequestsPage() {
                           name="from_location_id"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs">From Location</FormLabel>
+                              <FormLabel className="text-xs">
+                                Requested By<span className="ml-0.5 text-destructive">*</span>
+                              </FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select from location" />
+                                    <SelectValue placeholder="Select requested by" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -961,11 +969,13 @@ export default function StockRequestsPage() {
                           name="to_location_id"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs">To Location</FormLabel>
+                              <FormLabel className="text-xs">
+                                Requested To<span className="ml-0.5 text-destructive">*</span>
+                              </FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select to location (optional)" />
+                                    <SelectValue placeholder="Select requested to" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>

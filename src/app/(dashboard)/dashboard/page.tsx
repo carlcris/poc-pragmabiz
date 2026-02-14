@@ -2,6 +2,7 @@
 
 import { Package, ClipboardList, TruckIcon } from "lucide-react";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
+import { useLoadLists } from "@/hooks/useLoadLists";
 import { useAuthStore } from "@/stores/authStore";
 import { SummaryCard } from "@/components/warehouse-dashboard/SummaryCard";
 import { InventoryHealthPanel } from "@/components/warehouse-dashboard/InventoryHealthPanel";
@@ -16,14 +17,21 @@ import { ClientOnly } from "@/components/shared/ClientOnly";
 const getGreeting = () => {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
+  if (hour === 12) return "Good noon"
   if (hour < 18) return "Good afternoon";
   return "Good evening";
 };
 
 export default function WarehouseDashboardPage() {
   const { data, isLoading, error, refetch } = useWarehouseDashboard();
+  const { data: inTransitLoadLists, isLoading: incomingShipmentsLoading } = useLoadLists({
+    status: "in_transit",
+    page: 1,
+    limit: 1,
+  });
   const user = useAuthStore((state) => state.user);
   const greeting = getGreeting();
+  const incomingShipmentsCount = inTransitLoadLists?.pagination.total || 0;
 
   if (error) {
     return (
@@ -64,12 +72,12 @@ export default function WarehouseDashboardPage() {
         ) : (
           <>
             <SummaryCard
-              title="Pending Receipts"
-              count={data?.summary.incoming_deliveries_today || 0}
-              subtitle="Open"
+              title="Incoming Shipments"
+              count={incomingShipmentsLoading ? 0 : incomingShipmentsCount}
+              subtitle="In Transit"
               icon={TruckIcon}
               iconColor="text-blue-600"
-              href="/purchase-orders"
+              href="/purchasing/load-lists"
             />
             <SummaryCard
               title="Stock Requests"
@@ -77,7 +85,7 @@ export default function WarehouseDashboardPage() {
               subtitle="Pending"
               icon={ClipboardList}
               iconColor="text-orange-600"
-              href="/stock-requests?filter=pending"
+              href="/inventory/stock-requests"
             />
             <SummaryCard
               title="Pick List"
@@ -85,7 +93,7 @@ export default function WarehouseDashboardPage() {
               subtitle="To Pick"
               icon={Package}
               iconColor="text-green-600"
-              href="/stock-requests?filter=to_pick"
+              href="/inventory/stock-requests"
             />
           </>
         )}

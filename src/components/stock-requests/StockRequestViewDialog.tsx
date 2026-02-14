@@ -84,7 +84,7 @@ export function StockRequestViewDialog({
           <div className="grid grid-cols-2 gap-6 text-sm">
             <div className="space-y-3">
               <div>
-                <span className="text-muted-foreground">From Location:</span>
+                <span className="text-muted-foreground">Requested By:</span>
                 <div className="font-medium">
                   {request.from_location?.warehouse_code
                     ? `${request.from_location.warehouse_code} - ${request.from_location.warehouse_name}`
@@ -92,7 +92,7 @@ export function StockRequestViewDialog({
                 </div>
               </div>
               <div>
-                <span className="text-muted-foreground">To Location:</span>
+                <span className="text-muted-foreground">Requested To:</span>
                 <div className="font-medium">
                   {request.to_location?.warehouse_code
                     ? `${request.to_location.warehouse_code} - ${request.to_location.warehouse_name}`

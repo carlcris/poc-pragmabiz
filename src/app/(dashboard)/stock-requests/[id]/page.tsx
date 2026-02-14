@@ -199,7 +199,7 @@ export default function StockRequestDetailPage() {
                     <div>{getStatusLabel(request.status)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">From Location:</span>
+                    <span className="text-muted-foreground">Requested By:</span>
                     <div className="font-medium">
                       {request.from_location?.warehouse_code
                         ? `${request.from_location.warehouse_code} - ${request.from_location.warehouse_name}`
@@ -207,7 +207,7 @@ export default function StockRequestDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">To Location:</span>
+                    <span className="text-muted-foreground">Requested To:</span>
                     <div className="font-medium">
                       {request.to_location?.warehouse_code
                         ? `${request.to_location.warehouse_code} - ${request.to_location.warehouse_name}`

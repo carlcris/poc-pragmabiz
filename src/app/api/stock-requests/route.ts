@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     const toLocationId = body.to_location_id;
 
     // Validate required fields
-    if (!body.request_date || !body.required_date || !fromLocationId || !body.priority) {
+    if (!body.request_date || !body.required_date || !fromLocationId || !toLocationId || !body.priority) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
         request_date: body.request_date,
         required_date: body.required_date,
         source_warehouse_id: fromLocationId,
-        destination_warehouse_id: toLocationId ?? null,
+        destination_warehouse_id: toLocationId,
         department: body.department || null,
         status: "draft",
         priority: body.priority,

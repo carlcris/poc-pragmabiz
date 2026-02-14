@@ -96,7 +96,7 @@ export interface CreateStockRequestPayload {
   request_date: string;
   required_date: string;
   from_location_id: string;
-  to_location_id?: string;
+  to_location_id: string;
   department?: string;
   priority: StockRequestPriority;
   purpose?: string;
