@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -65,9 +65,16 @@ export function StockRequestLineItemDialog({
   item,
   mode = "add",
 }: StockRequestLineItemDialogProps) {
-  const { data: itemsData } = useItems({ limit: 1000, includeStock: true });
-  const items = itemsData?.data || [];
   const [itemOpen, setItemOpen] = useState(false);
+  const [itemSearchInput, setItemSearchInput] = useState("");
+  const [itemSearch, setItemSearch] = useState("");
+  const { data: itemsData, isLoading: isItemsLoading, isFetching: isItemsFetching } = useItems({
+    limit: 5,
+    includeStock: true,
+    search: itemSearch || undefined,
+    enabled: open && itemOpen,
+  });
+  const items = itemsData?.data || [];
 
   const form = useForm<StockRequestLineItemFormValues>({
     resolver: zodResolver(lineItemSchema),
@@ -97,6 +104,33 @@ export function StockRequestLineItemDialog({
       });
     }
   }, [open, item, form]);
+
+  useEffect(() => {
+    const trimmed = itemSearchInput.trim();
+
+    if (trimmed.length === 0) {
+      setItemSearch("");
+      return;
+    }
+
+    if (trimmed.length < 3) {
+      setItemSearch("");
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setItemSearch(trimmed);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [itemSearchInput]);
+
+  useEffect(() => {
+    if (!itemOpen) {
+      setItemSearchInput("");
+      setItemSearch("");
+    }
+  }, [itemOpen]);
 
   const handleItemSelect = (itemId: string) => {
     const selectedItem = items.find((i) => i.id === itemId);
@@ -156,8 +190,13 @@ export function StockRequestLineItemDialog({
                           {field.value
                             ? (() => {
                                 const selectedItem = items.find((i) => i.id === field.value);
-                                return selectedItem
-                                  ? `${selectedItem.code} - ${selectedItem.name}`
+                                if (selectedItem) {
+                                  return `${selectedItem.code} - ${selectedItem.name}`;
+                                }
+                                const currentCode = form.getValues("itemCode");
+                                const currentName = form.getValues("itemName");
+                                return currentCode && currentName
+                                  ? `${currentCode} - ${currentName}`
                                   : "Select an item";
                               })()
                             : "Search item..."}
@@ -165,49 +204,62 @@ export function StockRequestLineItemDialog({
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[520px] p-0" align="start">
+                    <PopoverContent className="w-[min(95vw,520px)] p-0" align="start">
                       <Command>
-                        <CommandInput placeholder="Search by code or name..." />
+                        <CommandInput
+                          placeholder="Search by code or name..."
+                          value={itemSearchInput}
+                          onValueChange={setItemSearchInput}
+                        />
                         <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandEmpty>No item found.</CommandEmpty>
-                          <CommandGroup>
-                            {items
-                              .filter((i) => i.isActive)
-                              .map((item) => (
-                                <CommandItem
-                                  key={item.id}
-                                  value={`${item.code} ${item.name}`}
-                                  onSelect={() => {
-                                    field.onChange(item.id);
-                                    handleItemSelect(item.id);
-                                    setItemOpen(false);
-                                  }}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Check
-                                    className={cn(
-                                      "h-4 w-4",
-                                      field.value === item.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{item.code}</span>
-                                      <span className="truncate text-sm text-muted-foreground">
-                                        {item.name}
-                                      </span>
-                                    </div>
-                                    <div className="mt-0.5 text-xs text-muted-foreground">
-                                      On hand:{" "}
-                                      {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom : ""} • Available:{" "}
-                                      {("available" in item ? item.available : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom : ""}
-                                    </div>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
+                          {isItemsLoading || isItemsFetching ? (
+                            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <span>Loading items...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <CommandEmpty>No item found.</CommandEmpty>
+                              <CommandGroup>
+                                {items
+                                  .filter((i) => i.isActive)
+                                  .map((item) => (
+                                    <CommandItem
+                                      key={item.id}
+                                      value={`${item.code} ${item.name}`}
+                                      onSelect={() => {
+                                        field.onChange(item.id);
+                                        handleItemSelect(item.id);
+                                        setItemOpen(false);
+                                      }}
+                                      className="flex items-start gap-2 py-2"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mt-0.5 h-4 w-4 shrink-0",
+                                          field.value === item.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-semibold break-words">
+                                          {item.code}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground break-words">
+                                          {item.name}
+                                        </div>
+                                        <div className="mt-1 text-xs text-muted-foreground break-words">
+                                          On hand:{" "}
+                                          {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
+                                          {"uom" in item ? item.uom : ""} • Available:{" "}
+                                          {("available" in item ? item.available : 0).toFixed(2)}{" "}
+                                          {"uom" in item ? item.uom : ""}
+                                        </div>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </>
+                          )}
                         </CommandList>
                       </Command>
                     </PopoverContent>

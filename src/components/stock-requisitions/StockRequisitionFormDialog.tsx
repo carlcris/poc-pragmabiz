@@ -441,25 +441,23 @@ export function StockRequisitionFormDialog({
                                           setItemOpen(false);
                                           setAddItemError("");
                                         }}
-                                        className="flex items-center gap-2"
+                                        className="flex items-start gap-2 py-2"
                                       >
                                         <Check
                                           className={cn(
-                                            "h-4 w-4",
+                                            "mt-0.5 h-4 w-4 shrink-0",
                                             selectedItemId === item.id
                                               ? "opacity-100"
                                               : "opacity-0"
                                           )}
                                         />
                                         <div className="min-w-0 flex-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium">{item.code}</span>
-                                            <span className="truncate text-sm text-muted-foreground">
-                                              {item.name}
-                                            </span>
+                                          <div className="font-medium">{item.code}</div>
+                                          <div className="text-sm text-muted-foreground whitespace-normal break-words leading-snug">
+                                            {item.name}
                                           </div>
                                         </div>
-                                        <div className="ml-4 flex-shrink-0 text-sm font-semibold">
+                                        <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
                                           {formatCurrency(item.listPrice)}
                                         </div>
                                       </CommandItem>

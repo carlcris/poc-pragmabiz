@@ -54,12 +54,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { data: destinationWarehouse } = await supabase
       .from("stock_requests")
       .select(
-        "destination_warehouse_id, destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(business_unit_id)"
+        "fulfilling_warehouse_id, fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(business_unit_id)"
       )
       .eq("id", id)
       .single();
 
-    const destinationWarehouseRecord = destinationWarehouse?.destination_warehouse;
+    const destinationWarehouseRecord = destinationWarehouse?.fulfilling_warehouse;
     const destinationWarehouseRow = Array.isArray(destinationWarehouseRecord)
       ? destinationWarehouseRecord[0] ?? null
       : destinationWarehouseRecord ?? null;
@@ -95,13 +95,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .select(
         `
         *,
-        source_warehouse:warehouses!stock_requests_source_warehouse_id_fkey(
+        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
           business_unit_id
         ),
-        destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(
+        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,

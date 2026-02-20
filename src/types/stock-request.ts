@@ -2,12 +2,18 @@ export type StockRequestStatus =
   | "draft"
   | "submitted"
   | "approved"
-  | "ready_for_pick"
+  | "picking"
   | "picked"
   | "delivered"
   | "received"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "allocating"
+  | "partially_allocated"
+  | "allocated"
+  | "dispatched"
+  | "partially_fulfilled"
+  | "fulfilled";
 
 export type StockRequestPriority = "low" | "normal" | "high" | "urgent";
 
@@ -16,9 +22,10 @@ export interface StockRequestItem {
   stock_request_id: string;
   item_id: string;
   requested_qty: number;
-  picked_qty: number;
+  received_qty?: number;
   uom_id: string;
   notes?: string | null;
+  dispatch_qty?: number;
   created_at: string;
   updated_at: string;
   // Joined data
@@ -41,8 +48,8 @@ export interface StockRequest {
   request_code: string;
   request_date: string;
   required_date: string;
-  from_location_id: string;
-  to_location_id?: string | null;
+  requesting_warehouse_id: string;
+  fulfilling_warehouse_id?: string | null;
   department?: string | null;
   status: StockRequestStatus;
   priority: StockRequestPriority;
@@ -63,18 +70,30 @@ export interface StockRequest {
   deleted_at?: string | null;
   version: number;
   // Joined data
-  from_location?: {
+  requesting_warehouse?: {
     id: string;
     warehouse_code: string;
     warehouse_name: string;
     businessUnitId?: string | null;
   } | null;
-  to_location?: {
+  fulfilling_warehouse?: {
     id: string;
     warehouse_code: string;
     warehouse_name: string;
     businessUnitId?: string | null;
   } | null;
+  fulfilling_delivery_note?: {
+    id: string;
+    dn_no: string;
+    status: string;
+    created_at?: string | null;
+  } | null;
+  fulfilling_delivery_notes?: Array<{
+    id: string;
+    dn_no: string;
+    status: string;
+    created_at?: string | null;
+  }>;
   requested_by_user?: {
     id: string;
     email: string;
@@ -95,8 +114,8 @@ export interface StockRequest {
 export interface CreateStockRequestPayload {
   request_date: string;
   required_date: string;
-  from_location_id: string;
-  to_location_id: string;
+  requesting_warehouse_id: string;
+  fulfilling_warehouse_id: string;
   department?: string;
   priority: StockRequestPriority;
   purpose?: string;
@@ -113,8 +132,8 @@ export type UpdateStockRequestPayload = Partial<CreateStockRequestPayload>;
 
 export interface StockRequestListParams {
   search?: string;
-  fromLocationId?: string;
-  toLocationId?: string;
+  requestingWarehouseId?: string;
+  fulfillingWarehouseId?: string;
   status?: StockRequestStatus;
   priority?: StockRequestPriority;
   startDate?: string;
@@ -141,4 +160,26 @@ export type ReceiveStockRequestPayload = {
     uomId: string;
     locationId?: string | null;
   }>;
+};
+
+export type StockRequestPickLineInput = {
+  stockRequestItemId: string;
+  pickedQty: number;
+  shortReasonCode?: string;
+};
+
+export type PickStockRequestPayload = {
+  notes?: string;
+  items: StockRequestPickLineInput[];
+};
+
+export type StockRequestDispatchLineInput = {
+  stockRequestItemId: string;
+  dispatchQty?: number;
+};
+
+export type DispatchStockRequestPayload = {
+  dispatchDate?: string;
+  notes?: string;
+  items?: StockRequestDispatchLineInput[];
 };

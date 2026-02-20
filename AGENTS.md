@@ -47,3 +47,17 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 
 ## Agent-Specific Instructions
 Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touching APIs, hooks, or data types.
+
+## Data Loading & Scalability Rules
+- Never load all records at once.
+- Always fetch in small chunks per request (target range: 10-50 items).
+- Use cursor-based server-side pagination.
+- Apply search filters and sorting on the backend, not in the frontend.
+- Use virtual scrolling/windowing so only rows visible in the viewport are rendered.
+- Use infinite scroll or explicit user-triggered loading to fetch the next page.
+- Keep UI interactions smooth and memory usage low during large-list navigation.
+- Cache already fetched pages locally to avoid repeated fetches.
+- Ensure cursor fields are indexed in the database.
+- Enable compressed API responses (GZIP/Brotli where available).
+- Limit request rate and batch backend requests when possible.
+- Key pattern: cursor-based server-side pagination + virtual scrolling + lazy loading = smooth, scalable UI.

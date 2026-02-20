@@ -76,7 +76,7 @@ export function ReceiveStockRequestDialog({
 }: ReceiveStockRequestDialogProps) {
   const receiveMutation = useReceiveStockRequest();
 
-  const receivingWarehouseId = stockRequest?.from_location?.id || "";
+  const receivingWarehouseId = stockRequest?.requesting_warehouse?.id || "";
 
   const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
     queryKey: ["warehouse-locations", receivingWarehouseId],
@@ -110,7 +110,7 @@ export function ReceiveStockRequestDialog({
         stockRequestItemId: item.id,
         itemId: item.item_id,
         requestedQty: item.requested_qty,
-        receivedQty: item.requested_qty,
+        receivedQty: Math.max(0, (item.dispatch_qty || 0) - (item.received_qty || 0)),
         uomId: item.uom_id,
         locationId: defaultLocationId || null,
       }));
@@ -156,10 +156,16 @@ export function ReceiveStockRequestDialog({
   const items = form.watch("items");
 
   const updateItemQuantity = (index: number, quantity: number) => {
+    const requestItem = stockRequest.stock_request_items?.[index];
+    const dispatchedQty = requestItem?.dispatch_qty || 0;
+    const receivedQty = requestItem?.received_qty || 0;
+    const remainingQty = Math.max(0, dispatchedQty - receivedQty);
+    const nextQty = Math.min(Math.max(0, Number.isFinite(quantity) ? quantity : 0), remainingQty);
+
     const currentItems = [...form.getValues("items")];
     currentItems[index] = {
       ...currentItems[index],
-      receivedQty: Number.isFinite(quantity) ? quantity : 0,
+      receivedQty: nextQty,
     };
     form.setValue("items", currentItems, { shouldValidate: false });
   };
@@ -189,13 +195,13 @@ export function ReceiveStockRequestDialog({
               <div>
                 <div className="text-sm text-muted-foreground">From</div>
                 <div className="font-medium">
-                  {stockRequest.from_location?.warehouse_name || "--"}
+                  {stockRequest.requesting_warehouse?.warehouse_name || "--"}
                 </div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">To</div>
                 <div className="font-medium">
-                  {stockRequest.to_location?.warehouse_name || "--"}
+                  {stockRequest.fulfilling_warehouse?.warehouse_name || "--"}
                 </div>
               </div>
               <div>
@@ -236,6 +242,8 @@ export function ReceiveStockRequestDialog({
                     <TableRow>
                       <TableHead>Item</TableHead>
                       <TableHead className="text-right">Requested</TableHead>
+                      <TableHead className="text-right">Dispatched</TableHead>
+                      <TableHead className="text-right">Received</TableHead>
                       <TableHead className="text-right">Receive Now *</TableHead>
                       <TableHead>Location</TableHead>
                     </TableRow>
@@ -244,6 +252,9 @@ export function ReceiveStockRequestDialog({
                     {(stockRequest.stock_request_items || []).map((requestItem, index) => {
                       const receivingNow = items[index]?.receivedQty || 0;
                       const locationId = items[index]?.locationId || "";
+                      const dispatchedQty = requestItem.dispatch_qty || 0;
+                      const receivedQty = requestItem.received_qty || 0;
+                      const remainingQty = Math.max(0, dispatchedQty - receivedQty);
 
                       return (
                         <TableRow key={requestItem.id}>
@@ -258,12 +269,14 @@ export function ReceiveStockRequestDialog({
                           <TableCell>
                             {requestItem.requested_qty}
                           </TableCell>
+                          <TableCell className="text-right">{dispatchedQty}</TableCell>
+                          <TableCell className="text-right">{receivedQty}</TableCell>
                           <TableCell className="text-right">
                             <Input
                               type="number"
                               step="0.01"
                               min="0"
-                              max={requestItem.requested_qty}
+                              max={remainingQty}
                               value={receivingNow}
                               onChange={(e) =>
                                 updateItemQuantity(index, parseFloat(e.target.value) || 0)

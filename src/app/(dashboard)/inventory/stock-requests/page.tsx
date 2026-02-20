@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import {
   Plus,
   Search,
   Filter,
+  ThumbsDown,
   Pencil,
   Trash2,
   Send,
   CheckCircle,
+  ThumbsUp,
   XCircle,
   FileText,
   Clock,
@@ -23,8 +26,7 @@ import {
   useSubmitStockRequest,
   useApproveStockRequest,
   useRejectStockRequest,
-  useMarkReadyForPick,
-  useMarkDelivered,
+  useDispatchStockRequest,
   useCompleteStockRequest,
   useCancelStockRequest,
 } from "@/hooks/useStockRequests";
@@ -73,13 +75,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,25 +88,24 @@ import {
 } from "@/components/stock-requests/StockRequestLineItemDialog";
 import { ReceiveStockRequestDialog } from "@/components/stock-requests/ReceiveStockRequestDialog";
 import { StockRequestViewDialog } from "@/components/stock-requests/StockRequestViewDialog";
-import { MoreVertical } from "lucide-react";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 const requestFormSchema = z
   .object({
     request_date: z.string().min(1, "Request date is required"),
     required_date: z.string().min(1, "Required date is required"),
-    from_location_id: z.string().min(1, "Requested by is required"),
-    to_location_id: z.string().min(1, "Requested to is required"),
+    requesting_warehouse_id: z.string().min(1, "Requested by is required"),
+    fulfilling_warehouse_id: z.string().min(1, "Requested to is required"),
     priority: z.enum(["low", "normal", "high", "urgent"]),
     purpose: z.string().optional(),
     notes: z.string().optional(),
   })
   .superRefine((values, ctx) => {
-    if (values.to_location_id && values.to_location_id === values.from_location_id) {
+    if (values.fulfilling_warehouse_id && values.fulfilling_warehouse_id === values.requesting_warehouse_id) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Requested to must be different from requested by",
-        path: ["to_location_id"],
+        path: ["fulfilling_warehouse_id"],
       });
     }
   });
@@ -150,8 +144,13 @@ export default function StockRequestsPage() {
     limit: 1000,
   });
 
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
-  const warehouses = warehousesData?.data || [];
+  const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
+  const defaultRequestingWarehouseId = useMemo(() => {
+    if (!currentBusinessUnit?.id) return "";
+    return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id || "";
+  }, [currentBusinessUnit?.id, warehouses]);
 
   const createMutation = useCreateStockRequest();
   const updateMutation = useUpdateStockRequest();
@@ -159,11 +158,9 @@ export default function StockRequestsPage() {
   const submitMutation = useSubmitStockRequest();
   const approveMutation = useApproveStockRequest();
   const rejectMutation = useRejectStockRequest();
-  const readyForPickMutation = useMarkReadyForPick();
-  const deliveredMutation = useMarkDelivered();
+  const dispatchMutation = useDispatchStockRequest();
   const completeMutation = useCompleteStockRequest();
   const cancelMutation = useCancelStockRequest();
-  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
 
   // Client-side filtering
   let filteredRequests = data?.data || [];
@@ -190,8 +187,8 @@ export default function StockRequestsPage() {
     defaultValues: {
       request_date: new Date().toISOString().split("T")[0],
       required_date: new Date().toISOString().split("T")[0],
-      from_location_id: "",
-      to_location_id: "",
+      requesting_warehouse_id: "",
+      fulfilling_warehouse_id: "",
       priority: "normal",
       purpose: "",
       notes: "",
@@ -204,8 +201,8 @@ export default function StockRequestsPage() {
       form.reset({
         request_date: selectedRequest.request_date,
         required_date: selectedRequest.required_date,
-        from_location_id: selectedRequest.from_location_id,
-        to_location_id: selectedRequest.to_location_id || "",
+        requesting_warehouse_id: selectedRequest.requesting_warehouse_id,
+        fulfilling_warehouse_id: selectedRequest.fulfilling_warehouse_id || "",
         priority: selectedRequest.priority,
         purpose: selectedRequest.purpose || "",
         notes: selectedRequest.notes || "",
@@ -226,15 +223,15 @@ export default function StockRequestsPage() {
       form.reset({
         request_date: new Date().toISOString().split("T")[0],
         required_date: new Date().toISOString().split("T")[0],
-        from_location_id: "",
-        to_location_id: "",
+        requesting_warehouse_id: defaultRequestingWarehouseId,
+        fulfilling_warehouse_id: "",
         priority: "normal",
         purpose: "",
         notes: "",
       });
       setLineItems([]);
     }
-  }, [dialogOpen, selectedRequest, form]);
+  }, [defaultRequestingWarehouseId, dialogOpen, form, selectedRequest]);
 
   const getStatusBadge = (status: StockRequestStatus) => {
     const baseClass = "text-xs font-medium";
@@ -246,17 +243,34 @@ export default function StockRequestsPage() {
         return <span className={`${baseClass} text-amber-600`}>Submitted</span>;
       case "approved":
         return <span className={`${baseClass} text-blue-600`}>Approved</span>;
-      case "ready_for_pick":
-        return <span className={`${baseClass} text-purple-600`}>Ready for Pick</span>;
       case "picked":
-      case "delivered":
-        return <span className={`${baseClass} text-indigo-600`}>Delivered</span>;
+        return <span className={`${baseClass} text-indigo-600`}>Picked</span>;
+      case "picking":
+        return <span className={`${baseClass} text-indigo-600`}>Picking</span>;
       case "received":
         return <span className={`${baseClass} text-emerald-600`}>Received</span>;
       case "completed":
         return <span className={`${baseClass} text-emerald-600`}>Completed</span>;
       case "cancelled":
         return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
+      case "allocating":
+        return <span className={`${baseClass} text-amber-600`}>Allocating</span>;
+      case "partially_allocated":
+        return <span className={`${baseClass} text-orange-600`}>Partially Allocated</span>;
+      case "allocated":
+        return <span className={`${baseClass} text-orange-700`}>Allocated</span>;
+      case "dispatched":
+        return <span className={`${baseClass} text-indigo-600`}>Dispatched</span>;
+      case "partially_fulfilled":
+        return <span className={`${baseClass} text-emerald-600`}>Partially Fulfilled</span>;
+      case "fulfilled":
+        return <span className={`${baseClass} text-emerald-700`}>Fulfilled</span>;
+      default:
+        return (
+          <span className={`${baseClass} text-muted-foreground`}>
+            {String(status).replace(/_/g, " ")}
+          </span>
+        );
     }
   };
 
@@ -268,17 +282,24 @@ export default function StockRequestsPage() {
         return <Clock className="h-4 w-4 text-yellow-600" />;
       case "approved":
         return <CheckCircle className="h-4 w-4 text-blue-600" />;
-      case "ready_for_pick":
-        return <Package className="h-4 w-4 text-purple-600" />;
+      case "allocating":
+      case "partially_allocated":
+      case "allocated":
+        return <Package className="h-4 w-4 text-orange-600" />;
+      case "picking":
       case "picked":
-      case "delivered":
+      case "dispatched":
         return <Truck className="h-4 w-4 text-indigo-600" />;
       case "received":
+      case "partially_fulfilled":
+      case "fulfilled":
         return <CheckCircle className="h-4 w-4 text-emerald-600" />;
       case "completed":
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case "cancelled":
         return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -307,22 +328,22 @@ export default function StockRequestsPage() {
 
   const canReceiveRequest = (request: StockRequest) => {
     if (!currentBusinessUnit?.id) return false;
-    if (!request.to_location?.id) return false;
-    return request.from_location?.businessUnitId === currentBusinessUnit.id;
+    if (!request.fulfilling_warehouse?.id) return false;
+    return request.requesting_warehouse?.businessUnitId === currentBusinessUnit.id;
   };
 
   const canFulfillRequest = (request: StockRequest) => {
     if (!currentBusinessUnit?.id) return false;
-    return request.to_location?.businessUnitId === currentBusinessUnit.id;
+    return request.fulfilling_warehouse?.businessUnitId === currentBusinessUnit.id;
   };
 
   const hasRowActions = (request: StockRequest) => {
     if (request.status === "draft") return true;
     if (request.status === "submitted" && canFulfillRequest(request)) return true;
     if (request.status === "approved" && canFulfillRequest(request)) return true;
-    if (request.status === "ready_for_pick" && canFulfillRequest(request)) return true;
+    if (["picking", "picked"].includes(request.status) && canFulfillRequest(request)) return true;
     if (
-      (request.status === "delivered" || request.status === "picked") &&
+      request.status === "dispatched" &&
       canReceiveRequest(request)
     ) {
       return true;
@@ -415,11 +436,8 @@ export default function StockRequestsPage() {
         case "reject":
           await rejectMutation.mutateAsync({ id: requestToAction.id, reason: actionReason });
           break;
-        case "ready_for_pick":
-          await readyForPickMutation.mutateAsync(requestToAction.id);
-          break;
-        case "deliver":
-          await deliveredMutation.mutateAsync(requestToAction.id);
+        case "dispatch":
+          await dispatchMutation.mutateAsync({ id: requestToAction.id });
           break;
         case "complete":
           await completeMutation.mutateAsync(requestToAction.id);
@@ -511,17 +529,10 @@ export default function StockRequestsPage() {
         confirmClass: "bg-red-600 hover:bg-red-700",
         needsReason: true,
       },
-      ready_for_pick: {
-        title: "Mark Ready for Picking",
-        description: "Mark this stock request as ready for picking?",
-        confirmText: "Mark Ready",
-        confirmClass: "bg-purple-600 hover:bg-purple-700",
-        needsReason: false,
-      },
-      deliver: {
-        title: "Mark as Delivered",
-        description: "Mark this stock request as delivered?",
-        confirmText: "Mark Delivered",
+      dispatch: {
+        title: "Dispatch Stock Request",
+        description: "Dispatch picked quantities and post outbound inventory movement?",
+        confirmText: "Dispatch",
         confirmClass: "bg-indigo-600 hover:bg-indigo-700",
         needsReason: false,
       },
@@ -557,10 +568,15 @@ export default function StockRequestsPage() {
             <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Stock Requests</h1>
             <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage stock requests and fulfillment workflow</p>
           </div>
-          <Button onClick={handleCreateRequest} className="w-full sm:w-auto flex-shrink-0">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Request
-          </Button>
+          <div className="flex w-full gap-2 sm:w-auto">
+            <Button asChild variant="outline" className="w-full sm:w-auto flex-shrink-0">
+              <Link href="/inventory/delivery-notes">Delivery Notes</Link>
+            </Button>
+            <Button onClick={handleCreateRequest} className="w-full sm:w-auto flex-shrink-0">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Request
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -584,9 +600,15 @@ export default function StockRequestsPage() {
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="submitted">Submitted</SelectItem>
                 <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="ready_for_pick">Ready for Pick</SelectItem>
-                <SelectItem value="delivered">Delivered</SelectItem>
+                <SelectItem value="picking">Picking</SelectItem>
+                <SelectItem value="picked">Picked</SelectItem>
+                <SelectItem value="dispatched">Dispatched</SelectItem>
                 <SelectItem value="received">Received</SelectItem>
+                <SelectItem value="allocating">Allocating</SelectItem>
+                <SelectItem value="partially_allocated">Partially Allocated</SelectItem>
+                <SelectItem value="allocated">Allocated</SelectItem>
+                <SelectItem value="partially_fulfilled">Partially Fulfilled</SelectItem>
+                <SelectItem value="fulfilled">Fulfilled</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
@@ -710,8 +732,8 @@ export default function StockRequestsPage() {
                         </TableCell>
                         <TableCell>{formatDate(request.request_date)}</TableCell>
                         <TableCell>{formatDate(request.required_date)}</TableCell>
-                        <TableCell>{request.from_location?.warehouse_code || "--"}</TableCell>
-                        <TableCell>{request.to_location?.warehouse_code || "--"}</TableCell>
+                        <TableCell>{request.requesting_warehouse?.warehouse_code || "--"}</TableCell>
+                        <TableCell>{request.fulfilling_warehouse?.warehouse_code || "--"}</TableCell>
                         <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         {!hasAnyActions && (
@@ -729,105 +751,93 @@ export default function StockRequestsPage() {
                             className="text-right"
                             onClick={(event) => event.stopPropagation()}
                           >
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-2">
                               {hasRowActions(request) ? (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <MoreVertical className="h-4 w-4" />
-                                      <span className="sr-only">Open actions</span>
+                                <>
+                                  {request.status === "draft" && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleEditRequest(request)}
+                                        title="Edit"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteRequest(request)}
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleAction("submit", request)}
+                                        title="Submit"
+                                      >
+                                        <Send className="h-4 w-4 text-blue-600" />
+                                      </Button>
+                                    </>
+                                  )}
+
+                                  {request.status === "submitted" && canFulfillRequest(request) && (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleAction("approve", request)}
+                                        title="Approve"
+                                      >
+                                        <ThumbsUp className="h-4 w-4 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleAction("reject", request)}
+                                        title="Reject"
+                                      >
+                                        <ThumbsDown className="h-4 w-4 text-red-600" />
+                                      </Button>
+                                    </>
+                                  )}
+
+                                  {["picking", "picked"].includes(request.status) &&
+                                    canFulfillRequest(request) && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleAction("dispatch", request)}
+                                        title="Dispatch"
+                                      >
+                                        <Truck className="h-4 w-4 text-indigo-600" />
+                                      </Button>
+                                    )}
+
+                                  {request.status === "dispatched" && canReceiveRequest(request) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleAction("receive", request)}
+                                      title="Receive"
+                                    >
+                                      <CheckCircle className="h-4 w-4 text-emerald-600" />
                                     </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    {request.status === "draft" && (
-                                      <>
-                                        <DropdownMenuItem
-                                          onClick={() => handleEditRequest(request)}
-                                        >
-                                          <Pencil className="mr-2 h-4 w-4" />
-                                          Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleDeleteRequest(request)}
-                                        >
-                                          <Trash2 className="mr-2 h-4 w-4" />
-                                          Delete
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() => handleAction("submit", request)}
-                                        >
-                                          <Send className="mr-2 h-4 w-4" />
-                                          Submit
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
+                                  )}
 
-                                    {request.status === "submitted" &&
-                                      canFulfillRequest(request) && (
-                                        <>
-                                          <DropdownMenuItem
-                                            onClick={() => handleAction("approve", request)}
-                                          >
-                                            <CheckCircle className="mr-2 h-4 w-4" />
-                                            Approve
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem
-                                            onClick={() => handleAction("reject", request)}
-                                          >
-                                            <XCircle className="mr-2 h-4 w-4" />
-                                            Reject
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
-
-                                    {request.status === "approved" &&
-                                      canFulfillRequest(request) && (
-                                        <DropdownMenuItem
-                                          onClick={() => handleAction("ready_for_pick", request)}
-                                        >
-                                          <Package className="mr-2 h-4 w-4" />
-                                          Ready to Pick
-                                        </DropdownMenuItem>
-                                      )}
-
-                                    {request.status === "ready_for_pick" &&
-                                      canFulfillRequest(request) && (
-                                        <DropdownMenuItem
-                                          onClick={() => handleAction("deliver", request)}
-                                        >
-                                          <Truck className="mr-2 h-4 w-4" />
-                                          Mark Delivered
-                                        </DropdownMenuItem>
-                                      )}
-
-                                    {(request.status === "delivered" ||
-                                      request.status === "picked") &&
-                                      canReceiveRequest(request) && (
-                                        <DropdownMenuItem
-                                          onClick={() => handleAction("receive", request)}
-                                        >
-                                          <CheckCircle className="mr-2 h-4 w-4" />
-                                          Receive
-                                        </DropdownMenuItem>
-                                      )}
-
-                                    {["draft", "submitted", "approved"].includes(
-                                      request.status
-                                    ) && (
-                                      <>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() => handleAction("cancel", request)}
-                                          className="text-destructive focus:text-destructive"
-                                        >
-                                          <XCircle className="mr-2 h-4 w-4" />
-                                          Cancel
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                  {["draft", "submitted", "approved"].includes(request.status) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleAction("cancel", request)}
+                                      title="Cancel"
+                                    >
+                                      <XCircle className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  )}
+                                </>
                               ) : (
                                 <span className="text-xs text-muted-foreground">--</span>
                               )}
@@ -939,7 +949,7 @@ export default function StockRequestsPage() {
                       <div className="col-span-3 grid grid-cols-2 gap-3">
                         <FormField
                           control={form.control}
-                          name="from_location_id"
+                          name="requesting_warehouse_id"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs">
@@ -966,7 +976,7 @@ export default function StockRequestsPage() {
 
                         <FormField
                           control={form.control}
-                          name="to_location_id"
+                          name="fulfilling_warehouse_id"
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs">
@@ -1221,8 +1231,7 @@ export default function StockRequestsPage() {
                   submitMutation.isPending ||
                   approveMutation.isPending ||
                   rejectMutation.isPending ||
-                  readyForPickMutation.isPending ||
-                  deliveredMutation.isPending ||
+                  dispatchMutation.isPending ||
                   completeMutation.isPending ||
                   cancelMutation.isPending ||
                   (actionConfig.needsReason && !actionReason.trim())
@@ -1231,8 +1240,7 @@ export default function StockRequestsPage() {
                 {submitMutation.isPending ||
                 approveMutation.isPending ||
                 rejectMutation.isPending ||
-                readyForPickMutation.isPending ||
-                deliveredMutation.isPending ||
+                dispatchMutation.isPending ||
                 completeMutation.isPending ||
                 cancelMutation.isPending
                   ? "Processing..."

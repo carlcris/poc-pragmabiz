@@ -3,11 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Item, UpdateItemRequest } from "@/types/item";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import QRCode from "qrcode";
 
 type DbItem = {
   id: string;
   company_id: string;
   item_code: string;
+  sku: string | null;
+  sku_qr_image: string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -35,6 +38,17 @@ type ItemRow = DbItem & {
   units_of_measure: DbUoM | DbUoM[] | null;
 };
 
+const generateSkuQrDataUrl = async (sku: string) =>
+  QRCode.toDataURL(sku, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 240,
+    color: {
+      dark: "#111111",
+      light: "#FFFFFF",
+    },
+  });
+
 // Transform database item to frontend Item type
 function transformDbItem(dbItem: ItemRow): Item {
   const category = Array.isArray(dbItem.item_categories)
@@ -47,6 +61,8 @@ function transformDbItem(dbItem: ItemRow): Item {
     id: dbItem.id,
     companyId: dbItem.company_id,
     code: dbItem.item_code,
+    sku: dbItem.sku || undefined,
+    skuQrImage: dbItem.sku_qr_image || undefined,
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
@@ -87,7 +103,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
 
     // Fetch item
-    const { data, error } = await supabase
+    const { data: fetchedItem, error } = await supabase
       .from("items")
       .select(
         `
@@ -115,8 +131,39 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    if (!data) {
+    if (!fetchedItem) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
+    let data = fetchedItem;
+
+    // Backfill QR image for legacy records that have SKU but no stored QR image.
+    if (data.sku && !data.sku_qr_image) {
+      const qrDataUrl = await generateSkuQrDataUrl(data.sku);
+      const { data: patchedItem } = await supabase
+        .from("items")
+        .update({ sku_qr_image: qrDataUrl })
+        .eq("id", id)
+        .eq("company_id", data.company_id)
+        .select(
+          `
+          *,
+          item_categories (
+            id,
+            name,
+            code
+          ),
+          units_of_measure (
+            id,
+            code,
+            name
+          )
+        `
+        )
+        .maybeSingle();
+
+      if (patchedItem) {
+        data = patchedItem;
+      }
     }
 
     let inTransit = 0;

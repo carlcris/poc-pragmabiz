@@ -4,6 +4,8 @@ export interface Item {
   id: string;
   companyId: string;
   code: string;
+  sku?: string;
+  skuQrImage?: string;
   name: string;
   chineseName?: string;
   description: string;
@@ -27,6 +29,7 @@ export interface Item {
 export interface CreateItemRequest {
   companyId: string;
   code: string;
+  sku?: string;
   name: string;
   chineseName?: string;
   description: string;

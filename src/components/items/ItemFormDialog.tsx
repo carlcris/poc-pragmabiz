@@ -330,7 +330,11 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                       <div
-                      className={`space-y-6 ${isReadOnly ? "pointer-events-none opacity-90" : ""}`}
+                        className={`space-y-6 ${
+                          isReadOnly
+                            ? "pointer-events-none [&_input:disabled]:opacity-100 [&_input:disabled]:text-foreground [&_button:disabled]:opacity-100 [&_button:disabled]:text-foreground"
+                            : ""
+                        }`}
                       >
                       {/* Basic Information with Image */}
                       <div className="rounded-lg border bg-card">
@@ -473,6 +477,20 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                 </FormItem>
                               )}
                             />
+
+                            {resolvedItem?.sku && resolvedItem?.skuQrImage ? (
+                              <div className="mt-4 rounded-md border bg-muted/30 p-3">
+                                <div className="flex flex-col items-center gap-2">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={resolvedItem.skuQrImage}
+                                    alt={`SKU QR ${resolvedItem.sku}`}
+                                    className="h-28 w-28 rounded border bg-white p-1"
+                                  />
+                                  <p className="font-mono text-sm font-semibold">{resolvedItem.sku}</p>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </div>

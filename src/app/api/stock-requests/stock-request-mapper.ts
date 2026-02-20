@@ -35,6 +35,18 @@ type StockRequestItem = {
   } | { code: string; symbol: string }[] | null;
 };
 
+type DeliveryNoteSummary = {
+  id: string;
+  dn_no: string;
+  status: string;
+  created_at?: string | null;
+};
+
+type DeliveryNoteSource = {
+  created_at?: string | null;
+  delivery_notes?: DeliveryNoteSummary | DeliveryNoteSummary[] | null;
+};
+
 type StockRequestDbRecord = {
   id: string;
   company_id: string;
@@ -42,8 +54,8 @@ type StockRequestDbRecord = {
   request_code: string;
   request_date: string;
   required_date: string;
-  source_warehouse_id: string;
-  destination_warehouse_id?: string | null;
+  requesting_warehouse_id: string;
+  fulfilling_warehouse_id?: string | null;
   department?: string | null;
   status: StockRequestStatus;
   priority: StockRequestPriority;
@@ -63,57 +75,92 @@ type StockRequestDbRecord = {
   updated_by?: string | null;
   deleted_at?: string | null;
   version: number;
-  source_warehouse?: StockRequestLocation | StockRequestLocation[] | null;
-  destination_warehouse?: StockRequestLocation | StockRequestLocation[] | null;
+  requesting_warehouse?: StockRequestLocation | StockRequestLocation[] | null;
+  fulfilling_warehouse?: StockRequestLocation | StockRequestLocation[] | null;
   requested_by_user?: StockRequestUser | null;
   received_by_user?: StockRequestUser | null;
   stock_request_items?: StockRequestItem[] | null;
+  delivery_note_sources?: DeliveryNoteSource[] | null;
 };
 
 export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
   const {
-    source_warehouse_id,
-    destination_warehouse_id,
-    source_warehouse,
-    destination_warehouse,
+    requesting_warehouse_id,
+    fulfilling_warehouse_id,
+    requesting_warehouse,
+    fulfilling_warehouse,
     stock_request_items,
+    delivery_note_sources,
     requested_by_user,
     received_by_user,
     ...rest
   } = record;
-  const sourceWarehouse = Array.isArray(source_warehouse)
-    ? source_warehouse[0] ?? null
-    : source_warehouse ?? null;
-  const destinationWarehouse = Array.isArray(destination_warehouse)
-    ? destination_warehouse[0] ?? null
-    : destination_warehouse ?? null;
+  const requestingWarehouse = Array.isArray(requesting_warehouse)
+    ? requesting_warehouse[0] ?? null
+    : requesting_warehouse ?? null;
+  const fulfillingWarehouse = Array.isArray(fulfilling_warehouse)
+    ? fulfilling_warehouse[0] ?? null
+    : fulfilling_warehouse ?? null;
   const requestedByUser = Array.isArray(requested_by_user)
     ? requested_by_user[0] ?? null
     : requested_by_user ?? null;
   const receivedByUser = Array.isArray(received_by_user)
     ? received_by_user[0] ?? null
     : received_by_user ?? null;
+  const linkedDeliveryNotes = (delivery_note_sources || [])
+    .map((source) =>
+      Array.isArray(source.delivery_notes)
+        ? source.delivery_notes[0] ?? null
+        : source.delivery_notes ?? null
+    )
+    .filter((note): note is DeliveryNoteSummary => Boolean(note));
+  const sortedDeliveryNotes = [...linkedDeliveryNotes].sort(
+    (a, b) => new Date(String(b.created_at || "")).getTime() - new Date(String(a.created_at || "")).getTime()
+  );
+  const fulfillingDeliveryNotes = Array.from(
+    new Map(
+      sortedDeliveryNotes.map((note) => [
+        note.id,
+        {
+          id: note.id,
+          dn_no: note.dn_no,
+          status: note.status,
+          created_at: note.created_at ?? null,
+        },
+      ])
+    ).values()
+  );
+  const fulfillingDeliveryNote = fulfillingDeliveryNotes[0] || null;
 
   return {
     ...rest,
-    from_location_id: source_warehouse_id,
-    to_location_id: destination_warehouse_id ?? null,
-    from_location: sourceWarehouse
+    requesting_warehouse_id,
+    fulfilling_warehouse_id: fulfilling_warehouse_id ?? null,
+    requesting_warehouse: requestingWarehouse
       ? {
-          id: sourceWarehouse.id,
-          warehouse_code: sourceWarehouse.warehouse_code,
-          warehouse_name: sourceWarehouse.warehouse_name,
-          businessUnitId: sourceWarehouse.business_unit_id ?? null,
+          id: requestingWarehouse.id,
+          warehouse_code: requestingWarehouse.warehouse_code,
+          warehouse_name: requestingWarehouse.warehouse_name,
+          businessUnitId: requestingWarehouse.business_unit_id ?? null,
         }
       : null,
-    to_location: destinationWarehouse
+    fulfilling_warehouse: fulfillingWarehouse
       ? {
-          id: destinationWarehouse.id,
-          warehouse_code: destinationWarehouse.warehouse_code,
-          warehouse_name: destinationWarehouse.warehouse_name,
-          businessUnitId: destinationWarehouse.business_unit_id ?? null,
+          id: fulfillingWarehouse.id,
+          warehouse_code: fulfillingWarehouse.warehouse_code,
+          warehouse_name: fulfillingWarehouse.warehouse_name,
+          businessUnitId: fulfillingWarehouse.business_unit_id ?? null,
         }
       : null,
+    fulfilling_delivery_note: fulfillingDeliveryNote
+      ? {
+          id: fulfillingDeliveryNote.id,
+          dn_no: fulfillingDeliveryNote.dn_no,
+          status: fulfillingDeliveryNote.status,
+          created_at: fulfillingDeliveryNote.created_at ?? null,
+        }
+      : null,
+    fulfilling_delivery_notes: fulfillingDeliveryNotes,
     requested_by_user: requestedByUser ?? undefined,
     received_by_user: receivedByUser ?? undefined,
     stock_request_items: stock_request_items?.map((item) => {

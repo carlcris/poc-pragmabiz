@@ -264,6 +264,7 @@ function ItemsPageContent() {
     // Create CSV header
     const headers = [
       "Item Code",
+      "SKU",
       "Item Name",
       "Category",
       "UOM",
@@ -278,6 +279,7 @@ function ItemsPageContent() {
     // Create CSV rows
     const rows = items.map((item) => [
       item.code,
+      item.sku || "",
       item.name,
       item.category,
       item.uom || "",
@@ -485,6 +487,7 @@ function ItemsPageContent() {
                   <TableRow>
                     <TableHead className="w-[80px]">Image</TableHead>
                     <TableHead>Item Code</TableHead>
+                    <TableHead>SKU</TableHead>
                     <TableHead>Item Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>UOM</TableHead>
@@ -500,6 +503,9 @@ function ItemsPageContent() {
                     <TableRow key={i}>
                       <TableCell>
                         <Skeleton className="h-12 w-12 rounded" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-4 w-20" />
@@ -551,11 +557,12 @@ function ItemsPageContent() {
             </div>
           ) : (
             <div className="h-[200px] md:h-full overflow-auto overscroll-contain rounded-md border">
-              <Table containerClassName="min-w-[1100px] overflow-visible">
+              <Table containerClassName="min-w-[1200px] overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
                     <TableHead className="w-[80px]">Image</TableHead>
                     <TableHead>Item Code</TableHead>
+                    <TableHead>SKU</TableHead>
                     <TableHead>Item Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>UOM</TableHead>
@@ -591,6 +598,7 @@ function ItemsPageContent() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
+                      <TableCell className="font-mono">{item.sku || "-"}</TableCell>
                       <TableCell className="text-primary">
                         <div className="font-medium hover:underline">{item.name}</div>
                         {item.chineseName ? (

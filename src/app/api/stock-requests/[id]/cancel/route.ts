@@ -80,13 +80,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .select(
         `
         *,
-        source_warehouse:warehouses!stock_requests_source_warehouse_id_fkey(
+        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
           business_unit_id
         ),
-        destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(
+        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,

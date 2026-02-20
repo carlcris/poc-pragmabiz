@@ -2,6 +2,7 @@ export type TransactionType = "in" | "out" | "transfer" | "adjustment";
 
 export interface StockTransaction {
   id: string;
+  transactionId?: string;
   companyId: string;
   transactionDate: string;
   transactionType: TransactionType;

@@ -17,8 +17,8 @@ const priorityStyles: Record<string, string> = {
 };
 
 export function StockRequestPickingCard({ request }: StockRequestPickingCardProps) {
-  const fromLocation = request.from_location?.warehouse_name || "Unknown source";
-  const toLocation = request.to_location?.warehouse_name || "Unknown destination";
+  const fromLocation = request.requesting_warehouse?.warehouse_name || "Unknown source";
+  const toLocation = request.fulfilling_warehouse?.warehouse_name || "Unknown destination";
   const itemCount = request.stock_request_items?.length || 0;
   const priorityClass = priorityStyles[request.priority] || "text-slate-700";
 

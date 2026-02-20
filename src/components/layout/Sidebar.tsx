@@ -55,6 +55,16 @@ const menuItems = [
         resource: RESOURCES.STOCK_REQUESTS as Resource,
       },
       {
+        title: "Delivery Notes",
+        href: "/inventory/delivery-notes",
+        resource: RESOURCES.STOCK_REQUESTS as Resource,
+      },
+      {
+        title: "Pick Lists",
+        href: "/inventory/pick-lists",
+        resource: RESOURCES.STOCK_REQUESTS as Resource,
+      },
+      {
         title: "Stock Transformations",
         href: "/inventory/transformations",
         resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,

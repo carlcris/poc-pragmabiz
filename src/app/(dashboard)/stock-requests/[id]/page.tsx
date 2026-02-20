@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Package } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,12 +20,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import {
   useApproveStockRequest,
-  useMarkDelivered,
-  useMarkReadyForPick,
   useRejectStockRequest,
   useStockRequest,
 } from "@/hooks/useStockRequests";
-import { ReceiveStockRequestDialog } from "@/components/stock-requests/ReceiveStockRequestDialog";
 import type { StockRequestStatus } from "@/types/stock-request";
 
 const formatDate = (dateString?: string | null) => {
@@ -56,17 +54,30 @@ const getStatusLabel = (status: StockRequestStatus) => {
       return <span className={`${baseClass} text-amber-600`}>Submitted</span>;
     case "approved":
       return <span className={`${baseClass} text-blue-600`}>Approved</span>;
-    case "ready_for_pick":
-      return <span className={`${baseClass} text-purple-600`}>Ready for Pick</span>;
     case "picked":
-    case "delivered":
-      return <span className={`${baseClass} text-indigo-600`}>Delivered</span>;
+      return <span className={`${baseClass} text-indigo-600`}>Picked</span>;
+    case "picking":
+      return <span className={`${baseClass} text-indigo-600`}>Picking</span>;
+    case "allocating":
+      return <span className={`${baseClass} text-amber-600`}>Allocating</span>;
+    case "partially_allocated":
+      return <span className={`${baseClass} text-orange-600`}>Partially Allocated</span>;
+    case "allocated":
+      return <span className={`${baseClass} text-orange-700`}>Allocated</span>;
+    case "dispatched":
+      return <span className={`${baseClass} text-indigo-600`}>Dispatched</span>;
+    case "partially_fulfilled":
+      return <span className={`${baseClass} text-emerald-600`}>Partially Fulfilled</span>;
+    case "fulfilled":
+      return <span className={`${baseClass} text-emerald-700`}>Fulfilled</span>;
     case "received":
       return <span className={`${baseClass} text-emerald-600`}>Received</span>;
     case "completed":
       return <span className={`${baseClass} text-emerald-600`}>Completed</span>;
     case "cancelled":
       return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
+    default:
+      return <span className={`${baseClass} text-muted-foreground`}>{String(status).replace(/_/g, " ")}</span>;
   }
 };
 
@@ -80,36 +91,18 @@ export default function StockRequestDetailPage() {
 
   const approveMutation = useApproveStockRequest();
   const rejectMutation = useRejectStockRequest();
-  const readyForPickMutation = useMarkReadyForPick();
-  const deliveredMutation = useMarkDelivered();
 
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  const [receiveDialogOpen, setReceiveDialogOpen] = useState(false);
 
   const canFulfillRequest = useMemo(() => {
-    if (!currentBusinessUnit?.id || !request?.to_location?.businessUnitId) return false;
-    return request.to_location.businessUnitId === currentBusinessUnit.id;
-  }, [currentBusinessUnit?.id, request?.to_location?.businessUnitId]);
-
-  const canReceiveRequest = useMemo(() => {
-    if (!currentBusinessUnit?.id || !request?.from_location?.businessUnitId) return false;
-    return request.from_location.businessUnitId === currentBusinessUnit.id;
-  }, [currentBusinessUnit?.id, request?.from_location?.businessUnitId]);
+    if (!currentBusinessUnit?.id || !request?.fulfilling_warehouse?.businessUnitId) return false;
+    return request.fulfilling_warehouse.businessUnitId === currentBusinessUnit.id;
+  }, [currentBusinessUnit?.id, request?.fulfilling_warehouse?.businessUnitId]);
 
   const handleApprove = async () => {
     if (!request) return;
     await approveMutation.mutateAsync(request.id);
-  };
-
-  const handleReadyForPick = async () => {
-    if (!request) return;
-    await readyForPickMutation.mutateAsync(request.id);
-  };
-
-  const handleDeliver = async () => {
-    if (!request) return;
-    await deliveredMutation.mutateAsync(request.id);
   };
 
   const handleReject = async () => {
@@ -147,20 +140,13 @@ export default function StockRequestDetailPage() {
                 </Button>
               </>
             )}
-            {request.status === "approved" && canFulfillRequest && (
-              <Button onClick={handleReadyForPick} disabled={readyForPickMutation.isPending}>
-                Ready to Pick
-              </Button>
-            )}
-            {request.status === "ready_for_pick" && canFulfillRequest && (
-              <Button onClick={handleDeliver} disabled={deliveredMutation.isPending}>
-                Mark Delivered
-              </Button>
-            )}
-            {(request.status === "delivered" || request.status === "picked") &&
-              canReceiveRequest && (
-                <Button onClick={() => setReceiveDialogOpen(true)}>Receive</Button>
-              )}
+            <Button
+              variant="outline"
+              onClick={() => router.push("/inventory/delivery-notes")}
+              disabled={!canFulfillRequest}
+            >
+              Open Delivery Notes
+            </Button>
           </div>
         )}
       </div>
@@ -201,17 +187,41 @@ export default function StockRequestDetailPage() {
                   <div>
                     <span className="text-muted-foreground">Requested By:</span>
                     <div className="font-medium">
-                      {request.from_location?.warehouse_code
-                        ? `${request.from_location.warehouse_code} - ${request.from_location.warehouse_name}`
+                      {request.requesting_warehouse?.warehouse_code
+                        ? `${request.requesting_warehouse.warehouse_code} - ${request.requesting_warehouse.warehouse_name}`
                         : "--"}
                     </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Requested To:</span>
                     <div className="font-medium">
-                      {request.to_location?.warehouse_code
-                        ? `${request.to_location.warehouse_code} - ${request.to_location.warehouse_name}`
+                      {request.fulfilling_warehouse?.warehouse_code
+                        ? `${request.fulfilling_warehouse.warehouse_code} - ${request.fulfilling_warehouse.warehouse_name}`
                         : "--"}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Fulfilling Delivery Notes:</span>
+                    <div className="font-medium">
+                      {(request.fulfilling_delivery_notes || []).length > 0 ? (
+                        <div className="space-y-1">
+                          {(request.fulfilling_delivery_notes || []).map((note) => (
+                            <div key={note.id} className="flex items-center gap-2">
+                              <Link
+                                href={`/inventory/delivery-notes/${note.id}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {note.dn_no}
+                              </Link>
+                              <span className="text-xs text-muted-foreground">
+                                {String(note.status || "--").replace(/_/g, " ")}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        "--"
+                      )}
                     </div>
                   </div>
                   <div>
@@ -266,6 +276,7 @@ export default function StockRequestDetailPage() {
                     <tr>
                       <th className="p-3 text-left">Item</th>
                       <th className="p-3 text-right">Quantity</th>
+                      <th className="p-3 text-right">Delivered Qty</th>
                       <th className="p-3 text-left">Unit</th>
                       <th className="p-3 text-left">Notes</th>
                     </tr>
@@ -280,6 +291,9 @@ export default function StockRequestDetailPage() {
                           </div>
                         </td>
                         <td className="p-3 text-right">{item.requested_qty.toFixed(2)}</td>
+                        <td className="p-3 text-right">
+                          {(item.dispatch_qty ?? item.received_qty ?? 0).toFixed(2)}
+                        </td>
                         <td className="p-3">
                           <span className="text-muted-foreground">
                             {item.units_of_measure?.code || "--"}
@@ -292,7 +306,7 @@ export default function StockRequestDetailPage() {
                     ))}
                     {(!request.stock_request_items || request.stock_request_items.length === 0) && (
                       <tr className="border-t">
-                        <td colSpan={4} className="p-3 text-center text-muted-foreground">
+                        <td colSpan={5} className="p-3 text-center text-muted-foreground">
                           No items found.
                         </td>
                       </tr>
@@ -304,12 +318,6 @@ export default function StockRequestDetailPage() {
           </Card>
         </>
       )}
-
-      <ReceiveStockRequestDialog
-        open={receiveDialogOpen}
-        onOpenChange={setReceiveDialogOpen}
-        stockRequest={request || null}
-      />
 
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <AlertDialogContent>

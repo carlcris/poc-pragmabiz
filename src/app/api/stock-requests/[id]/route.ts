@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../stock-request-mapper";
-import type { UpdateStockRequestPayload } from "@/types/stock-request";
+import type { StockRequest, UpdateStockRequestPayload } from "@/types/stock-request";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 type StockRequestItemInput = NonNullable<UpdateStockRequestPayload["items"]>[number];
@@ -35,13 +35,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .select(
         `
         *,
-        source_warehouse:warehouses!stock_requests_source_warehouse_id_fkey(
+        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
           business_unit_id
         ),
-        destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(
+        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
@@ -63,6 +63,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
           *,
           items(item_code, item_name),
           units_of_measure(code, symbol)
+        ),
+        delivery_note_sources(
+          created_at,
+          delivery_notes!delivery_note_sources_dn_id_fkey(
+            id,
+            dn_no,
+            status,
+            created_at
+          )
         )
       `
       )
@@ -79,7 +88,51 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
-    return NextResponse.json(mapStockRequest(stockRequest as StockRequestDbRecord));
+    const mapped = mapStockRequest(stockRequest as StockRequestDbRecord) as StockRequest;
+
+    const [{ data: headerLinks }, { data: itemLinks }] = await Promise.all([
+      supabase
+        .from("delivery_note_sources")
+        .select("dn_id")
+        .eq("sr_id", id)
+        .eq("company_id", mapped.company_id),
+      supabase
+        .from("delivery_note_items")
+        .select("dn_id")
+        .eq("sr_id", id)
+        .eq("company_id", mapped.company_id),
+    ]);
+
+    const dnIds = Array.from(
+      new Set([
+        ...(headerLinks || []).map((row) => row.dn_id).filter(Boolean),
+        ...(itemLinks || []).map((row) => row.dn_id).filter(Boolean),
+      ])
+    );
+
+    if (dnIds.length > 0) {
+      const { data: notes } = await supabase
+        .from("delivery_notes")
+        .select("id, dn_no, status, created_at")
+        .in("id", dnIds)
+        .eq("status", "received")
+        .eq("company_id", mapped.company_id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      mapped.fulfilling_delivery_notes = (notes || []).map((note) => ({
+        id: note.id,
+        dn_no: note.dn_no,
+        status: note.status,
+        created_at: note.created_at,
+      }));
+      mapped.fulfilling_delivery_note = mapped.fulfilling_delivery_notes[0] || null;
+    } else {
+      mapped.fulfilling_delivery_notes = [];
+      mapped.fulfilling_delivery_note = null;
+    }
+
+    return NextResponse.json(mapped);
   } catch (error) {
     console.error("Error in stock-request GET:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -124,10 +177,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const fromLocationId = body.from_location_id;
-    const toLocationId = body.to_location_id;
+    const requestingWarehouseId = body.requesting_warehouse_id;
+    const fulfillingWarehouseId = body.fulfilling_warehouse_id;
 
-    if (!fromLocationId || !toLocationId) {
+    if (!requestingWarehouseId || !fulfillingWarehouseId) {
       return NextResponse.json(
         { error: "Requested by and requested to are required" },
         { status: 400 }
@@ -140,8 +193,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .update({
         request_date: body.request_date,
         required_date: body.required_date,
-        source_warehouse_id: fromLocationId,
-        destination_warehouse_id: toLocationId,
+        requesting_warehouse_id: requestingWarehouseId,
+        fulfilling_warehouse_id: fulfillingWarehouseId,
         department: body.department || null,
         priority: body.priority,
         purpose: body.purpose || null,
@@ -185,13 +238,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .select(
         `
         *,
-        source_warehouse:warehouses!stock_requests_source_warehouse_id_fkey(
+        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
           business_unit_id
         ),
-        destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(
+        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
@@ -213,6 +266,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           *,
           items(item_code, item_name),
           units_of_measure(code, symbol)
+        ),
+        delivery_note_sources(
+          created_at,
+          delivery_notes!delivery_note_sources_dn_id_fkey(
+            id,
+            dn_no,
+            status,
+            created_at
+          )
         )
       `
       )

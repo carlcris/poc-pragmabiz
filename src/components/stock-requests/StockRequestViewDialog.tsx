@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useStockRequest } from "@/hooks/useStockRequests";
 import {
   Dialog,
   DialogContent,
@@ -25,17 +27,30 @@ const getStatusLabel = (status: StockRequestStatus) => {
       return <span className={`${baseClass} text-amber-600`}>Submitted</span>;
     case "approved":
       return <span className={`${baseClass} text-blue-600`}>Approved</span>;
-    case "ready_for_pick":
-      return <span className={`${baseClass} text-purple-600`}>Ready for Pick</span>;
     case "picked":
-    case "delivered":
-      return <span className={`${baseClass} text-indigo-600`}>Delivered</span>;
+      return <span className={`${baseClass} text-indigo-600`}>Picked</span>;
+    case "picking":
+      return <span className={`${baseClass} text-indigo-600`}>Picking</span>;
+    case "allocating":
+      return <span className={`${baseClass} text-amber-600`}>Allocating</span>;
+    case "partially_allocated":
+      return <span className={`${baseClass} text-orange-600`}>Partially Allocated</span>;
+    case "allocated":
+      return <span className={`${baseClass} text-orange-700`}>Allocated</span>;
+    case "dispatched":
+      return <span className={`${baseClass} text-indigo-600`}>Dispatched</span>;
+    case "partially_fulfilled":
+      return <span className={`${baseClass} text-emerald-600`}>Partially Fulfilled</span>;
+    case "fulfilled":
+      return <span className={`${baseClass} text-emerald-700`}>Fulfilled</span>;
     case "received":
       return <span className={`${baseClass} text-emerald-600`}>Received</span>;
     case "completed":
       return <span className={`${baseClass} text-emerald-600`}>Completed</span>;
     case "cancelled":
       return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
+    default:
+      return <span className={`${baseClass} text-muted-foreground`}>{String(status).replace(/_/g, " ")}</span>;
   }
 };
 
@@ -65,9 +80,32 @@ const formatDate = (dateString: string) => {
 export function StockRequestViewDialog({
   open,
   onOpenChange,
-  request,
+  request: initialRequest,
 }: StockRequestViewDialogProps) {
+  const requestId = initialRequest?.id || "";
+  const { data: fullRequest } = useStockRequest(requestId);
+  const request = fullRequest || initialRequest;
   if (!request) return null;
+
+  const fulfillmentSummary = (request.stock_request_items || []).reduce(
+    (acc, item) => {
+      const requestedQty = Number(item.requested_qty || 0);
+      const deliveredQty = Number(item.dispatch_qty ?? item.received_qty ?? 0);
+
+      return {
+        totalRequested: acc.totalRequested + requestedQty,
+        totalDelivered: acc.totalDelivered + deliveredQty,
+      };
+    },
+    { totalRequested: 0, totalDelivered: 0 }
+  );
+  const remainingQty = Math.max(0, fulfillmentSummary.totalRequested - fulfillmentSummary.totalDelivered);
+  const linkedFulfillmentNotes =
+    request.fulfilling_delivery_notes && request.fulfilling_delivery_notes.length > 0
+      ? request.fulfilling_delivery_notes
+      : request.fulfilling_delivery_note
+        ? [request.fulfilling_delivery_note]
+        : [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -86,16 +124,16 @@ export function StockRequestViewDialog({
               <div>
                 <span className="text-muted-foreground">Requested By:</span>
                 <div className="font-medium">
-                  {request.from_location?.warehouse_code
-                    ? `${request.from_location.warehouse_code} - ${request.from_location.warehouse_name}`
+                  {request.requesting_warehouse?.warehouse_code
+                    ? `${request.requesting_warehouse.warehouse_code} - ${request.requesting_warehouse.warehouse_name}`
                     : "--"}
                 </div>
               </div>
               <div>
                 <span className="text-muted-foreground">Requested To:</span>
                 <div className="font-medium">
-                  {request.to_location?.warehouse_code
-                    ? `${request.to_location.warehouse_code} - ${request.to_location.warehouse_name}`
+                  {request.fulfilling_warehouse?.warehouse_code
+                    ? `${request.fulfilling_warehouse.warehouse_code} - ${request.fulfilling_warehouse.warehouse_name}`
                     : "--"}
                 </div>
               </div>
@@ -156,6 +194,7 @@ export function StockRequestViewDialog({
                   <tr>
                     <th className="p-3 text-left">Item</th>
                     <th className="p-3 text-right">Quantity</th>
+                    <th className="p-3 text-right">Delivered Qty</th>
                     <th className="p-3 text-left">Unit</th>
                     <th className="p-3 text-left">Notes</th>
                   </tr>
@@ -170,6 +209,9 @@ export function StockRequestViewDialog({
                         </div>
                       </td>
                       <td className="p-3 text-right">{item.requested_qty.toFixed(2)}</td>
+                      <td className="p-3 text-right">
+                        {(item.dispatch_qty ?? item.received_qty ?? 0).toFixed(2)}
+                      </td>
                       <td className="p-3">
                         <span className="text-muted-foreground">
                           {item.units_of_measure?.code || "--"}
@@ -182,13 +224,57 @@ export function StockRequestViewDialog({
                   ))}
                   {(!request.stock_request_items || request.stock_request_items.length === 0) && (
                     <tr className="border-t">
-                      <td colSpan={4} className="p-3 text-center text-muted-foreground">
+                      <td colSpan={5} className="p-3 text-center text-muted-foreground">
                         No items found.
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              Fulfillment Summary
+            </h3>
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border bg-muted/20 p-3">
+                <div className="mb-1 text-xs text-muted-foreground">Total Requested</div>
+                <div className="text-2xl font-bold">{fulfillmentSummary.totalRequested.toFixed(2)}</div>
+              </div>
+              <div className="rounded-lg border bg-green-50/40 p-3">
+                <div className="mb-1 text-xs text-muted-foreground">Total Delivered</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {fulfillmentSummary.totalDelivered.toFixed(2)}
+                </div>
+              </div>
+              <div className="rounded-lg border bg-orange-50/50 p-3">
+                <div className="mb-1 text-xs text-muted-foreground">Remaining Qty</div>
+                <div className="text-2xl font-bold text-orange-600">{remainingQty.toFixed(2)}</div>
+              </div>
+            </div>
+            <div className="rounded-lg border p-4 text-sm">
+              <div className="mb-2 text-xs text-muted-foreground">Fulfilling Delivery Notes</div>
+              {linkedFulfillmentNotes.length > 0 ? (
+                <div className="space-y-2">
+                  {linkedFulfillmentNotes.map((note) => (
+                    <div key={note.id} className="flex items-center justify-between gap-3">
+                      <Link
+                        href={`/inventory/delivery-notes/${note.id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {note.dn_no}
+                      </Link>
+                      <span className="text-xs capitalize font-medium text-muted-foreground">
+                        {String(note.status || "--").replace(/_/g, " ")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">No linked delivery notes yet.</div>
+              )}
             </div>
           </div>
         </div>

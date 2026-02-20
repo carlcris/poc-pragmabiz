@@ -4,12 +4,11 @@ import type { DashboardData, Priority } from "@/types/warehouse-dashboard";
 
 type PickListQueueRow = {
   id: string;
-  request_code: string;
-  required_date: string;
-  priority: Priority;
+  pick_list_no: string;
+  created_at: string;
   status: string;
   users?: { email?: string | null } | null;
-  stock_request_items?: Array<{ id: string }> | null;
+  pick_list_items?: Array<{ id: string }> | null;
 };
 
 type IncomingDeliveriesQueueRow = {
@@ -71,6 +70,7 @@ export async function GET() {
 
     const accessibleBUIds = userBUAccess?.map((access) => access.business_unit_id) || [];
     const scopedBUIds = currentBusinessUnitId ? [currentBusinessUnitId] : accessibleBUIds;
+    const scopedBUFilter = scopedBUIds.map((id) => `"${id}"`).join(",");
 
     if (scopedBUIds.length === 0) {
       return NextResponse.json({ error: "No business unit access" }, { status: 403 });
@@ -109,16 +109,16 @@ export async function GET() {
         .from("stock_requests")
         .select("id", { count: "exact", head: true })
         .in("business_unit_id", scopedBUIds)
-        .in("status", ["submitted", "approved", "ready_for_pick"])
+        .in("status", ["submitted", "approved"])
         .eq("priority", "urgent")
         .is("deleted_at", null),
 
-      // Summary: Pick list to pick
+      // Summary: Active pick lists (pending + in progress + paused)
       supabase
-        .from("stock_requests")
+        .from("pick_lists")
         .select("id", { count: "exact", head: true })
-        .in("business_unit_id", scopedBUIds)
-        .eq("status", "ready_for_pick")
+        .or(`business_unit_id.in.(${scopedBUFilter}),business_unit_id.is.null`)
+        .in("status", ["pending", "in_progress", "paused"])
         .is("deleted_at", null),
 
       // Inventory health (low + out of stock)
@@ -141,24 +141,22 @@ export async function GET() {
 
       // Pick list queue
       supabase
-        .from("stock_requests")
+        .from("pick_lists")
         .select(
           `
           id,
-          request_code,
-          required_date,
-          priority,
+          pick_list_no,
+          created_at,
           status,
           created_by,
-          users!stock_requests_created_by_fkey(email),
-          stock_request_items(id)
+          users!pick_lists_created_by_fkey(email),
+          pick_list_items(id)
         `
         )
-        .in("business_unit_id", scopedBUIds)
-        .eq("status", "ready_for_pick")
+        .or(`business_unit_id.in.(${scopedBUFilter}),business_unit_id.is.null`)
+        .in("status", ["pending", "in_progress", "paused"])
         .is("deleted_at", null)
-        .order("priority", { ascending: false })
-        .order("required_date", { ascending: true })
+        .order("created_at", { ascending: true })
         .limit(12),
 
       // Incoming deliveries queue (load lists)
@@ -336,11 +334,11 @@ export async function GET() {
       queues: {
         pick_list: pickListQueue.map((item) => ({
           id: item.id,
-          request_code: item.request_code,
-          lines: item.stock_request_items?.length || 0,
-          priority: item.priority,
+          request_code: item.pick_list_no,
+          lines: item.pick_list_items?.length || 0,
+          priority: "normal",
           status: item.status,
-          required_date: item.required_date,
+          required_date: item.created_at,
           requested_by: item.users?.email || "Unknown",
         })),
         incoming_deliveries: incomingDeliveriesQueue.map((item) => ({

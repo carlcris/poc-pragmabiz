@@ -4,8 +4,6 @@ import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { PackageOpen, PackagePlus, AlertCircle, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { useLoadLists } from "@/hooks/useLoadLists";
-import { useStockRequests } from "@/hooks/useStockRequests";
-import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
 import type { LoadListStatus } from "@/types/load-list";
 
@@ -15,12 +13,6 @@ export default function TabletDashboardPage() {
     limit: 1000,
   });
   const { data: dashboardData, isLoading: isLoadingDashboard } = useWarehouseDashboard();
-  const { currentBusinessUnit } = useBusinessUnitStore();
-  const { data: stockRequestsData, isLoading: isLoadingStockRequests } = useStockRequests({
-    status: "ready_for_pick",
-    page: 1,
-    limit: 1000,
-  });
 
   const receivingStatuses: LoadListStatus[] = ["in_transit", "receiving"];
 
@@ -29,12 +21,8 @@ export default function TabletDashboardPage() {
     0;
 
   const pendingReceiptsLabel = isLoading ? "--" : pendingReceiptsCount.toString();
-  const readyToPickCount =
-    stockRequestsData?.data?.filter((request) => {
-      if (!currentBusinessUnit?.id) return true;
-      return request.to_location?.businessUnitId === currentBusinessUnit.id;
-    }).length || 0;
-  const readyToPickLabel = isLoadingStockRequests ? "--" : readyToPickCount.toString();
+  const readyToPickCount = dashboardData?.summary.pick_list_to_pick || 0;
+  const readyToPickLabel = isLoadingDashboard ? "--" : readyToPickCount.toString();
   const urgentRequestCount = dashboardData?.summary.urgent_stock_requests ?? 0;
   const attentionLabel = isLoadingDashboard ? "--" : urgentRequestCount.toString();
   const attentionMessage = isLoadingDashboard
@@ -113,7 +101,7 @@ export default function TabletDashboardPage() {
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900">Picking</h3>
-                <p className="text-sm text-gray-500">Pick items for stock requests</p>
+                <p className="text-sm text-gray-500">Pick items from assigned pick lists</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
                 <span className="text-lg font-bold text-gray-700">{readyToPickLabel}</span>

@@ -6,6 +6,8 @@ import type {
   CreateStockRequestPayload,
   UpdateStockRequestPayload,
   ReceiveStockRequestPayload,
+  PickStockRequestPayload,
+  DispatchStockRequestPayload,
 } from "@/types/stock-request";
 
 export const STOCK_REQUESTS_QUERY_KEY = "stock-requests";
@@ -151,25 +153,6 @@ export function useRejectStockRequest() {
 }
 
 /**
- * Hook to mark stock request as ready for picking
- */
-export function useMarkReadyForPick() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => stockRequestsApi.markReadyForPick(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      toast.success("Stock request marked as ready for picking");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to mark as ready for pick"));
-    },
-  });
-}
-
-/**
  * Hook to mark stock request as delivered
  */
 export function useMarkDelivered() {
@@ -180,10 +163,52 @@ export function useMarkDelivered() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
-      toast.success("Stock request marked as delivered");
+      toast.success("Stock request dispatched");
     },
     onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to mark as delivered"));
+      toast.error(getErrorMessage(error, "Failed to dispatch stock request"));
+    },
+  });
+}
+
+/**
+ * Hook to save stock request picking progress
+ */
+export function usePickStockRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: PickStockRequestPayload }) =>
+      stockRequestsApi.pick(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
+      toast.success("Pick progress saved");
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to save pick progress"));
+    },
+  });
+}
+
+/**
+ * Hook to dispatch picked stock request quantities
+ */
+export function useDispatchStockRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data?: DispatchStockRequestPayload }) =>
+      stockRequestsApi.dispatch(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["warehouse-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      toast.success("Stock request dispatched");
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to dispatch stock request"));
     },
   });
 }

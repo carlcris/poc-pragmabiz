@@ -6,6 +6,7 @@ import { RESOURCES } from "@/constants/resources";
 export interface ItemWithStock {
   id: string;
   code: string;
+  sku?: string;
   name: string;
   chineseName?: string;
   category: string;
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
     type ItemRow = {
       id: string;
       item_code: string;
+      sku: string | null;
       item_name: string;
       item_name_cn: string | null;
       category_id?: string | null;
@@ -114,13 +116,19 @@ export async function GET(request: NextRequest) {
       quantity_received: number | string | null;
     };
 
-    const buildItemsQuery = (warehouseItemIds?: string[] | null) => {
-      let query = supabase
-        .from("items")
-        .select(
-          `
+    const chunkArray = <T,>(values: T[], size: number): T[][] => {
+      const chunks: T[][] = [];
+      for (let index = 0; index < values.length; index += size) {
+        chunks.push(values.slice(index, index + size));
+      }
+      return chunks;
+    };
+
+    const buildItemsQuery = () => {
+      const selectClause = `
           id,
           item_code,
+          sku,
           item_name,
           item_name_cn,
           category_id,
@@ -138,31 +146,34 @@ export async function GET(request: NextRequest) {
           units_of_measure (
             code
           )
-        `,
-          { count: "exact" }
-        )
+          ${warehouseId ? ", item_warehouse!inner(item_id)" : ""}
+        `;
+
+      let query = supabase
+        .from("items")
+        .select(selectClause, { count: "exact" })
         .eq("company_id", userData.company_id)
         .is("deleted_at", null);
 
       if (search) {
         query = query.or(
-          `item_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%`
+          `item_code.ilike.%${search}%,sku.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%`
         );
       }
 
       if (category) {
-        query = query.or(`category_id.eq.${category},item_categories.name.eq.${category}`);
+        query = query.eq("category_id", category);
       }
 
       if (itemType) {
         query = query.eq("item_type", itemType);
       }
 
-      if (warehouseItemIds) {
-        if (warehouseItemIds.length === 0) {
-          return query.in("id", ["00000000-0000-0000-0000-000000000000"]);
-        }
-        query = query.in("id", warehouseItemIds);
+      if (warehouseId) {
+        query = query
+          .eq("item_warehouse.warehouse_id", warehouseId)
+          .eq("item_warehouse.company_id", userData.company_id)
+          .is("item_warehouse.deleted_at", null);
       }
 
       return query;
@@ -188,49 +199,11 @@ export async function GET(request: NextRequest) {
       effectiveBusinessUnitId = warehouseRow.business_unit_id ?? null;
     }
 
-    let warehouseItemIds: string[] | null = null;
-    if (warehouseId) {
-      const { data: warehouseItems, error: warehouseItemsError } = await supabase
-        .from("item_warehouse")
-        .select("item_id")
-        .eq("company_id", userData.company_id)
-        .eq("warehouse_id", warehouseId)
-        .is("deleted_at", null);
-
-      if (warehouseItemsError) {
-        return NextResponse.json(
-          { error: "Failed to resolve warehouse items", details: warehouseItemsError.message },
-          { status: 500 }
-        );
-      }
-
-      warehouseItemIds = Array.from(
-        new Set((warehouseItems || []).map((row) => row.item_id))
-      );
-
-      if (warehouseItemIds.length === 0) {
-        return NextResponse.json({
-          data: [],
-          pagination: {
-            page,
-            limit,
-            total: 0,
-            totalPages: 0,
-          },
-          statistics: {
-            totalAvailableValue: 0,
-            lowStockCount: 0,
-            outOfStockCount: 0,
-          },
-        });
-      }
-    }
-
     // Apply pagination before fetching
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const itemsQuery = buildItemsQuery(warehouseItemIds)
+    const itemsQuery = buildItemsQuery()
       .order("item_name", { ascending: true })
       .range(from, to);
 
@@ -275,75 +248,89 @@ export async function GET(request: NextRequest) {
     let poItems: PurchaseOrderItemRow[] | null = null;
 
     if (itemIds.length > 0) {
-      let stockQuery = supabase
-        .from("item_warehouse")
-        .select(
-          "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
-        )
-        .eq("company_id", userData.company_id)
-        .in("item_id", itemIds)
-        .is("deleted_at", null);
+      const itemIdChunks = chunkArray(itemIds, 100);
+      const stockChunkResponses = await Promise.all(
+        itemIdChunks.map(async (chunk) => {
+          let stockQuery = supabase
+            .from("item_warehouse")
+            .select(
+              "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
+            )
+            .eq("company_id", userData.company_id)
+            .in("item_id", chunk)
+            .is("deleted_at", null);
 
-      if (effectiveBusinessUnitId) {
-        stockQuery = stockQuery.eq("warehouses.business_unit_id", effectiveBusinessUnitId);
-      }
+          if (effectiveBusinessUnitId) {
+            stockQuery = stockQuery.eq("warehouses.business_unit_id", effectiveBusinessUnitId);
+          }
 
-      if (warehouseId) {
-        stockQuery = stockQuery.eq("warehouse_id", warehouseId);
-      }
+          if (warehouseId) {
+            stockQuery = stockQuery.eq("warehouse_id", warehouseId);
+          }
 
-      // Prepare other stock-related queries (in parallel)
-      let salesOrderItemsQuery = supabase
-        .from("sales_order_items")
-        .select(
-          `
-          item_id,
-          quantity,
-          quantity_delivered,
-          sales_orders!inner (
-            status
-          )
-        `
-        )
-        .eq("sales_orders.company_id", userData.company_id)
-        .in("item_id", itemIds)
-        .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
+          let salesOrderItemsQuery = supabase
+            .from("sales_order_items")
+            .select(
+              `
+              item_id,
+              quantity,
+              quantity_delivered,
+              sales_orders!inner (
+                status
+              )
+            `
+            )
+            .eq("sales_orders.company_id", userData.company_id)
+            .in("item_id", chunk)
+            .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
 
-      if (effectiveBusinessUnitId) {
-        salesOrderItemsQuery = salesOrderItemsQuery.eq(
-          "sales_orders.business_unit_id",
-          effectiveBusinessUnitId
-        );
-      }
+          if (effectiveBusinessUnitId) {
+            salesOrderItemsQuery = salesOrderItemsQuery.eq(
+              "sales_orders.business_unit_id",
+              effectiveBusinessUnitId
+            );
+          }
 
-      let poItemsQuery = supabase
-        .from("purchase_order_items")
-        .select(
-          `
-          item_id,
-          quantity,
-          quantity_received,
-          purchase_orders!inner (
-            status
-          )
-        `
-        )
-        .eq("purchase_orders.company_id", userData.company_id)
-        .in("item_id", itemIds)
-        .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
+          let poItemsQuery = supabase
+            .from("purchase_order_items")
+            .select(
+              `
+              item_id,
+              quantity,
+              quantity_received,
+              purchase_orders!inner (
+                status
+              )
+            `
+            )
+            .eq("purchase_orders.company_id", userData.company_id)
+            .in("item_id", chunk)
+            .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
 
-      if (effectiveBusinessUnitId) {
-        poItemsQuery = poItemsQuery.eq(
-          "purchase_orders.business_unit_id",
-          effectiveBusinessUnitId
-        );
-      }
+          if (effectiveBusinessUnitId) {
+            poItemsQuery = poItemsQuery.eq("purchase_orders.business_unit_id", effectiveBusinessUnitId);
+          }
 
-      const [
-        { data: warehouseData, error: stockError },
-        { data: soItems, error: salesOrderError },
-        { data: purchaseItems, error: poItemsError },
-      ] = await Promise.all([stockQuery, salesOrderItemsQuery, poItemsQuery]);
+          const [
+            { data: warehouseData, error: stockError },
+            { data: soItems, error: salesOrderError },
+            { data: purchaseItems, error: poItemsError },
+          ] = await Promise.all([stockQuery, salesOrderItemsQuery, poItemsQuery]);
+
+          return {
+            warehouseData,
+            soItems,
+            purchaseItems,
+            stockError,
+            salesOrderError,
+            poItemsError,
+          };
+        })
+      );
+
+      const stockError = stockChunkResponses.find((result) => result.stockError)?.stockError;
+      const salesOrderError = stockChunkResponses.find((result) => result.salesOrderError)?.salesOrderError;
+      const poItemsError = stockChunkResponses.find((result) => result.poItemsError)?.poItemsError;
 
       if (stockError) {
         return NextResponse.json(
@@ -366,9 +353,15 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      itemWarehouseData = warehouseData as ItemWarehouseRow[] | null;
-      salesOrderItems = soItems as SalesOrderItemRow[] | null;
-      poItems = purchaseItems as PurchaseOrderItemRow[] | null;
+      itemWarehouseData = stockChunkResponses.flatMap(
+        (result) => (result.warehouseData || []) as ItemWarehouseRow[]
+      );
+      salesOrderItems = stockChunkResponses.flatMap(
+        (result) => (result.soItems || []) as SalesOrderItemRow[]
+      );
+      poItems = stockChunkResponses.flatMap(
+        (result) => (result.purchaseItems || []) as PurchaseOrderItemRow[]
+      );
     }
 
     const suppliersMap = new Map<string, string>();
@@ -484,6 +477,7 @@ export async function GET(request: NextRequest) {
       return {
         id: item.id,
         code: item.item_code,
+        sku: item.sku || undefined,
         name: item.item_name,
         chineseName: item.item_name_cn || undefined,
         category: item.item_categories?.name || "",
@@ -531,7 +525,7 @@ export async function GET(request: NextRequest) {
     let totalFiltered = filteredItems.length;
 
     if (shouldFetchFull) {
-      const { data: allItems, error: allItemsError } = await buildItemsQuery(warehouseItemIds);
+      const { data: allItems, error: allItemsError } = await buildItemsQuery();
       if (allItemsError) {
         return NextResponse.json(
           { error: "Failed to fetch items for stats", details: allItemsError.message },
@@ -551,81 +545,111 @@ export async function GET(request: NextRequest) {
         };
         totalFiltered = 0;
       } else {
-      let statsWarehouseQuery = supabase
-        .from("item_warehouse")
-        .select(
-          "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
-        )
-        .eq("company_id", userData.company_id)
-        .in("item_id", allItemIds)
-        .is("deleted_at", null);
+      const itemIdChunks = chunkArray(allItemIds, 100);
+      const statsChunkResponses = await Promise.all(
+        itemIdChunks.map(async (chunk) => {
+          let statsWarehouseQuery = supabase
+            .from("item_warehouse")
+            .select(
+              "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
+            )
+            .eq("company_id", userData.company_id)
+            .in("item_id", chunk)
+            .is("deleted_at", null);
 
-      if (effectiveBusinessUnitId) {
-        statsWarehouseQuery = statsWarehouseQuery.eq(
-          "warehouses.business_unit_id",
-          effectiveBusinessUnitId
-        );
-      }
+          if (effectiveBusinessUnitId) {
+            statsWarehouseQuery = statsWarehouseQuery.eq(
+              "warehouses.business_unit_id",
+              effectiveBusinessUnitId
+            );
+          }
 
-      if (warehouseId) {
-        statsWarehouseQuery = statsWarehouseQuery.eq("warehouse_id", warehouseId);
-      }
+          if (warehouseId) {
+            statsWarehouseQuery = statsWarehouseQuery.eq("warehouse_id", warehouseId);
+          }
 
-      let statsSalesOrderQuery = supabase
-        .from("sales_order_items")
-        .select(
-          `
-          item_id,
-          quantity,
-          quantity_delivered,
-          sales_orders!inner (
-            status
-          )
-        `
-        )
-        .eq("sales_orders.company_id", userData.company_id)
-        .in("item_id", allItemIds)
-        .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
+          let statsSalesOrderQuery = supabase
+            .from("sales_order_items")
+            .select(
+              `
+              item_id,
+              quantity,
+              quantity_delivered,
+              sales_orders!inner (
+                status
+              )
+            `
+            )
+            .eq("sales_orders.company_id", userData.company_id)
+            .in("item_id", chunk)
+            .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
 
-      if (effectiveBusinessUnitId) {
-        statsSalesOrderQuery = statsSalesOrderQuery.eq(
-          "sales_orders.business_unit_id",
-          effectiveBusinessUnitId
-        );
-      }
+          if (effectiveBusinessUnitId) {
+            statsSalesOrderQuery = statsSalesOrderQuery.eq(
+              "sales_orders.business_unit_id",
+              effectiveBusinessUnitId
+            );
+          }
 
-      let statsPoQuery = supabase
-        .from("purchase_order_items")
-        .select(
-          `
-          item_id,
-          quantity,
-          quantity_received,
-          purchase_orders!inner (
-            status
-          )
-        `
-        )
-        .eq("purchase_orders.company_id", userData.company_id)
-        .in("item_id", allItemIds)
-        .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
+          let statsPoQuery = supabase
+            .from("purchase_order_items")
+            .select(
+              `
+              item_id,
+              quantity,
+              quantity_received,
+              purchase_orders!inner (
+                status
+              )
+            `
+            )
+            .eq("purchase_orders.company_id", userData.company_id)
+            .in("item_id", chunk)
+            .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
 
-      if (effectiveBusinessUnitId) {
-        statsPoQuery = statsPoQuery.eq("purchase_orders.business_unit_id", effectiveBusinessUnitId);
-      }
+          if (effectiveBusinessUnitId) {
+            statsPoQuery = statsPoQuery.eq(
+              "purchase_orders.business_unit_id",
+              effectiveBusinessUnitId
+            );
+          }
 
-      const [
-        { data: statsWarehouse, error: statsWarehouseError },
-        { data: statsSales, error: statsSalesError },
-        { data: statsPo, error: statsPoError },
-      ] = await Promise.all([statsWarehouseQuery, statsSalesOrderQuery, statsPoQuery]);
+          const [
+            { data: statsWarehouse, error: statsWarehouseError },
+            { data: statsSales, error: statsSalesError },
+            { data: statsPo, error: statsPoError },
+          ] = await Promise.all([statsWarehouseQuery, statsSalesOrderQuery, statsPoQuery]);
+
+          return {
+            statsWarehouse,
+            statsSales,
+            statsPo,
+            statsWarehouseError,
+            statsSalesError,
+            statsPoError,
+          };
+        })
+      );
+
+      const statsWarehouseError = statsChunkResponses.find((result) => result.statsWarehouseError)
+        ?.statsWarehouseError;
+      const statsSalesError = statsChunkResponses.find((result) => result.statsSalesError)
+        ?.statsSalesError;
+      const statsPoError = statsChunkResponses.find((result) => result.statsPoError)?.statsPoError;
 
       if (statsWarehouseError || statsSalesError || statsPoError) {
-        return NextResponse.json(
-          { error: "Failed to fetch stats data" },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to fetch stats data" }, { status: 500 });
       }
+
+      const statsWarehouse = statsChunkResponses.flatMap(
+        (result) => (result.statsWarehouse || []) as ItemWarehouseRow[]
+      );
+      const statsSales = statsChunkResponses.flatMap(
+        (result) => (result.statsSales || []) as SalesOrderItemRow[]
+      );
+      const statsPo = statsChunkResponses.flatMap(
+        (result) => (result.statsPo || []) as PurchaseOrderItemRow[]
+      );
 
       const statsMaps = buildStockMaps(
         statsWarehouse as ItemWarehouseRow[] | null,
@@ -657,6 +681,7 @@ export async function GET(request: NextRequest) {
         return {
           id: item.id,
           code: item.item_code,
+          sku: item.sku || undefined,
           name: item.item_name,
           chineseName: item.item_name_cn || undefined,
           category: item.item_categories?.name || "",

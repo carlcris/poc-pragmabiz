@@ -463,6 +463,298 @@ export type Database = {
           },
         ]
       }
+      delivery_note_items: {
+        Row: {
+          allocated_qty: number
+          company_id: string
+          created_at: string
+          dispatched_qty: number
+          dn_id: string
+          fulfilling_warehouse_id: string
+          id: string
+          item_id: string
+          picked_qty: number
+          requesting_warehouse_id: string
+          short_qty: number
+          sr_id: string
+          sr_item_id: string
+          uom_id: string
+          updated_at: string
+        }
+        Insert: {
+          allocated_qty?: number
+          company_id: string
+          created_at?: string
+          dispatched_qty?: number
+          dn_id: string
+          fulfilling_warehouse_id: string
+          id?: string
+          item_id: string
+          picked_qty?: number
+          requesting_warehouse_id: string
+          short_qty?: number
+          sr_id: string
+          sr_item_id: string
+          uom_id: string
+          updated_at?: string
+        }
+        Update: {
+          allocated_qty?: number
+          company_id?: string
+          created_at?: string
+          dispatched_qty?: number
+          dn_id?: string
+          fulfilling_warehouse_id?: string
+          id?: string
+          item_id?: string
+          picked_qty?: number
+          requesting_warehouse_id?: string
+          short_qty?: number
+          sr_id?: string
+          sr_item_id?: string
+          uom_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_note_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_dn_id_fkey"
+            columns: ["dn_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_fulfilling_warehouse_id_fkey"
+            columns: ["fulfilling_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_requesting_warehouse_id_fkey"
+            columns: ["requesting_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_sr_id_fkey"
+            columns: ["sr_id"]
+            isOneToOne: false
+            referencedRelation: "stock_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_sr_item_id_fkey"
+            columns: ["sr_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_request_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_note_sources: {
+        Row: {
+          company_id: string
+          created_at: string
+          dn_id: string
+          sr_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          dn_id: string
+          sr_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          dn_id?: string
+          sr_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_note_sources_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_sources_dn_id_fkey"
+            columns: ["dn_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_sources_sr_id_fkey"
+            columns: ["sr_id"]
+            isOneToOne: false
+            referencedRelation: "stock_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_notes: {
+        Row: {
+          business_unit_id: string | null
+          company_id: string
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          dispatched_at: string | null
+          dn_no: string
+          driver_name: string | null
+          driver_signature: string | null
+          fulfilling_warehouse_id: string
+          id: string
+          notes: string | null
+          picking_completed_at: string | null
+          picking_completed_by: string | null
+          picking_started_at: string | null
+          picking_started_by: string | null
+          received_at: string | null
+          requesting_warehouse_id: string
+          status: Database["public"]["Enums"]["delivery_note_status"]
+          updated_at: string
+          updated_by: string | null
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          business_unit_id?: string | null
+          company_id: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          dispatched_at?: string | null
+          dn_no: string
+          driver_name?: string | null
+          driver_signature?: string | null
+          fulfilling_warehouse_id: string
+          id?: string
+          notes?: string | null
+          picking_completed_at?: string | null
+          picking_completed_by?: string | null
+          picking_started_at?: string | null
+          picking_started_by?: string | null
+          received_at?: string | null
+          requesting_warehouse_id: string
+          status?: Database["public"]["Enums"]["delivery_note_status"]
+          updated_at?: string
+          updated_by?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          business_unit_id?: string | null
+          company_id?: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          dispatched_at?: string | null
+          dn_no?: string
+          driver_name?: string | null
+          driver_signature?: string | null
+          fulfilling_warehouse_id?: string
+          id?: string
+          notes?: string | null
+          picking_completed_at?: string | null
+          picking_completed_by?: string | null
+          picking_started_at?: string | null
+          picking_started_by?: string | null
+          received_at?: string | null
+          requesting_warehouse_id?: string
+          status?: Database["public"]["Enums"]["delivery_note_status"]
+          updated_at?: string
+          updated_by?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_notes_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_fulfilling_warehouse_id_fkey"
+            columns: ["fulfilling_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_picking_completed_by_fkey"
+            columns: ["picking_completed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_picking_started_by_fkey"
+            columns: ["picking_started_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_requesting_warehouse_id_fkey"
+            columns: ["requesting_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_distribution_locations: {
         Row: {
           assigned_date: string
@@ -2206,6 +2498,247 @@ export type Database = {
           },
           {
             foreignKeyName: "permissions_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pick_list_assignees: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          company_id: string
+          pick_list_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          company_id: string
+          pick_list_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          company_id?: string
+          pick_list_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pick_list_assignees_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_assignees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_assignees_pick_list_id_fkey"
+            columns: ["pick_list_id"]
+            isOneToOne: false
+            referencedRelation: "pick_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pick_list_items: {
+        Row: {
+          allocated_qty: number
+          company_id: string
+          created_at: string
+          dn_item_id: string
+          id: string
+          item_id: string
+          pick_list_id: string
+          picked_qty: number
+          short_qty: number
+          sr_id: string
+          sr_item_id: string
+          uom_id: string
+          updated_at: string
+        }
+        Insert: {
+          allocated_qty?: number
+          company_id: string
+          created_at?: string
+          dn_item_id: string
+          id?: string
+          item_id: string
+          pick_list_id: string
+          picked_qty?: number
+          short_qty?: number
+          sr_id: string
+          sr_item_id: string
+          uom_id: string
+          updated_at?: string
+        }
+        Update: {
+          allocated_qty?: number
+          company_id?: string
+          created_at?: string
+          dn_item_id?: string
+          id?: string
+          item_id?: string
+          pick_list_id?: string
+          picked_qty?: number
+          short_qty?: number
+          sr_id?: string
+          sr_item_id?: string
+          uom_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pick_list_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_dn_item_id_fkey"
+            columns: ["dn_item_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_note_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_pick_list_id_fkey"
+            columns: ["pick_list_id"]
+            isOneToOne: false
+            referencedRelation: "pick_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_sr_id_fkey"
+            columns: ["sr_id"]
+            isOneToOne: false
+            referencedRelation: "stock_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_sr_item_id_fkey"
+            columns: ["sr_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_request_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pick_lists: {
+        Row: {
+          business_unit_id: string | null
+          cancel_reason: string | null
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          dn_id: string
+          id: string
+          notes: string | null
+          pick_list_no: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["pick_list_status"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_unit_id?: string | null
+          cancel_reason?: string | null
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          dn_id: string
+          id?: string
+          notes?: string | null
+          pick_list_no: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["pick_list_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_unit_id?: string | null
+          cancel_reason?: string | null
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          dn_id?: string
+          id?: string
+          notes?: string | null
+          pick_list_no?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["pick_list_status"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pick_lists_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_lists_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_lists_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_lists_dn_id_fkey"
+            columns: ["dn_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_lists_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
@@ -4302,33 +4835,45 @@ export type Database = {
       stock_request_items: {
         Row: {
           created_at: string
+          dispatch_qty: number | null
           id: string
           item_id: string
           notes: string | null
           picked_qty: number | null
+          received_qty: number
           requested_qty: number
+          short_qty: number | null
+          short_reason_code: string | null
           stock_request_id: string
           uom_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          dispatch_qty?: number | null
           id?: string
           item_id: string
           notes?: string | null
           picked_qty?: number | null
+          received_qty?: number
           requested_qty: number
+          short_qty?: number | null
+          short_reason_code?: string | null
           stock_request_id: string
           uom_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          dispatch_qty?: number | null
           id?: string
           item_id?: string
           notes?: string | null
           picked_qty?: number | null
+          received_qty?: number
           requested_qty?: number
+          short_qty?: number | null
+          short_reason_code?: string | null
           stock_request_id?: string
           uom_id?: string
           updated_at?: string
@@ -4369,7 +4914,7 @@ export type Database = {
           delivered_at: string | null
           delivered_by: string | null
           department: string | null
-          destination_warehouse_id: string | null
+          fulfilling_warehouse_id: string | null
           id: string
           notes: string | null
           picked_at: string | null
@@ -4384,8 +4929,8 @@ export type Database = {
           request_date: string
           requested_by_name: string | null
           requested_by_user_id: string
+          requesting_warehouse_id: string
           required_date: string
-          source_warehouse_id: string
           status: string | null
           updated_at: string
           updated_by: string | null
@@ -4402,7 +4947,7 @@ export type Database = {
           delivered_at?: string | null
           delivered_by?: string | null
           department?: string | null
-          destination_warehouse_id?: string | null
+          fulfilling_warehouse_id?: string | null
           id?: string
           notes?: string | null
           picked_at?: string | null
@@ -4417,8 +4962,8 @@ export type Database = {
           request_date?: string
           requested_by_name?: string | null
           requested_by_user_id: string
+          requesting_warehouse_id: string
           required_date: string
-          source_warehouse_id: string
           status?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -4435,7 +4980,7 @@ export type Database = {
           delivered_at?: string | null
           delivered_by?: string | null
           department?: string | null
-          destination_warehouse_id?: string | null
+          fulfilling_warehouse_id?: string | null
           id?: string
           notes?: string | null
           picked_at?: string | null
@@ -4450,8 +4995,8 @@ export type Database = {
           request_date?: string
           requested_by_name?: string | null
           requested_by_user_id?: string
+          requesting_warehouse_id?: string
           required_date?: string
-          source_warehouse_id?: string
           status?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -4494,8 +5039,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_requests_destination_warehouse_id_fkey"
-            columns: ["destination_warehouse_id"]
+            foreignKeyName: "stock_requests_fulfilling_warehouse_id_fkey"
+            columns: ["fulfilling_warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
             referencedColumns: ["id"]
@@ -4529,8 +5074,8 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_requests_source_warehouse_id_fkey"
-            columns: ["source_warehouse_id"]
+            foreignKeyName: "stock_requests_requesting_warehouse_id_fkey"
+            columns: ["requesting_warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
             referencedColumns: ["id"]
@@ -6735,7 +7280,35 @@ export type Database = {
         Args: { p_date: string; p_van_warehouse_id: string }
         Returns: Json
       }
+      post_delivery_note_dispatch: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_dispatch_date: string
+          p_dn_id: string
+          p_driver_name: string
+          p_driver_signature: string
+          p_items: Json
+          p_notes: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      post_delivery_note_receive: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_dn_id: string
+          p_items: Json
+          p_notes: string
+          p_received_date: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       setup_company_rbac: { Args: { p_company_id: string }; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       update_current_business_unit: {
         Args: { p_business_unit_id: string }
         Returns: Json
@@ -6751,7 +7324,21 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      delivery_note_status:
+        | "draft"
+        | "confirmed"
+        | "queued_for_picking"
+        | "picking_in_progress"
+        | "dispatch_ready"
+        | "dispatched"
+        | "received"
+        | "voided"
+      pick_list_status:
+        | "pending"
+        | "in_progress"
+        | "paused"
+        | "cancelled"
+        | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6881,7 +7468,25 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      delivery_note_status: [
+        "draft",
+        "confirmed",
+        "queued_for_picking",
+        "picking_in_progress",
+        "dispatch_ready",
+        "dispatched",
+        "received",
+        "voided",
+      ],
+      pick_list_status: [
+        "pending",
+        "in_progress",
+        "paused",
+        "cancelled",
+        "done",
+      ],
+    },
   },
 } as const
 

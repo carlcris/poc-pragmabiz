@@ -5,6 +5,7 @@ export const pageTitles: Record<string, string> = {
   "/inventory/stock": "Stock Transactions",
   "/inventory/adjustments": "Stock Adjustments",
   "/inventory/stock-requests": "Stock Requests",
+  "/inventory/delivery-notes": "Delivery Notes",
   "/inventory/transformations": "Stock Transformations",
   "/inventory/reorder": "Reorder Management",
   "/purchasing/overview": "Purchasing Overview",

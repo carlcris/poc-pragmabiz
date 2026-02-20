@@ -6,6 +6,8 @@ import type {
   CreateStockRequestPayload,
   UpdateStockRequestPayload,
   ReceiveStockRequestPayload,
+  PickStockRequestPayload,
+  DispatchStockRequestPayload,
 } from "@/types/stock-request";
 
 export const stockRequestsApi = {
@@ -16,8 +18,12 @@ export const stockRequestsApi = {
     const searchParams = new URLSearchParams();
 
     if (params?.search) searchParams.append("search", params.search);
-    if (params?.fromLocationId) searchParams.append("fromLocationId", params.fromLocationId);
-    if (params?.toLocationId) searchParams.append("toLocationId", params.toLocationId);
+    if (params?.requestingWarehouseId) {
+      searchParams.append("requestingWarehouseId", params.requestingWarehouseId);
+    }
+    if (params?.fulfillingWarehouseId) {
+      searchParams.append("fulfillingWarehouseId", params.fulfillingWarehouseId);
+    }
     if (params?.status) searchParams.append("status", params.status);
     if (params?.priority) searchParams.append("priority", params.priority);
     if (params?.startDate) searchParams.append("startDate", params.startDate);
@@ -79,17 +85,24 @@ export const stockRequestsApi = {
   },
 
   /**
-   * Mark stock request as ready for picking (approved → ready_for_pick)
+   * Save picking progress
    */
-  async markReadyForPick(id: string): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/ready-for-pick`, {});
+  async pick(id: string, data: PickStockRequestPayload): Promise<StockRequest> {
+    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/pick`, data);
   },
 
   /**
-   * Mark stock request as delivered (ready_for_pick → delivered)
+   * Dispatch picked quantities and deduct inventory
+   */
+  async dispatch(id: string, data?: DispatchStockRequestPayload): Promise<StockRequest> {
+    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/dispatch`, data || {});
+  },
+
+  /**
+   * Compatibility alias: Mark stock request as delivered (dispatch)
    */
   async markDelivered(id: string): Promise<StockRequest> {
-    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/picked`, {});
+    return apiClient.post<StockRequest>(`/api/stock-requests/${id}/dispatch`, {});
   },
 
   /**

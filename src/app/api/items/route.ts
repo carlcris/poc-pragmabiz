@@ -3,14 +3,30 @@ import { NextRequest, NextResponse } from "next/server";
 import type { Item, CreateItemRequest } from "@/types/item";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import QRCode from "qrcode";
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
+const SKU_REGEX = /^[0-9]{8}$/;
+const MAX_SKU_GENERATION_ATTEMPTS = 25;
+
+const generateSkuQrDataUrl = async (sku: string) =>
+  QRCode.toDataURL(sku, {
+    errorCorrectionLevel: "M",
+    margin: 1,
+    width: 240,
+    color: {
+      dark: "#111111",
+      light: "#FFFFFF",
+    },
+  });
 
 type DbItem = {
   id: string;
   company_id: string;
   item_code: string;
+  sku: string | null;
+  sku_qr_image: string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -51,6 +67,8 @@ function transformDbItem(dbItem: ItemRow): Item {
     id: dbItem.id,
     companyId: dbItem.company_id,
     code: dbItem.item_code,
+    sku: dbItem.sku || undefined,
+    skuQrImage: dbItem.sku_qr_image || undefined,
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
@@ -125,6 +143,8 @@ export async function GET(request: NextRequest) {
         id,
         company_id,
         item_code,
+        sku,
+        sku_qr_image,
         item_name,
         item_name_cn,
         description,
@@ -156,7 +176,7 @@ export async function GET(request: NextRequest) {
     // Apply filters
     if (search) {
       query = query.or(
-        `item_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
+        `item_code.ilike.%${search}%,sku.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
       );
     }
 
@@ -263,6 +283,82 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate provided SKU format (if user supplied it)
+    if (body.sku && !SKU_REGEX.test(body.sku)) {
+      return NextResponse.json(
+        {
+          error: "Invalid SKU format",
+          details: "SKU must be an 8-digit numeric value",
+        },
+        { status: 400 }
+      );
+    }
+
+    const generateSkuCandidate = () => Math.floor(Math.random() * 100000000).toString().padStart(8, "0");
+
+    const resolveUniqueSku = async (): Promise<string | null> => {
+      if (body.sku) {
+        const { data: existingSku } = await supabase
+          .from("items")
+          .select("id")
+          .eq("company_id", body.companyId)
+          .eq("sku", body.sku)
+          .is("deleted_at", null)
+          .maybeSingle();
+
+        if (existingSku) {
+          throw new Error(`duplicate:${body.sku}`);
+        }
+        return body.sku;
+      }
+
+      for (let attempt = 0; attempt < MAX_SKU_GENERATION_ATTEMPTS; attempt++) {
+        const candidate = generateSkuCandidate();
+        const { data: existingSku } = await supabase
+          .from("items")
+          .select("id")
+          .eq("company_id", body.companyId)
+          .eq("sku", candidate)
+          .is("deleted_at", null)
+          .maybeSingle();
+
+        if (!existingSku) {
+          return candidate;
+        }
+      }
+
+      return null;
+    };
+
+    let resolvedSku: string | null;
+    try {
+      resolvedSku = await resolveUniqueSku();
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("duplicate:")) {
+        const duplicateValue = error.message.replace("duplicate:", "");
+        return NextResponse.json(
+          {
+            error: "SKU already exists",
+            details: `SKU "${duplicateValue}" is already in use`,
+          },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+
+    if (!resolvedSku) {
+      return NextResponse.json(
+        {
+          error: "Failed to generate SKU",
+          details: "Unable to generate a unique SKU. Please try again.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const resolvedSkuQrImage = await generateSkuQrDataUrl(resolvedSku);
+
     // Get UoM ID by code
     const { data: uomData } = await supabase
       .from("units_of_measure")
@@ -300,45 +396,87 @@ export async function POST(request: NextRequest) {
       categoryId = categoryData.id;
     }
 
-    // Insert item
-    const { data: newItem, error: insertError } = await supabase
-      .from("items")
-      .insert({
-        company_id: body.companyId,
-        item_code: body.code,
-        item_name: body.name,
-        item_name_cn: body.chineseName || null,
-        description: body.description || null,
-        item_type: body.itemType,
-        uom_id: uomData.id,
-        category_id: categoryId,
-        cost_price: body.standardCost?.toString(),
-        sales_price: body.listPrice?.toString(),
-        purchase_price: body.standardCost?.toString(),
-        image_url: body.imageUrl || null,
-        is_stock_item: body.itemType !== "service",
-        is_active: body.isActive ?? true,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select(
+    const insertPayloadBase = {
+      company_id: body.companyId,
+      item_code: body.code,
+      item_name: body.name,
+      item_name_cn: body.chineseName || null,
+      description: body.description || null,
+      item_type: body.itemType,
+      uom_id: uomData.id,
+      category_id: categoryId,
+      cost_price: body.standardCost?.toString(),
+      sales_price: body.listPrice?.toString(),
+      purchase_price: body.standardCost?.toString(),
+      image_url: body.imageUrl || null,
+      is_stock_item: body.itemType !== "service",
+      is_active: body.isActive ?? true,
+      created_by: user.id,
+      updated_by: user.id,
+    };
+
+    // Insert item; retry only if generated SKU collides during concurrent writes.
+    let newItem: ItemRow | null = null;
+    let insertError: { message: string; code?: string } | null = null;
+    let skuForInsert = resolvedSku;
+    let skuQrImageForInsert = resolvedSkuQrImage;
+    const maxInsertAttempts = body.sku ? 1 : MAX_SKU_GENERATION_ATTEMPTS;
+
+    for (let attempt = 0; attempt < maxInsertAttempts; attempt++) {
+      const { data, error } = await supabase
+        .from("items")
+        .insert({
+          ...insertPayloadBase,
+          sku: skuForInsert,
+          sku_qr_image: skuQrImageForInsert,
+        })
+        .select(
+          `
+          *,
+          item_categories (
+            id,
+            name,
+            code
+          ),
+          units_of_measure (
+            id,
+            code,
+            name
+          )
         `
-        *,
-        item_categories (
-          id,
-          name,
-          code
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
         )
-      `
-      )
-      .single();
+        .single();
+
+      if (!error) {
+        newItem = data as ItemRow;
+        insertError = null;
+        break;
+      }
+
+      insertError = error;
+      const isSkuConflict =
+        error.code === "23505" && error.message.includes("idx_items_company_sku_unique");
+      if (!isSkuConflict || body.sku) {
+        break;
+      }
+
+      skuForInsert = generateSkuCandidate();
+      skuQrImageForInsert = await generateSkuQrDataUrl(skuForInsert);
+    }
 
     if (insertError) {
+      const isSkuConflict =
+        insertError.code === "23505" &&
+        insertError.message.includes("idx_items_company_sku_unique");
+      if (isSkuConflict) {
+        return NextResponse.json(
+          {
+            error: "SKU already exists",
+            details: "Generated SKU collided. Please retry.",
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json(
         { error: "Failed to create item", details: insertError.message },
         { status: 500 }

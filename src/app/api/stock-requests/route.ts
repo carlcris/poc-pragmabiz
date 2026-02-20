@@ -41,10 +41,8 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const search = searchParams.get("search") || "";
-    const fromLocationId =
-      searchParams.get("fromLocationId") || searchParams.get("sourceWarehouseId") || "";
-    const toLocationId =
-      searchParams.get("toLocationId") || searchParams.get("destinationWarehouseId") || "";
+    const requestingWarehouseId = searchParams.get("requestingWarehouseId") || "";
+    const fulfillingWarehouseId = searchParams.get("fulfillingWarehouseId") || "";
     const status = searchParams.get("status") || "";
     const priority = searchParams.get("priority") || "";
     const startDate = searchParams.get("startDate") || "";
@@ -59,13 +57,13 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        source_warehouse:warehouses!stock_requests_source_warehouse_id_fkey(
+        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
           business_unit_id
         ),
-        destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(
+        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
@@ -87,6 +85,15 @@ export async function GET(request: NextRequest) {
           *,
           items(item_code, item_name),
           units_of_measure(code, symbol)
+        ),
+        delivery_note_sources(
+          created_at,
+          delivery_notes!delivery_note_sources_dn_id_fkey(
+            id,
+            dn_no,
+            status,
+            created_at
+          )
         )
       `,
         { count: "exact" }
@@ -102,11 +109,11 @@ export async function GET(request: NextRequest) {
         `request_code.ilike.%${search}%,purpose.ilike.%${search}%,department.ilike.%${search}%`
       );
     }
-    if (fromLocationId) {
-      query = query.eq("source_warehouse_id", fromLocationId);
+    if (requestingWarehouseId) {
+      query = query.eq("requesting_warehouse_id", requestingWarehouseId);
     }
-    if (toLocationId) {
-      query = query.eq("destination_warehouse_id", toLocationId);
+    if (fulfillingWarehouseId) {
+      query = query.eq("fulfilling_warehouse_id", fulfillingWarehouseId);
     }
     if (status) {
       query = query.eq("status", status);
@@ -184,11 +191,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    const fromLocationId = body.from_location_id;
-    const toLocationId = body.to_location_id;
+    const requestingWarehouseId = body.requesting_warehouse_id;
+    const fulfillingWarehouseId = body.fulfilling_warehouse_id;
 
     // Validate required fields
-    if (!body.request_date || !body.required_date || !fromLocationId || !toLocationId || !body.priority) {
+    if (
+      !body.request_date ||
+      !body.required_date ||
+      !requestingWarehouseId ||
+      !fulfillingWarehouseId ||
+      !body.priority
+    ) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -217,8 +230,8 @@ export async function POST(request: NextRequest) {
         request_code: requestCode,
         request_date: body.request_date,
         required_date: body.required_date,
-        source_warehouse_id: fromLocationId,
-        destination_warehouse_id: toLocationId,
+        requesting_warehouse_id: requestingWarehouseId,
+        fulfilling_warehouse_id: fulfillingWarehouseId,
         department: body.department || null,
         status: "draft",
         priority: body.priority,
@@ -262,13 +275,13 @@ export async function POST(request: NextRequest) {
       .select(
         `
         *,
-        source_warehouse:warehouses!stock_requests_source_warehouse_id_fkey(
+        requesting_warehouse:warehouses!stock_requests_requesting_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
           business_unit_id
         ),
-        destination_warehouse:warehouses!stock_requests_destination_warehouse_id_fkey(
+        fulfilling_warehouse:warehouses!stock_requests_fulfilling_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
@@ -290,6 +303,15 @@ export async function POST(request: NextRequest) {
           *,
           items(item_code, item_name),
           units_of_measure(code, symbol)
+        ),
+        delivery_note_sources(
+          created_at,
+          delivery_notes!delivery_note_sources_dn_id_fkey(
+            id,
+            dn_no,
+            status,
+            created_at
+          )
         )
       `
       )
