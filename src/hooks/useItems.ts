@@ -10,6 +10,7 @@ export interface ItemsFilters extends ItemFilters {
   supplierId?: string;
   status?: "all" | "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
   includeStock?: boolean;
+  includeStats?: boolean;
 }
 
 export interface ItemsResponse {
@@ -44,6 +45,7 @@ type ItemsQueryOptions = ItemsFilters & {
 export function useItems(filters?: ItemsQueryOptions) {
   const { enabled, ...restFilters } = filters ?? {};
   const includeStock = restFilters.includeStock ?? false;
+  const includeStats = restFilters.includeStats ?? false;
 
   return useQuery({
     queryKey: [ITEMS_QUERY_KEY, restFilters],
@@ -59,6 +61,7 @@ export function useItems(filters?: ItemsQueryOptions) {
         if (restFilters.status && restFilters.status !== "all")
           params.append("status", restFilters.status);
         if (restFilters.itemType) params.append("itemType", restFilters.itemType);
+        if (includeStats) params.append("includeStats", "true");
         if (restFilters.page) params.append("page", restFilters.page.toString());
         if (restFilters.limit) params.append("limit", restFilters.limit.toString());
 

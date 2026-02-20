@@ -8,6 +8,7 @@ export interface ItemsEnhancedFilters {
   supplierId?: string;
   status?: "all" | "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
   itemType?: string;
+  includeStats?: boolean;
   page?: number;
   limit?: number;
 }
@@ -19,6 +20,11 @@ export interface ItemsEnhancedResponse {
     limit: number;
     total: number;
     totalPages: number;
+  };
+  statistics?: {
+    totalAvailableValue: number;
+    lowStockCount: number;
+    outOfStockCount: number;
   };
 }
 
@@ -34,6 +40,7 @@ export function useItemsEnhanced(filters?: ItemsEnhancedFilters) {
       if (filters?.supplierId) params.append("supplierId", filters.supplierId);
       if (filters?.status && filters.status !== "all") params.append("status", filters.status);
       if (filters?.itemType) params.append("itemType", filters.itemType);
+      if (filters?.includeStats) params.append("includeStats", "true");
       if (filters?.page) params.append("page", filters.page.toString());
       if (filters?.limit) params.append("limit", filters.limit.toString());
 

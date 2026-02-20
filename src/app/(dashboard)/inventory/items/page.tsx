@@ -78,6 +78,7 @@ function ItemsPageContent() {
     warehouseId: string | undefined;
     status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued" | "all";
     includeStock: true;
+    includeStats: true;
   }>(
     () => ({
       search,
@@ -95,6 +96,7 @@ function ItemsPageContent() {
               | "discontinued")
           : "all",
       includeStock: true,
+      includeStats: true,
     }),
     [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
   );

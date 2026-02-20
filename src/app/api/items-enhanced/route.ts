@@ -32,18 +32,78 @@ export interface ItemWithStock {
   imageUrl?: string;
 }
 
+type ItemStatus = ItemWithStock["status"];
+
+type ItemsEnhancedRpcRow = {
+  id: string;
+  item_code: string;
+  sku: string | null;
+  item_name: string;
+  item_name_cn: string | null;
+  category_id: string | null;
+  category_name: string | null;
+  uom_id: string | null;
+  uom_code: string | null;
+  cost_price: number | string | null;
+  purchase_price: number | string | null;
+  sales_price: number | string | null;
+  item_type: string;
+  is_active: boolean | null;
+  image_url: string | null;
+  on_hand: number | string | null;
+  allocated: number | string | null;
+  available: number | string | null;
+  reorder_point: number | string | null;
+  on_po: number | string | null;
+  on_so: number | string | null;
+  in_transit: number | string | null;
+  estimated_arrival_date: string | null;
+  status: ItemStatus;
+  total_count: number | string;
+};
+
+type ItemsEnhancedStatsRow = {
+  total_available_value: number | string | null;
+  low_stock_count: number | string | null;
+  out_of_stock_count: number | string | null;
+  total_count: number | string | null;
+};
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const parsePositiveInt = (raw: string | null, fallback: number) => {
+  const parsed = Number.parseInt(raw || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const toNumber = (value: number | string | null | undefined): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const isUuid = (value: string | null): value is string => !!value && UUID_REGEX.test(value);
+
+const asStatus = (value: string | null): ItemStatus | null => {
+  if (!value || value === "all") return null;
+  if (
+    value === "normal" ||
+    value === "low_stock" ||
+    value === "out_of_stock" ||
+    value === "overstock" ||
+    value === "discontinued"
+  ) {
+    return value;
+  }
+  return null;
+};
+
 export async function GET(request: NextRequest) {
   try {
-    // Check permission using Lookup Data Access Pattern
-    // User can access if they have EITHER:
-    // 1. Direct 'items' view permission, OR
-    // 2. Permission to a feature that depends on items (pos, sales_orders, etc.)
     const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS);
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -53,7 +113,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's company
     const { data: userData } = await supabase
       .from("users")
       .select("company_id")
@@ -64,128 +123,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Get query parameters
     const searchParams = request.nextUrl.searchParams;
-    const search = searchParams.get("search");
-    const category = searchParams.get("category");
-    const warehouseId = searchParams.get("warehouseId");
-    const stockStatus = searchParams.get("status");
-    const itemType = searchParams.get("itemType");
-    const includeStats = searchParams.get("includeStats") !== "false";
-    const parsedPage = Number.parseInt(searchParams.get("page") || "1", 10);
-    const parsedLimit = Number.parseInt(searchParams.get("limit") || "10", 10);
-    const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
+    const search = searchParams.get("search")?.trim() || null;
+    const rawCategory = searchParams.get("category");
+    const rawWarehouseId = searchParams.get("warehouseId");
+    const stockStatus = asStatus(searchParams.get("status"));
+    const itemType = searchParams.get("itemType")?.trim() || null;
+    const includeStats = searchParams.get("includeStats") === "true";
+    const page = parsePositiveInt(searchParams.get("page"), 1);
+    const limit = parsePositiveInt(searchParams.get("limit"), 10);
 
-    type ItemRow = {
-      id: string;
-      item_code: string;
-      sku: string | null;
-      item_name: string;
-      item_name_cn: string | null;
-      category_id?: string | null;
-      item_categories?: { id: string; name: string } | null;
-      units_of_measure?: { code: string } | null;
-      uom_id: string | null;
-      cost_price: number | string | null;
-      purchase_price: number | string | null;
-      sales_price: number | string | null;
-      item_type: string;
-      is_active: boolean | null;
-      image_url: string | null;
-    };
+    if (rawCategory && !isUuid(rawCategory)) {
+      return NextResponse.json({ error: "Invalid category filter" }, { status: 400 });
+    }
 
+    if (rawWarehouseId && !isUuid(rawWarehouseId)) {
+      return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
+    }
 
-    type ItemWarehouseRow = {
-      item_id: string;
-      current_stock: number | string;
-      reorder_level: number | string | null;
-      in_transit: number | string | null;
-      estimated_arrival_date: string | null;
-    };
+    // "All Warehouses" should aggregate company-wide inventory.
+    // Only scope by BU when a specific warehouse is selected.
+    let effectiveBusinessUnitId: string | null = null;
 
-    type SalesOrderItemRow = {
-      item_id: string;
-      quantity: number | string;
-      quantity_delivered: number | string | null;
-    };
-
-    type PurchaseOrderItemRow = {
-      item_id: string;
-      quantity: number | string;
-      quantity_received: number | string | null;
-    };
-
-    const chunkArray = <T,>(values: T[], size: number): T[][] => {
-      const chunks: T[][] = [];
-      for (let index = 0; index < values.length; index += size) {
-        chunks.push(values.slice(index, index + size));
-      }
-      return chunks;
-    };
-
-    const buildItemsQuery = () => {
-      const selectClause = `
-          id,
-          item_code,
-          sku,
-          item_name,
-          item_name_cn,
-          category_id,
-          uom_id,
-          cost_price,
-          purchase_price,
-          sales_price,
-          item_type,
-          is_active,
-          image_url,
-          item_categories (
-            id,
-            name
-          ),
-          units_of_measure (
-            code
-          )
-          ${warehouseId ? ", item_warehouse!inner(item_id)" : ""}
-        `;
-
-      let query = supabase
-        .from("items")
-        .select(selectClause, { count: "exact" })
-        .eq("company_id", userData.company_id)
-        .is("deleted_at", null);
-
-      if (search) {
-        query = query.or(
-          `item_code.ilike.%${search}%,sku.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%`
-        );
-      }
-
-      if (category) {
-        query = query.eq("category_id", category);
-      }
-
-      if (itemType) {
-        query = query.eq("item_type", itemType);
-      }
-
-      if (warehouseId) {
-        query = query
-          .eq("item_warehouse.warehouse_id", warehouseId)
-          .eq("item_warehouse.company_id", userData.company_id)
-          .is("item_warehouse.deleted_at", null);
-      }
-
-      return query;
-    };
-
-    let effectiveBusinessUnitId = null as string | null;
-    if (warehouseId) {
+    if (rawWarehouseId) {
       const { data: warehouseRow, error: warehouseError } = await supabase
         .from("warehouses")
-        .select("business_unit_id")
-        .eq("id", warehouseId)
+        .select("id, business_unit_id")
+        .eq("id", rawWarehouseId)
         .eq("company_id", userData.company_id)
+        .is("deleted_at", null)
         .maybeSingle();
 
       if (warehouseError) {
@@ -196,547 +162,96 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
       }
 
-      effectiveBusinessUnitId = warehouseRow.business_unit_id ?? null;
+      effectiveBusinessUnitId = warehouseRow.business_unit_id ?? currentBusinessUnitId ?? null;
     }
 
-    // Apply pagination before fetching
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
+    const rpcPayload = {
+      p_company_id: userData.company_id,
+      p_search: search,
+      p_category_id: rawCategory,
+      p_warehouse_id: rawWarehouseId,
+      p_item_type: itemType,
+      p_status: stockStatus,
+      p_business_unit_id: effectiveBusinessUnitId,
+      p_page: page,
+      p_limit: limit,
+    };
 
-    const itemsQuery = buildItemsQuery()
-      .order("item_name", { ascending: true })
-      .range(from, to);
+    const { data: rpcRows, error: rpcError } = await supabase.rpc("get_items_enhanced_page", rpcPayload);
 
-    const { data: items, error: itemsError, count } = await itemsQuery;
-
-    if (itemsError) {
+    if (rpcError) {
       return NextResponse.json(
-        { error: "Failed to fetch items", details: itemsError.message },
+        { error: "Failed to fetch items", details: rpcError.message },
         { status: 500 }
       );
     }
 
-    const needsFullStatus = Boolean(stockStatus && stockStatus !== "all");
-    const shouldFetchFull =
-      needsFullStatus || (includeStats && count && count > (items?.length ?? 0));
+    const rows = (rpcRows || []) as ItemsEnhancedRpcRow[];
+    const itemsWithStock: ItemWithStock[] = rows.map((row) => ({
+      id: row.id,
+      code: row.item_code,
+      sku: row.sku || undefined,
+      name: row.item_name,
+      chineseName: row.item_name_cn || undefined,
+      category: row.category_name || "",
+      categoryId: row.category_id || "",
+      supplier: "",
+      supplierId: null,
+      onHand: toNumber(row.on_hand),
+      allocated: toNumber(row.allocated),
+      available: toNumber(row.available),
+      reorderPoint: toNumber(row.reorder_point),
+      onPO: toNumber(row.on_po),
+      onSO: toNumber(row.on_so),
+      inTransit: toNumber(row.in_transit),
+      estimatedArrivalDate: row.estimated_arrival_date,
+      status: row.status,
+      uom: row.uom_code || "",
+      uomId: row.uom_id || "",
+      standardCost: toNumber(row.cost_price),
+      purchasePrice: toNumber(row.purchase_price),
+      listPrice: toNumber(row.sales_price),
+      itemType: row.item_type,
+      isActive: row.is_active ?? true,
+      imageUrl: row.image_url || undefined,
+    }));
 
-    if ((!items || items.length === 0) && !shouldFetchFull) {
+    const total = rows.length > 0 ? toNumber(rows[0].total_count) : 0;
+    const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+
+    if (!includeStats) {
       return NextResponse.json({
-        data: [],
+        data: itemsWithStock,
         pagination: {
           page,
           limit,
-          total: count || 0,
-          totalPages: count ? Math.ceil(count / limit) : 0,
-        },
-        statistics: {
-          totalAvailableValue: 0,
-          lowStockCount: 0,
-          outOfStockCount: 0,
+          total,
+          totalPages,
         },
       });
     }
 
-    const itemRows = (items || []) as unknown as ItemRow[];
-    const itemIds = itemRows.map((i) => i.id);
-
-    // Supplier data not available on items (no supplier_id column)
-
-    // Get current stock levels (On Hand) and reorder levels from item_warehouse
-    let itemWarehouseData: ItemWarehouseRow[] | null = null;
-    let salesOrderItems: SalesOrderItemRow[] | null = null;
-    let poItems: PurchaseOrderItemRow[] | null = null;
-
-    if (itemIds.length > 0) {
-      const itemIdChunks = chunkArray(itemIds, 100);
-      const stockChunkResponses = await Promise.all(
-        itemIdChunks.map(async (chunk) => {
-          let stockQuery = supabase
-            .from("item_warehouse")
-            .select(
-              "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
-            )
-            .eq("company_id", userData.company_id)
-            .in("item_id", chunk)
-            .is("deleted_at", null);
-
-          if (effectiveBusinessUnitId) {
-            stockQuery = stockQuery.eq("warehouses.business_unit_id", effectiveBusinessUnitId);
-          }
-
-          if (warehouseId) {
-            stockQuery = stockQuery.eq("warehouse_id", warehouseId);
-          }
-
-          let salesOrderItemsQuery = supabase
-            .from("sales_order_items")
-            .select(
-              `
-              item_id,
-              quantity,
-              quantity_delivered,
-              sales_orders!inner (
-                status
-              )
-            `
-            )
-            .eq("sales_orders.company_id", userData.company_id)
-            .in("item_id", chunk)
-            .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
-
-          if (effectiveBusinessUnitId) {
-            salesOrderItemsQuery = salesOrderItemsQuery.eq(
-              "sales_orders.business_unit_id",
-              effectiveBusinessUnitId
-            );
-          }
-
-          let poItemsQuery = supabase
-            .from("purchase_order_items")
-            .select(
-              `
-              item_id,
-              quantity,
-              quantity_received,
-              purchase_orders!inner (
-                status
-              )
-            `
-            )
-            .eq("purchase_orders.company_id", userData.company_id)
-            .in("item_id", chunk)
-            .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
-
-          if (effectiveBusinessUnitId) {
-            poItemsQuery = poItemsQuery.eq("purchase_orders.business_unit_id", effectiveBusinessUnitId);
-          }
-
-          const [
-            { data: warehouseData, error: stockError },
-            { data: soItems, error: salesOrderError },
-            { data: purchaseItems, error: poItemsError },
-          ] = await Promise.all([stockQuery, salesOrderItemsQuery, poItemsQuery]);
-
-          return {
-            warehouseData,
-            soItems,
-            purchaseItems,
-            stockError,
-            salesOrderError,
-            poItemsError,
-          };
-        })
-      );
-
-      const stockError = stockChunkResponses.find((result) => result.stockError)?.stockError;
-      const salesOrderError = stockChunkResponses.find((result) => result.salesOrderError)?.salesOrderError;
-      const poItemsError = stockChunkResponses.find((result) => result.poItemsError)?.poItemsError;
-
-      if (stockError) {
-        return NextResponse.json(
-          { error: "Failed to fetch item stock data", details: stockError.message },
-          { status: 500 }
-        );
-      }
-
-      if (salesOrderError) {
-        return NextResponse.json(
-          { error: "Failed to fetch sales order allocations", details: salesOrderError.message },
-          { status: 500 }
-        );
-      }
-
-      if (poItemsError) {
-        return NextResponse.json(
-          { error: "Failed to fetch purchase order quantities", details: poItemsError.message },
-          { status: 500 }
-        );
-      }
-
-      itemWarehouseData = stockChunkResponses.flatMap(
-        (result) => (result.warehouseData || []) as ItemWarehouseRow[]
-      );
-      salesOrderItems = stockChunkResponses.flatMap(
-        (result) => (result.soItems || []) as SalesOrderItemRow[]
-      );
-      poItems = stockChunkResponses.flatMap(
-        (result) => (result.purchaseItems || []) as PurchaseOrderItemRow[]
-      );
-    }
-
-    const suppliersMap = new Map<string, string>();
-
-    const buildStockMaps = (
-      warehouseRows: ItemWarehouseRow[] | null | undefined,
-      soRows: SalesOrderItemRow[] | null | undefined,
-      poRows: PurchaseOrderItemRow[] | null | undefined
-    ) => {
-      const onHandMap = new Map<string, number>();
-      const reorderPointMap = new Map<string, number>();
-      const inTransitMap = new Map<string, number>();
-      const estimatedArrivalMap = new Map<string, string | null>();
-      const allocatedMap = new Map<string, number>();
-      const onSOMap = new Map<string, number>();
-      const onPOMap = new Map<string, number>();
-
-      if (warehouseRows) {
-        for (const entry of warehouseRows) {
-          const itemId = entry.item_id;
-          const currentQty = onHandMap.get(itemId) || 0;
-          onHandMap.set(itemId, currentQty + Number(entry.current_stock));
-          const currentInTransit = inTransitMap.get(itemId) || 0;
-          inTransitMap.set(itemId, currentInTransit + Number(entry.in_transit || 0));
-
-          if (entry.estimated_arrival_date) {
-            const existingDate = estimatedArrivalMap.get(itemId);
-            if (!existingDate || entry.estimated_arrival_date < existingDate) {
-              estimatedArrivalMap.set(itemId, entry.estimated_arrival_date);
-            }
-          }
-
-          const reorderLevel = Number(entry.reorder_level || 0);
-          const currentMax = reorderPointMap.get(itemId) || 0;
-          if (reorderLevel > currentMax) {
-            reorderPointMap.set(itemId, reorderLevel);
-          }
-        }
-      }
-
-      if (soRows) {
-        for (const item of soRows) {
-          const itemId = item.item_id;
-          const pending = Number(item.quantity) - (Number(item.quantity_delivered) || 0);
-          const currentAllocated = allocatedMap.get(itemId) || 0;
-          const currentOnSO = onSOMap.get(itemId) || 0;
-          allocatedMap.set(itemId, currentAllocated + pending);
-          onSOMap.set(itemId, currentOnSO + Number(item.quantity));
-        }
-      }
-
-      if (poRows) {
-        for (const item of poRows) {
-          const itemId = item.item_id;
-          const pending = Number(item.quantity) - (Number(item.quantity_received) || 0);
-          const currentOnPO = onPOMap.get(itemId) || 0;
-          onPOMap.set(itemId, currentOnPO + pending);
-        }
-      }
-
-      return {
-        onHandMap,
-        reorderPointMap,
-        inTransitMap,
-        estimatedArrivalMap,
-        allocatedMap,
-        onSOMap,
-        onPOMap,
-      };
-    };
-
-    const {
-      onHandMap,
-      reorderPointMap,
-      inTransitMap,
-      estimatedArrivalMap,
-      allocatedMap,
-      onSOMap,
-      onPOMap,
-    } = buildStockMaps(
-      itemWarehouseData as ItemWarehouseRow[] | null,
-      salesOrderItems as SalesOrderItemRow[] | null,
-      poItems as PurchaseOrderItemRow[] | null
-    );
-
-    // Build enhanced items with stock data
-    const itemsWithStock: ItemWithStock[] = itemRows.map((item) => {
-      const onHand = onHandMap.get(item.id) || 0;
-      const allocated = allocatedMap.get(item.id) || 0;
-      const available = onHand - allocated;
-      const onPO = onPOMap.get(item.id) || 0;
-      const onSO = onSOMap.get(item.id) || 0;
-      const inTransit = inTransitMap.get(item.id) || 0;
-      const estimatedArrivalDate = estimatedArrivalMap.get(item.id) || null;
-      // Get reorder level from item_warehouse data (max across warehouses)
-      const reorderPoint = reorderPointMap.get(item.id) || 0;
-
-      // Determine status
-      let status: ItemWithStock["status"] = "normal";
-      if (!item.is_active) {
-        status = "discontinued";
-      } else if (available <= 0) {
-        status = "out_of_stock";
-      } else if (reorderPoint > 0 && available <= reorderPoint) {
-        status = "low_stock";
-      } else if (reorderPoint > 0 && available > reorderPoint * 3) {
-        status = "overstock";
-      }
-
-      // Get category_id and supplier_id from the actual database columns
-      const categoryId = item.category_id || "";
-      const supplierId = "";
-      return {
-        id: item.id,
-        code: item.item_code,
-        sku: item.sku || undefined,
-        name: item.item_name,
-        chineseName: item.item_name_cn || undefined,
-        category: item.item_categories?.name || "",
-        categoryId,
-        supplier: supplierId ? suppliersMap.get(supplierId) || "" : "",
-        supplierId,
-        onHand,
-        allocated,
-        available,
-        reorderPoint,
-        onPO,
-        onSO,
-        inTransit,
-        estimatedArrivalDate,
-        status,
-        uom: item.units_of_measure?.code || "",
-        uomId: item.uom_id || "",
-        standardCost: Number(item.cost_price) || 0,
-        purchasePrice: Number(item.purchase_price) || 0,
-        listPrice: Number(item.sales_price) || 0,
-        itemType: item.item_type,
-        isActive: item.is_active ?? true,
-        imageUrl: item.image_url || undefined,
-      };
+    const { data: statsRows, error: statsError } = await supabase.rpc("get_items_enhanced_stats", {
+      p_company_id: userData.company_id,
+      p_search: search,
+      p_category_id: rawCategory,
+      p_warehouse_id: rawWarehouseId,
+      p_item_type: itemType,
+      p_status: stockStatus,
+      p_business_unit_id: effectiveBusinessUnitId,
     });
 
-    // Apply filters
-    let filteredItems = itemsWithStock;
-
-    // Filter by status
-    if (stockStatus && stockStatus !== "all") {
-      filteredItems = filteredItems.filter((item) => item.status === stockStatus);
+    if (statsError) {
+      return NextResponse.json(
+        { error: "Failed to fetch item statistics", details: statsError.message },
+        { status: 500 }
+      );
     }
 
-    const baseStatistics = {
-      totalAvailableValue: filteredItems.reduce(
-        (sum, item) => sum + item.available * item.listPrice,
-        0
-      ),
-      lowStockCount: filteredItems.filter((item) => item.status === "low_stock").length,
-      outOfStockCount: filteredItems.filter((item) => item.status === "out_of_stock").length,
-    };
-
-    let statistics = baseStatistics;
-    let totalFiltered = filteredItems.length;
-
-    if (shouldFetchFull) {
-      const { data: allItems, error: allItemsError } = await buildItemsQuery();
-      if (allItemsError) {
-        return NextResponse.json(
-          { error: "Failed to fetch items for stats", details: allItemsError.message },
-          { status: 500 }
-        );
-      }
-
-      const allItemRows = (allItems || []) as unknown as ItemRow[];
-      const allItemIds = allItemRows.map((item) => item.id);
-
-      if (allItemIds.length === 0) {
-        filteredItems = [];
-        statistics = {
-          totalAvailableValue: 0,
-          lowStockCount: 0,
-          outOfStockCount: 0,
-        };
-        totalFiltered = 0;
-      } else {
-      const itemIdChunks = chunkArray(allItemIds, 100);
-      const statsChunkResponses = await Promise.all(
-        itemIdChunks.map(async (chunk) => {
-          let statsWarehouseQuery = supabase
-            .from("item_warehouse")
-            .select(
-              "item_id, warehouse_id, current_stock, reorder_level, in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)"
-            )
-            .eq("company_id", userData.company_id)
-            .in("item_id", chunk)
-            .is("deleted_at", null);
-
-          if (effectiveBusinessUnitId) {
-            statsWarehouseQuery = statsWarehouseQuery.eq(
-              "warehouses.business_unit_id",
-              effectiveBusinessUnitId
-            );
-          }
-
-          if (warehouseId) {
-            statsWarehouseQuery = statsWarehouseQuery.eq("warehouse_id", warehouseId);
-          }
-
-          let statsSalesOrderQuery = supabase
-            .from("sales_order_items")
-            .select(
-              `
-              item_id,
-              quantity,
-              quantity_delivered,
-              sales_orders!inner (
-                status
-              )
-            `
-            )
-            .eq("sales_orders.company_id", userData.company_id)
-            .in("item_id", chunk)
-            .in("sales_orders.status", ["draft", "confirmed", "in_progress", "shipped"]);
-
-          if (effectiveBusinessUnitId) {
-            statsSalesOrderQuery = statsSalesOrderQuery.eq(
-              "sales_orders.business_unit_id",
-              effectiveBusinessUnitId
-            );
-          }
-
-          let statsPoQuery = supabase
-            .from("purchase_order_items")
-            .select(
-              `
-              item_id,
-              quantity,
-              quantity_received,
-              purchase_orders!inner (
-                status
-              )
-            `
-            )
-            .eq("purchase_orders.company_id", userData.company_id)
-            .in("item_id", chunk)
-            .in("purchase_orders.status", ["draft", "approved", "partially_received"]);
-
-          if (effectiveBusinessUnitId) {
-            statsPoQuery = statsPoQuery.eq(
-              "purchase_orders.business_unit_id",
-              effectiveBusinessUnitId
-            );
-          }
-
-          const [
-            { data: statsWarehouse, error: statsWarehouseError },
-            { data: statsSales, error: statsSalesError },
-            { data: statsPo, error: statsPoError },
-          ] = await Promise.all([statsWarehouseQuery, statsSalesOrderQuery, statsPoQuery]);
-
-          return {
-            statsWarehouse,
-            statsSales,
-            statsPo,
-            statsWarehouseError,
-            statsSalesError,
-            statsPoError,
-          };
-        })
-      );
-
-      const statsWarehouseError = statsChunkResponses.find((result) => result.statsWarehouseError)
-        ?.statsWarehouseError;
-      const statsSalesError = statsChunkResponses.find((result) => result.statsSalesError)
-        ?.statsSalesError;
-      const statsPoError = statsChunkResponses.find((result) => result.statsPoError)?.statsPoError;
-
-      if (statsWarehouseError || statsSalesError || statsPoError) {
-        return NextResponse.json({ error: "Failed to fetch stats data" }, { status: 500 });
-      }
-
-      const statsWarehouse = statsChunkResponses.flatMap(
-        (result) => (result.statsWarehouse || []) as ItemWarehouseRow[]
-      );
-      const statsSales = statsChunkResponses.flatMap(
-        (result) => (result.statsSales || []) as SalesOrderItemRow[]
-      );
-      const statsPo = statsChunkResponses.flatMap(
-        (result) => (result.statsPo || []) as PurchaseOrderItemRow[]
-      );
-
-      const statsMaps = buildStockMaps(
-        statsWarehouse as ItemWarehouseRow[] | null,
-        statsSales as SalesOrderItemRow[] | null,
-        statsPo as PurchaseOrderItemRow[] | null
-      );
-
-      const statsItemsWithStock: ItemWithStock[] = allItemRows.map((item) => {
-        const onHand = statsMaps.onHandMap.get(item.id) || 0;
-        const allocated = statsMaps.allocatedMap.get(item.id) || 0;
-        const available = onHand - allocated;
-        const onPO = statsMaps.onPOMap.get(item.id) || 0;
-        const onSO = statsMaps.onSOMap.get(item.id) || 0;
-        const inTransit = statsMaps.inTransitMap.get(item.id) || 0;
-        const estimatedArrivalDate = statsMaps.estimatedArrivalMap.get(item.id) || null;
-        const reorderPoint = statsMaps.reorderPointMap.get(item.id) || 0;
-
-        let status: ItemWithStock["status"] = "normal";
-        if (!item.is_active) {
-          status = "discontinued";
-        } else if (available <= 0) {
-          status = "out_of_stock";
-        } else if (reorderPoint > 0 && available <= reorderPoint) {
-          status = "low_stock";
-        } else if (reorderPoint > 0 && available > reorderPoint * 3) {
-          status = "overstock";
-        }
-
-        return {
-          id: item.id,
-          code: item.item_code,
-          sku: item.sku || undefined,
-          name: item.item_name,
-          chineseName: item.item_name_cn || undefined,
-          category: item.item_categories?.name || "",
-          categoryId: item.category_id || "",
-          supplier: "",
-          supplierId: "",
-          onHand,
-          allocated,
-          available,
-          reorderPoint,
-          onPO,
-          onSO,
-          inTransit,
-          estimatedArrivalDate,
-          status,
-          uom: item.units_of_measure?.code || "",
-          uomId: item.uom_id || "",
-          standardCost: Number(item.cost_price) || 0,
-          purchasePrice: Number(item.purchase_price) || 0,
-          listPrice: Number(item.sales_price) || 0,
-          itemType: item.item_type,
-          isActive: item.is_active ?? true,
-          imageUrl: item.image_url || undefined,
-        };
-      });
-
-      let statsFiltered = statsItemsWithStock;
-      if (stockStatus && stockStatus !== "all") {
-        statsFiltered = statsFiltered.filter((item) => item.status === stockStatus);
-      }
-
-      if (needsFullStatus) {
-        const startIndex = from;
-        const endIndex = from + limit;
-        filteredItems = statsFiltered.slice(startIndex, endIndex);
-      }
-
-      statistics = {
-        totalAvailableValue: statsFiltered.reduce(
-          (sum, item) => sum + item.available * item.listPrice,
-          0
-        ),
-        lowStockCount: statsFiltered.filter((item) => item.status === "low_stock").length,
-        outOfStockCount: statsFiltered.filter((item) => item.status === "out_of_stock").length,
-      };
-
-      totalFiltered = statsFiltered.length;
-      }
-    }
-
-    const total = stockStatus && stockStatus !== "all" ? totalFiltered : count || 0;
-    const totalPages = Math.ceil(total / limit);
+    const statsRow = ((statsRows || [])[0] || null) as ItemsEnhancedStatsRow | null;
 
     return NextResponse.json({
-      data: filteredItems,
+      data: itemsWithStock,
       pagination: {
         page,
         limit,
@@ -744,9 +259,9 @@ export async function GET(request: NextRequest) {
         totalPages,
       },
       statistics: {
-        totalAvailableValue: statistics.totalAvailableValue,
-        lowStockCount: statistics.lowStockCount,
-        outOfStockCount: statistics.outOfStockCount,
+        totalAvailableValue: toNumber(statsRow?.total_available_value),
+        lowStockCount: toNumber(statsRow?.low_stock_count),
+        outOfStockCount: toNumber(statsRow?.out_of_stock_count),
       },
     });
   } catch {

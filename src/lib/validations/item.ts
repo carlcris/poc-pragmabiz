@@ -7,7 +7,10 @@ export const itemFormSchema = z.object({
     .string()
     .min(1, "Item code is required")
     .max(50, "Item code must be less than 50 characters")
-    .regex(/^[A-Z0-9-]+$/, "Item code must contain only uppercase letters, numbers, and hyphens"),
+    .regex(
+      /^[A-Z0-9 -]+$/,
+      "Item code must contain only uppercase letters, numbers, spaces, and hyphens"
+    ),
   name: z
     .string()
     .min(1, "Item name is required")
