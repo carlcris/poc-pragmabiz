@@ -29,7 +29,9 @@ export async function createServerClientWithBU() {
 
   // SECURITY: Use getUser() to authenticate the JWT by contacting Supabase Auth server
   // Do NOT use getSession() as it reads from cookies without verification
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Custom claims from auth hooks are NOT in the user object from getUser()
   // We need to decode the JWT directly to access custom claims
@@ -44,10 +46,39 @@ export async function createServerClientWithBU() {
     try {
       const parts = session.access_token.split(".");
       if (parts.length === 3) {
-        const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+        const payloadPart = parts[1];
+        // JWT payload is base64url-encoded
+        const payloadJson = Buffer.from(payloadPart, "base64url").toString("utf-8");
+        const payload = JSON.parse(payloadJson);
         currentBusinessUnitId = payload.current_business_unit_id;
       }
     } catch {}
+  }
+
+  // Fallback: resolve current BU from DB if JWT claim is missing.
+  // This helps in environments where auth hook claim injection is not yet applied.
+  if (!currentBusinessUnitId && user?.id) {
+    const { data: currentAccess } = await supabase
+      .from("user_business_unit_access")
+      .select("business_unit_id")
+      .eq("user_id", user.id)
+      .eq("is_current", true)
+      .maybeSingle();
+
+    if (currentAccess?.business_unit_id) {
+      currentBusinessUnitId = currentAccess.business_unit_id;
+    } else {
+      const { data: defaultAccess } = await supabase
+        .from("user_business_unit_access")
+        .select("business_unit_id")
+        .eq("user_id", user.id)
+        .eq("is_default", true)
+        .maybeSingle();
+
+      if (defaultAccess?.business_unit_id) {
+        currentBusinessUnitId = defaultAccess.business_unit_id;
+      }
+    }
   }
 
   return {
