@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ItemWithStock } from "@/app/api/items-enhanced/route";
+import type { ItemWithStock } from "@/app/api/items/route";
 
-export interface ItemsEnhancedFilters {
+export interface ItemsStockFilters {
   search?: string;
   category?: string;
   warehouseId?: string;
@@ -13,7 +13,7 @@ export interface ItemsEnhancedFilters {
   limit?: number;
 }
 
-export interface ItemsEnhancedResponse {
+export interface ItemsStockResponse {
   data: ItemWithStock[];
   pagination: {
     page: number;
@@ -28,9 +28,9 @@ export interface ItemsEnhancedResponse {
   };
 }
 
-export function useItemsEnhanced(filters?: ItemsEnhancedFilters) {
-  return useQuery<ItemsEnhancedResponse>({
-    queryKey: ["items-enhanced", filters],
+export function useItemsStock(filters?: ItemsStockFilters) {
+  return useQuery<ItemsStockResponse>({
+    queryKey: ["items-stock", filters],
     queryFn: async () => {
       const params = new URLSearchParams();
 
@@ -45,7 +45,7 @@ export function useItemsEnhanced(filters?: ItemsEnhancedFilters) {
       if (filters?.limit) params.append("limit", filters.limit.toString());
 
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-      const response = await fetch(`${API_BASE_URL}/items-enhanced?${params.toString()}`, {
+      const response = await fetch(`${API_BASE_URL}/items?${params.toString()}`, {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
@@ -54,11 +54,11 @@ export function useItemsEnhanced(filters?: ItemsEnhancedFilters) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || "Failed to fetch enhanced items");
+        throw new Error(errorText || "Failed to fetch items");
       }
 
       return response.json();
     },
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 30_000,
   });
 }

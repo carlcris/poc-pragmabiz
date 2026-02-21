@@ -35,7 +35,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { ItemWithStock } from "@/app/api/items-enhanced/route";
+import type { ItemWithStock } from "@/app/api/items/route";
 import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
 // No need for BasePackageLabel component - we already have UOM in cart item
 

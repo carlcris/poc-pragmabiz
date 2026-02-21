@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { itemsApi } from "@/lib/api/items";
 import type { Item, CreateItemRequest, UpdateItemRequest, ItemFilters } from "@/types/item";
-import type { ItemWithStock } from "@/app/api/items-enhanced/route";
+import type { ItemWithStock } from "@/app/api/items/route";
 
 const ITEMS_QUERY_KEY = "items";
 
@@ -52,7 +52,7 @@ export function useItems(filters?: ItemsQueryOptions) {
     enabled: enabled ?? true,
     queryFn: async () => {
       if (includeStock) {
-        // Use items-enhanced API for stock information
+        // Use items API for stock information
         const params = new URLSearchParams();
         if (restFilters.search) params.append("search", restFilters.search);
         if (restFilters.category) params.append("category", restFilters.category);
@@ -66,7 +66,7 @@ export function useItems(filters?: ItemsQueryOptions) {
         if (restFilters.limit) params.append("limit", restFilters.limit.toString());
 
         const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-        const response = await fetch(`${API_BASE_URL}/items-enhanced?${params.toString()}`, {
+        const response = await fetch(`${API_BASE_URL}/items?${params.toString()}`, {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",

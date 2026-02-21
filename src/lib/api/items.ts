@@ -1,11 +1,5 @@
 import { apiClient } from "@/lib/api";
-import type {
-  ItemsListResponse,
-  ItemResponse,
-  CreateItemRequest,
-  UpdateItemRequest,
-  ItemFilters,
-} from "@/types/item";
+import type { ItemsListResponse, ItemResponse, CreateItemRequest, UpdateItemRequest, ItemFilters } from "@/types/item";
 
 export const itemsApi = {
   getItems: async (filters?: ItemFilters): Promise<ItemsListResponse> => {
@@ -17,10 +11,10 @@ export const itemsApi = {
     if (filters?.isActive !== undefined) params.append("isActive", String(filters.isActive));
     if (filters?.page) params.append("page", String(filters.page));
     if (filters?.limit) params.append("limit", String(filters.limit));
+    params.append("includeStock", "false");
 
     const queryString = params.toString();
     const endpoint = `/api/items${queryString ? `?${queryString}` : ""}`;
-
     return apiClient.get<ItemsListResponse>(endpoint);
   },
 

@@ -72,7 +72,7 @@ export function QuotationLineItemDialog({
   // Fetch basic items (for uomId and description)
   const { data: basicItemsData } = useItems({ limit: 1000 });
   const basicItems = basicItemsData?.data || [];
-  const enhancedItems = basicItems;
+  const selectableItems = basicItems;
 
   const { formatCurrency } = useCurrency();
 
@@ -194,7 +194,7 @@ export function QuotationLineItemDialog({
                           <CommandList className="max-h-[300px] overflow-y-auto">
                             <CommandEmpty>No item found.</CommandEmpty>
                             <CommandGroup>
-                              {enhancedItems
+                              {selectableItems
                                 .filter((i) => i.isActive)
                                 .map((item) => (
                                   <CommandItem

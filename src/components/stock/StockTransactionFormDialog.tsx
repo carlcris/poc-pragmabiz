@@ -11,7 +11,7 @@ import { apiClient } from "@/lib/api";
 import { useCreateStockTransaction } from "@/hooks/useStockTransactions";
 import { useCreateStockTransfer } from "@/hooks/useStockTransfers";
 import { useItems } from "@/hooks/useItems";
-import { useItemsEnhanced } from "@/hooks/useItemsEnhanced";
+import { useItemsStock } from "@/hooks/useItemsStock";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
 import { stockTransactionFormSchema } from "@/lib/validations/stock-transaction";
@@ -117,11 +117,11 @@ export function StockTransactionFormDialog({
   const selectedItemId = form.watch("itemId");
 
   // Fetch items with stock information filtered by selected warehouse
-  const { data: enhancedItemsData } = useItemsEnhanced({
+  const { data: stockItemsData } = useItemsStock({
     limit: 1000,
     warehouseId: selectedWarehouseId || undefined,
   });
-  const enhancedItems = enhancedItemsData?.data || [];
+  const stockItems = stockItemsData?.data || [];
 
   const { data: fromLocationsData } = useQuery<{ data: WarehouseLocation[] }>({
     queryKey: ["warehouse-locations", selectedWarehouseId],
@@ -516,7 +516,7 @@ export function StockTransactionFormDialog({
                           <CommandList className="max-h-[300px] overflow-y-auto">
                             <CommandEmpty>No item found.</CommandEmpty>
                             <CommandGroup>
-                              {enhancedItems
+                              {stockItems
                                 .filter((i) => i.isActive)
                                 .map((item) => (
                                   <CommandItem
