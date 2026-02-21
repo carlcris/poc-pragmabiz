@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requireLookupDataAccess, requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import type { CreateItemRequest, Item } from "@/types/item";
 import QRCode from "qrcode";
@@ -198,26 +198,9 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS);
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search")?.trim() || null;
@@ -250,7 +233,7 @@ export async function GET(request: NextRequest) {
         `,
           { count: "exact" }
         )
-        .eq("company_id", userData.company_id)
+        .eq("company_id", companyId)
         .is("deleted_at", null);
 
       if (search) {
@@ -320,7 +303,7 @@ export async function GET(request: NextRequest) {
         .from("warehouses")
         .select("id, business_unit_id")
         .eq("id", rawWarehouseId)
-        .eq("company_id", userData.company_id)
+        .eq("company_id", companyId)
         .is("deleted_at", null)
         .maybeSingle();
 
@@ -336,7 +319,7 @@ export async function GET(request: NextRequest) {
     }
 
     const rpcPayload = {
-      p_company_id: userData.company_id,
+      p_company_id: companyId,
       p_search: search,
       p_category_id: rawCategory,
       p_warehouse_id: rawWarehouseId,
@@ -402,7 +385,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: statsRows, error: statsError } = await supabase.rpc("get_items_enhanced_stats", {
-      p_company_id: userData.company_id,
+      p_company_id: companyId,
       p_search: search,
       p_category_id: rawCategory,
       p_warehouse_id: rawWarehouseId,
@@ -444,16 +427,9 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, userId } = context;
 
     const body: CreateItemRequest = await request.json();
 
@@ -467,20 +443,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.companyId) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields",
-          details: "companyId is required",
-        },
-        { status: 400 }
-      );
-    }
-
     const { data: existingCode } = await supabase
       .from("items")
       .select("id")
-      .eq("company_id", body.companyId)
+      .eq("company_id", companyId)
       .eq("item_code", body.code)
       .is("deleted_at", null)
       .maybeSingle();
@@ -510,7 +476,7 @@ export async function POST(request: NextRequest) {
         const { data: existingSku } = await supabase
           .from("items")
           .select("id")
-          .eq("company_id", body.companyId)
+          .eq("company_id", companyId)
           .eq("sku", body.sku)
           .is("deleted_at", null)
           .maybeSingle();
@@ -524,7 +490,7 @@ export async function POST(request: NextRequest) {
         const { data: existingSku } = await supabase
           .from("items")
           .select("id")
-          .eq("company_id", body.companyId)
+          .eq("company_id", companyId)
           .eq("sku", candidate)
           .is("deleted_at", null)
           .maybeSingle();
@@ -567,7 +533,7 @@ export async function POST(request: NextRequest) {
     const { data: uomData } = await supabase
       .from("units_of_measure")
       .select("id")
-      .eq("company_id", body.companyId)
+      .eq("company_id", companyId)
       .eq("code", body.uom)
       .is("deleted_at", null)
       .maybeSingle();
@@ -584,7 +550,7 @@ export async function POST(request: NextRequest) {
       const { data: categoryData } = await supabase
         .from("item_categories")
         .select("id")
-        .eq("company_id", body.companyId)
+        .eq("company_id", companyId)
         .eq("name", body.category)
         .is("deleted_at", null)
         .maybeSingle();
@@ -599,7 +565,7 @@ export async function POST(request: NextRequest) {
     }
 
     const insertPayloadBase = {
-      company_id: body.companyId,
+      company_id: companyId,
       item_code: body.code,
       item_name: body.name,
       item_name_cn: body.chineseName || null,
@@ -613,8 +579,8 @@ export async function POST(request: NextRequest) {
       image_url: body.imageUrl || null,
       is_stock_item: body.itemType !== "service",
       is_active: body.isActive ?? true,
-      created_by: user.id,
-      updated_by: user.id,
+      created_by: userId,
+      updated_by: userId,
     };
 
     let newItem: ItemRow | null = null;

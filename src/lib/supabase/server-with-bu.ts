@@ -16,6 +16,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 
+type JwtPayload = {
+  current_business_unit_id?: string;
+  default_business_unit_id?: string;
+  company_id?: string;
+  accessible_business_units?: unknown;
+};
+
 /**
  * Create a Supabase server client and extract business unit context from JWT
  *
@@ -42,6 +49,9 @@ export async function createServerClientWithBU() {
 
   // Decode JWT to get custom claims
   let currentBusinessUnitId: string | undefined;
+  let defaultBusinessUnitId: string | undefined;
+  let companyId: string | undefined;
+  let accessibleBusinessUnitIds: string[] = [];
   if (session?.access_token) {
     try {
       const parts = session.access_token.split(".");
@@ -49,41 +59,74 @@ export async function createServerClientWithBU() {
         const payloadPart = parts[1];
         // JWT payload is base64url-encoded
         const payloadJson = Buffer.from(payloadPart, "base64url").toString("utf-8");
-        const payload = JSON.parse(payloadJson);
+        const payload = JSON.parse(payloadJson) as JwtPayload;
         currentBusinessUnitId = payload.current_business_unit_id;
+        defaultBusinessUnitId = payload.default_business_unit_id;
+        companyId = payload.company_id;
+        if (Array.isArray(payload.accessible_business_units)) {
+          accessibleBusinessUnitIds = payload.accessible_business_units.filter(
+            (value): value is string => typeof value === "string"
+          );
+        }
       }
     } catch {}
   }
 
+  if (!companyId && user?.id) {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    companyId = userData?.company_id ?? undefined;
+  }
+
   // Fallback: resolve current BU from DB if JWT claim is missing.
   // This helps in environments where auth hook claim injection is not yet applied.
-  if (!currentBusinessUnitId && user?.id) {
-    const { data: currentAccess } = await supabase
+  if (
+    (!currentBusinessUnitId || !defaultBusinessUnitId || accessibleBusinessUnitIds.length === 0) &&
+    user?.id
+  ) {
+    const { data: accessRows } = await supabase
       .from("user_business_unit_access")
-      .select("business_unit_id")
-      .eq("user_id", user.id)
-      .eq("is_current", true)
-      .maybeSingle();
+      .select("business_unit_id, is_current, is_default")
+      .eq("user_id", user.id);
 
-    if (currentAccess?.business_unit_id) {
-      currentBusinessUnitId = currentAccess.business_unit_id;
-    } else {
-      const { data: defaultAccess } = await supabase
-        .from("user_business_unit_access")
-        .select("business_unit_id")
-        .eq("user_id", user.id)
-        .eq("is_default", true)
-        .maybeSingle();
+    const rows = accessRows || [];
 
+    if (accessibleBusinessUnitIds.length === 0) {
+      accessibleBusinessUnitIds = rows
+        .map((row) => row.business_unit_id)
+        .filter((value): value is string => typeof value === "string");
+    }
+
+    if (!currentBusinessUnitId) {
+      const currentAccess = rows.find((row) => row.is_current);
+      if (currentAccess?.business_unit_id) {
+        currentBusinessUnitId = currentAccess.business_unit_id;
+      } else {
+        const defaultAccess = rows.find((row) => row.is_default);
+        if (defaultAccess?.business_unit_id) {
+          currentBusinessUnitId = defaultAccess.business_unit_id;
+        }
+      }
+    }
+
+    if (!defaultBusinessUnitId) {
+      const defaultAccess = rows.find((row) => row.is_default);
       if (defaultAccess?.business_unit_id) {
-        currentBusinessUnitId = defaultAccess.business_unit_id;
+        defaultBusinessUnitId = defaultAccess.business_unit_id;
       }
     }
   }
 
   return {
     supabase,
+    userId: user?.id ?? null,
+    companyId: companyId ?? null,
     currentBusinessUnitId,
+    defaultBusinessUnitId: defaultBusinessUnitId ?? null,
+    accessibleBusinessUnitIds,
   };
 }
 

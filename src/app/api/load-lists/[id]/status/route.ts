@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
 // PATCH /api/load-lists/[id]/status
@@ -9,31 +9,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, userId, companyId } = context;
     const body = await request.json();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Validate status
     const validStatuses = [
@@ -75,7 +57,7 @@ export async function PATCH(
       `
       )
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -118,7 +100,7 @@ export async function PATCH(
             .select("id, in_transit")
             .eq("item_id", item.item_id)
             .eq("warehouse_id", ll.warehouse_id)
-            .eq("company_id", userData.company_id)
+            .eq("company_id", companyId)
             .maybeSingle();
 
           if (fetchInvError) {
@@ -132,7 +114,7 @@ export async function PATCH(
               .update({
                 in_transit: newInTransit,
                 estimated_arrival_date: ll.estimated_arrival_date,
-                updated_by: user.id,
+                updated_by: userId,
               })
               .eq("id", existingRecord.id);
 
@@ -141,15 +123,15 @@ export async function PATCH(
             }
           } else {
             const { error: insertError } = await supabase.from("item_warehouse").insert({
-              company_id: userData.company_id,
+              company_id: companyId,
               item_id: item.item_id,
               warehouse_id: ll.warehouse_id,
               in_transit: qty,
               estimated_arrival_date: ll.estimated_arrival_date,
               current_stock: 0,
               reserved_stock: 0,
-              created_by: user.id,
-              updated_by: user.id,
+              created_by: userId,
+              updated_by: userId,
             });
 
             if (insertError) {
@@ -169,7 +151,7 @@ export async function PATCH(
             .select("id, in_transit")
             .eq("item_id", item.item_id)
             .eq("warehouse_id", ll.warehouse_id)
-            .eq("company_id", userData.company_id)
+            .eq("company_id", companyId)
             .single();
 
           if (existingRecord) {
@@ -182,11 +164,11 @@ export async function PATCH(
               .from("item_warehouse")
               .update({
                 in_transit: newInTransit,
-                updated_by: user.id,
+                updated_by: userId,
               })
               .eq("item_id", item.item_id)
               .eq("warehouse_id", ll.warehouse_id)
-              .eq("company_id", userData.company_id);
+              .eq("company_id", companyId);
           }
         }
       }
@@ -205,7 +187,7 @@ export async function PATCH(
             .select("id, in_transit, current_stock")
             .eq("item_id", item.item_id)
             .eq("warehouse_id", ll.warehouse_id)
-            .eq("company_id", userData.company_id)
+            .eq("company_id", companyId)
             .single();
 
           if (existingRecord) {
@@ -220,22 +202,22 @@ export async function PATCH(
               .update({
                 in_transit: newInTransit,
                 current_stock: newOnHand,
-                updated_by: user.id,
+                updated_by: userId,
               })
               .eq("item_id", item.item_id)
               .eq("warehouse_id", ll.warehouse_id)
-              .eq("company_id", userData.company_id);
+              .eq("company_id", companyId);
           } else {
             // Create new record if it doesn't exist
             await supabase.from("item_warehouse").insert({
-              company_id: userData.company_id,
+              company_id: companyId,
               item_id: item.item_id,
               warehouse_id: ll.warehouse_id,
               in_transit: 0,
               current_stock: receivedQty,
               reserved_stock: 0,
-              created_by: user.id,
-              updated_by: user.id,
+              created_by: userId,
+              updated_by: userId,
             });
           }
         }
@@ -251,7 +233,7 @@ export async function PATCH(
     // Update load list status
     const updateData: Record<string, string | number | null> = {
       status: newStatus,
-      updated_by: user.id,
+      updated_by: userId,
     };
 
     // Set timestamps based on status
@@ -261,7 +243,7 @@ export async function PATCH(
 
     if (newStatus === "received") {
       updateData.received_date = new Date().toISOString();
-      updateData.received_by = user.id;
+      updateData.received_by = userId;
     }
 
     const { data: updatedLL, error: updateError } = await supabase
@@ -294,7 +276,7 @@ export async function PATCH(
       const notificationTargets = [ll.created_by].filter(Boolean);
       if (notificationTargets.length > 0) {
         const notifications = notificationTargets.map((userId) => ({
-          company_id: userData.company_id,
+          company_id: companyId,
           user_id: userId,
           title: titleMap[newStatus] || "Load list update",
           message: messageMap[newStatus] || `Load list ${ll.ll_number} updated.`,
@@ -336,7 +318,7 @@ export async function PATCH(
           const { data: lastGRN } = await supabase
             .from("grns")
             .select("grn_number")
-            .eq("company_id", userData.company_id)
+            .eq("company_id", companyId)
             .like("grn_number", `GRN-${currentYear}-%`)
             .order("grn_number", { ascending: false })
             .limit(1)
@@ -364,7 +346,7 @@ export async function PATCH(
             .insert({
               grn_number: grnNumber,
               load_list_id: ll.id,
-              company_id: userData.company_id,
+              company_id: companyId,
               business_unit_id: ll.business_unit_id,
               warehouse_id: ll.warehouse_id,
               container_number: ll.container_number,
@@ -374,8 +356,8 @@ export async function PATCH(
               delivery_date: deliveryDate,
               status: "draft",
               notes: `Auto-created from Load List ${ll.ll_number}`,
-              created_by: user.id,
-              updated_by: user.id,
+              created_by: userId,
+              updated_by: userId,
             })
             .select("id, grn_number")
             .single();

@@ -1,4 +1,4 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { requireRequestContext } from "./requestContext";
 import type { Resource } from "@/constants/resources";
 import type { PermissionAction } from "@/types/rbac";
 import { can } from "@/services/permissions/permissionResolver";
@@ -18,34 +18,24 @@ export type AuthenticatedUser = {
  * @returns AuthenticatedUser or null if not authenticated
  */
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
-  const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
-
-  // Check authentication
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return null;
-  }
-
-  // Get user's company
-  const { data: userData } = await supabase
-    .from("users")
-    .select("company_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData?.company_id) {
+  const context = await requireRequestContext();
+  if ("status" in context) {
     return null;
   }
 
   return {
-    id: user.id,
-    companyId: userData.company_id,
-    businessUnitId: currentBusinessUnitId ?? null,
+    id: context.userId,
+    companyId: context.companyId,
+    businessUnitId: context.currentBusinessUnitId,
   };
+}
+
+export async function checkPermissionForUser(
+  user: AuthenticatedUser,
+  resource: Resource,
+  action: PermissionAction
+): Promise<boolean> {
+  return can(user.id, resource, action, user.businessUnitId);
 }
 
 /**
@@ -65,7 +55,7 @@ export async function checkPermission(
     return false;
   }
 
-  return can(user.id, resource, action, user.businessUnitId);
+  return checkPermissionForUser(user, resource, action);
 }
 
 /**

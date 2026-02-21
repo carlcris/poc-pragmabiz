@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
 
@@ -16,23 +16,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, userId, companyId } = requestContext;
     const { id } = await context.params;
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // Check if request exists and is draft
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
       .select("id, status")
       .eq("id", id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -52,10 +46,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .from("stock_requests")
       .update({
         status: "submitted",
-        updated_by: user.id,
+        updated_by: userId,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId);
 
     if (updateError) {
       console.error("Error submitting stock request:", updateError);
@@ -100,6 +95,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       `
       )
       .eq("id", id)
+      .eq("company_id", companyId)
       .single();
 
     if (!updatedRequest) {

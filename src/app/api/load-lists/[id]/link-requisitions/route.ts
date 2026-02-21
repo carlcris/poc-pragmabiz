@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/load-lists/[id]/link-requisitions
@@ -10,31 +10,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId } = context;
     const body = await request.json();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Validate input
     if (!body.links || !Array.isArray(body.links) || body.links.length === 0) {
@@ -49,7 +31,7 @@ export async function POST(
       .from("load_lists")
       .select("id")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -108,7 +90,7 @@ export async function POST(
       // Verify SR belongs to same company
       const sr = Array.isArray(srItem.sr) ? srItem.sr[0] : srItem.sr;
 
-      if (!sr || sr.company_id !== userData.company_id) {
+      if (!sr || sr.company_id !== companyId) {
         return NextResponse.json(
           { error: "Stock requisition does not belong to your company" },
           { status: 403 }
@@ -237,29 +219,23 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId } = context;
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
+    const { data: ll, error: llError } = await supabase
+      .from("load_lists")
+      .select("id")
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
       .single();
 
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
+    if (llError || !ll) {
+      return NextResponse.json({ error: "Load list not found" }, { status: 404 });
     }
 
     // Fetch links with related data

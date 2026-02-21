@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 type DbStockAdjustmentUpdate = {
   adjustment_type?: string;
@@ -69,35 +69,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (unauthorized) return unauthorized;
 
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId } = context;
 
     // Fetch adjustment
     const { data: adjustment, error } = await supabase
       .from("stock_adjustments")
       .select("*")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -221,35 +202,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { id } = await params;
     const body = (await request.json()) as StockAdjustmentPatchBody;
-    const { supabase } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, userId } = context;
 
     // Check adjustment exists and is draft
     const { data: adjustment, error: fetchError } = await supabase
       .from("stock_adjustments")
       .select("status, custom_fields")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -263,7 +225,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // Prepare update data
     const updateData: DbStockAdjustmentUpdate = {
-      updated_by: user.id,
+      updated_by: userId,
       updated_at: new Date().toISOString(),
     };
 
@@ -314,7 +276,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         const totalCost = difference * item.unitCost;
 
         return {
-          company_id: userData.company_id,
+          company_id: companyId,
           adjustment_id: id,
           item_id: item.itemId,
           item_code: itemData?.item_code || "",
@@ -327,8 +289,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           uom_id: item.uomId,
           uom_name: uomData?.uom_name || "",
           reason: item.reason || null,
-          created_by: user.id,
-          updated_by: user.id,
+          created_by: userId,
+          updated_by: userId,
         };
       });
 
@@ -427,35 +389,16 @@ export async function DELETE(
     if (unauthorized) return unauthorized;
 
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, userId } = context;
 
     // Check adjustment exists and is draft
     const { data: adjustment, error: fetchError } = await supabase
       .from("stock_adjustments")
       .select("status")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -472,7 +415,7 @@ export async function DELETE(
       .from("stock_adjustments")
       .update({
         deleted_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: userId,
       })
       .eq("id", id);
 

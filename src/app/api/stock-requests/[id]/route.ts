@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../stock-request-mapper";
 import type { StockRequest, UpdateStockRequestPayload } from "@/types/stock-request";
@@ -18,17 +18,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, companyId } = requestContext;
     const { id } = await context.params;
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { data: stockRequest, error } = await supabase
       .from("stock_requests")
@@ -76,6 +69,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       `
       )
       .eq("id", id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -95,12 +89,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .from("delivery_note_sources")
         .select("dn_id")
         .eq("sr_id", id)
-        .eq("company_id", mapped.company_id),
+        .eq("company_id", companyId),
       supabase
         .from("delivery_note_items")
         .select("dn_id")
         .eq("sr_id", id)
-        .eq("company_id", mapped.company_id),
+        .eq("company_id", companyId),
     ]);
 
     const dnIds = Array.from(
@@ -116,7 +110,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .select("id, dn_no, status, created_at")
         .in("id", dnIds)
         .eq("status", "received")
-        .eq("company_id", mapped.company_id)
+        .eq("company_id", companyId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
@@ -145,24 +139,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, userId, companyId } = requestContext;
     const { id } = await context.params;
     const body = (await request.json()) as UpdateStockRequestPayload;
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // Check if request exists and is draft
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
       .select("id, status")
       .eq("id", id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -199,10 +187,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         priority: body.priority,
         purpose: body.purpose || null,
         notes: body.notes || null,
-        updated_by: user.id,
+        updated_by: userId,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId);
 
     if (updateError) {
       console.error("Error updating stock request:", updateError);
@@ -279,6 +268,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       `
       )
       .eq("id", id)
+      .eq("company_id", companyId)
       .single();
 
     if (!updatedRequest) {
@@ -298,23 +288,17 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "delete");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, userId, companyId } = requestContext;
     const { id } = await context.params;
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     // Check if request exists and is draft
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
       .select("id, status")
       .eq("id", id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -334,9 +318,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .from("stock_requests")
       .update({
         deleted_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: userId,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId);
 
     if (deleteError) {
       console.error("Error deleting stock request:", deleteError);

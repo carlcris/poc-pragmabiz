@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { Resource } from "@/constants/resources";
 import type { PermissionAction } from "@/types/rbac";
-import { getAuthenticatedUser, checkPermission } from "./checkPermission";
+import { getAuthenticatedUser, checkPermission, checkPermissionForUser } from "./checkPermission";
 import { type LookupResource, getAccessorsForLookupData } from "@/config/lookupDataPermissions";
 
 /**
@@ -52,7 +52,7 @@ export async function requirePermission(
   }
 
   // Check permission
-  const hasPermission = await checkPermission(resource, action);
+  const hasPermission = await checkPermissionForUser(user, resource, action);
 
   if (!hasPermission) {
     return NextResponse.json(

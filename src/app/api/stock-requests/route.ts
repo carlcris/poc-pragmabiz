@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "./stock-request-mapper";
 import type { CreateStockRequestPayload } from "@/types/stock-request";
@@ -48,29 +48,10 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
     const searchParams = request.nextUrl.searchParams;
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Parse query parameters
     const search = normalizeSearch(searchParams.get("search"));
@@ -144,14 +125,14 @@ export async function GET(request: NextRequest) {
       `,
         { count: "exact" }
       )
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null);
 
     if (currentBusinessUnitId) {
       const { data: currentBuWarehouseRows, error: currentBuWarehousesError } = await supabase
         .from("warehouses")
         .select("id")
-        .eq("company_id", userData.company_id)
+        .eq("company_id", companyId)
         .eq("business_unit_id", currentBusinessUnitId)
         .is("deleted_at", null);
 
@@ -238,29 +219,15 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const body = (await request.json()) as CreateStockRequestPayload;
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
+    const { data: userProfile } = await supabase
       .from("users")
-      .select("company_id, first_name, last_name, email")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+      .select("first_name, last_name, email")
+      .eq("id", userId)
+      .maybeSingle();
 
     // Validate business unit context
     if (!currentBusinessUnitId) {
@@ -293,15 +260,15 @@ export async function POST(request: NextRequest) {
 
     // Build requested_by_name from first_name and last_name
     const requestedByName =
-      [userData.first_name, userData.last_name].filter(Boolean).join(" ") ||
-      userData.email ||
-      user.email;
+      [userProfile?.first_name, userProfile?.last_name].filter(Boolean).join(" ") ||
+      userProfile?.email ||
+      userId;
 
     // Create stock request header
     const { data: stockRequest, error: requestError } = await supabase
       .from("stock_requests")
       .insert({
-        company_id: userData.company_id,
+        company_id: companyId,
         business_unit_id: currentBusinessUnitId,
         request_code: requestCode,
         request_date: body.request_date,
@@ -313,10 +280,10 @@ export async function POST(request: NextRequest) {
         priority: body.priority,
         purpose: body.purpose || null,
         notes: body.notes || null,
-        requested_by_user_id: user.id,
+        requested_by_user_id: userId,
         requested_by_name: requestedByName,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();

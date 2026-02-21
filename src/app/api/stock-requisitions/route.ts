@@ -1,35 +1,17 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
 // GET /api/stock-requisitions
 export async function GET(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.STOCK_REQUISITIONS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "view");
+    if (unauthorized) return unauthorized;
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId } = context;
     const { searchParams } = new URL(request.url);
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Build query
     let query = supabase
@@ -55,7 +37,7 @@ export async function GET(request: NextRequest) {
       `,
         { count: "exact" }
       )
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null);
 
     // Apply filters
@@ -199,33 +181,15 @@ export async function GET(request: NextRequest) {
 // POST /api/stock-requisitions
 export async function POST(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.STOCK_REQUISITIONS, "create");
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "create");
+    if (unauthorized) return unauthorized;
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const body = await request.json();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
     // Validate required fields
@@ -241,7 +205,7 @@ export async function POST(request: NextRequest) {
     const { data: lastSR } = await supabase
       .from("stock_requisitions")
       .select("sr_number")
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -274,18 +238,18 @@ export async function POST(request: NextRequest) {
     const { data: sr, error: srError } = await supabase
       .from("stock_requisitions")
       .insert({
-        company_id: userData.company_id,
+        company_id: companyId,
         business_unit_id: currentBusinessUnitId,
         sr_number: srNumber,
         supplier_id: body.supplierId,
         requisition_date: body.requisitionDate || new Date().toISOString().split("T")[0],
         required_by_date: body.requiredByDate || null,
-        requested_by: user.id,
+        requested_by: userId,
         status: body.status || "draft",
         notes: body.notes,
         total_amount: totalAmount,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();

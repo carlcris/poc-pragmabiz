@@ -1,5 +1,6 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 
 type AuthContext = {
   supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
@@ -84,28 +85,14 @@ export const buildDnNo = () => {
 };
 
 export const getAuthContext = async (): Promise<AuthContext | NextResponse> => {
-  const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: userData } = await supabase.from("users").select("company_id").eq("id", user.id).single();
-
-  if (!userData?.company_id) {
-    return NextResponse.json({ error: "User company not found" }, { status: 400 });
-  }
+  const context = await requireRequestContext();
+  if ("status" in context) return context;
 
   return {
-    supabase,
-    userId: user.id,
-    companyId: userData.company_id,
-    currentBusinessUnitId: currentBusinessUnitId ?? null,
+    supabase: context.supabase,
+    userId: context.userId,
+    companyId: context.companyId,
+    currentBusinessUnitId: context.currentBusinessUnitId,
   };
 };
 

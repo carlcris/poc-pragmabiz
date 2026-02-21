@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 type DbStockAdjustmentRow = {
   id: string;
@@ -127,29 +127,10 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
     const searchParams = request.nextUrl.searchParams;
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Parse query parameters
     const search = normalizeSearch(searchParams.get("search"));
@@ -201,7 +182,7 @@ export async function GET(request: NextRequest) {
       `,
         { count: "exact" }
       )
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null);
 
     if (currentBusinessUnitId) {
@@ -405,29 +386,10 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId, userId } = context;
     const body = (await request.json()) as StockAdjustmentBody;
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Validate business unit context
     if (!currentBusinessUnitId) {
@@ -463,7 +425,7 @@ export async function POST(request: NextRequest) {
     const { data: adjustment, error: adjustmentError } = await supabase
       .from("stock_adjustments")
       .insert({
-        company_id: userData.company_id,
+        company_id: companyId,
         business_unit_id: currentBusinessUnitId,
         adjustment_code: adjustmentCode,
         adjustment_type: body.adjustmentType,
@@ -474,8 +436,8 @@ export async function POST(request: NextRequest) {
         notes: body.notes || null,
         total_value: totalValue,
         custom_fields: body.locationId ? { locationId: body.locationId } : null,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();
@@ -510,9 +472,9 @@ export async function POST(request: NextRequest) {
       const difference = adjustedQty - item.currentQty;
       const totalCost = difference * item.unitCost;
 
-      return {
-        company_id: userData.company_id,
-        adjustment_id: adjustment.id,
+        return {
+          company_id: companyId,
+          adjustment_id: adjustment.id,
         item_id: item.itemId,
         item_code: itemData?.item_code || "",
         item_name: itemData?.item_name || "",
@@ -525,10 +487,10 @@ export async function POST(request: NextRequest) {
         uom_id: item.uomId,
         uom_name: uomData?.code || "",
         reason: item.reason || null,
-        created_by: user.id,
-        updated_by: user.id,
-      };
-    });
+          created_by: userId,
+          updated_by: userId,
+        };
+      });
 
     const { error: itemsError } = await supabase
       .from("stock_adjustment_items")

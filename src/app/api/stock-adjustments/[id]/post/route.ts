@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import {
   adjustItemLocation,
@@ -32,28 +32,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (unauthorized) return unauthorized;
 
     const { id } = await params;
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId, userId } = context;
 
     // Validate business unit context
     if (!currentBusinessUnitId) {
@@ -65,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from("stock_adjustments")
       .select("*")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -127,9 +108,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
-      companyId: userData.company_id,
+      companyId,
       warehouseId: adjustment.warehouse_id,
-      userId: user.id,
+      userId,
     });
 
     const selectedLocationId = adjustment.custom_fields?.locationId || defaultLocationId;
@@ -140,7 +121,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { data: stockTransaction, error: stockTxError } = await supabase
       .from("stock_transactions")
       .insert({
-        company_id: userData.company_id,
+        company_id: companyId,
         business_unit_id: currentBusinessUnitId,
         transaction_code: stockTxCode,
         transaction_type: transactionType,
@@ -152,8 +133,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         reference_id: adjustment.id,
         status: "posted",
         notes: `Stock adjustment: ${adjustment.adjustment_code} - ${adjustment.reason}`,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();
@@ -179,7 +160,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const { data: existingStock } = await supabase
         .from("item_warehouse")
         .select("id, current_stock, default_location_id")
-        .eq("company_id", userData.company_id)
+        .eq("company_id", companyId)
         .eq("item_id", item.item_id)
         .eq("warehouse_id", adjustment.warehouse_id)
         .is("deleted_at", null)
@@ -197,7 +178,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const { error: stockTxItemError } = await supabase
         .from("stock_transaction_items")
         .insert({
-          company_id: userData.company_id,
+          company_id: companyId,
           transaction_id: stockTransaction.id,
           item_id: item.item_id,
           // Standard fields
@@ -214,8 +195,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           posting_date: postingDate,
           posting_time: postingTime,
           notes: item.reason || `Adjustment: ${adjustment.adjustment_code}`,
-          created_by: user.id,
-          updated_by: user.id,
+          created_by: userId,
+          updated_by: userId,
         })
         .select()
         .single();
@@ -231,11 +212,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       const resolvedLocationId = await adjustItemLocation({
         supabase,
-        companyId: userData.company_id,
+        companyId,
         itemId: item.item_id,
         warehouseId: adjustment.warehouse_id,
         locationId: selectedLocationId || existingStock?.default_location_id || null,
-        userId: user.id,
+        userId,
         qtyOnHandDelta: difference,
       });
 
@@ -246,20 +227,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           .from("item_warehouse")
           .update({
             current_stock: Math.max(0, newBalance),
-            updated_by: user.id,
+            updated_by: userId,
             updated_at: new Date().toISOString(),
           })
           .eq("id", existingStock.id);
       } else {
         // Create new stock record
         await supabase.from("item_warehouse").insert({
-          company_id: userData.company_id,
+          company_id: companyId,
           item_id: item.item_id,
           warehouse_id: adjustment.warehouse_id,
           current_stock: Math.max(0, newBalance),
           default_location_id: resolvedLocationId,
-          created_by: user.id,
-          updated_by: user.id,
+          created_by: userId,
+          updated_by: userId,
         });
       }
     }
@@ -270,11 +251,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .update({
         status: "posted",
         stock_transaction_id: stockTransaction.id,
-        approved_by: user.id,
+        approved_by: userId,
         approved_at: new Date().toISOString(),
-        posted_by: user.id,
+        posted_by: userId,
         posted_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: userId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id);

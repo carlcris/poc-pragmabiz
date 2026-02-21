@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import {
   adjustItemLocation,
@@ -180,29 +180,10 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
     const { searchParams } = new URL(request.url);
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     const page = parsePositiveInt(searchParams.get("page"), 1);
     const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT), MAX_LIMIT);
@@ -274,7 +255,7 @@ export async function GET(request: NextRequest) {
       `,
         { count: "exact" }
       )
-      .eq("transaction.company_id", userData.company_id)
+      .eq("transaction.company_id", companyId)
       .is("deleted_at", null)
       .is("transaction.deleted_at", null);
 
@@ -301,7 +282,7 @@ export async function GET(request: NextRequest) {
       const { data: matchedItems, error: itemSearchError } = await supabase
         .from("items")
         .select("id")
-        .eq("company_id", userData.company_id)
+        .eq("company_id", companyId)
         .is("deleted_at", null)
         .or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%`)
         .limit(100);
@@ -354,7 +335,7 @@ export async function GET(request: NextRequest) {
         return {
           id: item.id, // Use transaction item ID as unique key
           transactionId: transaction.id,
-          companyId: userData.company_id,
+          companyId,
           transactionCode: transaction.transaction_code,
           transactionDate: transaction.transaction_date,
           transactionType: transaction.transaction_type,
@@ -416,7 +397,9 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId, currentBusinessUnitId, userId } = context;
     const body = (await request.json()) as StockTransactionBody;
 
     if (
@@ -430,29 +413,8 @@ export async function POST(request: NextRequest) {
       if (locationUnauthorized) return locationUnauthorized;
     }
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
     // Validate required fields
@@ -468,7 +430,7 @@ export async function POST(request: NextRequest) {
     const { data: lastTransaction } = await supabase
       .from("stock_transactions")
       .select("transaction_code")
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .like("transaction_code", `ST-${currentYear}-%`)
       .order("transaction_code", { ascending: false })
       .limit(1);
@@ -484,17 +446,17 @@ export async function POST(request: NextRequest) {
 
     const defaultFromLocationId = await ensureWarehouseDefaultLocation({
       supabase,
-      companyId: userData.company_id,
+      companyId,
       warehouseId: body.warehouseId,
-      userId: user.id,
+      userId,
     });
 
     const defaultToLocationId = body.toWarehouseId
       ? await ensureWarehouseDefaultLocation({
           supabase,
-          companyId: userData.company_id,
+          companyId,
           warehouseId: body.toWarehouseId,
-          userId: user.id,
+          userId,
         })
       : null;
 
@@ -509,7 +471,7 @@ export async function POST(request: NextRequest) {
     const { data: transaction, error: transactionError } = await supabase
       .from("stock_transactions")
       .insert({
-        company_id: userData.company_id,
+        company_id: companyId,
         business_unit_id: currentBusinessUnitId,
         transaction_code: transactionCode,
         transaction_type: body.transactionType,
@@ -522,8 +484,8 @@ export async function POST(request: NextRequest) {
         reference_id: body.referenceId || null,
         status: "posted", // Manual transactions are posted immediately
         notes: body.notes || null,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();
@@ -608,7 +570,7 @@ export async function POST(request: NextRequest) {
       const { error: stockTxItemError } = await supabase
         .from("stock_transaction_items")
         .insert({
-          company_id: userData.company_id,
+          company_id: companyId,
           transaction_id: transaction.id,
           item_id: item.itemId,
           // Standard fields
@@ -629,8 +591,8 @@ export async function POST(request: NextRequest) {
           serial_no: originalItem.serialNo || null,
           expiry_date: originalItem.expiryDate || null,
           notes: originalItem.notes || null,
-          created_by: user.id,
-          updated_by: user.id,
+          created_by: userId,
+          updated_by: userId,
         })
         .select()
         .single();
@@ -646,11 +608,11 @@ export async function POST(request: NextRequest) {
 
       await adjustItemLocation({
         supabase,
-        companyId: userData.company_id,
+        companyId,
         itemId: item.itemId,
         warehouseId: body.warehouseId,
         locationId: fromLocationId || warehouseStock?.default_location_id || null,
-        userId: user.id,
+        userId,
         qtyOnHandDelta: actualQty,
       });
 
@@ -659,7 +621,7 @@ export async function POST(request: NextRequest) {
         .from("item_warehouse")
         .update({
           current_stock: newBalance,
-          updated_by: user.id,
+          updated_by: userId,
           updated_at: new Date().toISOString(),
         })
         .eq("item_id", item.itemId)
@@ -694,7 +656,7 @@ export async function POST(request: NextRequest) {
             .from("item_warehouse")
             .update({
               current_stock: destNewBalance,
-              updated_by: user.id,
+              updated_by: userId,
               updated_at: new Date().toISOString(),
             })
             .eq("item_id", item.itemId)
@@ -702,23 +664,23 @@ export async function POST(request: NextRequest) {
         } else {
           // Create new item_warehouse record if doesn't exist
           await supabase.from("item_warehouse").insert({
-            company_id: userData.company_id,
+            company_id: companyId,
             item_id: item.itemId,
             warehouse_id: body.toWarehouseId,
             current_stock: destNewBalance,
             default_location_id: defaultToLocationId,
-            created_by: user.id,
-            updated_by: user.id,
+            created_by: userId,
+            updated_by: userId,
           });
         }
 
         await adjustItemLocation({
           supabase,
-          companyId: userData.company_id,
+          companyId,
           itemId: item.itemId,
           warehouseId: body.toWarehouseId,
           locationId: toLocationId || destWarehouseStock?.default_location_id || null,
-          userId: user.id,
+          userId,
           qtyOnHandDelta: item.quantity,
         });
       }

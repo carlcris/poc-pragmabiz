@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
 // GET /api/load-lists/[id]
@@ -9,30 +9,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, companyId } = context;
 
     // Fetch load list with related data
     const { data: ll, error } = await supabase
@@ -83,7 +65,7 @@ export async function GET(
       `
       )
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -217,38 +199,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, userId, companyId } = context;
     const body = await request.json();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
 
     // Check if load list exists
     const { data: existingLL, error: fetchError } = await supabase
       .from("load_lists")
       .select("id, status")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -277,7 +241,7 @@ export async function PUT(
         estimated_arrival_date: body.estimatedArrivalDate,
         load_date: body.loadDate,
         notes: body.notes,
-        updated_by: user.id,
+        updated_by: userId,
       })
       .eq("id", id)
       .select("id, ll_number, status")
@@ -339,37 +303,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.LOAD_LISTS, "delete");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "delete");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
-
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user's company
-    const { data: userData } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!userData?.company_id) {
-      return NextResponse.json({ error: "User company not found" }, { status: 400 });
-    }
+    const context = await requireRequestContext();
+    if ("status" in context) return context;
+    const { supabase, userId, companyId } = context;
 
     // Check if load list exists
     const { data: existingLL, error: fetchError } = await supabase
       .from("load_lists")
       .select("id, status")
       .eq("id", id)
-      .eq("company_id", userData.company_id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -390,7 +336,7 @@ export async function DELETE(
       .from("load_lists")
       .update({
         deleted_at: new Date().toISOString(),
-        updated_by: user.id,
+        updated_by: userId,
       })
       .eq("id", id);
 

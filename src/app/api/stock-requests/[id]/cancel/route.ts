@@ -1,6 +1,6 @@
-import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
 
@@ -16,24 +16,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const requestContext = await requireRequestContext();
+    if ("status" in requestContext) return requestContext;
+    const { supabase, userId, companyId } = requestContext;
     const { id } = await context.params;
     const body = await request.json();
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("email")
+      .eq("id", userId)
+      .maybeSingle();
 
     // Check if request exists and is not already completed or cancelled
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
       .select("id, status, notes")
       .eq("id", id)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .single();
 
@@ -53,9 +52,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Append cancellation reason to notes
+    const actorEmail = userProfile?.email || userId;
     const cancellationNote = body.reason
-      ? `\n[CANCELLED by ${user.email}]: ${body.reason}`
-      : `\n[CANCELLED by ${user.email}]`;
+      ? `\n[CANCELLED by ${actorEmail}]: ${body.reason}`
+      : `\n[CANCELLED by ${actorEmail}]`;
     const updatedNotes = (existingRequest.notes || "") + cancellationNote;
 
     // Update status to cancelled
@@ -64,10 +64,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .update({
         status: "cancelled",
         notes: updatedNotes,
-        updated_by: user.id,
+        updated_by: userId,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId);
 
     if (updateError) {
       console.error("Error cancelling stock request:", updateError);
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       `
       )
       .eq("id", id)
+      .eq("company_id", companyId)
       .single();
 
     if (!updatedRequest) {
