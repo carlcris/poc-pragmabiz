@@ -100,6 +100,7 @@ const adjustmentFormSchema = z.object({
 type AdjustmentFormValues = z.infer<typeof adjustmentFormSchema>;
 
 export default function StockAdjustmentsPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -125,9 +126,11 @@ export default function StockAdjustmentsPage() {
   const { formatCurrency } = useCurrency();
 
   const { data, isLoading, error } = useStockAdjustments({
-    search,
-    page: 1,
-    limit: 1000,
+    search: search || undefined,
+    status: statusFilter === "all" ? undefined : (statusFilter as StockAdjustmentStatus),
+    adjustmentType: typeFilter === "all" ? undefined : (typeFilter as StockAdjustmentType),
+    page,
+    limit: pageSize,
   });
 
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
@@ -139,30 +142,8 @@ export default function StockAdjustmentsPage() {
   const deleteMutation = useDeleteStockAdjustment();
   const postMutation = usePostStockAdjustment();
 
-  // Client-side filtering
-  let filteredAdjustments = data?.data || [];
-
-  if (statusFilter !== "all") {
-    filteredAdjustments = filteredAdjustments.filter((a) => a.status === statusFilter);
-  }
-
-  if (typeFilter !== "all") {
-    filteredAdjustments = filteredAdjustments.filter((a) => a.adjustmentType === typeFilter);
-  }
-
-  // Pagination
-  const total = filteredAdjustments.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const adjustments = filteredAdjustments.slice(start, end);
-
-  const pagination = {
-    total,
-    page,
-    limit: pageSize,
-    totalPages,
-  };
+  const adjustments = data?.data || [];
+  const pagination = data?.pagination;
 
   const form = useForm<AdjustmentFormValues>({
     resolver: zodResolver(adjustmentFormSchema),
@@ -223,6 +204,15 @@ export default function StockAdjustmentsPage() {
       setLineItems([]);
     }
   }, [dialogOpen, selectedAdjustment, form]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const selectedWarehouseId = form.watch("warehouseId");
 
@@ -476,8 +466,8 @@ export default function StockAdjustmentsPage() {
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search adjustments..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-8"
               />
             </div>

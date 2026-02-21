@@ -12,6 +12,7 @@ export const warehousesApi = {
     const params = new URLSearchParams();
 
     if (filters?.search) params.append("search", filters.search);
+    if (filters?.country) params.append("country", filters.country);
     if (filters?.isActive !== undefined) params.append("isActive", String(filters.isActive));
     if (filters?.page) params.append("page", String(filters.page));
     if (filters?.limit) params.append("limit", String(filters.limit));

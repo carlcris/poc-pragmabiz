@@ -113,6 +113,7 @@ const requestFormSchema = z
 type RequestFormValues = z.infer<typeof requestFormSchema>;
 
 export default function StockRequestsPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -139,9 +140,11 @@ export default function StockRequestsPage() {
   } | null>(null);
 
   const { data, isLoading, error } = useStockRequests({
-    search,
-    page: 1,
-    limit: 1000,
+    search: search || undefined,
+    status: statusFilter === "all" ? undefined : (statusFilter as StockRequestStatus),
+    priority: priorityFilter === "all" ? undefined : (priorityFilter as StockRequestPriority),
+    page,
+    limit: pageSize,
   });
 
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
@@ -162,23 +165,8 @@ export default function StockRequestsPage() {
   const completeMutation = useCompleteStockRequest();
   const cancelMutation = useCancelStockRequest();
 
-  // Client-side filtering
-  let filteredRequests = data?.data || [];
-
-  if (statusFilter !== "all") {
-    filteredRequests = filteredRequests.filter((r) => r.status === statusFilter);
-  }
-
-  if (priorityFilter !== "all") {
-    filteredRequests = filteredRequests.filter((r) => r.priority === priorityFilter);
-  }
-
-  // Pagination
-  const total = filteredRequests.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const requests = filteredRequests.slice(start, end);
+  const requests = data?.data || [];
+  const pagination = data?.pagination;
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestFormSchema),
@@ -352,14 +340,16 @@ export default function StockRequestsPage() {
     return false;
   };
 
-  const pagination = {
-    total,
-    page,
-    limit: pageSize,
-    totalPages,
-  };
-
   const hasAnyActions = requests.some((request) => hasRowActions(request));
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const handleCreateRequest = () => {
     setSelectedRequest(null);
@@ -585,8 +575,8 @@ export default function StockRequestsPage() {
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search stock requests..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-8"
               />
             </div>

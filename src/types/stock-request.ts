@@ -144,9 +144,12 @@ export interface StockRequestListParams {
 
 export interface StockRequestListResponse {
   data: StockRequest[];
-  total: number;
-  page: number;
-  limit: number;
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export type ReceiveStockRequestPayload = {

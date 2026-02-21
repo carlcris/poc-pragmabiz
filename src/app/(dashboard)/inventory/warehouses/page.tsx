@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Search, Pencil, MapPin, Filter, Trash2 } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
@@ -25,65 +25,45 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { WarehouseFormDialog } from "@/components/warehouses/WarehouseFormDialog";
-import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ViewGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { Warehouse } from "@/types/warehouse";
 
 export default function WarehousesPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
-  const [countryFilter, setCountryFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [warehouseToDelete, setWarehouseToDelete] = useState<Warehouse | null>(null);
 
   const deleteWarehouse = useDeleteWarehouse();
 
   const { data, isLoading, error } = useWarehouses({
-    search,
-    page: 1,
-    limit: 1000, // Get all warehouses for client-side filtering
-  });
-
-  // Get all warehouses for filtering
-  const allWarehouses = data?.data || [];
-
-  // Extract unique countries from actual data
-  const uniqueCountries = Array.from(
-    new Set(allWarehouses.map((wh) => wh.country).filter(Boolean))
-  ).sort();
-
-  // Apply client-side filters
-  let filteredWarehouses = allWarehouses;
-
-  if (countryFilter !== "all") {
-    filteredWarehouses = filteredWarehouses.filter((wh) => wh.country === countryFilter);
-  }
-
-  if (statusFilter === "active") {
-    filteredWarehouses = filteredWarehouses.filter((wh) => wh.isActive);
-  } else if (statusFilter === "inactive") {
-    filteredWarehouses = filteredWarehouses.filter((wh) => !wh.isActive);
-  }
-
-  // Calculate pagination
-  const total = filteredWarehouses.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const warehouses = filteredWarehouses.slice(start, end);
-
-  const pagination = {
-    total,
+    search: search || undefined,
+    isActive:
+      statusFilter === "all" ? undefined : statusFilter === "active" ? true : false,
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const warehouses = data?.data || [];
+  const pagination = data?.pagination;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const handleCreateWarehouse = () => {
     setSelectedWarehouse(null);
@@ -112,11 +92,6 @@ export default function WarehousesPage() {
     }
   };
 
-  const handleCountryFilterChange = (value: string) => {
-    setCountryFilter(value);
-    setPage(1);
-  };
-
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value);
     setPage(1);
@@ -141,25 +116,11 @@ export default function WarehousesPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search warehouses..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
             />
           </div>
-          <Select value={countryFilter} onValueChange={handleCountryFilterChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Country" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Countries</SelectItem>
-              {uniqueCountries.map((country) => (
-                <SelectItem key={country} value={country}>
-                  {country}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
@@ -191,34 +152,13 @@ export default function WarehousesPage() {
                 <TableBody>
                   {[...Array(8)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-4 w-4 rounded-full" />
-                          <Skeleton className="h-4 w-32" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-36" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-16 rounded-full" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Skeleton className="h-8 w-20" />
-                          <Skeleton className="h-8 w-8" />
-                          <Skeleton className="h-8 w-8" />
-                        </div>
-                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><div className="flex items-center gap-2"><Skeleton className="h-4 w-4 rounded-full" /><Skeleton className="h-4 w-32" /></div></TableCell>
+                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                      <TableCell className="text-right"><div className="flex justify-end gap-2"><Skeleton className="h-8 w-20" /><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -257,9 +197,7 @@ export default function WarehousesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {warehouse.city}, {warehouse.state}
-                        </div>
+                        <div className="text-sm">{warehouse.city}, {warehouse.state}</div>
                         <div className="text-xs text-muted-foreground">{warehouse.country}</div>
                       </TableCell>
                       <TableCell>{warehouse.managerName || "-"}</TableCell>
@@ -283,16 +221,10 @@ export default function WarehousesPage() {
                         <div className="flex justify-end gap-1">
                           <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
-                                Locations
-                              </Link>
+                              <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>Locations</Link>
                             </Button>
                           </ViewGuard>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditWarehouse(warehouse)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => handleEditWarehouse(warehouse)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button
@@ -313,8 +245,8 @@ export default function WarehousesPage() {
           )}
         </div>
 
-        {pagination && pagination.total > 0 && (
-          <div className="shrink-0">
+        {!isLoading && warehouses.length > 0 && pagination && (
+          <div className="mt-4">
             <DataTablePagination
               currentPage={page}
               totalPages={pagination.totalPages}

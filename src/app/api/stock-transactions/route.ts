@@ -33,6 +33,26 @@ type TransactionListItemRow = {
         notes: string | null;
         created_by: string | null;
         created_at: string;
+        warehouse:
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
+          | null;
+        toWarehouse:
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
+          | null;
+        fromLocation:
+          | { id: string; code: string | null; name: string | null }
+          | { id: string; code: string | null; name: string | null }[]
+          | null;
+        toLocation:
+          | { id: string; code: string | null; name: string | null }
+          | { id: string; code: string | null; name: string | null }[]
+          | null;
+        creator:
+          | { id: string; first_name: string | null; last_name: string | null }
+          | { id: string; first_name: string | null; last_name: string | null }[]
+          | null;
       }
     | {
         id: string;
@@ -49,6 +69,26 @@ type TransactionListItemRow = {
         notes: string | null;
         created_by: string | null;
         created_at: string;
+        warehouse:
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
+          | null;
+        toWarehouse:
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }
+          | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
+          | null;
+        fromLocation:
+          | { id: string; code: string | null; name: string | null }
+          | { id: string; code: string | null; name: string | null }[]
+          | null;
+        toLocation:
+          | { id: string; code: string | null; name: string | null }
+          | { id: string; code: string | null; name: string | null }[]
+          | null;
+        creator:
+          | { id: string; first_name: string | null; last_name: string | null }
+          | { id: string; first_name: string | null; last_name: string | null }[]
+          | null;
       }[]
     | null;
   item:
@@ -89,24 +129,6 @@ type TransactionListItemRow = {
     | null;
 };
 
-type WarehouseRow = {
-  id: string;
-  warehouse_code: string | null;
-  warehouse_name: string | null;
-};
-
-type LocationRow = {
-  id: string;
-  code: string | null;
-  name: string | null;
-};
-
-type UserRow = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-};
-
 type StockTransactionBody = {
   transactionType: "in" | "out" | "transfer";
   transactionDate?: string;
@@ -129,6 +151,28 @@ type StockTransactionBody = {
   }>;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+
+const parsePositiveInt = (value: string | null, fallback: number) => {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const normalizeSearch = (value: string | null) => {
+  if (!value) return null;
+  const normalized = value.trim().replace(/[,%]/g, " ");
+  return normalized.length > 0 ? normalized : null;
+};
+
+const pickFirst = <T>(value: T | T[] | null | undefined): T | null => {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+  return value ?? null;
+};
+
 // GET /api/stock-transactions
 export async function GET(request: NextRequest) {
   try {
@@ -136,7 +180,7 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
     // Check authentication
@@ -160,12 +204,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Pagination params
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const page = parsePositiveInt(searchParams.get("page"), 1);
+    const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT), MAX_LIMIT);
+    const offset = (page - 1) * limit;
+    const search = normalizeSearch(searchParams.get("search"));
+    const transactionType = searchParams.get("transactionType");
+    const warehouseId = searchParams.get("warehouseId");
+    const itemId = searchParams.get("itemId");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
 
-    // Fetch stock transaction items
-    const { data: transactionItems, error: txError } = await supabase
+    if (warehouseId && !UUID_REGEX.test(warehouseId)) {
+      return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
+    }
+    if (itemId && !UUID_REGEX.test(itemId)) {
+      return NextResponse.json({ error: "Invalid item filter" }, { status: 400 });
+    }
+    if (
+      transactionType &&
+      transactionType !== "all" &&
+      transactionType !== "in" &&
+      transactionType !== "out" &&
+      transactionType !== "transfer" &&
+      transactionType !== "adjustment"
+    ) {
+      return NextResponse.json({ error: "Invalid transaction type" }, { status: 400 });
+    }
+
+    let query = supabase
       .from("stock_transaction_items")
       .select(
         `
@@ -192,7 +258,12 @@ export async function GET(request: NextRequest) {
           status,
           notes,
           created_by,
-          created_at
+          created_at,
+          warehouse:warehouses!stock_transactions_warehouse_id_fkey(id, warehouse_code, warehouse_name),
+          toWarehouse:warehouses!stock_transactions_to_warehouse_id_fkey(id, warehouse_code, warehouse_name),
+          fromLocation:warehouse_locations!stock_transactions_from_location_id_fkey(id, code, name),
+          toLocation:warehouse_locations!stock_transactions_to_location_id_fkey(id, code, name),
+          creator:users!stock_transactions_created_by_fkey(id, first_name, last_name)
         ),
         item:items!inner(
           id,
@@ -200,89 +271,85 @@ export async function GET(request: NextRequest) {
           item_name,
           uom:units_of_measure(id, code, name)
         )
-      `
+      `,
+        { count: "exact" }
       )
       .eq("transaction.company_id", userData.company_id)
       .is("deleted_at", null)
       .is("transaction.deleted_at", null);
 
-    if (txError) {
-      return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
+    if (currentBusinessUnitId) {
+      query = query.eq("transaction.business_unit_id", currentBusinessUnitId);
     }
 
-    // Collect warehouse and user IDs
-    const warehouseIds = new Set<string>();
-    const locationIds = new Set<string>();
-    const userIds = new Set<string>();
+    if (transactionType && transactionType !== "all") {
+      query = query.eq("transaction.transaction_type", transactionType);
+    }
+    if (warehouseId) {
+      query = query.eq("transaction.warehouse_id", warehouseId);
+    }
+    if (itemId) {
+      query = query.eq("item_id", itemId);
+    }
+    if (startDate) {
+      query = query.gte("transaction.transaction_date", startDate);
+    }
+    if (endDate) {
+      query = query.lte("transaction.transaction_date", endDate);
+    }
+    if (search) {
+      const { data: matchedItems, error: itemSearchError } = await supabase
+        .from("items")
+        .select("id")
+        .eq("company_id", userData.company_id)
+        .is("deleted_at", null)
+        .or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%`)
+        .limit(100);
+      if (itemSearchError) {
+        return NextResponse.json(
+          { error: "Failed to search items", details: itemSearchError.message },
+          { status: 500 }
+        );
+      }
+      const itemIdMatches = (matchedItems || []).map((row) => row.id);
+      const searchClauses = [
+        `transaction.transaction_code.ilike.%${search}%`,
+        `transaction.notes.ilike.%${search}%`,
+      ];
+      if (itemIdMatches.length > 0) {
+        searchClauses.push(`item_id.in.(${itemIdMatches.join(",")})`);
+      }
+      query = query.or(searchClauses.join(","));
+    }
 
-    const typedTransactionItems = (transactionItems || []) as TransactionListItemRow[];
-    typedTransactionItems.forEach((item) => {
-      const transaction = Array.isArray(item.transaction)
-        ? item.transaction[0] ?? null
-        : item.transaction ?? null;
-      if (!transaction) return;
-      if (transaction.warehouse_id) warehouseIds.add(transaction.warehouse_id);
-      if (transaction.to_warehouse_id) warehouseIds.add(transaction.to_warehouse_id);
-      if (transaction.from_location_id) locationIds.add(transaction.from_location_id);
-      if (transaction.to_location_id) locationIds.add(transaction.to_location_id);
-      if (transaction.created_by) userIds.add(transaction.created_by);
-    });
+    const { data: transactionItems, error: txError, count } = await query
+      .order("id", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-    // Fetch warehouses and users
-    const [warehousesData, locationsData, usersData] = await Promise.all([
-      warehouseIds.size > 0
-        ? supabase
-            .from("warehouses")
-            .select("id, warehouse_code, warehouse_name")
-            .in("id", Array.from(warehouseIds))
-        : Promise.resolve({ data: [] }),
-      locationIds.size > 0
-        ? supabase
-            .from("warehouse_locations")
-            .select("id, code, name")
-            .in("id", Array.from(locationIds))
-        : Promise.resolve({ data: [] }),
-      userIds.size > 0
-        ? supabase.from("users").select("id, first_name, last_name").in("id", Array.from(userIds))
-        : Promise.resolve({ data: [] }),
-    ]);
-
-    const warehousesMap = new Map(
-      (warehousesData.data as WarehouseRow[] | null)?.map((w) => [w.id, w]) || []
-    );
-    const locationsMap = new Map(
-      (locationsData.data as LocationRow[] | null)?.map((l) => [l.id, l]) || []
-    );
-    const usersMap = new Map((usersData.data as UserRow[] | null)?.map((u) => [u.id, u]) || []);
+    if (txError) {
+      return NextResponse.json(
+        { error: "Failed to fetch transactions", details: txError.message },
+        { status: 500 }
+      );
+    }
 
     // Format stock transactions
+    const typedTransactionItems = (transactionItems || []) as unknown as TransactionListItemRow[];
+
     const formattedTransactions = typedTransactionItems
       .map((item) => {
-        const transaction = Array.isArray(item.transaction)
-          ? item.transaction[0] ?? null
-          : item.transaction ?? null;
-        const itemRecord = Array.isArray(item.item) ? item.item[0] ?? null : item.item ?? null;
-        const uomRecord = Array.isArray(itemRecord?.uom)
-          ? itemRecord?.uom[0] ?? null
-          : itemRecord?.uom ?? null;
+        const transaction = pickFirst(item.transaction);
+        const itemRecord = pickFirst(item.item);
+        const uomRecord = pickFirst(itemRecord?.uom);
+        const warehouseRecord = pickFirst(transaction?.warehouse);
+        const toWarehouseRecord = pickFirst(transaction?.toWarehouse);
+        const fromLocationRecord = pickFirst(transaction?.fromLocation);
+        const toLocationRecord = pickFirst(transaction?.toLocation);
+        const creatorRecord = pickFirst(transaction?.creator);
 
         if (!transaction || !itemRecord) {
           return null;
         }
-
-        const warehouse = transaction.warehouse_id
-          ? warehousesMap.get(transaction.warehouse_id)
-          : undefined;
-        const toWarehouse = transaction.to_warehouse_id
-          ? warehousesMap.get(transaction.to_warehouse_id)
-          : undefined;
-        const fromLocation = transaction.from_location_id
-          ? locationsMap.get(transaction.from_location_id)
-          : undefined;
-        const toLocation = transaction.to_location_id
-          ? locationsMap.get(transaction.to_location_id)
-          : undefined;
-        const creator = transaction.created_by ? usersMap.get(transaction.created_by) : undefined;
 
         return {
           id: item.id, // Use transaction item ID as unique key
@@ -295,17 +362,17 @@ export async function GET(request: NextRequest) {
           itemCode: itemRecord.item_code,
           itemName: itemRecord.item_name,
           warehouseId: transaction.warehouse_id,
-          warehouseCode: warehouse?.warehouse_code || "",
-          warehouseName: warehouse?.warehouse_name || "",
+          warehouseCode: warehouseRecord?.warehouse_code || "",
+          warehouseName: warehouseRecord?.warehouse_name || "",
           fromLocationId: transaction.from_location_id,
-          fromLocationCode: fromLocation?.code || "",
-          fromLocationName: fromLocation?.name || "",
+          fromLocationCode: fromLocationRecord?.code || "",
+          fromLocationName: fromLocationRecord?.name || "",
           toWarehouseId: transaction.to_warehouse_id,
-          toWarehouseCode: toWarehouse?.warehouse_code || "",
-          toWarehouseName: toWarehouse?.warehouse_name || "",
+          toWarehouseCode: toWarehouseRecord?.warehouse_code || "",
+          toWarehouseName: toWarehouseRecord?.warehouse_name || "",
           toLocationId: transaction.to_location_id,
-          toLocationCode: toLocation?.code || "",
-          toLocationName: toLocation?.name || "",
+          toLocationCode: toLocationRecord?.code || "",
+          toLocationName: toLocationRecord?.name || "",
           quantity: parseFloat(String(item.quantity ?? 0)),
           uom: uomRecord?.code || "",
           unitCost: parseFloat(String(item.unit_cost ?? 0)),
@@ -319,33 +386,22 @@ export async function GET(request: NextRequest) {
           reason: transaction.notes || "",
           notes: item.notes || "",
           createdBy: transaction.created_by,
-          createdByName: creator
-            ? `${creator.first_name || ""} ${creator.last_name || ""}`.trim()
-            : "Unknown",
+          createdByName:
+            `${creatorRecord?.first_name || ""} ${creatorRecord?.last_name || ""}`.trim() ||
+            "Unknown",
           createdAt: transaction.created_at,
           updatedAt: item.created_at,
         };
       })
       .filter((item) => item !== null);
 
-    // Sort by date (most recent first)
-    const allTransactions = formattedTransactions.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-
-    // Apply pagination
-    const total = allTransactions.length;
-    const from = (page - 1) * limit;
-    const to = from + limit;
-    const paginatedTransactions = allTransactions.slice(from, to);
-
     return NextResponse.json({
-      data: paginatedTransactions,
+      data: formattedTransactions,
       pagination: {
-        total,
+        total: count || 0,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages: Math.ceil((count || 0) / limit),
       },
     });
   } catch {

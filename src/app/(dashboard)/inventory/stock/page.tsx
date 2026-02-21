@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   Search,
@@ -38,40 +38,34 @@ import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type { TransactionType } from "@/types/stock-transaction";
 
 export default function StockTransactionsPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string>("all");
 
   const { data, isLoading, error } = useStockTransactions({
-    search,
-    page: 1,
-    limit: 1000, // Get all for client-side filtering
-  });
-
-  // Apply client-side filters
-  let filteredTransactions = data?.data || [];
-
-  if (typeFilter !== "all") {
-    filteredTransactions = filteredTransactions.filter((txn) => txn.transactionType === typeFilter);
-  }
-
-  // Calculate pagination
-  const total = filteredTransactions.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const transactions = filteredTransactions.slice(start, end);
-
-  const pagination = {
-    total,
+    search: search || undefined,
+    transactionType: typeFilter,
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const transactions = data?.data || [];
+  const pagination = data?.pagination;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getTransactionTypeIcon = (type: TransactionType) => {
     switch (type) {
@@ -133,7 +127,7 @@ export default function StockTransactionsPage() {
   };
 
   const handleTypeFilterChange = (value: string) => {
-    setTypeFilter(value);
+    setTypeFilter(value as TransactionType | "all");
     setPage(1);
   };
 
@@ -141,8 +135,12 @@ export default function StockTransactionsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Stock Transactions</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Track all inventory movements and adjustments</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+            Stock Transactions
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+            Track all inventory movements and adjustments
+          </p>
         </div>
         <Button onClick={handleCreateTransaction} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
@@ -156,8 +154,8 @@ export default function StockTransactionsPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search transactions..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
             />
           </div>

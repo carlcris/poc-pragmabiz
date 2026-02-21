@@ -52,6 +52,7 @@ export interface UpdateWarehouseRequest {
 
 export interface WarehouseFilters {
   search?: string;
+  country?: string;
   isActive?: boolean;
   page?: number;
   limit?: number;
@@ -60,9 +61,9 @@ export interface WarehouseFilters {
 export interface WarehouseListResponse {
   data: Warehouse[];
   pagination: {
-    total: number;
     page: number;
-    limit: number;
+    total: number;
     totalPages: number;
+    limit: number;
   };
 }

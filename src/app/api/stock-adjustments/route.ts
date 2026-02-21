@@ -96,6 +96,30 @@ type UomRow = {
   code: string | null;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+const ADJUSTMENT_TYPES = new Set([
+  "physical_count",
+  "damage",
+  "loss",
+  "found",
+  "quality_issue",
+  "other",
+]);
+const ADJUSTMENT_STATUSES = new Set(["draft", "pending", "approved", "posted", "rejected"]);
+
+const parsePositiveInt = (value: string | null, fallback: number) => {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const normalizeSearch = (value: string | null) => {
+  if (!value) return null;
+  const normalized = value.trim().replace(/[,%]/g, " ");
+  return normalized.length > 0 ? normalized : null;
+};
+
 // GET /api/stock-adjustments - List stock adjustments
 export async function GET(request: NextRequest) {
   try {
@@ -103,7 +127,7 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const searchParams = request.nextUrl.searchParams;
 
     // Check authentication
@@ -128,15 +152,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse query parameters
-    const search = searchParams.get("search") || "";
-    const warehouseId = searchParams.get("warehouseId") || "";
-    const adjustmentType = searchParams.get("adjustmentType") || "";
-    const status = searchParams.get("status") || "";
-    const startDate = searchParams.get("startDate") || "";
-    const endDate = searchParams.get("endDate") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const search = normalizeSearch(searchParams.get("search"));
+    const warehouseId = searchParams.get("warehouseId");
+    const adjustmentType = searchParams.get("adjustmentType");
+    const status = searchParams.get("status");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const page = parsePositiveInt(searchParams.get("page"), 1);
+    const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT), MAX_LIMIT);
     const offset = (page - 1) * limit;
+
+    if (warehouseId && !UUID_REGEX.test(warehouseId)) {
+      return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
+    }
+    if (adjustmentType && !ADJUSTMENT_TYPES.has(adjustmentType)) {
+      return NextResponse.json({ error: "Invalid adjustment type filter" }, { status: 400 });
+    }
+    if (status && !ADJUSTMENT_STATUSES.has(status)) {
+      return NextResponse.json({ error: "Invalid status filter" }, { status: 400 });
+    }
 
     // Build query - simplified without nested relationships
     let query = supabase
@@ -168,9 +202,11 @@ export async function GET(request: NextRequest) {
         { count: "exact" }
       )
       .eq("company_id", userData.company_id)
-      .is("deleted_at", null)
-      .order("adjustment_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .is("deleted_at", null);
+
+    if (currentBusinessUnitId) {
+      query = query.eq("business_unit_id", currentBusinessUnitId);
+    }
 
     // Apply filters
     if (search) {
@@ -193,7 +229,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data: adjustments, error, count } = await query.range(offset, offset + limit - 1);
+    const { data: adjustments, error, count } = await query
+      .order("adjustment_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -205,8 +244,9 @@ export async function GET(request: NextRequest) {
     const userIds = new Set<string>();
     const stockTransactionIds = new Set<string>();
 
-    const typedAdjustments = (adjustments || []) as DbStockAdjustmentRow[];
-    typedAdjustments.forEach((adj) => {
+    const slicedAdjustments = (adjustments || []) as DbStockAdjustmentRow[];
+
+    slicedAdjustments.forEach((adj) => {
       if (adj.warehouse_id) warehouseIds.add(adj.warehouse_id);
       if (adj.custom_fields?.locationId) locationIds.add(adj.custom_fields.locationId);
       if (adj.created_by) userIds.add(adj.created_by);
@@ -254,7 +294,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Fetch items for each adjustment
-    const adjustmentIds = typedAdjustments.map((adj) => adj.id);
+    const adjustmentIds = slicedAdjustments.map((adj) => adj.id);
     const { data: itemsData } =
       adjustmentIds.length > 0
         ? await supabase
@@ -274,7 +314,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Format response
-    const formattedData = typedAdjustments.map((adj) => {
+    const formattedData = slicedAdjustments.map((adj) => {
       const warehouse = adj.warehouse_id ? warehousesMap.get(adj.warehouse_id) : undefined;
       const createdBy = adj.created_by ? usersMap.get(adj.created_by) : undefined;
       const updatedBy = adj.updated_by ? usersMap.get(adj.updated_by) : undefined;

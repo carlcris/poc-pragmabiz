@@ -180,7 +180,7 @@ export default function DeliveryNotesPage() {
   const { data: deliveryNotesData, isLoading } = useDeliveryNotes(
     statusFilter === "all" ? undefined : statusFilter
   );
-  const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 200 });
+  const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 50 });
   const { data: usersData } = useUsers();
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
   const { data: actionDn, isLoading: isLoadingActionDn } = useDeliveryNote(actionDnId);

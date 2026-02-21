@@ -8,6 +8,39 @@ import type { CreateStockRequestPayload } from "@/types/stock-request";
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 type StockRequestItemInput = CreateStockRequestPayload["items"][number];
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+const VALID_STATUSES = new Set([
+  "draft",
+  "submitted",
+  "approved",
+  "picking",
+  "picked",
+  "delivered",
+  "received",
+  "completed",
+  "cancelled",
+  "allocating",
+  "partially_allocated",
+  "allocated",
+  "dispatched",
+  "partially_fulfilled",
+  "fulfilled",
+]);
+const VALID_PRIORITIES = new Set(["low", "normal", "high", "urgent"]);
+
+const parsePositiveInt = (value: string | null, fallback: number) => {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const normalizeSearch = (value: string | null) => {
+  if (!value) return null;
+  const normalized = value.trim().replace(/[,%]/g, " ");
+  return normalized.length > 0 ? normalized : null;
+};
+
 // GET /api/stock-requests - List stock requests
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +48,7 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const searchParams = request.nextUrl.searchParams;
 
     // Check authentication
@@ -40,16 +73,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse query parameters
-    const search = searchParams.get("search") || "";
-    const requestingWarehouseId = searchParams.get("requestingWarehouseId") || "";
-    const fulfillingWarehouseId = searchParams.get("fulfillingWarehouseId") || "";
-    const status = searchParams.get("status") || "";
-    const priority = searchParams.get("priority") || "";
-    const startDate = searchParams.get("startDate") || "";
-    const endDate = searchParams.get("endDate") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const search = normalizeSearch(searchParams.get("search"));
+    const requestingWarehouseId = searchParams.get("requestingWarehouseId");
+    const fulfillingWarehouseId = searchParams.get("fulfillingWarehouseId");
+    const status = searchParams.get("status");
+    const priority = searchParams.get("priority");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const page = parsePositiveInt(searchParams.get("page"), 1);
+    const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT), MAX_LIMIT);
     const offset = (page - 1) * limit;
+
+    if (requestingWarehouseId && !UUID_REGEX.test(requestingWarehouseId)) {
+      return NextResponse.json({ error: "Invalid requesting warehouse filter" }, { status: 400 });
+    }
+    if (fulfillingWarehouseId && !UUID_REGEX.test(fulfillingWarehouseId)) {
+      return NextResponse.json({ error: "Invalid fulfilling warehouse filter" }, { status: 400 });
+    }
+    if (status && !VALID_STATUSES.has(status)) {
+      return NextResponse.json({ error: "Invalid status filter" }, { status: 400 });
+    }
+    if (priority && !VALID_PRIORITIES.has(priority)) {
+      return NextResponse.json({ error: "Invalid priority filter" }, { status: 400 });
+    }
 
     // Build query
     let query = supabase
@@ -99,9 +145,35 @@ export async function GET(request: NextRequest) {
         { count: "exact" }
       )
       .eq("company_id", userData.company_id)
-      .is("deleted_at", null)
-      .order("request_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .is("deleted_at", null);
+
+    if (currentBusinessUnitId) {
+      const { data: currentBuWarehouseRows, error: currentBuWarehousesError } = await supabase
+        .from("warehouses")
+        .select("id")
+        .eq("company_id", userData.company_id)
+        .eq("business_unit_id", currentBusinessUnitId)
+        .is("deleted_at", null);
+
+      if (currentBuWarehousesError) {
+        return NextResponse.json(
+          { error: "Failed to resolve current business unit warehouses" },
+          { status: 500 }
+        );
+      }
+
+      const currentBuWarehouseIds = (currentBuWarehouseRows || [])
+        .map((row) => row.id)
+        .filter((value): value is string => Boolean(value));
+
+      if (currentBuWarehouseIds.length > 0) {
+        query = query.or(
+          `business_unit_id.eq.${currentBusinessUnitId},and(fulfilling_warehouse_id.in.(${currentBuWarehouseIds.join(",")}),status.neq.draft)`
+        );
+      } else {
+        query = query.eq("business_unit_id", currentBusinessUnitId);
+      }
+    }
 
     // Apply filters
     if (search) {
@@ -129,14 +201,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data: requests, error, count } = await query.range(offset, offset + limit - 1);
+    const { data: requests, error, count } = await query
+      .order("request_date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       console.error("Error fetching stock requests:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const formattedRequests = ((requests || []) as StockRequestDbRecord[]).map((request) =>
+    const typedRequests = (requests || []) as StockRequestDbRecord[];
+    const formattedRequests = typedRequests.map((request) =>
       mapStockRequest(request)
     );
 
