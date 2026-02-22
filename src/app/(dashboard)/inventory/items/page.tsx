@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Plus,
@@ -47,7 +47,6 @@ import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Item } from "@/types/item";
-import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 const ItemFormDialog = dynamic(
   () => import("@/components/items/ItemFormDialog").then((mod) => mod.ItemFormDialog),
@@ -74,8 +73,12 @@ function ItemsPageContent() {
 
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
-  const { currentBusinessUnit } = useBusinessUnitStore();
-  const lastAutoSetBuId = useRef<string | null>(null);
+  // Fetch warehouses for filter UI.
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
+  const warehouses = useMemo(
+    () => warehousesData?.data?.filter((wh) => wh.isActive) || [],
+    [warehousesData?.data]
+  );
 
   const itemsQueryParams = useMemo<{
     search: string;
@@ -108,52 +111,7 @@ function ItemsPageContent() {
     [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
   );
 
-  // Fetch warehouses for filter and BU scoping resolution.
-  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
-  const warehouses = useMemo(
-    () => warehousesData?.data?.filter((wh) => wh.isActive) || [],
-    [warehousesData?.data]
-  );
-
-  const matchingBusinessUnitWarehouse = useMemo(
-    () =>
-      currentBusinessUnit
-        ? warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)
-        : undefined,
-    [currentBusinessUnit, warehouses]
-  );
-
-  const isWarehouseScopeResolved = useMemo(() => {
-    if (isWarehousesLoading) return false;
-    if (!currentBusinessUnit) return true;
-    if (warehouseFilter !== "all") return true;
-    // If BU has a mapped warehouse, wait for auto-selection to apply before fetching items.
-    return !matchingBusinessUnitWarehouse;
-  }, [isWarehousesLoading, currentBusinessUnit, warehouseFilter, matchingBusinessUnitWarehouse]);
-
-  const { data, isLoading, isFetching, error } = useItems({
-    ...itemsQueryParams,
-    enabled: isWarehouseScopeResolved,
-  });
-
-  useEffect(() => {
-    // Only auto-select warehouse if we have a business unit and no manual selection
-    if (!currentBusinessUnit || warehouseFilter !== "all" || warehouses.length === 0) {
-      return;
-    }
-
-    if (lastAutoSetBuId.current === currentBusinessUnit.id) {
-      return;
-    }
-
-    const matchedWarehouse = matchingBusinessUnitWarehouse;
-
-    if (matchedWarehouse) {
-      setWarehouseFilter(matchedWarehouse.id);
-      setPage(1);
-      lastAutoSetBuId.current = currentBusinessUnit.id;
-    }
-  }, [currentBusinessUnit, warehouseFilter, warehouses.length, matchingBusinessUnitWarehouse]);
+  const { data, isLoading, isFetching, error } = useItems(itemsQueryParams);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -169,7 +127,7 @@ function ItemsPageContent() {
   const categories = categoriesData?.data || [];
 
 
-  const isInitialLoading = isWarehousesLoading || isLoading;
+  const isInitialLoading = isLoading;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
   const statistics =

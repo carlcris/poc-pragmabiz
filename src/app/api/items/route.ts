@@ -294,7 +294,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
     }
 
-    // "All Warehouses" should aggregate company-wide inventory.
+    // "All Warehouses" aggregates across available warehouses.
     // Only scope by BU when a specific warehouse is selected.
     let effectiveBusinessUnitId: string | null = null;
 
