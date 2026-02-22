@@ -16,7 +16,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useDeleteItem, useItems } from "@/hooks/useItems";
+import { useDeleteItem, useItems, useItemsStats } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -88,7 +88,7 @@ function ItemsPageContent() {
     warehouseId: string | undefined;
     status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued" | "all";
     includeStock: true;
-    includeStats: true;
+    includeStats: false;
   }>(
     () => ({
       search,
@@ -106,12 +106,26 @@ function ItemsPageContent() {
               | "discontinued")
           : "all",
       includeStock: true,
-      includeStats: true,
+      includeStats: false,
     }),
     [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
   );
 
   const { data, isLoading, isFetching, error } = useItems(itemsQueryParams);
+  const {
+    data: statsData,
+    isLoading: isStatsLoading,
+    error: statsError,
+  } = useItemsStats({
+    search,
+    category: categoryFilter !== "all" ? categoryFilter : undefined,
+    warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
+    status:
+      statusFilter !== "all"
+        ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
+        : "all",
+    includeStock: true,
+  });
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -130,13 +144,14 @@ function ItemsPageContent() {
   const isInitialLoading = isLoading;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
-  const statistics =
-    data && typeof data === "object" && "statistics" in data ? data.statistics : undefined;
+  const statistics = statsData?.statistics;
+  const hasStatsError = Boolean(statsError);
+  const isStatsPending = isStatsLoading && !statsData;
 
   // Use statistics from API (calculated from all filtered items, not just current page)
-  const lowStockItems = statistics?.lowStockCount ?? 0;
-  const outOfStockItems = statistics?.outOfStockCount ?? 0;
-  const totalValue = statistics?.totalAvailableValue ?? 0;
+  const lowStockItems = statistics?.lowStockCount;
+  const outOfStockItems = statistics?.outOfStockCount;
+  const totalValue = statistics?.totalAvailableValue;
 
   const stats = [
     {
@@ -148,14 +163,18 @@ function ItemsPageContent() {
     },
     {
       title: "Total Available Value",
-      value: formatCurrency(totalValue),
+      value: hasStatsError
+        ? "—"
+        : totalValue !== undefined
+          ? formatCurrency(totalValue)
+          : "—",
       description: "Current sellable stock",
       icon: TrendingUp,
       iconColor: "text-green-600",
     },
     {
       title: "Low Stock",
-      value: lowStockItems,
+      value: hasStatsError ? "—" : (lowStockItems ?? "—"),
       description: "At or below reorder point",
       icon: AlertTriangle,
       iconColor: "text-yellow-600",
@@ -163,7 +182,7 @@ function ItemsPageContent() {
     },
     {
       title: "Out of Stock",
-      value: outOfStockItems,
+      value: hasStatsError ? "—" : (outOfStockItems ?? "—"),
       description: "No available inventory",
       icon: AlertCircle,
       iconColor: "text-red-600",
@@ -307,7 +326,7 @@ function ItemsPageContent() {
 
       {/* Stats Cards */}
       <div className="grid gap-2 grid-cols-2 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {isInitialLoading ? (
+        {isInitialLoading || isStatsPending ? (
           <>
             {[1, 2, 3, 4].map((i) => (
               <Card key={i}>

@@ -4,7 +4,13 @@ import type { Item, CreateItemRequest, UpdateItemRequest, ItemFilters } from "@/
 import type { ItemWithStock } from "@/app/api/items/route";
 
 const ITEMS_QUERY_KEY = "items";
+const ITEMS_STATS_QUERY_KEY = "items-stats";
 const LOOKUP_MAX_LIMIT = 50;
+
+const invalidateInventoryQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
+  queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
+};
 
 export interface ItemsFilters extends ItemFilters {
   warehouseId?: string;
@@ -39,7 +45,19 @@ export interface ItemsWithStockResponse {
   };
 }
 
+export interface ItemsStatsResponse {
+  statistics: {
+    totalAvailableValue: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+  };
+}
+
 type ItemsQueryOptions = ItemsFilters & {
+  enabled?: boolean;
+};
+
+type ItemsStatsQueryOptions = Omit<ItemsFilters, "page" | "limit" | "includeStats"> & {
   enabled?: boolean;
 };
 
@@ -94,6 +112,48 @@ export function useItems(filters?: ItemsQueryOptions) {
   });
 }
 
+export function useItemsStats(filters?: ItemsStatsQueryOptions) {
+  const { enabled, ...restFilters } = filters ?? {};
+  const normalizedFilters = restFilters;
+
+  return useQuery({
+    queryKey: [ITEMS_STATS_QUERY_KEY, normalizedFilters],
+    enabled: enabled ?? true,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (normalizedFilters.search) params.append("search", normalizedFilters.search);
+      if (normalizedFilters.category) params.append("category", normalizedFilters.category);
+      if (normalizedFilters.warehouseId) params.append("warehouseId", normalizedFilters.warehouseId);
+      if (normalizedFilters.supplierId) params.append("supplierId", normalizedFilters.supplierId);
+      if (normalizedFilters.status && normalizedFilters.status !== "all") {
+        params.append("status", normalizedFilters.status);
+      }
+      if (normalizedFilters.itemType) params.append("itemType", normalizedFilters.itemType);
+      params.append("includeStock", "true");
+      params.append("includeStats", "true");
+      params.append("statsOnly", "true");
+
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
+      const response = await fetch(`${API_BASE_URL}/items?${params.toString()}`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch item statistics");
+      }
+
+      return response.json() as Promise<ItemsStatsResponse>;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useItem(id: string) {
   return useQuery({
     queryKey: [ITEMS_QUERY_KEY, id],
@@ -108,7 +168,7 @@ export function useCreateItem() {
   return useMutation({
     mutationFn: (data: CreateItemRequest) => itemsApi.createItem(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
+      invalidateInventoryQueries(queryClient);
     },
   });
 }
@@ -120,7 +180,7 @@ export function useUpdateItem() {
     mutationFn: ({ id, data }: { id: string; data: UpdateItemRequest }) =>
       itemsApi.updateItem(id, data),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
+      invalidateInventoryQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY, variables.id] });
     },
   });
@@ -132,7 +192,7 @@ export function useDeleteItem() {
   return useMutation({
     mutationFn: (id: string) => itemsApi.deleteItem(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
+      invalidateInventoryQueries(queryClient);
     },
   });
 }

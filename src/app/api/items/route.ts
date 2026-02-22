@@ -211,6 +211,7 @@ export async function GET(request: NextRequest) {
     const isActive = parseOptionalBoolean(searchParams.get("isActive"));
     const includeStock = searchParams.get("includeStock") !== "false";
     const includeStats = searchParams.get("includeStats") === "true";
+    const statsOnly = searchParams.get("statsOnly") === "true";
     const page = parsePositiveInt(searchParams.get("page"), 1);
     const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
@@ -318,7 +319,7 @@ export async function GET(request: NextRequest) {
       effectiveBusinessUnitId = warehouseRow.business_unit_id ?? currentBusinessUnitId ?? null;
     }
 
-    const rpcPayload = {
+    const statsRpcPayload = {
       p_company_id: companyId,
       p_search: search,
       p_category_id: rawCategory,
@@ -326,9 +327,39 @@ export async function GET(request: NextRequest) {
       p_item_type: itemType,
       p_status: stockStatus,
       p_business_unit_id: effectiveBusinessUnitId,
+    };
+
+    if (statsOnly) {
+      const { data: statsRows, error: statsError } = await supabase.rpc(
+        "get_items_enhanced_stats",
+        statsRpcPayload
+      );
+
+      if (statsError) {
+        return NextResponse.json(
+          { error: "Failed to fetch item statistics", details: statsError.message },
+          { status: 500 }
+        );
+      }
+
+      const statsRow = ((statsRows || [])[0] || null) as ItemsStatsRow | null;
+
+      return NextResponse.json({
+        statistics: {
+          totalAvailableValue: toNumber(statsRow?.total_available_value),
+          lowStockCount: toNumber(statsRow?.low_stock_count),
+          outOfStockCount: toNumber(statsRow?.out_of_stock_count),
+        },
+      });
+    }
+
+    const rpcPayload = {
+      ...statsRpcPayload,
       p_page: page,
       p_limit: limit,
     };
+
+    const statsRpcPromise = includeStats ? supabase.rpc("get_items_enhanced_stats", statsRpcPayload) : null;
 
     const { data: rpcRows, error: rpcError } = await supabase.rpc("get_items_enhanced_page", rpcPayload);
 
@@ -384,15 +415,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const { data: statsRows, error: statsError } = await supabase.rpc("get_items_enhanced_stats", {
-      p_company_id: companyId,
-      p_search: search,
-      p_category_id: rawCategory,
-      p_warehouse_id: rawWarehouseId,
-      p_item_type: itemType,
-      p_status: stockStatus,
-      p_business_unit_id: effectiveBusinessUnitId,
-    });
+    const { data: statsRows, error: statsError } = await statsRpcPromise!;
 
     if (statsError) {
       return NextResponse.json(
