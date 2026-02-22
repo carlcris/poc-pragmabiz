@@ -16,11 +16,11 @@ export interface ItemWithStock {
   supplier: string;
   supplierId: string | null;
   onHand: number;
+  // Aggregated from item_warehouse.reserved_stock across the scoped warehouse set.
   allocated: number;
+  // Aggregated from item_warehouse.available_stock across the scoped warehouse set.
   available: number;
   reorderPoint: number;
-  onPO: number;
-  onSO: number;
   inTransit: number;
   estimatedArrivalDate?: string | null;
   status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
@@ -46,22 +46,20 @@ type ItemsRpcRow = {
   category_name: string | null;
   uom_id: string | null;
   uom_code: string | null;
-  cost_price: number | string | null;
-  purchase_price: number | string | null;
-  sales_price: number | string | null;
+  cost_price: number;
+  purchase_price: number;
+  sales_price: number;
   item_type: string;
   is_active: boolean | null;
   image_url: string | null;
-  on_hand: number | string | null;
-  allocated: number | string | null;
-  available: number | string | null;
-  reorder_point: number | string | null;
-  on_po: number | string | null;
-  on_so: number | string | null;
-  in_transit: number | string | null;
+  on_hand: number;
+  allocated: number;
+  available: number;
+  reorder_point: number;
+  in_transit: number;
   estimated_arrival_date: string | null;
   status: ItemStatus;
-  total_count: number | string;
+  total_count: number;
 };
 
 type ItemsStatsRow = {
@@ -200,7 +198,7 @@ export async function GET(request: NextRequest) {
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId, currentBusinessUnitId } = context;
+    const { supabase, companyId } = context;
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search")?.trim() || null;
@@ -297,27 +295,7 @@ export async function GET(request: NextRequest) {
 
     // "All Warehouses" aggregates across available warehouses.
     // Only scope by BU when a specific warehouse is selected.
-    let effectiveBusinessUnitId: string | null = null;
-
-    if (rawWarehouseId) {
-      const { data: warehouseRow, error: warehouseError } = await supabase
-        .from("warehouses")
-        .select("id, business_unit_id")
-        .eq("id", rawWarehouseId)
-        .eq("company_id", companyId)
-        .is("deleted_at", null)
-        .maybeSingle();
-
-      if (warehouseError) {
-        return NextResponse.json({ error: "Failed to resolve warehouse" }, { status: 500 });
-      }
-
-      if (!warehouseRow) {
-        return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
-      }
-
-      effectiveBusinessUnitId = warehouseRow.business_unit_id ?? currentBusinessUnitId ?? null;
-    }
+    const effectiveBusinessUnitId: string | null =  rawWarehouseId ?? null;;
 
     const statsRpcPayload = {
       p_company_id: companyId,
@@ -381,20 +359,18 @@ export async function GET(request: NextRequest) {
       categoryId: row.category_id || "",
       supplier: "",
       supplierId: null,
-      onHand: toNumber(row.on_hand),
-      allocated: toNumber(row.allocated),
-      available: toNumber(row.available),
-      reorderPoint: toNumber(row.reorder_point),
-      onPO: toNumber(row.on_po),
-      onSO: toNumber(row.on_so),
-      inTransit: toNumber(row.in_transit),
+      onHand: row.on_hand,
+      allocated: row.allocated,
+      available: row.available,
+      reorderPoint: row.reorder_point,
+      inTransit: row.in_transit,
       estimatedArrivalDate: row.estimated_arrival_date,
       status: row.status,
       uom: row.uom_code || "",
       uomId: row.uom_id || "",
-      standardCost: toNumber(row.cost_price),
-      purchasePrice: toNumber(row.purchase_price),
-      listPrice: toNumber(row.sales_price),
+      standardCost: row.cost_price,
+      purchasePrice: row.purchase_price,
+      listPrice: row.sales_price,
       itemType: row.item_type,
       isActive: row.is_active ?? true,
       imageUrl: row.image_url || undefined,
