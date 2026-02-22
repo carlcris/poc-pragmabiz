@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,8 @@ function formatTime(value: string) {
 }
 
 export function NotificationsMenu() {
-  const { data } = useNotifications({ unreadOnly: false, limit: 8, offset: 0 });
+  const [open, setOpen] = useState(false);
+  const { data } = useNotifications({ unreadOnly: false, limit: 8, offset: 0, enabled: open });
   const markRead = useMarkNotificationRead();
 
   const notifications = data?.data || [];
@@ -32,7 +34,7 @@ export function NotificationsMenu() {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Bell className="h-5 w-5" />

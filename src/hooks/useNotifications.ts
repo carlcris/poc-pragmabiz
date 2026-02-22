@@ -18,15 +18,17 @@ export function useNotifications({
   unreadOnly = false,
   limit = 10,
   offset = 0,
+  enabled = true,
 }: {
   unreadOnly?: boolean;
   limit?: number;
   offset?: number;
+  enabled?: boolean;
 } = {}) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   return useQuery({
     queryKey: [NOTIFICATIONS_QUERY_KEY, { unreadOnly, limit, offset }],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && enabled,
     queryFn: async () => {
       const response = await apiClient.get<NotificationsResponse>("/api/notifications", {
         params: {
@@ -37,6 +39,8 @@ export function useNotifications({
       });
       return response;
     },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

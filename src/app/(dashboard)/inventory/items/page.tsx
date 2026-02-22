@@ -61,7 +61,6 @@ const ConfirmDialog = dynamic(
 function ItemsPageContent() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [isWarehouseAutoResolved, setIsWarehouseAutoResolved] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -109,25 +108,35 @@ function ItemsPageContent() {
     [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
   );
 
-  // Fetch items with stock data after warehouse auto-selection
-  const { data, isLoading, isFetching, error } = useItems({
-    ...itemsQueryParams,
-    enabled: isWarehouseAutoResolved,
-  });
-
-  // Fetch warehouses for filter
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
+  // Fetch warehouses for filter and BU scoping resolution.
+  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
   const warehouses = useMemo(
     () => warehousesData?.data?.filter((wh) => wh.isActive) || [],
     [warehousesData?.data]
   );
 
-  useEffect(() => {
-    // Always mark as resolved once we have warehouses data
-    if (warehouses.length > 0) {
-      setIsWarehouseAutoResolved(true);
-    }
+  const matchingBusinessUnitWarehouse = useMemo(
+    () =>
+      currentBusinessUnit
+        ? warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)
+        : undefined,
+    [currentBusinessUnit, warehouses]
+  );
 
+  const isWarehouseScopeResolved = useMemo(() => {
+    if (isWarehousesLoading) return false;
+    if (!currentBusinessUnit) return true;
+    if (warehouseFilter !== "all") return true;
+    // If BU has a mapped warehouse, wait for auto-selection to apply before fetching items.
+    return !matchingBusinessUnitWarehouse;
+  }, [isWarehousesLoading, currentBusinessUnit, warehouseFilter, matchingBusinessUnitWarehouse]);
+
+  const { data, isLoading, isFetching, error } = useItems({
+    ...itemsQueryParams,
+    enabled: isWarehouseScopeResolved,
+  });
+
+  useEffect(() => {
     // Only auto-select warehouse if we have a business unit and no manual selection
     if (!currentBusinessUnit || warehouseFilter !== "all" || warehouses.length === 0) {
       return;
@@ -137,16 +146,14 @@ function ItemsPageContent() {
       return;
     }
 
-    const matchedWarehouse = warehouses.find(
-      (warehouse) => warehouse.businessUnitId === currentBusinessUnit.id
-    );
+    const matchedWarehouse = matchingBusinessUnitWarehouse;
 
     if (matchedWarehouse) {
       setWarehouseFilter(matchedWarehouse.id);
       setPage(1);
       lastAutoSetBuId.current = currentBusinessUnit.id;
     }
-  }, [currentBusinessUnit, warehouseFilter, warehouses]);
+  }, [currentBusinessUnit, warehouseFilter, warehouses.length, matchingBusinessUnitWarehouse]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -162,7 +169,7 @@ function ItemsPageContent() {
   const categories = categoriesData?.data || [];
 
 
-  const isInitialLoading = !isWarehouseAutoResolved || isLoading;
+  const isInitialLoading = isWarehousesLoading || isLoading;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
   const statistics =
