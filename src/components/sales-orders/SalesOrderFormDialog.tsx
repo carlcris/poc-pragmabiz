@@ -84,7 +84,7 @@ export function SalesOrderFormDialog({
   const createMutation = useCreateSalesOrder();
   const updateMutation = useUpdateSalesOrder();
 
-  const { data: customersData } = useCustomers({ limit: 1000 });
+  const { data: customersData } = useCustomers({ limit: 50 });
   const customers = customersData?.data || [];
 
   // Line items state

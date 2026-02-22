@@ -28,6 +28,7 @@ import type {
 import { format } from "date-fns";
 import { JournalEntryFormDialog } from "@/components/accounting/JournalEntryFormDialog";
 import { JournalEntryViewDialog } from "@/components/accounting/JournalEntryViewDialog";
+import { DataTablePagination } from "@/components/shared/DataTablePagination";
 
 export default function JournalsPage() {
   const [journals, setJournals] = useState<JournalEntryWithLines[]>([]);
@@ -35,6 +36,10 @@ export default function JournalsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<JournalEntryStatus | "all">("all");
   const [sourceModuleFilter, setSourceModuleFilter] = useState<JournalSourceModule | "all">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<JournalEntryWithLines | null>(null);
@@ -43,6 +48,12 @@ export default function JournalsPage() {
     try {
       setLoading(true);
       const params = new URLSearchParams();
+      params.append("page", String(currentPage));
+      params.append("limit", String(pageSize));
+
+      if (searchTerm.trim()) {
+        params.append("search", searchTerm.trim());
+      }
 
       if (statusFilter !== "all") {
         params.append("status", statusFilter);
@@ -60,27 +71,22 @@ export default function JournalsPage() {
 
       const result = await response.json();
       setJournals(result.data || []);
+      setCurrentPage(result.pagination?.page || 1);
+      setTotalPages(Math.max(1, result.pagination?.totalPages || 1));
+      setTotalItems(result.pagination?.total || 0);
     } catch {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, sourceModuleFilter]);
+  }, [searchTerm, statusFilter, sourceModuleFilter, currentPage, pageSize]);
 
   useEffect(() => {
     fetchJournals();
   }, [fetchJournals]);
 
-  const filteredJournals = journals.filter((journal) => {
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      return (
-        journal.journalCode.toLowerCase().includes(search) ||
-        journal.description?.toLowerCase().includes(search) ||
-        journal.referenceCode?.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, sourceModuleFilter]);
 
   const getStatusBadge = (status: JournalEntryStatus) => {
     const colors: Record<JournalEntryStatus, string> = {
@@ -187,7 +193,7 @@ export default function JournalsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Total Entries</div>
-          <div className="text-2xl font-bold">{journals.length}</div>
+          <div className="text-2xl font-bold">{totalItems}</div>
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Posted</div>
@@ -232,14 +238,14 @@ export default function JournalsPage() {
                   Loading journals...
                 </TableCell>
               </TableRow>
-            ) : filteredJournals.length === 0 ? (
+            ) : journals.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
                   No journal entries found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredJournals.map((journal) => (
+              journals.map((journal) => (
                 <TableRow key={journal.id}>
                   <TableCell className="font-mono font-medium">{journal.journalCode}</TableCell>
                   <TableCell>{format(new Date(journal.postingDate), "MMM dd, yyyy")}</TableCell>
@@ -275,6 +281,18 @@ export default function JournalsPage() {
             )}
           </TableBody>
         </Table>
+        {!loading && totalItems > 0 && (
+          <div className="border-t px-4 py-3">
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        )}
       </div>
 
       {/* Journal Entry Form Dialog */}

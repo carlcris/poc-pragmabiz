@@ -2,6 +2,7 @@
 
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -18,8 +19,6 @@ import {
 import { useGRN, useUpdateGRN, useSubmitGRN, useApproveGRN, useRejectGRN } from "@/hooks/useGRNs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DamagedItemsSection } from "@/components/grns/DamagedItemsSection";
-import { BoxManagementSection } from "@/components/grns/BoxManagementSection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +43,24 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { GRNStatus, GRNItem } from "@/types/grn";
+
+const DamagedItemsSection = dynamic(
+  () => import("@/components/grns/DamagedItemsSection").then((mod) => mod.DamagedItemsSection),
+  {
+    ssr: false,
+    loading: () => <div className="p-4 text-sm text-muted-foreground">Loading damage items...</div>,
+  }
+);
+
+const BoxManagementSection = dynamic(
+  () => import("@/components/grns/BoxManagementSection").then((mod) => mod.BoxManagementSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-4 text-sm text-muted-foreground">Loading box management...</div>
+    ),
+  }
+);
 
 interface GRNDetailPageProps {
   params: Promise<{ id: string }>;

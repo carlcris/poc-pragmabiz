@@ -95,13 +95,13 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const { data: loadListDetails } = useLoadList(loadList?.id ?? "");
   const resolvedLoadList = loadListDetails ?? loadList;
 
-  const { data: suppliersData } = useSuppliers({ limit: 1000 });
+  const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
 
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
 
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
 
   // Line items state

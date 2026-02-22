@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   AlertTriangle,
   CheckCircle,
@@ -36,9 +37,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ReorderSuggestion, ReorderAlert } from "@/types/reorder";
-import { PurchaseOrderFormDialog } from "@/components/purchase-orders/PurchaseOrderFormDialog";
 import type { PurchaseOrderLineItemFormValues } from "@/components/purchase-orders/PurchaseOrderLineItemDialog";
 import { toast } from "sonner";
+
+const PurchaseOrderFormDialog = dynamic(
+  () =>
+    import("@/components/purchase-orders/PurchaseOrderFormDialog").then(
+      (mod) => mod.PurchaseOrderFormDialog
+    ),
+  { ssr: false }
+);
 
 export default function ReorderManagementPage() {
   const [selectedTab, setSelectedTab] = useState("suggestions");
@@ -49,7 +57,7 @@ export default function ReorderManagementPage() {
     acknowledged: "false",
   });
   const { data: statistics, isLoading: statsLoading } = useReorderStatistics();
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
 
   const approveSuggestion = useApproveReorderSuggestion();
   const rejectSuggestion = useRejectReorderSuggestion();
@@ -535,12 +543,14 @@ export default function ReorderManagementPage() {
         </TabsContent>
       </Tabs>
 
-      <PurchaseOrderFormDialog
-        open={poDialogOpen}
-        onOpenChange={setPoDialogOpen}
-        initialLineItems={poLineItems}
-        initialActiveTab="items"
-      />
+      {poDialogOpen && (
+        <PurchaseOrderFormDialog
+          open={poDialogOpen}
+          onOpenChange={setPoDialogOpen}
+          initialLineItems={poLineItems}
+          initialActiveTab="items"
+        />
+      )}
     </div>
   );
 }

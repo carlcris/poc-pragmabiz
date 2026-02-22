@@ -155,30 +155,11 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId } = await createServerClientWithBU();
 
-    // Get current user's company
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
-    }
-
-    const companyId = userData.company_id;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -193,6 +174,10 @@ export async function GET(request: NextRequest) {
       dateTo: searchParams.get("dateTo") || undefined,
       accountId: searchParams.get("accountId") || undefined,
     };
+    const page = Number.parseInt(searchParams.get("page") || "1", 10);
+    const limit = Math.min(Number.parseInt(searchParams.get("limit") || "20", 10), 100);
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
 
     // Build query for journal entries
     let query = supabase
@@ -200,6 +185,7 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
+        matched_lines:journal_lines!inner(account_id),
         journal_lines (
           *,
           accounts (*)
@@ -239,6 +225,14 @@ export async function GET(request: NextRequest) {
       query = query.lte("posting_date", filters.dateTo);
     }
 
+    if (filters.accountId) {
+      query = query.eq("matched_lines.account_id", filters.accountId);
+    }
+
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
+    query = query.range(from, to);
+
     // Execute query
     const { data, error, count } = await query;
 
@@ -246,28 +240,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch journal entries" }, { status: 500 });
     }
 
-    // If accountId filter is provided, filter in memory (since it's on journal_lines)
-    let filteredData = data || [];
-    if (filters.accountId) {
-      filteredData = filteredData.filter((entry) =>
-        entry.journal_lines?.some(
-          (line: { account_id: string }) => line.account_id === filters.accountId
-        )
-      );
-    }
-
     // Transform database records to TypeScript types
-    const transformedData: JournalEntryWithLines[] = filteredData.map(transformJournalEntry);
+    const transformedData: JournalEntryWithLines[] = (data || []).map(transformJournalEntry);
 
     const response: JournalEntriesResponse = {
       data: transformedData,
       pagination:
         count !== null
           ? {
-              total: transformedData.length,
-              page: 1,
-              limit: transformedData.length,
-              totalPages: 1,
+              total: count,
+              page: safePage,
+              limit: safeLimit,
+              totalPages: Math.ceil(count / safeLimit),
             }
           : undefined,
     };
@@ -287,30 +271,15 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId, userId } = await createServerClientWithBU();
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    const companyId = userData.company_id;
 
     // Parse request body
     const body: CreateJournalEntryRequest = await request.json();
@@ -407,8 +376,8 @@ export async function POST(request: NextRequest) {
         source_module: body.sourceModule || "Manual",
         total_debit: totals.totalDebit,
         total_credit: totals.totalCredit,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();
@@ -426,7 +395,7 @@ export async function POST(request: NextRequest) {
       credit: line.credit,
       description: line.description || null,
       line_number: index + 1,
-      created_by: user.id,
+      created_by: userId,
     }));
 
     const { error: linesError } = await supabase

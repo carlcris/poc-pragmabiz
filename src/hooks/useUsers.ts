@@ -28,6 +28,13 @@ type UsersResponse = {
   };
 };
 
+type UsersFilters = {
+  search?: string;
+  page?: number;
+  limit?: number;
+  isActive?: boolean;
+};
+
 type UserRole = {
   id: string;
   name: string;
@@ -43,11 +50,19 @@ type UserRolesResponse = {
 /**
  * Fetch all users
  */
-export function useUsers() {
+export function useUsers(filters?: UsersFilters) {
   return useQuery({
-    queryKey: ["users"],
+    queryKey: ["users", filters],
     queryFn: async () => {
-      const response = await apiClient.get<UsersResponse>("/api/rbac/users");
+      const params = new URLSearchParams();
+      if (filters?.search) params.append("search", filters.search);
+      if (filters?.page) params.append("page", filters.page.toString());
+      if (filters?.limit) params.append("limit", filters.limit.toString());
+      if (filters?.isActive !== undefined) params.append("isActive", String(filters.isActive));
+      const query = params.toString();
+      const response = await apiClient.get<UsersResponse>(
+        query ? `/api/rbac/users?${query}` : "/api/rbac/users"
+      );
       return response;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

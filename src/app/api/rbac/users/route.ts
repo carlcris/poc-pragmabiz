@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
+    const isActiveParam = searchParams.get("isActive");
 
     // Build query
     let query = supabase
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
       query = query.or(
         `email.ilike.%${search}%,username.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`
       );
+    }
+
+    if (isActiveParam === "true" || isActiveParam === "false") {
+      query = query.eq("is_active", isActiveParam === "true");
     }
 
     // Apply pagination

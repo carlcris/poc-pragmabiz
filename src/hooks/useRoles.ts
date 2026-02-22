@@ -20,6 +20,12 @@ type RolesResponse = {
   data: Role[];
 };
 
+type RolesFilters = {
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
 type RolePermission = {
   permission_id: string;
   resource: string;
@@ -36,11 +42,18 @@ type RoleWithPermissions = Role & {
 /**
  * Fetch all roles
  */
-export function useRoles() {
+export function useRoles(filters?: RolesFilters) {
   return useQuery({
-    queryKey: ["roles"],
+    queryKey: ["roles", filters],
     queryFn: async () => {
-      const response = await apiClient.get<RolesResponse>("/api/rbac/roles");
+      const params = new URLSearchParams();
+      if (filters?.search) params.append("search", filters.search);
+      if (filters?.page) params.append("page", filters.page.toString());
+      if (filters?.limit) params.append("limit", filters.limit.toString());
+      const query = params.toString();
+      const response = await apiClient.get<RolesResponse>(
+        query ? `/api/rbac/roles?${query}` : "/api/rbac/roles"
+      );
       return response;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes

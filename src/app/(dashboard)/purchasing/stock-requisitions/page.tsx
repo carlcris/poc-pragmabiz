@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Plus, Search, Pencil, Filter, FileText, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -41,12 +42,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { StockRequisitionFormDialog } from "@/components/stock-requisitions/StockRequisitionFormDialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { StockRequisition, StockRequisitionStatus } from "@/types/stock-requisition";
 
+const StockRequisitionFormDialog = dynamic(
+  () =>
+    import("@/components/stock-requisitions/StockRequisitionFormDialog").then(
+      (mod) => mod.StockRequisitionFormDialog
+    ),
+  { ssr: false }
+);
+
 export default function StockRequisitionsPage() {
   const router = useRouter();
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -68,8 +77,17 @@ export default function StockRequisitionsPage() {
     limit: pageSize,
   });
 
-  const { data: suppliersData } = useSuppliers({ page: 1, limit: 1000 });
+  const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
   const suppliers = suppliersData?.data || [];
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getStatusBadge = (status: StockRequisitionStatus) => {
     switch (status) {
@@ -167,13 +185,19 @@ export default function StockRequisitionsPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by SR number or notes..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
             />
           </div>
           <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
@@ -189,7 +213,13 @@ export default function StockRequisitionsPage() {
             </Select>
           </ClientOnly>
           <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[180px]" />}>
-            <Select value={supplierFilter} onValueChange={(value) => setSupplierFilter(value)}>
+            <Select
+              value={supplierFilter}
+              onValueChange={(value) => {
+                setSupplierFilter(value);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Supplier" />
@@ -380,11 +410,13 @@ export default function StockRequisitionsPage() {
         )}
       </div>
 
-      <StockRequisitionFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        stockRequisition={selectedSR}
-      />
+      {dialogOpen && (
+        <StockRequisitionFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          stockRequisition={selectedSR}
+        />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

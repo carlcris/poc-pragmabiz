@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -33,22 +34,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
   Table,
   TableBody,
   TableCell,
@@ -68,36 +53,23 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
-import { Textarea } from "@/components/ui/textarea";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import type {
   StockAdjustment,
   StockAdjustmentType,
   StockAdjustmentStatus,
 } from "@/types/stock-adjustment";
-import type { WarehouseLocation } from "@/types/inventory-location";
 import { useAuthStore } from "@/stores/authStore";
 import { useCurrency } from "@/hooks/useCurrency";
-import {
-  StockAdjustmentLineItemDialog,
-  type StockAdjustmentLineItemFormValues,
-} from "@/components/stock-adjustments/StockAdjustmentLineItemDialog";
 import { supabase } from "@/lib/supabase/client";
-import { apiClient } from "@/lib/api";
+import type { StockAdjustmentFormSubmitPayload } from "@/components/stock-adjustments/StockAdjustmentFormDialog";
 
-const adjustmentFormSchema = z.object({
-  adjustmentType: z.enum(["physical_count", "damage", "loss", "found", "quality_issue", "other"]),
-  adjustmentDate: z.string().min(1, "Adjustment date is required"),
-  warehouseId: z.string().min(1, "Warehouse is required"),
-  locationId: z.string().optional(),
-  reason: z.string().min(1, "Reason is required"),
-  notes: z.string().optional(),
-});
-
-type AdjustmentFormValues = z.infer<typeof adjustmentFormSchema>;
+const StockAdjustmentFormDialog = dynamic(
+  () =>
+    import("@/components/stock-adjustments/StockAdjustmentFormDialog").then(
+      (mod) => mod.StockAdjustmentFormDialog
+    ),
+  { ssr: false }
+);
 
 export default function StockAdjustmentsPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -113,14 +85,6 @@ export default function StockAdjustmentsPage() {
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [adjustmentToPost, setAdjustmentToPost] = useState<StockAdjustment | null>(null);
 
-  // Line items state (similar to sales orders)
-  const [lineItems, setLineItems] = useState<StockAdjustmentLineItemFormValues[]>([]);
-  const [itemDialogOpen, setItemDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<{
-    index: number;
-    item: StockAdjustmentLineItemFormValues;
-  } | null>(null);
-
   const user = useAuthStore((state) => state.user);
   const companyId = user?.companyId || "";
   const { formatCurrency } = useCurrency();
@@ -133,7 +97,7 @@ export default function StockAdjustmentsPage() {
     limit: pageSize,
   });
 
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
 
   const warehouses = warehousesData?.data || [];
 
@@ -145,66 +109,6 @@ export default function StockAdjustmentsPage() {
   const adjustments = data?.data || [];
   const pagination = data?.pagination;
 
-  const form = useForm<AdjustmentFormValues>({
-    resolver: zodResolver(adjustmentFormSchema),
-    defaultValues: {
-      adjustmentType: "physical_count",
-      adjustmentDate: new Date().toISOString().split("T")[0],
-      warehouseId: "",
-      locationId: "",
-      reason: "",
-      notes: "",
-    },
-  });
-
-  // Calculate total adjustment value
-  const totals = useMemo(() => {
-    const totalValue = lineItems.reduce((sum, item) => {
-      const difference = (item.adjustedQty || 0) - (item.currentQty || 0);
-      const value = difference * (item.unitCost || 0);
-      return sum + value;
-    }, 0);
-
-    return { totalValue };
-  }, [lineItems]);
-
-  // Reset form and line items when dialog opens/closes
-  useEffect(() => {
-    if (dialogOpen && selectedAdjustment) {
-      form.reset({
-        adjustmentType: selectedAdjustment.adjustmentType,
-        adjustmentDate: selectedAdjustment.adjustmentDate,
-        warehouseId: selectedAdjustment.warehouseId,
-        locationId: selectedAdjustment.locationId || "",
-        reason: selectedAdjustment.reason,
-        notes: selectedAdjustment.notes || "",
-      });
-      // Convert adjustment items to form format
-      const formLineItems: StockAdjustmentLineItemFormValues[] = selectedAdjustment.items.map(
-        (item) => ({
-          itemId: item.itemId,
-          itemCode: item.itemCode,
-          itemName: item.itemName,
-          uomId: item.uomId,
-          currentQty: item.currentQty,
-          adjustedQty: item.adjustedQty,
-          unitCost: item.unitCost,
-        })
-      );
-      setLineItems(formLineItems);
-    } else if (dialogOpen) {
-      form.reset({
-        adjustmentType: "physical_count",
-        adjustmentDate: new Date().toISOString().split("T")[0],
-        warehouseId: "",
-        locationId: "",
-        reason: "",
-        notes: "",
-      });
-      setLineItems([]);
-    }
-  }, [dialogOpen, selectedAdjustment, form]);
-
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setSearch(searchInput.trim());
@@ -214,24 +118,6 @@ export default function StockAdjustmentsPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
-  const selectedWarehouseId = form.watch("warehouseId");
-
-  useEffect(() => {
-    if (!selectedWarehouseId) {
-      form.setValue("locationId", "");
-    }
-  }, [selectedWarehouseId, form]);
-
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", selectedWarehouseId],
-    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouseId}/locations`),
-    enabled: !!selectedWarehouseId,
-  });
-
-  const locations = useMemo(
-    () => (locationsData?.data || []).filter((location) => location.isActive),
-    [locationsData]
-  );
 
   const getStatusBadge = (status: StockAdjustmentStatus) => {
     switch (status) {
@@ -302,7 +188,6 @@ export default function StockAdjustmentsPage() {
 
   const handleCreateAdjustment = () => {
     setSelectedAdjustment(null);
-    setLineItems([]);
     setDialogOpen(true);
   };
 
@@ -335,30 +220,6 @@ export default function StockAdjustmentsPage() {
     await postMutation.mutateAsync({ id: adjustmentToPost.id });
     setPostDialogOpen(false);
     setAdjustmentToPost(null);
-  };
-
-  const handleAddItem = () => {
-    setEditingItem(null);
-    setItemDialogOpen(true);
-  };
-
-  const handleEditItem = (index: number) => {
-    setEditingItem({ index, item: lineItems[index] });
-    setItemDialogOpen(true);
-  };
-
-  const handleDeleteItem = (index: number) => {
-    setLineItems((items) => items.filter((_, i) => i !== index));
-  };
-
-  const handleSaveItem = (item: StockAdjustmentLineItemFormValues) => {
-    if (editingItem !== null) {
-      // Update existing item
-      setLineItems((items) => items.map((it, i) => (i === editingItem.index ? item : it)));
-    } else {
-      // Add new item
-      setLineItems((items) => [...items, item]);
-    }
   };
 
   const handleFetchStockQty = async (
@@ -403,17 +264,12 @@ export default function StockAdjustmentsPage() {
     }
   };
 
-  const onSubmit = async (values: AdjustmentFormValues) => {
-    if (lineItems.length === 0) {
-      alert("Please add at least one line item");
-      return;
-    }
-
+  const handleSaveAdjustment = async (payload: StockAdjustmentFormSubmitPayload) => {
     try {
       const submitData = {
-        ...values,
+        ...payload.values,
         companyId,
-        items: lineItems.map((item) => ({
+        items: payload.lineItems.map((item) => ({
           itemId: item.itemId,
           currentQty: item.currentQty,
           adjustedQty: item.adjustedQty,
@@ -422,17 +278,14 @@ export default function StockAdjustmentsPage() {
         })),
       };
 
-      if (selectedAdjustment) {
+      if (payload.selectedAdjustment) {
         await updateMutation.mutateAsync({
-          id: selectedAdjustment.id,
+          id: payload.selectedAdjustment.id,
           data: submitData,
         });
       } else {
         await createMutation.mutateAsync(submitData);
       }
-      setDialogOpen(false);
-      setLineItems([]);
-      form.reset();
     } catch {}
   };
 
@@ -677,328 +530,21 @@ export default function StockAdjustmentsPage() {
           )}
         </div>
 
-        {/* Form Dialog */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {selectedAdjustment ? "Edit Stock Adjustment" : "Create Stock Adjustment"}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedAdjustment
-                  ? `Edit adjustment ${selectedAdjustment.adjustmentCode}`
-                  : "Create a new stock adjustment"}
-              </DialogDescription>
-            </DialogHeader>
-
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* General Info Section */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">General Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="adjustmentType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Adjustment Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="physical_count">Physical Count</SelectItem>
-                              <SelectItem value="damage">Damage</SelectItem>
-                              <SelectItem value="loss">Loss</SelectItem>
-                              <SelectItem value="found">Found</SelectItem>
-                              <SelectItem value="quality_issue">Quality Issue</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="adjustmentDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Adjustment Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="warehouseId"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Warehouse</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select warehouse" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {warehouses.map((warehouse) => (
-                                <SelectItem key={warehouse.id} value={warehouse.id}>
-                                  {warehouse.code} - {warehouse.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="locationId"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Location</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            disabled={!selectedWarehouseId}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue
-                                  placeholder={
-                                    selectedWarehouseId
-                                      ? "Select location"
-                                      : "Select warehouse first"
-                                  }
-                                />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {locations.map((location) => (
-                                <SelectItem key={location.id} value={location.id}>
-                                  {location.code} {location.name ? `- ${location.name}` : ""}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="reason"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Reason</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter reason for adjustment" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem className="col-span-2">
-                          <FormLabel>Notes (Optional)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Additional notes..."
-                              className="resize-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Line Items Section */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium">Line Items</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Add items to adjust stock levels
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      onClick={handleAddItem}
-                      size="sm"
-                      disabled={!form.watch("warehouseId")}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Item
-                    </Button>
-                  </div>
-
-                  {!form.watch("warehouseId") && (
-                    <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-600">
-                      Please select a warehouse before adding items
-                    </div>
-                  )}
-
-                  {lineItems.length === 0 ? (
-                    <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                      <p>No items added yet.</p>
-                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="rounded-lg border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Item</TableHead>
-                              <TableHead className="text-right">Current Qty</TableHead>
-                              <TableHead className="text-right">Adjusted Qty</TableHead>
-                              <TableHead className="text-right">Difference</TableHead>
-                              <TableHead className="text-right">Unit Cost</TableHead>
-                              <TableHead className="text-right">Total Value</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {lineItems.map((item, index) => {
-                              const difference = (item.adjustedQty || 0) - (item.currentQty || 0);
-                              const totalValue = difference * (item.unitCost || 0);
-
-                              return (
-                                <TableRow key={index}>
-                                  <TableCell>
-                                    <div>
-                                      <div className="font-medium">{item.itemName}</div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {item.itemCode}
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {item.currentQty.toFixed(2)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {item.adjustedQty.toFixed(2)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <span
-                                      className={`font-medium ${
-                                        difference > 0
-                                          ? "text-green-600"
-                                          : difference < 0
-                                            ? "text-red-600"
-                                            : "text-muted-foreground"
-                                      }`}
-                                    >
-                                      {difference > 0 ? "+" : ""}
-                                      {difference.toFixed(2)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(item.unitCost)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <span
-                                      className={`font-medium ${
-                                        totalValue > 0
-                                          ? "text-green-600"
-                                          : totalValue < 0
-                                            ? "text-red-600"
-                                            : ""
-                                      }`}
-                                    >
-                                      {formatCurrency(totalValue)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleEditItem(index)}
-                                      >
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleDeleteItem(index)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      {/* Totals Section */}
-                      <div className="rounded-lg bg-muted p-4">
-                        <div className="mb-3 flex items-center gap-2">
-                          <Calculator className="h-5 w-5" />
-                          <h4 className="font-semibold">Summary</h4>
-                        </div>
-                        <div className="flex justify-between text-lg font-bold">
-                          <span>Total Adjustment Value:</span>
-                          <span
-                            className={
-                              totals.totalValue > 0
-                                ? "text-green-600"
-                                : totals.totalValue < 0
-                                  ? "text-red-600"
-                                  : ""
-                            }
-                          >
-                            {formatCurrency(totals.totalValue)}
-                          </span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
-                  >
-                    {createMutation.isPending || updateMutation.isPending
-                      ? "Saving..."
-                      : selectedAdjustment
-                        ? "Update Adjustment"
-                        : "Create Adjustment"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {dialogOpen && (
+          <StockAdjustmentFormDialog
+            open={dialogOpen}
+            onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) setSelectedAdjustment(null);
+            }}
+            selectedAdjustment={selectedAdjustment}
+            warehouses={warehouses}
+            isSaving={createMutation.isPending || updateMutation.isPending}
+            onSave={handleSaveAdjustment}
+            onItemSelect={handleFetchStockQty}
+            formatCurrency={formatCurrency}
+          />
+        )}
 
         {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -1058,17 +604,6 @@ export default function StockAdjustmentsPage() {
         </AlertDialog>
       </div>
 
-      {/* Line Item Dialog */}
-      <StockAdjustmentLineItemDialog
-        open={itemDialogOpen}
-        onOpenChange={setItemDialogOpen}
-        onSave={handleSaveItem}
-        item={editingItem?.item || null}
-        mode={editingItem ? "edit" : "add"}
-        warehouseId={form.watch("warehouseId")}
-        locationId={form.watch("locationId")}
-        onItemSelect={handleFetchStockQty}
-      />
     </>
   );
 }

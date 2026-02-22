@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -49,10 +50,18 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
-import { SalesOrderFormDialog } from "@/components/sales-orders/SalesOrderFormDialog";
-import { SalesOrderViewDialog } from "@/components/sales-orders/SalesOrderViewDialog";
 import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
 import type { WarehouseLocation } from "@/types/inventory-location";
+
+const SalesOrderFormDialog = dynamic(
+  () => import("@/components/sales-orders/SalesOrderFormDialog").then((mod) => mod.SalesOrderFormDialog),
+  { ssr: false }
+);
+
+const SalesOrderViewDialog = dynamic(
+  () => import("@/components/sales-orders/SalesOrderViewDialog").then((mod) => mod.SalesOrderViewDialog),
+  { ssr: false }
+);
 
 export default function SalesOrdersPage() {
   const [search, setSearch] = useState("");
@@ -72,7 +81,7 @@ export default function SalesOrdersPage() {
   const convertToInvoice = useConvertToInvoice();
   const confirmOrder = useConfirmOrder();
 
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
 
   const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
@@ -88,30 +97,13 @@ export default function SalesOrdersPage() {
 
   const { data, isLoading, error } = useSalesOrders({
     search,
-    page: 1,
-    limit: 1000, // Get all for client-side filtering
-  });
-
-  // Apply client-side filters
-  let filteredOrders = data?.data || [];
-
-  if (statusFilter !== "all") {
-    filteredOrders = filteredOrders.filter((o) => o.status === statusFilter);
-  }
-
-  // Calculate pagination
-  const total = filteredOrders.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const orders = filteredOrders.slice(start, end);
-
-  const pagination = {
-    total,
+    status: statusFilter as SalesOrderStatus | "all",
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const orders = data?.data || [];
+  const pagination = data?.pagination;
 
   const getStatusIcon = (status: SalesOrderStatus) => {
     switch (status) {
@@ -256,7 +248,10 @@ export default function SalesOrdersPage() {
             <Input
               placeholder="Search orders..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-8"
             />
           </div>
@@ -456,17 +451,21 @@ export default function SalesOrdersPage() {
         )}
       </div>
 
-      <SalesOrderFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        salesOrder={selectedOrder}
-      />
+      {dialogOpen && (
+        <SalesOrderFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          salesOrder={selectedOrder}
+        />
+      )}
 
-      <SalesOrderViewDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        salesOrder={selectedOrder}
-      />
+      {viewDialogOpen && (
+        <SalesOrderViewDialog
+          open={viewDialogOpen}
+          onOpenChange={setViewDialogOpen}
+          salesOrder={selectedOrder}
+        />
+      )}
 
       <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
         <DialogContent>

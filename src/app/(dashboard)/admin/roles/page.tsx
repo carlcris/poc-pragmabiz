@@ -53,18 +53,14 @@ function RoleManagementContent() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [roleToEdit, setRoleToEdit] = useState<Role | null>(null);
 
-  const { data: rolesData, isLoading, error } = useRoles();
+  const { data: rolesData, isLoading, error } = useRoles({
+    search,
+    page: 1,
+    limit: 50,
+  });
   const deleteRole = useDeleteRole();
 
   const roles = rolesData?.data || [];
-
-  // Filter roles by search
-  const filteredRoles = roles.filter((role) =>
-    search
-      ? role.name.toLowerCase().includes(search.toLowerCase()) ||
-        (role.description?.toLowerCase().includes(search.toLowerCase()) ?? false)
-      : true
-  );
 
   const handleDeleteClick = (role: Role) => {
     if (role.is_system_role) {
@@ -163,7 +159,7 @@ function RoleManagementContent() {
           <div className="py-8 text-center text-destructive">
             Error loading roles. Please try again.
           </div>
-        ) : filteredRoles.length === 0 ? (
+        ) : roles.length === 0 ? (
           <EmptyStatePanel
             icon={Shield}
             title="No roles found"
@@ -182,7 +178,7 @@ function RoleManagementContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRoles.map((role) => (
+                {roles.map((role) => (
                   <TableRow key={role.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">

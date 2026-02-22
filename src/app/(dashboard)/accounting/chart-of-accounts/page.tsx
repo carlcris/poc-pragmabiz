@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Archive } from "lucide-react";
 import type { Account, AccountType } from "@/types/accounting";
+import { DataTablePagination } from "@/components/shared/DataTablePagination";
 
 export default function ChartOfAccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -28,11 +29,21 @@ export default function ChartOfAccountsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [accountTypeFilter, setAccountTypeFilter] = useState<AccountType | "all">("all");
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "inactive">("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   const fetchAccounts = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
+      params.append("page", String(currentPage));
+      params.append("limit", String(pageSize));
+
+      if (searchTerm.trim()) {
+        params.append("search", searchTerm.trim());
+      }
 
       if (accountTypeFilter !== "all") {
         params.append("accountType", accountTypeFilter);
@@ -52,26 +63,22 @@ export default function ChartOfAccountsPage() {
 
       const result = await response.json();
       setAccounts(result.data || []);
+      setCurrentPage(result.pagination?.page || 1);
+      setTotalPages(Math.max(1, result.pagination?.totalPages || 1));
+      setTotalItems(result.pagination?.total || 0);
     } catch {
     } finally {
       setLoading(false);
     }
-  }, [accountTypeFilter, activeFilter]);
+  }, [searchTerm, accountTypeFilter, activeFilter, currentPage, pageSize]);
 
   useEffect(() => {
     fetchAccounts();
   }, [fetchAccounts]);
 
-  const filteredAccounts = accounts.filter((account) => {
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      return (
-        account.accountNumber.toLowerCase().includes(search) ||
-        account.accountName.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, accountTypeFilter, activeFilter]);
 
   const getAccountTypeBadge = (type: AccountType | undefined) => {
     if (!type) return <Badge variant="secondary">UNKNOWN</Badge>;
@@ -155,7 +162,7 @@ export default function ChartOfAccountsPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Total Accounts</div>
-          <div className="text-2xl font-bold">{accounts.length}</div>
+          <div className="text-2xl font-bold">{totalItems}</div>
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Assets</div>
@@ -198,14 +205,14 @@ export default function ChartOfAccountsPage() {
                   Loading accounts...
                 </TableCell>
               </TableRow>
-            ) : filteredAccounts.length === 0 ? (
+            ) : accounts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   No accounts found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAccounts.map((account) => (
+              accounts.map((account) => (
                 <TableRow key={account.id}>
                   <TableCell className="font-mono">{account.accountNumber}</TableCell>
                   <TableCell className="font-medium">
@@ -242,6 +249,18 @@ export default function ChartOfAccountsPage() {
             )}
           </TableBody>
         </Table>
+        {!loading && totalItems > 0 && (
+          <div className="border-t px-4 py-3">
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

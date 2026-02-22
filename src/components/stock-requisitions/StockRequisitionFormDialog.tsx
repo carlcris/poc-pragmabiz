@@ -92,10 +92,10 @@ export function StockRequisitionFormDialog({
   const createMutation = useCreateStockRequisition();
   const updateMutation = useUpdateStockRequisition();
 
-  const { data: suppliersData } = useSuppliers({ limit: 1000 });
+  const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
 
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
 
   // Line items state

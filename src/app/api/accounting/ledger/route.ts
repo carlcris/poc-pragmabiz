@@ -25,30 +25,11 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.GENERAL_LEDGER, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId } = await createServerClientWithBU();
 
-    // Get current user's company
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
-    }
-
-    const companyId = userData.company_id;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -231,18 +212,13 @@ export async function GET(request: NextRequest) {
       .gte("journal_entries.posting_date", dateFrom)
       .lte("journal_entries.posting_date", dateTo)
       .eq("journal_entries.status", "posted")
-      .is("journal_entries.deleted_at", null);
+      .is("journal_entries.deleted_at", null)
+      .order("posting_date", { foreignTable: "journal_entries", ascending: true })
+      .order("id", { ascending: true });
 
     if (linesError) {
       return NextResponse.json({ error: "Failed to fetch ledger entries" }, { status: 500 });
     }
-
-    // Sort journal lines by posting date manually (since we can't use .order() with nested fields)
-    const sortedJournalLines = ((journalLines as JournalLineRow[] | null) || []).sort((a, b) => {
-      const dateA = new Date(a.journal_entries.posting_date).getTime();
-      const dateB = new Date(b.journal_entries.posting_date).getTime();
-      return dateA - dateB;
-    });
 
     // Build ledger entries with running balance
     const entries: LedgerEntry[] = [];
@@ -250,8 +226,8 @@ export async function GET(request: NextRequest) {
     let totalDebits = 0;
     let totalCredits = 0;
 
-    if (sortedJournalLines) {
-      for (const line of sortedJournalLines) {
+    if (journalLines) {
+      for (const line of journalLines as JournalLineRow[]) {
         const je = line.journal_entries;
 
         const debit = Number(line.debit);

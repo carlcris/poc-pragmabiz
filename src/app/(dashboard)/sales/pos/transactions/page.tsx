@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,25 +34,36 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DateRangePicker } from "@/components/analytics/date-range-picker";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { AdminPinDialog } from "@/components/pos/AdminPinDialog";
-import { ReceiptPanel } from "@/components/pos/ReceiptPanel";
-import { usePOSTransactions, useVoidPOSTransaction } from "@/hooks/usePos";
-import { TransactionDetailsDialog } from "@/components/pos/TransactionDetailsDialog";
+import { usePOSTransaction, usePOSTransactions, useVoidPOSTransaction } from "@/hooks/usePos";
 import type { POSTransaction } from "@/types/pos";
 import type { DateRange } from "react-day-picker";
 
+const AdminPinDialog = dynamic(
+  () => import("@/components/pos/AdminPinDialog").then((mod) => mod.AdminPinDialog),
+  { ssr: false }
+);
+const ReceiptPanel = dynamic(
+  () => import("@/components/pos/ReceiptPanel").then((mod) => mod.ReceiptPanel),
+  { ssr: false }
+);
+const TransactionDetailsDialog = dynamic(
+  () => import("@/components/pos/TransactionDetailsDialog").then((mod) => mod.TransactionDetailsDialog),
+  { ssr: false }
+);
+
 export default function POSTransactionsPage() {
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [cashierFilter, setCashierFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [selectedTransaction, setSelectedTransaction] = useState<POSTransaction | null>(null);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const [transactionToVoid, setTransactionToVoid] = useState<POSTransaction | null>(null);
   const [showAdminPinDialog, setShowAdminPinDialog] = useState(false);
   const [showVoidConfirmDialog, setShowVoidConfirmDialog] = useState(false);
-  const [receiptTransaction, setReceiptTransaction] = useState<POSTransaction | null>(null);
+  const [receiptTransactionId, setReceiptTransactionId] = useState<string | null>(null);
   const [showReceiptPanel, setShowReceiptPanel] = useState(false);
 
   const queryParams = useMemo(() => {
@@ -72,7 +84,22 @@ export default function POSTransactionsPage() {
   }, [search, statusFilter, dateRange, cashierFilter, currentPage, pageSize]);
 
   const { data, isLoading } = usePOSTransactions(queryParams);
+  const { data: selectedTransaction } = usePOSTransaction(selectedTransactionId || "");
+  const { data: receiptTransaction } = usePOSTransaction(receiptTransactionId || "");
   const voidTransaction = useVoidPOSTransaction();
+
+  useEffect(() => {
+    const value = searchInput.trim();
+    const timer = window.setTimeout(() => {
+      if (value.length === 0 || value.length >= 3) {
+        setSearch(value);
+      } else {
+        setSearch("");
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
 
   const transactions = useMemo(() => data?.data || [], [data]);
 
@@ -119,18 +146,19 @@ export default function POSTransactionsPage() {
     setShowVoidConfirmDialog(false);
   };
 
-  const handlePrintReceipt = (transaction: POSTransaction) => {
-    setReceiptTransaction(transaction);
+  const handlePrintReceipt = (transactionId: string) => {
+    setReceiptTransactionId(transactionId);
     setShowReceiptPanel(true);
   };
 
   const handleCloseReceipt = () => {
     setShowReceiptPanel(false);
-    setReceiptTransaction(null);
+    setReceiptTransactionId(null);
   };
 
   const handleClearFilters = () => {
     setSearch("");
+    setSearchInput("");
     setStatusFilter("all");
     setDateRange(undefined);
     setCashierFilter("all");
@@ -139,7 +167,7 @@ export default function POSTransactionsPage() {
 
   // Reset to page 1 when filters change
   const handleSearchChange = (value: string) => {
-    setSearch(value);
+    setSearchInput(value);
     setCurrentPage(1);
   };
 
@@ -231,8 +259,8 @@ export default function POSTransactionsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
             <Input
-              placeholder="Search by transaction number, customer, or cashier..."
-              value={search}
+              placeholder="Search by transaction number, customer, or cashier (3+ chars)"
+              value={searchInput}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-10"
             />
@@ -269,7 +297,7 @@ export default function POSTransactionsPage() {
             </SelectContent>
           </Select>
 
-          {(search || statusFilter !== "all" || dateRange || cashierFilter !== "all") && (
+          {(searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all") && (
             <Button variant="ghost" onClick={handleClearFilters} className="w-full md:w-auto">
               Clear Filters
             </Button>
@@ -303,7 +331,7 @@ export default function POSTransactionsPage() {
         </div>
       ) : transactions.length === 0 ? (
         <div className="rounded-md border py-8 text-center text-muted-foreground">
-          {search || statusFilter !== "all" || dateRange || cashierFilter !== "all"
+          {searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all"
             ? "No transactions found matching your filters"
             : "No transactions yet"}
         </div>
@@ -336,7 +364,7 @@ export default function POSTransactionsPage() {
                       )}
                     </TableCell>
                     <TableCell>{transaction.cashierName}</TableCell>
-                    <TableCell>{transaction.items.length} items</TableCell>
+                    <TableCell>{transaction.itemCount ?? transaction.items.length} items</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(transaction.totalAmount)}
                     </TableCell>
@@ -346,7 +374,7 @@ export default function POSTransactionsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSelectedTransaction(transaction)}
+                          onClick={() => setSelectedTransactionId(transaction.id)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -354,7 +382,7 @@ export default function POSTransactionsPage() {
                           variant="ghost"
                           size="sm"
                           title="Print Receipt"
-                          onClick={() => handlePrintReceipt(transaction)}
+                          onClick={() => handlePrintReceipt(transaction.id)}
                         >
                           <Printer className="h-4 w-4" />
                         </Button>
@@ -393,11 +421,13 @@ export default function POSTransactionsPage() {
       )}
 
       {/* Transaction Details Dialog */}
-      <TransactionDetailsDialog
-        transaction={selectedTransaction}
-        open={!!selectedTransaction}
-        onOpenChange={(open) => !open && setSelectedTransaction(null)}
-      />
+      {selectedTransactionId && (
+        <TransactionDetailsDialog
+          transaction={selectedTransaction ?? null}
+          open={!!selectedTransactionId}
+          onOpenChange={(open) => !open && setSelectedTransactionId(null)}
+        />
+      )}
 
       {/* Admin PIN Verification Dialog */}
       <AdminPinDialog
@@ -434,11 +464,13 @@ export default function POSTransactionsPage() {
       </AlertDialog>
 
       {/* Receipt Panel */}
-      <ReceiptPanel
-        transaction={receiptTransaction}
-        open={showReceiptPanel}
-        onClose={handleCloseReceipt}
-      />
+      {showReceiptPanel && (
+        <ReceiptPanel
+          transaction={receiptTransaction ?? null}
+          open={showReceiptPanel}
+          onClose={handleCloseReceipt}
+        />
+      )}
     </div>
   );
 }

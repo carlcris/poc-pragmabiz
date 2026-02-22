@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 
 export default function SalesPage() {
-  const { data } = useCustomers({ limit: 1000 });
+  const { data } = useCustomers({ limit: 50 });
   const { formatCurrency } = useCurrency();
   const customers = data?.data || [];
 

@@ -79,10 +79,10 @@ export function StockTransactionFormDialog({
   const createTransfer = useCreateStockTransfer();
 
   // Fetch basic items (for uomId)
-  const { data: basicItemsData } = useItems({ limit: 1000 });
+  const { data: basicItemsData } = useItems({ limit: 50 });
   const basicItems = useMemo(() => basicItemsData?.data || [], [basicItemsData]);
 
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
   const { formatCurrency } = useCurrency();
 
   const warehouses = warehousesData?.data?.filter((wh) => wh.isActive) || [];
@@ -118,7 +118,7 @@ export function StockTransactionFormDialog({
 
   // Fetch items with stock information filtered by selected warehouse
   const { data: stockItemsData } = useItemsStock({
-    limit: 1000,
+    limit: 50,
     warehouseId: selectedWarehouseId || undefined,
   });
   const stockItems = stockItemsData?.data || [];

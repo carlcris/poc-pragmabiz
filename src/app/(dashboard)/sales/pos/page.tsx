@@ -57,7 +57,7 @@ export default function POSPage() {
   });
   const { data: customersData, isLoading: customersLoading } = useCustomers({
     page: 1,
-    limit: 1000,
+    limit: 50,
   });
   const createTransaction = useCreatePOSTransaction();
 

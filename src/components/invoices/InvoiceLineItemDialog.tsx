@@ -66,7 +66,7 @@ export function InvoiceLineItemDialog({
   item,
   mode = "add",
 }: InvoiceLineItemDialogProps) {
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
 

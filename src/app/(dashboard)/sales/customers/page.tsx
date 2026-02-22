@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Plus, Search, Pencil, Filter, Building2, User, Landmark, Trash2 } from "lucide-react";
 import { useCustomers, useDeleteCustomer } from "@/hooks/useCustomers";
 import { toast } from "sonner";
@@ -23,8 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CustomerFormDialog } from "@/components/customers/CustomerFormDialog";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
@@ -32,7 +31,17 @@ import { RESOURCES } from "@/constants/resources";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Customer } from "@/types/customer";
 
+const CustomerFormDialog = dynamic(
+  () => import("@/components/customers/CustomerFormDialog").then((mod) => mod.CustomerFormDialog),
+  { ssr: false }
+);
+const ConfirmDialog = dynamic(
+  () => import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
+
 function CustomersPageContent() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -48,36 +57,22 @@ function CustomersPageContent() {
 
   const { data, isLoading, error } = useCustomers({
     search,
-    page: 1,
-    limit: 1000, // Get all for client-side filtering
-  });
-
-  // Apply client-side filters
-  let filteredCustomers = data?.data || [];
-
-  if (typeFilter !== "all") {
-    filteredCustomers = filteredCustomers.filter((c) => c.customerType === typeFilter);
-  }
-
-  if (statusFilter === "active") {
-    filteredCustomers = filteredCustomers.filter((c) => c.isActive);
-  } else if (statusFilter === "inactive") {
-    filteredCustomers = filteredCustomers.filter((c) => !c.isActive);
-  }
-
-  // Calculate pagination
-  const total = filteredCustomers.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const customers = filteredCustomers.slice(start, end);
-
-  const pagination = {
-    total,
+    customerType: typeFilter as Customer["customerType"] | "all",
+    isActive: statusFilter === "all" ? undefined : statusFilter === "active",
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const customers = data?.data || [];
+  const pagination = data?.pagination;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getCustomerTypeIcon = (type: Customer["customerType"]) => {
     switch (type) {
@@ -159,8 +154,10 @@ function CustomersPageContent() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search customers..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+              }}
               className="pl-8"
             />
           </div>
@@ -372,27 +369,31 @@ function CustomersPageContent() {
         )}
       </div>
 
-      <CustomerFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        customer={selectedCustomer}
-      />
+      {dialogOpen && (
+        <CustomerFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          customer={selectedCustomer}
+        />
+      )}
 
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDelete}
-        title="Delete Customer"
-        description={
-          customerToDelete
-            ? `Are you sure you want to delete "${customerToDelete.name}"? This action cannot be undone.`
-            : "Are you sure you want to delete this customer?"
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        isLoading={deleteCustomer.isPending}
-      />
+      {deleteDialogOpen && (
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDelete}
+          title="Delete Customer"
+          description={
+            customerToDelete
+              ? `Are you sure you want to delete "${customerToDelete.name}"? This action cannot be undone.`
+              : "Are you sure you want to delete this customer?"
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="destructive"
+          isLoading={deleteCustomer.isPending}
+        />
+      )}
     </div>
   );
 }

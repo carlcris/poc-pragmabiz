@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Pencil, Download } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { generateStockRequisitionPDF } from "@/lib/pdf-generator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -123,6 +122,7 @@ export default function StockRequisitionDetailPage() {
     if (!sr) return;
 
     try {
+      const { generateStockRequisitionPDF } = await import("@/lib/pdf-generator");
       await generateStockRequisitionPDF({
         srNumber: sr.srNumber,
         supplierName: sr.supplier?.name || "Unknown Supplier",

@@ -84,7 +84,7 @@ export function PurchaseOrderFormDialog({
   const createMutation = useCreatePurchaseOrder();
   const updateMutation = useUpdatePurchaseOrder();
 
-  const { data: suppliersData } = useSuppliers({ limit: 1000 });
+  const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
 
   // Line items state

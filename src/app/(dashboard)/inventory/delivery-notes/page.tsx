@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { pdf } from "@react-pdf/renderer";
 import {
   Plus,
   Search,
@@ -33,7 +32,6 @@ import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
-import { DeliveryNotePDF } from "@/components/delivery-notes/DeliveryNotePDF";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -182,7 +180,7 @@ export default function DeliveryNotesPage() {
   );
   const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 50 });
   const { data: usersData } = useUsers();
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const { data: actionDn, isLoading: isLoadingActionDn } = useDeliveryNote(actionDnId);
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const createMutation = useCreateDeliveryNote();
@@ -293,11 +291,15 @@ export default function DeliveryNotesPage() {
   const handlePrintDeliveryNote = async (dn: DeliveryNote) => {
     try {
       setPrintingDnId(dn.id);
+      const [{ pdf }, { DeliveryNotePDF: DeliveryNotePDFDocument }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/delivery-notes/DeliveryNotePDF"),
+      ]);
       const fullDn = await deliveryNotesApi.getById(dn.id);
       const logoUrl = `${window.location.origin}/achlers_circle.png`;
 
       const blob = await pdf(
-        <DeliveryNotePDF
+        <DeliveryNotePDFDocument
           deliveryNote={fullDn}
           sourceLabel={resolveWarehouseLabel(fullDn.requesting_warehouse_id)}
           sourceAddress={formatWarehouseAddress(fullDn.requesting_warehouse_id)}

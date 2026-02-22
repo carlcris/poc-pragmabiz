@@ -27,30 +27,11 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId } = await createServerClientWithBU();
 
-    // Get current user's company
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
-    }
-
-    const companyId = userData.company_id;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -62,6 +43,10 @@ export async function GET(request: NextRequest) {
         ? searchParams.get("isSystemAccount") === "true"
         : undefined,
     };
+    const page = Number.parseInt(searchParams.get("page") || "1", 10);
+    const limit = Math.min(Number.parseInt(searchParams.get("limit") || "20", 10), 100);
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : 20;
 
     // Build query
     let query = supabase
@@ -92,7 +77,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data, error, count } = await query;
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
+    const { data, error, count } = await query.range(from, to);
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch accounts" }, { status: 500 });
@@ -145,9 +132,9 @@ export async function GET(request: NextRequest) {
         count !== null
           ? {
               total: count,
-              page: 1,
-              limit: count,
-              totalPages: 1,
+              page: safePage,
+              limit: safeLimit,
+              totalPages: Math.ceil(count / safeLimit),
             }
           : undefined,
     };
@@ -167,30 +154,15 @@ export async function POST(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "create");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId, userId } = await createServerClientWithBU();
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    const companyId = userData.company_id;
 
     // Parse request body
     const body: CreateAccountRequest = await request.json();
@@ -250,8 +222,8 @@ export async function POST(request: NextRequest) {
         sort_order: body.sortOrder || 0,
         is_system_account: false,
         is_active: true,
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: userId,
+        updated_by: userId,
       })
       .select()
       .single();

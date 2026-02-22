@@ -7,11 +7,19 @@ import type {
 } from "@/types/supplier";
 
 const SUPPLIERS_QUERY_KEY = "suppliers";
+const LOOKUP_MAX_LIMIT = 50;
+
+const normalizeSupplierFilters = (filters?: SupplierFilters): SupplierFilters | undefined => {
+  if (!filters) return filters;
+  if (!filters.limit || filters.limit <= LOOKUP_MAX_LIMIT) return filters;
+  return { ...filters, limit: LOOKUP_MAX_LIMIT };
+};
 
 export function useSuppliers(filters?: SupplierFilters) {
+  const normalizedFilters = normalizeSupplierFilters(filters);
   return useQuery({
-    queryKey: [SUPPLIERS_QUERY_KEY, filters],
-    queryFn: () => suppliersApi.getSuppliers(filters),
+    queryKey: [SUPPLIERS_QUERY_KEY, normalizedFilters],
+    queryFn: () => suppliersApi.getSuppliers(normalizedFilters),
     placeholderData: keepPreviousData,
   });
 }

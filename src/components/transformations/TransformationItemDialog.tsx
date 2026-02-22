@@ -69,7 +69,7 @@ export function TransformationItemDialog({
   type,
 }: TransformationItemDialogProps) {
   // Fetch items
-  const { data: itemsData, isLoading: isLoadingItems } = useItems({ limit: 1000 });
+  const { data: itemsData, isLoading: isLoadingItems } = useItems({ limit: 50 });
   const items = itemsData?.data || [];
 
   // Item combobox state

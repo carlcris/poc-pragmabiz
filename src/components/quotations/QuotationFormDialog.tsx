@@ -71,7 +71,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
   const createMutation = useCreateQuotation();
   const updateMutation = useUpdateQuotation();
 
-  const { data: customersData } = useCustomers({ limit: 1000 });
+  const { data: customersData } = useCustomers({ limit: 50 });
   const customers = customersData?.data || [];
 
   // Line items state

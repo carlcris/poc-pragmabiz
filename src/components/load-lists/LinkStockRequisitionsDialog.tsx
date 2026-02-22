@@ -66,7 +66,7 @@ export function LinkStockRequisitionsDialog({
   const { data: srsData } = useStockRequisitions({
     status: undefined, // We'll filter client-side to get submitted + partially_fulfilled
     supplierId: loadList.supplierId,
-    limit: 1000,
+    limit: 50,
   });
 
   const availableSRs = srsData?.data?.filter(

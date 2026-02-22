@@ -1,17 +1,31 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { BarChart3, Calendar, MapPin, Users } from "lucide-react";
-import { OverviewTab } from "@/components/analytics/overview-tab";
-import { ByTimeTab } from "@/components/analytics/by-time-tab";
-import { ByEmployeeTab } from "@/components/analytics/by-employee-tab";
-import { ByLocationTab } from "@/components/analytics/by-location-tab";
 import { AnalyticsFilters } from "@/components/analytics/analytics-filters";
 import { subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
 import type { SalesAnalyticsFilters } from "@/types/analytics";
+
+const OverviewTab = dynamic(
+  () => import("@/components/analytics/overview-tab").then((mod) => mod.OverviewTab),
+  { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> }
+);
+const ByTimeTab = dynamic(
+  () => import("@/components/analytics/by-time-tab").then((mod) => mod.ByTimeTab),
+  { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> }
+);
+const ByEmployeeTab = dynamic(
+  () => import("@/components/analytics/by-employee-tab").then((mod) => mod.ByEmployeeTab),
+  { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> }
+);
+const ByLocationTab = dynamic(
+  () => import("@/components/analytics/by-location-tab").then((mod) => mod.ByLocationTab),
+  { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> }
+);
 
 export default function SalesAnalyticsPage() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -115,19 +129,19 @@ export default function SalesAnalyticsPage() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <OverviewTab filters={analyticsFilters} />
+          {activeTab === "overview" && <OverviewTab filters={analyticsFilters} />}
         </TabsContent>
 
         <TabsContent value="by-time" className="space-y-6">
-          <ByTimeTab filters={analyticsFilters} />
+          {activeTab === "by-time" && <ByTimeTab filters={analyticsFilters} />}
         </TabsContent>
 
         <TabsContent value="by-employee" className="space-y-6">
-          <ByEmployeeTab filters={analyticsFilters} />
+          {activeTab === "by-employee" && <ByEmployeeTab filters={analyticsFilters} />}
         </TabsContent>
 
         <TabsContent value="by-location" className="space-y-6">
-          <ByLocationTab filters={analyticsFilters} />
+          {activeTab === "by-location" && <ByLocationTab filters={analyticsFilters} />}
         </TabsContent>
       </Tabs>
     </div>

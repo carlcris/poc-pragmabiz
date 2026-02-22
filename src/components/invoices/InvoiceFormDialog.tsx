@@ -74,10 +74,10 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
   const createMutation = useCreateInvoice();
   const updateMutation = useUpdateInvoice();
 
-  const { data: customersData } = useCustomers({ limit: 1000 });
+  const { data: customersData } = useCustomers({ limit: 50 });
   const customers = customersData?.data || [];
 
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
 
   // Line items state

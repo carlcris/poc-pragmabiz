@@ -56,7 +56,7 @@ export default function StockReportsPage() {
   const [valuationGroupBy, setValuationGroupBy] = useState<StockValuationGroupBy>("item");
 
   // Fetch dropdown data
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
   const { data: warehousesData } = useWarehouses({ limit: 100 });
 
   const items = itemsData?.data || [];

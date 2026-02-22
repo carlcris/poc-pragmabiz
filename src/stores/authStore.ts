@@ -12,6 +12,24 @@ export function setQueryClient(queryClient: QueryClient) {
   queryClientInstance = queryClient;
 }
 
+type JwtClaims = {
+  company_id?: string;
+};
+
+function decodeCompanyIdFromToken(token: string | null | undefined): string {
+  if (!token) return "";
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return "";
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const parsed = JSON.parse(atob(padded)) as JwtClaims;
+    return parsed.company_id || "";
+  } catch {
+    return "";
+  }
+}
+
 interface AuthStore {
   user: User | null;
   token: string | null;
@@ -154,6 +172,21 @@ export const useAuthStore = create<AuthStore>()((set) => ({
     try {
       set({ isLoading: true });
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+        });
+        return;
+      }
+
       // SECURITY: Use getUser() to verify JWT authenticity with Supabase Auth server
       // Do NOT use getSession() as it reads from cookies without verification
       const {
@@ -172,24 +205,24 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         return;
       }
 
-      // Fetch company_id from public.users table
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("company_id, first_name, last_name")
-        .eq("id", user.id)
-        .single();
+      const tokenCompanyId = decodeCompanyIdFromToken(session.access_token);
+      let firstName = user.user_metadata?.first_name || "";
+      let lastName = user.user_metadata?.last_name || "";
+      let companyId = tokenCompanyId;
 
-      if (userError) {
+      if (!companyId || (!firstName && !lastName)) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("company_id, first_name, last_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        companyId = companyId || userData?.company_id || "";
+        firstName = firstName || userData?.first_name || "";
+        lastName = lastName || userData?.last_name || "";
       }
 
-      // Get session to access the access token (safe to use for token only)
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
       // Map Supabase user to our User type
-      const firstName = userData?.first_name || user.user_metadata?.first_name || "";
-      const lastName = userData?.last_name || user.user_metadata?.last_name || "";
       const fullName =
         [firstName, lastName].filter(Boolean).join(" ") ||
         user.user_metadata?.full_name ||
@@ -202,7 +235,7 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         firstName,
         lastName,
         role: user.user_metadata?.role || "user",
-        companyId: userData?.company_id || "",
+        companyId,
       };
 
       set({

@@ -49,9 +49,9 @@ export function useUserPermissions(userId: string | undefined, businessUnitId?: 
       return response.data;
     },
     enabled: !!userId,
-    staleTime: 0, // Always stale - permissions are security-critical
-    gcTime: 0, // Don't cache
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }

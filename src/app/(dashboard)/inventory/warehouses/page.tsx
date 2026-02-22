@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Plus, Search, Pencil, MapPin, Filter, Trash2 } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
@@ -24,12 +25,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { WarehouseFormDialog } from "@/components/warehouses/WarehouseFormDialog";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ViewGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { Warehouse } from "@/types/warehouse";
+
+const WarehouseFormDialog = dynamic(
+  () => import("@/components/warehouses/WarehouseFormDialog").then((mod) => mod.WarehouseFormDialog),
+  { ssr: false }
+);
+const ConfirmDialog = dynamic(
+  () => import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
 
 export default function WarehousesPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -259,27 +267,31 @@ export default function WarehousesPage() {
         )}
       </div>
 
-      <WarehouseFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        warehouse={selectedWarehouse}
-      />
+      {dialogOpen && (
+        <WarehouseFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          warehouse={selectedWarehouse}
+        />
+      )}
 
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDelete}
-        title="Delete Warehouse"
-        description={
-          warehouseToDelete
-            ? `Are you sure you want to delete "${warehouseToDelete.name}"? This action cannot be undone.`
-            : "Are you sure you want to delete this warehouse?"
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        isLoading={deleteWarehouse.isPending}
-      />
+      {deleteDialogOpen && (
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDelete}
+          title="Delete Warehouse"
+          description={
+            warehouseToDelete
+              ? `Are you sure you want to delete "${warehouseToDelete.name}"? This action cannot be undone.`
+              : "Are you sure you want to delete this warehouse?"
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="destructive"
+          isLoading={deleteWarehouse.isPending}
+        />
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -51,15 +52,32 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PurchaseOrderFormDialog } from "@/components/purchase-orders/PurchaseOrderFormDialog";
-import { PurchaseOrderViewDialog } from "@/components/purchase-orders/PurchaseOrderViewDialog";
-import { ReceiveGoodsDialog } from "@/components/purchase-receipts/ReceiveGoodsDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { PurchaseOrder, PurchaseOrderStatus } from "@/types/purchase-order";
 import { format } from "date-fns";
 
+const PurchaseOrderFormDialog = dynamic(
+  () =>
+    import("@/components/purchase-orders/PurchaseOrderFormDialog").then(
+      (mod) => mod.PurchaseOrderFormDialog
+    ),
+  { ssr: false }
+);
+const PurchaseOrderViewDialog = dynamic(
+  () =>
+    import("@/components/purchase-orders/PurchaseOrderViewDialog").then(
+      (mod) => mod.PurchaseOrderViewDialog
+    ),
+  { ssr: false }
+);
+const ReceiveGoodsDialog = dynamic(
+  () => import("@/components/purchase-receipts/ReceiveGoodsDialog").then((mod) => mod.ReceiveGoodsDialog),
+  { ssr: false }
+);
+
 export default function PurchaseOrdersPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -87,26 +105,21 @@ export default function PurchaseOrdersPage() {
   const { data, isLoading, error } = usePurchaseOrders({
     search,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    page: 1,
-    limit: 1000,
-  });
-
-  // Apply client-side filtering
-  const filteredOrders = data?.data || [];
-
-  // Calculate pagination
-  const total = filteredOrders.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const orders = filteredOrders.slice(start, end);
-
-  const pagination = {
-    total,
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const orders = data?.data || [];
+  const pagination = data?.pagination;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getErrorMessage = (err: unknown, fallback: string) =>
     err instanceof Error ? err.message : fallback;
@@ -281,8 +294,10 @@ export default function PurchaseOrdersPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search purchase orders..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+              }}
               className="pl-8"
             />
           </div>
@@ -469,25 +484,31 @@ export default function PurchaseOrdersPage() {
       </div>
 
       {/* Form Dialog */}
-      <PurchaseOrderFormDialog
-        open={formDialogOpen}
-        onOpenChange={setFormDialogOpen}
-        purchaseOrder={selectedOrder}
-      />
+      {formDialogOpen && (
+        <PurchaseOrderFormDialog
+          open={formDialogOpen}
+          onOpenChange={setFormDialogOpen}
+          purchaseOrder={selectedOrder}
+        />
+      )}
 
       {/* View Dialog */}
-      <PurchaseOrderViewDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        purchaseOrder={selectedOrder}
-      />
+      {viewDialogOpen && (
+        <PurchaseOrderViewDialog
+          open={viewDialogOpen}
+          onOpenChange={setViewDialogOpen}
+          purchaseOrder={selectedOrder}
+        />
+      )}
 
       {/* Receive Goods Dialog */}
-      <ReceiveGoodsDialog
-        open={receiveGoodsDialogOpen}
-        onOpenChange={setReceiveGoodsDialogOpen}
-        purchaseOrder={selectedOrder}
-      />
+      {receiveGoodsDialogOpen && (
+        <ReceiveGoodsDialog
+          open={receiveGoodsDialogOpen}
+          onOpenChange={setReceiveGoodsDialogOpen}
+          purchaseOrder={selectedOrder}
+        />
+      )}
 
       {/* Submit Confirmation Dialog */}
       <AlertDialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>

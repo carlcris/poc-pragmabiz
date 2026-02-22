@@ -39,26 +39,15 @@ function UserManagementContent() {
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
 
-  const { data: usersData, isLoading, error } = useUsers();
+  const { data: usersData, isLoading, error } = useUsers({
+    search,
+    page: 1,
+    limit: 50,
+    isActive: statusFilter === "all" ? undefined : statusFilter === "active",
+  });
   const toggleStatus = useToggleUserStatus();
 
   const users = usersData?.data || [];
-
-  // Filter users by search and status
-  const filteredUsers = users.filter((user) => {
-    // Search filter
-    const matchesSearch = search
-      ? user.email.toLowerCase().includes(search.toLowerCase()) ||
-        user.username.toLowerCase().includes(search.toLowerCase()) ||
-        `${user.first_name} ${user.last_name}`.toLowerCase().includes(search.toLowerCase())
-      : true;
-
-    // Status filter
-    const matchesStatus =
-      statusFilter === "all" ? true : statusFilter === "active" ? user.is_active : !user.is_active;
-
-    return matchesSearch && matchesStatus;
-  });
 
   const handleManageRoles = (user: User) => {
     setSelectedUser(user);
@@ -111,7 +100,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("all")}
               className="w-full sm:w-auto"
             >
-              All ({users.length})
+              All
             </Button>
             <Button
               variant={statusFilter === "active" ? "default" : "outline"}
@@ -119,7 +108,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("active")}
               className="w-full sm:w-auto"
             >
-              Active ({users.filter((u) => u.is_active).length})
+              Active
             </Button>
             <Button
               variant={statusFilter === "inactive" ? "default" : "outline"}
@@ -127,7 +116,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("inactive")}
               className="w-full sm:w-auto"
             >
-              Inactive ({users.filter((u) => !u.is_active).length})
+              Inactive
             </Button>
           </div>
         </div>
@@ -171,7 +160,7 @@ function UserManagementContent() {
           <div className="py-8 text-center text-destructive">
             Error loading users. Please try again.
           </div>
-        ) : filteredUsers.length === 0 ? (
+        ) : users.length === 0 ? (
           <EmptyStatePanel
             icon={UserCheck}
             title="No users found"
@@ -190,7 +179,7 @@ function UserManagementContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
+                {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>
                       <div>

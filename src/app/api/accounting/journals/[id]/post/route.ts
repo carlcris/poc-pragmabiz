@@ -25,30 +25,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (unauthorized) return unauthorized;
 
     const { id } = await context.params;
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId, userId } = await createServerClientWithBU();
 
-    // Get current user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    const companyId = userData.company_id;
 
     // Get journal entry with lines
     const { data: journalEntry, error: fetchError } = await supabase
@@ -107,8 +92,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .update({
         status: "posted",
         posted_at: new Date().toISOString(),
-        posted_by: user.id,
-        updated_by: user.id,
+        posted_by: userId,
+        updated_by: userId,
       })
       .eq("id", id)
       .eq("company_id", companyId)

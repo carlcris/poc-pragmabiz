@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Eye, Pencil, Trash2, Power, PowerOff, ArrowLeft } from "lucide-react";
 import {
@@ -32,13 +33,27 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { TransformationTemplateFormDialog } from "@/components/transformations/TransformationTemplateFormDialog";
-import { TransformationTemplateDetailDialog } from "@/components/transformations/TransformationTemplateDetailDialog";
 import type { TransformationTemplateApi } from "@/types/transformation-template";
+
+const TransformationTemplateFormDialog = dynamic(
+  () =>
+    import("@/components/transformations/TransformationTemplateFormDialog").then(
+      (mod) => mod.TransformationTemplateFormDialog
+    ),
+  { ssr: false }
+);
+const TransformationTemplateDetailDialog = dynamic(
+  () =>
+    import("@/components/transformations/TransformationTemplateDetailDialog").then(
+      (mod) => mod.TransformationTemplateDetailDialog
+    ),
+  { ssr: false }
+);
 
 export default function TransformationTemplatesPage() {
   const router = useRouter();
   const { t } = useLanguage();
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -58,6 +73,15 @@ export default function TransformationTemplatesPage() {
   const deleteTemplate = useDeleteTransformationTemplate();
   const activateTemplate = useActivateTransformationTemplate();
   const deactivateTemplate = useDeactivateTransformationTemplate();
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const handleDelete = async () => {
     if (deleteTemplateId) {
@@ -103,8 +127,8 @@ export default function TransformationTemplatesPage() {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder={t.common.search_}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="pl-10"
         />
       </div>
@@ -215,23 +239,27 @@ export default function TransformationTemplatesPage() {
       )}
 
       {/* Create/Edit Dialog */}
-      <TransformationTemplateFormDialog
-        open={isCreateOpen || !!selectedTemplate}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateOpen(false);
-            setSelectedTemplate(null);
-          }
-        }}
-        template={selectedTemplate || undefined}
-      />
+      {(isCreateOpen || !!selectedTemplate) && (
+        <TransformationTemplateFormDialog
+          open={isCreateOpen || !!selectedTemplate}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCreateOpen(false);
+              setSelectedTemplate(null);
+            }
+          }}
+          template={selectedTemplate || undefined}
+        />
+      )}
 
       {/* View Dialog */}
-      <TransformationTemplateDetailDialog
-        open={!!viewTemplate}
-        onOpenChange={(open) => !open && setViewTemplate(null)}
-        template={viewTemplate || undefined}
-      />
+      {!!viewTemplate && (
+        <TransformationTemplateDetailDialog
+          open={!!viewTemplate}
+          onOpenChange={(open) => !open && setViewTemplate(null)}
+          template={viewTemplate || undefined}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTemplateId} onOpenChange={() => setDeleteTemplateId(null)}>

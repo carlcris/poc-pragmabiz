@@ -4,6 +4,7 @@ import type { Item, CreateItemRequest, UpdateItemRequest, ItemFilters } from "@/
 import type { ItemWithStock } from "@/app/api/items/route";
 
 const ITEMS_QUERY_KEY = "items";
+const LOOKUP_MAX_LIMIT = 50;
 
 export interface ItemsFilters extends ItemFilters {
   warehouseId?: string;
@@ -44,26 +45,30 @@ type ItemsQueryOptions = ItemsFilters & {
 
 export function useItems(filters?: ItemsQueryOptions) {
   const { enabled, ...restFilters } = filters ?? {};
-  const includeStock = restFilters.includeStock ?? false;
-  const includeStats = restFilters.includeStats ?? false;
+  const normalizedFilters =
+    restFilters.limit && restFilters.limit > LOOKUP_MAX_LIMIT
+      ? { ...restFilters, limit: LOOKUP_MAX_LIMIT }
+      : restFilters;
+  const includeStock = normalizedFilters.includeStock ?? false;
+  const includeStats = normalizedFilters.includeStats ?? false;
 
   return useQuery({
-    queryKey: [ITEMS_QUERY_KEY, restFilters],
+    queryKey: [ITEMS_QUERY_KEY, normalizedFilters],
     enabled: enabled ?? true,
     queryFn: async () => {
       if (includeStock) {
         // Use items API for stock information
         const params = new URLSearchParams();
-        if (restFilters.search) params.append("search", restFilters.search);
-        if (restFilters.category) params.append("category", restFilters.category);
-        if (restFilters.warehouseId) params.append("warehouseId", restFilters.warehouseId);
-        if (restFilters.supplierId) params.append("supplierId", restFilters.supplierId);
-        if (restFilters.status && restFilters.status !== "all")
-          params.append("status", restFilters.status);
-        if (restFilters.itemType) params.append("itemType", restFilters.itemType);
+        if (normalizedFilters.search) params.append("search", normalizedFilters.search);
+        if (normalizedFilters.category) params.append("category", normalizedFilters.category);
+        if (normalizedFilters.warehouseId) params.append("warehouseId", normalizedFilters.warehouseId);
+        if (normalizedFilters.supplierId) params.append("supplierId", normalizedFilters.supplierId);
+        if (normalizedFilters.status && normalizedFilters.status !== "all")
+          params.append("status", normalizedFilters.status);
+        if (normalizedFilters.itemType) params.append("itemType", normalizedFilters.itemType);
         if (includeStats) params.append("includeStats", "true");
-        if (restFilters.page) params.append("page", restFilters.page.toString());
-        if (restFilters.limit) params.append("limit", restFilters.limit.toString());
+        if (normalizedFilters.page) params.append("page", normalizedFilters.page.toString());
+        if (normalizedFilters.limit) params.append("limit", normalizedFilters.limit.toString());
 
         const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
         const response = await fetch(`${API_BASE_URL}/items?${params.toString()}`, {
@@ -81,7 +86,7 @@ export function useItems(filters?: ItemsQueryOptions) {
         return response.json() as Promise<ItemsWithStockResponse>;
       } else {
         // Use regular items API
-        return itemsApi.getItems(restFilters) as Promise<ItemsResponse>;
+        return itemsApi.getItems(normalizedFilters) as Promise<ItemsResponse>;
       }
     },
     placeholderData: keepPreviousData,

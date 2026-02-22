@@ -88,11 +88,12 @@ export function useLoadPermissions() {
       return permissions;
     },
     enabled: !!userId && isBusinessUnitReady, // Only run if user is authenticated and BU resolved
-    // SECURITY: No caching for permissions - they are security-critical
-    staleTime: 0, // Data is immediately stale
-    gcTime: 0, // Don't keep in cache after component unmounts
-    refetchOnMount: true, // Always refetch on mount
-    refetchOnWindowFocus: true, // Refetch when window regains focus
+    // SECURITY: authorization is enforced server-side; client cache is UX only.
+    // Keep this fresh enough for UI while avoiding repeated page-level latency.
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 

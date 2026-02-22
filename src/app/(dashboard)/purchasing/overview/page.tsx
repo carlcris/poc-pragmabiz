@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { LayoutDashboard, RefreshCw, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,22 +11,93 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OutstandingRequisitionsWidget } from "@/components/dashboard/widgets/OutstandingRequisitionsWidget";
-import { DamagedItemsWidget } from "@/components/dashboard/widgets/DamagedItemsWidget";
-import { ExpectedArrivalsWidget } from "@/components/dashboard/widgets/ExpectedArrivalsWidget";
-import { DelayedShipmentsWidget } from "@/components/dashboard/widgets/DelayedShipmentsWidget";
-import { TodaysReceivingQueueWidget } from "@/components/dashboard/widgets/TodaysReceivingQueueWidget";
-import { PendingApprovalsWidget } from "@/components/dashboard/widgets/PendingApprovalsWidget";
-import { BoxAssignmentQueueWidget } from "@/components/dashboard/widgets/BoxAssignmentQueueWidget";
-import { WarehouseCapacityWidget } from "@/components/dashboard/widgets/WarehouseCapacityWidget";
-import { ActiveRequisitionsWidget } from "@/components/dashboard/widgets/ActiveRequisitionsWidget";
-import { IncomingDeliveriesWidget } from "@/components/dashboard/widgets/IncomingDeliveriesWidget";
-import { ActiveContainersWidget } from "@/components/dashboard/widgets/ActiveContainersWidget";
-import { LocationAssignmentWidget } from "@/components/dashboard/widgets/LocationAssignmentWidget";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import type { Warehouse as WarehouseType } from "@/types/warehouse";
+
+const widgetFallback = () => <div className="h-36 animate-pulse rounded-lg border bg-muted/50" />;
+const OutstandingRequisitionsWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/OutstandingRequisitionsWidget").then(
+      (mod) => mod.OutstandingRequisitionsWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const DamagedItemsWidget = dynamic(
+  () => import("@/components/dashboard/widgets/DamagedItemsWidget").then((mod) => mod.DamagedItemsWidget),
+  { ssr: false, loading: widgetFallback }
+);
+const ExpectedArrivalsWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/ExpectedArrivalsWidget").then(
+      (mod) => mod.ExpectedArrivalsWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const DelayedShipmentsWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/DelayedShipmentsWidget").then(
+      (mod) => mod.DelayedShipmentsWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const TodaysReceivingQueueWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/TodaysReceivingQueueWidget").then(
+      (mod) => mod.TodaysReceivingQueueWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const PendingApprovalsWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/PendingApprovalsWidget").then(
+      (mod) => mod.PendingApprovalsWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const BoxAssignmentQueueWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/BoxAssignmentQueueWidget").then(
+      (mod) => mod.BoxAssignmentQueueWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const WarehouseCapacityWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/WarehouseCapacityWidget").then(
+      (mod) => mod.WarehouseCapacityWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const ActiveRequisitionsWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/ActiveRequisitionsWidget").then(
+      (mod) => mod.ActiveRequisitionsWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const IncomingDeliveriesWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/IncomingDeliveriesWidget").then(
+      (mod) => mod.IncomingDeliveriesWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const ActiveContainersWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/ActiveContainersWidget").then(
+      (mod) => mod.ActiveContainersWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
+const LocationAssignmentWidget = dynamic(
+  () =>
+    import("@/components/dashboard/widgets/LocationAssignmentWidget").then(
+      (mod) => mod.LocationAssignmentWidget
+    ),
+  { ssr: false, loading: widgetFallback }
+);
 
 export default function PurchasingOverviewPage() {
   const queryClient = useQueryClient();

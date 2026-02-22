@@ -10,7 +10,7 @@ import type { LoadListStatus } from "@/types/load-list";
 export default function TabletDashboardPage() {
   const { data: loadListsData, isLoading } = useLoadLists({
     page: 1,
-    limit: 1000,
+    limit: 50,
   });
   const { data: dashboardData, isLoading: isLoadingDashboard } = useWarehouseDashboard();
 

@@ -67,7 +67,7 @@ export function StockAdjustmentLineItemDialog({
   locationId,
   onItemSelect,
 }: StockAdjustmentLineItemDialogProps) {
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
   const { formatCurrency } = useCurrency();
   const [uomLabel, setUomLabel] = useState<string>("");

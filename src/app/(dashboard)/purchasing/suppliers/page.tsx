@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Plus, Search, Pencil, Filter, Package, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSuppliers, useDeleteSupplier } from "@/hooks/useSuppliers";
@@ -34,13 +35,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { SupplierFormDialog } from "@/components/suppliers/SupplierFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Supplier } from "@/types/supplier";
 
+const SupplierFormDialog = dynamic(
+  () => import("@/components/suppliers/SupplierFormDialog").then((mod) => mod.SupplierFormDialog),
+  { ssr: false }
+);
+
 export default function SuppliersPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -55,30 +61,22 @@ export default function SuppliersPage() {
 
   const { data, isLoading, error } = useSuppliers({
     search,
-    page: 1,
-    limit: 1000, // Get all for client-side filtering
-  });
-
-  // Apply client-side filters
-  let filteredSuppliers = data?.data || [];
-
-  if (statusFilter !== "all") {
-    filteredSuppliers = filteredSuppliers.filter((s) => s.status === statusFilter);
-  }
-
-  // Calculate pagination
-  const total = filteredSuppliers.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const suppliers = filteredSuppliers.slice(start, end);
-
-  const pagination = {
-    total,
+    status: statusFilter as Supplier["status"] | "all",
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const suppliers = data?.data || [];
+  const pagination = data?.pagination;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getStatusBadge = (status: Supplier["status"]) => {
     switch (status) {
@@ -170,8 +168,10 @@ export default function SuppliersPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search suppliers..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+              }}
               className="pl-8"
             />
           </div>
@@ -365,11 +365,13 @@ export default function SuppliersPage() {
         )}
       </div>
 
-      <SupplierFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        supplier={selectedSupplier}
-      />
+      {dialogOpen && (
+        <SupplierFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          supplier={selectedSupplier}
+        />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

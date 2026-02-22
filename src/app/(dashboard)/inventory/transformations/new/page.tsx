@@ -1,10 +1,8 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { ArrowLeft, CalendarIcon } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
 import { useCreateTransformationOrder } from "@/hooks/useTransformationOrders";
@@ -13,39 +11,33 @@ import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const createOrderSchema = z.object({
-  templateId: z.string().min(1, "Template is required"),
-  warehouseId: z.string().min(1, "Warehouse is required"),
-  plannedQuantity: z.coerce.number().min(0.0001, "Planned quantity must be greater than 0"),
-  orderDate: z.date(),
-  plannedDate: z.date().optional(),
-  notes: z.string().optional(),
-});
+type FormValues = {
+  templateId: string;
+  warehouseId: string;
+  plannedQuantity: string;
+  orderDate: string;
+  plannedDate: string;
+  notes: string;
+};
 
-type CreateOrderFormValues = z.input<typeof createOrderSchema>;
-type CreateOrderFormOutput = z.output<typeof createOrderSchema>;
+type FormErrors = {
+  templateId?: string;
+  warehouseId?: string;
+  plannedQuantity?: string;
+  orderDate?: string;
+  root?: string;
+};
+
+const toDateInputValue = (value: Date) => {
+  const year = value.getFullYear();
+  const month = `${value.getMonth() + 1}`.padStart(2, "0");
+  const day = `${value.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 export default function NewTransformationOrderPage() {
   const router = useRouter();
@@ -57,56 +49,77 @@ export default function NewTransformationOrderPage() {
 
   const { data: templatesData } = useTransformationTemplates({
     isActive: true,
-    limit: 1000,
+    limit: 50,
   });
 
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
 
-  const form = useForm<CreateOrderFormValues, unknown, CreateOrderFormOutput>({
-    resolver: zodResolver(createOrderSchema),
-    defaultValues: {
-      templateId: "",
-      warehouseId: "",
-      plannedQuantity: 1,
-      orderDate: new Date(),
-      notes: "",
-    },
+  const [values, setValues] = useState<FormValues>({
+    templateId: "",
+    warehouseId: "",
+    plannedQuantity: "1",
+    orderDate: toDateInputValue(new Date()),
+    plannedDate: "",
+    notes: "",
   });
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const onSubmit = async (data: CreateOrderFormOutput) => {
+  const plannedQuantityNumber = useMemo(() => Number(values.plannedQuantity), [values.plannedQuantity]);
+
+  const validate = (): FormErrors => {
+    const nextErrors: FormErrors = {};
+
+    if (!values.templateId) nextErrors.templateId = "Template is required";
+    if (!values.warehouseId) nextErrors.warehouseId = "Warehouse is required";
+    if (!values.orderDate) nextErrors.orderDate = "Order date is required";
+    if (!Number.isFinite(plannedQuantityNumber) || plannedQuantityNumber <= 0) {
+      nextErrors.plannedQuantity = "Planned quantity must be greater than 0";
+    }
+
+    return nextErrors;
+  };
+
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
     if (!companyId) {
-      form.setError("root", {
-        type: "manual",
-        message: "Company ID is missing. Please try logging in again.",
-      });
+      setErrors({ root: "Company ID is missing. Please try logging in again." });
       return;
     }
 
     try {
       await createOrder.mutateAsync({
         companyId,
-        templateId: data.templateId,
-        warehouseId: data.warehouseId,
-        plannedQuantity: data.plannedQuantity,
-        orderDate: data.orderDate.toISOString(),
-        plannedDate: data.plannedDate?.toISOString(),
-        notes: data.notes,
+        templateId: values.templateId,
+        warehouseId: values.warehouseId,
+        plannedQuantity: plannedQuantityNumber,
+        orderDate: new Date(`${values.orderDate}T00:00:00`).toISOString(),
+        plannedDate: values.plannedDate
+          ? new Date(`${values.plannedDate}T00:00:00`).toISOString()
+          : undefined,
+        notes: values.notes || undefined,
       });
 
       router.push("/inventory/transformations");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create transformation order";
-      form.setError("root", {
-        type: "manual",
-        message,
-      });
+      const message = error instanceof Error ? error.message : "Failed to create transformation order";
+      setErrors({ root: message });
     }
+  };
+
+  const onFieldChange = <K extends keyof FormValues>(key: K, value: FormValues[K]) => {
+    setValues((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined, root: undefined }));
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/inventory/transformations">
@@ -124,203 +137,94 @@ export default function NewTransformationOrderPage() {
           <CardTitle>{t.transformation.orderDetails}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Template Selection */}
-              <FormField
-                control={form.control}
-                name="templateId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.transformation.transformationTemplate} *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t.transformation.selectTemplate} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {templatesData?.data.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            {template.template_code} - {template.template_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+          <form onSubmit={onSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.transformation.transformationTemplate} *</label>
+              <Select value={values.templateId} onValueChange={(value) => onFieldChange("templateId", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t.transformation.selectTemplate} />
+                </SelectTrigger>
+                <SelectContent>
+                  {templatesData?.data.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.template_code} - {template.template_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.templateId && <p className="text-sm text-red-500">{errors.templateId}</p>}
+            </div>
 
-              {/* Warehouse Selection */}
-              <FormField
-                control={form.control}
-                name="warehouseId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.common.warehouse} *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={t.transformation.selectWarehouse} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {warehousesData?.data.map((warehouse) => (
-                          <SelectItem key={warehouse.id} value={warehouse.id}>
-                            {warehouse.code} - {warehouse.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.common.warehouse} *</label>
+              <Select value={values.warehouseId} onValueChange={(value) => onFieldChange("warehouseId", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder={t.transformation.selectWarehouse} />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehousesData?.data.map((warehouse) => (
+                    <SelectItem key={warehouse.id} value={warehouse.id}>
+                      {warehouse.code} - {warehouse.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.warehouseId && <p className="text-sm text-red-500">{errors.warehouseId}</p>}
+            </div>
 
-              {/* Quantity and Dates */}
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="plannedQuantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.transformation.plannedQuantity} *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          placeholder="1"
-                          value={
-                            typeof field.value === "number" || typeof field.value === "string"
-                              ? field.value
-                              : ""
-                          }
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.transformation.plannedQuantity} *</label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={values.plannedQuantity}
+                  onChange={(event) => onFieldChange("plannedQuantity", event.target.value)}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="orderDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.transformation.orderDate} *</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>{t.transformation.pickDate}</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="plannedDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.transformation.plannedExecutionDate}</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>{t.transformation.pickDate}</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {errors.plannedQuantity && <p className="text-sm text-red-500">{errors.plannedQuantity}</p>}
               </div>
 
-              {/* Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.common.notes}</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder={`${t.common.notes}...`} rows={3} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {form.formState.errors.root && (
-                <p className="text-sm text-red-500">{form.formState.errors.root.message}</p>
-              )}
-
-              <div className="flex justify-end gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/inventory/transformations")}
-                >
-                  {t.common.cancel}
-                </Button>
-                <Button type="submit" disabled={createOrder.isPending}>
-                  {createOrder.isPending
-                    ? `${t.common.create}...`
-                    : t.transformation.createFromTemplate}
-                </Button>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.transformation.orderDate} *</label>
+                <Input
+                  type="date"
+                  value={values.orderDate}
+                  onChange={(event) => onFieldChange("orderDate", event.target.value)}
+                />
+                {errors.orderDate && <p className="text-sm text-red-500">{errors.orderDate}</p>}
               </div>
-            </form>
-          </Form>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">{t.transformation.plannedExecutionDate}</label>
+                <Input
+                  type="date"
+                  value={values.plannedDate}
+                  onChange={(event) => onFieldChange("plannedDate", event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t.common.notes}</label>
+              <Textarea
+                placeholder={`${t.common.notes}...`}
+                rows={3}
+                value={values.notes}
+                onChange={(event) => onFieldChange("notes", event.target.value)}
+              />
+            </div>
+
+            {errors.root && <p className="text-sm text-red-500">{errors.root}</p>}
+
+            <div className="flex justify-end gap-4">
+              <Button type="button" variant="outline" onClick={() => router.push("/inventory/transformations")}>
+                {t.common.cancel}
+              </Button>
+              <Button type="submit" disabled={createOrder.isPending}>
+                {createOrder.isPending ? `${t.common.create}...` : t.transformation.createFromTemplate}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

@@ -12,8 +12,8 @@ type POSTransactionItemRow = Tables<"pos_transaction_items">;
 type POSTransactionPaymentRow = Tables<"pos_transaction_payments">;
 
 type POSTransactionQueryRow = POSTransactionRow & {
-  pos_transaction_items: POSTransactionItemRow[];
-  pos_transaction_payments: POSTransactionPaymentRow[];
+  pos_transaction_items?: POSTransactionItemRow[];
+  pos_transaction_payments?: POSTransactionPaymentRow[];
 };
 
 type POSItemInput = {
@@ -42,82 +42,93 @@ export async function GET(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.POS, "view");
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId } = await createServerClientWithBU();
 
-    // Check authentication
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user details
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search") || "";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "10", 10)), 50);
     const status = searchParams.get("status");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
     const cashierId = searchParams.get("cashierId");
+    const includeDetails = searchParams.get("includeDetails") === "true";
+
+    const baseSelect = `
+      id,
+      transaction_code,
+      transaction_date,
+      customer_id,
+      customer_name,
+      subtotal,
+      total_discount,
+      tax_rate,
+      total_tax,
+      total_amount,
+      amount_paid,
+      change_amount,
+      status,
+      cashier_id,
+      cashier_name,
+      notes,
+      created_at,
+      updated_at
+    `;
+
+    const fullSelect = `
+      id,
+      transaction_code,
+      transaction_date,
+      customer_id,
+      customer_name,
+      subtotal,
+      total_discount,
+      tax_rate,
+      total_tax,
+      total_amount,
+      amount_paid,
+      change_amount,
+      status,
+      cashier_id,
+      cashier_name,
+      notes,
+      created_at,
+      updated_at,
+      pos_transaction_items (
+        id,
+        item_id,
+        item_code,
+        item_name,
+        quantity,
+        unit_price,
+        discount,
+        line_total
+      ),
+      pos_transaction_payments (
+        id,
+        payment_method,
+        amount,
+        reference
+      )
+    `;
 
     // Build query
-    let query = supabase
-      .from("pos_transactions")
-      .select(
-        `
-        id,
-        transaction_code,
-        transaction_date,
-        customer_id,
-        customer_name,
-        subtotal,
-        total_discount,
-        tax_rate,
-        total_tax,
-        total_amount,
-        amount_paid,
-        change_amount,
-        status,
-        cashier_id,
-        cashier_name,
-        notes,
-        created_at,
-        updated_at,
-        pos_transaction_items (
-          id,
-          item_id,
-          item_code,
-          item_name,
-          quantity,
-          unit_price,
-          discount,
-          line_total
-        ),
-        pos_transaction_payments (
-          id,
-          payment_method,
-          amount,
-          reference
-        )
-      `,
-        { count: "exact" }
-      )
-      .eq("company_id", userData.company_id)
-      .order("transaction_date", { ascending: false });
+    let query = includeDetails
+      ? supabase
+          .from("pos_transactions")
+          .select(fullSelect, { count: "exact" })
+          .eq("company_id", companyId)
+          .order("transaction_date", { ascending: false })
+      : supabase
+          .from("pos_transactions")
+          .select(baseSelect, { count: "exact" })
+          .eq("company_id", companyId)
+          .order("transaction_date", { ascending: false });
 
     // Apply filters
     if (search) {
@@ -156,40 +167,60 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch POS transactions" }, { status: 500 });
     }
 
+    const itemCountByTransactionId = new Map<string, number>();
+    if (!includeDetails) {
+      const transactionIds = ((data as POSTransactionQueryRow[] | null) || []).map((txn) => txn.id);
+      if (transactionIds.length > 0) {
+        const { data: itemRows } = await supabase
+          .from("pos_transaction_items")
+          .select("pos_transaction_id")
+          .in("pos_transaction_id", transactionIds);
+        (itemRows || []).forEach((row) => {
+          const key = row.pos_transaction_id;
+          itemCountByTransactionId.set(key, (itemCountByTransactionId.get(key) || 0) + 1);
+        });
+      }
+    }
+
     // Transform data to match POSTransaction type
     const transactions =
       (data as POSTransactionQueryRow[] | null)?.map((txn) => ({
         id: txn.id,
-        companyId: userData.company_id,
+        companyId,
         transactionNumber: txn.transaction_code,
         transactionDate: txn.transaction_date,
         customerId: txn.customer_id,
         customerName: txn.customer_name,
-        items: txn.pos_transaction_items.map((item) => ({
-          id: item.id,
-          itemId: item.item_id,
-          itemCode: item.item_code,
-          itemName: item.item_name,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unit_price),
-          discount: Number(item.discount),
-          lineTotal: Number(item.line_total),
-        })),
+        items:
+          txn.pos_transaction_items?.map((item) => ({
+            id: item.id,
+            itemId: item.item_id,
+            itemCode: item.item_code,
+            itemName: item.item_name,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unit_price),
+            discount: Number(item.discount),
+            lineTotal: Number(item.line_total),
+          })) || [],
         subtotal: Number(txn.subtotal),
         totalDiscount: Number(txn.total_discount),
         taxRate: Number(txn.tax_rate),
         totalTax: Number(txn.total_tax),
         totalAmount: Number(txn.total_amount),
-        payments: txn.pos_transaction_payments.map((payment) => ({
-          method: payment.payment_method,
-          amount: Number(payment.amount),
-          reference: payment.reference,
-        })),
+        payments:
+          txn.pos_transaction_payments?.map((payment) => ({
+            method: payment.payment_method,
+            amount: Number(payment.amount),
+            reference: payment.reference,
+          })) || [],
         amountPaid: Number(txn.amount_paid),
         changeAmount: Number(txn.change_amount),
         status: txn.status,
         cashierId: txn.cashier_id,
         cashierName: txn.cashier_name,
+        itemCount: includeDetails
+          ? txn.pos_transaction_items?.length || 0
+          : itemCountByTransactionId.get(txn.id) || 0,
         notes: txn.notes,
         createdAt: txn.created_at,
         updatedAt: txn.updated_at,
@@ -502,7 +533,7 @@ export async function POST(request: NextRequest) {
           transactionDate: completeTransaction.transaction_date,
           customerId: completeTransaction.customer_id,
           customerName: completeTransaction.customer_name,
-          items: completeTransaction.pos_transaction_items.map((item) => ({
+          items: (completeTransaction.pos_transaction_items || []).map((item) => ({
             id: item.id,
             itemId: item.item_id,
             itemCode: item.item_code,
@@ -517,7 +548,7 @@ export async function POST(request: NextRequest) {
           taxRate: Number(completeTransaction.tax_rate),
           totalTax: Number(completeTransaction.total_tax),
           totalAmount: Number(completeTransaction.total_amount),
-          payments: completeTransaction.pos_transaction_payments.map((payment) => ({
+          payments: (completeTransaction.pos_transaction_payments || []).map((payment) => ({
             method: payment.payment_method,
             amount: Number(payment.amount),
             reference: payment.reference,

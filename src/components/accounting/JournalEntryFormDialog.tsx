@@ -76,7 +76,7 @@ export function JournalEntryFormDialog({
 
   const fetchAccounts = async () => {
     try {
-      const response = await fetch("/api/accounting/accounts");
+      const response = await fetch("/api/accounting/accounts?isActive=true&page=1&limit=100");
       if (!response.ok) {
         throw new Error("Failed to fetch accounts");
       }

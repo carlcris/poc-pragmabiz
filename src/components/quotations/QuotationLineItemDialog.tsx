@@ -70,7 +70,7 @@ export function QuotationLineItemDialog({
   mode = "add",
 }: QuotationLineItemDialogProps) {
   // Fetch basic items (for uomId and description)
-  const { data: basicItemsData } = useItems({ limit: 1000 });
+  const { data: basicItemsData } = useItems({ limit: 50 });
   const basicItems = basicItemsData?.data || [];
   const selectableItems = basicItems;
 

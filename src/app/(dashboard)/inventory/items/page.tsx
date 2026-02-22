@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -39,16 +40,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ItemFormDialog } from "@/components/items/ItemFormDialog";
 import type { ItemDialogMode } from "@/components/items/ItemFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Item } from "@/types/item";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+
+const ItemFormDialog = dynamic(
+  () => import("@/components/items/ItemFormDialog").then((mod) => mod.ItemFormDialog),
+  { ssr: false }
+);
+const ConfirmDialog = dynamic(
+  () => import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
+  { ssr: false }
+);
 
 function ItemsPageContent() {
   const [search, setSearch] = useState("");
@@ -108,7 +116,7 @@ function ItemsPageContent() {
   });
 
   // Fetch warehouses for filter
-  const { data: warehousesData } = useWarehouses({ limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = useMemo(
     () => warehousesData?.data?.filter((wh) => wh.isActive) || [],
     [warehousesData?.data]
@@ -679,28 +687,32 @@ function ItemsPageContent() {
         )}
       </div>
 
-      <ItemFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        itemId={selectedItemId}
-        mode={itemDialogMode}
-      />
+      {dialogOpen && (
+        <ItemFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          itemId={selectedItemId}
+          mode={itemDialogMode}
+        />
+      )}
 
-      <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        onConfirm={confirmDelete}
-        title="Delete Item"
-        description={
-          itemToDelete
-            ? `Are you sure you want to delete "${itemToDelete.name}"? This action cannot be undone.`
-            : "Are you sure you want to delete this item?"
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="destructive"
-        isLoading={deleteItem.isPending}
-      />
+      {deleteDialogOpen && (
+        <ConfirmDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={confirmDelete}
+          title="Delete Item"
+          description={
+            itemToDelete
+              ? `Are you sure you want to delete "${itemToDelete.name}"? This action cannot be undone.`
+              : "Are you sure you want to delete this item?"
+          }
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="destructive"
+          isLoading={deleteItem.isPending}
+        />
+      )}
     </div>
   );
 }

@@ -7,11 +7,19 @@ import type {
 } from "@/types/customer";
 
 const CUSTOMERS_QUERY_KEY = "customers";
+const LOOKUP_MAX_LIMIT = 50;
+
+const normalizeCustomerFilters = (filters?: CustomerFilters): CustomerFilters | undefined => {
+  if (!filters) return filters;
+  if (!filters.limit || filters.limit <= LOOKUP_MAX_LIMIT) return filters;
+  return { ...filters, limit: LOOKUP_MAX_LIMIT };
+};
 
 export function useCustomers(filters?: CustomerFilters) {
+  const normalizedFilters = normalizeCustomerFilters(filters);
   return useQuery({
-    queryKey: [CUSTOMERS_QUERY_KEY, filters],
-    queryFn: () => customersApi.getCustomers(filters),
+    queryKey: [CUSTOMERS_QUERY_KEY, normalizedFilters],
+    queryFn: () => customersApi.getCustomers(normalizedFilters),
     placeholderData: keepPreviousData,
   });
 }

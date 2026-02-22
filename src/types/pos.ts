@@ -38,6 +38,7 @@ export interface POSTransaction {
   status: POSTransactionStatus;
   cashierId: string;
   cashierName: string;
+  itemCount?: number;
   notes?: string;
   createdAt: string;
   updatedAt: string;

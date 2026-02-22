@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Plus, Search, Pencil, Filter, Package, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -40,11 +41,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
-import { LoadListFormDialog } from "@/components/load-lists/LoadListFormDialog";
 import type { LoadList, LoadListStatus } from "@/types/load-list";
+
+const LoadListFormDialog = dynamic(
+  () => import("@/components/load-lists/LoadListFormDialog").then((mod) => mod.LoadListFormDialog),
+  { ssr: false }
+);
 
 export default function LoadListsPage() {
   const router = useRouter();
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -67,11 +73,20 @@ export default function LoadListsPage() {
     limit: pageSize,
   });
 
-  const { data: suppliersData } = useSuppliers({ page: 1, limit: 1000 });
+  const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
   const suppliers = suppliersData?.data || [];
 
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = warehousesData?.data || [];
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getStatusBadge = (status: LoadListStatus) => {
     switch (status) {
@@ -192,13 +207,19 @@ export default function LoadListsPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by LL number, container, seal, batch..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
             />
           </div>
           <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Status" />
@@ -217,7 +238,13 @@ export default function LoadListsPage() {
             </Select>
           </ClientOnly>
           <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
-            <Select value={supplierFilter} onValueChange={(value) => setSupplierFilter(value)}>
+            <Select
+              value={supplierFilter}
+              onValueChange={(value) => {
+                setSupplierFilter(value);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Supplier" />
@@ -233,7 +260,13 @@ export default function LoadListsPage() {
             </Select>
           </ClientOnly>
           <ClientOnly fallback={<Skeleton className="h-10 w-full sm:w-[200px]" />}>
-            <Select value={warehouseFilter} onValueChange={(value) => setWarehouseFilter(value)}>
+            <Select
+              value={warehouseFilter}
+              onValueChange={(value) => {
+                setWarehouseFilter(value);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Warehouse" />
@@ -437,7 +470,9 @@ export default function LoadListsPage() {
         )}
       </div>
 
-      <LoadListFormDialog open={dialogOpen} onOpenChange={setDialogOpen} loadList={selectedLL} />
+      {dialogOpen && (
+        <LoadListFormDialog open={dialogOpen} onOpenChange={setDialogOpen} loadList={selectedLL} />
+      )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

@@ -58,26 +58,12 @@ export default function PurchaseReceiptsPage() {
   const { data, isLoading, error } = usePurchaseReceipts({
     search,
     status: statusFilter !== "all" ? statusFilter : undefined,
-    page: 1,
-    limit: 1000,
-  });
-
-  // Apply client-side filtering
-  const filteredReceipts = data?.data || [];
-
-  // Calculate pagination
-  const total = filteredReceipts.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const receipts = filteredReceipts.slice(start, end);
-
-  const pagination = {
-    total,
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const receipts = data?.data || [];
+  const pagination = data?.pagination;
 
   const getErrorMessage = (err: unknown, fallback: string) =>
     err instanceof Error ? err.message : fallback;
@@ -144,7 +130,10 @@ export default function PurchaseReceiptsPage() {
             <Input
               placeholder="Search receipts..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-8"
             />
           </div>

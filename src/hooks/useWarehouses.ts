@@ -7,11 +7,19 @@ import type {
 } from "@/types/warehouse";
 
 const WAREHOUSES_QUERY_KEY = "warehouses";
+const LOOKUP_MAX_LIMIT = 50;
+
+const normalizeWarehouseFilters = (filters?: WarehouseFilters): WarehouseFilters | undefined => {
+  if (!filters) return filters;
+  if (!filters.limit || filters.limit <= LOOKUP_MAX_LIMIT) return filters;
+  return { ...filters, limit: LOOKUP_MAX_LIMIT };
+};
 
 export function useWarehouses(filters?: WarehouseFilters) {
+  const normalizedFilters = normalizeWarehouseFilters(filters);
   return useQuery({
-    queryKey: [WAREHOUSES_QUERY_KEY, filters],
-    queryFn: () => warehousesApi.getWarehouses(filters),
+    queryKey: [WAREHOUSES_QUERY_KEY, normalizedFilters],
+    queryFn: () => warehousesApi.getWarehouses(normalizedFilters),
     placeholderData: keepPreviousData,
   });
 }

@@ -60,7 +60,7 @@ export default function GRNsPage() {
     limit: pageSize,
   });
 
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = warehousesData?.data || [];
 
   const getStatusBadge = (status: GRNStatus) => {

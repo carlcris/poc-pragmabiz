@@ -23,30 +23,11 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requirePermission(RESOURCES.GENERAL_LEDGER, "view");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId } = await createServerClientWithBU();
 
-    // Get current user's company
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
-
-    // Get user's company
-    const { data: userData, error: companyError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (companyError || !userData?.company_id) {
-      return NextResponse.json({ error: "Company not found" }, { status: 404 });
-    }
-
-    const companyId = userData.company_id;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;

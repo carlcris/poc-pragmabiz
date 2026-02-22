@@ -39,7 +39,7 @@ export default function StockLedgerPage() {
   const { formatCurrency } = useCurrency();
 
   // Fetch items and warehouses for dropdowns
-  const { data: itemsData } = useItems({ limit: 1000 });
+  const { data: itemsData } = useItems({ limit: 50 });
   const { data: warehousesData } = useWarehouses({ limit: 100 });
 
   const items = itemsData?.data || [];

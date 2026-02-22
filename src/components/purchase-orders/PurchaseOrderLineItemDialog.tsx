@@ -67,7 +67,7 @@ export function PurchaseOrderLineItemDialog({
   item,
   mode = "add",
 }: PurchaseOrderLineItemDialogProps) {
-  const { data: itemsData } = useItems({ limit: 1000, includeStock: true });
+  const { data: itemsData } = useItems({ limit: 50, includeStock: true });
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
   const [itemOpen, setItemOpen] = useState(false);

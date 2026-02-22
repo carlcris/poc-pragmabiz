@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -51,11 +52,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { InvoiceFormDialog } from "@/components/invoices/InvoiceFormDialog";
-import { RecordPaymentDialog } from "@/components/invoices/RecordPaymentDialog";
-import { InvoiceViewDialog } from "@/components/invoices/InvoiceViewDialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Invoice, InvoiceStatus } from "@/types/invoice";
+
+const InvoiceFormDialog = dynamic(
+  () => import("@/components/invoices/InvoiceFormDialog").then((mod) => mod.InvoiceFormDialog),
+  { ssr: false }
+);
+
+const RecordPaymentDialog = dynamic(
+  () => import("@/components/invoices/RecordPaymentDialog").then((mod) => mod.RecordPaymentDialog),
+  { ssr: false }
+);
+
+const InvoiceViewDialog = dynamic(
+  () => import("@/components/invoices/InvoiceViewDialog").then((mod) => mod.InvoiceViewDialog),
+  { ssr: false }
+);
 
 export default function InvoicesPage() {
   const [search, setSearch] = useState("");
@@ -80,30 +93,13 @@ export default function InvoicesPage() {
 
   const { data, isLoading, error } = useInvoices({
     search,
-    page: 1,
-    limit: 1000, // Get all for client-side filtering
-  });
-
-  // Apply client-side filters
-  let filteredInvoices = data?.data || [];
-
-  if (statusFilter !== "all") {
-    filteredInvoices = filteredInvoices.filter((inv) => inv.status === statusFilter);
-  }
-
-  // Calculate pagination
-  const total = filteredInvoices.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const invoices = filteredInvoices.slice(start, end);
-
-  const pagination = {
-    total,
+    status: statusFilter as InvoiceStatus | "all",
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const invoices = data?.data || [];
+  const pagination = data?.pagination;
 
   const getStatusIcon = (status: InvoiceStatus) => {
     switch (status) {
@@ -269,7 +265,10 @@ export default function InvoicesPage() {
             <Input
               placeholder="Search invoices..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="pl-8"
             />
           </div>
@@ -466,23 +465,29 @@ export default function InvoicesPage() {
         )}
       </div>
 
-      <InvoiceViewDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        invoice={selectedInvoice}
-      />
+      {viewDialogOpen && (
+        <InvoiceViewDialog
+          open={viewDialogOpen}
+          onOpenChange={setViewDialogOpen}
+          invoice={selectedInvoice}
+        />
+      )}
 
-      <InvoiceFormDialog
-        open={formDialogOpen}
-        onOpenChange={setFormDialogOpen}
-        invoice={selectedInvoice}
-      />
+      {formDialogOpen && (
+        <InvoiceFormDialog
+          open={formDialogOpen}
+          onOpenChange={setFormDialogOpen}
+          invoice={selectedInvoice}
+        />
+      )}
 
-      <RecordPaymentDialog
-        open={paymentDialogOpen}
-        onOpenChange={setPaymentDialogOpen}
-        invoice={selectedInvoice}
-      />
+      {paymentDialogOpen && (
+        <RecordPaymentDialog
+          open={paymentDialogOpen}
+          onOpenChange={setPaymentDialogOpen}
+          invoice={selectedInvoice}
+        />
+      )}
 
       <AlertDialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
         <AlertDialogContent>

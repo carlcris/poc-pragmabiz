@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -31,11 +32,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { StockTransactionFormDialog } from "@/components/stock/StockTransactionFormDialog";
-import { StockTransactionDetailDialog } from "@/components/stock/StockTransactionDetailDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type { TransactionType } from "@/types/stock-transaction";
+
+const StockTransactionFormDialog = dynamic(
+  () =>
+    import("@/components/stock/StockTransactionFormDialog").then(
+      (mod) => mod.StockTransactionFormDialog
+    ),
+  { ssr: false }
+);
+const StockTransactionDetailDialog = dynamic(
+  () =>
+    import("@/components/stock/StockTransactionDetailDialog").then(
+      (mod) => mod.StockTransactionDetailDialog
+    ),
+  { ssr: false }
+);
 
 export default function StockTransactionsPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -343,13 +357,15 @@ export default function StockTransactionsPage() {
         )}
       </div>
 
-      <StockTransactionFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      {dialogOpen && <StockTransactionFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />}
 
-      <StockTransactionDetailDialog
-        open={detailDialogOpen}
-        onOpenChange={setDetailDialogOpen}
-        transactionId={selectedTransactionId}
-      />
+      {detailDialogOpen && (
+        <StockTransactionDetailDialog
+          open={detailDialogOpen}
+          onOpenChange={setDetailDialogOpen}
+          transactionId={selectedTransactionId}
+        />
+      )}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export default function GeneralLedgerPage() {
 
   const fetchAccounts = useCallback(async () => {
     try {
-      const response = await fetch("/api/accounting/accounts?isActive=true");
+      const response = await fetch("/api/accounting/accounts?isActive=true&page=1&limit=50");
 
       if (!response.ok) {
         throw new Error("Failed to fetch accounts");

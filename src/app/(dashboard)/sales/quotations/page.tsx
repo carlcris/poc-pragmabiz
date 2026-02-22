@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Plus,
   Search,
@@ -50,13 +51,21 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
-import { QuotationFormDialog } from "@/components/quotations/QuotationFormDialog";
-import { QuotationViewDialog } from "@/components/quotations/QuotationViewDialog";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRouter } from "next/navigation";
 import type { Quotation, QuotationStatus } from "@/types/quotation";
 
+const QuotationFormDialog = dynamic(
+  () => import("@/components/quotations/QuotationFormDialog").then((mod) => mod.QuotationFormDialog),
+  { ssr: false }
+);
+const QuotationViewDialog = dynamic(
+  () => import("@/components/quotations/QuotationViewDialog").then((mod) => mod.QuotationViewDialog),
+  { ssr: false }
+);
+
 export default function QuotationsPage() {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -74,30 +83,22 @@ export default function QuotationsPage() {
 
   const { data, isLoading, error } = useQuotations({
     search,
-    page: 1,
-    limit: 1000, // Get all for client-side filtering
-  });
-
-  // Apply client-side filters
-  let filteredQuotations = data?.data || [];
-
-  if (statusFilter !== "all") {
-    filteredQuotations = filteredQuotations.filter((q) => q.status === statusFilter);
-  }
-
-  // Calculate pagination
-  const total = filteredQuotations.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const quotations = filteredQuotations.slice(start, end);
-
-  const pagination = {
-    total,
+    status: statusFilter as QuotationStatus | "all",
     page,
     limit: pageSize,
-    totalPages,
-  };
+  });
+
+  const quotations = data?.data || [];
+  const pagination = data?.pagination;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
 
   const getStatusIcon = (status: QuotationStatus) => {
     switch (status) {
@@ -252,8 +253,10 @@ export default function QuotationsPage() {
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search quotations..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+              }}
               className="pl-8"
             />
           </div>
@@ -423,17 +426,21 @@ export default function QuotationsPage() {
         )}
       </div>
 
-      <QuotationFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        quotation={selectedQuotation}
-      />
+      {dialogOpen && (
+        <QuotationFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          quotation={selectedQuotation}
+        />
+      )}
 
-      <QuotationViewDialog
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-        quotation={selectedQuotation}
-      />
+      {viewDialogOpen && (
+        <QuotationViewDialog
+          open={viewDialogOpen}
+          onOpenChange={setViewDialogOpen}
+          quotation={selectedQuotation}
+        />
+      )}
 
       <AlertDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
         <AlertDialogContent>

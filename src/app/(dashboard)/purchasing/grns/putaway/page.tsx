@@ -57,7 +57,7 @@ export default function PutawayPage() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [completedBoxes, setCompletedBoxes] = useState<ScannedBox[]>([]);
 
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 1000 });
+  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = warehousesData?.data || [];
 
   // Fetch warehouse locations when warehouse is selected
