@@ -6,6 +6,7 @@
  */
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { Resource } from "@/constants/resources";
 import type { UserPermissions, ResourcePermission, PermissionAction } from "@/types/rbac";
 
@@ -15,8 +16,12 @@ type PermissionStore = {
   isLoading: boolean;
   error: string | null;
   lastFetchedAt: number | null;
+  currentScopeKey: string | null;
+  permissionsCacheByScope: Record<string, UserPermissions>;
+  fetchedAtByScope: Record<string, number>;
 
   // Actions
+  setScope: (scopeKey: string | null) => void;
   setPermissions: (permissions: UserPermissions) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
@@ -38,102 +43,171 @@ type PermissionStore = {
 
 const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
-export const usePermissionStore = create<PermissionStore>((set, get) => ({
-  // Initial state
-  permissions: null,
-  isLoading: false,
-  error: null,
-  lastFetchedAt: null,
-
-  // Actions
-  setPermissions: (permissions) => {
-    set({
-      permissions,
-      error: null,
-      lastFetchedAt: Date.now(),
-    });
-  },
-
-  setLoading: (isLoading) => {
-    set({ isLoading });
-  },
-
-  setError: (error) => {
-    set({ error, isLoading: false });
-  },
-
-  clearPermissions: () => {
-    set({
+export const usePermissionStore = create<PermissionStore>()(
+  persist(
+    (set, get) => ({
+      // Initial state
       permissions: null,
       isLoading: false,
       error: null,
       lastFetchedAt: null,
-    });
-  },
+      currentScopeKey: null,
+      permissionsCacheByScope: {},
+      fetchedAtByScope: {},
 
-  markFetched: () => {
-    set({ lastFetchedAt: Date.now() });
-  },
+  // Actions
+      setScope: (scopeKey) => {
+        if (!scopeKey) {
+          set({
+            currentScopeKey: null,
+            permissions: null,
+            lastFetchedAt: null,
+            error: null,
+          });
+          return;
+        }
+
+        set((state) => ({
+          currentScopeKey: scopeKey,
+          permissions: state.permissionsCacheByScope[scopeKey] ?? null,
+          lastFetchedAt: state.fetchedAtByScope[scopeKey] ?? null,
+          error: null,
+        }));
+      },
+
+      setPermissions: (permissions) => {
+        set((state) => {
+          const now = Date.now();
+          if (!state.currentScopeKey) {
+            return {
+              permissions,
+              error: null,
+              lastFetchedAt: now,
+            };
+          }
+
+          return {
+            permissions,
+            error: null,
+            lastFetchedAt: now,
+            permissionsCacheByScope: {
+              ...state.permissionsCacheByScope,
+              [state.currentScopeKey]: permissions,
+            },
+            fetchedAtByScope: {
+              ...state.fetchedAtByScope,
+              [state.currentScopeKey]: now,
+            },
+          };
+        });
+      },
+
+      setLoading: (isLoading) => {
+        set({ isLoading });
+      },
+
+      setError: (error) => {
+        set({ error, isLoading: false });
+      },
+
+      clearPermissions: () => {
+        set({
+          permissions: null,
+          isLoading: false,
+          error: null,
+          lastFetchedAt: null,
+          currentScopeKey: null,
+          permissionsCacheByScope: {},
+          fetchedAtByScope: {},
+        });
+      },
+
+      markFetched: () => {
+        set((state) => {
+          const now = Date.now();
+          if (!state.currentScopeKey) {
+            return { lastFetchedAt: now };
+          }
+
+          return {
+            lastFetchedAt: now,
+            fetchedAtByScope: {
+              ...state.fetchedAtByScope,
+              [state.currentScopeKey]: now,
+            },
+          };
+        });
+      },
 
   // Permission checks
-  can: (resource, action) => {
-    const { permissions } = get();
-    if (!permissions || !permissions[resource]) {
-      return false;
-    }
+      can: (resource, action) => {
+        const { permissions } = get();
+        if (!permissions || !permissions[resource]) {
+          return false;
+        }
 
-    const resourcePermission = permissions[resource];
+        const resourcePermission = permissions[resource];
 
-    switch (action) {
-      case "view":
-        return resourcePermission.can_view;
-      case "create":
-        return resourcePermission.can_create;
-      case "edit":
-        return resourcePermission.can_edit;
-      case "delete":
-        return resourcePermission.can_delete;
-      default:
-        return false;
-    }
-  },
+        switch (action) {
+          case "view":
+            return resourcePermission.can_view;
+          case "create":
+            return resourcePermission.can_create;
+          case "edit":
+            return resourcePermission.can_edit;
+          case "delete":
+            return resourcePermission.can_delete;
+          default:
+            return false;
+        }
+      },
 
-  canView: (resource) => {
-    return get().can(resource, "view");
-  },
+      canView: (resource) => {
+        return get().can(resource, "view");
+      },
 
-  canCreate: (resource) => {
-    return get().can(resource, "create");
-  },
+      canCreate: (resource) => {
+        return get().can(resource, "create");
+      },
 
-  canEdit: (resource) => {
-    return get().can(resource, "edit");
-  },
+      canEdit: (resource) => {
+        return get().can(resource, "edit");
+      },
 
-  canDelete: (resource) => {
-    return get().can(resource, "delete");
-  },
+      canDelete: (resource) => {
+        return get().can(resource, "delete");
+      },
 
-  getResourcePermission: (resource) => {
-    const { permissions } = get();
-    if (!permissions || !permissions[resource]) {
-      return null;
-    }
-    return permissions[resource];
-  },
+      getResourcePermission: (resource) => {
+        const { permissions } = get();
+        if (!permissions || !permissions[resource]) {
+          return null;
+        }
+        return permissions[resource];
+      },
 
   // Utility
-  hasAnyPermissions: () => {
-    const { permissions } = get();
-    if (!permissions) return false;
+      hasAnyPermissions: () => {
+        const { permissions } = get();
+        if (!permissions) return false;
 
-    // Check if user has at least one view permission
-    return Object.values(permissions).some((perm) => perm.can_view);
-  },
+        // Check if user has at least one view permission
+        return Object.values(permissions).some((perm) => perm.can_view);
+      },
 
-  isStale: () => {
-    const { lastFetchedAt } = get();
-    if (!lastFetchedAt) return true;
-    return Date.now() - lastFetchedAt > STALE_TIME;
-  },
-}));
+      isStale: () => {
+        const { lastFetchedAt } = get();
+        if (!lastFetchedAt) return true;
+        return Date.now() - lastFetchedAt > STALE_TIME;
+      },
+    }),
+    {
+      name: "permission-store",
+      partialize: (state) => ({
+        currentScopeKey: state.currentScopeKey,
+        permissionsCacheByScope: state.permissionsCacheByScope,
+        fetchedAtByScope: state.fetchedAtByScope,
+      }),
+    }
+  )
+);

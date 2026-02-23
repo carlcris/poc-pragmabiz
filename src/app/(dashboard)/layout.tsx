@@ -1,41 +1,79 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { getUserPermissions } from "@/services/permissions/permissionResolver";
+import { DashboardShell } from "@/components/layout/DashboardShell";
+import type { User as AppUser } from "@/types/auth";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/authStore";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { Header } from "@/components/layout/Header";
-import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
-import { useLoadPermissions } from "@/hooks/usePermissions";
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { isAuthenticated, checkAuth, isLoading } = useAuthStore();
+  if (error || !user) {
+    redirect("/login");
+  }
 
-  // Load user permissions
-  useLoadPermissions();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("company_id, first_name, last_name")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, isLoading, router]);
+  const firstName =
+    (typeof user.user_metadata?.first_name === "string" ? user.user_metadata.first_name : "") ||
+    userProfile?.first_name ||
+    "";
+  const lastName =
+    (typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : "") ||
+    userProfile?.last_name ||
+    "";
+  const fullName =
+    [firstName, lastName].filter(Boolean).join(" ") ||
+    (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
+    user.email ||
+    "User";
+
+  const initialUser: AppUser = {
+    id: user.id,
+    email: user.email || "",
+    name: fullName,
+    firstName,
+    lastName,
+    role: typeof user.user_metadata?.role === "string" ? user.user_metadata.role : "user",
+    companyId: userProfile?.company_id || "",
+  };
+
+  const { supabase: buSupabase, currentBusinessUnitId } = await createServerClientWithBU();
+  const initialPermissions = await getUserPermissions(user.id, currentBusinessUnitId ?? null);
+  const initialPermissionScopeKey = `${user.id}:${currentBusinessUnitId ?? "all"}`;
+  let initialBusinessUnitName: string | null = null;
+
+  if (currentBusinessUnitId) {
+    const { data: businessUnitRow } = await buSupabase
+      .from("business_units")
+      .select("name")
+      .eq("id", currentBusinessUnitId)
+      .maybeSingle();
+
+    initialBusinessUnitName = businessUnitRow?.name ?? null;
+  }
 
   return (
-    <BusinessUnitProvider>
-      <div className="flex h-screen flex-col overflow-hidden md:flex-row">
-        <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto overscroll-contain bg-background p-4 sm:p-6">
-            {children}
-          </main>
-        </div>
-      </div>
-    </BusinessUnitProvider>
+    <DashboardShell
+      initialUser={initialUser}
+      initialToken={session?.access_token ?? null}
+      initialPermissions={initialPermissions}
+      initialPermissionScopeKey={initialPermissionScopeKey}
+      initialBusinessUnitName={initialBusinessUnitName}
+    >
+      {children}
+    </DashboardShell>
   );
 }

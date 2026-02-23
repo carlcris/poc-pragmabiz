@@ -14,11 +14,13 @@ type BusinessUnitStore = {
   currentBusinessUnit: BusinessUnitWithAccess | null;
   availableBusinessUnits: BusinessUnitWithAccess[];
   isLoading: boolean;
+  hasHydrated: boolean;
 
   // Actions
   setCurrentBusinessUnit: (businessUnit: BusinessUnitWithAccess | null) => void;
   setAvailableBusinessUnits: (businessUnits: BusinessUnitWithAccess[]) => void;
   setLoading: (isLoading: boolean) => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
   clearBusinessUnit: () => void;
 
   // Computed
@@ -33,6 +35,7 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
       currentBusinessUnit: null,
       availableBusinessUnits: [],
       isLoading: false,
+      hasHydrated: false,
 
       // Actions
       setCurrentBusinessUnit: (businessUnit) => {
@@ -47,11 +50,16 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
         set({ isLoading });
       },
 
+      setHasHydrated: (hasHydrated) => {
+        set({ hasHydrated });
+      },
+
       clearBusinessUnit: () => {
         set({
           currentBusinessUnit: null,
           availableBusinessUnits: [],
           isLoading: false,
+          hasHydrated: true,
         });
       },
 
@@ -70,6 +78,9 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
       partialize: (state) => ({
         currentBusinessUnit: state.currentBusinessUnit,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

@@ -26,10 +26,20 @@ import { useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
 import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import { toProperCase } from "@/lib/string";
 
-export const BusinessUnitSwitcher = () => {
+type BusinessUnitSwitcherProps = {
+  initialBusinessUnitName?: string | null;
+};
+
+export const BusinessUnitSwitcher = ({
+  initialBusinessUnitName = null,
+}: BusinessUnitSwitcherProps) => {
   const [open, setOpen] = useState(false);
-  const { currentBusinessUnit, availableBusinessUnits } = useBusinessUnitStore();
+  const { currentBusinessUnit, availableBusinessUnits, hasHydrated, isLoading } = useBusinessUnitStore();
   const { mutate: setContext, isPending } = useSetBusinessUnitContext();
+  const isInitializing = !hasHydrated || (isLoading && !currentBusinessUnit);
+  const displayBusinessUnitName =
+    currentBusinessUnit?.name ||
+    (!hasHydrated ? initialBusinessUnitName || null : null);
 
   // Sort business units: default first, then alphabetically by name
   const sortedBusinessUnits = useMemo(() => {
@@ -63,7 +73,7 @@ export const BusinessUnitSwitcher = () => {
       <div className="flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2">
         <Building2 className="h-4 w-4 shrink-0 text-white/70" />
         <span className="truncate text-sm text-white/90">
-          {currentBusinessUnit?.name || "No business unit"}
+          {displayBusinessUnitName || (isInitializing ? "Business unit" : "No business unit")}
         </span>
       </div>
     );
@@ -81,7 +91,9 @@ export const BusinessUnitSwitcher = () => {
         >
           <div className="flex items-center gap-2 truncate">
             <Building2 className="h-4 w-4 shrink-0" />
-            <span className="truncate">{currentBusinessUnit?.name || "Select business unit"}</span>
+            <span className="truncate">
+              {displayBusinessUnitName || (isInitializing ? "Business unit" : "Select business unit")}
+            </span>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>

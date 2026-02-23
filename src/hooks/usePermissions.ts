@@ -40,10 +40,11 @@ export function useLoadPermissions() {
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const availableBusinessUnits = useBusinessUnitStore((state) => state.availableBusinessUnits);
   const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
-  const { setPermissions, setLoading, setError } = usePermissionStore();
+  const { setScope, setPermissions, setLoading, setError } = usePermissionStore();
 
   const userId = user?.id;
   const businessUnitId = currentBusinessUnit?.id || null;
+  const permissionScopeKey = userId ? `${userId}:${businessUnitId ?? "all"}` : null;
 
   const isBusinessUnitReady =
     !isBusinessUnitLoading &&
@@ -96,6 +97,20 @@ export function useLoadPermissions() {
     refetchOnWindowFocus: false,
     retry: 1,
   });
+
+  // Hydrate permissions from scope-specific persisted cache (user + business unit)
+  useEffect(() => {
+    if (!userId) {
+      setScope(null);
+      return;
+    }
+
+    if (!isBusinessUnitReady) {
+      return;
+    }
+
+    setScope(permissionScopeKey);
+  }, [userId, isBusinessUnitReady, permissionScopeKey, setScope]);
 
   // Update store when query data changes
   useEffect(() => {
