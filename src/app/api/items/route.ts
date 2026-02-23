@@ -193,8 +193,8 @@ const transformDbItem = (dbItem: ItemRow): Item => {
 
 export async function GET(request: NextRequest) {
   try {
-    const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS);
-    if (unauthorized) return unauthorized;
+    // const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS);
+    // if (unauthorized) return unauthorized;
 
     const context = await requireRequestContext();
     if ("status" in context) return context;

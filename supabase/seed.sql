@@ -81,14 +81,22 @@ VALUES
 
 INSERT INTO "public"."item_categories"("id","company_id","parent_id","code","name","description","is_active","created_at","created_by","updated_at","updated_by","deleted_at","version","custom_fields")
 VALUES
-('a0cb8f17-34c7-433b-969e-a3474bcd1ade','00000000-0000-0000-0000-000000000001',NULL,'MOLD','Moldings','Frame moldings and profiles',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('9fd932f7-54ed-4a1d-a99e-50c996ce9745','00000000-0000-0000-0000-000000000001',NULL,'GLASS','Glass','Glass sheets for picture frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('e8a7d6cf-f743-4b10-ad68-b9a7e2977d0e','00000000-0000-0000-0000-000000000001',NULL,'BACK','Backing','Backing boards and materials',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('3371533a-eca9-4ccd-aac4-597ee27c4f7d','00000000-0000-0000-0000-000000000001',NULL,'HARD','Hardware','Frame hardware and accessories',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('c13ceaf5-8de0-4750-8c6a-6e1b039f9ee3','00000000-0000-0000-0000-000000000001',NULL,'FIN','Finished Frames','Complete assembled frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('2d55cdd1-8321-4383-9c75-b44f1b9d855b','00000000-0000-0000-0000-000000000001',NULL,'SUPPLY','Supplies','Tools and supplies for frame assembly',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
 ('13dac784-1469-419a-a3ee-b003e596a07e','00000000-0000-0000-0000-000000000001',NULL,'PACK','Packaging Materials','Packaging materials for frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('7729a6e6-b797-4d3f-8527-36ad910824f5','00000000-0000-0000-0000-000000000001',NULL,'MAT','Matboard','Matboards and mounting boards',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL);
+('2d55cdd1-8321-4383-9c75-b44f1b9d855b','00000000-0000-0000-0000-000000000001',NULL,'SUPPLY','Supplies','Tools and supplies for frame assembly',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('3371533a-eca9-4ccd-aac4-597ee27c4f7d','00000000-0000-0000-0000-000000000001',NULL,'ACRY','Acrylic','Lightweight, shatter-resistant sheets for picture framing',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('7729a6e6-b797-4d3f-8527-36ad910824f5','00000000-0000-0000-0000-000000000001',NULL,'MAT','Matboard','Matboards and mounting boards',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('9fd932f7-54ed-4a1d-a99e-50c996ce9745','00000000-0000-0000-0000-000000000001',NULL,'GLASS','Glass','Glass sheets for picture frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('a0cb8f17-34c7-433b-969e-a3474bcd1ade','00000000-0000-0000-0000-000000000001',NULL,'MOLD','Moldings','Frame moldings and profiles',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('c13ceaf5-8de0-4750-8c6a-6e1b039f9ee3','00000000-0000-0000-0000-000000000001',NULL,'FIN','Finished Frames','Complete assembled frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('e8a7d6cf-f743-4b10-ad68-b9a7e2977d0e','00000000-0000-0000-0000-000000000001',NULL,'BACK','Backing','Backing boards and materials',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('a13139e8-23e3-4c8e-b7f3-934ec41afbe0','00000000-0000-0000-0000-000000000001',NULL,'MIRR','Mirror','Reflective sheets for decorative and framed displays',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
+('b2386b6e-5aa5-4dcb-b56a-a74f63615de6','00000000-0000-0000-0000-000000000001',NULL,'ACCE','Accessories','Supporting items used in picture framing and assembly',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('e591604c-25b6-45f2-a7d2-3ea94ef8e1e2','00000000-0000-0000-0000-000000000001',NULL,'WEDGE','Wedges','Securing pieces used to hold artwork firmly in place',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('bc402ea2-9639-4fdd-9a9a-ad78790a0d87','00000000-0000-0000-0000-000000000001',NULL,'FLEX','Flexible','Bendable materials for curved or custom frame designs',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('2f0a43c8-b38d-4c1b-89f9-53590ec71599','00000000-0000-0000-0000-000000000001',NULL,'MACH','Machines','Equipment used for framing, cutting, and assembly',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('bc48a101-cb9b-4daa-adc4-efa9ea853f91','00000000-0000-0000-0000-000000000001',NULL,'SHRINK','Shrink Film','Protective wrapping for finished frames and artwork',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('c1326506-d04c-491c-953f-ddcc46ee4d43','00000000-0000-0000-0000-000000000001',NULL,'PTACK','Photo tack','Removable adhesive for mounting photos and prints',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('6b8aa7d9-c0e9-4216-9d6a-973327c22b26','00000000-0000-0000-0000-000000000001',NULL,'ARTS','Arts','Decorative elements and materials for creative framing',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL);
 -- ============================================================================
 -- SEED DATA: Items
 -- ============================================================================
