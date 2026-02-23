@@ -38,7 +38,6 @@
     "html5-qrcode": "^2.3.8",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.548.0",
-    "msw": "^2.11.6",
     "next": "^15.5.11",
     "next-i18next": "^15.4.2",
     "next-intl": "^4.6.1",
@@ -69,10 +68,5 @@
     "prettier-plugin-tailwindcss": "^0.6.8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
-  },
-  "msw": {
-    "workerDirectory": [
-      "public"
-    ]
   }
 }

@@ -26,7 +26,6 @@ type PermissionStore = {
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
   clearPermissions: () => void;
-  markFetched: () => void;
 
   // Permission checks
   can: (resource: Resource, action: PermissionAction) => boolean;
@@ -38,10 +37,7 @@ type PermissionStore = {
 
   // Utility
   hasAnyPermissions: () => boolean;
-  isStale: () => boolean; // Check if permissions need refresh (5 min)
 };
-
-const STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
 export const usePermissionStore = create<PermissionStore>()(
   persist(
@@ -122,23 +118,6 @@ export const usePermissionStore = create<PermissionStore>()(
         });
       },
 
-      markFetched: () => {
-        set((state) => {
-          const now = Date.now();
-          if (!state.currentScopeKey) {
-            return { lastFetchedAt: now };
-          }
-
-          return {
-            lastFetchedAt: now,
-            fetchedAtByScope: {
-              ...state.fetchedAtByScope,
-              [state.currentScopeKey]: now,
-            },
-          };
-        });
-      },
-
   // Permission checks
       can: (resource, action) => {
         const { permissions } = get();
@@ -195,11 +174,6 @@ export const usePermissionStore = create<PermissionStore>()(
         return Object.values(permissions).some((perm) => perm.can_view);
       },
 
-      isStale: () => {
-        const { lastFetchedAt } = get();
-        if (!lastFetchedAt) return true;
-        return Date.now() - lastFetchedAt > STALE_TIME;
-      },
     }),
     {
       name: "permission-store",

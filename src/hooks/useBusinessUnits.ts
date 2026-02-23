@@ -118,30 +118,3 @@ export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
     },
   });
 }
-
-/**
- * Initialize business unit context
- * Loads available BUs and sets default if none is selected
- */
-export function useInitializeBusinessUnit() {
-  const { data: businessUnits, isLoading } = useBusinessUnits();
-  const { mutate: setContext } = useSetBusinessUnitContext();
-  const { currentBusinessUnit, getDefaultBusinessUnit } = useBusinessUnitStore();
-
-  // Auto-select default business unit if none is currently selected
-  if (!isLoading && businessUnits && !currentBusinessUnit) {
-    const defaultBU = getDefaultBusinessUnit();
-    if (defaultBU) {
-      setContext(defaultBU.id);
-    } else if (businessUnits.length > 0) {
-      // If no default, select the first available
-      setContext(businessUnits[0].id);
-    }
-  }
-
-  return {
-    businessUnits,
-    isLoading,
-    currentBusinessUnit,
-  };
-}

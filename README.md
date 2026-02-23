@@ -11,7 +11,6 @@ Modern ERP system built with Next.js 15, TypeScript, Tailwind CSS, and shadcn/ui
 - **State Management**: Zustand
 - **Data Fetching**: React Query (@tanstack/react-query)
 - **Forms**: React Hook Form + Zod
-- **API Mocking**: MSW (Mock Service Worker)
 - **i18n**: next-i18next
 - **Icons**: Lucide React
 - **Charts**: Recharts
@@ -65,7 +64,6 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 │   ├── stores/              # Zustand stores
 │   ├── lib/                 # Utilities and helpers
 │   ├── i18n/                # Internationalization
-│   ├── mocks/               # MSW mock handlers
 │   └── types/               # TypeScript type definitions
 ├── public/                  # Static assets
 ├── supabase/                # Migrations, config, edge functions
@@ -80,7 +78,6 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - ✅ Project setup
 - ⏳ Authentication & Layout
 - ⏳ Core components library
-- ⏳ Mock API setup
 
 ### Phase 2: Inventory Module
 
