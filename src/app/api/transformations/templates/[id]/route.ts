@@ -3,13 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { updateTransformationTemplateSchema } from "@/lib/validations/transformation-template";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-type DbTransformationTemplateUpdate = {
-  template_name?: string;
-  description?: string | null;
-  is_active?: boolean;
-  updated_by?: string;
-  updated_at?: string;
-};
 
 // GET /api/transformations/templates/[id] - Get template by ID
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -104,7 +97,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Check if template exists
+    // Check if template exists and lock status (used for early UX-friendly erroring)
     const { data: existingTemplate } = await supabase
       .from("transformation_templates")
       .select("id, usage_count")
@@ -118,8 +111,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // Parse and validate request body
-    const body = await request.json();
-    const validationResult = updateTransformationTemplateSchema.safeParse(body);
+    const rawBody = (await request.json()) as Record<string, unknown>;
+    const validationResult = updateTransformationTemplateSchema.safeParse(rawBody);
 
     if (!validationResult.success) {
       return NextResponse.json(
@@ -130,10 +123,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const data = validationResult.data;
 
+    const hasStructuralChanges = data.inputs !== undefined || data.outputs !== undefined;
+
     // Check if template is locked (usage_count > 0)
-    // Only allow isActive updates if locked, block name/description changes
+    // Only allow isActive updates if locked, block name/description/image/structure changes
     if (existingTemplate.usage_count > 0) {
-      if (data.templateName || data.description) {
+      if (data.templateName || data.description || data.imageUrl !== undefined || hasStructuralChanges) {
         return NextResponse.json(
           {
             error: `Template is locked because it is used by ${existingTemplate.usage_count} order(s). Only status changes are allowed.`,
@@ -143,35 +138,78 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    // Build update object
-    const updateData: DbTransformationTemplateUpdate = {
-      updated_by: user.id,
-      updated_at: new Date().toISOString(),
-    };
+    const { data: updatedTemplate, error: rpcError } = await supabase.rpc(
+      "update_transformation_template",
+      {
+        p_template_id: id,
+        p_company_id: userData.company_id,
+        p_user_id: user.id,
+        p_template_name_provided: Object.prototype.hasOwnProperty.call(rawBody, "templateName"),
+        p_template_name: data.templateName ?? null,
+        p_description_provided: Object.prototype.hasOwnProperty.call(rawBody, "description"),
+        p_description: data.description ?? null,
+        p_image_url_provided: Object.prototype.hasOwnProperty.call(rawBody, "imageUrl"),
+        p_image_url: data.imageUrl ?? null,
+        p_is_active_provided: Object.prototype.hasOwnProperty.call(rawBody, "isActive"),
+        p_is_active: data.isActive ?? null,
+        p_inputs: data.inputs !== undefined ? JSON.parse(JSON.stringify(data.inputs)) : null,
+        p_outputs: data.outputs !== undefined ? JSON.parse(JSON.stringify(data.outputs)) : null,
+      }
+    );
 
-    if (data.templateName !== undefined) {
-      updateData.template_name = data.templateName;
-    }
-    if (data.description !== undefined) {
-      updateData.description = data.description;
-    }
-    if (data.isActive !== undefined) {
-      updateData.is_active = data.isActive;
-    }
+    if (rpcError) {
+      if (rpcError.code === "23505") {
+        const errorText = [rpcError.message, rpcError.details, rpcError.hint]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
 
-    // Update template
-    const { data: updatedTemplate, error: updateError } = await supabase
+        let message: string;
+        if (errorText.includes("uq_template_output_item")) {
+          message = "Duplicate items in outputs are not allowed";
+        } else if (errorText.includes("uq_template_input_item")) {
+          message = "Duplicate items in inputs are not allowed";
+        } else {
+          // Surface the actual unique constraint context instead of mislabeling it.
+          message = rpcError.details
+            ? `${rpcError.message} (${rpcError.details})`
+            : rpcError.message;
+        }
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+      if (rpcError.code === "P0001") {
+        return NextResponse.json({ error: rpcError.message }, { status: 400 });
+      }
+      if (rpcError.code === "P0002") {
+        return NextResponse.json({ error: "Template not found" }, { status: 404 });
+      }
+      return NextResponse.json({ error: rpcError.message }, { status: 500 });
+    }
+    const { data: completeTemplate, error: refetchError } = await supabase
       .from("transformation_templates")
-      .update(updateData)
+      .select(
+        `
+        *,
+        inputs:transformation_template_inputs(
+          *,
+          items(id, item_code, item_name),
+          uom:units_of_measure(id, uom_name)
+        ),
+        outputs:transformation_template_outputs(
+          *,
+          items(id, item_code, item_name),
+          uom:units_of_measure(id, uom_name)
+        )
+      `
+      )
       .eq("id", id)
-      .select()
       .single();
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (refetchError) {
+      return NextResponse.json({ data: updatedTemplate });
     }
 
-    return NextResponse.json({ data: updatedTemplate });
+    return NextResponse.json({ data: completeTemplate });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

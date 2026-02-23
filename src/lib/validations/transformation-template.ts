@@ -66,6 +66,7 @@ export const createTransformationTemplateSchema = z
       .min(1, "Template name is required")
       .max(200, "Template name must be 200 characters or less"),
     description: z.string().max(1000).optional(),
+    imageUrl: z.string().url("Image URL must be a valid URL").optional(),
     inputs: z.array(templateInputItemSchema).min(1, "At least one input item is required"),
     outputs: z.array(templateOutputItemSchema).min(1, "At least one output item is required"),
   })
@@ -123,6 +124,9 @@ export const updateTransformationTemplateSchema = z.object({
     .max(200, "Template name must be 200 characters or less")
     .optional(),
   description: z.string().max(1000).optional(),
+  imageUrl: z.string().url("Image URL must be a valid URL").optional(),
+  inputs: z.array(templateInputItemSchema).min(1, "At least one input item is required").optional(),
+  outputs: z.array(templateOutputItemSchema).min(1, "At least one output item is required").optional(),
   isActive: z.boolean().optional(),
 });
 

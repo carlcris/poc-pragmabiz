@@ -163,7 +163,11 @@ export default function TransformationTemplatesPage() {
               </TableRow>
             ) : (
               templatesData?.data.map((template) => (
-                <TableRow key={template.id}>
+                <TableRow
+                  key={template.id}
+                  className="cursor-pointer"
+                  onClick={() => setViewTemplate(template)}
+                >
                   <TableCell className="font-medium">{template.template_code}</TableCell>
                   <TableCell>{template.template_name}</TableCell>
                   <TableCell>
@@ -185,7 +189,7 @@ export default function TransformationTemplatesPage() {
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="sm" onClick={() => setViewTemplate(template)}>
                         <Eye className="h-4 w-4" />
                       </Button>

@@ -32,6 +32,28 @@ type UserContext = {
   accessibleBusinessUnitIds: string[];
 };
 
+type WarehousePageRpcRow = {
+  id: string;
+  companyId: string;
+  businessUnitId: string | null;
+  code: string;
+  name: string;
+  description: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  email: string;
+  managerName: string | null;
+  isActive: boolean;
+  isVan: boolean;
+  createdAt: string;
+  updatedAt: string;
+  total_count: number | string;
+};
+
 type CreateWarehouseBody = {
   code?: string;
   name?: string;
@@ -49,29 +71,27 @@ type CreateWarehouseBody = {
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
 
-function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
-  return {
-    id: dbWarehouse.id,
-    companyId: dbWarehouse.company_id,
-    businessUnitId: dbWarehouse.business_unit_id,
-    code: dbWarehouse.warehouse_code,
-    name: dbWarehouse.warehouse_name,
-    description: "",
-    address:
-      `${dbWarehouse.address_line1 || ""}${dbWarehouse.address_line2 ? ` ${dbWarehouse.address_line2}` : ""}`.trim(),
-    city: dbWarehouse.city || "",
-    state: dbWarehouse.state || "",
-    postalCode: dbWarehouse.postal_code || "",
-    country: dbWarehouse.country || "",
-    phone: dbWarehouse.phone || "",
-    email: dbWarehouse.email || "",
-    managerName: dbWarehouse.contact_person || undefined,
-    isActive: dbWarehouse.is_active ?? true,
-    isVan: dbWarehouse.is_van ?? false,
-    createdAt: dbWarehouse.created_at,
-    updatedAt: dbWarehouse.updated_at || dbWarehouse.created_at,
-  };
-}
+const transformDbWarehouse = (dbWarehouse: DbWarehouse): Warehouse => ({
+  id: dbWarehouse.id,
+  companyId: dbWarehouse.company_id,
+  businessUnitId: dbWarehouse.business_unit_id,
+  code: dbWarehouse.warehouse_code,
+  name: dbWarehouse.warehouse_name,
+  description: "",
+  address:
+    `${dbWarehouse.address_line1 || ""}${dbWarehouse.address_line2 ? ` ${dbWarehouse.address_line2}` : ""}`.trim(),
+  city: dbWarehouse.city || "",
+  state: dbWarehouse.state || "",
+  postalCode: dbWarehouse.postal_code || "",
+  country: dbWarehouse.country || "",
+  phone: dbWarehouse.phone || "",
+  email: dbWarehouse.email || "",
+  managerName: dbWarehouse.contact_person || undefined,
+  isActive: dbWarehouse.is_active ?? true,
+  isVan: dbWarehouse.is_van ?? false,
+  createdAt: dbWarehouse.created_at,
+  updatedAt: dbWarehouse.updated_at || dbWarehouse.created_at,
+});
 
 function parsePositiveInt(raw: string | null, fallback: number): number {
   const parsed = Number.parseInt(raw || "", 10);
@@ -169,8 +189,6 @@ export async function GET(request: NextRequest) {
     const page = parsePositiveInt(searchParams.get("page"), 1);
     const requestedLimit = parsePositiveInt(searchParams.get("limit"), DEFAULT_LIMIT);
     const limit = Math.min(requestedLimit, MAX_LIMIT);
-    const offset = (page - 1) * limit;
-
     if (context.accessibleBusinessUnitIds.length === 0) {
       return NextResponse.json({
         data: [],
@@ -183,32 +201,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const buScope = `business_unit_id.in.(${context.accessibleBusinessUnitIds.join(",")}),business_unit_id.is.null`;
-
-    let query = supabase
-      .from("warehouses")
-      .select("*", { count: "exact" })
-      .eq("company_id", context.companyId)
-      .is("deleted_at", null)
-      .or(buScope);
-
-    if (search) {
-      query = query.or(
-        `warehouse_code.ilike.%${search}%,warehouse_name.ilike.%${search}%,city.ilike.%${search}%`
-      );
-    }
-
-    if (country) {
-      query = query.ilike("country", `%${country}%`);
-    }
-
-    if (parsedIsActive !== null) {
-      query = query.eq("is_active", parsedIsActive);
-    }
-
-    const { data, error, count } = await query
-      .order("warehouse_code", { ascending: true })
-      .range(offset, offset + limit - 1);
+    const { data, error } = await supabase.rpc("get_warehouses", {
+      p_company_id: context.companyId,
+      p_accessible_business_unit_ids: context.accessibleBusinessUnitIds,
+      p_search: search,
+      p_country: country,
+      p_is_active: parsedIsActive,
+      p_page: page,
+      p_limit: limit,
+    });
 
     if (error) {
       return NextResponse.json(
@@ -217,12 +218,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rows = (data || []) as DbWarehouse[];
-    const total = count || 0;
+    const rows = (data || []) as WarehousePageRpcRow[];
+    const total = rows.length > 0 ? Number(rows[0].total_count) || 0 : 0;
     const totalPages = Math.ceil(total / limit);
 
+    const warehouses: Warehouse[] = rows.map(({ total_count: totalCount, ...warehouse }) => {
+      void totalCount;
+      return {
+        ...warehouse,
+        managerName: warehouse.managerName || undefined,
+      };
+    });
+
     return NextResponse.json({
-      data: rows.map(transformDbWarehouse),
+      data: warehouses,
       pagination: {
         page,
         total,

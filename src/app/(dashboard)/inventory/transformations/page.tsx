@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Search, Eye, Trash2, Package } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useTransformationOrders,
   useDeleteTransformationOrder,
@@ -54,6 +55,7 @@ const statusColors: Record<TransformationOrderStatus, string> = {
 };
 
 export default function TransformationOrdersPage() {
+  const router = useRouter();
   const { formatCurrency } = useCurrency();
   const { t } = useLanguage();
   const [search, setSearch] = useState("");
@@ -209,7 +211,11 @@ export default function TransformationOrdersPage() {
             </TableHeader>
             <TableBody>
               {ordersData.data.map((order: TransformationOrderApi) => (
-                <TableRow key={order.id}>
+                <TableRow
+                  key={order.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/inventory/transformations/${order.id}`)}
+                >
                   <TableCell className="font-medium">{order.order_code}</TableCell>
                   <TableCell>{order.template?.template_code || "N/A"}</TableCell>
                   <TableCell>
@@ -225,7 +231,7 @@ export default function TransformationOrdersPage() {
                     {formatCurrency(order.total_output_cost || 0)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="sm" asChild>
                         <Link href={`/inventory/transformations/${order.id}`}>
                           <Eye className="h-4 w-4" />

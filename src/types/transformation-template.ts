@@ -44,6 +44,7 @@ export interface TransformationTemplate {
   templateCode: string;
   templateName: string;
   description?: string;
+  imageUrl?: string;
   isActive: boolean;
   usageCount: number;
   createdAt: string;
@@ -72,6 +73,9 @@ export type TransformationTemplateUomApi = {
 
 export type TransformationTemplateInputApi = {
   id: string;
+  item_id?: string;
+  uom_id?: string;
+  sequence?: number;
   quantity: number;
   notes?: string | null;
   items?: TransformationTemplateItemApi | null;
@@ -80,6 +84,9 @@ export type TransformationTemplateInputApi = {
 
 export type TransformationTemplateOutputApi = {
   id: string;
+  item_id?: string;
+  uom_id?: string;
+  sequence?: number;
   quantity: number;
   notes?: string | null;
   is_scrap?: boolean;
@@ -93,6 +100,7 @@ export type TransformationTemplateApi = {
   template_code: string;
   template_name: string;
   description?: string | null;
+  image_url?: string | null;
   is_active: boolean;
   usage_count: number;
   created_by?: string | null;
@@ -113,6 +121,7 @@ export interface CreateTransformationTemplateRequest {
   templateCode: string;
   templateName: string;
   description?: string;
+  imageUrl?: string;
   inputs: {
     itemId: string;
     quantity: number;
@@ -133,6 +142,22 @@ export interface CreateTransformationTemplateRequest {
 export interface UpdateTransformationTemplateRequest {
   templateName?: string;
   description?: string;
+  imageUrl?: string;
+  inputs?: {
+    itemId: string;
+    quantity: number;
+    uomId: string;
+    sequence?: number;
+    notes?: string;
+  }[];
+  outputs?: {
+    itemId: string;
+    quantity: number;
+    uomId: string;
+    sequence?: number;
+    isScrap?: boolean;
+    notes?: string;
+  }[];
   isActive?: boolean;
 }
 
