@@ -5,9 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
 import { useReceiveStockRequest } from "@/hooks/useStockRequests";
+import { useLookupWarehouseLocations } from "@/hooks/useLookups";
 import {
   Dialog,
   DialogContent,
@@ -78,11 +77,7 @@ export function ReceiveStockRequestDialog({
 
   const receivingWarehouseId = stockRequest?.requesting_warehouse?.id || "";
 
-  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
-    queryKey: ["warehouse-locations", receivingWarehouseId],
-    queryFn: () => apiClient.get(`/api/warehouses/${receivingWarehouseId}/locations`),
-    enabled: !!receivingWarehouseId,
-  });
+  const { data: locationsData } = useLookupWarehouseLocations(receivingWarehouseId, { limit: 100 });
 
   const locations = useMemo(
     () => (locationsData?.data || []).filter((location) => location.isActive),

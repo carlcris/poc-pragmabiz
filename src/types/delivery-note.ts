@@ -8,6 +8,10 @@ export type DeliveryNoteStatus =
   | "received"
   | "voided";
 
+export type DeliveryNoteFulfillmentMode =
+  | "transfer_to_store"
+  | "customer_pickup_from_warehouse";
+
 export type DeliveryNoteSource = {
   company_id: string;
   dn_id: string;
@@ -70,6 +74,7 @@ export type DeliveryNote = {
   status: DeliveryNoteStatus;
   requesting_warehouse_id: string;
   fulfilling_warehouse_id: string;
+  fulfillment_mode?: DeliveryNoteFulfillmentMode;
   confirmed_at: string | null;
   picking_started_at: string | null;
   picking_started_by: string | null;
@@ -99,6 +104,7 @@ export type CreateDeliveryNotePayload = {
   srIds: string[];
   requestingWarehouseId?: string;
   fulfillingWarehouseId?: string;
+  fulfillmentMode?: DeliveryNoteFulfillmentMode;
   notes?: string;
   driverName?: string;
   items: Array<{
@@ -135,5 +141,13 @@ export type ReceiveDeliveryNotePayload = {
     deliveryNoteItemId: string;
     receivedQty: number;
     locationId?: string | null;
+  }>;
+};
+
+export type ReceiveDirectPickupDeliveryNotePayload = Omit<ReceiveDeliveryNotePayload, "items"> & {
+  confirmDirectCustomerPickup?: boolean;
+  items?: Array<{
+    deliveryNoteItemId: string;
+    receivedQty: number;
   }>;
 };

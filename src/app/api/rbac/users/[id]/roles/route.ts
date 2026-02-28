@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { getAuthenticatedUser, checkPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { invalidatePermissionCache } from "@/services/permissions/permissionResolver";
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
@@ -42,10 +43,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const searchParams = request.nextUrl.searchParams;
     const businessUnitId = searchParams.get("businessUnitId");
 
-    // Check if user has permission to view other users' roles OR is viewing their own
-    const canViewUsers = await checkPermission(RESOURCES.USERS, "view");
-    if (userId !== user.id && !canViewUsers) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Users can always fetch their own roles.
+    // Only check permission when requesting another user's roles to avoid an extra
+    // permission RPC during login/self-bootstrap flows.
+    if (userId !== user.id) {
+      const canViewUsers = await checkPermission(RESOURCES.USERS, "view");
+      if (!canViewUsers) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     // Verify target user exists and belongs to same company
@@ -203,6 +208,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
+    // User role assignments directly change effective permissions.
+    invalidatePermissionCache(userId);
+
     return NextResponse.json({
       message: "Role assigned successfully",
     });
@@ -267,6 +275,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         { status: 500 }
       );
     }
+
+    // User role assignments directly change effective permissions.
+    invalidatePermissionCache(userId);
 
     return NextResponse.json({
       message: "Role removed successfully",

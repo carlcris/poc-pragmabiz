@@ -25,6 +25,7 @@ type DeliveryNoteRow = {
     | "voided";
   requesting_warehouse_id: string;
   fulfilling_warehouse_id: string;
+  fulfillment_mode: "transfer_to_store" | "customer_pickup_from_warehouse";
   confirmed_at: string | null;
   picking_started_at: string | null;
   picking_started_by: string | null;
@@ -61,6 +62,7 @@ type DeliveryNoteItemRow = {
 type DeliveryNoteWithRelations = {
   requesting_warehouse_id: string;
   fulfilling_warehouse_id: string;
+  fulfillment_mode?: "transfer_to_store" | "customer_pickup_from_warehouse";
   delivery_note_items?: Array<
     DeliveryNoteItemRow & {
       items?: unknown;
@@ -239,6 +241,23 @@ export const computeStockRequestDerivedStatus = async (
     derivedStatus = "partially_allocated";
   } else if (hasNonVoidedDn) {
     derivedStatus = "allocating";
+  } else if (
+    [
+      "approved",
+      "allocating",
+      "partially_allocated",
+      "allocated",
+      "dispatched",
+      "partially_fulfilled",
+      "fulfilled",
+      "picked",
+      "delivered",
+      "received",
+      "completed",
+    ].includes(request.status)
+  ) {
+    // With no active DN allocations, revert allocation lifecycle back to approved.
+    derivedStatus = "approved";
   } else if (request.status === "draft") {
     derivedStatus = "draft";
   } else {

@@ -62,7 +62,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { DeliveryNote, DeliveryNotePickListSummary } from "@/types/delivery-note";
+import type {
+  DeliveryNote,
+  DeliveryNoteFulfillmentMode,
+  DeliveryNotePickListSummary,
+} from "@/types/delivery-note";
 import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
 
@@ -167,6 +171,8 @@ export default function DeliveryNotesPage() {
   const [voidReason, setVoidReason] = useState("");
   const [selectedSourceBuId, setSelectedSourceBuId] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [createFulfillmentMode, setCreateFulfillmentMode] =
+    useState<DeliveryNoteFulfillmentMode>("transfer_to_store");
   const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
   const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(new Set());
   const [createValidationError, setCreateValidationError] = useState<string>("");
@@ -175,9 +181,7 @@ export default function DeliveryNotesPage() {
   >({});
   const [isLoadingInventory, setIsLoadingInventory] = useState(false);
 
-  const { data: deliveryNotesData, isLoading } = useDeliveryNotes(
-    statusFilter === "all" ? undefined : statusFilter
-  );
+  const { data: deliveryNotesData, isLoading } = useDeliveryNotes();
   const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 50 });
   const { data: usersData } = useUsers();
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
@@ -212,6 +216,10 @@ export default function DeliveryNotesPage() {
   const deliveryNotes = useMemo(() => {
     let filtered = allDeliveryNotes;
 
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((dn) => dn.status === statusFilter);
+    }
+
     // Apply search filter
     if (search.trim()) {
       const searchLower = search.toLowerCase();
@@ -224,7 +232,7 @@ export default function DeliveryNotesPage() {
     }
 
     return filtered;
-  }, [allDeliveryNotes, search, warehouseLabelById]);
+  }, [allDeliveryNotes, search, statusFilter, warehouseLabelById]);
 
   const stockRequests = useMemo(() => stockRequestsData?.data || [], [stockRequestsData?.data]);
 
@@ -275,6 +283,12 @@ export default function DeliveryNotesPage() {
     if (!currentBusinessUnit?.id) return true;
     const fulfillingWarehouseBuId = warehouseBusinessUnitById.get(dn.fulfilling_warehouse_id);
     return fulfillingWarehouseBuId !== currentBusinessUnit.id;
+  };
+
+  const canDispatchDn = (dn: Pick<DeliveryNote, "fulfilling_warehouse_id">) => {
+    if (!currentBusinessUnit?.id) return true;
+    const fulfillingWarehouseBuId = warehouseBusinessUnitById.get(dn.fulfilling_warehouse_id);
+    return fulfillingWarehouseBuId === currentBusinessUnit.id;
   };
 
   const formatWarehouseAddress = (warehouseId?: string | null) => {
@@ -356,6 +370,21 @@ export default function DeliveryNotesPage() {
     );
   }, [stockRequests]);
 
+  const allocatedBySrItemId = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    for (const dn of allDeliveryNotes) {
+      if (["voided", "received"].includes(dn.status)) continue;
+      for (const item of dn.delivery_note_items || []) {
+        const srItemId = item.sr_item_id;
+        if (!srItemId) continue;
+        totals.set(srItemId, (totals.get(srItemId) || 0) + Number(item.allocated_qty || 0));
+      }
+    }
+
+    return totals;
+  }, [allDeliveryNotes]);
+
   const sourceBusinessUnits = useMemo(() => {
     const map = new Map<string, string>();
     for (const request of selectableRequests) {
@@ -373,6 +402,7 @@ export default function DeliveryNotesPage() {
   const resetCreateState = () => {
     setSelectedSourceBuId("");
     setNotes("");
+    setCreateFulfillmentMode("transfer_to_store");
     setDraftLines([]);
     setSelectedLineIds(new Set());
     setCreateValidationError("");
@@ -408,7 +438,8 @@ export default function DeliveryNotesPage() {
           .map((item) => {
             const requestedQty = Number(item.requested_qty || 0);
             const receivedQty = Number(item.received_qty || 0);
-            const allocatableQty = Math.max(0, requestedQty - receivedQty);
+            const alreadyAllocatedQty = allocatedBySrItemId.get(item.id) || 0;
+            const allocatableQty = Math.max(0, requestedQty - receivedQty - alreadyAllocatedQty);
             return {
               srId: request.id,
               requestCode: request.request_code,
@@ -563,6 +594,7 @@ export default function DeliveryNotesPage() {
       await createMutation.mutateAsync({
         requestingWarehouseId,
         fulfillingWarehouseId,
+        fulfillmentMode: createFulfillmentMode,
         srIds: distinctSrIds,
         notes: notes.trim() || undefined,
         items: lines.map((line) => ({
@@ -605,10 +637,18 @@ export default function DeliveryNotesPage() {
     if (!actionDn || !actionType) return;
 
     if (actionType === "confirm") {
+      if (!canDispatchDn(actionDn)) {
+        return;
+      }
+
       await confirmMutation.mutateAsync(actionDn.id);
     }
 
     if (actionType === "queue_picking") {
+      if (!canDispatchDn(actionDn)) {
+        return;
+      }
+
       const pickerUserIds = Array.from(selectedQueuePickerIds);
       if (pickerUserIds.length === 0) return;
 
@@ -620,6 +660,10 @@ export default function DeliveryNotesPage() {
     }
 
     if (actionType === "dispatch") {
+      if (!canDispatchDn(actionDn)) {
+        return;
+      }
+
       await dispatchMutation.mutateAsync({
         id: actionDn.id,
         data: {
@@ -640,6 +684,7 @@ export default function DeliveryNotesPage() {
 
       await receiveMutation.mutateAsync({
         id: actionDn.id,
+        fulfillmentMode: actionDn.fulfillment_mode || "transfer_to_store",
         data: {
           notes: receiveNotes.trim() || undefined,
           items: actionItems.map((item) => ({
@@ -838,7 +883,7 @@ export default function DeliveryNotesPage() {
                         >
                           <FileText className="h-4 w-4" />
                         </Button>
-                        {dn.status === "draft" && (
+                        {dn.status === "draft" && canDispatchDn(dn) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -848,7 +893,7 @@ export default function DeliveryNotesPage() {
                             <CheckCircle className="h-4 w-4 text-blue-600" />
                           </Button>
                         )}
-                        {dn.status === "confirmed" && !linkedPickList && (
+                        {dn.status === "confirmed" && !linkedPickList && canDispatchDn(dn) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -858,7 +903,7 @@ export default function DeliveryNotesPage() {
                             <Package className="h-4 w-4 text-amber-600" />
                           </Button>
                         )}
-                        {dn.status === "dispatch_ready" && (
+                        {dn.status === "dispatch_ready" && canDispatchDn(dn) && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -934,6 +979,29 @@ export default function DeliveryNotesPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Fulfillment Mode</Label>
+              <Select
+                value={createFulfillmentMode}
+                onValueChange={(value) =>
+                  setCreateFulfillmentMode(value as DeliveryNoteFulfillmentMode)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select fulfillment mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="transfer_to_store">Transfer to Store</SelectItem>
+                  <SelectItem value="customer_pickup_from_warehouse">
+                    Customer Pickup (Warehouse)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Customer pickup skips destination inventory receive posting and uses direct pickup completion.
+              </p>
             </div>
 
             <div className="space-y-2">

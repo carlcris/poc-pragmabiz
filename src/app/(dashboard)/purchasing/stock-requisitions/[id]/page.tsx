@@ -123,7 +123,9 @@ export default function StockRequisitionDetailPage() {
 
     try {
       const { generateStockRequisitionPDF } = await import("@/lib/pdf-generator");
+      const supplierLanguage = sr.supplier?.lang === "chinese" ? "chinese" : "english";
       await generateStockRequisitionPDF({
+        language: supplierLanguage,
         srNumber: sr.srNumber,
         supplierName: sr.supplier?.name || "Unknown Supplier",
         requisitionDate: formatDate(sr.requisitionDate),
@@ -131,7 +133,10 @@ export default function StockRequisitionDetailPage() {
         totalAmount: formatCurrency(sr.totalAmount),
         items: (sr.items || []).map((item) => ({
           itemCode: item.item?.code || "N/A",
-          itemName: item.item?.name || "Unknown Item",
+          itemName:
+            supplierLanguage === "chinese"
+              ? item.item?.chineseName || item.item?.name || "Unknown Item"
+              : item.item?.name || "Unknown Item",
           requestedQty: item.requestedQty,
           unitPrice: formatCurrency(item.unitPrice),
           totalPrice: formatCurrency(item.totalPrice),

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const supplierStatusEnum = z.enum(["active", "inactive", "blacklisted"]);
+export const supplierLanguageEnum = z.enum(["english", "chinese"]);
 export const paymentTermsEnum = z.enum([
   "cod",
   "net_7",
@@ -45,6 +46,7 @@ export const supplierFormSchema = z.object({
   bankAccountName: z.string().optional(),
 
   // Status
+  lang: supplierLanguageEnum,
   status: supplierStatusEnum,
   notes: z.string().optional(),
 });

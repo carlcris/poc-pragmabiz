@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../stock-request-mapper";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { StockRequest, UpdateStockRequestPayload } from "@/types/stock-request";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
@@ -11,6 +12,71 @@ type StockRequestItemInput = NonNullable<UpdateStockRequestPayload["items"]>[num
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
+
+async function rehydrateMissingWarehouses(
+  record: StockRequestDbRecord,
+  companyId: string
+): Promise<StockRequestDbRecord> {
+  const requestingWarehouse = Array.isArray(record.requesting_warehouse)
+    ? record.requesting_warehouse[0] ?? null
+    : record.requesting_warehouse ?? null;
+  const fulfillingWarehouse = Array.isArray(record.fulfilling_warehouse)
+    ? record.fulfilling_warehouse[0] ?? null
+    : record.fulfilling_warehouse ?? null;
+
+  const missingWarehouseIds = Array.from(
+    new Set(
+      [
+        !requestingWarehouse ? record.requesting_warehouse_id : null,
+        !fulfillingWarehouse ? record.fulfilling_warehouse_id ?? null : null,
+      ].filter((value): value is string => Boolean(value))
+    )
+  );
+
+  if (missingWarehouseIds.length === 0) {
+    return record;
+  }
+
+  const adminSupabase = createAdminClient();
+  const { data: warehouseRows } = await adminSupabase
+    .from("warehouses")
+    .select("id, warehouse_code, warehouse_name, business_unit_id")
+    .eq("company_id", companyId)
+    .in("id", missingWarehouseIds)
+    .is("deleted_at", null);
+
+  if (!warehouseRows || warehouseRows.length === 0) {
+    return record;
+  }
+
+  const warehouseMap = new Map(warehouseRows.map((row) => [row.id, row]));
+
+  if (!requestingWarehouse && record.requesting_warehouse_id) {
+    const row = warehouseMap.get(record.requesting_warehouse_id);
+    if (row) {
+      record.requesting_warehouse = {
+        id: row.id,
+        warehouse_code: row.warehouse_code,
+        warehouse_name: row.warehouse_name,
+        business_unit_id: row.business_unit_id,
+      };
+    }
+  }
+
+  if (!fulfillingWarehouse && record.fulfilling_warehouse_id) {
+    const row = warehouseMap.get(record.fulfilling_warehouse_id);
+    if (row) {
+      record.fulfilling_warehouse = {
+        id: row.id,
+        warehouse_code: row.warehouse_code,
+        warehouse_name: row.warehouse_name,
+        business_unit_id: row.business_unit_id,
+      };
+    }
+  }
+
+  return record;
+}
 
 // GET /api/stock-requests/[id] - Get single stock request
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -82,7 +148,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
-    const mapped = mapStockRequest(stockRequest as StockRequestDbRecord) as StockRequest;
+    const hydratedRecord = await rehydrateMissingWarehouses(
+      stockRequest as StockRequestDbRecord,
+      companyId
+    );
+    const mapped = mapStockRequest(hydratedRecord) as StockRequest;
 
     const [{ data: headerLinks }, { data: itemLinks }] = await Promise.all([
       supabase
@@ -275,7 +345,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Stock request not found" }, { status: 404 });
     }
 
-    return NextResponse.json(mapStockRequest(updatedRequest as StockRequestDbRecord));
+    const hydratedUpdated = await rehydrateMissingWarehouses(
+      updatedRequest as StockRequestDbRecord,
+      companyId
+    );
+
+    return NextResponse.json(mapStockRequest(hydratedUpdated));
   } catch (error) {
     console.error("Error in stock-request PATCH:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

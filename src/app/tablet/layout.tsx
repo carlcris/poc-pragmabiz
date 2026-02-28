@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { TabletBottomNav } from "@/components/tablet/TabletBottomNav";
+import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
 
 export const metadata: Metadata = {
   title: "Warehouse Operations | ERP+",
@@ -16,12 +17,14 @@ export const viewport: Viewport = {
 
 export default function TabletLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      {/* Tablet-optimized container - max width 768px */}
-      <div className="mx-auto max-w-2xl">{children}</div>
+    <BusinessUnitProvider>
+      <div className="min-h-screen bg-gray-50 pb-20">
+        {/* Tablet-optimized container - max width 768px */}
+        <div className="mx-auto max-w-2xl">{children}</div>
 
-      {/* Bottom Navigation */}
-      <TabletBottomNav />
-    </div>
+        {/* Bottom Navigation */}
+        <TabletBottomNav />
+      </div>
+    </BusinessUnitProvider>
   );
 }

@@ -1486,3 +1486,215 @@ DO UPDATE SET
   qty_on_hand = EXCLUDED.qty_on_hand,
   qty_reserved = EXCLUDED.qty_reserved,
   updated_at = CURRENT_TIMESTAMP;
+
+
+-- ============================================================================
+-- Migration: Backfill Opening Item Batches
+-- Version: 20260224103000
+-- Description: Seeds opening balances into item_batch and item_location_batch
+--              from existing inventory. Uses item_warehouse.current_stock as
+--              on-hand source of truth and patches positive location deficits
+--              into default/MAIN locations before creating location-batch rows.
+-- Date: 2026-02-24
+-- ============================================================================
+
+BEGIN;
+
+-- Ensure a MAIN location exists for any warehouse participating in the backfill.
+INSERT INTO warehouse_locations (
+  company_id,
+  warehouse_id,
+  code,
+  name,
+  location_type,
+  is_pickable,
+  is_storable,
+  is_active,
+  created_by,
+  updated_by
+)
+SELECT DISTINCT
+  iw.company_id,
+  iw.warehouse_id,
+  'MAIN' AS code,
+  'Main' AS name,
+  'bin' AS location_type,
+  TRUE,
+  TRUE,
+  TRUE,
+  NULL::UUID,
+  NULL::UUID
+FROM item_warehouse iw
+WHERE iw.deleted_at IS NULL
+  AND (COALESCE(iw.current_stock, 0) > 0 OR COALESCE(iw.reserved_stock, 0) > 0)
+ON CONFLICT (company_id, warehouse_id, code) DO NOTHING;
+
+-- If an item_warehouse row has no default location, assign MAIN for backfill consistency.
+UPDATE item_warehouse iw
+SET
+  default_location_id = wl.id,
+  updated_at = CURRENT_TIMESTAMP
+FROM warehouse_locations wl
+WHERE iw.deleted_at IS NULL
+  AND iw.default_location_id IS NULL
+  AND wl.company_id = iw.company_id
+  AND wl.warehouse_id = iw.warehouse_id
+  AND wl.code = 'MAIN'
+  AND wl.deleted_at IS NULL;
+
+-- Patch positive on-hand deficits from item_warehouse into item_location (default/MAIN).
+-- This aligns item_location totals to the existing item_warehouse source of truth
+-- before backfilling item_location_batch.
+WITH location_totals AS (
+  SELECT
+    il.company_id,
+    il.item_id,
+    il.warehouse_id,
+    COALESCE(SUM(il.qty_on_hand), 0) AS location_on_hand_sum
+  FROM item_location il
+  WHERE il.deleted_at IS NULL
+  GROUP BY il.company_id, il.item_id, il.warehouse_id
+),
+positive_deficits AS (
+  SELECT
+    iw.company_id,
+    iw.item_id,
+    iw.warehouse_id,
+    COALESCE(iw.default_location_id, wl.id) AS target_location_id,
+    (COALESCE(iw.current_stock, 0) - COALESCE(lt.location_on_hand_sum, 0))::DECIMAL(20,4) AS on_hand_delta
+  FROM item_warehouse iw
+  LEFT JOIN location_totals lt
+    ON lt.company_id = iw.company_id
+   AND lt.item_id = iw.item_id
+   AND lt.warehouse_id = iw.warehouse_id
+  LEFT JOIN warehouse_locations wl
+    ON wl.company_id = iw.company_id
+   AND wl.warehouse_id = iw.warehouse_id
+   AND wl.code = 'MAIN'
+   AND wl.deleted_at IS NULL
+  WHERE iw.deleted_at IS NULL
+    AND (COALESCE(iw.current_stock, 0) - COALESCE(lt.location_on_hand_sum, 0)) > 0
+)
+INSERT INTO item_location (
+  company_id,
+  item_id,
+  warehouse_id,
+  location_id,
+  qty_on_hand,
+  qty_reserved,
+  created_by,
+  updated_by
+)
+SELECT
+  d.company_id,
+  d.item_id,
+  d.warehouse_id,
+  d.target_location_id,
+  d.on_hand_delta,
+  0,
+  NULL::UUID,
+  NULL::UUID
+FROM positive_deficits d
+WHERE d.target_location_id IS NOT NULL
+ON CONFLICT (company_id, item_id, warehouse_id, location_id) DO UPDATE
+SET
+  qty_on_hand = item_location.qty_on_hand + EXCLUDED.qty_on_hand,
+  updated_at = CURRENT_TIMESTAMP;
+
+-- Create one opening batch per item + warehouse with current stock / reserved stock.
+INSERT INTO item_batch (
+  company_id,
+  item_id,
+  warehouse_id,
+  batch_code,
+  received_at,
+  qty_on_hand,
+  qty_reserved,
+  created_by,
+  updated_by
+)
+SELECT
+  iw.company_id,
+  iw.item_id,
+  iw.warehouse_id,
+  'OPENING-BALANCE' AS batch_code,
+  COALESCE(iw.created_at, CURRENT_TIMESTAMP) AS received_at,
+  GREATEST(0, COALESCE(iw.current_stock, 0))::DECIMAL(20,4) AS qty_on_hand,
+  LEAST(
+    GREATEST(0, COALESCE(iw.reserved_stock, 0)),
+    GREATEST(0, COALESCE(iw.current_stock, 0))
+  )::DECIMAL(20,4) AS qty_reserved,
+  NULL::UUID,
+  NULL::UUID
+FROM item_warehouse iw
+WHERE iw.deleted_at IS NULL
+  AND (COALESCE(iw.current_stock, 0) > 0 OR COALESCE(iw.reserved_stock, 0) > 0)
+ON CONFLICT (company_id, item_id, warehouse_id, batch_code) DO UPDATE
+SET
+  received_at = EXCLUDED.received_at,
+  qty_on_hand = EXCLUDED.qty_on_hand,
+  qty_reserved = EXCLUDED.qty_reserved,
+  updated_at = CURRENT_TIMESTAMP;
+
+-- Backfill exact location-batch rows from current item_location balances into opening batch.
+INSERT INTO item_location_batch (
+  company_id,
+  item_id,
+  warehouse_id,
+  location_id,
+  item_batch_id,
+  qty_on_hand,
+  qty_reserved,
+  created_by,
+  updated_by
+)
+SELECT
+  il.company_id,
+  il.item_id,
+  il.warehouse_id,
+  il.location_id,
+  ib.id AS item_batch_id,
+  GREATEST(0, COALESCE(il.qty_on_hand, 0))::DECIMAL(20,4) AS qty_on_hand,
+  LEAST(
+    GREATEST(0, COALESCE(il.qty_reserved, 0)),
+    GREATEST(0, COALESCE(il.qty_on_hand, 0))
+  )::DECIMAL(20,4) AS qty_reserved,
+  NULL::UUID,
+  NULL::UUID
+FROM item_location il
+JOIN item_batch ib
+  ON ib.company_id = il.company_id
+ AND ib.item_id = il.item_id
+ AND ib.warehouse_id = il.warehouse_id
+ AND ib.batch_code = 'OPENING-BALANCE'
+ AND ib.deleted_at IS NULL
+WHERE il.deleted_at IS NULL
+  AND (COALESCE(il.qty_on_hand, 0) > 0 OR COALESCE(il.qty_reserved, 0) > 0)
+ON CONFLICT (company_id, item_id, warehouse_id, location_id, item_batch_id) DO UPDATE
+SET
+  qty_on_hand = EXCLUDED.qty_on_hand,
+  qty_reserved = EXCLUDED.qty_reserved,
+  updated_at = CURRENT_TIMESTAMP;
+
+COMMIT;
+
+-- Backfill existing rows before adding NOT NULL / uniqueness constraints.
+UPDATE item_location_batch
+SET
+  batch_location_sku = public.generate_item_location_batch_sku(),
+  updated_at = CURRENT_TIMESTAMP
+WHERE batch_location_sku IS NULL
+   OR BTRIM(batch_location_sku) = '';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'item_location_batch_batch_location_sku_format_check'
+  ) THEN
+    ALTER TABLE item_location_batch
+      ADD CONSTRAINT item_location_batch_batch_location_sku_format_check
+      CHECK (batch_location_sku ~ '^[0-9]{10}$');
+  END IF;
+END $$;

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import {
+  getWarehouseBusinessUnitMap,
+  notifyBusinessUnits,
+} from "@/app/api/_lib/workflow-notifications";
+import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
   fetchDeliveryNoteItems,
@@ -92,6 +96,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (postingError) {
       return NextResponse.json({ error: postingError.message }, { status: 400 });
+    }
+
+    try {
+      const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
+        header.requesting_warehouse_id,
+      ]);
+      const requestingBuId = warehouseBuMap.get(header.requesting_warehouse_id);
+
+      await notifyBusinessUnits({
+        supabase: auth.supabase,
+        companyId: auth.companyId,
+        actorUserId: auth.userId,
+        businessUnitIds: [requestingBuId],
+        title: "Delivery dispatched",
+        message: `Delivery note ${header.dn_no} has been dispatched.`,
+        type: "delivery_note_workflow",
+        metadata: {
+          delivery_note_id: header.id,
+          dn_no: header.dn_no,
+          status: "dispatched",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Error creating dispatch notifications:", notificationError);
     }
 
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);

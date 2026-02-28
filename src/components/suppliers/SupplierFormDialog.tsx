@@ -49,6 +49,11 @@ const SUPPLIER_STATUS = [
   { value: "blacklisted", label: "Blacklisted" },
 ] as const;
 
+const SUPPLIER_LANGUAGES = [
+  { value: "english", label: "English" },
+  { value: "chinese", label: "Chinese" },
+] as const;
+
 const PAYMENT_TERMS = [
   { value: "cod", label: "Cash on Delivery" },
   { value: "net_7", label: "Net 7" },
@@ -93,6 +98,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
       bankName: "",
       bankAccountNumber: "",
       bankAccountName: "",
+      lang: "english",
       status: "active",
       notes: "",
     },
@@ -124,6 +130,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
         bankName: supplier.bankName || "",
         bankAccountNumber: supplier.bankAccountNumber || "",
         bankAccountName: supplier.bankAccountName || "",
+        lang: supplier.lang || "english",
         status: supplier.status,
         notes: supplier.notes || "",
       });
@@ -152,6 +159,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
         bankName: "",
         bankAccountNumber: "",
         bankAccountName: "",
+        lang: "english",
         status: "active",
         notes: "",
       });
@@ -232,6 +240,31 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                         <FormControl>
                           <Input placeholder="SUPP-001" {...field} disabled={!!supplier} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="lang"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Language *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {SUPPLIER_LANGUAGES.map((lang) => (
+                              <SelectItem key={lang.value} value={lang.value}>
+                                {lang.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

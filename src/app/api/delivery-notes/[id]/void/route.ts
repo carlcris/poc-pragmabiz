@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { fetchDeliveryNote, fetchDeliveryNoteHeader, getAuthContext } from "../../_lib";
+import {
+  fetchDeliveryNote,
+  fetchDeliveryNoteHeader,
+  fetchDeliveryNoteItems,
+  getAuthContext,
+  syncStockRequestStatusCache,
+  toNumber,
+} from "../../_lib";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -43,22 +50,33 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const nowIso = new Date().toISOString();
-    const { error } = await auth.supabase
-      .from("delivery_notes")
-      .update({
-        status: "voided",
-        voided_at: nowIso,
-        void_reason: body.reason?.trim() || null,
-        updated_at: nowIso,
-        updated_by: auth.userId,
-      })
-      .eq("id", id)
-      .eq("company_id", auth.companyId);
+    const dnItems = await fetchDeliveryNoteItems(auth.supabase, auth.companyId, id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    const hasDispatchedQty = dnItems.some((item) => toNumber(item.dispatched_qty) > 0);
+    if (hasDispatchedQty) {
+      return NextResponse.json(
+        { error: "Delivery note can only be voided before dispatch" },
+        { status: 400 }
+      );
     }
+
+    const { error: voidError } = await auth.supabase.rpc("void_delivery_note_pre_dispatch", {
+      p_company_id: auth.companyId,
+      p_user_id: auth.userId,
+      p_dn_id: id,
+      p_reason: body.reason?.trim() || null,
+    });
+
+    if (voidError) {
+      return NextResponse.json({ error: voidError.message }, { status: 400 });
+    }
+
+    await syncStockRequestStatusCache(
+      auth.supabase,
+      auth.companyId,
+      Array.from(new Set(dnItems.map((item) => item.sr_id))),
+      auth.userId
+    );
 
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
     return NextResponse.json(dn);

@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { LOAD_LISTS_QUERY_KEY, STOCK_REQUISITIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { loadListsApi } from "@/lib/api/load-lists";
 import type {
   LoadListFilters,
@@ -8,9 +10,9 @@ import type {
   CreateLoadListSRLinkRequest,
 } from "@/types/load-list";
 
-const LOAD_LISTS_QUERY_KEY = "loadLists";
-
 export function useLoadLists(filters?: LoadListFilters) {
+  useRealtimeDomainInvalidation("purchasing", { queryKeys: [LOAD_LISTS_QUERY_KEY] });
+
   return useQuery({
     queryKey: [LOAD_LISTS_QUERY_KEY, filters],
     queryFn: () => loadListsApi.getLoadLists(filters),
@@ -19,6 +21,11 @@ export function useLoadLists(filters?: LoadListFilters) {
 }
 
 export function useLoadList(id: string) {
+  useRealtimeDomainInvalidation("purchasing", {
+    queryKeys: [LOAD_LISTS_QUERY_KEY],
+    enabled: !!id,
+  });
+
   return useQuery({
     queryKey: [LOAD_LISTS_QUERY_KEY, id],
     queryFn: () => loadListsApi.getLoadList(id),
@@ -80,12 +87,17 @@ export function useLinkSRsToLoadList() {
       loadListsApi.linkSRsToLoadList(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["stockRequisitions"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
     },
   });
 }
 
 export function useLoadListSRLinks(id: string) {
+  useRealtimeDomainInvalidation("purchasing", {
+    queryKeys: [LOAD_LISTS_QUERY_KEY],
+    enabled: !!id,
+  });
+
   return useQuery({
     queryKey: [LOAD_LISTS_QUERY_KEY, id, "sr-links"],
     queryFn: () => loadListsApi.getLoadListSRLinks(id),

@@ -31,7 +31,7 @@ import {
   useCompleteStockRequest,
   useCancelStockRequest,
 } from "@/hooks/useStockRequests";
-import { useWarehouses } from "@/hooks/useWarehouses";
+import { useLookupWarehouses } from "@/hooks/useLookups";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -119,7 +119,7 @@ export default function StockRequestsPage() {
   });
 
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
-  const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
+  const { data: warehousesData } = useLookupWarehouses({ limit: 50 });
   const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
   const defaultRequestingWarehouseId = useMemo(() => {
     if (!currentBusinessUnit?.id) return "";

@@ -69,36 +69,96 @@ const extractScanCandidates = (rawScan: string) => {
   return values;
 };
 
+type ParsedBatchLocationQr = {
+  batchLocationSku: string | null;
+  itemId: string | null;
+  locationId: string | null;
+  batchCode: string | null;
+};
+
+const parseBatchLocationQrPayload = (rawScan: string): ParsedBatchLocationQr | null => {
+  const candidates = [rawScan.trim()];
+  try {
+    candidates.push(decodeURIComponent(rawScan.trim()));
+  } catch {}
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown>;
+      const batchLocationSku =
+        typeof parsed.batchLocationSku === "string" && parsed.batchLocationSku.trim()
+          ? parsed.batchLocationSku.trim()
+          : null;
+      const itemId =
+        typeof parsed.itemId === "string" && parsed.itemId.trim() ? parsed.itemId.trim() : null;
+      const locationId =
+        typeof parsed.location === "string" && parsed.location.trim() ? parsed.location.trim() : null;
+      const batchCode =
+        typeof parsed.batchNumber === "string" && parsed.batchNumber.trim()
+          ? parsed.batchNumber.trim()
+          : null;
+
+      if (batchLocationSku || itemId || locationId || batchCode) {
+        return { batchLocationSku, itemId, locationId, batchCode };
+      }
+    } catch {}
+  }
+
+  return null;
+};
+
 const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
   const parsed = typeof value === "number" ? value : parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const one = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+
 type LineView = {
   id: string;
+  dnItemId: string;
   itemId: string;
   skuCode: string;
   displayName: string;
   requiredQty: number;
   pickedQty: number;
   status: string;
+  suggestedPickLocationId: string | null;
+  suggestedPickLocationCode: string | null;
+  suggestedPickBatchCode: string | null;
+  suggestedPickBatchReceivedAt: string | null;
 };
 
 type ScannedItem = {
   lineId: string;
-  stopId: string;
+  dnItemId: string;
   locationCode: string;
+  scannedLocationCode: string;
+  scannedLocationName?: string;
+  scannedLocationId?: string | null;
+  scannedBatchCode: string;
+  scannedBatchLocationSku: string;
+  isMismatch: boolean;
   skuCode: string;
   matchedScanCode: string;
   requiredQty: number;
   pickedQty: number;
   shortReasonCode?: string;
   status: string;
+  suggestedPickLocationId: string | null;
+  suggestedPickBatchCode: string | null;
+  suggestedPickBatchReceivedAt: string | null;
 };
 
 const isLinePicked = (status: string) =>
   status === "picked_partial" || status === "picked_full" || status === "done";
+
+// Partial picks must remain pickable for additional scans until the line is fully picked.
+const isLineClosedForPicking = (status: string) => status === "picked_full" || status === "done";
+const isLineCompleteForUi = (status: string) => status === "picked_full" || status === "done";
 
 export default function TabletPickingDetailPage() {
   const params = useParams();
@@ -119,41 +179,34 @@ export default function TabletPickingDetailPage() {
     return (pickList?.pick_list_items || []).map((item) => {
       const allocatedQty = toNumber(item.allocated_qty);
       const pickedValue = toNumber(item.picked_qty);
+      const dnLine = one(item.delivery_note_items);
+      const suggestedPickLocation = one(
+        (dnLine as { suggested_pick_location?: unknown } | null | undefined)?.suggested_pick_location as
+          | { id: string; code: string | null; name: string | null }
+          | { id: string; code: string | null; name: string | null }[]
+          | null
+          | undefined
+      );
       let status = "open";
       if (pickedValue > 0 && pickedValue >= allocatedQty) status = "picked_full";
       else if (pickedValue > 0) status = "picked_partial";
 
       return {
         id: item.id,
+        dnItemId: item.dn_item_id,
         itemId: item.item_id,
         skuCode: item.items?.sku || "",
         displayName: item.items?.item_name || item.items?.item_code || item.item_id,
         requiredQty: allocatedQty,
         pickedQty: pickedValue,
         status,
+        suggestedPickLocationId: dnLine?.suggested_pick_location_id || null,
+        suggestedPickLocationCode: suggestedPickLocation?.code || null,
+        suggestedPickBatchCode: dnLine?.suggested_pick_batch_code || null,
+        suggestedPickBatchReceivedAt: dnLine?.suggested_pick_batch_received_at || null,
       };
     });
   }, [pickList?.pick_list_items]);
-
-  const run = useMemo(() => {
-    return {
-      id: pickList?.id || pickListId,
-      runCode: pickList?.pick_list_no || "Pick List",
-      status: pickList?.status || "pending",
-      stockRequest: {
-        requestCode: pickList?.delivery_notes?.dn_no || "--",
-        priority: "normal",
-      },
-      stops: [
-        {
-          id: "pick-stop-1",
-          locationCode: "Pick Zone",
-          sequenceNo: 1,
-          lines,
-        },
-      ],
-    };
-  }, [pickList?.id, pickList?.pick_list_no, pickList?.status, pickList?.delivery_notes?.dn_no, pickListId, lines]);
 
   const processScan = async (code: string) => {
     if (pickList?.status !== "in_progress") {
@@ -166,17 +219,96 @@ export default function TabletPickingDetailPage() {
       return;
     }
 
+    const rawScanned = code.trim();
     const scanCandidates = extractScanCandidates(code);
     const normalizedCandidates = new Set(Array.from(scanCandidates).map(normalizeScanValue));
 
     let foundItem: ScannedItem | null = null;
     let alreadyPicked = false;
 
-    for (const stop of run.stops) {
-      const line = stop.lines.find((l) => {
+    const parsedQr = parseBatchLocationQrPayload(rawScanned);
+    const scannedBatchLocationSku =
+      parsedQr?.batchLocationSku && /^\d{10}$/.test(parsedQr.batchLocationSku)
+        ? parsedQr.batchLocationSku
+        : /^\d{10}$/.test(rawScanned)
+          ? rawScanned
+          : null;
+
+    if (scannedBatchLocationSku) {
+      try {
+        const query = new URLSearchParams({ batchLocationSku: scannedBatchLocationSku });
+        if (parsedQr?.itemId) query.set("itemId", parsedQr.itemId);
+        if (parsedQr?.locationId) query.set("locationId", parsedQr.locationId);
+        if (parsedQr?.batchCode) query.set("batchCode", parsedQr.batchCode);
+        const response = await fetch(
+          `/api/pick-lists/${pickList.id}/scan-source?${query.toString()}`
+        );
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          data?: {
+            batchLocationSku: string;
+            source: {
+              itemId: string;
+              locationId: string;
+              locationCode?: string | null;
+              locationName?: string | null;
+              batchCode: string;
+            };
+            line?: {
+              pickListItemId: string;
+              deliveryNoteItemId: string;
+              remainingQty: number;
+              allocatedQty: number;
+              pickedQty: number;
+              item?: {
+                sku?: string | null;
+                itemName?: string | null;
+                itemCode?: string | null;
+              } | null;
+            } | null;
+            isMismatch?: boolean;
+          };
+        };
+
+        if (!response.ok || !payload.data?.line) {
+          toast.error(payload.error || "Failed to resolve scanned batch/location SKU");
+          setScannedCode("");
+          return;
+        }
+
+        const lineMeta = payload.data.line;
+        foundItem = {
+          lineId: lineMeta.pickListItemId,
+          dnItemId: lineMeta.deliveryNoteItemId,
+          locationCode: payload.data.source.locationCode || "Scanned Location",
+          scannedLocationCode: payload.data.source.locationCode || "Scanned Location",
+          scannedLocationName: payload.data.source.locationName || undefined,
+          scannedLocationId: payload.data.source.locationId,
+          scannedBatchCode: payload.data.source.batchCode,
+          scannedBatchLocationSku: payload.data.batchLocationSku,
+          isMismatch: !!payload.data.isMismatch,
+          skuCode: lineMeta.item?.sku || "",
+          matchedScanCode: scannedBatchLocationSku,
+          requiredQty: Number(lineMeta.remainingQty || 0),
+          pickedQty: 0,
+          shortReasonCode: undefined,
+          status: "open",
+          suggestedPickLocationId: payload.data.source.locationId,
+          suggestedPickBatchCode: payload.data.source.batchCode,
+          suggestedPickBatchReceivedAt: "", // resolved on write via batchLocationSku
+        };
+      } catch {
+        toast.error("Failed to resolve scanned batch/location SKU");
+        setScannedCode("");
+        return;
+      }
+    }
+
+    if (!foundItem) {
+      const line = lines.find((l) => {
         if (!l.skuCode) return false;
         const skuMatch = normalizedCandidates.has(normalizeScanValue(l.skuCode));
-        return skuMatch && !isLinePicked(l.status);
+        return skuMatch && !isLineClosedForPicking(l.status);
       });
 
       if (line) {
@@ -186,24 +318,35 @@ export default function TabletPickingDetailPage() {
             return normalized === normalizeScanValue(line.skuCode);
           }) || line.skuCode;
 
+        const fallbackLocationCode = line.suggestedPickLocationCode || "Suggested Location";
         foundItem = {
           lineId: line.id,
-          stopId: stop.id,
-          locationCode: stop.locationCode,
+          dnItemId: line.dnItemId,
+          locationCode: fallbackLocationCode,
+          scannedLocationCode: fallbackLocationCode,
+          scannedLocationName: undefined,
+          scannedLocationId: line.suggestedPickLocationId,
+          scannedBatchCode: "",
+          scannedBatchLocationSku: rawScanned,
+          isMismatch: false,
           skuCode: line.skuCode,
           matchedScanCode,
           requiredQty: line.requiredQty,
           pickedQty: line.pickedQty,
           shortReasonCode: undefined,
           status: line.status,
+          suggestedPickLocationId: line.suggestedPickLocationId,
+          suggestedPickBatchCode: line.suggestedPickBatchCode,
+          suggestedPickBatchReceivedAt: line.suggestedPickBatchReceivedAt,
         };
-        break;
       }
+    }
 
-      const alreadyPickedLine = stop.lines.find((l) => {
+    if (!foundItem) {
+      const alreadyPickedLine = lines.find((l) => {
         if (!l.skuCode) return false;
         const skuMatch = normalizedCandidates.has(normalizeScanValue(l.skuCode));
-        return skuMatch && isLinePicked(l.status);
+        return skuMatch && isLineClosedForPicking(l.status);
       });
       if (alreadyPickedLine) {
         alreadyPicked = true;
@@ -258,10 +401,18 @@ export default function TabletPickingDetailPage() {
       await updateItemsMutation.mutateAsync({
         id: pickList.id,
         data: {
-          items: [
+          pickRows: [
             {
-              pickListItemId: currentItem.lineId,
+              deliveryNoteItemId: currentItem.dnItemId,
+              batchLocationSku: /^\d{10}$/.test(currentItem.matchedScanCode)
+                ? currentItem.matchedScanCode
+                : undefined,
+              pickedLocationId: currentItem.suggestedPickLocationId || "",
+              pickedBatchCode: currentItem.suggestedPickBatchCode || "",
+              pickedBatchReceivedAt: currentItem.suggestedPickBatchReceivedAt || "",
               pickedQty,
+              isMismatchWarningAcknowledged: currentItem.isMismatch,
+              mismatchReason: pickedQty < requiredQty ? shortReason || null : null,
             },
           ],
         },
@@ -308,11 +459,29 @@ export default function TabletPickingDetailPage() {
     }
   };
 
-  const totalLines = run.stops.reduce((sum, stop) => sum + stop.lines.length, 0);
-  const pickedLinesCount = run.stops.reduce(
-    (sum, stop) => sum + stop.lines.filter((l) => isLinePicked(l.status)).length,
-    0
-  );
+  const totalLines = lines.length;
+  const pickedLinesCount = lines.filter((l) => isLineCompleteForUi(l.status)).length;
+  const remainingLines = lines.filter((l) => !isLineCompleteForUi(l.status));
+  const pickedLines = lines.filter((l) => isLinePicked(l.status));
+  const pickSkusByDnItemId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const row of pickList?.delivery_note_item_picks || []) {
+      if (row.deleted_at) continue;
+      const sku =
+        typeof row.batch_location_sku === "string" ? row.batch_location_sku.trim() : "";
+      if (!sku) continue;
+      const current = map.get(row.delivery_note_item_id) || [];
+      if (!current.includes(sku)) current.push(sku);
+      map.set(row.delivery_note_item_id, current);
+    }
+    return map;
+  }, [pickList?.delivery_note_item_picks]);
+  const getPickedSkuSummary = (dnItemId: string) => {
+    const skus = pickSkusByDnItemId.get(dnItemId) || [];
+    if (skus.length === 0) return null;
+    if (skus.length === 1) return skus[0];
+    return `${skus[0]} +${skus.length - 1}`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -325,7 +494,7 @@ export default function TabletPickingDetailPage() {
 
       <TabletHeader
         title="Picking"
-        subtitle={run.runCode || "Pick List"}
+        subtitle={pickList?.pick_list_no || "Pick List"}
         showBack={true}
         backHref="/tablet/picking"
         warehouseName="Main Warehouse"
@@ -354,7 +523,7 @@ export default function TabletPickingDetailPage() {
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-gray-900">Pick Progress</div>
-                      <div className="text-xs text-gray-500">{run.stockRequest.requestCode}</div>
+                      <div className="text-xs text-gray-500">{pickList?.delivery_notes?.dn_no || "--"}</div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -527,11 +696,39 @@ export default function TabletPickingDetailPage() {
                 <CardContent className="space-y-4">
                   <div className="rounded-lg bg-blue-50 p-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <MapPin className="h-4 w-4 text-blue-600" />
                       <span className="text-xs font-medium text-blue-900">Pick Location</span>
                     </div>
-                    <div className="text-sm font-semibold text-blue-900">{currentItem.locationCode}</div>
+                    <div className="space-y-1 text-xs text-blue-800">
+                      {currentItem.scannedLocationName ? (
+                        <div>
+                          Location:{" "}
+                          <span className="font-semibold text-blue-900">
+                            {currentItem.scannedLocationName}
+                          </span>
+                        </div>
+                      ) : null}
+                      {currentItem.suggestedPickBatchCode ? (
+                        <div>
+                          Batch: <span className="font-mono">{currentItem.suggestedPickBatchCode}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    {currentItem.scannedBatchLocationSku ? (
+                      <div className="mt-1 text-xs text-blue-800">
+                        Location SKU:{" "}
+                        <span className="font-mono">{currentItem.scannedBatchLocationSku}</span>
+                      </div>
+                    ) : null}
                   </div>
+
+                  {currentItem.isMismatch && (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm">
+                        Scanned batch/location does not match suggested source. Confirm pick to override.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
@@ -592,54 +789,49 @@ export default function TabletPickingDetailPage() {
             )}
 
             {/* Remaining Items */}
-            {run.stops.map((stop) => {
-              const remainingLines = stop.lines.filter((l) => !isLinePicked(l.status));
-              if (remainingLines.length === 0) return null;
-
-              return (
-                <Card key={stop.id}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center justify-between">
-                      <span>Remaining Items</span>
-                      <Badge variant="secondary">{remainingLines.length}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {remainingLines.map((line) => (
-                      <div
-                        key={line.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-gray-50"
-                      >
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
-                          <div className="text-xs text-gray-500">Qty: {line.requiredQty}</div>
+            {remainingLines.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span>Remaining Items</span>
+                    <Badge variant="secondary">{remainingLines.length}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {remainingLines.map((line) => (
+                    <div
+                      key={line.id}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-gray-50"
+                    >
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
+                        <div className="text-xs text-gray-500">
+                          Remaining: {Math.max(0, line.requiredQty - line.pickedQty)}
                         </div>
-                        <ChevronRight className="h-4 w-4 text-gray-400" />
                       </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                      <ChevronRight className="h-4 w-4 text-gray-400" />
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Picked Items */}
-            {run.stops.map((stop) => {
-              const pickedLines = stop.lines.filter((l) => isLinePicked(l.status));
-              if (pickedLines.length === 0) return null;
-
-              return (
-                <Card key={`picked-${stop.id}`}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center justify-between">
-                      <span className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        Picked Items
-                      </span>
-                      <Badge className="bg-green-100 text-green-800">{pickedLines.length}</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {pickedLines.map((line) => (
+            {pickedLines.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      Picked Items
+                    </span>
+                    <Badge className="bg-green-100 text-green-800">{pickedLines.length}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {pickedLines.map((line) => {
+                    const skuText = getPickedSkuSummary(line.dnItemId);
+                    return (
                       <div
                         key={line.id}
                         className="flex items-center justify-between p-3 rounded-lg border border-green-200 bg-green-50"
@@ -647,16 +839,17 @@ export default function TabletPickingDetailPage() {
                         <div className="flex-1">
                           <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
                           <div className="text-xs text-green-700">
-                            Picked: {line.pickedQty} / {line.requiredQty}
+                            Picked: {line.pickedQty}
+                            {skuText ? ` | ${skuText}` : ""}
                           </div>
                         </div>
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                       </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
 
             {pickedLinesCount === totalLines && (
               <div className="rounded-lg bg-green-50 border border-green-200 py-8 text-center">

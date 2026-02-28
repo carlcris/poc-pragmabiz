@@ -44,6 +44,7 @@ export type TransactionalResource =
   | typeof RESOURCES.PURCHASE_RECEIPTS
   | typeof RESOURCES.LOAD_LISTS
   | typeof RESOURCES.STOCK_TRANSFERS
+  | typeof RESOURCES.STOCK_REQUESTS
   | typeof RESOURCES.STOCK_ADJUSTMENTS
   | typeof RESOURCES.STOCK_TRANSFORMATIONS;
 
@@ -167,6 +168,16 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
   [RESOURCES.STOCK_TRANSFERS]: [
     RESOURCES.ITEMS,
     RESOURCES.WAREHOUSES, // Need source and destination warehouses
+    RESOURCES.ITEM_CATEGORIES,
+  ],
+
+  /**
+   * Stock Requests
+   * Requesting/fulfilling teams need items and warehouses for transfer requests
+   */
+  [RESOURCES.STOCK_REQUESTS]: [
+    RESOURCES.ITEMS,
+    RESOURCES.WAREHOUSES,
     RESOURCES.ITEM_CATEGORIES,
   ],
 

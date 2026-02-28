@@ -91,7 +91,8 @@ export async function PATCH(
             supplier:suppliers!stock_requisitions_supplier_id_fkey (
               supplier_name,
               email,
-              supplier_code
+              supplier_code,
+              lang
             ),
             business_units (
               name,
@@ -109,7 +110,8 @@ export async function PATCH(
               total_price,
               items (
                 item_code,
-                item_name
+                item_name,
+                item_name_cn
               )
             )
           `)
@@ -139,10 +141,15 @@ export async function PATCH(
               .filter(Boolean)
               .join(" ") || createdByUser?.email || "Unknown";
 
+            const supplierLanguage = (supplier?.lang === "chinese" ? "chinese" : "english") as
+              | "english"
+              | "chinese";
+
             const businessUnit = Array.isArray(srComplete.business_units)
               ? srComplete.business_units[0]
               : srComplete.business_units;
             const emailData = {
+              language: supplierLanguage,
               srNumber: srComplete.sr_number,
               supplierName: supplier?.supplier_name || "Unknown Supplier",
               supplierEmail: supplierEmail,
@@ -174,12 +181,19 @@ export async function PATCH(
                       requested_qty?: number | string | null;
                       unit_price?: number | string | null;
                       total_price?: number | string | null;
-                      items?: { item_code?: string | null; item_name?: string | null } | null;
+                      items?: {
+                        item_code?: string | null;
+                        item_name?: string | null;
+                        item_name_cn?: string | null;
+                      } | null;
                     }>
                   | null
               ) || []).map((item) => ({
                 itemCode: item.items?.item_code || "N/A",
-                itemName: item.items?.item_name || "Unknown Item",
+                itemName:
+                  supplierLanguage === "chinese"
+                    ? item.items?.item_name_cn || item.items?.item_name || "Unknown Item"
+                    : item.items?.item_name || "Unknown Item",
                 requestedQty: Number(item.requested_qty ?? 0),
                 unitPrice: new Intl.NumberFormat('zh-CN', {
                   style: 'currency',

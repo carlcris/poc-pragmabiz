@@ -22,7 +22,7 @@ export async function GET(
       .select(
         `
         *,
-        supplier:suppliers(id, supplier_name, supplier_code, contact_person, email, phone),
+        supplier:suppliers(id, supplier_name, supplier_code, contact_person, email, phone, lang),
         business_unit:business_units(id, name, code),
         requested_by_user:users!stock_requisitions_requested_by_fkey(id, email, first_name, last_name),
         items:stock_requisition_items(
@@ -35,7 +35,7 @@ export async function GET(
           fulfilled_qty,
           outstanding_qty,
           notes,
-          item:items(id, item_code, item_name)
+          item:items(id, item_code, item_name, item_name_cn)
         )
       `
       )
@@ -58,6 +58,7 @@ export async function GET(
         id: string;
         item_code: string;
         item_name: string;
+        item_name_cn?: string | null;
       } | null;
       requested_qty: number | string;
       unit_price: number | string;
@@ -85,6 +86,9 @@ export async function GET(
             id: sr.supplier.id,
             name: sr.supplier.supplier_name,
             code: sr.supplier.supplier_code,
+            lang: ((sr.supplier as { lang?: string | null }).lang ?? "english") as
+              | "english"
+              | "chinese",
             contactPerson: sr.supplier.contact_person,
             email: sr.supplier.email,
             phone: sr.supplier.phone,
@@ -113,6 +117,7 @@ export async function GET(
               id: item.item.id,
               code: item.item.item_code,
               name: item.item.item_name,
+              chineseName: item.item.item_name_cn || undefined,
             }
           : null,
         requestedQty: Number(item.requested_qty ?? 0),

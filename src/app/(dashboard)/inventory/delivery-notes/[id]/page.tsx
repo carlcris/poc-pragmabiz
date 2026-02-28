@@ -207,7 +207,11 @@ export default function DeliveryNoteDetailPage() {
       })),
     };
 
-    await receiveMutation.mutateAsync({ id: dn.id, data: payload });
+    await receiveMutation.mutateAsync({
+      id: dn.id,
+      fulfillmentMode: dn.fulfillment_mode || "transfer_to_store",
+      data: payload,
+    });
   };
 
   const submitCreatePickList = async () => {

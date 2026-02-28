@@ -5,6 +5,7 @@ import type {
   DeliveryNoteListResponse,
   DispatchDeliveryNotePayload,
   MarkDispatchReadyPayload,
+  ReceiveDirectPickupDeliveryNotePayload,
   ReceiveDeliveryNotePayload,
 } from "@/types/delivery-note";
 
@@ -44,6 +45,16 @@ export const deliveryNotesApi = {
 
   async receive(id: string, data?: ReceiveDeliveryNotePayload): Promise<DeliveryNote> {
     return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/receive`, data || {});
+  },
+
+  async receiveDirectPickup(
+    id: string,
+    data?: ReceiveDirectPickupDeliveryNotePayload
+  ): Promise<DeliveryNote> {
+    return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/receive-direct-pickup`, {
+      confirmDirectCustomerPickup: true,
+      ...(data || {}),
+    });
   },
 
   async void(id: string, reason?: string): Promise<DeliveryNote> {

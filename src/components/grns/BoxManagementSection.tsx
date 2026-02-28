@@ -51,14 +51,17 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
   // Fetch boxes when component mounts or GRN changes
-  const fetchBoxes = useCallback(async () => {
+  const fetchBoxes = useCallback(async (): Promise<GRNBox[]> => {
     try {
       const response = await fetch(`/api/grns/${grn.id}/boxes`);
       if (!response.ok) throw new Error("Failed to fetch boxes");
       const data = await response.json();
-      setBoxes(data.data || []);
+      const nextBoxes = (data.data || []) as GRNBox[];
+      setBoxes(nextBoxes);
+      return nextBoxes;
     } catch (error) {
       console.error("Error fetching boxes:", error);
+      return [];
     }
   }, [grn.id]);
 
@@ -132,7 +135,10 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
     try {
       setIsPrinting(true);
 
-      const boxesToPrint = itemBoxes || boxes;
+      const latestBoxes = await fetchBoxes();
+      const boxesToPrint = itemBoxes
+        ? latestBoxes.filter((latestBox) => itemBoxes.some((b) => b.id === latestBox.id))
+        : latestBoxes;
       if (boxesToPrint.length === 0) {
         toast.error("No boxes to print");
         return;
@@ -143,6 +149,8 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
         const item = grn.items.find((i) => i.id === box.grnItemId);
         return {
           boxId: box.id,
+          itemId: box.itemId,
+          batchLocationSku: box.batchLocationSku || null,
           batchNumber: grn.batchNumber || "",
           grnNumber: grn.grnNumber,
           itemCode: item?.item?.code || "",
@@ -153,6 +161,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
           containerNumber: box.containerNumber,
           sealNumber: box.sealNumber,
           warehouseCode: grn.warehouse?.code,
+          locationId: box.warehouseLocationId ?? null,
           locationCode: box.warehouseLocation?.code,
         };
       });
@@ -270,6 +279,11 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                                   <span className="text-sm text-muted-foreground">Not assigned</span>
                                 )}
                               </div>
+                              {box.batchLocationSku ? (
+                                <div className="mt-1 text-xs font-mono text-muted-foreground">
+                                  {box.batchLocationSku}
+                                </div>
+                              ) : null}
                             </TableCell>
                           </TableRow>
                         ))}

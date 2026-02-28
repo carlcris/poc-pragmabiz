@@ -13,6 +13,7 @@ export type StockRequisitionItem = {
     id: string;
     code: string;
     name: string;
+    chineseName?: string;
   };
   requestedQty: number;
   fulfilledQty: number;
@@ -37,6 +38,7 @@ export type StockRequisition = {
     id: string;
     name: string;
     code: string;
+    lang?: "english" | "chinese";
     contactPerson?: string;
     email?: string;
     phone?: string;

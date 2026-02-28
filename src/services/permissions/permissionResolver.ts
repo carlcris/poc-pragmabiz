@@ -9,10 +9,11 @@ import type {
 } from "./types";
 
 // In-memory cache for permissions
-// IMPORTANT: Cache is DISABLED for security-critical permission data
-// Permissions must always be fresh to prevent unauthorized access
-const CACHE_TTL = 0; // DISABLED - No caching for security
+// Short TTL to reduce repeated permission RPC latency while keeping changes fresh.
+// Cache is explicitly invalidated on role/permission/user-role mutations.
+const CACHE_TTL = 5_000; // 5 seconds
 const permissionCache: PermissionCache = new Map();
+const inFlightPermissionFetches = new Map<string, Promise<UserPermissions>>();
 
 /**
  * Generate cache key for user permissions
@@ -72,9 +73,11 @@ export function invalidatePermissionCache(userId?: string): void {
       }
     });
     keysToDelete.forEach((key) => permissionCache.delete(key));
+    keysToDelete.forEach((key) => inFlightPermissionFetches.delete(key));
   } else {
     // Clear entire cache
     permissionCache.clear();
+    inFlightPermissionFetches.clear();
   }
 }
 
@@ -157,19 +160,37 @@ export async function getUserPermissions(
   userId: string,
   businessUnitId: string | null = null
 ): Promise<UserPermissions> {
+  const cacheKey = getCacheKey(userId, businessUnitId);
+
   // Check cache first
   const cached = getFromCache(userId, businessUnitId);
   if (cached) {
     return cached;
   }
 
-  // Fetch from database
-  const permissions = await fetchUserPermissions(userId, businessUnitId);
+  // Deduplicate concurrent permission fetches (including repeated checks inside one request)
+  const existingInFlight = inFlightPermissionFetches.get(cacheKey);
+  if (existingInFlight) {
+    return existingInFlight;
+  }
 
-  // Store in cache
-  storeInCache(userId, businessUnitId, permissions);
+  const inFlight = (async () => {
+    // Fetch from database
+    const permissions = await fetchUserPermissions(userId, businessUnitId);
 
-  return permissions;
+    // Store in cache
+    storeInCache(userId, businessUnitId, permissions);
+
+    return permissions;
+  })();
+
+  inFlightPermissionFetches.set(cacheKey, inFlight);
+
+  try {
+    return await inFlight;
+  } finally {
+    inFlightPermissionFetches.delete(cacheKey);
+  }
 }
 
 /**

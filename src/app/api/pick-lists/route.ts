@@ -3,6 +3,10 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { fetchDeliveryNoteHeader, fetchDeliveryNoteItems } from "../delivery-notes/_lib";
 import {
+  getWarehouseBusinessUnitMap,
+  notifyBusinessUnits,
+} from "@/app/api/_lib/workflow-notifications";
+import {
   buildPickListNo,
   fetchPickList,
   getPickListAuthContext,
@@ -35,6 +39,7 @@ export async function GET(request: NextRequest) {
         `
         *,
         delivery_notes(id, dn_no, status, requesting_warehouse_id, fulfilling_warehouse_id),
+        delivery_note_item_picks(*),
         pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)),
         pick_list_items(
           *,
@@ -230,6 +235,32 @@ export async function POST(request: NextRequest) {
 
     if (dnUpdateError) {
       return NextResponse.json({ error: dnUpdateError.message }, { status: 500 });
+    }
+
+    try {
+      const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
+        header.requesting_warehouse_id,
+      ]);
+      const requestingBuId = warehouseBuMap.get(header.requesting_warehouse_id);
+
+      await notifyBusinessUnits({
+        supabase: auth.supabase,
+        companyId: auth.companyId,
+        actorUserId: auth.userId,
+        businessUnitIds: [requestingBuId],
+        title: "Picking in progress",
+        message: `Delivery note ${header.dn_no} has been queued for picking.`,
+        type: "pick_list_workflow",
+        metadata: {
+          delivery_note_id: header.id,
+          dn_no: header.dn_no,
+          pick_list_id: createdPickList.id,
+          pick_list_no: pickListNo,
+          status: "queued_for_picking",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Error creating queue picking notifications:", notificationError);
     }
 
     const pickList = await fetchPickList(auth.supabase, auth.companyId, createdPickList.id);

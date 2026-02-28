@@ -1,15 +1,16 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Package, Calendar, Truck, Send, AlertCircle } from "lucide-react";
 import { useLoadList } from "@/hooks/useLoadLists";
-import { useGRNs, useGRN, useCreateGRN, useSubmitGRN } from "@/hooks/useGRNs";
+import { useGRNs, useGRN, useCreateGRN, useSubmitGRN, useUpdateGRN } from "@/hooks/useGRNs";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { GRNStatus } from "@/types/grn";
 
@@ -38,6 +39,18 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
 
   const createGRNMutation = useCreateGRN();
   const submitMutation = useSubmitGRN();
+  const updateMutation = useUpdateGRN();
+  const [editedItems, setEditedItems] = useState<
+    Record<
+      string,
+      {
+        receivedQty: number;
+        damagedQty: number;
+        numBoxes: number;
+        notes: string;
+      }
+    >
+  >({});
 
   const handleCreateGRN = async () => {
     if (!loadList) return;
@@ -68,11 +81,86 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
     if (!grn) return;
 
     try {
+      if (Object.keys(editedItems).length > 0) {
+        const itemsToUpdate = Object.entries(editedItems).map(([itemId, data]) => ({
+          id: itemId,
+          receivedQty: data.receivedQty,
+          damagedQty: data.damagedQty,
+          numBoxes: data.numBoxes,
+          notes: data.notes,
+        }));
+
+        await updateMutation.mutateAsync({
+          id: grn.id,
+          data: {
+            receivingDate: grn.receivingDate || new Date().toISOString().split("T")[0],
+            notes: grn.notes,
+            items: itemsToUpdate,
+          },
+        });
+      }
+
       await submitMutation.mutateAsync(grn.id);
       toast.success("GRN submitted for approval");
       router.push("/tablet/receiving");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to submit GRN");
+    }
+  };
+
+  const handleItemChange = (
+    itemId: string,
+    field: "receivedQty" | "damagedQty" | "numBoxes" | "notes",
+    value: number | string
+  ) => {
+    const currentItem = grn?.items.find((item) => item.id === itemId);
+    setEditedItems((prev) => ({
+      ...prev,
+      [itemId]: {
+        receivedQty: prev[itemId]?.receivedQty ?? currentItem?.receivedQty ?? 0,
+        damagedQty: prev[itemId]?.damagedQty ?? currentItem?.damagedQty ?? 0,
+        numBoxes: prev[itemId]?.numBoxes ?? currentItem?.numBoxes ?? 0,
+        notes: prev[itemId]?.notes ?? currentItem?.notes ?? "",
+        [field]: value,
+      },
+    }));
+  };
+
+  const getItemValue = (
+    itemId: string,
+    field: "receivedQty" | "damagedQty" | "numBoxes" | "notes",
+    fallback: number | string
+  ) => {
+    if (editedItems[itemId]) {
+      return editedItems[itemId][field];
+    }
+    return fallback;
+  };
+
+  const handleSave = async () => {
+    if (!grn || Object.keys(editedItems).length === 0) return;
+
+    try {
+      const itemsToUpdate = Object.entries(editedItems).map(([itemId, data]) => ({
+        id: itemId,
+        receivedQty: data.receivedQty,
+        damagedQty: data.damagedQty,
+        numBoxes: data.numBoxes,
+        notes: data.notes,
+      }));
+
+      await updateMutation.mutateAsync({
+        id: grn.id,
+        data: {
+          receivingDate: grn.receivingDate || new Date().toISOString().split("T")[0],
+          notes: grn.notes,
+          items: itemsToUpdate,
+        },
+      });
+      setEditedItems({});
+      toast.success("Receiving quantities saved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save changes");
     }
   };
 
@@ -92,7 +180,8 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
   };
 
   const isLoading = isLoadingLL || isLoadingGRNs || (grnId && isLoadingGRN);
-  const canSubmit = grn?.status === "draft" || grn?.status === "receiving";
+  const isEditable = grn?.status === "draft" || grn?.status === "receiving";
+  const canSubmit = isEditable;
 
   if (isLoading) {
     return (
@@ -312,9 +401,10 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
           <CardContent className="p-0">
             <div className="space-y-2 p-4">
               {grn.items.map((item) => {
-                const receivedQty = item.receivedQty || 0;
-                const damagedQty = item.damagedQty || 0;
-                const numBoxes = item.numBoxes || 0;
+                const receivedQty = Number(getItemValue(item.id, "receivedQty", item.receivedQty || 0)) || 0;
+                const damagedQty = Number(getItemValue(item.id, "damagedQty", item.damagedQty || 0)) || 0;
+                const numBoxes = Number(getItemValue(item.id, "numBoxes", item.numBoxes || 0)) || 0;
+                const itemNotes = String(getItemValue(item.id, "notes", item.notes || ""));
                 const variance = receivedQty - item.loadListQty;
                 const isChecked = receivedQty > 0;
                 const hasIssues = damagedQty > 0 || variance < 0;
@@ -404,25 +494,86 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
 
                     {/* View-Only Data */}
                     <div className="space-y-2 border-t border-gray-200 pt-3">
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-3 gap-3">
                         <div>
-                          <p className="text-xs font-semibold text-gray-600">Received</p>
-                          <p className="text-2xl font-bold text-gray-900">{receivedQty}</p>
+                          <p className="mb-1 text-xs font-semibold text-gray-600">Received</p>
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={receivedQty}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  item.id,
+                                  "receivedQty",
+                                  Math.max(0, parseFloat(e.target.value) || 0)
+                                )
+                              }
+                              className="h-10 text-right font-semibold"
+                            />
+                          ) : (
+                            <p className="text-2xl font-bold text-gray-900">{receivedQty}</p>
+                          )}
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-red-600">Damaged</p>
-                          <p className="text-2xl font-bold text-red-700">{damagedQty}</p>
+                          <p className="mb-1 text-xs font-semibold text-red-600">Damaged</p>
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={damagedQty}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  item.id,
+                                  "damagedQty",
+                                  Math.max(0, parseFloat(e.target.value) || 0)
+                                )
+                              }
+                              className="h-10 text-right font-semibold"
+                            />
+                          ) : (
+                            <p className="text-2xl font-bold text-red-700">{damagedQty}</p>
+                          )}
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-blue-600">Boxes</p>
-                          <p className="text-2xl font-bold text-blue-700">{numBoxes}</p>
+                          <p className="mb-1 text-xs font-semibold text-blue-600">Boxes</p>
+                          {isEditable ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              value={numBoxes}
+                              onChange={(e) =>
+                                handleItemChange(
+                                  item.id,
+                                  "numBoxes",
+                                  Math.max(0, parseInt(e.target.value, 10) || 0)
+                                )
+                              }
+                              className="h-10 text-right font-semibold"
+                            />
+                          ) : (
+                            <p className="text-2xl font-bold text-blue-700">{numBoxes}</p>
+                          )}
                         </div>
                       </div>
-                      {item.notes && (
-                        <div className="mt-3 rounded-md bg-gray-50 p-3">
-                          <p className="text-xs font-semibold text-gray-500">Notes</p>
-                          <p className="mt-1 text-sm text-gray-700">{item.notes}</p>
+                      {isEditable ? (
+                        <div className="mt-3">
+                          <p className="mb-1 text-xs font-semibold text-gray-500">Notes</p>
+                          <Input
+                            type="text"
+                            value={itemNotes}
+                            onChange={(e) => handleItemChange(item.id, "notes", e.target.value)}
+                            placeholder="Add notes..."
+                            className="h-10"
+                          />
                         </div>
+                      ) : (
+                        itemNotes && (
+                          <div className="mt-3 rounded-md bg-gray-50 p-3">
+                            <p className="text-xs font-semibold text-gray-500">Notes</p>
+                            <p className="mt-1 text-sm text-gray-700">{itemNotes}</p>
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
@@ -435,10 +586,19 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
         {/* Bottom Actions - Mobile Optimized */}
         {canSubmit && (
           <div className="sticky bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4 shadow-2xl">
-            <div className="mx-auto flex max-w-4xl justify-center">
+            <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:justify-center">
+              <Button
+                onClick={handleSave}
+                disabled={updateMutation.isPending || Object.keys(editedItems).length === 0}
+                size="lg"
+                variant="outline"
+                className="h-14 w-full text-base font-semibold sm:w-auto sm:px-8"
+              >
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={submitMutation.isPending}
+                disabled={submitMutation.isPending || updateMutation.isPending}
                 size="lg"
                 className="h-14 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-base font-semibold hover:from-purple-700 hover:to-violet-700 sm:w-auto sm:px-12"
               >

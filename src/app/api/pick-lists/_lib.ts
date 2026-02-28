@@ -44,8 +44,20 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
       `
       *,
       delivery_notes(id, dn_no, status, requesting_warehouse_id, fulfilling_warehouse_id),
+      delivery_note_item_picks(*),
       pick_list_items(
         *,
+        delivery_note_items!pick_list_items_dn_item_id_fkey(
+          id,
+          suggested_pick_location_id,
+          suggested_pick_batch_code,
+          suggested_pick_batch_received_at,
+          suggested_pick_location:warehouse_locations!delivery_note_items_suggested_pick_location_id_fkey(
+            id,
+            code,
+            name
+          )
+        ),
         items!pick_list_items_item_id_fkey(item_name, item_code, sku),
         units_of_measure!pick_list_items_uom_id_fkey(symbol, name)
       ),

@@ -213,7 +213,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
           </DialogDescription>
           {role.is_system_role && (
             <Badge variant="secondary" className="w-fit">
-              System Role - Read Only
+              System Role
             </Badge>
           )}
         </DialogHeader>
@@ -262,7 +262,6 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                       <Checkbox
                         checked={isAssigned}
                         onCheckedChange={() => togglePermission(permission.id, permission)}
-                        disabled={role.is_system_role}
                         className="mt-1"
                       />
                       <div className="min-w-0 flex-1">
@@ -284,7 +283,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                               <Checkbox
                                 checked={settings.can_view}
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_view")}
-                                disabled={role.is_system_role || !permission.can_view}
+                                disabled={!permission.can_view}
                               />
                               <span className="text-sm">View</span>
                             </label>
@@ -293,7 +292,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                               <Checkbox
                                 checked={settings.can_create}
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_create")}
-                                disabled={role.is_system_role || !permission.can_create}
+                                disabled={!permission.can_create}
                               />
                               <span className="text-sm">Create</span>
                             </label>
@@ -302,7 +301,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                               <Checkbox
                                 checked={settings.can_edit}
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_edit")}
-                                disabled={role.is_system_role || !permission.can_edit}
+                                disabled={!permission.can_edit}
                               />
                               <span className="text-sm">Edit</span>
                             </label>
@@ -311,7 +310,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                               <Checkbox
                                 checked={settings.can_delete}
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_delete")}
-                                disabled={role.is_system_role || !permission.can_delete}
+                                disabled={!permission.can_delete}
                               />
                               <span className="text-sm">Delete</span>
                             </label>
@@ -352,7 +351,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!hasChanges || assignPermissions.isPending || role.is_system_role}
+              disabled={!hasChanges || assignPermissions.isPending}
             >
               {assignPermissions.isPending ? (
                 <>

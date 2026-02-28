@@ -39,6 +39,55 @@ type RolePermissionInput = {
   can_delete?: boolean;
 };
 
+type UserRoleNameJoinRow = {
+  roles?: { name?: string | null } | Array<{ name?: string | null }> | null;
+};
+
+const normalizeRoleName = (value: string | null | undefined) =>
+  (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+const isSuperAdminRoleName = (value: string | null | undefined) =>
+  ["super admin", "superadmin"].includes(normalizeRoleName(value).replace(/\s/g, ""));
+
+async function hasSuperAdminRole(
+  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  userId: string
+): Promise<boolean> {
+  // Prefer auth metadata role if available (not subject to user_roles table visibility quirks)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (isSuperAdminRoleName(user?.user_metadata?.role as string | undefined)) {
+    return true;
+  }
+
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select(
+      `
+      roles (
+        name
+      )
+    `
+    )
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+
+  if (error || !data) {
+    return false;
+  }
+
+  return (data as UserRoleNameJoinRow[]).some((row) => {
+    const role = Array.isArray(row.roles) ? row.roles[0] : row.roles;
+    return isSuperAdminRoleName(role?.name);
+  });
+}
+
 // POST /api/rbac/roles/[id]/permissions - Assign permissions to role
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -78,8 +127,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
+    const userIsSuperAdmin = await hasSuperAdminRole(supabase, user.id);
+
     // Prevent modifying system roles
-    if (role.is_system_role) {
+    if (role.is_system_role && !userIsSuperAdmin) {
       return NextResponse.json(
         {
           error: "Cannot modify system role",
@@ -218,8 +269,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
+    const userIsSuperAdmin = await hasSuperAdminRole(supabase, user.id);
+
     // Prevent modifying system roles
-    if (role.is_system_role) {
+    if (role.is_system_role && !userIsSuperAdmin) {
       return NextResponse.json(
         {
           error: "Cannot modify system role",

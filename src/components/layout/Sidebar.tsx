@@ -152,6 +152,7 @@ const menuItems = [
     icon: FileText,
     href: "/reports",
     children: [
+      { title: "Reports Directory", href: "/reports", resource: RESOURCES.REPORTS as Resource },
       //{ title: "Sales Analytics", href: "/reports/sales-analytics", resource: RESOURCES.REPORTS as Resource },
       { title: "Stock Reports", href: "/reports/stock", resource: RESOURCES.REPORTS as Resource },
       //{ title: "Commission Reports", href: "/reports/commission", resource: RESOURCES.REPORTS as Resource },

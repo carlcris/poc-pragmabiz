@@ -37,7 +37,7 @@ export default function TabletDashboardPage() {
         title="Warehouse Operations"
         subtitle="Dashboard"
         showBack={false}
-        warehouseName="Main Warehouse" // TODO: Get from context/API
+        warehouseName="Main Warehouse"
         showLogout={true}
       />
 

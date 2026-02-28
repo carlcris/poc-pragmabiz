@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { GRNS_QUERY_KEY, LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
+import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { grnsApi } from "@/lib/api/grns";
 import type {
   GRNFilters,
@@ -9,10 +11,11 @@ import type {
   UpdateDamagedItemRequest,
 } from "@/types/grn";
 
-const GRNS_QUERY_KEY = "grns";
 const DAMAGED_ITEMS_QUERY_KEY = "damagedItems";
 
 export function useGRNs(filters?: GRNFilters) {
+  useRealtimeDomainInvalidation("purchasing", { queryKeys: [GRNS_QUERY_KEY] });
+
   return useQuery({
     queryKey: [GRNS_QUERY_KEY, filters],
     queryFn: () => grnsApi.getGRNs(filters),
@@ -21,6 +24,8 @@ export function useGRNs(filters?: GRNFilters) {
 }
 
 export function useGRN(id: string) {
+  useRealtimeDomainInvalidation("purchasing", { queryKeys: [GRNS_QUERY_KEY], enabled: !!id });
+
   return useQuery({
     queryKey: [GRNS_QUERY_KEY, id],
     queryFn: () => grnsApi.getGRN(id),
@@ -94,7 +99,7 @@ export function useApproveGRN() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
       // Also invalidate load lists as approval updates inventory
-      queryClient.invalidateQueries({ queryKey: ["loadLists"] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
     },
   });
 }
@@ -112,6 +117,11 @@ export function useRejectGRN() {
 
 // Damaged Items hooks
 export function useDamagedItems(grnId: string) {
+  useRealtimeDomainInvalidation("purchasing", {
+    queryKeys: [GRNS_QUERY_KEY, DAMAGED_ITEMS_QUERY_KEY],
+    enabled: !!grnId,
+  });
+
   return useQuery({
     queryKey: [DAMAGED_ITEMS_QUERY_KEY, grnId],
     queryFn: () => grnsApi.getDamagedItems(grnId),

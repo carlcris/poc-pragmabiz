@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "./stock-request-mapper";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { CreateStockRequestPayload } from "@/types/stock-request";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
@@ -193,6 +194,75 @@ export async function GET(request: NextRequest) {
     }
 
     const typedRequests = (requests || []) as StockRequestDbRecord[];
+    const missingWarehouseIds = Array.from(
+      new Set(
+        typedRequests.flatMap((request) => {
+          const ids: string[] = [];
+          const requestingWarehouse = Array.isArray(request.requesting_warehouse)
+            ? request.requesting_warehouse[0] ?? null
+            : request.requesting_warehouse ?? null;
+          const fulfillingWarehouse = Array.isArray(request.fulfilling_warehouse)
+            ? request.fulfilling_warehouse[0] ?? null
+            : request.fulfilling_warehouse ?? null;
+
+          if (!requestingWarehouse && request.requesting_warehouse_id) {
+            ids.push(request.requesting_warehouse_id);
+          }
+          if (!fulfillingWarehouse && request.fulfilling_warehouse_id) {
+            ids.push(request.fulfilling_warehouse_id);
+          }
+          return ids;
+        })
+      )
+    );
+
+    if (missingWarehouseIds.length > 0) {
+      const adminSupabase = createAdminClient();
+      const { data: warehouseRows } = await adminSupabase
+        .from("warehouses")
+        .select("id, warehouse_code, warehouse_name, business_unit_id")
+        .eq("company_id", companyId)
+        .in("id", missingWarehouseIds)
+        .is("deleted_at", null);
+
+      const warehouseMap = new Map(
+        (warehouseRows || []).map((row) => [row.id, row])
+      );
+
+      for (const request of typedRequests) {
+        const requestingWarehouse = Array.isArray(request.requesting_warehouse)
+          ? request.requesting_warehouse[0] ?? null
+          : request.requesting_warehouse ?? null;
+        const fulfillingWarehouse = Array.isArray(request.fulfilling_warehouse)
+          ? request.fulfilling_warehouse[0] ?? null
+          : request.fulfilling_warehouse ?? null;
+
+        if (!requestingWarehouse && request.requesting_warehouse_id) {
+          const row = warehouseMap.get(request.requesting_warehouse_id);
+          if (row) {
+            request.requesting_warehouse = {
+              id: row.id,
+              warehouse_code: row.warehouse_code,
+              warehouse_name: row.warehouse_name,
+              business_unit_id: row.business_unit_id,
+            };
+          }
+        }
+
+        if (!fulfillingWarehouse && request.fulfilling_warehouse_id) {
+          const row = warehouseMap.get(request.fulfilling_warehouse_id);
+          if (row) {
+            request.fulfilling_warehouse = {
+              id: row.id,
+              warehouse_code: row.warehouse_code,
+              warehouse_name: row.warehouse_name,
+              business_unit_id: row.business_unit_id,
+            };
+          }
+        }
+      }
+    }
+
     const formattedRequests = typedRequests.map((request) =>
       mapStockRequest(request)
     );

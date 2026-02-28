@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import type { Notification } from "@/types/notifications";
 import { useAuthStore } from "@/stores/authStore";
-
-const NOTIFICATIONS_QUERY_KEY = "notifications";
+import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
+import { NOTIFICATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 
 type NotificationsResponse = {
   data: Notification[];
@@ -26,6 +26,11 @@ export function useNotifications({
   enabled?: boolean;
 } = {}) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  useRealtimeDomainInvalidation("notifications", {
+    queryKeys: [NOTIFICATIONS_QUERY_KEY],
+    enabled: isAuthenticated && enabled,
+  });
+
   return useQuery({
     queryKey: [NOTIFICATIONS_QUERY_KEY, { unreadOnly, limit, offset }],
     enabled: isAuthenticated && enabled,

@@ -3,6 +3,10 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../../stock-request-mapper";
+import {
+  getWarehouseBusinessUnitMap,
+  notifyBusinessUnits,
+} from "@/app/api/_lib/workflow-notifications";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
 
@@ -24,7 +28,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Check if request exists and is draft
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
-      .select("id, status")
+      .select("id, status, request_code, requesting_warehouse_id, fulfilling_warehouse_id")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -55,6 +59,34 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (updateError) {
       console.error("Error submitting stock request:", updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    try {
+      const warehouseBuMap = await getWarehouseBusinessUnitMap(supabase, companyId, [
+        existingRequest.fulfilling_warehouse_id,
+      ]);
+      const fulfillingBuId = existingRequest.fulfilling_warehouse_id
+        ? warehouseBuMap.get(existingRequest.fulfilling_warehouse_id)
+        : null;
+
+      await notifyBusinessUnits({
+        supabase,
+        companyId,
+        actorUserId: userId,
+        businessUnitIds: [fulfillingBuId],
+        title: "New stock request",
+        message: `Stock request ${existingRequest.request_code} was submitted and is ready for fulfillment.`,
+        type: "stock_request_workflow",
+        metadata: {
+          stock_request_id: existingRequest.id,
+          request_code: existingRequest.request_code,
+          status: "submitted",
+          requesting_warehouse_id: existingRequest.requesting_warehouse_id,
+          fulfilling_warehouse_id: existingRequest.fulfilling_warehouse_id,
+        },
+      });
+    } catch (notificationError) {
+      console.error("Error creating stock request submission notifications:", notificationError);
     }
 
     // Fetch updated request

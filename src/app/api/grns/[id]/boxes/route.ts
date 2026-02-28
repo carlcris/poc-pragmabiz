@@ -45,6 +45,7 @@ export async function GET(
         barcode,
         qty_per_box,
         warehouse_location_id,
+        batch_location_sku,
         delivery_date,
         container_number,
         seal_number,
@@ -71,8 +72,76 @@ export async function GET(
       return NextResponse.json({ error: "Failed to fetch boxes" }, { status: 500 });
     }
 
+    // Fetch GRN header for batch/warehouse context (used to derive batch_location_sku when available).
+    const { data: grnHeader } = await supabase
+      .from("grns")
+      .select("id, warehouse_id, batch_number, status")
+      .eq("id", id)
+      .eq("company_id", userData.company_id)
+      .maybeSingle();
+
+    const boxItemLocationKeys = new Set<string>();
+    for (const box of boxes || []) {
+      const rec = box as Record<string, unknown>;
+      const grnItem = rec.grn_item as Record<string, unknown> | null;
+      const itemRef = grnItem?.item as Record<string, unknown> | Record<string, unknown>[] | null;
+      const item = Array.isArray(itemRef) ? itemRef[0] : itemRef;
+      const itemId = item?.id as string | undefined;
+      const locationId = rec.warehouse_location_id as string | undefined;
+      if (itemId && locationId && grnHeader?.warehouse_id && grnHeader?.batch_number) {
+        boxItemLocationKeys.add(`${itemId}::${locationId}`);
+      }
+    }
+
+    const batchLocationSkuByKey = new Map<string, string>();
+    if (boxItemLocationKeys.size > 0 && grnHeader?.warehouse_id && grnHeader?.batch_number) {
+      const itemIds = Array.from(new Set(Array.from(boxItemLocationKeys).map((k) => k.split("::")[0])));
+      const locationIds = Array.from(new Set(Array.from(boxItemLocationKeys).map((k) => k.split("::")[1])));
+
+      const { data: batchLocationRows } = await supabase
+        .from("item_location_batch")
+        .select(
+          `
+          item_id,
+          location_id,
+          batch_location_sku,
+          item_batch:item_batch!item_location_batch_item_batch_id_fkey(batch_code, warehouse_id)
+        `
+        )
+        .eq("company_id", userData.company_id)
+        .eq("warehouse_id", grnHeader.warehouse_id)
+        .in("item_id", itemIds)
+        .in("location_id", locationIds)
+        .is("deleted_at", null);
+
+      for (const row of batchLocationRows || []) {
+        const itemBatch = Array.isArray(row.item_batch) ? row.item_batch[0] : row.item_batch;
+        if (!itemBatch) continue;
+        if ((itemBatch.batch_code as string | undefined) !== grnHeader.batch_number) continue;
+        const key = `${row.item_id as string}::${row.location_id as string}`;
+        if (row.batch_location_sku) {
+          batchLocationSkuByKey.set(key, row.batch_location_sku as string);
+        }
+      }
+    }
+
     // Format response
     const formattedBoxes = boxes?.map((box: Record<string, unknown>) => ({
+      ...((): { itemId?: string; batchLocationSku?: string | null } => {
+        const grnItem = box.grn_item as Record<string, unknown> | null;
+        const itemRef = grnItem?.item as Record<string, unknown> | Record<string, unknown>[] | null;
+        const item = Array.isArray(itemRef) ? itemRef[0] : itemRef;
+        const itemId = item?.id as string | undefined;
+        const locationId = box.warehouse_location_id as string | undefined;
+        const key = itemId && locationId ? `${itemId}::${locationId}` : "";
+        const storedBatchLocationSku = (box.batch_location_sku as string | null | undefined) ?? null;
+        return {
+          itemId,
+          batchLocationSku:
+            storedBatchLocationSku ??
+            (key ? (batchLocationSkuByKey.get(key) ?? null) : null),
+        };
+      })(),
       id: box.id,
       grnItemId: box.grn_item_id as string,
       boxNumber: box.box_number as number,
@@ -190,6 +259,21 @@ export async function POST(
       return NextResponse.json({ error: "Failed to regenerate boxes" }, { status: 500 });
     }
 
+    let batchLocationSku: string | null = null;
+    if (body.warehouseLocationId) {
+      const { data: generatedSku, error: skuError } = await supabase.rpc(
+        "generate_item_location_batch_sku"
+      );
+      if (skuError || !generatedSku) {
+        console.error("Error generating batch_location_sku:", skuError);
+        return NextResponse.json(
+          { error: "Failed to generate batch location SKU" },
+          { status: 500 }
+        );
+      }
+      batchLocationSku = String(generatedSku);
+    }
+
     // Generate boxes with barcodes
     const boxesToInsert = [];
     for (let i = 1; i <= body.numBoxes; i++) {
@@ -202,6 +286,7 @@ export async function POST(
         barcode: barcode,
         qty_per_box: qtyPerBox,
         warehouse_location_id: body.warehouseLocationId || null,
+        batch_location_sku: batchLocationSku,
         delivery_date: grn.delivery_date,
         container_number: grn.container_number,
         seal_number: grn.seal_number,
@@ -212,7 +297,7 @@ export async function POST(
     const { data: boxes, error: insertError } = await supabase
       .from("grn_boxes")
       .insert(boxesToInsert)
-      .select("id");
+      .select("id, batch_location_sku");
 
     if (insertError) {
       console.error("Error creating boxes:", insertError);

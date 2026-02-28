@@ -6,6 +6,8 @@ import { jsPDF } from "jspdf";
  */
 export type BarcodeData = {
   boxId: string;
+  itemId?: string;
+  batchLocationSku?: string | null;
   batchNumber: string;
   grnNumber: string;
   itemCode: string;
@@ -16,6 +18,7 @@ export type BarcodeData = {
   containerNumber?: string;
   sealNumber?: string;
   warehouseCode?: string;
+  locationId?: string | null;
   locationCode?: string;
 };
 
@@ -27,13 +30,15 @@ export async function generateQRCode(data: BarcodeData): Promise<string> {
     const qrData = JSON.stringify({
       id: data.boxId,
       batchNumber: data.batchNumber,
+      itemId: data.itemId || null,
       item: data.itemCode,
       box: data.boxNumber,
       qty: data.qtyPerBox,
       date: data.deliveryDate,
       container: data.containerNumber,
       seal: data.sealNumber,
-      location: data.locationCode,
+      location: data.locationId || null,
+      batchLocationSku: data.batchLocationSku || null,
     });
     const qrCodeDataURL = await QRCode.toDataURL(qrData, {
       errorCorrectionLevel: "H",
@@ -100,6 +105,8 @@ export async function generateBarcodeLabelsPDF(
 
     // Add text information (right side of QR)
     const textX = margin + qrSize + 5;
+    const textRightPadding = 3;
+    const textMaxWidth = margin + labelWidth - textX - textRightPadding;
     let textY = yOffset + 6;
 
     // GRN Number - prominent
@@ -113,14 +120,36 @@ export async function generateBarcodeLabelsPDF(
     pdf.setFont("helvetica", "normal");
     pdf.text(`${box.itemCode}`, textX, textY);
 
-    // Item Name (truncated to fit)
+    // Item Name (wrap within the label instead of overflowing into the right margin)
     textY += 4;
     pdf.setFontSize(7);
-    const itemName = box.itemName.length > 22 ? box.itemName.substring(0, 22) + "..." : box.itemName;
-    pdf.text(itemName, textX, textY);
+    const itemNameLines = pdf.splitTextToSize(box.itemName, textMaxWidth);
+    pdf.text(itemNameLines, textX, textY);
+
+    // Warehouse & Location directly below item name (right column)
+    let rightColumnExtraLinesHeight = 0;
+    if (box.warehouseCode || box.locationCode) {
+      const itemNameLineHeight = 3.2;
+      const afterItemNameY = textY + Math.max(0, (itemNameLines.length - 1) * itemNameLineHeight);
+      const locationInfo = [
+        box.warehouseCode ? `${box.warehouseCode}` : "",
+        box.locationCode ? `${box.locationCode}` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ");
+
+      if (locationInfo) {
+        const locationInfoLines = pdf.splitTextToSize(locationInfo, textMaxWidth);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(7);
+        pdf.text(locationInfoLines, textX, afterItemNameY + 4);
+        rightColumnExtraLinesHeight = locationInfoLines.length * 3.2 + 1;
+      }
+    }
 
     // Quantity - prominent
-    textY += 5;
+    const itemNameLineHeight = 3.2;
+    textY += Math.max(5, itemNameLines.length * itemNameLineHeight + 1 + rightColumnExtraLinesHeight);
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "bold");
     pdf.text(`Qty: ${box.qtyPerBox}`, textX, textY);
@@ -128,16 +157,16 @@ export async function generateBarcodeLabelsPDF(
     // Details below QR code (using full width)
     textY = yOffset + qrSize + 5;
 
-    // Warehouse & Location
-    if (box.warehouseCode || box.locationCode) {
+    if (box.batchLocationSku) {
       textY += 4;
-      pdf.setFont("helvetica", "bold");
+      pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
-      const locationInfo = [
-        box.warehouseCode ? `WH: ${box.warehouseCode}` : "",
-        box.locationCode ? `Loc: ${box.locationCode}` : ""
-      ].filter(Boolean).join(" | ");
-      pdf.text(locationInfo, margin + 2, textY);
+      // Center within the QR container width.
+      const skuText = `${box.batchLocationSku}`;
+      const qrX = margin + 2;
+      const skuTextWidth = pdf.getTextWidth(skuText);
+      const skuX = qrX + Math.max(0, (qrSize - skuTextWidth) / 2);
+      pdf.text(skuText, skuX, textY);
     }
 
     // Move to next label position

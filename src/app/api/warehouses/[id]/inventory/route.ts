@@ -20,6 +20,7 @@ type ItemWarehouseWithItem = {
   item_id: string;
   warehouse_id: string;
   current_stock: number | string | null;
+  available_stock: number | string | null;
   reorder_level: number | string | null;
   items: ItemRow | ItemRow[] | null;
 };
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         item_id,
         warehouse_id,
         current_stock,
+        available_stock,
         reorder_level,
         items!inner (
           id,
@@ -131,14 +133,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : [];
 
     let uomsData: UomRow[] = [];
-    let uomError: unknown = null;
     if (uomIds.length > 0) {
       const uomRes = await supabase.from("units_of_measure").select("id, name").in("id", uomIds);
       uomsData = (uomRes.data as UomRow[] | null) || [];
-      uomError = uomRes.error;
-    }
-
-    if (uomError) {
+      if (uomRes.error) {
+        return NextResponse.json({ error: "Failed to fetch units of measure" }, { status: 500 });
+      }
     }
 
     const uomMap = new Map((uomsData || []).map((uom) => [uom.id, uom.name]));
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         itemName: item?.item_name || undefined,
         description: item?.description,
         currentStock: Number(stock.current_stock) || 0,
-        availableStock: Number(stock.current_stock) || 0,
+        availableStock: Number(stock.available_stock) || 0,
         unitPrice: Number(item?.sales_price) || 0,
         unitCost: Number(item?.cost_price) || 0,
         reorderPoint: Number(stock.reorder_level) || 0,

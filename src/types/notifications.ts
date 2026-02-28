@@ -1,5 +1,8 @@
 export type NotificationType =
   | "load_list_status"
+  | "stock_request_workflow"
+  | "pick_list_workflow"
+  | "delivery_note_workflow"
   | "customer_registration_submitted"
   | "customer_registration_approved"
   | "customer_registration_rejected"

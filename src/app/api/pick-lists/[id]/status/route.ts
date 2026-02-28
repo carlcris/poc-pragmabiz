@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import {
+  getWarehouseBusinessUnitMap,
+  notifyBusinessUnits,
+} from "@/app/api/_lib/workflow-notifications";
+import {
   ensurePickListActorAuthorized,
   fetchPickList,
   fetchPickListHeader,
@@ -126,6 +130,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     }
 
+    if (nextStatus === "cancelled") {
+      const { error: cancelResetError } = await auth.supabase.rpc("cancel_pick_list_reset_progress", {
+        p_company_id: auth.companyId,
+        p_user_id: auth.userId,
+        p_pick_list_id: id,
+      });
+
+      if (cancelResetError) {
+        return NextResponse.json({ error: cancelResetError.message }, { status: 400 });
+      }
+    }
+
     const updatePayload: Record<string, string | null> = {
       status: nextStatus,
       updated_at: nowIso,
@@ -180,6 +196,49 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       if (dnUpdateError) {
         return NextResponse.json({ error: dnUpdateError.message }, { status: 500 });
+      }
+
+      if (nextStatus === "done") {
+        try {
+          const { data: dnDetails, error: dnDetailsError } = await auth.supabase
+            .from("delivery_notes")
+            .select("id, dn_no, requesting_warehouse_id, fulfilling_warehouse_id")
+            .eq("id", header.dn_id)
+            .eq("company_id", auth.companyId)
+            .is("deleted_at", null)
+            .single();
+
+          if (dnDetailsError || !dnDetails) {
+            throw new Error(dnDetailsError?.message || "Delivery note details not found");
+          }
+
+          const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
+            dnDetails.requesting_warehouse_id,
+            dnDetails.fulfilling_warehouse_id,
+          ]);
+
+          await notifyBusinessUnits({
+            supabase: auth.supabase,
+            companyId: auth.companyId,
+            actorUserId: auth.userId,
+            businessUnitIds: [
+              warehouseBuMap.get(dnDetails.requesting_warehouse_id),
+              warehouseBuMap.get(dnDetails.fulfilling_warehouse_id),
+            ],
+            title: "Ready for dispatch",
+            message: `Delivery note ${dnDetails.dn_no} is ready for dispatch.`,
+            type: "delivery_note_workflow",
+            metadata: {
+              delivery_note_id: dnDetails.id,
+              dn_no: dnDetails.dn_no,
+              pick_list_id: header.id,
+              pick_list_status: "done",
+              status: "dispatch_ready",
+            },
+          });
+        } catch (notificationError) {
+          console.error("Error creating dispatch-ready notifications:", notificationError);
+        }
       }
     }
 

@@ -23,6 +23,67 @@ export type PickListItem = {
     symbol: string | null;
     name: string | null;
   } | null;
+  delivery_note_items?:
+    | {
+        id: string;
+        suggested_pick_location_id: string | null;
+        suggested_pick_batch_code: string | null;
+        suggested_pick_batch_received_at: string | null;
+        suggested_pick_location?:
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }[]
+          | null;
+      }
+    | {
+        id: string;
+        suggested_pick_location_id: string | null;
+        suggested_pick_batch_code: string | null;
+        suggested_pick_batch_received_at: string | null;
+        suggested_pick_location?:
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }
+          | {
+              id: string;
+              code: string | null;
+              name: string | null;
+            }[]
+          | null;
+      }[]
+    | null;
+};
+
+export type DeliveryNoteItemPick = {
+  id: string;
+  company_id: string;
+  dn_id: string;
+  delivery_note_item_id: string;
+  pick_list_id: string;
+  item_id: string;
+  source_warehouse_id: string;
+  picked_location_id: string;
+  picked_batch_code: string;
+  picked_batch_received_at: string;
+  batch_location_sku?: string | null;
+  picked_qty: number;
+  dispatched_qty: number;
+  picker_user_id: string | null;
+  picked_at: string;
+  is_mismatch_warning_acknowledged: boolean;
+  mismatch_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | null;
 };
 
 export type PickListAssignee = {
@@ -62,6 +123,7 @@ export type PickList = {
     fulfilling_warehouse_id: string;
   } | null;
   pick_list_items?: PickListItem[];
+  delivery_note_item_picks?: DeliveryNoteItemPick[];
   pick_list_assignees?: PickListAssignee[];
 };
 
@@ -81,8 +143,19 @@ export type UpdatePickListStatusPayload = {
 };
 
 export type UpdatePickListItemsPayload = {
-  items: Array<{
+  items?: Array<{
     pickListItemId: string;
     pickedQty: number;
+  }>;
+  pickRows?: Array<{
+    pickRowId?: string;
+    deliveryNoteItemId: string;
+    batchLocationSku?: string;
+    pickedLocationId: string;
+    pickedBatchCode: string;
+    pickedBatchReceivedAt: string;
+    pickedQty: number;
+    isMismatchWarningAcknowledged?: boolean;
+    mismatchReason?: string | null;
   }>;
 };

@@ -5759,6 +5759,7 @@ export type Database = {
           deleted_at: string | null
           email: string
           id: string
+          lang: string
           mobile: string | null
           notes: string | null
           payment_terms: string
@@ -5799,6 +5800,7 @@ export type Database = {
           deleted_at?: string | null
           email: string
           id?: string
+          lang?: string
           mobile?: string | null
           notes?: string | null
           payment_terms?: string
@@ -5839,6 +5841,7 @@ export type Database = {
           deleted_at?: string | null
           email?: string
           id?: string
+          lang?: string
           mobile?: string | null
           notes?: string | null
           payment_terms?: string
@@ -7489,4 +7492,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -7,6 +7,7 @@ import type {
   CreateDeliveryNotePayload,
   DispatchDeliveryNotePayload,
   MarkDispatchReadyPayload,
+  DeliveryNoteFulfillmentMode,
   ReceiveDeliveryNotePayload,
 } from "@/types/delivery-note";
 
@@ -134,8 +135,18 @@ export function useReceiveDeliveryNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data?: ReceiveDeliveryNotePayload }) =>
-      deliveryNotesApi.receive(id, data),
+    mutationFn: ({
+      id,
+      data,
+      fulfillmentMode,
+    }: {
+      id: string;
+      data?: ReceiveDeliveryNotePayload;
+      fulfillmentMode?: DeliveryNoteFulfillmentMode;
+    }) =>
+      fulfillmentMode === "customer_pickup_from_warehouse"
+        ? deliveryNotesApi.receiveDirectPickup(id, data)
+        : deliveryNotesApi.receive(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });

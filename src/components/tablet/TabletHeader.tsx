@@ -5,6 +5,8 @@ import { ChevronLeft, User, LogOut, Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect, useRef } from "react";
+import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 interface TabletHeaderProps {
   title: string;
@@ -24,6 +26,7 @@ export function TabletHeader({
   showLogout = true,
 }: TabletHeaderProps) {
   const router = useRouter();
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
@@ -72,6 +75,8 @@ export function TabletHeader({
       setShowDropdown(false);
     }
   };
+
+  const displayBusinessUnitName = currentBusinessUnit?.name || warehouseName;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-white shadow-sm">
@@ -132,20 +137,21 @@ export function TabletHeader({
       </div>
 
       {/* Info Bar - Warehouse and Date */}
-      <div className="border-t border-primary/20 bg-gradient-to-r from-primary/10 to-primary/5 px-6 py-2.5">
-        <div className="flex items-center justify-between text-sm">
-          {/* Warehouse Info */}
-          {warehouseName && (
-            <div className="flex items-center gap-2">
-              <Warehouse className="h-4 w-4 text-primary" />
-              <span className="font-semibold text-gray-700">{warehouseName}</span>
+      <div className="border-t bg-gray-50 px-4 py-2.5 sm:px-6">
+        <div className="flex items-center gap-3">
+          {/* Business Unit Switcher */}
+          {displayBusinessUnitName && (
+            <div className="min-w-0 flex-1">
+              <BusinessUnitSwitcher initialBusinessUnitName={displayBusinessUnitName} variant="tablet" />
             </div>
           )}
 
-          {/* Date */}
-          <div className="flex items-center gap-1.5 text-gray-600">
-            <span>📅</span>
-            <span className="font-medium">{format(new Date(), "MMM d, yyyy")}</span>
+          {/* Date Display */}
+          <div className="flex shrink-0 items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-sm">
+            <span aria-hidden>📅</span>
+            <span className="whitespace-nowrap text-sm font-semibold text-gray-700">
+              {format(new Date(), "MMM d, yyyy")}
+            </span>
           </div>
         </div>
       </div>

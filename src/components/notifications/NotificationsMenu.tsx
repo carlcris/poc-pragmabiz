@@ -22,7 +22,7 @@ function formatTime(value: string) {
 
 export function NotificationsMenu() {
   const [open, setOpen] = useState(false);
-  const { data } = useNotifications({ unreadOnly: false, limit: 8, offset: 0, enabled: open });
+  const { data } = useNotifications({ unreadOnly: false, limit: 8, offset: 0, enabled: true });
   const markRead = useMarkNotificationRead();
 
   const notifications = data?.data || [];

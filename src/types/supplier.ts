@@ -1,5 +1,6 @@
 export type SupplierStatus = "active" | "inactive" | "blacklisted";
 export type PaymentTerms = "cod" | "net_7" | "net_15" | "net_30" | "net_45" | "net_60" | "net_90";
+export type SupplierLanguage = "english" | "chinese";
 
 export interface Supplier {
   id: string;
@@ -38,6 +39,7 @@ export interface Supplier {
   bankAccountName?: string;
 
   // Status
+  lang: SupplierLanguage;
   status: SupplierStatus;
   notes?: string;
 
@@ -73,6 +75,7 @@ export interface CreateSupplierRequest {
   bankName?: string;
   bankAccountNumber?: string;
   bankAccountName?: string;
+  lang: SupplierLanguage;
   status: SupplierStatus;
   notes?: string;
   createdBy: string;
@@ -102,6 +105,7 @@ export interface UpdateSupplierRequest {
   bankName?: string;
   bankAccountNumber?: string;
   bankAccountName?: string;
+  lang?: SupplierLanguage;
   status?: SupplierStatus;
   notes?: string;
 }

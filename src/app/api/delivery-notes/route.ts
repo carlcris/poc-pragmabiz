@@ -6,6 +6,7 @@ import { buildDnNo, fetchDeliveryNote, getAuthContext, mapDeliveryNoteRecord, to
 type CreateDeliveryNoteBody = {
   requestingWarehouseId?: string;
   fulfillingWarehouseId?: string;
+  fulfillmentMode?: "transfer_to_store" | "customer_pickup_from_warehouse";
   srIds?: string[];
   notes?: string;
   driverName?: string;
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
+        delivery_note_items(
+          sr_item_id,
+          allocated_qty
+        ),
         pick_lists(
           id,
           pick_list_no,
@@ -80,6 +85,11 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as CreateDeliveryNoteBody;
     if (!body.items || body.items.length === 0) {
       return NextResponse.json({ error: "At least one delivery note line is required" }, { status: 400 });
+    }
+
+    const fulfillmentMode = body.fulfillmentMode || "transfer_to_store";
+    if (!["transfer_to_store", "customer_pickup_from_warehouse"].includes(fulfillmentMode)) {
+      return NextResponse.json({ error: "Invalid fulfillment mode" }, { status: 400 });
     }
 
     const distinctSrIds = Array.from(new Set([...(body.srIds || []), ...body.items.map((item) => item.srId)]));
@@ -216,6 +226,7 @@ export async function POST(request: NextRequest) {
         status: "draft",
         requesting_warehouse_id: inferredRequestingWarehouseId,
         fulfilling_warehouse_id: inferredFulfillingWarehouseId,
+        fulfillment_mode: fulfillmentMode,
         notes: body.notes?.trim() || null,
         driver_name: body.driverName?.trim() || null,
         created_by: auth.userId,
@@ -265,6 +276,28 @@ export async function POST(request: NextRequest) {
     const { error: itemError } = await auth.supabase.from("delivery_note_items").insert(dnItems);
     if (itemError) {
       return NextResponse.json({ error: itemError.message }, { status: 500 });
+    }
+
+    const { error: reserveError } = await auth.supabase.rpc("reserve_delivery_note_inventory", {
+      p_company_id: auth.companyId,
+      p_user_id: auth.userId,
+      p_dn_id: dn.id,
+    });
+
+    if (reserveError) {
+      // Best-effort cleanup of the just-created draft DN and dependent rows.
+      const { error: cleanupError } = await auth.supabase
+        .from("delivery_notes")
+        .delete()
+        .eq("id", dn.id)
+        .eq("company_id", auth.companyId)
+        .eq("status", "draft");
+
+      if (cleanupError) {
+        console.error("Failed to cleanup delivery note after reservation error:", cleanupError);
+      }
+
+      return NextResponse.json({ error: reserveError.message }, { status: 400 });
     }
 
     const created = await fetchDeliveryNote(auth.supabase, auth.companyId, dn.id);

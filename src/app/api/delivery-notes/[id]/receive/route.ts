@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import {
+  getWarehouseBusinessUnitMap,
+  notifyBusinessUnits,
+} from "@/app/api/_lib/workflow-notifications";
+import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
   fetchDeliveryNoteItems,
@@ -44,6 +48,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (header.status !== "dispatched") {
       return NextResponse.json(
         { error: "Only dispatched delivery notes can be received" },
+        { status: 400 }
+      );
+    }
+
+    if (header.fulfillment_mode === "customer_pickup_from_warehouse") {
+      return NextResponse.json(
+        {
+          error:
+            "This delivery note is configured for direct customer pickup. Use /receive-direct-pickup instead of /receive.",
+        },
         { status: 400 }
       );
     }
@@ -111,6 +125,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
       dnItems.map((item) => item.sr_id),
       auth.userId
     );
+
+    try {
+      const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
+        header.fulfilling_warehouse_id,
+      ]);
+      const fulfillingBuId = warehouseBuMap.get(header.fulfilling_warehouse_id);
+
+      await notifyBusinessUnits({
+        supabase: auth.supabase,
+        companyId: auth.companyId,
+        actorUserId: auth.userId,
+        businessUnitIds: [fulfillingBuId],
+        title: "Delivery received",
+        message: `Delivery note ${header.dn_no} has been received.`,
+        type: "delivery_note_workflow",
+        metadata: {
+          delivery_note_id: header.id,
+          dn_no: header.dn_no,
+          status: "received",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Error creating receive notifications:", notificationError);
+    }
 
     const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
     return NextResponse.json(dn);

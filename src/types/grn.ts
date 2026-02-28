@@ -36,8 +36,10 @@ export type GRNItem = {
 export type GRNBox = {
   id: string;
   grnItemId: string;
+  itemId?: string;
   boxNumber: number;
   barcode: string;
+  batchLocationSku?: string | null;
   qtyPerBox: number;
   warehouseLocationId?: string;
   warehouseLocation?: {

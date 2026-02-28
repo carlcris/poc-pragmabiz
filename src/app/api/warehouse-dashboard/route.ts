@@ -70,8 +70,6 @@ export async function GET() {
 
     const accessibleBUIds = userBUAccess?.map((access) => access.business_unit_id) || [];
     const scopedBUIds = currentBusinessUnitId ? [currentBusinessUnitId] : accessibleBUIds;
-    const scopedBUFilter = scopedBUIds.map((id) => `"${id}"`).join(",");
-
     if (scopedBUIds.length === 0) {
       return NextResponse.json({ error: "No business unit access" }, { status: 403 });
     }
@@ -117,7 +115,7 @@ export async function GET() {
       supabase
         .from("pick_lists")
         .select("id", { count: "exact", head: true })
-        .or(`business_unit_id.in.(${scopedBUFilter}),business_unit_id.is.null`)
+        .in("business_unit_id", scopedBUIds)
         .in("status", ["pending", "in_progress", "paused"])
         .is("deleted_at", null),
 
@@ -153,7 +151,7 @@ export async function GET() {
           pick_list_items(id)
         `
         )
-        .or(`business_unit_id.in.(${scopedBUFilter}),business_unit_id.is.null`)
+        .in("business_unit_id", scopedBUIds)
         .in("status", ["pending", "in_progress", "paused"])
         .is("deleted_at", null)
         .order("created_at", { ascending: true })

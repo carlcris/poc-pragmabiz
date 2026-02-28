@@ -77,7 +77,8 @@
       "Bash(tail:*)",
       "Bash(npm uninstall:*)",
       "Bash(xargs basename:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
