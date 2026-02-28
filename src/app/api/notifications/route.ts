@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const {
       data: { user },
       error: authError,
@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
+
+    if (currentBusinessUnitId) {
+      query = query.or(`business_unit_id.is.null,business_unit_id.eq.${currentBusinessUnitId}`);
+    } else {
+      query = query.is("business_unit_id", null);
+    }
 
     if (unreadOnly) {
       query = query.eq("is_read", false);

@@ -75,7 +75,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         actorUserId: userId,
         businessUnitIds: [fulfillingBuId],
         title: "New stock request",
-        message: `Stock request ${existingRequest.request_code} was submitted and is ready for fulfillment.`,
+        message: `New Stock request ${existingRequest.request_code} received.`,
         type: "stock_request_workflow",
         metadata: {
           stock_request_id: existingRequest.id,

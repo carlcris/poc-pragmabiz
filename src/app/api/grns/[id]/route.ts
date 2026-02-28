@@ -304,7 +304,7 @@ export async function PUT(
     if (existingGRN.load_list_id) {
       const { data: loadList } = await supabase
         .from("load_lists")
-        .select("id, status, ll_number, created_by")
+        .select("id, status, ll_number, created_by, business_unit_id")
         .eq("id", existingGRN.load_list_id)
         .eq("company_id", userData.company_id)
         .is("deleted_at", null)
@@ -329,6 +329,7 @@ export async function PUT(
         } else if (loadList.created_by) {
           const { error: notificationError } = await supabase.from("notifications").insert({
             company_id: userData.company_id,
+            business_unit_id: loadList.business_unit_id || null,
             user_id: loadList.created_by,
             title: "Shipments receiving started",
             message: `Load list ${loadList.ll_number} is now receiving.`,

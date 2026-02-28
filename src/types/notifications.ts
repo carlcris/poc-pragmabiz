@@ -11,6 +11,7 @@ export type NotificationType =
 export type Notification = {
   id: string;
   company_id: string;
+  business_unit_id?: string | null;
   user_id: string;
   title: string;
   message: string;

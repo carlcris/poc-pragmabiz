@@ -98,7 +98,7 @@ export async function POST(
     if (grn.load_list_id) {
       const { data: loadList } = await supabase
         .from("load_lists")
-        .select("id, ll_number, created_by")
+        .select("id, ll_number, created_by, business_unit_id")
         .eq("id", grn.load_list_id)
         .eq("company_id", grn.company_id)
         .is("deleted_at", null)
@@ -107,6 +107,7 @@ export async function POST(
       if (loadList?.created_by) {
         const { error: notificationError } = await supabase.from("notifications").insert({
           company_id: grn.company_id,
+          business_unit_id: loadList.business_unit_id || null,
           user_id: loadList.created_by,
           title: "Shipments received",
           message: `Load list ${loadList.ll_number} has been received.`,

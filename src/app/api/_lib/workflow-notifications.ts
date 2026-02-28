@@ -47,6 +47,7 @@ type UserNotificationInput = {
   companyId: string;
   actorUserId: string;
   userIds: Array<string | null | undefined>;
+  businessUnitId?: string | null;
   title: string;
   message: string;
   type: string;
@@ -58,6 +59,7 @@ export const notifyUsers = async ({
   companyId,
   actorUserId,
   userIds,
+  businessUnitId = null,
   title,
   message,
   type,
@@ -74,6 +76,7 @@ export const notifyUsers = async ({
     p_message: message,
     p_type: type,
     p_metadata: metadata || null,
+    p_business_unit_id: businessUnitId,
   });
 
   if (error) {
