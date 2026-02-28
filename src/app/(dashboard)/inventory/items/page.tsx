@@ -20,6 +20,7 @@ import { useDeleteItem, useItems, useItemsStats } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,19 +67,25 @@ function ItemsPageContent() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemDialogMode, setItemDialogMode] = useState<ItemDialogMode>("create");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemWithStock | null>(null);
 
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
-  // Fetch warehouses for filter UI.
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  // Fetch warehouses to resolve the current BU's default warehouse scope.
+  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
   const warehouses = useMemo(
     () => warehousesData?.data?.filter((wh) => wh.isActive) || [],
     [warehousesData?.data]
   );
+  const currentBusinessUnitWarehouseId = useMemo(() => {
+    if (!currentBusinessUnit?.id) return undefined;
+    return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id;
+  }, [currentBusinessUnit?.id, warehouses]);
+  const isWarehouseScopeReady =
+    !currentBusinessUnit?.id || !!currentBusinessUnitWarehouseId || !isWarehousesLoading;
 
   const itemsQueryParams = useMemo<{
     search: string;
@@ -95,7 +102,7 @@ function ItemsPageContent() {
       page,
       limit: pageSize,
       category: categoryFilter !== "all" ? categoryFilter : undefined,
-      warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
+      warehouseId: currentBusinessUnitWarehouseId,
       status:
         statusFilter !== "all"
           ? (statusFilter as
@@ -108,10 +115,13 @@ function ItemsPageContent() {
       includeStock: true,
       includeStats: false,
     }),
-    [search, page, pageSize, categoryFilter, warehouseFilter, statusFilter]
+    [search, page, pageSize, categoryFilter, currentBusinessUnitWarehouseId, statusFilter]
   );
 
-  const { data, isLoading, isFetching, error } = useItems(itemsQueryParams);
+  const { data, isLoading, isFetching, error } = useItems({
+    ...itemsQueryParams,
+    enabled: isWarehouseScopeReady,
+  });
   const {
     data: statsData,
     isLoading: isStatsLoading,
@@ -119,12 +129,13 @@ function ItemsPageContent() {
   } = useItemsStats({
     search,
     category: categoryFilter !== "all" ? categoryFilter : undefined,
-    warehouseId: warehouseFilter !== "all" ? warehouseFilter : undefined,
+    warehouseId: currentBusinessUnitWarehouseId,
     status:
       statusFilter !== "all"
         ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
         : "all",
     includeStock: true,
+    enabled: isWarehouseScopeReady,
   });
 
   useEffect(() => {
@@ -141,7 +152,7 @@ function ItemsPageContent() {
   const categories = categoriesData?.data || [];
 
 
-  const isInitialLoading = isLoading;
+  const isInitialLoading = isLoading || !isWarehouseScopeReady;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
   const statistics = statsData?.statistics;
@@ -426,26 +437,6 @@ function ItemsPageContent() {
               {categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={warehouseFilter}
-            onValueChange={(value) => {
-              setWarehouseFilter(value);
-              setPage(1);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="mr-2 h-4 w-4 shrink-0" />
-              <SelectValue placeholder="Warehouse" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Warehouses</SelectItem>
-              {warehouses.map((wh) => (
-                <SelectItem key={wh.id} value={wh.id}>
-                  {wh.name}
                 </SelectItem>
               ))}
             </SelectContent>
