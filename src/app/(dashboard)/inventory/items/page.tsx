@@ -269,12 +269,12 @@ function ItemsPageContent() {
     // Create CSV header
     const headers = [
       "Item Code",
-      "SKU",
       "Item Name",
       "Category",
       "UOM",
       "On Hand",
       "Allocated",
+      "In Transit Qty",
       "Available",
       "Status",
       "Std Cost",
@@ -284,12 +284,12 @@ function ItemsPageContent() {
     // Create CSV rows
     const rows = items.map((item) => [
       item.code,
-      item.sku || "",
       item.name,
       item.category,
       item.uom || "",
       item.onHand,
       item.allocated,
+      item.inTransit,
       item.available,
       item.status,
       item.standardCost,
@@ -472,12 +472,12 @@ function ItemsPageContent() {
                   <TableRow>
                     <TableHead className="w-[80px]">Image</TableHead>
                     <TableHead>Item Code</TableHead>
-                    <TableHead>SKU</TableHead>
                     <TableHead>Item Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>UOM</TableHead>
                     <TableHead className="text-right">On Hand</TableHead>
                     <TableHead className="text-right">Allocated</TableHead>
+                    <TableHead className="text-right">In Transit Qty</TableHead>
                     <TableHead className="text-right">Available</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -488,9 +488,6 @@ function ItemsPageContent() {
                     <TableRow key={i}>
                       <TableCell>
                         <Skeleton className="h-12 w-12 rounded" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-20" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-4 w-20" />
@@ -512,6 +509,12 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell className="text-right">
                         <Skeleton className="ml-auto h-4 w-16" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
                       </TableCell>
                       <TableCell className="text-right">
                         <Skeleton className="ml-auto h-8 w-16" />
@@ -547,12 +550,12 @@ function ItemsPageContent() {
                   <TableRow>
                     <TableHead className="w-[80px]">Image</TableHead>
                     <TableHead>Item Code</TableHead>
-                    <TableHead>SKU</TableHead>
                     <TableHead>Item Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>UOM</TableHead>
                     <TableHead className="text-right">On Hand</TableHead>
                     <TableHead className="text-right">Allocated</TableHead>
+                    <TableHead className="text-right">In Transit Qty</TableHead>
                     <TableHead className="text-right">Available</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -583,7 +586,6 @@ function ItemsPageContent() {
                         )}
                       </TableCell>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
-                      <TableCell className="font-mono">{item.sku || "-"}</TableCell>
                       <TableCell className="text-primary">
                         <div className="font-medium hover:underline">{item.name}</div>
                         {item.chineseName ? (
@@ -595,6 +597,9 @@ function ItemsPageContent() {
                       <TableCell className="text-right">{Math.trunc(toNumber(item.onHand))}</TableCell>
                       <TableCell className="text-right text-orange-600">
                         {Math.trunc(toNumber(item.allocated))}
+                      </TableCell>
+                      <TableCell className="text-right text-blue-600">
+                        {Math.trunc(toNumber(item.inTransit))}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {(() => {

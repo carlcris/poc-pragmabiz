@@ -1,3 +1,12 @@
+export type ItemLocationBatch = {
+  id: string;
+  batchCode: string;
+  receivedAt: string;
+  qtyOnHand: number;
+  qtyReserved: number;
+  qtyAvailable: number;
+};
+
 export type ItemLocation = {
   id: string;
   itemId: string;
@@ -15,6 +24,7 @@ export type ItemLocation = {
   estimatedArrivalDate?: string | null;
   isDefault?: boolean;
   defaultLocationId?: string | null;
+  batches?: ItemLocationBatch[];
 };
 
 export type WarehouseLocation = {

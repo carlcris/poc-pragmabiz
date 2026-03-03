@@ -13,7 +13,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (unauthorized) return unauthorized;
 
     const { id } = await params;
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     const {
       data: { user },
@@ -34,7 +34,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    let itemLocationQuery = supabase
       .from("item_location")
       .select(
         `
@@ -49,6 +49,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           id,
           warehouse_code,
           warehouse_name,
+          business_unit_id,
           company_id,
           deleted_at
         ),
@@ -71,6 +72,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .is("warehouse_locations.deleted_at", null)
       .order("warehouse_id");
 
+    // Restrict item locations to warehouses in the current BU scope when context is available.
+    if (currentBusinessUnitId) {
+      itemLocationQuery = itemLocationQuery.eq(
+        "warehouses.business_unit_id",
+        currentBusinessUnitId
+      );
+    }
+
+    const { data, error } = await itemLocationQuery;
+
     if (error) {
       return NextResponse.json(
         { error: "Failed to fetch item locations", details: error.message },
@@ -79,6 +90,35 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
 
     const warehouseIds = Array.from(new Set((data || []).map((row) => row.warehouse_id)));
+    const locationIds = Array.from(new Set((data || []).map((row) => row.location_id)));
+
+    // Fetch batch information only for the BU-scoped warehouses/locations above.
+    const { data: batchData } =
+      warehouseIds.length > 0 && locationIds.length > 0
+        ? await supabase
+            .from("item_location_batch")
+            .select(
+              `
+              id,
+              location_id,
+              qty_on_hand,
+              qty_reserved,
+              qty_available,
+              item_batch:item_batch!item_location_batch_item_batch_id_fkey(
+                id,
+                batch_code,
+                received_at
+              )
+            `
+            )
+            .eq("company_id", userData.company_id)
+            .eq("item_id", id)
+            .in("warehouse_id", warehouseIds)
+            .in("location_id", locationIds)
+            .is("deleted_at", null)
+            .order("item_batch(received_at)", { ascending: true })
+            .order("location_id", { ascending: true })
+        : { data: [] };
 
     const { data: itemWarehouses } =
       warehouseIds.length > 0
@@ -104,12 +144,42 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       (itemWarehouses || []).map((row) => [row.warehouse_id, row.estimated_arrival_date || null])
     );
 
+    // Group batches by location
+    const batchesByLocation = new Map<string, Array<{
+      id: string;
+      batchCode: string;
+      receivedAt: string;
+      qtyOnHand: number;
+      qtyReserved: number;
+      qtyAvailable: number;
+    }>>();
+
+    (batchData || []).forEach((batch) => {
+      const locationBatches = batchesByLocation.get(batch.location_id) || [];
+      const itemBatch = Array.isArray(batch.item_batch) ? batch.item_batch[0] : batch.item_batch;
+
+      if (itemBatch) {
+        locationBatches.push({
+          id: batch.id,
+          batchCode: itemBatch.batch_code,
+          receivedAt: itemBatch.received_at,
+          qtyOnHand: Number(batch.qty_on_hand) || 0,
+          qtyReserved: Number(batch.qty_reserved) || 0,
+          qtyAvailable: Number(batch.qty_available) || 0,
+        });
+      }
+
+      batchesByLocation.set(batch.location_id, locationBatches);
+    });
+
     const locations = (data || []).map((row) => {
       const defaultLocationId = defaultLocationMap.get(row.warehouse_id) || null;
       const warehouse = Array.isArray(row.warehouses) ? row.warehouses[0] : row.warehouses;
       const location = Array.isArray(row.warehouse_locations)
         ? row.warehouse_locations[0]
         : row.warehouse_locations;
+      const batches = batchesByLocation.get(row.location_id) || [];
+
       return {
         id: row.id,
         itemId: row.item_id,
@@ -127,6 +197,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         estimatedArrivalDate: estimatedArrivalMap.get(row.warehouse_id) || null,
         isDefault: defaultLocationId === row.location_id,
         defaultLocationId,
+        batches,
       };
     });
 

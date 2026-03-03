@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
 import type { ItemLocation } from "@/types/inventory-location";
@@ -53,12 +54,25 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const [fromLocationId, setFromLocationId] = useState<string>("");
   const [toLocationId, setToLocationId] = useState<string>("");
   const [moveQty, setMoveQty] = useState<string>("");
+  const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
   const { data, isLoading, error } = useQuery<ItemLocationsResponse>({
     queryKey: ["item-locations", itemId],
     queryFn: async () => apiClient.get<ItemLocationsResponse>(`/api/items/${itemId}/locations`),
   });
   const { data: itemResponse } = useItem(itemId);
   const item = itemResponse?.data;
+
+  const toggleLocation = (locationId: string) => {
+    setExpandedLocations((prev) => {
+      const next = new Set(prev);
+      if (next.has(locationId)) {
+        next.delete(locationId);
+      } else {
+        next.add(locationId);
+      }
+      return next;
+    });
+  };
 
   const locations = useMemo(() => data?.data || [], [data]);
   const warehouses = useMemo(() => {
@@ -195,6 +209,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]"></TableHead>
                   <TableHead>Warehouse</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Type</TableHead>
@@ -207,47 +222,122 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {locations.map((location) => (
-                  <TableRow key={location.id}>
-                    <TableCell>
-                      <div className="text-sm font-medium">{location.warehouseCode}</div>
-                      <div className="text-xs text-muted-foreground">{location.warehouseName}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        {location.locationCode}
-                        {location.isDefault && (
-                          <Badge variant="secondary" className="text-xs">
-                            Default
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{location.locationName}</div>
-                    </TableCell>
-                    <TableCell className="text-sm capitalize">{location.locationType}</TableCell>
-                    <TableCell className="text-right">{formatQty(location.qtyOnHand)}</TableCell>
-                    <TableCell className="text-right">{formatQty(location.qtyReserved)}</TableCell>
-                    <TableCell className="text-right">{formatQty(location.qtyAvailable)}</TableCell>
-                    <TableCell className="text-right">
-                      {formatQty(location.inTransit || 0)}
-                    </TableCell>
-                    <TableCell>
-                      {location.estimatedArrivalDate
-                        ? new Date(location.estimatedArrivalDate).toLocaleDateString()
-                        : "--"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={location.isDefault || setDefaultLocation.isPending}
-                        onClick={() => setDefaultLocation.mutate(location)}
-                      >
-                        Set Default
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {locations.map((location) => {
+                  const isExpanded = expandedLocations.has(location.locationId);
+                  const hasBatches = (location.batches?.length || 0) > 0;
+
+                  return (
+                    <Fragment key={location.id}>
+                      <TableRow>
+                        <TableCell>
+                          {hasBatches && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => toggleLocation(location.locationId)}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm font-medium">{location.warehouseCode}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {location.warehouseName}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            {location.locationCode}
+                            {location.isDefault && (
+                              <Badge variant="secondary" className="text-xs">
+                                Default
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{location.locationName}</div>
+                        </TableCell>
+                        <TableCell className="text-sm capitalize">{location.locationType}</TableCell>
+                        <TableCell className="text-right">{formatQty(location.qtyOnHand)}</TableCell>
+                        <TableCell className="text-right">
+                          {formatQty(location.qtyReserved)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatQty(location.qtyAvailable)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatQty(location.inTransit || 0)}
+                        </TableCell>
+                        <TableCell>
+                          {location.estimatedArrivalDate
+                            ? new Date(location.estimatedArrivalDate).toLocaleDateString()
+                            : "--"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={location.isDefault || setDefaultLocation.isPending}
+                            onClick={() => setDefaultLocation.mutate(location)}
+                          >
+                            Set Default
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      {hasBatches && isExpanded && (
+                        <TableRow>
+                          <TableCell colSpan={10} className="bg-muted/50 p-0">
+                            <div className="px-4 py-2">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="hover:bg-transparent">
+                                    <TableHead className="h-8 text-xs">Batch Code</TableHead>
+                                    <TableHead className="h-8 text-xs">Received Date</TableHead>
+                                    <TableHead className="h-8 text-right text-xs">
+                                      On Hand
+                                    </TableHead>
+                                    <TableHead className="h-8 text-right text-xs">
+                                      Reserved
+                                    </TableHead>
+                                    <TableHead className="h-8 text-right text-xs">
+                                      Available
+                                    </TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {location.batches?.map((batch) => (
+                                    <TableRow key={batch.id} className="hover:bg-transparent">
+                                      <TableCell className="py-2 text-xs font-medium">
+                                        {batch.batchCode}
+                                      </TableCell>
+                                      <TableCell className="py-2 text-xs">
+                                        {new Date(batch.receivedAt).toLocaleDateString()}
+                                      </TableCell>
+                                      <TableCell className="py-2 text-right text-xs">
+                                        {formatQty(batch.qtyOnHand)}
+                                      </TableCell>
+                                      <TableCell className="py-2 text-right text-xs">
+                                        {formatQty(batch.qtyReserved)}
+                                      </TableCell>
+                                      <TableCell className="py-2 text-right text-xs">
+                                        {formatQty(batch.qtyAvailable)}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

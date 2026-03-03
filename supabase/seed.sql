@@ -47,16 +47,10 @@ VALUES
   );
 
 -- ============================================================================
--- SEED DATA: Demo User
+-- SEED DATA: Auth Users
 -- ============================================================================
--- NOTE: Demo user must be created via Supabase Auth API after seeding
--- Use the following command after running db reset:
--- curl -X POST http://127.0.0.1:54321/auth/v1/signup \
---   -H "apikey: YOUR_ANON_KEY" \
---   -H "Content-Type: application/json" \
---   -d '{"email":"demo@pragmatica.app","password":"demo1234"}'
---
--- Then update the users table with the generated user ID
+-- Auth users are seeded in this file (auth.users + public.users + role assignments).
+-- Default password for seeded users uses the same bcrypt hash as existing demo users.
 
 -- ============================================================================
 -- SEED DATA: Units of Measure
@@ -774,8 +768,8 @@ BEGIN
     RAISE NOTICE 'Purchase Orders: % records', (SELECT COUNT(*) FROM purchase_orders);
     RAISE NOTICE 'Item-Warehouse Stock: % records', (SELECT COUNT(*) FROM item_warehouse);
     RAISE NOTICE '===============================================';
-    RAISE NOTICE 'NOTE: You need to create a user via Supabase Auth';
-    RAISE NOTICE 'and then update the users table manually.';
+    RAISE NOTICE 'Seeded users: demo@pragmatica.app, cashier@pragmatica.app, admin@pragmatica.ph';
+    RAISE NOTICE 'RBAC: demo and admin are Super Admin; cashier has Cashier role';
     RAISE NOTICE '===============================================';
 END $$;
 
@@ -785,11 +779,15 @@ VALUES
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
 ('00000000-0000-0000-0000-000000000000','5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','authenticated','authenticated','cashier@pragmatica.app','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5fa2a5a4-14ca-4afb-bfeb-abc345335a1f", "email": "cashier@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','b6f62b1e-8eae-4ba2-93b2-353d20fe94e0','authenticated','authenticated','admin@pragmatica.ph','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "b6f62b1e-8eae-4ba2-93b2-353d20fe94e0", "email": "admin@pragmatica.ph", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
 ('5745e13c-ab07-48b7-9db7-24372b16f5a9','00000000-0000-0000-0000-000000000001','demo','demo@pragmatica.app','Demo','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013'),
-('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','00000000-0000-0000-0000-000000000001','cashier','cashier@pragmatica.app','Store','Cashier',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013');
+('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','00000000-0000-0000-0000-000000000001','cashier','cashier@pragmatica.app','Store','Cashier',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013'),
+('b6f62b1e-8eae-4ba2-93b2-353d20fe94e0','00000000-0000-0000-0000-000000000001','admin','admin@pragmatica.ph','Admin','User',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'00000000-0000-0000-0000-000000000013');
 
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
@@ -808,6 +806,9 @@ VALUES
   ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000100', 'admin', true, true, now()),
   ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000101', 'admin', false, false, now()),
   ('5745e13c-ab07-48b7-9db7-24372b16f5a9', '00000000-0000-0000-0000-000000000102', 'admin', false, false, now()),
+  ('b6f62b1e-8eae-4ba2-93b2-353d20fe94e0', '00000000-0000-0000-0000-000000000100', 'admin', true, true, now()),
+  ('b6f62b1e-8eae-4ba2-93b2-353d20fe94e0', '00000000-0000-0000-0000-000000000101', 'admin', false, false, now()),
+  ('b6f62b1e-8eae-4ba2-93b2-353d20fe94e0', '00000000-0000-0000-0000-000000000102', 'admin', false, false, now()),
   ('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f', '00000000-0000-0000-0000-000000000102', 'admin', false, true, now()),
   ('bcb8f5df-b678-4c22-ba71-59b33ba06227', '00000000-0000-0000-0000-000000000102', 'admin', false, true, now());
 
@@ -934,6 +935,23 @@ WHERE r.name = 'Super Admin'
   AND NOT EXISTS (
     SELECT 1 FROM user_roles ur
     WHERE ur.user_id = '5745e13c-ab07-48b7-9db7-24372b16f5a9'
+      AND ur.role_id = r.id
+      AND ur.business_unit_id IS NULL
+  );
+
+-- Assign Super Admin role to admin@pragmatica.ph (NULL business_unit_id = global access to all BUs)
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  'b6f62b1e-8eae-4ba2-93b2-353d20fe94e0',
+  r.id,
+  NULL,  -- NULL = global role, applies to all business units
+  NOW()
+FROM roles r
+WHERE r.name = 'Super Admin'
+  AND r.company_id = '00000000-0000-0000-0000-000000000001'
+  AND NOT EXISTS (
+    SELECT 1 FROM user_roles ur
+    WHERE ur.user_id = 'b6f62b1e-8eae-4ba2-93b2-353d20fe94e0'
       AND ur.role_id = r.id
       AND ur.business_unit_id IS NULL
   );
