@@ -707,7 +707,7 @@ export default function DeliveryNotesPage() {
   };
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
+    <div className="space-y-6">
       {/* Header Section */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
@@ -724,38 +724,39 @@ export default function DeliveryNotesPage() {
         </div>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative w-full sm:flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search delivery notes or warehouses..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
-          />
+      <div className="space-y-4">
+        {/* Search and Filter Section */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search delivery notes or warehouses..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="queued_for_picking">Queued for Picking</SelectItem>
+              <SelectItem value="picking_in_progress">Picking in Progress</SelectItem>
+              <SelectItem value="dispatch_ready">Dispatch Ready</SelectItem>
+              <SelectItem value="dispatched">Dispatched</SelectItem>
+              <SelectItem value="received">Received</SelectItem>
+              <SelectItem value="voided">Voided</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[200px]">
-            <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="queued_for_picking">Queued for Picking</SelectItem>
-            <SelectItem value="picking_in_progress">Picking in Progress</SelectItem>
-            <SelectItem value="dispatch_ready">Dispatch Ready</SelectItem>
-            <SelectItem value="dispatched">Dispatched</SelectItem>
-            <SelectItem value="received">Received</SelectItem>
-            <SelectItem value="voided">Voided</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Table List */}
-      {isLoading ? (
+        {/* Table List */}
+        {isLoading ? (
         <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
@@ -948,6 +949,7 @@ export default function DeliveryNotesPage() {
           </Table>
         </div>
       )}
+      </div>
 
       <Dialog
         open={createOpen}
