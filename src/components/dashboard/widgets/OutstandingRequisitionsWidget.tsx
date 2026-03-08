@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ClipboardList, TrendingUp, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ export function OutstandingRequisitionsWidget({
   warehouseId,
   businessUnitId,
 }: OutstandingRequisitionsWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useOutstandingRequisitions({
     warehouseId,
     businessUnitId,
@@ -30,8 +32,8 @@ export function OutstandingRequisitionsWidget({
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Outstanding Requisitions</CardTitle>
-              <CardDescription>Active stock requisitions pending fulfillment</CardDescription>
+              <CardTitle>{t("outstandingRequisitionsTitle")}</CardTitle>
+              <CardDescription>{t("outstandingRequisitionsDescription")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -52,16 +54,16 @@ export function OutstandingRequisitionsWidget({
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Outstanding Requisitions</CardTitle>
-              <CardDescription>Active stock requisitions pending fulfillment</CardDescription>
+              <CardTitle>{t("outstandingRequisitionsTitle")}</CardTitle>
+              <CardDescription>{t("outstandingRequisitionsDescription")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load requisitions data</p>
+            <p className="text-sm text-destructive">{t("failedLoadRequisitionsData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -77,16 +79,16 @@ export function OutstandingRequisitionsWidget({
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Outstanding Requisitions</CardTitle>
-              <CardDescription>Active stock requisitions pending fulfillment</CardDescription>
+              <CardTitle>{t("outstandingRequisitionsTitle")}</CardTitle>
+              <CardDescription>{t("outstandingRequisitionsDescription")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={ClipboardList}
-            title="No outstanding requisitions"
-            description="All stock requisitions have been fulfilled"
+            title={t("noOutstandingRequisitions")}
+            description={t("allStockRequisitionsFulfilled")}
           />
         </CardContent>
       </Card>
@@ -101,8 +103,8 @@ export function OutstandingRequisitionsWidget({
         <div className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Outstanding Requisitions</CardTitle>
-            <CardDescription>Active stock requisitions pending fulfillment</CardDescription>
+            <CardTitle>{t("outstandingRequisitionsTitle")}</CardTitle>
+            <CardDescription>{t("outstandingRequisitionsDescription")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -112,14 +114,14 @@ export function OutstandingRequisitionsWidget({
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <ClipboardList className="h-4 w-4" />
-              <span>Count</span>
+              <span>{t("count")}</span>
             </div>
             <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
-              <span>Total Value</span>
+              <span>{t("totalValue")}</span>
             </div>
             <p className="mt-2 text-xl sm:text-2xl font-bold">{formatCurrency(data.totalValue)}</p>
           </div>
@@ -127,7 +129,7 @@ export function OutstandingRequisitionsWidget({
 
         {/* Top 3 Requisitions */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Recent Requisitions</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("recentRequisitions")}</p>
           <div className="space-y-1">
             {topItems.map((sr) => (
               <Link
@@ -138,7 +140,7 @@ export function OutstandingRequisitionsWidget({
                 <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <span className="text-sm font-medium truncate">{sr.sr_number}</span>
                   <span className="text-xs text-muted-foreground">
-                    {sr.business_unit?.code || "N/A"}
+                    {sr.business_unit?.code || t("notAvailable")}
                   </span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 flex-shrink-0">
@@ -146,7 +148,7 @@ export function OutstandingRequisitionsWidget({
                     {formatCurrency(sr.total_amount || 0)}
                   </span>
                   <div className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 whitespace-nowrap">
-                    {sr.status === "partially_fulfilled" ? "Partial" : "Submitted"}
+                    {sr.status === "partially_fulfilled" ? t("partial") : t("submitted")}
                   </div>
                 </div>
               </Link>
@@ -158,7 +160,7 @@ export function OutstandingRequisitionsWidget({
         {data.count > 3 && (
           <Button asChild variant="outline" className="w-full">
             <Link href="/purchasing/stock-requisitions">
-              View All Requisitions
+              {t("viewAllRequisitions")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

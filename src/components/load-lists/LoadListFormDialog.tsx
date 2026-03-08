@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { Plus, Trash2, Check, ChevronsUpDown, Package, FileText, Truck, Container, DollarSign } from "lucide-react";
-import { z } from "zod";
 import { toast } from "sonner";
 import { useCreateLoadList, useLoadList, useUpdateLoadList } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
@@ -56,21 +56,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
+import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
 import type { LoadList } from "@/types/load-list";
-
-const llFormSchema = z.object({
-  supplierId: z.string().min(1, "Supplier is required"),
-  warehouseId: z.string().min(1, "Warehouse is required"),
-  supplierLlNumber: z.string().optional(),
-  containerNumber: z.string().optional(),
-  sealNumber: z.string().optional(),
-  batchNumber: z.string().optional(),
-  estimatedArrivalDate: z.string().optional(),
-  loadDate: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type LLFormValues = z.infer<typeof llFormSchema>;
 
 type LineItem = {
   itemId: string;
@@ -88,6 +75,8 @@ type LoadListFormDialogProps = {
 };
 
 export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFormDialogProps) {
+  const t = useTranslations("loadListForm");
+  const tValidation = useTranslations("loadListValidation");
   const isEditMode = !!loadList;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateLoadList();
@@ -103,6 +92,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
   const { data: itemsData } = useItems({ limit: 50 });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
+  const llFormSchema = createLoadListFormSchema((key) => tValidation(key));
 
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
@@ -113,7 +103,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const [itemOpen, setItemOpen] = useState(false);
 
   // Default values
-  const defaultValues = useMemo<LLFormValues>(
+  const defaultValues = useMemo<LoadListFormValues>(
     () => ({
       supplierId: "",
       warehouseId: "",
@@ -128,7 +118,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     []
   );
 
-  const form = useForm<LLFormValues>({
+  const form = useForm<LoadListFormValues>({
     resolver: zodResolver(llFormSchema),
     defaultValues,
   });
@@ -176,13 +166,13 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
   const handleAddItem = () => {
     if (!selectedItemId || !quantity || unitCost === "") {
-      toast.error("Please select an item and enter quantity and unit cost");
+      toast.error(t("addItemError"));
       return;
     }
 
     const selectedItem = items.find((i) => i.id === selectedItemId);
     if (!selectedItem) {
-      toast.error("Item not found");
+      toast.error(t("itemNotFound"));
       return;
     }
 
@@ -204,9 +194,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
-  async function onSubmit(values: LLFormValues) {
+  async function onSubmit(values: LoadListFormValues) {
     if (lineItems.length === 0) {
-      toast.error("Please add at least one line item");
+      toast.error(t("lineItemsRequired"));
       return;
     }
 
@@ -234,17 +224,17 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
           id: loadList.id,
           data: requestData,
         });
-        toast.success("Load List updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         await createMutation.mutateAsync(requestData);
-        toast.success("Load List created successfully");
+        toast.success(t("createSuccess"));
       }
 
       onOpenChange(false);
       form.reset();
       setLineItems([]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save load list");
+      toast.error(error instanceof Error ? error.message : t("saveError"));
     }
   }
 
@@ -267,12 +257,12 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
           <div className="flex items-center gap-2.5">
             <div>
               <DialogTitle className="text-xl font-bold">
-                {isEditMode ? "Edit Load List" : "Create Load List"}
+                {isEditMode ? t("editTitle") : t("createTitle")}
               </DialogTitle>
               <DialogDescription className="text-xs">
                 {isEditMode
-                  ? "Update load list details and line items"
-                  : "Fill in the details to create a new load list"}
+                  ? t("editDescription")
+                  : t("createDescription")}
               </DialogDescription>
             </div>
           </div>
@@ -292,11 +282,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                 <TabsList className="grid w-full grid-cols-2 h-9">
                   <TabsTrigger value="general" className="gap-1.5 text-xs font-semibold">
                     <FileText className="h-3.5 w-3.5" />
-                    General
+                    {t("generalTab")}
                   </TabsTrigger>
                   <TabsTrigger value="items" className="gap-1.5 text-xs font-semibold">
                     <Package className="h-3.5 w-3.5" />
-                    Items {lineItems.length > 0 && (
+                    {t("itemsTab")} {lineItems.length > 0 && (
                       <span className="ml-1 rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
                         {lineItems.length}
                       </span>
@@ -312,7 +302,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-100">
                       <Truck className="h-3.5 w-3.5 text-purple-600" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900">Primary Information</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t("primaryInformation")}</h3>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
@@ -320,11 +310,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="supplierId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Supplier *</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("supplierLabel")}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-9 text-sm">
-                                <SelectValue placeholder="Select supplier" />
+                                <SelectValue placeholder={t("selectSupplier")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -345,11 +335,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="warehouseId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Warehouse *</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("warehouseLabel")}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-9 text-sm">
-                                <SelectValue placeholder="Select warehouse" />
+                                <SelectValue placeholder={t("selectWarehouse")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -370,10 +360,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="supplierLlNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Supplier LL Number</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("supplierLoadListNumber")}</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Supplier's load list number"
+                              placeholder={t("supplierLoadListPlaceholder")}
                               {...field}
                               className="h-9 text-sm"
                             />
@@ -388,7 +378,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="loadDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Load Date</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("loadDate")}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9 text-sm" />
                           </FormControl>
@@ -406,7 +396,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-blue-100">
                       <Container className="h-3.5 w-3.5 text-blue-600" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900">Shipping Details</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t("containerDetails")}</h3>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                     <FormField
@@ -414,9 +404,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="containerNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Container Number</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("containerNumber")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="CONT-001" {...field} className="h-9 text-sm" />
+                            <Input placeholder={t("containerNumberPlaceholder")} {...field} className="h-9 text-sm" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -428,9 +418,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="sealNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Seal Number</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("sealNumber")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="SEAL-001" {...field} className="h-9 text-sm" />
+                            <Input placeholder={t("sealNumberPlaceholder")} {...field} className="h-9 text-sm" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -442,9 +432,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="batchNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Batch Number</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("batchNumber")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Batch reference" {...field} className="h-9 text-sm" />
+                            <Input placeholder={t("batchNumberPlaceholder")} {...field} className="h-9 text-sm" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -456,7 +446,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="estimatedArrivalDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">Estimated Arrival</FormLabel>
+                          <FormLabel className="text-xs font-medium">{t("estimatedArrivalDate")}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9 text-sm" />
                           </FormControl>
@@ -473,7 +463,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gray-100">
                       <FileText className="h-3.5 w-3.5 text-gray-600" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900">Notes</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t("notes")}</h3>
                   </div>
                   <FormField
                     control={form.control}
@@ -484,7 +474,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                           <Textarea
                             {...field}
                             rows={2}
-                            placeholder="Enter any additional notes..."
+                            placeholder={t("notesPlaceholder")}
                             className="resize-none text-sm"
                           />
                         </FormControl>
@@ -502,11 +492,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-100">
                       <Plus className="h-3.5 w-3.5 text-purple-600" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900">Add Item</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">{t("addItemsTitle")}</h3>
                   </div>
                   <div className="grid grid-cols-12 gap-2 items-end">
                   <div className="col-span-5">
-                    <label className="text-xs font-medium mb-1 block">Item</label>
+                    <label className="text-xs font-medium mb-1 block">{t("itemLabel")}</label>
                     <Popover open={itemOpen} onOpenChange={setItemOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -523,17 +513,17 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                 const selectedItem = items.find((i) => i.id === selectedItemId);
                                 return selectedItem
                                   ? `${selectedItem.code} - ${selectedItem.name}`
-                                  : "Select an item";
+                                  : t("selectItem");
                               })()
-                            : "Search item..."}
+                            : t("searchItem")}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[520px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Search by code or name..." />
+                          <CommandInput placeholder={t("searchByCodeOrName")} />
                           <CommandList className="max-h-[260px] overflow-y-auto">
-                            <CommandEmpty>No item found.</CommandEmpty>
+                            <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                             <CommandGroup>
                               {items
                                 .filter((item) => item.isActive)
@@ -582,10 +572,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     </Popover>
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs font-medium mb-1 block">Quantity</label>
+                    <label className="text-xs font-medium mb-1 block">{t("quantityLabel")}</label>
                     <Input
                       type="number"
-                      placeholder="0"
+                      placeholder={t("quantityPlaceholder")}
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       step="0.01"
@@ -593,13 +583,13 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     />
                   </div>
                   <div className="col-span-3">
-                    <label className="text-xs font-medium mb-1 block">Unit Cost</label>
+                    <label className="text-xs font-medium mb-1 block">{t("unitCostLabel")}</label>
                     <Input
                       key={`unit-cost-${selectedItemId}`}
                       type="text"
                       inputMode="decimal"
                       pattern="^-?\\d*(\\.\\d{0,2})?$"
-                      placeholder="0.00"
+                      placeholder={t("unitCostPlaceholder")}
                       value={unitCost}
                       onChange={(e) => {
                         const next = e.target.value;
@@ -617,7 +607,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       className="w-full h-9 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-md text-sm"
                     >
                       <Plus className="mr-1.5 h-3.5 w-3.5" />
-                      Add
+                      {t("addItem")}
                     </Button>
                   </div>
                 </div>
@@ -631,11 +621,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         <Table>
                           <TableHeader className="sticky top-0 bg-gray-50 z-10">
                             <TableRow className="border-b">
-                              <TableHead className="font-semibold text-xs h-8">Item Code</TableHead>
-                              <TableHead className="font-semibold text-xs h-8">Item Name</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">Qty</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">Unit Cost</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">Total</TableHead>
+                              <TableHead className="font-semibold text-xs h-8">{t("itemCode")}</TableHead>
+                              <TableHead className="font-semibold text-xs h-8">{t("itemName")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs h-8">{t("qty")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs h-8">{t("unitPrice")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs h-8">{t("total")}</TableHead>
                               <TableHead className="w-[50px] h-8"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -676,8 +666,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                               <DollarSign className="h-4 w-4 text-white" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-600 font-medium">Total Amount</p>
-                              <p className="text-[10px] text-gray-500">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</p>
+                              <p className="text-xs text-gray-600 font-medium">{t("totalAmount")}</p>
+                              <p className="text-[10px] text-gray-500">{lineItems.length}</p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -694,8 +684,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
                           <Package className="h-6 w-6 text-gray-400" />
                         </div>
-                        <h3 className="mb-1 text-sm font-semibold text-gray-900">No items added</h3>
-                        <p className="text-xs text-gray-500">Add items using the form above</p>
+                        <h3 className="mb-1 text-sm font-semibold text-gray-900">{t("noItemsTitle")}</h3>
+                        <p className="text-xs text-gray-500">{t("noItemsDescription")}</p>
                       </div>
                     </div>
                   )}
@@ -711,7 +701,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                   onClick={() => onOpenChange(false)}
                   className="min-w-[90px] h-9 text-sm"
                 >
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   type="submit"
@@ -721,12 +711,12 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                   {createMutation.isPending || updateMutation.isPending ? (
                     <span className="flex items-center gap-1.5">
                       <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                      Saving...
+                      {t("saving")}
                     </span>
                   ) : isEditMode ? (
-                    "Update"
+                    t("updateAction")
                   ) : (
-                    "Create"
+                    t("createAction")
                   )}
                 </Button>
               </div>

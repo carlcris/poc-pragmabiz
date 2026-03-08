@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ import { useItems } from "@/hooks/useItems";
 import { useItemsStock } from "@/hooks/useItemsStock";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCurrency } from "@/hooks/useCurrency";
-import { stockTransactionFormSchema } from "@/lib/validations/stock-transaction";
+import { createStockTransactionFormSchema } from "@/lib/validations/stock-transaction";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,26 +58,56 @@ interface StockTransactionFormDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const TRANSACTION_TYPES = [
-  { value: "in", label: "Stock In" },
-  { value: "out", label: "Stock Out" },
-  { value: "transfer", label: "Transfer" },
-  { value: "adjustment", label: "Adjustment" },
-] as const;
-
-const REASONS = {
-  in: ["Purchase receipt", "Production output", "Customer return", "Other"],
-  out: ["Sales order", "Production consumption", "Damage/Loss", "Other"],
-  transfer: ["Stock rebalancing", "Customer request", "Warehouse consolidation", "Other"],
-  adjustment: ["Physical count adjustment", "Damaged goods", "System correction", "Other"],
-};
-
 export function StockTransactionFormDialog({
   open,
   onOpenChange,
 }: StockTransactionFormDialogProps) {
+  const t = useTranslations("stockTransactionForm");
+  const tPage = useTranslations("stockTransactionsPage");
+  const tValidation = useTranslations("stockTransactionValidation");
+  const locale = useLocale();
   const createTransaction = useCreateStockTransaction();
   const createTransfer = useCreateStockTransfer();
+  const stockTransactionFormSchema = createStockTransactionFormSchema((key) => tValidation(key));
+  const transactionTypes = useMemo(
+    () =>
+      [
+        { value: "in", label: tPage("stockIn") },
+        { value: "out", label: tPage("stockOut") },
+        { value: "transfer", label: tPage("transfer") },
+        { value: "adjustment", label: tPage("adjustment") },
+      ] as const,
+    [tPage]
+  );
+  const reasons = useMemo(
+    () => ({
+      in: [
+        t("reasonPurchaseReceipt"),
+        t("reasonProductionOutput"),
+        t("reasonCustomerReturn"),
+        t("reasonOther"),
+      ],
+      out: [
+        t("reasonSalesOrder"),
+        t("reasonProductionConsumption"),
+        t("reasonDamageLoss"),
+        t("reasonOther"),
+      ],
+      transfer: [
+        t("reasonStockRebalancing"),
+        t("reasonCustomerRequest"),
+        t("reasonWarehouseConsolidation"),
+        t("reasonOther"),
+      ],
+      adjustment: [
+        t("reasonPhysicalCountAdjustment"),
+        t("reasonDamagedGoods"),
+        t("reasonSystemCorrection"),
+        t("reasonOther"),
+      ],
+    }),
+    [t]
+  );
 
   // Fetch basic items (for uomId)
   const { data: basicItemsData } = useItems({ limit: 50 });
@@ -190,7 +221,7 @@ export function StockTransactionFormDialog({
       // Find the selected item to get its UOM
       const selectedItem = basicItems.find((item) => item.id === parsed.itemId);
       if (!selectedItem || !selectedItem.uomId) {
-        toast.error("Invalid item selected or item has no unit of measure");
+        toast.error(t("invalidItem"));
         return;
       }
 
@@ -226,7 +257,7 @@ export function StockTransactionFormDialog({
         };
 
         await createTransfer.mutateAsync(transferData);
-        toast.success("Stock transfer created successfully. Driver must confirm receipt.");
+        toast.success(`${t("transferCreated")}. ${t("transferCreatedDescription")}`);
       } else {
         // Create immediate stock transaction (non-van transfer or other transaction types)
         const requestData = {
@@ -251,24 +282,25 @@ export function StockTransactionFormDialog({
         };
 
         await createTransaction.mutateAsync(requestData);
-        toast.success("Stock transaction created successfully");
+        toast.success(t("createSuccess"));
       }
 
       onOpenChange(false);
       form.reset();
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create stock transaction";
+      const errorMessage = error instanceof Error ? error.message : t("createError");
       toast.error(errorMessage);
     }
   };
+
+  const isSubmitting = createTransaction.isPending || createTransfer.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Stock Transaction</DialogTitle>
-          <DialogDescription>Record a new inventory movement or adjustment</DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -279,7 +311,7 @@ export function StockTransactionFormDialog({
                 name="transactionDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Transaction Date *</FormLabel>
+                    <FormLabel>{t("transactionDateLabel")}</FormLabel>
                     <FormControl>
                       <Input type="datetime-local" {...field} />
                     </FormControl>
@@ -293,15 +325,15 @@ export function StockTransactionFormDialog({
                 name="transactionType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Transaction Type *</FormLabel>
+                    <FormLabel>{t("transactionTypeLabel")}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder={t("selectType")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {TRANSACTION_TYPES.map((type) => (
+                        {transactionTypes.map((type) => (
                           <SelectItem key={type.value} value={type.value}>
                             {type.label}
                           </SelectItem>
@@ -321,12 +353,14 @@ export function StockTransactionFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {transactionType === "transfer" ? "From Warehouse *" : "Warehouse *"}
+                      {transactionType === "transfer"
+                        ? t("fromWarehouseLabel")
+                        : t("warehouseLabel")}
                     </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select warehouse" />
+                          <SelectValue placeholder={t("selectWarehouse")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -348,11 +382,11 @@ export function StockTransactionFormDialog({
                   name="toWarehouseId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>To Warehouse *</FormLabel>
+                      <FormLabel>{t("toWarehouseLabel")}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select destination" />
+                            <SelectValue placeholder={t("selectDestinationWarehouse")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -377,7 +411,7 @@ export function StockTransactionFormDialog({
                   name="fromLocationId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>From Location</FormLabel>
+                      <FormLabel>{t("fromLocationLabel")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -387,7 +421,9 @@ export function StockTransactionFormDialog({
                           <SelectTrigger>
                             <SelectValue
                               placeholder={
-                                selectedWarehouseId ? "Select location" : "Select warehouse first"
+                                selectedWarehouseId
+                                  ? t("selectLocation")
+                                  : t("selectWarehouseFirst")
                               }
                             />
                           </SelectTrigger>
@@ -409,7 +445,7 @@ export function StockTransactionFormDialog({
                   name="toLocationId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>To Location</FormLabel>
+                      <FormLabel>{t("toLocationLabel")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -420,8 +456,8 @@ export function StockTransactionFormDialog({
                             <SelectValue
                               placeholder={
                                 selectedToWarehouseId
-                                  ? "Select location"
-                                  : "Select destination warehouse"
+                                  ? t("selectLocation")
+                                  : t("selectDestinationWarehouseFirst")
                               }
                             />
                           </SelectTrigger>
@@ -446,7 +482,9 @@ export function StockTransactionFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {transactionType === "in" ? "Destination Location" : "Source Location"}
+                      {transactionType === "in"
+                        ? t("destinationLocationLabel")
+                        : t("sourceLocationLabel")}
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
@@ -457,7 +495,7 @@ export function StockTransactionFormDialog({
                         <SelectTrigger>
                           <SelectValue
                             placeholder={
-                              selectedWarehouseId ? "Select location" : "Select warehouse first"
+                              selectedWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")
                             }
                           />
                         </SelectTrigger>
@@ -483,8 +521,8 @@ export function StockTransactionFormDialog({
                 const selectedItem = basicItems.find((i) => i.id === field.value);
                 const isDisabled = !selectedWarehouseId;
                 return (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Item *</FormLabel>
+                    <FormItem className="flex flex-col">
+                    <FormLabel>{t("itemLabel")}</FormLabel>
                     <Popover
                       open={itemOpen}
                       onOpenChange={(open) => !isDisabled && setItemOpen(open)}
@@ -502,19 +540,19 @@ export function StockTransactionFormDialog({
                             )}
                           >
                             {isDisabled
-                              ? "Select warehouse first..."
+                              ? t("selectWarehouseFirstItem")
                               : selectedItem
                                 ? `${selectedItem.code} - ${selectedItem.name}`
-                                : "Search item..."}
+                                : t("searchItem")}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-[600px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Search by code or name..." />
+                          <CommandInput placeholder={t("searchItemByCodeOrName")} />
                           <CommandList className="max-h-[300px] overflow-y-auto">
-                            <CommandEmpty>No item found.</CommandEmpty>
+                            <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                             <CommandGroup>
                               {stockItems
                                 .filter((i) => i.isActive)
@@ -550,7 +588,12 @@ export function StockTransactionFormDialog({
                                                   : ""
                                             )}
                                           >
-                                            Stock: {item.available.toFixed(2)} {item.uom}
+                                            {t("stockLabel")}:{" "}
+                                            {item.available.toLocaleString(locale, {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            })}{" "}
+                                            {item.uom}
                                           </span>
                                         </div>
                                       </div>
@@ -578,12 +621,12 @@ export function StockTransactionFormDialog({
               name="quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Quantity *</FormLabel>
+                  <FormLabel>{t("quantityLabel")}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
-                      placeholder="0"
+                      placeholder={t("quantityPlaceholder")}
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
@@ -598,9 +641,9 @@ export function StockTransactionFormDialog({
               name="referenceNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reference Number</FormLabel>
+                  <FormLabel>{t("referenceNumberLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="PO-2024-001, SO-2024-001, etc." {...field} />
+                    <Input placeholder={t("referenceNumberPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -612,15 +655,15 @@ export function StockTransactionFormDialog({
               name="reason"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reason *</FormLabel>
+                  <FormLabel>{t("reasonLabel")}</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select reason" />
+                        <SelectValue placeholder={t("selectReason")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {REASONS[transactionType]?.map((reason) => (
+                      {reasons[transactionType]?.map((reason) => (
                         <SelectItem key={reason} value={reason}>
                           {reason}
                         </SelectItem>
@@ -637,9 +680,9 @@ export function StockTransactionFormDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>{t("notesLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Additional notes..." {...field} />
+                    <Input placeholder={t("notesPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -648,10 +691,10 @@ export function StockTransactionFormDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
-              <Button type="submit" disabled={createTransaction.isPending}>
-                {createTransaction.isPending ? "Creating..." : "Create Transaction"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? t("creating") : t("createAction")}
               </Button>
             </DialogFooter>
           </form>

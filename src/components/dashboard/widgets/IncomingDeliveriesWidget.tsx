@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Truck, FileText, ArrowRight, Loader2, Calendar } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function IncomingDeliveriesWidget({
   warehouseId,
   businessUnitId,
 }: IncomingDeliveriesWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useIncomingDeliveriesWithSRs({
     warehouseId,
     businessUnitId,
@@ -37,8 +39,8 @@ export function IncomingDeliveriesWidget({
           <div className="flex items-center gap-2">
             <Truck className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Incoming Deliveries</CardTitle>
-              <CardDescription>Deliveries linked to stock requisitions</CardDescription>
+              <CardTitle>{t("incomingDeliveriesTitle")}</CardTitle>
+              <CardDescription>{t("deliveriesLinkedToStockRequisitions")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -59,16 +61,16 @@ export function IncomingDeliveriesWidget({
           <div className="flex items-center gap-2">
             <Truck className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Incoming Deliveries</CardTitle>
-              <CardDescription>Deliveries linked to stock requisitions</CardDescription>
+              <CardTitle>{t("incomingDeliveriesTitle")}</CardTitle>
+              <CardDescription>{t("deliveriesLinkedToStockRequisitions")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load deliveries data</p>
+            <p className="text-sm text-destructive">{t("failedLoadDeliveriesData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -84,16 +86,16 @@ export function IncomingDeliveriesWidget({
           <div className="flex items-center gap-2">
             <Truck className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Incoming Deliveries</CardTitle>
-              <CardDescription>Deliveries linked to stock requisitions</CardDescription>
+              <CardTitle>{t("incomingDeliveriesTitle")}</CardTitle>
+              <CardDescription>{t("deliveriesLinkedToStockRequisitions")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={Truck}
-            title="No incoming deliveries"
-            description="No load lists with linked requisitions"
+            title={t("noIncomingDeliveries")}
+            description={t("noLoadListsWithLinkedRequisitions")}
           />
         </CardContent>
       </Card>
@@ -117,8 +119,8 @@ export function IncomingDeliveriesWidget({
         <div className="flex items-center gap-2">
           <Truck className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Incoming Deliveries</CardTitle>
-            <CardDescription>Deliveries linked to stock requisitions</CardDescription>
+            <CardTitle>{t("incomingDeliveriesTitle")}</CardTitle>
+            <CardDescription>{t("deliveriesLinkedToStockRequisitions")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -128,7 +130,7 @@ export function IncomingDeliveriesWidget({
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Truck className="h-4 w-4" />
-              <span>Deliveries</span>
+              <span>{t("deliveries")}</span>
             </div>
             <span className="text-xl sm:text-2xl font-bold text-right text-gray-900">{data.count}</span>
           </div>
@@ -136,7 +138,7 @@ export function IncomingDeliveriesWidget({
 
         {/* Deliveries List */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Expected Deliveries</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("expectedDeliveries")}</p>
           <div className="space-y-2">
             {sortedItems.slice(0, 5).map((delivery) => {
               const ll = delivery.loadList;
@@ -157,17 +159,17 @@ export function IncomingDeliveriesWidget({
                       <span className="text-sm font-medium">{ll.ll_number}</span>
                       <Badge variant="outline" className="gap-1 flex-shrink-0">
                         <FileText className="h-3 w-3" />
-                        {srCount} {srCount === 1 ? "SR" : "SRs"}
+                        {srCount} {srCount === 1 ? t("sr") : t("srs")}
                       </Badge>
                     </div>
                     <span className="text-xs text-muted-foreground truncate">
-                      {ll.supplier?.supplier_name || "Unknown Supplier"}
+                      {ll.supplier?.supplier_name || t("unknownSupplier")}
                     </span>
                     {ll.estimated_arrival_date && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3 flex-shrink-0" />
                         <span>
-                          ETA: {format(parseISO(ll.estimated_arrival_date), "MMM d, yyyy")}
+                          {t("eta")}: {format(parseISO(ll.estimated_arrival_date), "MMM d, yyyy")}
                         </span>
                       </div>
                     )}
@@ -190,7 +192,7 @@ export function IncomingDeliveriesWidget({
         {data.count > 5 && (
           <Button asChild variant="outline" className="w-full">
             <Link href="/purchasing/load-lists?withSRs=true">
-              View All Deliveries
+              {t("viewAllDeliveries")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

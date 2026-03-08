@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Package, ArrowRight, Loader2, Truck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export function ExpectedArrivalsWidget({
   warehouseId,
   businessUnitId,
 }: ExpectedArrivalsWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useExpectedArrivalsThisWeek({
     warehouseId,
     businessUnitId,
@@ -36,8 +38,8 @@ export function ExpectedArrivalsWidget({
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Expected Arrivals This Week</CardTitle>
-              <CardDescription>Upcoming deliveries schedule</CardDescription>
+              <CardTitle>{t("expectedArrivalsThisWeekTitle")}</CardTitle>
+              <CardDescription>{t("upcomingDeliveriesSchedule")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -58,16 +60,16 @@ export function ExpectedArrivalsWidget({
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Expected Arrivals This Week</CardTitle>
-              <CardDescription>Upcoming deliveries schedule</CardDescription>
+              <CardTitle>{t("expectedArrivalsThisWeekTitle")}</CardTitle>
+              <CardDescription>{t("upcomingDeliveriesSchedule")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load arrivals data</p>
+            <p className="text-sm text-destructive">{t("failedLoadArrivalsData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -83,16 +85,16 @@ export function ExpectedArrivalsWidget({
           <div className="flex items-center gap-2">
             <Package className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Expected Arrivals This Week</CardTitle>
-              <CardDescription>Upcoming deliveries schedule</CardDescription>
+              <CardTitle>{t("expectedArrivalsThisWeekTitle")}</CardTitle>
+              <CardDescription>{t("upcomingDeliveriesSchedule")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={Package}
-            title="No expected arrivals this week"
-            description="Check back later for updates"
+            title={t("noExpectedArrivalsThisWeek")}
+            description={t("checkBackLaterForUpdates")}
           />
         </CardContent>
       </Card>
@@ -127,8 +129,8 @@ export function ExpectedArrivalsWidget({
         <div className="flex items-center gap-2">
           <Package className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Expected Arrivals This Week</CardTitle>
-            <CardDescription>Upcoming deliveries schedule</CardDescription>
+            <CardTitle>{t("expectedArrivalsThisWeekTitle")}</CardTitle>
+            <CardDescription>{t("upcomingDeliveriesSchedule")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -138,7 +140,7 @@ export function ExpectedArrivalsWidget({
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Truck className="h-4 w-4" />
-              <span>Total Deliveries</span>
+              <span>{t("totalDeliveries")}</span>
             </div>
             <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
           </div>
@@ -146,7 +148,7 @@ export function ExpectedArrivalsWidget({
 
         {/* Timeline by Day */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Weekly Schedule</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("weeklySchedule")}</p>
           <div className="space-y-1.5">
             {itemsByDay.map((dayData) => (
               <div
@@ -191,7 +193,7 @@ export function ExpectedArrivalsWidget({
                       )}
                     </div>
                   ) : (
-                    <span className="text-xs sm:text-sm text-muted-foreground">No deliveries</span>
+                    <span className="text-xs sm:text-sm text-muted-foreground">{t("noDeliveries")}</span>
                   )}
                 </div>
                 {dayData.count > 0 && (
@@ -207,7 +209,7 @@ export function ExpectedArrivalsWidget({
         {/* View All Link */}
         <Button asChild variant="outline" className="w-full">
           <Link href="/purchasing/load-lists">
-            View All Load Lists
+              {t("viewAllLoadLists")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

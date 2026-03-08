@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Boxes, Layers, MapPin, Package, RefreshCw } from "lucide-react";
 import { useItemLocationBatchReport } from "@/hooks/useItemLocationBatchReport";
 import { useItems } from "@/hooks/useItems";
@@ -26,16 +27,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const formatNumber = (value: number, digits = 0) =>
-  new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(Number.isFinite(value) ? value : 0);
-
-const formatDateTime = (value: string | null) =>
-  value ? new Date(value).toLocaleString() : "--";
-
 export default function ItemLocationBatchReportPage() {
+  const t = useTranslations("itemLocationBatchReportPage");
+  const locale = useLocale();
+
+  const formatNumber = (value: number, digits = 0) =>
+    new Intl.NumberFormat(locale, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(Number.isFinite(value) ? value : 0);
+
+  const formatDateTime = (value: string | null) =>
+    value ? new Date(value).toLocaleString(locale) : t("noValue");
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [warehouseId, setWarehouseId] = useState("all");
@@ -70,22 +74,18 @@ export default function ItemLocationBatchReportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
-          Item Location (Location + Batch) Report
-        </h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          View stock balances at exact warehouse location and batch level, including location batch SKU.
-        </p>
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle>{t("filters")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Warehouse</label>
+              <label className="text-sm font-medium">{t("warehouse")}</label>
               <Select
                 value={warehouseId}
                 onValueChange={(v) => {
@@ -93,9 +93,9 @@ export default function ItemLocationBatchReportPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="All Warehouses" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("allWarehouses")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Warehouses</SelectItem>
+                  <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                   {warehouses.map((wh) => (
                     <SelectItem key={wh.id} value={wh.id}>
                       {wh.code} - {wh.name}
@@ -106,7 +106,7 @@ export default function ItemLocationBatchReportPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Item</label>
+              <label className="text-sm font-medium">{t("item")}</label>
               <Select
                 value={itemId}
                 onValueChange={(v) => {
@@ -114,9 +114,9 @@ export default function ItemLocationBatchReportPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger><SelectValue placeholder="All Items" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={t("allItems")} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Items</SelectItem>
+                  <SelectItem value="all">{t("allItems")}</SelectItem>
                   {items.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
                       {item.code} - {item.name}
@@ -127,7 +127,7 @@ export default function ItemLocationBatchReportPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Stock Status</label>
+              <label className="text-sm font-medium">{t("stockStatus")}</label>
               <Select
                 value={stockStatus}
                 onValueChange={(v) => {
@@ -137,39 +137,39 @@ export default function ItemLocationBatchReportPage() {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="available_only">Available Only</SelectItem>
-                  <SelectItem value="reserved">Reserved &gt; 0</SelectItem>
-                  <SelectItem value="zero">Zero On Hand</SelectItem>
+                  <SelectItem value="all">{t("all")}</SelectItem>
+                  <SelectItem value="available_only">{t("availableOnly")}</SelectItem>
+                  <SelectItem value="reserved">{t("reservedGtZero")}</SelectItem>
+                  <SelectItem value="zero">{t("zeroOnHand")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort By</label>
+              <label className="text-sm font-medium">{t("sortBy")}</label>
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="updated_at">Updated At</SelectItem>
-                  <SelectItem value="qty_on_hand">Qty On Hand</SelectItem>
-                  <SelectItem value="received_at">Batch Received At</SelectItem>
+                  <SelectItem value="updated_at">{t("updatedAt")}</SelectItem>
+                  <SelectItem value="qty_on_hand">{t("qtyOnHand")}</SelectItem>
+                  <SelectItem value="received_at">{t("receivedAt")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Sort Order</label>
+              <label className="text-sm font-medium">{t("sortOrder")}</label>
               <Select value={sortOrder} onValueChange={(v) => setSortOrder(v as typeof sortOrder)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="desc">Descending</SelectItem>
-                  <SelectItem value="asc">Ascending</SelectItem>
+                  <SelectItem value="desc">{t("descending")}</SelectItem>
+                  <SelectItem value="asc">{t("ascending")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Rows / Page</label>
+              <label className="text-sm font-medium">{t("rowsPerPage")}</label>
               <Select
                 value={String(limit)}
                 onValueChange={(v) => {
@@ -191,7 +191,7 @@ export default function ItemLocationBatchReportPage() {
             <Input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search item, SKU, batch code, location, or location batch SKU..."
+              placeholder={t("searchPlaceholder")}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -199,7 +199,7 @@ export default function ItemLocationBatchReportPage() {
                 }
               }}
             />
-            <Button onClick={onApplySearch}>Search</Button>
+            <Button onClick={onApplySearch}>{t("search")}</Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -209,7 +209,7 @@ export default function ItemLocationBatchReportPage() {
               }}
             >
               <RefreshCw className="mr-2 h-4 w-4" />
-              Reset
+              {t("reset")}
             </Button>
           </div>
         </CardContent>
@@ -224,7 +224,7 @@ export default function ItemLocationBatchReportPage() {
       ) : reportQuery.isError || !reportQuery.data ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Failed to load item location batch report.
+            {t("loadError")}
           </CardContent>
         </Card>
       ) : (
@@ -232,60 +232,62 @@ export default function ItemLocationBatchReportPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Rows</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("rows")}</CardTitle>
                 <Layers className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalRows)}</div>
                 <p className="text-xs text-muted-foreground">
-                  Showing {formatNumber(reportQuery.data.summary.rowCount)} rows
+                  {t("showingRows", { count: formatNumber(reportQuery.data.summary.rowCount) })}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Qty On Hand</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("qtyOnHand")}</CardTitle>
                 <Package className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalQtyOnHand, 2)}</div>
-                <p className="text-xs text-muted-foreground">Current page total</p>
+                <p className="text-xs text-muted-foreground">{t("currentPageTotal")}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Reserved</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("reserved")}</CardTitle>
                 <Boxes className="h-4 w-4 text-amber-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalQtyReserved, 2)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {formatNumber(reportQuery.data.summary.rowsWithReserved)} rows with reserved qty
+                  {t("rowsWithReservedQty", { count: formatNumber(reportQuery.data.summary.rowsWithReserved) })}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Available</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("available")}</CardTitle>
                 <Package className="h-4 w-4 text-emerald-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalQtyAvailable, 2)}</div>
-                <p className="text-xs text-muted-foreground">Current page total</p>
+                <p className="text-xs text-muted-foreground">{t("currentPageTotal")}</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Dimensions</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("dimensions")}</CardTitle>
                 <MapPin className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-sm font-semibold">
-                  {formatNumber(reportQuery.data.summary.uniqueItems)} items •{" "}
-                  {formatNumber(reportQuery.data.summary.uniqueLocations)} locations
+                  {t("dimensionsDesc", {
+                    items: formatNumber(reportQuery.data.summary.uniqueItems),
+                    locations: formatNumber(reportQuery.data.summary.uniqueLocations),
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {formatNumber(reportQuery.data.summary.uniqueBatches)} batches (page)
+                  {t("batchesPage", { count: formatNumber(reportQuery.data.summary.uniqueBatches) })}
                 </p>
               </CardContent>
             </Card>
@@ -293,27 +295,27 @@ export default function ItemLocationBatchReportPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Location + Batch Stock Rows</CardTitle>
+              <CardTitle>{t("locationBatchStockRows")}</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Warehouse / Location</TableHead>
-                    <TableHead>Batch</TableHead>
-                    <TableHead>Location SKU</TableHead>
-                    <TableHead className="text-right">On Hand</TableHead>
-                    <TableHead className="text-right">Reserved</TableHead>
-                    <TableHead className="text-right">Available</TableHead>
-                    <TableHead>Updated</TableHead>
+                    <TableHead>{t("item")}</TableHead>
+                    <TableHead>{t("warehouseLocation")}</TableHead>
+                    <TableHead>{t("batch")}</TableHead>
+                    <TableHead>{t("locationSku")}</TableHead>
+                    <TableHead className="text-right">{t("onHand")}</TableHead>
+                    <TableHead className="text-right">{t("reserved")}</TableHead>
+                    <TableHead className="text-right">{t("available")}</TableHead>
+                    <TableHead>{t("updated")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reportQuery.data.data.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground">
-                        No rows found for selected filters.
+                        {t("noRows")}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -322,25 +324,27 @@ export default function ItemLocationBatchReportPage() {
                         <TableCell className="min-w-[240px]">
                           <div className="font-medium">{row.itemName || row.itemCode || row.itemId}</div>
                           <div className="text-xs text-muted-foreground">
-                            {row.itemCode || "--"} {row.itemSku ? `• ${row.itemSku}` : ""}
+                            {row.itemCode || t("noValue")} {row.itemSku ? `• ${row.itemSku}` : ""}
                           </div>
                         </TableCell>
                         <TableCell className="min-w-[220px]">
                           <div className="font-medium">
-                            {row.warehouseCode || "--"} - {row.warehouseName || "Unknown"}
+                            {row.warehouseCode || t("noValue")} - {row.warehouseName || t("unknown")}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {row.locationCode || "--"} - {row.locationName || "Unknown"}
+                            {row.locationCode || t("noValue")} - {row.locationName || t("unknown")}
                           </div>
                         </TableCell>
                         <TableCell className="min-w-[180px]">
-                          <div className="font-mono text-xs">{row.batchCode || "--"}</div>
+                          <div className="font-mono text-xs">{row.batchCode || t("noValue")}</div>
                           <div className="text-xs text-muted-foreground">
-                            {row.batchReceivedAt ? `${row.batchAgeDays ?? 0}d old` : "--"}
+                            {row.batchReceivedAt
+                              ? t("oldDays", { count: formatNumber(row.batchAgeDays ?? 0) })
+                              : t("noValue")}
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
-                          {row.batchLocationSku || "--"}
+                          {row.batchLocationSku || t("noValue")}
                         </TableCell>
                         <TableCell className="text-right">{formatNumber(row.qtyOnHand, 2)}</TableCell>
                         <TableCell className="text-right">{formatNumber(row.qtyReserved, 2)}</TableCell>
@@ -356,8 +360,11 @@ export default function ItemLocationBatchReportPage() {
 
               <div className="mt-4 flex items-center justify-between gap-2">
                 <div className="text-sm text-muted-foreground">
-                  Page {reportQuery.data.pagination.page} of {reportQuery.data.pagination.totalPages} •{" "}
-                  {formatNumber(reportQuery.data.pagination.total)} total rows
+                  {t("pageOfTotal", {
+                    page: formatNumber(reportQuery.data.pagination.page),
+                    totalPages: formatNumber(reportQuery.data.pagination.totalPages),
+                    total: formatNumber(reportQuery.data.pagination.total),
+                  })}
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -366,7 +373,7 @@ export default function ItemLocationBatchReportPage() {
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                   >
-                    Previous
+                    {t("previous")}
                   </Button>
                   <Badge variant="secondary">{page}</Badge>
                   <Button
@@ -375,7 +382,7 @@ export default function ItemLocationBatchReportPage() {
                     disabled={page >= reportQuery.data.pagination.totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next
+                    {t("next")}
                   </Button>
                 </div>
               </div>
@@ -386,4 +393,3 @@ export default function ItemLocationBatchReportPage() {
     </div>
   );
 }
-

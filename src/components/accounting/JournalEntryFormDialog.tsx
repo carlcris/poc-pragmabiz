@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,8 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import type { Account, CreateJournalLineRequest } from "@/types/accounting";
 
 type JournalEntryFormDialogProps = {
@@ -41,80 +42,50 @@ type JournalLine = CreateJournalLineRequest & {
   tempId: string;
 };
 
+const createEmptyLine = (): JournalLine => ({
+  tempId: crypto.randomUUID(),
+  accountId: "",
+  debit: 0,
+  credit: 0,
+  description: "",
+});
+
 export function JournalEntryFormDialog({
   open,
   onOpenChange,
   onSuccess,
 }: JournalEntryFormDialogProps) {
+  const t = useTranslations("journalEntryFormDialog");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [postingDate, setPostingDate] = useState(new Date().toISOString().split("T")[0]);
   const [description, setDescription] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
-  const [lines, setLines] = useState<JournalLine[]>([
-    {
-      tempId: crypto.randomUUID(),
-      accountId: "",
-      debit: 0,
-      credit: 0,
-      description: "",
-    },
-    {
-      tempId: crypto.randomUUID(),
-      accountId: "",
-      debit: 0,
-      credit: 0,
-      description: "",
-    },
-  ]);
+  const [lines, setLines] = useState<JournalLine[]>([createEmptyLine(), createEmptyLine()]);
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat(locale, { style: "currency", currency: "PHP" }).format(amount);
 
   useEffect(() => {
-    if (open) {
-      fetchAccounts();
-    }
-  }, [open]);
+    if (!open) return;
 
-  const fetchAccounts = async () => {
-    try {
-      const response = await fetch("/api/accounting/accounts?isActive=true&page=1&limit=100");
-      if (!response.ok) {
-        throw new Error("Failed to fetch accounts");
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch("/api/accounting/accounts?isActive=true&page=1&limit=100");
+        if (!response.ok) {
+          throw new Error();
+        }
+        const result = await response.json();
+        setAccounts(result.data || []);
+      } catch {
+        toast.error(t("loadAccountsError"));
       }
-      const result = await response.json();
-      setAccounts(result.data || []);
-    } catch {
-      toast.error("Failed to load accounts");
-    }
-  };
+    };
 
-  const addLine = () => {
-    setLines([
-      ...lines,
-      {
-        tempId: crypto.randomUUID(),
-        accountId: "",
-        debit: 0,
-        credit: 0,
-        description: "",
-      },
-    ]);
-  };
-
-  const removeLine = (tempId: string) => {
-    if (lines.length <= 2) {
-      toast.error("Journal entry must have at least 2 lines");
-      return;
-    }
-    setLines(lines.filter((line) => line.tempId !== tempId));
-  };
-
-  const updateLine = <K extends keyof JournalLine>(
-    tempId: string,
-    field: K,
-    value: JournalLine[K]
-  ) => {
-    setLines(lines.map((line) => (line.tempId === tempId ? { ...line, [field]: value } : line)));
-  };
+    void fetchAccounts();
+  }, [open, t]);
 
   const calculateTotals = () => {
     const totalDebit = lines.reduce((sum, line) => sum + Number(line.debit), 0);
@@ -122,31 +93,33 @@ export function JournalEntryFormDialog({
     return { totalDebit, totalCredit, difference: totalDebit - totalCredit };
   };
 
+  const totals = calculateTotals();
+  const isBalanced = Math.abs(totals.difference) < 0.01;
+
   const handleSubmit = async () => {
     try {
       setLoading(true);
 
-      // Validation
-      const { totalDebit, totalCredit, difference } = calculateTotals();
-
-      if (Math.abs(difference) > 0.01) {
-        toast.error("Journal entry is not balanced", {
-          description: `Debits: ₱${totalDebit.toFixed(2)}, Credits: ₱${totalCredit.toFixed(2)}`,
+      if (!isBalanced) {
+        toast.error(t("unbalancedError"), {
+          description: t("unbalancedDescription", {
+            debits: formatCurrency(totals.totalDebit),
+            credits: formatCurrency(totals.totalCredit),
+          }),
         });
         return;
       }
 
       if (lines.some((line) => !line.accountId)) {
-        toast.error("All lines must have an account selected");
+        toast.error(t("accountRequiredError"));
         return;
       }
 
-      if (totalDebit === 0 || totalCredit === 0) {
-        toast.error("Journal entry must have both debits and credits");
+      if (totals.totalDebit === 0 || totals.totalCredit === 0) {
+        toast.error(t("debitCreditRequiredError"));
         return;
       }
 
-      // Prepare request
       const payload = {
         postingDate,
         description: description || undefined,
@@ -168,98 +141,57 @@ export function JournalEntryFormDialog({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to create journal entry");
+        throw new Error(error.error || t("createError"));
       }
 
       const result = await response.json();
-
-      toast.success("Journal entry created successfully", {
-        description: `Journal Code: ${result.data.journalCode}`,
+      toast.success(t("createSuccess"), {
+        description: t("createSuccessDescription", { journalCode: result.data.journalCode }),
       });
 
-      // Reset form
       setPostingDate(new Date().toISOString().split("T")[0]);
       setDescription("");
       setReferenceCode("");
-      setLines([
-        {
-          tempId: crypto.randomUUID(),
-          accountId: "",
-          debit: 0,
-          credit: 0,
-          description: "",
-        },
-        {
-          tempId: crypto.randomUUID(),
-          accountId: "",
-          debit: 0,
-          credit: 0,
-          description: "",
-        },
-      ]);
-
+      setLines([createEmptyLine(), createEmptyLine()]);
       onOpenChange(false);
-      if (onSuccess) onSuccess();
+      onSuccess?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create journal entry");
+      toast.error(error instanceof Error ? error.message : t("createError"));
     } finally {
       setLoading(false);
     }
   };
 
-  const totals = calculateTotals();
-  const isBalanced = Math.abs(totals.difference) < 0.01;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Manual Journal Entry</DialogTitle>
-          <DialogDescription>
-            Create a manual journal entry with debit and credit lines
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Header Information */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="postingDate">Posting Date *</Label>
-              <Input
-                id="postingDate"
-                type="date"
-                value={postingDate}
-                onChange={(e) => setPostingDate(e.target.value)}
-                required
-              />
+              <Label htmlFor="postingDate">{t("postingDate")} *</Label>
+              <Input id="postingDate" type="date" value={postingDate} onChange={(e) => setPostingDate(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="referenceCode">Reference Code</Label>
-              <Input
-                id="referenceCode"
-                placeholder="e.g., REF-001"
-                value={referenceCode}
-                onChange={(e) => setReferenceCode(e.target.value)}
-              />
+              <Label htmlFor="referenceCode">{t("referenceCode")}</Label>
+              <Input id="referenceCode" placeholder={t("referencePlaceholder")} value={referenceCode} onChange={(e) => setReferenceCode(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                placeholder="Enter description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <Label htmlFor="description">{t("descriptionLabel")}</Label>
+              <Input id="description" placeholder={t("descriptionPlaceholder")} value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
           </div>
 
-          {/* Journal Lines */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Journal Lines *</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addLine}>
+              <Label>{t("journalLines")} *</Label>
+              <Button type="button" variant="outline" size="sm" onClick={() => setLines((current) => [...current, createEmptyLine()])}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Line
+                {t("addLine")}
               </Button>
             </div>
 
@@ -267,11 +199,11 @@ export function JournalEntryFormDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[300px]">Account</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-[150px] text-right">Debit</TableHead>
-                    <TableHead className="w-[150px] text-right">Credit</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-[300px]">{t("account")}</TableHead>
+                    <TableHead>{t("descriptionLabel")}</TableHead>
+                    <TableHead className="w-[150px] text-right">{t("debit")}</TableHead>
+                    <TableHead className="w-[150px] text-right">{t("credit")}</TableHead>
+                    <TableHead className="w-[50px]" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -280,27 +212,39 @@ export function JournalEntryFormDialog({
                       <TableCell>
                         <Select
                           value={line.accountId}
-                          onValueChange={(value) => updateLine(line.tempId, "accountId", value)}
+                          onValueChange={(value) =>
+                            setLines((current) =>
+                              current.map((entry) =>
+                                entry.tempId === line.tempId ? { ...entry, accountId: value } : entry
+                              )
+                            )
+                          }
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select account" />
+                            <SelectValue placeholder={t("selectAccount")} />
                           </SelectTrigger>
                           <SelectContent>
-                            {accounts
-                              .filter((acc) => acc.isActive)
-                              .map((account) => (
-                                <SelectItem key={account.id} value={account.id}>
-                                  {account.accountNumber} - {account.accountName}
-                                </SelectItem>
-                              ))}
+                            {accounts.filter((account) => account.isActive).map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.accountNumber} - {account.accountName}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
                       <TableCell>
                         <Input
-                          placeholder="Line description"
+                          placeholder={t("lineDescriptionPlaceholder")}
                           value={line.description}
-                          onChange={(e) => updateLine(line.tempId, "description", e.target.value)}
+                          onChange={(e) =>
+                            setLines((current) =>
+                              current.map((entry) =>
+                                entry.tempId === line.tempId
+                                  ? { ...entry, description: e.target.value }
+                                  : entry
+                              )
+                            )
+                          }
                         />
                       </TableCell>
                       <TableCell>
@@ -311,10 +255,15 @@ export function JournalEntryFormDialog({
                           className="text-right"
                           value={line.debit}
                           onChange={(e) =>
-                            updateLine(
-                              line.tempId,
-                              "debit",
-                              e.target.value === "" ? 0 : parseFloat(e.target.value)
+                            setLines((current) =>
+                              current.map((entry) =>
+                                entry.tempId === line.tempId
+                                  ? {
+                                      ...entry,
+                                      debit: e.target.value === "" ? 0 : parseFloat(e.target.value),
+                                    }
+                                  : entry
+                              )
                             )
                           }
                         />
@@ -327,10 +276,15 @@ export function JournalEntryFormDialog({
                           className="text-right"
                           value={line.credit}
                           onChange={(e) =>
-                            updateLine(
-                              line.tempId,
-                              "credit",
-                              e.target.value === "" ? 0 : parseFloat(e.target.value)
+                            setLines((current) =>
+                              current.map((entry) =>
+                                entry.tempId === line.tempId
+                                  ? {
+                                      ...entry,
+                                      credit: e.target.value === "" ? 0 : parseFloat(e.target.value),
+                                    }
+                                  : entry
+                              )
                             )
                           }
                         />
@@ -340,7 +294,13 @@ export function JournalEntryFormDialog({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeLine(line.tempId)}
+                          onClick={() => {
+                            if (lines.length <= 2) {
+                              toast.error(t("minLinesError"));
+                              return;
+                            }
+                            setLines((current) => current.filter((entry) => entry.tempId !== line.tempId));
+                          }}
                           disabled={lines.length <= 2}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -348,48 +308,33 @@ export function JournalEntryFormDialog({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {/* Totals Row */}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={2} className="text-right">
-                      TOTALS:
-                    </TableCell>
-                    <TableCell className="text-right">₱{totals.totalDebit.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">₱{totals.totalCredit.toFixed(2)}</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell colSpan={2} className="text-right">{t("totals")}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totals.totalDebit)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totals.totalCredit)}</TableCell>
+                    <TableCell />
                   </TableRow>
-                  {/* Balance Check Row */}
-                  <TableRow
-                    className={
-                      isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"
-                    }
-                  >
+                  <TableRow className={isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"}>
                     <TableCell colSpan={2} className="text-right font-semibold">
-                      {isBalanced ? "✓ BALANCED" : "⚠ OUT OF BALANCE"}
+                      {isBalanced ? `✓ ${t("balanced").toUpperCase()}` : `⚠ ${t("notBalanced").toUpperCase()}`}
                     </TableCell>
                     <TableCell colSpan={2} className="text-right font-semibold">
-                      Difference: ₱{Math.abs(totals.difference).toFixed(2)}
+                      {t("difference")}: {formatCurrency(Math.abs(totals.difference))}
                     </TableCell>
-                    <TableCell></TableCell>
+                    <TableCell />
                   </TableRow>
                 </TableBody>
               </Table>
             </div>
           </div>
-
-          {/* Instructions */}
-          <div className="space-y-1 text-sm text-muted-foreground">
-            <p>• Journal entry will be created in DRAFT status</p>
-            <p>• Total debits must equal total credits</p>
-            <p>• Use the Post action to post the journal entry to the General Ledger</p>
-          </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
+            {tCommon("cancel")}
           </Button>
           <Button onClick={handleSubmit} disabled={loading || !isBalanced}>
-            {loading ? "Creating..." : "Create Journal Entry"}
+            {loading ? t("creating") : t("createAction")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Package, Pencil, Link as LinkIcon } from "lucide-react";
-import { format } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ import { LinkStockRequisitionsDialog } from "@/components/load-lists/LinkStockRe
 import type { LoadListStatus } from "@/types/load-list";
 
 export default function LoadListDetailPage() {
+  const t = useTranslations("loadListDetailPage");
+  const locale = useLocale();
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -50,14 +52,14 @@ export default function LoadListDetailPage() {
   const getStatusBadge = (status: LoadListStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "confirmed":
         return (
           <Badge
             variant="outline"
             className="border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
           >
-            Confirmed
+            {t("confirmed")}
           </Badge>
         );
       case "in_transit":
@@ -66,7 +68,7 @@ export default function LoadListDetailPage() {
             variant="outline"
             className="border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-400"
           >
-            In Transit
+            {t("inTransit")}
           </Badge>
         );
       case "arrived":
@@ -75,7 +77,7 @@ export default function LoadListDetailPage() {
             variant="outline"
             className="border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
           >
-            Arrived
+            {t("arrived")}
           </Badge>
         );
       case "receiving":
@@ -84,7 +86,7 @@ export default function LoadListDetailPage() {
             variant="outline"
             className="border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-400"
           >
-            Receiving
+            {t("receiving")}
           </Badge>
         );
       case "pending_approval":
@@ -93,7 +95,7 @@ export default function LoadListDetailPage() {
             variant="outline"
             className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
           >
-            Pending Approval
+            {t("pendingApproval")}
           </Badge>
         );
       case "received":
@@ -102,11 +104,11 @@ export default function LoadListDetailPage() {
             variant="outline"
             className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
           >
-            Received
+            {t("received")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -115,16 +117,16 @@ export default function LoadListDetailPage() {
   const handleStatusChange = async (newStatus: LoadListStatus, dialogSetter: (open: boolean) => void) => {
     try {
       await updateStatusMutation.mutateAsync({ id, status: newStatus });
-      toast.success(`Load List marked as ${newStatus.replace(/_/g, " ")}`);
+      toast.success(t("statusUpdateSuccess", { status: t(newStatus === "in_transit" ? "inTransit" : newStatus === "pending_approval" ? "pendingApproval" : newStatus) }));
       dialogSetter(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update load list status");
+      toast.error(err instanceof Error ? err.message : t("statusUpdateError"));
     }
   };
 
   const formatDate = (dateString?: string | null) => {
-    if (!dateString) return "--";
-    return format(new Date(dateString), "MMM dd, yyyy");
+    if (!dateString) return t("noValue");
+    return new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "2-digit" }).format(new Date(dateString));
   };
 
   const formatUser = (user?: {
@@ -132,9 +134,9 @@ export default function LoadListDetailPage() {
     lastName?: string;
     email?: string;
   }) => {
-    if (!user) return "--";
+    if (!user) return t("noValue");
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
-    return fullName || user.email || "--";
+    return fullName || user.email || t("noValue");
   };
 
   return (
@@ -145,7 +147,7 @@ export default function LoadListDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Load List</h1>
+            <h1 className="text-3xl font-bold">{t("title")}</h1>
             <p className="text-muted-foreground">{ll?.llNumber || id}</p>
           </div>
         </div>
@@ -155,9 +157,9 @@ export default function LoadListDetailPage() {
               <>
                 <Button variant="outline" onClick={() => router.push(`?edit=true`)}>
                   <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                  {t("edit")}
                 </Button>
-                <Button onClick={() => setConfirmDialogOpen(true)}>Confirm</Button>
+                <Button onClick={() => setConfirmDialogOpen(true)}>{t("confirm")}</Button>
               </>
             )}
             {(ll.status === "confirmed" ||
@@ -165,17 +167,17 @@ export default function LoadListDetailPage() {
               ll.status === "arrived") && (
               <Button variant="outline" onClick={() => setLinkDialogOpen(true)}>
                 <LinkIcon className="mr-2 h-4 w-4" />
-                Link Stock Requisitions
+                {t("linkStockRequisitions")}
               </Button>
             )}
             {ll.status === "confirmed" && (
-              <Button onClick={() => setInTransitDialogOpen(true)}>Mark In Transit</Button>
+              <Button onClick={() => setInTransitDialogOpen(true)}>{t("markInTransit")}</Button>
             )}
             {ll.status === "in_transit" && (
-              <Button onClick={() => setArrivedDialogOpen(true)}>Mark Arrived</Button>
+              <Button onClick={() => setArrivedDialogOpen(true)}>{t("markArrived")}</Button>
             )}
             {ll.status === "pending_approval" && (
-              <Button onClick={() => setReceivedDialogOpen(true)}>Mark Received</Button>
+              <Button onClick={() => setReceivedDialogOpen(true)}>{t("markReceived")}</Button>
             )}
             {ll.status !== "cancelled" && ll.status !== "received" && (
               <Button
@@ -183,7 +185,7 @@ export default function LoadListDetailPage() {
                 onClick={() => setCancelDialogOpen(true)}
                 disabled={updateStatusMutation.isPending}
               >
-                Cancel
+                {t("cancel")}
               </Button>
             )}
           </div>
@@ -198,13 +200,13 @@ export default function LoadListDetailPage() {
       ) : error ? (
         <Card>
           <CardContent className="py-8 text-center text-destructive">
-            Failed to load load list.
+            {t("loadError")}
           </CardContent>
         </Card>
       ) : !ll ? (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            Load list not found.
+            {t("notFound")}
           </CardContent>
         </Card>
       ) : (
@@ -214,42 +216,42 @@ export default function LoadListDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
-                Load List Details
+                {t("detailsTitle")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 text-sm">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div>
-                    <span className="text-muted-foreground">Status:</span>
+                    <span className="text-muted-foreground">{t("status")}</span>
                     <div className="mt-1">{getStatusBadge(ll.status)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Supplier:</span>
+                    <span className="text-muted-foreground">{t("supplier")}</span>
                     <div className="font-medium">
                       {ll.supplier?.name} ({ll.supplier?.code})
                     </div>
                     {ll.supplier?.contactPerson && (
                       <div className="text-xs text-muted-foreground">
-                        Contact: {ll.supplier.contactPerson}
+                        {t("contact")} {ll.supplier.contactPerson}
                       </div>
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Warehouse:</span>
+                    <span className="text-muted-foreground">{t("warehouse")}</span>
                     <div className="font-medium">
                       {ll.warehouse?.name} ({ll.warehouse?.code})
                     </div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Business Unit:</span>
+                    <span className="text-muted-foreground">{t("businessUnit")}</span>
                     <div className="font-medium">
-                      {ll.businessUnit?.name || "--"} ({ll.businessUnit?.code || "--"})
+                      {ll.businessUnit?.name || t("noValue")} ({ll.businessUnit?.code || t("noValue")})
                     </div>
                   </div>
                   {ll.supplierLlNumber && (
                     <div>
-                      <span className="text-muted-foreground">Supplier LL Number:</span>
+                      <span className="text-muted-foreground">{t("supplierLlNumber")}</span>
                       <div className="font-medium">{ll.supplierLlNumber}</div>
                     </div>
                   )}
@@ -257,27 +259,27 @@ export default function LoadListDetailPage() {
 
                 <div className="space-y-3">
                   <div>
-                    <span className="text-muted-foreground">Container Number:</span>
-                    <div className="font-medium">{ll.containerNumber || "--"}</div>
+                    <span className="text-muted-foreground">{t("containerNumber")}</span>
+                    <div className="font-medium">{ll.containerNumber || t("noValue")}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Seal Number:</span>
-                    <div className="font-medium">{ll.sealNumber || "--"}</div>
+                    <span className="text-muted-foreground">{t("sealNumber")}</span>
+                    <div className="font-medium">{ll.sealNumber || t("noValue")}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Batch Number:</span>
-                    <div className="font-medium">{ll.batchNumber || "--"}</div>
+                    <span className="text-muted-foreground">{t("batchNumber")}</span>
+                    <div className="font-medium">{ll.batchNumber || t("noValue")}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Load Date:</span>
+                    <span className="text-muted-foreground">{t("loadDate")}</span>
                     <div className="font-medium">{formatDate(ll.loadDate)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Estimated Arrival:</span>
+                    <span className="text-muted-foreground">{t("estimatedArrival")}</span>
                     <div className="font-medium">{formatDate(ll.estimatedArrivalDate)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Actual Arrival:</span>
+                    <span className="text-muted-foreground">{t("actualArrival")}</span>
                     <div className="font-medium text-green-600">
                       {formatDate(ll.actualArrivalDate)}
                     </div>
@@ -287,7 +289,7 @@ export default function LoadListDetailPage() {
 
               {ll.notes && (
                 <div>
-                  <span className="text-muted-foreground">Notes:</span>
+                  <span className="text-muted-foreground">{t("notes")}</span>
                   <div className="font-medium mt-1">{ll.notes}</div>
                 </div>
               )}
@@ -295,13 +297,13 @@ export default function LoadListDetailPage() {
               <div className="grid grid-cols-2 gap-6 pt-4 border-t">
                 <div className="space-y-2">
                   <div>
-                    <span className="text-muted-foreground">Created By:</span>
+                    <span className="text-muted-foreground">{t("createdBy")}</span>
                     <div className="font-medium">{formatUser(ll.createdByUser)}</div>
                     <div className="text-xs text-muted-foreground">{formatDate(ll.createdAt)}</div>
                   </div>
                   {ll.receivedBy && (
                     <div>
-                      <span className="text-muted-foreground">Received By:</span>
+                      <span className="text-muted-foreground">{t("receivedBy")}</span>
                       <div className="font-medium">{formatUser(ll.receivedByUser)}</div>
                       <div className="text-xs text-muted-foreground">
                         {formatDate(ll.receivedDate)}
@@ -311,7 +313,7 @@ export default function LoadListDetailPage() {
                 </div>
                 {ll.approvedBy && (
                   <div>
-                    <span className="text-muted-foreground">Approved By:</span>
+                    <span className="text-muted-foreground">{t("approvedBy")}</span>
                     <div className="font-medium">{formatUser(ll.approvedByUser)}</div>
                     <div className="text-xs text-muted-foreground">
                       {formatDate(ll.approvedDate)}
@@ -325,21 +327,21 @@ export default function LoadListDetailPage() {
           {/* Line Items */}
           <Card>
             <CardHeader>
-              <CardTitle>Line Items</CardTitle>
+              <CardTitle>{t("lineItems")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="rounded-md border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Item Code</TableHead>
-                      <TableHead>Item Name</TableHead>
-                      <TableHead className="text-right">Load List Qty</TableHead>
-                      <TableHead className="text-right">Received Qty</TableHead>
-                      <TableHead className="text-right">Damaged Qty</TableHead>
-                      <TableHead className="text-right">Shortage Qty</TableHead>
-                      <TableHead className="text-right">Unit Price</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>{t("itemCode")}</TableHead>
+                      <TableHead>{t("itemName")}</TableHead>
+                      <TableHead className="text-right">{t("loadListQty")}</TableHead>
+                      <TableHead className="text-right">{t("receivedQty")}</TableHead>
+                      <TableHead className="text-right">{t("damagedQty")}</TableHead>
+                      <TableHead className="text-right">{t("shortageQty")}</TableHead>
+                      <TableHead className="text-right">{t("unitPrice")}</TableHead>
+                      <TableHead className="text-right">{t("total")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -379,7 +381,7 @@ export default function LoadListDetailPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center text-muted-foreground">
-                          No line items found
+                          {t("noLineItems")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -395,19 +397,18 @@ export default function LoadListDetailPage() {
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Load List</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to confirm this load list? Once confirmed, items cannot be
-              modified.
+              {t("confirmDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleStatusChange("confirmed", setConfirmDialogOpen)}
               disabled={updateStatusMutation.isPending}
             >
-              {updateStatusMutation.isPending ? "Confirming..." : "Confirm"}
+              {updateStatusMutation.isPending ? t("confirming") : t("confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -417,18 +418,18 @@ export default function LoadListDetailPage() {
       <AlertDialog open={inTransitDialogOpen} onOpenChange={setInTransitDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark as In Transit</AlertDialogTitle>
+            <AlertDialogTitle>{t("inTransitTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark the load list as in transit and update inventory in-transit quantities.
+              {t("inTransitDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleStatusChange("in_transit", setInTransitDialogOpen)}
               disabled={updateStatusMutation.isPending}
             >
-              {updateStatusMutation.isPending ? "Updating..." : "Mark In Transit"}
+              {updateStatusMutation.isPending ? t("updating") : t("markInTransit")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -438,19 +439,18 @@ export default function LoadListDetailPage() {
       <AlertDialog open={arrivedDialogOpen} onOpenChange={setArrivedDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Arrived</AlertDialogTitle>
+            <AlertDialogTitle>{t("arrivedTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark the load list as arrived at the warehouse. You can then proceed with
-              receiving.
+              {t("arrivedDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleStatusChange("arrived", setArrivedDialogOpen)}
               disabled={updateStatusMutation.isPending}
             >
-              {updateStatusMutation.isPending ? "Updating..." : "Mark Arrived"}
+              {updateStatusMutation.isPending ? t("updating") : t("markArrived")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -460,20 +460,19 @@ export default function LoadListDetailPage() {
       <AlertDialog open={receivedDialogOpen} onOpenChange={setReceivedDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Received</AlertDialogTitle>
+            <AlertDialogTitle>{t("receivedTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark the load list as received and update inventory stock levels. This
-              action cannot be undone.
+              {t("receivedDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleStatusChange("received", setReceivedDialogOpen)}
               disabled={updateStatusMutation.isPending}
               className="bg-green-600 hover:bg-green-700"
             >
-              {updateStatusMutation.isPending ? "Updating..." : "Mark Received"}
+              {updateStatusMutation.isPending ? t("updating") : t("markReceived")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -483,19 +482,19 @@ export default function LoadListDetailPage() {
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Load List</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel this load list? This action cannot be undone.
+              {t("cancelDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>No, go back</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancelBack")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => handleStatusChange("cancelled", setCancelDialogOpen)}
               disabled={updateStatusMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {updateStatusMutation.isPending ? "Cancelling..." : "Yes, cancel"}
+              {updateStatusMutation.isPending ? t("cancelling") : t("confirmCancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

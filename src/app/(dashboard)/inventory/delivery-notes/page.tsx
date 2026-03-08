@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
   Plus,
   Search,
@@ -70,28 +71,28 @@ import type {
 import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, label: string) => {
   const baseClass = "text-xs font-medium";
 
   switch (status) {
     case "draft":
-      return <span className={`${baseClass} text-slate-500`}>Draft</span>;
+      return <span className={`${baseClass} text-slate-500`}>{label}</span>;
     case "confirmed":
-      return <span className={`${baseClass} text-blue-600`}>Confirmed</span>;
+      return <span className={`${baseClass} text-blue-600`}>{label}</span>;
     case "queued_for_picking":
-      return <span className={`${baseClass} text-amber-600`}>Queued for Picking</span>;
+      return <span className={`${baseClass} text-amber-600`}>{label}</span>;
     case "picking_in_progress":
-      return <span className={`${baseClass} text-orange-600`}>Picking in Progress</span>;
+      return <span className={`${baseClass} text-orange-600`}>{label}</span>;
     case "dispatch_ready":
-      return <span className={`${baseClass} text-purple-600`}>Dispatch Ready</span>;
+      return <span className={`${baseClass} text-purple-600`}>{label}</span>;
     case "dispatched":
-      return <span className={`${baseClass} text-indigo-600`}>Dispatched</span>;
+      return <span className={`${baseClass} text-indigo-600`}>{label}</span>;
     case "received":
-      return <span className={`${baseClass} text-emerald-600`}>Received</span>;
+      return <span className={`${baseClass} text-emerald-600`}>{label}</span>;
     case "voided":
-      return <span className={`${baseClass} text-red-600`}>Voided</span>;
+      return <span className={`${baseClass} text-red-600`}>{label}</span>;
     default:
-      return <span className={`${baseClass} text-muted-foreground`}>{toProperCase(status)}</span>;
+      return <span className={`${baseClass} text-muted-foreground`}>{label}</span>;
   }
 };
 
@@ -153,6 +154,7 @@ const resolveActivePickList = (deliveryNote: DeliveryNote): DeliveryNotePickList
 
 export default function DeliveryNotesPage() {
   const router = useRouter();
+  const t = useTranslations("deliveryNotesPage");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
@@ -275,9 +277,35 @@ export default function DeliveryNotesPage() {
   }, [warehousesData?.data]);
 
   const resolveWarehouseLabel = (warehouseId?: string | null) => {
-    if (!warehouseId) return "Unknown warehouse";
-    return warehouseLabelById.get(warehouseId) || "Unknown warehouse";
+    if (!warehouseId) return t("unknownWarehouse");
+    return warehouseLabelById.get(warehouseId) || t("unknownWarehouse");
   };
+
+  const statusLabel = useCallback(
+    (status: string) => {
+      switch (status) {
+        case "draft":
+          return t("draft");
+        case "confirmed":
+          return t("confirmed");
+        case "queued_for_picking":
+          return t("queuedForPicking");
+        case "picking_in_progress":
+          return t("pickingInProgress");
+        case "dispatch_ready":
+          return t("dispatchReady");
+        case "dispatched":
+          return t("dispatched");
+        case "received":
+          return t("received");
+        case "voided":
+          return t("voided");
+        default:
+          return toProperCase(status);
+      }
+    },
+    [t]
+  );
 
   const canReceiveDn = (dn: Pick<DeliveryNote, "fulfilling_warehouse_id">) => {
     if (!currentBusinessUnit?.id) return true;
@@ -612,25 +640,25 @@ export default function DeliveryNotesPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Unable to create delivery note. Please review allocated quantities and try again.";
+          : t("createError");
       setCreateValidationError(message);
     }
   };
 
   const actionTitleByType: Record<Exclude<typeof actionType, "">, string> = {
-    confirm: "Confirm Delivery Note",
-    queue_picking: "Queue Picking",
-    dispatch: "Dispatch Delivery Note",
-    receive: "Receive Delivery Note",
-    void: "Void Delivery Note",
+    confirm: t("confirmTitle"),
+    queue_picking: t("queuePickingTitle"),
+    dispatch: t("dispatchTitle"),
+    receive: t("receiveTitle"),
+    void: t("voidTitle"),
   };
 
   const actionDescriptionByType: Record<Exclude<typeof actionType, "">, string> = {
-    confirm: "Review the details below, then confirm this delivery note.",
-    queue_picking: "Review this delivery note, assign pickers, then create the pick list.",
-    dispatch: "Review the details and confirm dispatch. Dispatched quantities will use picked quantities.",
-    receive: "Review the details and confirm receive.",
-    void: "Review the details and confirm void.",
+    confirm: t("confirmDescription"),
+    queue_picking: t("queuePickingDescription"),
+    dispatch: t("dispatchDescription"),
+    receive: t("receiveDescription"),
+    void: t("voidDescription"),
   };
 
   const handleConfirmAction = async () => {
@@ -711,15 +739,13 @@ export default function DeliveryNotesPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Delivery Notes</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-            Manage DN lifecycle for stock request fulfillment
-          </p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
           <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
-            Create DN
+            {t("createDn")}
           </Button>
         </div>
       </div>
@@ -730,7 +756,7 @@ export default function DeliveryNotesPage() {
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search delivery notes or warehouses..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
@@ -739,18 +765,18 @@ export default function DeliveryNotesPage() {
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="queued_for_picking">Queued for Picking</SelectItem>
-              <SelectItem value="picking_in_progress">Picking in Progress</SelectItem>
-              <SelectItem value="dispatch_ready">Dispatch Ready</SelectItem>
-              <SelectItem value="dispatched">Dispatched</SelectItem>
-              <SelectItem value="received">Received</SelectItem>
-              <SelectItem value="voided">Voided</SelectItem>
+              <SelectItem value="all">{t("allStatus")}</SelectItem>
+              <SelectItem value="draft">{t("draft")}</SelectItem>
+              <SelectItem value="confirmed">{t("confirmed")}</SelectItem>
+              <SelectItem value="queued_for_picking">{t("queuedForPicking")}</SelectItem>
+              <SelectItem value="picking_in_progress">{t("pickingInProgress")}</SelectItem>
+              <SelectItem value="dispatch_ready">{t("dispatchReady")}</SelectItem>
+              <SelectItem value="dispatched">{t("dispatched")}</SelectItem>
+              <SelectItem value="received">{t("received")}</SelectItem>
+              <SelectItem value="voided">{t("voided")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -761,12 +787,12 @@ export default function DeliveryNotesPage() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead>DN No</TableHead>
-                <TableHead>Requested By</TableHead>
-                <TableHead>Fulfilled By</TableHead>
-                <TableHead>Pick List</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("dnNo")}</TableHead>
+                <TableHead>{t("requestedBy")}</TableHead>
+                <TableHead>{t("fulfilledBy")}</TableHead>
+                <TableHead>{t("pickList")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -803,11 +829,11 @@ export default function DeliveryNotesPage() {
       ) : deliveryNotes.length === 0 ? (
         <EmptyStatePanel
           icon={FileText}
-          title="No delivery notes found"
+          title={t("emptyTitle")}
           description={
             search || statusFilter !== "all"
-              ? "Try adjusting your search or filters."
-              : "Create your first delivery note to get started."
+              ? t("emptyFilteredDescription")
+              : t("emptyDescription")
           }
         />
       ) : (
@@ -815,12 +841,12 @@ export default function DeliveryNotesPage() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead>DN No</TableHead>
-                <TableHead>Requested By</TableHead>
-                <TableHead>Fulfilled By</TableHead>
-                <TableHead>Pick List</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("dnNo")}</TableHead>
+                <TableHead>{t("requestedBy")}</TableHead>
+                <TableHead>{t("fulfilledBy")}</TableHead>
+                <TableHead>{t("pickList")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -859,17 +885,17 @@ export default function DeliveryNotesPage() {
                           {linkedPickList.pick_list_no}
                         </Link>
                       ) : (
-                        <span className="text-xs text-muted-foreground">--</span>
+                        <span className="text-xs text-muted-foreground">{t("noValue")}</span>
                       )}
                     </TableCell>
-                    <TableCell>{getStatusBadge(dn.status)}</TableCell>
+                    <TableCell>{getStatusBadge(dn.status, statusLabel(dn.status))}</TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => router.push(detailsHref)}
-                          title="View"
+                          title={t("view")}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -880,7 +906,7 @@ export default function DeliveryNotesPage() {
                             void handlePrintDeliveryNote(dn);
                           }}
                           disabled={printingDnId === dn.id}
-                          title={printingDnId === dn.id ? "Generating PDF..." : "Print PDF"}
+                          title={printingDnId === dn.id ? t("generatingPdf") : t("printPdf")}
                         >
                           <FileText className="h-4 w-4" />
                         </Button>
@@ -889,7 +915,7 @@ export default function DeliveryNotesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openActionDialog("confirm", dn.id)}
-                            title="Confirm"
+                            title={t("confirm")}
                           >
                             <CheckCircle className="h-4 w-4 text-blue-600" />
                           </Button>
@@ -899,7 +925,7 @@ export default function DeliveryNotesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openActionDialog("queue_picking", dn.id)}
-                            title="Queue Picking"
+                            title={t("queuePicking")}
                           >
                             <Package className="h-4 w-4 text-amber-600" />
                           </Button>
@@ -909,7 +935,7 @@ export default function DeliveryNotesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openActionDialog("dispatch", dn.id)}
-                            title="Dispatch"
+                            title={t("dispatch")}
                           >
                             <Truck className="h-4 w-4 text-indigo-600" />
                           </Button>
@@ -919,7 +945,7 @@ export default function DeliveryNotesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openActionDialog("receive", dn.id)}
-                            title="Receive"
+                            title={t("receive")}
                           >
                             <ClipboardCheck className="h-4 w-4 text-emerald-600" />
                           </Button>
@@ -935,7 +961,7 @@ export default function DeliveryNotesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openActionDialog("void", dn.id)}
-                            title="Void"
+                            title={t("void")}
                           >
                             <XCircle className="h-4 w-4 text-red-600" />
                           </Button>
@@ -960,18 +986,18 @@ export default function DeliveryNotesPage() {
       >
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Delivery Note</DialogTitle>
+            <DialogTitle>{t("createDialogTitle")}</DialogTitle>
             <DialogDescription>
-              Select source business unit, then choose stock-request lines for allocation.
+              {t("createDialogDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Request Source Business Unit</Label>
+              <Label>{t("requestSourceBusinessUnit")}</Label>
               <Select value={selectedSourceBuId} onValueChange={onSelectSourceBu}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select source business unit" />
+                  <SelectValue placeholder={t("selectSourceBusinessUnit")} />
                 </SelectTrigger>
                 <SelectContent>
                   {sourceBusinessUnits.map((bu) => (
@@ -984,7 +1010,7 @@ export default function DeliveryNotesPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Fulfillment Mode</Label>
+              <Label>{t("fulfillmentMode")}</Label>
               <Select
                 value={createFulfillmentMode}
                 onValueChange={(value) =>
@@ -992,22 +1018,22 @@ export default function DeliveryNotesPage() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select fulfillment mode" />
+                  <SelectValue placeholder={t("selectFulfillmentMode")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="transfer_to_store">Transfer to Store</SelectItem>
+                  <SelectItem value="transfer_to_store">{t("transferToStore")}</SelectItem>
                   <SelectItem value="customer_pickup_from_warehouse">
-                    Customer Pickup (Warehouse)
+                    {t("customerPickupWarehouse")}
                   </SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Customer pickup skips destination inventory receive posting and uses direct pickup completion.
+                {t("fulfillmentModeHint")}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>{t("notes")}</Label>
               <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} />
             </div>
 
@@ -1021,18 +1047,18 @@ export default function DeliveryNotesPage() {
               <div className="rounded-lg border bg-blue-50 p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs text-muted-foreground">Source BU:</span>{" "}
+                    <span className="text-xs text-muted-foreground">{t("sourceBuLabel")}</span>{" "}
                     <span className="font-medium">
-                      {sourceBusinessUnits.find((bu) => bu.id === selectedSourceBuId)?.label || "--"}
+                      {sourceBusinessUnits.find((bu) => bu.id === selectedSourceBuId)?.label || t("noValue")}
                     </span>
                   </div>
                   <div className="flex gap-4 text-xs">
                     <div>
-                      <span className="text-muted-foreground">Eligible:</span>{" "}
+                      <span className="text-muted-foreground">{t("eligibleLabel")}</span>{" "}
                       <span className="font-medium">{draftLines.length}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Selected:</span>{" "}
+                      <span className="text-muted-foreground">{t("selectedLabel")}</span>{" "}
                       <span className="font-medium text-blue-600">{selectedLines.length}</span>
                     </div>
                   </div>
@@ -1043,7 +1069,7 @@ export default function DeliveryNotesPage() {
             {!selectedSourceBuId ? (
               <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Select a source business unit to load stock request lines
+                  {t("selectSourceBuHint")}
                 </p>
               </div>
             ) : draftLines.length > 0 ? (
@@ -1051,12 +1077,12 @@ export default function DeliveryNotesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="w-12">Use</TableHead>
-                      <TableHead>SR</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Requested</TableHead>
-                      <TableHead className="text-right">Allocatable</TableHead>
-                      <TableHead className="text-right">Allocated</TableHead>
+                      <TableHead className="w-12">{t("use")}</TableHead>
+                      <TableHead>{t("sr")}</TableHead>
+                      <TableHead>{t("item")}</TableHead>
+                      <TableHead className="text-right">{t("requested")}</TableHead>
+                      <TableHead className="text-right">{t("allocatable")}</TableHead>
+                      <TableHead className="text-right">{t("allocated")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1089,14 +1115,14 @@ export default function DeliveryNotesPage() {
                         <TableCell className="text-sm">
                           <div className="font-medium">{line.itemName}</div>
                           <div className="text-xs font-medium text-orange-600">
-                            Available:{" "}
+                            {t("availableLabel")}{" "}
                             {isLoadingInventory && getAvailableQty(line) === undefined
-                              ? "--"
+                              ? t("noValue")
                               : (getAvailableQty(line) || 0).toFixed(2)}
                           </div>
                           {hasInsufficientInventory && (
                             <div className="text-xs font-medium text-red-600">
-                              Insufficient inventory for this allocation.
+                              {t("insufficientInventory")}
                             </div>
                           )}
                         </TableCell>
@@ -1124,7 +1150,7 @@ export default function DeliveryNotesPage() {
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  No eligible stock request lines found for this source business unit
+                  {t("noEligibleLines")}
                 </p>
               </div>
             )}
@@ -1132,7 +1158,7 @@ export default function DeliveryNotesPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button
               onClick={handleCreate}
@@ -1143,7 +1169,7 @@ export default function DeliveryNotesPage() {
                 createMutation.isPending
               }
             >
-              Create
+              {t("create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1159,36 +1185,36 @@ export default function DeliveryNotesPage() {
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {actionType ? actionTitleByType[actionType as Exclude<typeof actionType, "">] : "Action"}
+              {actionType ? actionTitleByType[actionType as Exclude<typeof actionType, "">] : t("action")}
             </DialogTitle>
             <DialogDescription>
               {actionType
                 ? actionDescriptionByType[actionType as Exclude<typeof actionType, "">]
-                : "Review details and confirm action."}
+                : t("actionDescriptionFallback")}
             </DialogDescription>
           </DialogHeader>
 
           {!actionDnId || isLoadingActionDn ? (
-            <div className="text-sm text-muted-foreground">Loading details...</div>
+            <div className="text-sm text-muted-foreground">{t("loadingDetails")}</div>
           ) : !actionDn ? (
-            <div className="text-sm text-destructive">Unable to load delivery note details.</div>
+            <div className="text-sm text-destructive">{t("loadDetailsError")}</div>
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-4 text-sm md:grid-cols-4">
                 <div>
-                  <div className="text-xs text-muted-foreground">DN No</div>
+                  <div className="text-xs text-muted-foreground">{t("dnNo")}</div>
                   <div className="font-medium">{actionDn.dn_no}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Status</div>
-                  <div className="font-medium">{getStatusBadge(actionDn.status)}</div>
+                  <div className="text-xs text-muted-foreground">{t("status")}</div>
+                  <div className="font-medium">{getStatusBadge(actionDn.status, statusLabel(actionDn.status))}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Source</div>
+                  <div className="text-xs text-muted-foreground">{t("source")}</div>
                   <div className="font-medium">{resolveWarehouseLabel(actionDn.requesting_warehouse_id)}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Destination</div>
+                  <div className="text-xs text-muted-foreground">{t("destination")}</div>
                   <div className="font-medium">{resolveWarehouseLabel(actionDn.fulfilling_warehouse_id)}</div>
                 </div>
               </div>
@@ -1197,12 +1223,12 @@ export default function DeliveryNotesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead>Request</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="text-right">Allocated</TableHead>
-                      <TableHead className="text-right">Picked</TableHead>
-                      <TableHead className="text-right">Dispatched</TableHead>
+                      <TableHead>{t("request")}</TableHead>
+                      <TableHead>{t("item")}</TableHead>
+                      <TableHead>{t("unit")}</TableHead>
+                      <TableHead className="text-right">{t("allocated")}</TableHead>
+                      <TableHead className="text-right">{t("picked")}</TableHead>
+                      <TableHead className="text-right">{t("dispatchedQty")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1223,9 +1249,9 @@ export default function DeliveryNotesPage() {
               {actionType === "queue_picking" && (
                 <div className="space-y-4 rounded-lg border bg-muted/20 p-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Assign Pickers</Label>
+                    <Label className="text-sm font-medium">{t("assignPickers")}</Label>
                     <Input
-                      placeholder="Search name or email..."
+                      placeholder={t("searchNameOrEmail")}
                       value={queuePickerSearch}
                       onChange={(event) => setQueuePickerSearch(event.target.value)}
                       className="mb-2"
@@ -1249,19 +1275,19 @@ export default function DeliveryNotesPage() {
                           </label>
                         ))
                       ) : (
-                        <div className="text-sm text-muted-foreground text-center py-4">No pickers found</div>
+                        <div className="text-sm text-muted-foreground text-center py-4">{t("noPickersFound")}</div>
                       )}
                     </div>
                     {selectedQueuePickerIds.size > 0 && (
                       <div className="text-xs text-muted-foreground">
-                        {selectedQueuePickerIds.size} picker{selectedQueuePickerIds.size > 1 ? 's' : ''} selected
+                        {t("pickersSelected", { count: selectedQueuePickerIds.size })}
                       </div>
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Picking Instructions</Label>
+                    <Label className="text-sm font-medium">{t("pickingInstructions")}</Label>
                     <Textarea
-                      placeholder="Optional picking instructions..."
+                      placeholder={t("optionalPickingInstructions")}
                       value={queueNotes}
                       onChange={(event) => setQueueNotes(event.target.value)}
                       rows={3}
@@ -1273,17 +1299,17 @@ export default function DeliveryNotesPage() {
               {actionType === "dispatch" && (
                 <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Driver Name</Label>
+                    <Label className="text-sm font-medium">{t("driverName")}</Label>
                     <Input
-                      placeholder="Enter driver name"
+                      placeholder={t("enterDriverName")}
                       value={driverName}
                       onChange={(event) => setDriverName(event.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Dispatch Notes</Label>
+                    <Label className="text-sm font-medium">{t("dispatchNotes")}</Label>
                     <Textarea
-                      placeholder="Optional dispatch notes..."
+                      placeholder={t("optionalDispatchNotes")}
                       value={dispatchNotes}
                       onChange={(event) => setDispatchNotes(event.target.value)}
                       rows={3}
@@ -1294,9 +1320,9 @@ export default function DeliveryNotesPage() {
 
               {actionType === "receive" && (
                 <div className="space-y-2 rounded-lg border bg-muted/20 p-4">
-                  <Label className="text-sm font-medium">Receive Notes</Label>
+                  <Label className="text-sm font-medium">{t("receiveNotes")}</Label>
                   <Textarea
-                    placeholder="Optional receive notes..."
+                    placeholder={t("optionalReceiveNotes")}
                     value={receiveNotes}
                     onChange={(event) => setReceiveNotes(event.target.value)}
                     rows={3}
@@ -1306,9 +1332,9 @@ export default function DeliveryNotesPage() {
 
               {actionType === "void" && (
                 <div className="space-y-2 rounded-lg border bg-red-50 p-4">
-                  <Label className="text-sm font-medium">Void Reason</Label>
+                  <Label className="text-sm font-medium">{t("voidReason")}</Label>
                   <Textarea
-                    placeholder="Please provide a reason for voiding this delivery note..."
+                    placeholder={t("voidReasonPlaceholder")}
                     value={voidReason}
                     onChange={(event) => setVoidReason(event.target.value)}
                     rows={3}
@@ -1318,7 +1344,7 @@ export default function DeliveryNotesPage() {
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => setActionOpen(false)}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={handleConfirmAction}
@@ -1332,14 +1358,14 @@ export default function DeliveryNotesPage() {
                   }
                 >
                   {actionType === "queue_picking"
-                    ? "Confirm Create Pick List"
+                    ? t("confirmCreatePickList")
                     : actionType === "dispatch"
-                      ? "Confirm Dispatch"
+                      ? t("confirmDispatch")
                       : actionType === "receive"
-                        ? "Confirm Receive"
+                        ? t("confirmReceive")
                         : actionType === "void"
-                          ? "Confirm Void"
-                          : "Confirm"}
+                          ? t("confirmVoid")
+                          : t("confirm")}
                 </Button>
               </DialogFooter>
             </div>

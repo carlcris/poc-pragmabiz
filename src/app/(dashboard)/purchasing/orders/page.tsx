@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
   Search,
@@ -55,7 +56,6 @@ import {
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { PurchaseOrder, PurchaseOrderStatus } from "@/types/purchase-order";
-import { format } from "date-fns";
 
 const PurchaseOrderFormDialog = dynamic(
   () =>
@@ -77,6 +77,8 @@ const ReceiveGoodsDialog = dynamic(
 );
 
 export default function PurchaseOrdersPage() {
+  const t = useTranslations("purchaseOrdersPage");
+  const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -124,42 +126,49 @@ export default function PurchaseOrdersPage() {
   const getErrorMessage = (err: unknown, fallback: string) =>
     err instanceof Error ? err.message : fallback;
 
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(value));
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "submitted":
         return (
           <Badge variant="default" className="bg-blue-600">
-            Submitted
+            {t("submitted")}
           </Badge>
         );
       case "approved":
         return (
           <Badge variant="default" className="bg-green-600">
-            Approved
+            {t("approved")}
           </Badge>
         );
       case "in_transit":
         return (
           <Badge variant="default" className="bg-purple-600">
-            In Transit
+            {t("inTransit")}
           </Badge>
         );
       case "partially_received":
         return (
           <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            Partially Received
+            {t("partiallyReceived")}
           </Badge>
         );
       case "received":
         return (
           <Badge variant="default" className="bg-green-700">
-            Received
+            {t("received")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -219,11 +228,11 @@ export default function PurchaseOrdersPage() {
     if (!orderForAction) return;
     try {
       await submitMutation.mutateAsync(orderForAction.id);
-      toast.success("Purchase order submitted successfully");
+      toast.success(t("submitSuccess"));
       setSubmitDialogOpen(false);
       setOrderForAction(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to submit purchase order"));
+      toast.error(getErrorMessage(err, t("submitError")));
     }
   };
 
@@ -231,11 +240,11 @@ export default function PurchaseOrdersPage() {
     if (!orderForAction) return;
     try {
       await approveMutation.mutateAsync(orderForAction.id);
-      toast.success("Purchase order approved successfully");
+      toast.success(t("approveSuccess"));
       setApproveDialogOpen(false);
       setOrderForAction(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to approve purchase order"));
+      toast.error(getErrorMessage(err, t("approveError")));
     }
   };
 
@@ -243,11 +252,11 @@ export default function PurchaseOrdersPage() {
     if (!orderForAction) return;
     try {
       await cancelMutation.mutateAsync(orderForAction.id);
-      toast.success("Purchase order cancelled successfully");
+      toast.success(t("cancelSuccess"));
       setCancelDialogOpen(false);
       setOrderForAction(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to cancel purchase order"));
+      toast.error(getErrorMessage(err, t("cancelError")));
     }
   };
 
@@ -255,11 +264,11 @@ export default function PurchaseOrdersPage() {
     if (!orderForAction) return;
     try {
       await completeMutation.mutateAsync(orderForAction.id);
-      toast.success("Purchase order marked as received");
+      toast.success(t("completeSuccess"));
       setCompleteDialogOpen(false);
       setOrderForAction(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to complete purchase order"));
+      toast.error(getErrorMessage(err, t("completeError")));
     }
   };
 
@@ -267,11 +276,11 @@ export default function PurchaseOrdersPage() {
     if (!orderForAction) return;
     try {
       await deleteMutation.mutateAsync(orderForAction.id);
-      toast.success("Purchase order deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setOrderForAction(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete purchase order"));
+      toast.error(getErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -279,12 +288,12 @@ export default function PurchaseOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
-          <p className="text-muted-foreground">Manage purchase orders from suppliers</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button onClick={handleCreateOrder}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Purchase Order
+          {t("createAction")}
         </Button>
       </div>
 
@@ -293,7 +302,7 @@ export default function PurchaseOrdersPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search purchase orders..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
@@ -304,17 +313,17 @@ export default function PurchaseOrdersPage() {
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="in_transit">In Transit</SelectItem>
-              <SelectItem value="partially_received">Partially Received</SelectItem>
-              <SelectItem value="received">Received</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{t("allStatus")}</SelectItem>
+              <SelectItem value="draft">{t("draft")}</SelectItem>
+              <SelectItem value="submitted">{t("submitted")}</SelectItem>
+              <SelectItem value="approved">{t("approved")}</SelectItem>
+              <SelectItem value="in_transit">{t("inTransit")}</SelectItem>
+              <SelectItem value="partially_received">{t("partiallyReceived")}</SelectItem>
+              <SelectItem value="received">{t("received")}</SelectItem>
+              <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -325,11 +334,11 @@ export default function PurchaseOrdersPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading purchase orders. Please try again.
+            {t("loadError")}
           </div>
         ) : orders.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
-            No purchase orders found. Create your first purchase order to get started.
+            {t("emptyTitle")} {t("emptyDescription")}
           </div>
         ) : (
           <>
@@ -337,13 +346,13 @@ export default function PurchaseOrdersPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>PO Number</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Order Date</TableHead>
-                    <TableHead>Expected Delivery</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("poNumber")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("orderDate")}</TableHead>
+                    <TableHead>{t("expectedDelivery")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -358,9 +367,9 @@ export default function PurchaseOrdersPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{format(new Date(order.orderDate), "MMM d, yyyy")}</TableCell>
+                      <TableCell>{formatDate(order.orderDate)}</TableCell>
                       <TableCell>
-                        {format(new Date(order.expectedDeliveryDate), "MMM d, yyyy")}
+                        {formatDate(order.expectedDeliveryDate)}
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="text-right font-medium">
@@ -372,7 +381,7 @@ export default function PurchaseOrdersPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewOrder(order)}
-                            title="View"
+                            title={t("view")}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -382,7 +391,7 @@ export default function PurchaseOrdersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditOrder(order)}
-                                title="Edit"
+                                title={t("edit")}
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -390,7 +399,7 @@ export default function PurchaseOrdersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleSubmitOrder(order)}
-                                title="Submit"
+                                title={t("submit")}
                               >
                                 <Send className="h-4 w-4 text-blue-600" />
                               </Button>
@@ -398,7 +407,7 @@ export default function PurchaseOrdersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDeleteOrder(order)}
-                                title="Delete"
+                                title={t("delete")}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -410,7 +419,7 @@ export default function PurchaseOrdersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleApproveOrder(order)}
-                                title="Approve"
+                                title={t("approve")}
                               >
                                 <CheckCircle className="h-4 w-4 text-green-600" />
                               </Button>
@@ -418,7 +427,7 @@ export default function PurchaseOrdersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleCancelOrder(order)}
-                                title="Cancel"
+                                title={t("cancel")}
                               >
                                 <XCircle className="h-4 w-4 text-red-600" />
                               </Button>
@@ -431,7 +440,7 @@ export default function PurchaseOrdersPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleReceiveGoods(order)}
-                              title="Receive Goods"
+                              title={t("receiveGoods")}
                             >
                               <Package className="h-4 w-4 text-purple-600" />
                             </Button>
@@ -441,7 +450,7 @@ export default function PurchaseOrdersPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleCompleteOrder(order)}
-                              title="Complete"
+                              title={t("complete")}
                             >
                               <Check className="h-4 w-4 text-emerald-600" />
                             </Button>
@@ -454,7 +463,7 @@ export default function PurchaseOrdersPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleCancelOrder(order)}
-                                title="Cancel"
+                                title={t("cancel")}
                               >
                                 <XCircle className="h-4 w-4 text-red-600" />
                               </Button>
@@ -514,16 +523,15 @@ export default function PurchaseOrdersPage() {
       <AlertDialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Submit Purchase Order</AlertDialogTitle>
+            <AlertDialogTitle>{t("submitTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to submit {orderForAction?.orderCode}? Once submitted, the order
-              will require approval before processing.
+              {t("submitDescription", { code: orderForAction?.orderCode ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSubmit} disabled={submitMutation.isPending}>
-              {submitMutation.isPending ? "Submitting..." : "Submit"}
+              {submitMutation.isPending ? t("submitting") : t("submit")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -533,20 +541,19 @@ export default function PurchaseOrdersPage() {
       <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Approve Purchase Order</AlertDialogTitle>
+            <AlertDialogTitle>{t("approveTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to approve {orderForAction?.orderCode}? Once approved, the order
-              can be processed and received.
+              {t("approveDescription", { code: orderForAction?.orderCode ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmApprove}
               disabled={approveMutation.isPending}
               className="bg-green-600 hover:bg-green-700"
             >
-              {approveMutation.isPending ? "Approving..." : "Approve"}
+              {approveMutation.isPending ? t("approving") : t("approve")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -556,20 +563,19 @@ export default function PurchaseOrdersPage() {
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Purchase Order</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel {orderForAction?.orderCode}? This action cannot be
-              undone and the order will be marked as cancelled.
+              {t("cancelDescription", { code: orderForAction?.orderCode ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>{t("goBack")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmCancel}
               disabled={cancelMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {cancelMutation.isPending ? "Cancelling..." : "Cancel Order"}
+              {cancelMutation.isPending ? t("cancelling") : t("cancelOrder")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -579,20 +585,19 @@ export default function PurchaseOrdersPage() {
       <AlertDialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Complete Purchase Order</AlertDialogTitle>
+            <AlertDialogTitle>{t("completeTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Mark {orderForAction?.orderCode} as received? This will close the order even if it is
-              partially received.
+              {t("completeDescription", { code: orderForAction?.orderCode ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogCancel>{t("goBack")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmComplete}
               disabled={completeMutation.isPending}
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              {completeMutation.isPending ? "Completing..." : "Complete"}
+              {completeMutation.isPending ? t("completing") : t("complete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -602,20 +607,19 @@ export default function PurchaseOrdersPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Purchase Order</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {orderForAction?.orderCode}? This action cannot be
-              undone and the order will be permanently removed from the system.
+              {t("deleteDescription", { code: orderForAction?.orderCode ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

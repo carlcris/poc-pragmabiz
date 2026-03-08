@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -33,6 +34,7 @@ interface ByTimeTabProps {
 }
 
 export function ByTimeTab({ filters }: ByTimeTabProps) {
+  const t = useTranslations("analyticsByTimeTab");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByTime(filters);
 
@@ -73,16 +75,16 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Sales Trend Over Time
+            {t("salesTrendOverTime")}
           </CardTitle>
-          <CardDescription>Sales and commissions by date</CardDescription>
+          <CardDescription>{t("salesAndCommissionsByDate")}</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-[400px] w-full" />
           ) : chartData.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No sales data available
+              {t("noSalesData")}
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={400}>
@@ -103,7 +105,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                 <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
                 <Tooltip
                   formatter={(value, name) => {
-                    if (name === "Transactions") return value ?? 0;
+                    if (name === t("transactions")) return value ?? 0;
                     return formatCurrency(typeof value === "number" ? value : 0);
                   }}
                   contentStyle={{ borderRadius: "8px" }}
@@ -115,7 +117,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                   dataKey="sales"
                   stroke="#3b82f6"
                   strokeWidth={2}
-                  name="Sales"
+                  name={t("sales")}
                   dot={{ fill: "#3b82f6" }}
                 />
                 <Line
@@ -124,7 +126,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                   dataKey="commissions"
                   stroke="#10b981"
                   strokeWidth={2}
-                  name="Commissions"
+                  name={t("commissions")}
                   dot={{ fill: "#10b981" }}
                 />
                 <Line
@@ -133,7 +135,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                   dataKey="transactions"
                   stroke="#f59e0b"
                   strokeWidth={2}
-                  name="Transactions"
+                  name={t("transactions")}
                   dot={{ fill: "#f59e0b" }}
                 />
               </LineChart>
@@ -145,8 +147,8 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
       {/* Sales by Date Table */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold">Sales Over Time</h3>
-          <p className="text-sm text-muted-foreground">Daily sales breakdown</p>
+          <h3 className="text-lg font-semibold">{t("salesOverTime")}</h3>
+          <p className="text-sm text-muted-foreground">{t("dailySalesBreakdown")}</p>
         </div>
 
         {isLoading ? (
@@ -156,18 +158,18 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
             ))}
           </div>
         ) : salesData.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No sales data available</p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("noSalesData")}</p>
         ) : (
           <>
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Sales</TableHead>
-                    <TableHead className="text-right">Transactions</TableHead>
-                    <TableHead className="text-right">Avg Order Value</TableHead>
-                    <TableHead className="text-right">Commissions</TableHead>
+                    <TableHead>{t("date")}</TableHead>
+                    <TableHead className="text-right">{t("sales")}</TableHead>
+                    <TableHead className="text-right">{t("transactions")}</TableHead>
+                    <TableHead className="text-right">{t("averageOrderValue")}</TableHead>
+                    <TableHead className="text-right">{t("commissions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -195,9 +197,11 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
             {/* Pagination Controls */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, salesData.length)} of {salesData.length}{" "}
-                entries
+                {t("showingEntries", {
+                  from: (currentPage - 1) * itemsPerPage + 1,
+                  to: Math.min(currentPage * itemsPerPage, salesData.length),
+                  total: salesData.length,
+                })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -207,10 +211,10 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  {t("previous")}
                 </Button>
                 <div className="text-sm">
-                  Page {currentPage} of {totalPages}
+                  {t("pageOf", { page: currentPage, total: totalPages })}
                 </div>
                 <Button
                   variant="outline"
@@ -218,7 +222,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t("next")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AlertCircle, Clock, ArrowRight, Loader2, TruckIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ export function DelayedShipmentsWidget({
   warehouseId,
   businessUnitId,
 }: DelayedShipmentsWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useDelayedShipments({
     warehouseId,
     businessUnitId,
@@ -32,8 +34,8 @@ export function DelayedShipmentsWidget({
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Delayed Shipments</CardTitle>
-              <CardDescription>Shipments past estimated arrival date</CardDescription>
+              <CardTitle>{t("delayedShipmentsTitle")}</CardTitle>
+              <CardDescription>{t("shipmentsPastEstimatedArrivalDate")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -54,16 +56,16 @@ export function DelayedShipmentsWidget({
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Delayed Shipments</CardTitle>
-              <CardDescription>Shipments past estimated arrival date</CardDescription>
+              <CardTitle>{t("delayedShipmentsTitle")}</CardTitle>
+              <CardDescription>{t("shipmentsPastEstimatedArrivalDate")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load delayed shipments</p>
+            <p className="text-sm text-destructive">{t("failedLoadDelayedShipments")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -79,16 +81,16 @@ export function DelayedShipmentsWidget({
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Delayed Shipments</CardTitle>
-              <CardDescription>Shipments past estimated arrival date</CardDescription>
+              <CardTitle>{t("delayedShipmentsTitle")}</CardTitle>
+              <CardDescription>{t("shipmentsPastEstimatedArrivalDate")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={TruckIcon}
-            title="No delayed shipments"
-            description="All deliveries are on track!"
+            title={t("noDelayedShipments")}
+            description={t("allDeliveriesOnTrack")}
             variant="success"
           />
         </CardContent>
@@ -121,8 +123,8 @@ export function DelayedShipmentsWidget({
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 text-destructive" />
           <div className="flex flex-col gap-1">
-            <CardTitle className="text-destructive">Delayed Shipments</CardTitle>
-            <CardDescription>Shipments past estimated arrival date</CardDescription>
+            <CardTitle className="text-destructive">{t("delayedShipmentsTitle")}</CardTitle>
+            <CardDescription>{t("shipmentsPastEstimatedArrivalDate")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -132,8 +134,7 @@ export function DelayedShipmentsWidget({
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {criticalCount} critical {criticalCount === 1 ? "delay" : "delays"} (7+ days overdue).
-              Immediate attention required.
+              {t("criticalDelaysAlert", { count: criticalCount })}
             </AlertDescription>
           </Alert>
         )}
@@ -143,7 +144,7 @@ export function DelayedShipmentsWidget({
           <div className="flex items-center justify-between gap-2 text-sm text-destructive">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              <span>Overdue Shipments</span>
+              <span>{t("overdueShipments")}</span>
             </div>
             <span className="text-xl sm:text-2xl font-bold text-right text-destructive">{data.count}</span>
           </div>
@@ -151,7 +152,7 @@ export function DelayedShipmentsWidget({
 
         {/* Delayed Items List */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Most Overdue First</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("mostOverdueFirst")}</p>
           <div className="space-y-2">
             {itemsWithOverdue.slice(0, 5).map((item) => (
               <Link
@@ -172,11 +173,11 @@ export function DelayedShipmentsWidget({
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground truncate">
-                    {item.supplier?.supplier_name || "Unknown Supplier"}
+                    {item.supplier?.supplier_name || t("unknownSupplier")}
                   </span>
                   {item.estimated_arrival_date && (
                     <span className="text-xs text-muted-foreground">
-                      Expected: {format(parseISO(item.estimated_arrival_date), "MMM d, yyyy")}
+                      {t("expected")}: {format(parseISO(item.estimated_arrival_date), "MMM d, yyyy")}
                     </span>
                   )}
                 </div>
@@ -189,7 +190,7 @@ export function DelayedShipmentsWidget({
                       item.severity === "medium" && "bg-yellow-600 text-white"
                     )}
                   >
-                    {item.daysOverdue} {item.daysOverdue === 1 ? "day" : "days"} late
+                    {t("daysLate", { count: item.daysOverdue })}
                   </div>
                   <span className="text-xs capitalize text-muted-foreground">{item.status?.replace("_", " ")}</span>
                 </div>
@@ -202,7 +203,7 @@ export function DelayedShipmentsWidget({
         {data.count > 5 && (
           <Button asChild variant="outline" className="w-full">
             <Link href="/purchasing/load-lists?status=delayed">
-              View All Delayed Shipments
+              {t("viewAllDelayedShipments")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

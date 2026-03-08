@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { useTranslations } from "next-intl";
 import { useSearchParams, useRouter } from "next/navigation";
 import { RESOURCE_METADATA } from "@/constants/resources";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -10,6 +11,7 @@ import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
 
 function AccessDeniedContent() {
+  const t = useTranslations("accessDeniedPage");
   const searchParams = useSearchParams();
   const router = useRouter();
   const { permissions, isLoading: permissionsLoading } = usePermissions();
@@ -57,30 +59,16 @@ function AccessDeniedContent() {
     if (resources) {
       const resourceList = resources.split(",").map(getResourceName);
       if (requireAll) {
-        return (
-          <>
-            You need permission to access <strong>all</strong> of the following resources:{" "}
-            <strong>{resourceList.join(", ")}</strong>
-          </>
-        );
+        return t("resourceNeedAll", { resources: resourceList.join(", ") });
       }
-      return (
-        <>
-          You need permission to access at least one of the following resources:{" "}
-          <strong>{resourceList.join(", ")}</strong>
-        </>
-      );
+      return t("resourceNeedOne", { resources: resourceList.join(", ") });
     }
 
     if (resource) {
-      return (
-        <>
-          You need <strong>view</strong> permission for <strong>{getResourceName(resource)}</strong>
-        </>
-      );
+      return t("resourceNeedView", { resource: getResourceName(resource) });
     }
 
-    return "You do not have permission to access this resource";
+    return t("noPermission");
   };
 
   return (
@@ -105,15 +93,14 @@ function AccessDeniedContent() {
         </div>
 
         {/* Title */}
-        <h1 className="mb-4 text-3xl font-bold text-gray-900">Access Denied</h1>
+        <h1 className="mb-4 text-3xl font-bold text-gray-900">{t("title")}</h1>
 
         {/* Message */}
         <div className="mb-8 space-y-3">
           <p className="text-lg text-gray-700">{renderResourceMessage()}</p>
 
           <p className="text-sm text-gray-600">
-            If you believe this is an error, please contact your system administrator to request
-            access.
+            {t("supportMessage")}
           </p>
         </div>
 
@@ -135,7 +122,7 @@ function AccessDeniedContent() {
                     d="M10 19l-7-7m0 0l7-7m-7 7h18"
                   />
                 </svg>
-                Go Back
+                {t("goBack")}
               </button>
 
               <button
@@ -151,7 +138,7 @@ function AccessDeniedContent() {
                     d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
                   />
                 </svg>
-                {permissionsLoading || rolesLoading ? "Loading..." : "Go to Home"}
+                {permissionsLoading || rolesLoading ? t("loading") : t("goHome")}
               </button>
             </>
           ) : (
@@ -170,7 +157,7 @@ function AccessDeniedContent() {
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                   />
                 </svg>
-                {permissionsLoading || rolesLoading ? "Loading..." : "Logout"}
+                {permissionsLoading || rolesLoading ? t("loading") : t("logout")}
               </button>
             </>
           )}
@@ -178,7 +165,7 @@ function AccessDeniedContent() {
 
         {/* Additional Info */}
         <div className="mt-8 border-t border-gray-200 pt-6">
-          <p className="text-xs text-gray-500">Error Code: 403 - Forbidden</p>
+          <p className="text-xs text-gray-500">{t("errorCode")}</p>
         </div>
       </div>
     </div>

@@ -22,7 +22,6 @@ import {
   PackageCheck,
   AlertCircle,
   CheckCircle2,
-  MapPin,
   Scan,
   Play,
   Pause,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { PackageCheck, Clock, ArrowRight, Loader2, PlayCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ export function TodaysReceivingQueueWidget({
   warehouseId,
   businessUnitId,
 }: TodaysReceivingQueueWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useTodaysReceivingQueue({
     warehouseId,
     businessUnitId,
@@ -37,8 +39,8 @@ export function TodaysReceivingQueueWidget({
           <div className="flex items-center gap-2">
             <PackageCheck className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Today&apos;s Receiving Queue</CardTitle>
-              <CardDescription>Load lists that arrived today</CardDescription>
+              <CardTitle>{t("todaysReceivingQueueTitle")}</CardTitle>
+              <CardDescription>{t("loadListsArrivedToday")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -59,16 +61,16 @@ export function TodaysReceivingQueueWidget({
           <div className="flex items-center gap-2">
             <PackageCheck className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Today&apos;s Receiving Queue</CardTitle>
-              <CardDescription>Load lists that arrived today</CardDescription>
+              <CardTitle>{t("todaysReceivingQueueTitle")}</CardTitle>
+              <CardDescription>{t("loadListsArrivedToday")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load receiving queue</p>
+            <p className="text-sm text-destructive">{t("failedLoadReceivingQueue")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -84,16 +86,16 @@ export function TodaysReceivingQueueWidget({
           <div className="flex items-center gap-2">
             <PackageCheck className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Today&apos;s Receiving Queue</CardTitle>
-              <CardDescription>Load lists that arrived today</CardDescription>
+              <CardTitle>{t("todaysReceivingQueueTitle")}</CardTitle>
+              <CardDescription>{t("loadListsArrivedToday")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={PackageCheck}
-            title="No items in receiving queue"
-            description="No load lists arrived today"
+            title={t("noItemsInReceivingQueue")}
+            description={t("noLoadListsArrivedToday")}
           />
         </CardContent>
       </Card>
@@ -113,8 +115,8 @@ export function TodaysReceivingQueueWidget({
         <div className="flex items-center gap-2">
           <PackageCheck className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Today&apos;s Receiving Queue</CardTitle>
-            <CardDescription>Load lists that arrived today</CardDescription>
+            <CardTitle>{t("todaysReceivingQueueTitle")}</CardTitle>
+            <CardDescription>{t("loadListsArrivedToday")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -124,7 +126,7 @@ export function TodaysReceivingQueueWidget({
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <PackageCheck className="h-4 w-4" />
-              <span>To Receive</span>
+              <span>{t("toReceive")}</span>
             </div>
             <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
           </div>
@@ -132,7 +134,7 @@ export function TodaysReceivingQueueWidget({
 
         {/* Queue Items */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Queue</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("queue")}</p>
           <div className="space-y-2">
             {sortedItems.map((item) => {
               const statusConfig = STATUS_CONFIG[item.status] || {
@@ -156,16 +158,16 @@ export function TodaysReceivingQueueWidget({
                       {isArrived && (
                         <Badge variant="outline" className="gap-1 text-xs flex-shrink-0">
                           <Clock className="h-3 w-3" />
-                          Pending
+                          {t("pending")}
                         </Badge>
                       )}
                     </div>
                     <span className="text-xs text-muted-foreground truncate">
-                      {item.supplier?.supplier_name || "Unknown Supplier"}
+                      {item.supplier?.supplier_name || t("unknownSupplier")}
                     </span>
                     {item.actual_arrival_date && (
                       <span className="text-xs text-muted-foreground">
-                        Arrived: {format(parseISO(item.actual_arrival_date), "h:mm a")}
+                        {t("arrived")}: {format(parseISO(item.actual_arrival_date), "h:mm a")}
                       </span>
                     )}
                   </div>
@@ -175,10 +177,10 @@ export function TodaysReceivingQueueWidget({
                       {isArrived ? (
                         <>
                           <PlayCircle className="mr-1 h-3.5 w-3.5" />
-                          Start
+                          {t("start")}
                         </>
                       ) : (
-                        "Resume"
+                        t("resume")
                       )}
                     </Button>
                   </div>
@@ -191,7 +193,7 @@ export function TodaysReceivingQueueWidget({
         {/* View All Link */}
         <Button asChild variant="outline" className="w-full">
           <Link href="/tablet/receiving">
-            View All Receiving
+            {t("viewAllReceiving")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

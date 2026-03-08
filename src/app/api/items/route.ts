@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireLookupDataAccess, requirePermission } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import type { CreateItemRequest, Item } from "@/types/item";

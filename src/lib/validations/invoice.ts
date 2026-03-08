@@ -9,50 +9,58 @@ export const invoiceStatusEnum = z.enum([
   "cancelled",
 ]);
 
-export const invoiceLineItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
-  itemCode: z.string().min(1, "Item code is required"),
-  itemName: z.string().min(1, "Item name is required"),
-  description: z.string().default(""),
-  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  unitPrice: z.number().min(0, "Unit price must be non-negative"),
-  discount: z
-    .number()
-    .min(0, "Discount cannot be negative")
-    .max(100, "Discount cannot exceed 100%"),
-  taxRate: z.number().min(0, "Tax rate cannot be negative").max(100, "Tax rate cannot exceed 100%"),
-});
+export const createInvoiceLineItemSchema = (t: (key: string) => string) =>
+  z.object({
+    itemId: z.string().min(1, t("itemRequired")),
+    itemCode: z.string().min(1, t("itemCodeRequired")),
+    itemName: z.string().min(1, t("itemNameRequired")),
+    description: z.string().default(""),
+    quantity: z.number().min(0.01, t("quantityRequired")),
+    unitPrice: z.number().min(0, t("unitPriceRequired")),
+    discount: z.number().min(0, t("discountMin")).max(100, t("discountMax")),
+    taxRate: z.number().min(0, t("taxMin")).max(100, t("taxMax")),
+    uomId: z.string().min(1, t("uomRequired")),
+  });
 
-export const invoiceFormSchema = z
-  .object({
-    customerId: z.string().min(1, "Customer is required"),
-    warehouseId: z.string().optional(),
-    salesOrderId: z.string().optional(),
-    invoiceDate: z.string().min(1, "Invoice date is required"),
-    dueDate: z.string().min(1, "Due date is required"),
-    terms: z.string().default(""),
+export const invoiceLineItemSchema = createInvoiceLineItemSchema((key) => key);
+
+export const createInvoiceFormSchema = (t: (key: string) => string) =>
+  z
+    .object({
+      customerId: z.string().min(1, t("customerRequired")),
+      warehouseId: z.string().optional(),
+      locationId: z.string().optional(),
+      salesOrderId: z.string().optional(),
+      invoiceDate: z.string().min(1, t("invoiceDateRequired")),
+      dueDate: z.string().min(1, t("dueDateRequired")),
+      terms: z.string().default(""),
+      notes: z.string().default(""),
+    })
+    .refine(
+      (data) => {
+        const invoiceDate = new Date(data.invoiceDate);
+        const dueDate = new Date(data.dueDate);
+        return dueDate >= invoiceDate;
+      },
+      {
+        message: t("dueDateAfterInvoiceDate"),
+        path: ["dueDate"],
+      }
+    );
+
+export const invoiceFormSchema = createInvoiceFormSchema((key) => key);
+
+export const createRecordPaymentSchema = (t: (key: string) => string) =>
+  z.object({
+    invoiceId: z.string().min(1, t("invoiceIdRequired")),
+    amount: z.number().min(0.01, t("amountRequired")),
+    paymentDate: z.string().min(1, t("paymentDateRequired")),
+    paymentMethod: z.string().min(1, t("paymentMethodRequired")),
+    reference: z.string().default(""),
     notes: z.string().default(""),
-  })
-  .refine(
-    (data) => {
-      const invoiceDate = new Date(data.invoiceDate);
-      const dueDate = new Date(data.dueDate);
-      return dueDate >= invoiceDate;
-    },
-    {
-      message: "Due date must be on or after invoice date",
-      path: ["dueDate"],
-    }
-  );
+  });
 
-export const recordPaymentSchema = z.object({
-  invoiceId: z.string().min(1, "Invoice ID is required"),
-  amount: z.number().min(0.01, "Amount must be greater than 0"),
-  paymentDate: z.string().min(1, "Payment date is required"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
-  reference: z.string().default(""),
-  notes: z.string().default(""),
-});
+export const recordPaymentSchema = createRecordPaymentSchema((key) => key);
 
 export const updateInvoiceStatusSchema = z.object({
   status: invoiceStatusEnum,

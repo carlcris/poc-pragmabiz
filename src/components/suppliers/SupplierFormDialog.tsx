@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useCreateSupplier, useUpdateSupplier } from "@/hooks/useSuppliers";
-import { supplierFormSchema, type SupplierFormValues } from "@/lib/validations/supplier";
+import { createSupplierFormSchema, type SupplierFormValues } from "@/lib/validations/supplier";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,34 +44,56 @@ interface SupplierFormDialogProps {
   supplier?: Supplier | null;
 }
 
-const SUPPLIER_STATUS = [
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-  { value: "blacklisted", label: "Blacklisted" },
-] as const;
-
-const SUPPLIER_LANGUAGES = [
-  { value: "english", label: "English" },
-  { value: "chinese", label: "Chinese" },
-] as const;
-
-const PAYMENT_TERMS = [
-  { value: "cod", label: "Cash on Delivery" },
-  { value: "net_7", label: "Net 7" },
-  { value: "net_15", label: "Net 15" },
-  { value: "net_30", label: "Net 30" },
-  { value: "net_45", label: "Net 45" },
-  { value: "net_60", label: "Net 60" },
-  { value: "net_90", label: "Net 90" },
-] as const;
-
-const COUNTRIES = ["Philippines", "USA", "China", "Japan", "Singapore", "Malaysia", "Thailand"];
-
 export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFormDialogProps) {
+  const t = useTranslations("supplierForm");
+  const tValidation = useTranslations("supplierValidation");
   const { user } = useAuthStore();
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
   const [sameAsBilling, setSameAsBilling] = useState(false);
+  const supplierFormSchema = useMemo(
+    () => createSupplierFormSchema((key) => tValidation(key)),
+    [tValidation]
+  );
+  const supplierStatusOptions = useMemo(
+    () => [
+      { value: "active", label: t("statusActive") },
+      { value: "inactive", label: t("statusInactive") },
+      { value: "blacklisted", label: t("statusBlacklisted") },
+    ],
+    [t]
+  );
+  const supplierLanguageOptions = useMemo(
+    () => [
+      { value: "english", label: t("languageEnglish") },
+      { value: "chinese", label: t("languageChinese") },
+    ],
+    [t]
+  );
+  const paymentTermsOptions = useMemo(
+    () => [
+      { value: "cod", label: t("paymentCod") },
+      { value: "net_7", label: t("paymentNet7") },
+      { value: "net_15", label: t("paymentNet15") },
+      { value: "net_30", label: t("paymentNet30") },
+      { value: "net_45", label: t("paymentNet45") },
+      { value: "net_60", label: t("paymentNet60") },
+      { value: "net_90", label: t("paymentNet90") },
+    ],
+    [t]
+  );
+  const countries = useMemo(
+    () => [
+      { value: "Philippines", label: t("countryPhilippines") },
+      { value: "USA", label: t("countryUsa") },
+      { value: "China", label: t("countryChina") },
+      { value: "Japan", label: t("countryJapan") },
+      { value: "Singapore", label: t("countrySingapore") },
+      { value: "Malaysia", label: t("countryMalaysia") },
+      { value: "Thailand", label: t("countryThailand") },
+    ],
+    [t]
+  );
 
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierFormSchema),
@@ -185,10 +208,10 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
           id: supplier.id,
           data: values,
         });
-        toast.success("Supplier updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         if (!user?.companyId || !user?.id) {
-          toast.error("User company information not available");
+          toast.error(t("missingCompanyInfo"));
           return;
         }
         await createSupplier.mutateAsync({
@@ -196,13 +219,13 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
           companyId: user.companyId,
           createdBy: user.id,
         });
-        toast.success("Supplier created successfully");
+        toast.success(t("createSuccess"));
       }
       onOpenChange(false);
       form.reset();
       setSameAsBilling(false);
     } catch {
-      toast.error(supplier ? "Failed to update supplier" : "Failed to create supplier");
+      toast.error(supplier ? t("updateError") : t("createError"));
     }
   };
 
@@ -210,11 +233,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{supplier ? "Edit Supplier" : "Create New Supplier"}</DialogTitle>
+          <DialogTitle>{supplier ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
             {supplier
-              ? "Update the supplier information below"
-              : "Fill in the supplier details below to create a new supplier"}
+              ? t("editDescription")
+              : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -222,11 +245,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs defaultValue="general" className="w-full">
               <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="billing">Billing</TabsTrigger>
-                <TabsTrigger value="shipping">Shipping</TabsTrigger>
-                <TabsTrigger value="payment">Payment</TabsTrigger>
-                <TabsTrigger value="bank">Bank Details</TabsTrigger>
+                <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
+                <TabsTrigger value="billing">{t("billingTab")}</TabsTrigger>
+                <TabsTrigger value="shipping">{t("shippingTab")}</TabsTrigger>
+                <TabsTrigger value="payment">{t("paymentTab")}</TabsTrigger>
+                <TabsTrigger value="bank">{t("bankTab")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="mt-4 space-y-4">
@@ -236,9 +259,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Supplier Code *</FormLabel>
+                        <FormLabel>{t("supplierCodeLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="SUPP-001" {...field} disabled={!!supplier} />
+                          <Input placeholder={t("supplierCodePlaceholder")} {...field} disabled={!!supplier} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -250,15 +273,15 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="lang"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Language *</FormLabel>
+                        <FormLabel>{t("languageLabel")}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select language" />
+                              <SelectValue placeholder={t("selectLanguage")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {SUPPLIER_LANGUAGES.map((lang) => (
+                            {supplierLanguageOptions.map((lang) => (
                               <SelectItem key={lang.value} value={lang.value}>
                                 {lang.label}
                               </SelectItem>
@@ -275,15 +298,15 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Status *</FormLabel>
+                        <FormLabel>{t("statusLabel")}</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
+                              <SelectValue placeholder={t("selectStatus")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {SUPPLIER_STATUS.map((status) => (
+                            {supplierStatusOptions.map((status) => (
                               <SelectItem key={status.value} value={status.value}>
                                 {status.label}
                               </SelectItem>
@@ -301,9 +324,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Supplier Name *</FormLabel>
+                      <FormLabel>{t("supplierNameLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter supplier name" {...field} />
+                        <Input placeholder={t("supplierNamePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -315,9 +338,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="contactPerson"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Person *</FormLabel>
+                      <FormLabel>{t("contactPersonLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter contact person name" {...field} />
+                        <Input placeholder={t("contactPersonPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -330,9 +353,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email *</FormLabel>
+                        <FormLabel>{t("emailLabel")}</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="supplier@email.com" {...field} />
+                          <Input type="email" placeholder={t("emailPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -344,9 +367,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone *</FormLabel>
+                        <FormLabel>{t("phoneLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="+63-2-8123-4567" {...field} />
+                          <Input placeholder={t("phonePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -360,9 +383,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="mobile"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mobile</FormLabel>
+                        <FormLabel>{t("mobileLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="+63-917-123-4567" {...field} />
+                          <Input placeholder={t("mobilePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -374,9 +397,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="website"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Website</FormLabel>
+                        <FormLabel>{t("websiteLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="www.supplier.com" {...field} />
+                          <Input placeholder={t("websitePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -389,9 +412,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="taxId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tax ID</FormLabel>
+                      <FormLabel>{t("taxIdLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="TIN-123-456-789-000" {...field} />
+                        <Input placeholder={t("taxIdPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -405,9 +428,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="billingAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address *</FormLabel>
+                      <FormLabel>{t("billingAddressLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Street address" {...field} />
+                        <Input placeholder={t("addressPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -420,9 +443,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="billingCity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City *</FormLabel>
+                        <FormLabel>{t("cityLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="City" {...field} />
+                          <Input placeholder={t("cityPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -434,9 +457,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="billingState"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State/Province *</FormLabel>
+                        <FormLabel>{t("stateLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="State" {...field} />
+                          <Input placeholder={t("statePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -448,9 +471,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="billingPostalCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Postal Code *</FormLabel>
+                        <FormLabel>{t("postalCodeLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Postal code" {...field} />
+                          <Input placeholder={t("postalCodePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -463,17 +486,17 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="billingCountry"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country *</FormLabel>
+                      <FormLabel>{t("countryLabel")}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
+                            <SelectValue placeholder={t("selectCountry")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {COUNTRIES.map((country) => (
-                            <SelectItem key={country} value={country}>
-                              {country}
+                          {countries.map((country) => (
+                            <SelectItem key={country.value} value={country.value}>
+                              {country.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -495,7 +518,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     htmlFor="sameAsBilling"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Same as billing address
+                    {t("sameAsBilling")}
                   </label>
                 </div>
 
@@ -504,9 +527,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="shippingAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
+                      <FormLabel>{t("shippingAddressLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Street address" {...field} disabled={sameAsBilling} />
+                        <Input placeholder={t("addressPlaceholder")} {...field} disabled={sameAsBilling} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -519,9 +542,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="shippingCity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City</FormLabel>
+                        <FormLabel>{t("cityLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="City" {...field} disabled={sameAsBilling} />
+                          <Input placeholder={t("cityPlaceholder")} {...field} disabled={sameAsBilling} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -533,9 +556,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="shippingState"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State/Province</FormLabel>
+                        <FormLabel>{t("stateLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="State" {...field} disabled={sameAsBilling} />
+                          <Input placeholder={t("statePlaceholder")} {...field} disabled={sameAsBilling} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -547,9 +570,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     name="shippingPostalCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Postal Code</FormLabel>
+                        <FormLabel>{t("postalCodeLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Postal code" {...field} disabled={sameAsBilling} />
+                          <Input placeholder={t("postalCodePlaceholder")} {...field} disabled={sameAsBilling} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -562,7 +585,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="shippingCountry"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country</FormLabel>
+                      <FormLabel>{t("countryLabel")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
@@ -570,13 +593,13 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
+                            <SelectValue placeholder={t("selectCountry")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {COUNTRIES.map((country) => (
-                            <SelectItem key={country} value={country}>
-                              {country}
+                          {countries.map((country) => (
+                            <SelectItem key={country.value} value={country.value}>
+                              {country.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -593,15 +616,15 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="paymentTerms"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Terms *</FormLabel>
+                      <FormLabel>{t("paymentTermsLabel")}</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select payment terms" />
+                            <SelectValue placeholder={t("selectPaymentTerms")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {PAYMENT_TERMS.map((term) => (
+                          {paymentTermsOptions.map((term) => (
                             <SelectItem key={term.value} value={term.value}>
                               {term.label}
                             </SelectItem>
@@ -618,12 +641,12 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="creditLimit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Credit Limit</FormLabel>
+                      <FormLabel>{t("creditLimitLabel")}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="0.00"
+                          placeholder={t("creditLimitPlaceholder")}
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
@@ -638,10 +661,10 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notes</FormLabel>
+                      <FormLabel>{t("notesLabel")}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Additional notes about this supplier"
+                          placeholder={t("notesPlaceholder")}
                           className="resize-none"
                           rows={4}
                           {...field}
@@ -659,9 +682,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="bankName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Bank Name</FormLabel>
+                      <FormLabel>{t("bankNameLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Bank name" {...field} />
+                        <Input placeholder={t("bankNamePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -673,9 +696,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="bankAccountName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Account Name</FormLabel>
+                      <FormLabel>{t("bankAccountNameLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Account holder name" {...field} />
+                        <Input placeholder={t("bankAccountNamePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -687,9 +710,9 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                   name="bankAccountNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Account Number</FormLabel>
+                      <FormLabel>{t("bankAccountNumberLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Account number" {...field} />
+                        <Input placeholder={t("bankAccountNumberPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -700,14 +723,14 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
               <Button type="submit" disabled={createSupplier.isPending || updateSupplier.isPending}>
                 {createSupplier.isPending || updateSupplier.isPending
-                  ? "Saving..."
+                  ? t("saving")
                   : supplier
-                    ? "Update Supplier"
-                    : "Create Supplier"}
+                    ? t("updateAction")
+                    : t("createAction")}
               </Button>
             </DialogFooter>
           </form>

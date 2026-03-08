@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import { toast } from "sonner";
 import { useReceiveStockRequest } from "@/hooks/useStockRequests";
@@ -42,25 +43,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { StockRequest } from "@/types/stock-request";
-import type { WarehouseLocation } from "@/types/inventory-location";
 import { format } from "date-fns";
 
-const receiveStockRequestSchema = z.object({
-  receivedDate: z.string().min(1, "Received date is required"),
+const createReceiveStockRequestSchema = (
+  tValidation: (key: "receivedDateRequired" | "receivedQtyMin") => string
+) => z.object({
+  receivedDate: z.string().min(1, tValidation("receivedDateRequired")),
   notes: z.string().optional(),
   items: z.array(
     z.object({
       stockRequestItemId: z.string(),
       itemId: z.string(),
       requestedQty: z.number(),
-      receivedQty: z.number().min(0, "Quantity cannot be negative"),
+      receivedQty: z.number().min(0, tValidation("receivedQtyMin")),
       uomId: z.string(),
       locationId: z.string().nullable().optional(),
     })
   ),
 });
 
-type ReceiveStockRequestFormValues = z.infer<typeof receiveStockRequestSchema>;
+type ReceiveStockRequestSchema = ReturnType<typeof createReceiveStockRequestSchema>;
+type ReceiveStockRequestFormValues = z.infer<ReceiveStockRequestSchema>;
 
 interface ReceiveStockRequestDialogProps {
   open: boolean;
@@ -73,7 +76,11 @@ export function ReceiveStockRequestDialog({
   onOpenChange,
   stockRequest,
 }: ReceiveStockRequestDialogProps) {
+  const t = useTranslations("receiveStockRequestDialog");
+  const tValidation = useTranslations("receiveStockRequestValidation");
+  const locale = useLocale();
   const receiveMutation = useReceiveStockRequest();
+  const receiveStockRequestSchema = createReceiveStockRequestSchema((key) => tValidation(key));
 
   const receivingWarehouseId = stockRequest?.requesting_warehouse?.id || "";
 
@@ -124,7 +131,7 @@ export function ReceiveStockRequestDialog({
     const itemsToReceive = data.items.filter((item) => item.receivedQty > 0);
 
     if (itemsToReceive.length === 0) {
-      toast.error("Please enter quantities to receive for at least one item");
+      toast.error(t("receiveQtyRequired"));
       return;
     }
 
@@ -138,10 +145,10 @@ export function ReceiveStockRequestDialog({
         },
       });
 
-      toast.success("Stock request received successfully.");
+      toast.success(t("receiveSuccess"));
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to receive stock request";
+      const message = error instanceof Error ? error.message : t("receiveError");
       toast.error(message);
     }
   };
@@ -178,9 +185,9 @@ export function ReceiveStockRequestDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Receive Stock Request</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            Receive items for request {stockRequest.request_code}
+            {t("description", { code: stockRequest.request_code })}
           </DialogDescription>
         </DialogHeader>
 
@@ -188,25 +195,25 @@ export function ReceiveStockRequestDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted p-4">
               <div>
-                <div className="text-sm text-muted-foreground">From</div>
+                <div className="text-sm text-muted-foreground">{t("from")}</div>
                 <div className="font-medium">
-                  {stockRequest.requesting_warehouse?.warehouse_name || "--"}
+                  {stockRequest.requesting_warehouse?.warehouse_name || t("noWarehouse")}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">To</div>
+                <div className="text-sm text-muted-foreground">{t("to")}</div>
                 <div className="font-medium">
-                  {stockRequest.fulfilling_warehouse?.warehouse_name || "--"}
+                  {stockRequest.fulfilling_warehouse?.warehouse_name || t("noWarehouse")}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Required Date</div>
+                <div className="text-sm text-muted-foreground">{t("requiredDate")}</div>
                 <div className="font-medium">
                   {format(new Date(stockRequest.required_date), "MMM d, yyyy")}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Status</div>
+                <div className="text-sm text-muted-foreground">{t("status")}</div>
                 <div className="font-medium capitalize">
                   {stockRequest.status.replace(/_/g, " ")}
                 </div>
@@ -219,7 +226,7 @@ export function ReceiveStockRequestDialog({
                 name="receivedDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Received Date *</FormLabel>
+                    <FormLabel>{t("receivedDateLabel")} *</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -230,17 +237,17 @@ export function ReceiveStockRequestDialog({
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Items to Receive</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("itemsToReceive")}</h3>
               <div className="overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Requested</TableHead>
-                      <TableHead className="text-right">Dispatched</TableHead>
-                      <TableHead className="text-right">Received</TableHead>
-                      <TableHead className="text-right">Receive Now *</TableHead>
-                      <TableHead>Location</TableHead>
+                      <TableHead>{t("item")}</TableHead>
+                      <TableHead className="text-right">{t("requested")}</TableHead>
+                      <TableHead className="text-right">{t("dispatched")}</TableHead>
+                      <TableHead className="text-right">{t("received")}</TableHead>
+                      <TableHead className="text-right">{t("receiveNow")}</TableHead>
+                      <TableHead>{t("location")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -262,7 +269,7 @@ export function ReceiveStockRequestDialog({
                             </div>
                           </TableCell>
                           <TableCell>
-                            {requestItem.requested_qty}
+                            {requestItem.requested_qty.toLocaleString(locale, { maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right">{dispatchedQty}</TableCell>
                           <TableCell className="text-right">{receivedQty}</TableCell>
@@ -287,11 +294,7 @@ export function ReceiveStockRequestDialog({
                             >
                               <SelectTrigger className="h-9">
                                 <SelectValue
-                                  placeholder={
-                                    receivingWarehouseId
-                                      ? "Select location"
-                                      : "Select warehouse first"
-                                  }
+                                  placeholder={receivingWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")}
                                 />
                               </SelectTrigger>
                               <SelectContent>
@@ -316,10 +319,10 @@ export function ReceiveStockRequestDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>{t("notesLabel")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Any notes about this receipt..."
+                      placeholder={t("notesPlaceholder")}
                       className="min-h-[80px]"
                       {...field}
                     />
@@ -331,10 +334,10 @@ export function ReceiveStockRequestDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
               <Button type="submit" disabled={receiveMutation.isPending}>
-                {receiveMutation.isPending ? "Receiving..." : "Receive"}
+                {receiveMutation.isPending ? t("receiving") : t("receiveAction")}
               </Button>
             </DialogFooter>
           </form>

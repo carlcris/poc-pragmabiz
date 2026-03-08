@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -25,12 +26,14 @@ import type {
   JournalEntryStatus,
   JournalSourceModule,
 } from "@/types/accounting";
-import { format } from "date-fns";
 import { JournalEntryFormDialog } from "@/components/accounting/JournalEntryFormDialog";
 import { JournalEntryViewDialog } from "@/components/accounting/JournalEntryViewDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 
 export default function JournalsPage() {
+  const t = useTranslations("journalsPage");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [journals, setJournals] = useState<JournalEntryWithLines[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -97,7 +100,7 @@ export default function JournalsPage() {
 
     return (
       <Badge className={colors[status]} variant="secondary">
-        {status.toUpperCase()}
+        {(status === "posted" ? t("posted") : status === "draft" ? t("draft") : tCommon("cancelled")).toUpperCase()}
       </Badge>
     );
   };
@@ -113,13 +116,13 @@ export default function JournalsPage() {
 
     return (
       <Badge className={colors[module]} variant="secondary">
-        {module}
+        {module === "AR" ? t("ar") : module === "AP" ? t("ap") : module === "Inventory" ? t("inventory") : module === "Manual" ? t("manual") : module}
       </Badge>
     );
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-PH", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "PHP",
     }).format(amount);
@@ -135,12 +138,12 @@ export default function JournalsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Journal Entries</h1>
-          <p className="text-muted-foreground">View and manage general ledger journal entries</p>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button onClick={() => setShowFormDialog(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          New Journal Entry
+          {t("newJournalEntry")}
         </Button>
       </div>
 
@@ -149,7 +152,7 @@ export default function JournalsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
           <Input
-            placeholder="Search by journal code, description, or reference..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -161,13 +164,13 @@ export default function JournalsPage() {
           onValueChange={(value) => setStatusFilter(value as JournalEntryStatus | "all")}
         >
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={tCommon("status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="posted">Posted</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+            <SelectItem value="draft">{t("draft")}</SelectItem>
+            <SelectItem value="posted">{t("posted")}</SelectItem>
+            <SelectItem value="cancelled">{tCommon("cancelled")}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -176,15 +179,15 @@ export default function JournalsPage() {
           onValueChange={(value) => setSourceModuleFilter(value as JournalSourceModule | "all")}
         >
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Source" />
+            <SelectValue placeholder={t("source")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Sources</SelectItem>
-            <SelectItem value="AR">AR</SelectItem>
-            <SelectItem value="AP">AP</SelectItem>
+            <SelectItem value="all">{t("allSources")}</SelectItem>
+            <SelectItem value="AR">{t("ar")}</SelectItem>
+            <SelectItem value="AP">{t("ap")}</SelectItem>
             <SelectItem value="COGS">COGS</SelectItem>
-            <SelectItem value="Inventory">Inventory</SelectItem>
-            <SelectItem value="Manual">Manual</SelectItem>
+            <SelectItem value="Inventory">{t("inventory")}</SelectItem>
+            <SelectItem value="Manual">{t("manual")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -192,23 +195,23 @@ export default function JournalsPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Total Entries</div>
+          <div className="text-sm text-muted-foreground">{t("totalEntries")}</div>
           <div className="text-2xl font-bold">{totalItems}</div>
         </div>
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Posted</div>
+          <div className="text-sm text-muted-foreground">{t("posted")}</div>
           <div className="text-2xl font-bold text-green-600">
             {journals.filter((j) => j.status === "posted").length}
           </div>
         </div>
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Draft</div>
+          <div className="text-sm text-muted-foreground">{t("draft")}</div>
           <div className="text-2xl font-bold text-yellow-600">
             {journals.filter((j) => j.status === "draft").length}
           </div>
         </div>
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Total Debits</div>
+          <div className="text-sm text-muted-foreground">{t("totalDebits")}</div>
           <div className="text-2xl font-bold">
             {formatCurrency(journals.reduce((sum, j) => sum + Number(j.totalDebit), 0))}
           </div>
@@ -220,35 +223,35 @@ export default function JournalsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Journal Code</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right">Debit</TableHead>
-              <TableHead className="text-right">Credit</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t("journalCode")}</TableHead>
+              <TableHead>{t("date")}</TableHead>
+              <TableHead>{t("source")}</TableHead>
+              <TableHead>{t("reference")}</TableHead>
+              <TableHead>{tCommon("description")}</TableHead>
+              <TableHead className="text-right">{t("debit")}</TableHead>
+              <TableHead className="text-right">{t("credit")}</TableHead>
+              <TableHead>{tCommon("status")}</TableHead>
+              <TableHead className="text-right">{tCommon("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center">
-                  Loading journals...
+                  {t("loading")}
                 </TableCell>
               </TableRow>
             ) : journals.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-                  No journal entries found
+                  {t("empty")}
                 </TableCell>
               </TableRow>
             ) : (
               journals.map((journal) => (
                 <TableRow key={journal.id}>
                   <TableCell className="font-mono font-medium">{journal.journalCode}</TableCell>
-                  <TableCell>{format(new Date(journal.postingDate), "MMM dd, yyyy")}</TableCell>
+                  <TableCell>{new Date(journal.postingDate).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}</TableCell>
                   <TableCell>{getSourceModuleBadge(journal.sourceModule)}</TableCell>
                   <TableCell className="font-mono text-sm">
                     {journal.referenceCode || "-"}
@@ -267,11 +270,11 @@ export default function JournalsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleViewJournal(journal)}
-                        title="View journal entry"
+                        title={t("viewJournalEntry")}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" title="Print journal entry">
+                      <Button variant="ghost" size="sm" title={t("printJournalEntry")}>
                         <FileText className="h-4 w-4" />
                       </Button>
                     </div>

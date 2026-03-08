@@ -3,10 +3,11 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useCreateWarehouse, useUpdateWarehouse } from "@/hooks/useWarehouses";
 import { useAuthStore } from "@/stores/authStore";
-import { warehouseFormSchema } from "@/lib/validations/warehouse";
+import { createWarehouseFormSchema } from "@/lib/validations/warehouse";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,9 +38,13 @@ interface WarehouseFormDialogProps {
 }
 
 export function WarehouseFormDialog({ open, onOpenChange, warehouse }: WarehouseFormDialogProps) {
+  const t = useTranslations("warehouseForm");
+  const tCommon = useTranslations("common");
+  const tValidation = useTranslations("warehouseValidation");
   const { user } = useAuthStore();
   const createWarehouse = useCreateWarehouse();
   const updateWarehouse = useUpdateWarehouse();
+  const warehouseFormSchema = createWarehouseFormSchema((key) => tValidation(key));
   type WarehouseFormInput = z.input<typeof warehouseFormSchema>;
 
   const form = useForm<WarehouseFormInput>({
@@ -103,11 +108,11 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
           id: warehouse.id,
           data: parsed,
         });
-        toast.success("Warehouse updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         // Create new warehouse - requires companyId
         if (!user?.companyId) {
-          toast.error("User company information not available");
+          toast.error(t("missingCompany"));
           return;
         }
 
@@ -115,12 +120,12 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
           ...parsed,
           companyId: user.companyId,
         });
-        toast.success("Warehouse created successfully");
+        toast.success(t("createSuccess"));
       }
       onOpenChange(false);
       form.reset();
     } catch {
-      toast.error(warehouse ? "Failed to update warehouse" : "Failed to create warehouse");
+      toast.error(warehouse ? t("updateError") : t("createError"));
     }
   };
 
@@ -131,11 +136,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{warehouse ? "Edit Warehouse" : "Create New Warehouse"}</DialogTitle>
+          <DialogTitle>{warehouse ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
-            {warehouse
-              ? "Update the warehouse information below"
-              : "Fill in the warehouse details below to create a new warehouse"}
+            {warehouse ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -147,9 +150,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 name="code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Warehouse Code *</FormLabel>
+                    <FormLabel>{t("codeLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="WH-001" {...field} disabled={!!warehouse} />
+                      <Input placeholder={t("codePlaceholder")} {...field} disabled={!!warehouse} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -161,9 +164,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Warehouse Name *</FormLabel>
+                    <FormLabel>{t("nameLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter warehouse name" {...field} />
+                      <Input placeholder={t("namePlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -176,9 +179,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t("descriptionLabel")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter description" {...field} />
+                    <Input placeholder={t("descriptionPlaceholder")} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -186,16 +189,16 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
             />
 
             <div className="space-y-3">
-              <h3 className="text-sm font-medium">Location Information</h3>
+              <h3 className="text-sm font-medium">{t("locationInformation")}</h3>
 
               <FormField
                 control={form.control}
                 name="address"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Address</FormLabel>
+                    <FormLabel>{t("addressLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Street address" {...field} />
+                      <Input placeholder={t("addressPlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -208,9 +211,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>City</FormLabel>
+                      <FormLabel>{t("cityLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="City" {...field} />
+                        <Input placeholder={t("cityPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -222,9 +225,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   name="state"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>State/Province</FormLabel>
+                      <FormLabel>{t("stateLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="State or Province" {...field} />
+                        <Input placeholder={t("statePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -238,9 +241,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   name="postalCode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Postal Code</FormLabel>
+                      <FormLabel>{t("postalCodeLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Postal code" {...field} />
+                        <Input placeholder={t("postalCodePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -252,9 +255,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   name="country"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country</FormLabel>
+                      <FormLabel>{t("countryLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Country" {...field} />
+                        <Input placeholder={t("countryPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -264,7 +267,7 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-sm font-medium">Contact Information</h3>
+              <h3 className="text-sm font-medium">{t("contactInformation")}</h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -272,9 +275,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phone</FormLabel>
+                      <FormLabel>{t("phoneLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="+1 234 567 8900" {...field} />
+                        <Input placeholder={t("phonePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -286,9 +289,9 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("emailLabel")}</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="warehouse@example.com" {...field} />
+                        <Input type="email" placeholder={t("emailPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -303,10 +306,8 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active Status</FormLabel>
-                    <FormDescription>
-                      Set whether this warehouse is active and available for use
-                    </FormDescription>
+                    <FormLabel className="text-base">{t("activeStatusLabel")}</FormLabel>
+                    <FormDescription>{t("activeStatusDescription")}</FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -317,17 +318,17 @@ export function WarehouseFormDialog({ open, onOpenChange, warehouse }: Warehouse
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tCommon("cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={createWarehouse.isPending || updateWarehouse.isPending}
               >
                 {createWarehouse.isPending || updateWarehouse.isPending
-                  ? "Saving..."
+                  ? t("saving")
                   : warehouse
-                    ? "Update Warehouse"
-                    : "Create Warehouse"}
+                    ? t("updateAction")
+                    : t("createAction")}
               </Button>
             </DialogFooter>
           </form>

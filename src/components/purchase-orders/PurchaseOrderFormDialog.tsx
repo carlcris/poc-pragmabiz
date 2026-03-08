@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
-import { z } from "zod";
 import { toast } from "sonner";
 import { useCreatePurchaseOrder, useUpdatePurchaseOrder } from "@/hooks/usePurchaseOrders";
 import { useSuppliers } from "@/hooks/useSuppliers";
@@ -46,23 +46,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { PurchaseOrder } from "@/types/purchase-order";
 import {
+  createPurchaseOrderFormSchema,
+  type PurchaseOrderFormValues,
+} from "@/lib/validations/purchase-order-dialog";
+import {
   PurchaseOrderLineItemDialog,
   type PurchaseOrderLineItemFormValues,
 } from "./PurchaseOrderLineItemDialog";
-
-const purchaseOrderFormSchema = z.object({
-  supplierId: z.string().min(1, "Supplier is required"),
-  orderDate: z.string().min(1, "Order date is required"),
-  expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
-  deliveryAddress: z.string().min(1, "Delivery address is required"),
-  deliveryCity: z.string().min(1, "City is required"),
-  deliveryState: z.string().min(1, "State is required"),
-  deliveryCountry: z.string().min(1, "Country is required"),
-  deliveryPostalCode: z.string().min(1, "Postal code is required"),
-  notes: z.string().optional(),
-});
-
-type PurchaseOrderFormValues = z.infer<typeof purchaseOrderFormSchema>;
 
 interface PurchaseOrderFormDialogProps {
   open: boolean;
@@ -79,10 +69,13 @@ export function PurchaseOrderFormDialog({
   initialLineItems,
   initialActiveTab,
 }: PurchaseOrderFormDialogProps) {
+  const t = useTranslations("purchaseOrderForm");
+  const tValidation = useTranslations("purchaseOrderValidation");
   const isEditMode = !!purchaseOrder;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreatePurchaseOrder();
   const updateMutation = useUpdatePurchaseOrder();
+  const purchaseOrderFormSchema = createPurchaseOrderFormSchema((key) => tValidation(key));
 
   const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
@@ -225,7 +218,7 @@ export function PurchaseOrderFormDialog({
 
   const onSubmit = async (data: PurchaseOrderFormValues) => {
     if (lineItems.length === 0) {
-      toast.error("Please add at least one line item");
+      toast.error(t("lineItemsRequired"));
       return;
     }
 
@@ -258,10 +251,10 @@ export function PurchaseOrderFormDialog({
           id: purchaseOrder.id,
           data: apiRequest,
         });
-        toast.success("Purchase order updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         await createMutation.mutateAsync(apiRequest);
-        toast.success("Purchase order created successfully");
+        toast.success(t("createSuccess"));
       }
       onOpenChange(false);
     } catch (error) {
@@ -269,8 +262,8 @@ export function PurchaseOrderFormDialog({
         error instanceof Error
           ? error.message
           : isEditMode
-            ? "Failed to update purchase order"
-            : "Failed to create purchase order";
+            ? t("updateError")
+            : t("createError");
       toast.error(errorMessage);
     }
   };
@@ -281,12 +274,12 @@ export function PurchaseOrderFormDialog({
         <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {isEditMode ? "Edit Purchase Order" : "Create New Purchase Order"}
+              {isEditMode ? t("editTitle") : t("createTitle")}
             </DialogTitle>
             <DialogDescription>
               {isEditMode
-                ? "Update purchase order details and line items."
-                : "Fill in the purchase order details and add line items."}
+                ? t("editDescription")
+                : t("createDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -296,16 +289,16 @@ export function PurchaseOrderFormDialog({
                 // Switch to general tab if there are validation errors there
                 if (Object.keys(errors).length > 0) {
                   setActiveTab("general");
-                  toast.error("Please fill in all required fields in the General tab");
+                  toast.error(t("generalTabError"));
                 }
               })}
               className="space-y-6"
             >
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="general">General</TabsTrigger>
-                  <TabsTrigger value="items">Line Items ({lineItems.length})</TabsTrigger>
-                  <TabsTrigger value="terms">Notes</TabsTrigger>
+                  <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
+                  <TabsTrigger value="items">{t("itemsTab", { count: lineItems.length })}</TabsTrigger>
+                  <TabsTrigger value="terms">{t("notesTab")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="mt-4 space-y-4">
@@ -314,7 +307,7 @@ export function PurchaseOrderFormDialog({
                     name="supplierId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Supplier *</FormLabel>
+                        <FormLabel>{t("supplierLabel")}</FormLabel>
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
@@ -324,7 +317,7 @@ export function PurchaseOrderFormDialog({
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a supplier" />
+                              <SelectValue placeholder={t("selectSupplier")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -348,7 +341,7 @@ export function PurchaseOrderFormDialog({
                       name="orderDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Order Date *</FormLabel>
+                          <FormLabel>{t("orderDateLabel")}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -362,7 +355,7 @@ export function PurchaseOrderFormDialog({
                       name="expectedDeliveryDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Expected Delivery Date *</FormLabel>
+                          <FormLabel>{t("expectedDeliveryDateLabel")}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -373,15 +366,15 @@ export function PurchaseOrderFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <h4 className="font-medium">Delivery Address</h4>
+                    <h4 className="font-medium">{t("deliveryAddressTitle")}</h4>
                     <FormField
                       control={form.control}
                       name="deliveryAddress"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Street Address *</FormLabel>
+                          <FormLabel>{t("streetAddressLabel")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Street address" {...field} />
+                            <Input placeholder={t("streetAddressPlaceholder")} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -394,9 +387,9 @@ export function PurchaseOrderFormDialog({
                         name="deliveryCity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>City *</FormLabel>
+                            <FormLabel>{t("cityLabel")}</FormLabel>
                             <FormControl>
-                              <Input placeholder="City" {...field} />
+                              <Input placeholder={t("cityPlaceholder")} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -408,9 +401,9 @@ export function PurchaseOrderFormDialog({
                         name="deliveryState"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>State/Province *</FormLabel>
+                            <FormLabel>{t("stateLabel")}</FormLabel>
                             <FormControl>
-                              <Input placeholder="State" {...field} />
+                              <Input placeholder={t("statePlaceholder")} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -422,9 +415,9 @@ export function PurchaseOrderFormDialog({
                         name="deliveryPostalCode"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Postal Code *</FormLabel>
+                            <FormLabel>{t("postalCodeLabel")}</FormLabel>
                             <FormControl>
-                              <Input placeholder="Postal code" {...field} />
+                              <Input placeholder={t("postalCodePlaceholder")} {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -437,9 +430,9 @@ export function PurchaseOrderFormDialog({
                       name="deliveryCountry"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Country *</FormLabel>
+                          <FormLabel>{t("countryLabel")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Country" {...field} />
+                            <Input placeholder={t("countryPlaceholder")} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -451,21 +444,21 @@ export function PurchaseOrderFormDialog({
                 <TabsContent value="items" className="mt-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-medium">Line Items</h3>
+                      <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Manage items to purchase in this order
+                        {t("lineItemsDescription")}
                       </p>
                     </div>
                     <Button type="button" onClick={handleAddItem} size="sm">
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Item
+                      {t("addItem")}
                     </Button>
                   </div>
 
                   {lineItems.length === 0 ? (
                     <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                      <p>No items added yet.</p>
-                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
+                      <p>{t("noItemsTitle")}</p>
+                      <p className="text-sm">{t("noItemsDescription")}</p>
                     </div>
                   ) : (
                     <>
@@ -473,14 +466,14 @@ export function PurchaseOrderFormDialog({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Item</TableHead>
-                              <TableHead className="text-right">Qty</TableHead>
-                              <TableHead className="text-center">Unit</TableHead>
-                              <TableHead className="text-right">Rate</TableHead>
-                              <TableHead className="text-right">Disc %</TableHead>
-                              <TableHead className="text-right">Tax %</TableHead>
-                              <TableHead className="text-right">Total</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
+                              <TableHead>{t("item")}</TableHead>
+                              <TableHead className="text-right">{t("qty")}</TableHead>
+                              <TableHead className="text-center">{t("unit")}</TableHead>
+                              <TableHead className="text-right">{t("rate")}</TableHead>
+                              <TableHead className="text-right">{t("discount")}</TableHead>
+                              <TableHead className="text-right">{t("tax")}</TableHead>
+                              <TableHead className="text-right">{t("total")}</TableHead>
+                              <TableHead className="w-[100px]">{t("actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -500,7 +493,7 @@ export function PurchaseOrderFormDialog({
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
                                     <span className="text-muted-foreground">
-                                      {item.uomId || "—"}
+                                      {item.uomId || t("noUnit")}
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right">
@@ -544,25 +537,25 @@ export function PurchaseOrderFormDialog({
                       <div className="rounded-lg bg-muted p-4">
                         <div className="mb-3 flex items-center gap-2">
                           <Calculator className="h-5 w-5" />
-                          <h4 className="font-semibold">Totals</h4>
+                          <h4 className="font-semibold">{t("totalsTitle")}</h4>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <span>Subtotal:</span>
+                            <span>{t("subtotal")}</span>
                             <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                           </div>
                           <div className="flex justify-between text-red-600">
-                            <span>Discount:</span>
+                            <span>{t("discountAmount")}</span>
                             <span className="font-medium">
                               -{formatCurrency(totals.totalDiscount)}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Tax:</span>
+                            <span>{t("taxAmount")}</span>
                             <span className="font-medium">{formatCurrency(totals.totalTax)}</span>
                           </div>
                           <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                            <span>Total:</span>
+                            <span>{t("totalAmount")}</span>
                             <span>{formatCurrency(totals.totalAmount)}</span>
                           </div>
                         </div>
@@ -577,7 +570,7 @@ export function PurchaseOrderFormDialog({
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Internal Notes</FormLabel>
+                        <FormLabel>{t("internalNotes")}</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={6} />
                         </FormControl>
@@ -590,17 +583,17 @@ export function PurchaseOrderFormDialog({
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
+                    ? t("saving")
                     : isEditMode
-                      ? "Update Purchase Order"
-                      : "Create Purchase Order"}
+                      ? t("updateAction")
+                      : t("createAction")}
                 </Button>
               </DialogFooter>
             </form>

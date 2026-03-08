@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { useStockRequest } from "@/hooks/useStockRequests";
 import {
   Dialog,
@@ -17,60 +18,66 @@ interface StockRequestViewDialogProps {
   request: StockRequest | null;
 }
 
-const getStatusLabel = (status: StockRequestStatus) => {
+const getStatusLabel = (
+  status: StockRequestStatus,
+  tPage: ReturnType<typeof useTranslations>
+) => {
   const baseClass = "text-xs font-medium";
 
   switch (status) {
     case "draft":
-      return <span className={`${baseClass} text-muted-foreground`}>Draft</span>;
+      return <span className={`${baseClass} text-muted-foreground`}>{tPage("draft")}</span>;
     case "submitted":
-      return <span className={`${baseClass} text-amber-600`}>Submitted</span>;
+      return <span className={`${baseClass} text-amber-600`}>{tPage("submitted")}</span>;
     case "approved":
-      return <span className={`${baseClass} text-blue-600`}>Approved</span>;
+      return <span className={`${baseClass} text-blue-600`}>{tPage("approved")}</span>;
     case "picked":
-      return <span className={`${baseClass} text-indigo-600`}>Picked</span>;
+      return <span className={`${baseClass} text-indigo-600`}>{tPage("picked")}</span>;
     case "picking":
-      return <span className={`${baseClass} text-indigo-600`}>Picking</span>;
+      return <span className={`${baseClass} text-indigo-600`}>{tPage("picking")}</span>;
     case "allocating":
-      return <span className={`${baseClass} text-amber-600`}>Allocating</span>;
+      return <span className={`${baseClass} text-amber-600`}>{tPage("allocating")}</span>;
     case "partially_allocated":
-      return <span className={`${baseClass} text-orange-600`}>Partially Allocated</span>;
+      return <span className={`${baseClass} text-orange-600`}>{tPage("partiallyAllocated")}</span>;
     case "allocated":
-      return <span className={`${baseClass} text-orange-700`}>Allocated</span>;
+      return <span className={`${baseClass} text-orange-700`}>{tPage("allocated")}</span>;
     case "dispatched":
-      return <span className={`${baseClass} text-indigo-600`}>Dispatched</span>;
+      return <span className={`${baseClass} text-indigo-600`}>{tPage("dispatched")}</span>;
     case "partially_fulfilled":
-      return <span className={`${baseClass} text-emerald-600`}>Partially Fulfilled</span>;
+      return <span className={`${baseClass} text-emerald-600`}>{tPage("partiallyFulfilled")}</span>;
     case "fulfilled":
-      return <span className={`${baseClass} text-emerald-700`}>Fulfilled</span>;
+      return <span className={`${baseClass} text-emerald-700`}>{tPage("fulfilled")}</span>;
     case "received":
-      return <span className={`${baseClass} text-emerald-600`}>Received</span>;
+      return <span className={`${baseClass} text-emerald-600`}>{tPage("received")}</span>;
     case "completed":
-      return <span className={`${baseClass} text-emerald-600`}>Completed</span>;
+      return <span className={`${baseClass} text-emerald-600`}>{tPage("completed")}</span>;
     case "cancelled":
-      return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
+      return <span className={`${baseClass} text-red-600`}>{tPage("cancelled")}</span>;
     default:
       return <span className={`${baseClass} text-muted-foreground`}>{String(status).replace(/_/g, " ")}</span>;
   }
 };
 
-const getPriorityLabel = (priority: StockRequestPriority) => {
+const getPriorityLabel = (
+  priority: StockRequestPriority,
+  tPage: ReturnType<typeof useTranslations>
+) => {
   const baseClass = "text-xs font-medium";
 
   switch (priority) {
     case "low":
-      return <span className={`${baseClass} text-slate-500`}>Low</span>;
+      return <span className={`${baseClass} text-slate-500`}>{tPage("low")}</span>;
     case "normal":
-      return <span className={`${baseClass} text-slate-600`}>Normal</span>;
+      return <span className={`${baseClass} text-slate-600`}>{tPage("normal")}</span>;
     case "high":
-      return <span className={`${baseClass} text-orange-600`}>High</span>;
+      return <span className={`${baseClass} text-orange-600`}>{tPage("high")}</span>;
     case "urgent":
-      return <span className={`${baseClass} text-red-600`}>Urgent</span>;
+      return <span className={`${baseClass} text-red-600`}>{tPage("urgent")}</span>;
   }
 };
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString("en-US", {
+const formatDate = (dateString: string, locale: string) => {
+  return new Date(dateString).toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -82,6 +89,9 @@ export function StockRequestViewDialog({
   onOpenChange,
   request: initialRequest,
 }: StockRequestViewDialogProps) {
+  const t = useTranslations("stockRequestViewDialog");
+  const tPage = useTranslations("stockRequestsPage");
+  const locale = useLocale();
   const requestId = initialRequest?.id || "";
   const { data: fullRequest } = useStockRequest(requestId);
   const request = fullRequest || initialRequest;
@@ -112,63 +122,63 @@ export function StockRequestViewDialog({
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <DialogTitle>Stock Request Details</DialogTitle>
-            {getStatusLabel(request.status)}
+            <DialogTitle>{t("title")}</DialogTitle>
+            {getStatusLabel(request.status, tPage)}
           </div>
-          <DialogDescription>Request #{request.request_code}</DialogDescription>
+          <DialogDescription>{t("requestNumber", { code: request.request_code })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-6 text-sm">
             <div className="space-y-3">
               <div>
-                <span className="text-muted-foreground">Requested By:</span>
+                <span className="text-muted-foreground">{t("requestedByWarehouse")}:</span>
                 <div className="font-medium">
                   {request.requesting_warehouse?.warehouse_code
                     ? `${request.requesting_warehouse.warehouse_code} - ${request.requesting_warehouse.warehouse_name}`
-                    : "--"}
+                    : t("noValue")}
                 </div>
               </div>
               <div>
-                <span className="text-muted-foreground">Requested To:</span>
+                <span className="text-muted-foreground">{t("requestedToWarehouse")}:</span>
                 <div className="font-medium">
                   {request.fulfilling_warehouse?.warehouse_code
                     ? `${request.fulfilling_warehouse.warehouse_code} - ${request.fulfilling_warehouse.warehouse_name}`
-                    : "--"}
+                    : t("noValue")}
                 </div>
               </div>
               <div>
-                <span className="text-muted-foreground">Requested By:</span>
+                <span className="text-muted-foreground">{t("requestedByUser")}:</span>
                 <div className="font-medium">
-                  {request.requested_by_user?.full_name || request.requested_by_user?.email || "--"}
+                  {request.requested_by_user?.full_name || request.requested_by_user?.email || t("noValue")}
                 </div>
               </div>
             </div>
 
             <div className="space-y-3">
               <div>
-                <span className="text-muted-foreground">Request Date:</span>
-                <div className="font-medium">{formatDate(request.request_date)}</div>
+                <span className="text-muted-foreground">{t("requestDate")}:</span>
+                <div className="font-medium">{formatDate(request.request_date, locale)}</div>
               </div>
               <div>
-                <span className="text-muted-foreground">Required Date:</span>
-                <div className="font-medium">{formatDate(request.required_date)}</div>
+                <span className="text-muted-foreground">{t("requiredDate")}:</span>
+                <div className="font-medium">{formatDate(request.required_date, locale)}</div>
               </div>
               <div>
-                <span className="text-muted-foreground">Received Date:</span>
+                <span className="text-muted-foreground">{t("receivedDate")}:</span>
                 <div className="font-medium">
-                  {request.received_at ? formatDate(request.received_at) : "--"}
+                  {request.received_at ? formatDate(request.received_at, locale) : t("noValue")}
                 </div>
               </div>
               <div>
-                <span className="text-muted-foreground">Received By:</span>
+                <span className="text-muted-foreground">{t("receivedBy")}:</span>
                 <div className="font-medium">
-                  {request.received_by_user?.full_name || request.received_by_user?.email || "--"}
+                  {request.received_by_user?.full_name || request.received_by_user?.email || t("noValue")}
                 </div>
               </div>
               <div>
-                <span className="text-muted-foreground">Priority:</span>
-                <div>{getPriorityLabel(request.priority)}</div>
+                <span className="text-muted-foreground">{t("priority")}:</span>
+                <div>{getPriorityLabel(request.priority, tPage)}</div>
               </div>
             </div>
           </div>
@@ -176,56 +186,56 @@ export function StockRequestViewDialog({
           {(request.purpose || request.notes) && (
             <div className="grid grid-cols-2 gap-6 text-sm">
               <div>
-                <span className="text-muted-foreground">Purpose:</span>
-                <div className="font-medium">{request.purpose || "--"}</div>
+                <span className="text-muted-foreground">{t("purpose")}:</span>
+                <div className="font-medium">{request.purpose || t("noValue")}</div>
               </div>
               <div>
-                <span className="text-muted-foreground">Notes:</span>
-                <div className="font-medium">{request.notes || "--"}</div>
+                <span className="text-muted-foreground">{t("notes")}:</span>
+                <div className="font-medium">{request.notes || t("noValue")}</div>
               </div>
             </div>
           )}
 
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Line Items</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="p-3 text-left">Item</th>
-                    <th className="p-3 text-right">Quantity</th>
-                    <th className="p-3 text-right">Delivered Qty</th>
-                    <th className="p-3 text-left">Unit</th>
-                    <th className="p-3 text-left">Notes</th>
+                    <th className="p-3 text-left">{t("item")}</th>
+                    <th className="p-3 text-right">{t("quantity")}</th>
+                    <th className="p-3 text-right">{t("deliveredQty")}</th>
+                    <th className="p-3 text-left">{t("unit")}</th>
+                    <th className="p-3 text-left">{t("notes")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {request.stock_request_items?.map((item) => (
                     <tr key={item.id} className="border-t">
                       <td className="p-3">
-                        <div className="font-medium">{item.items?.item_name || "--"}</div>
+                        <div className="font-medium">{item.items?.item_name || t("noValue")}</div>
                         <div className="text-xs text-muted-foreground">
                           {item.items?.item_code || ""}
                         </div>
                       </td>
-                      <td className="p-3 text-right">{item.requested_qty.toFixed(2)}</td>
+                      <td className="p-3 text-right">{item.requested_qty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="p-3 text-right">
-                        {(item.dispatch_qty ?? item.received_qty ?? 0).toFixed(2)}
+                        {(item.dispatch_qty ?? item.received_qty ?? 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="p-3">
                         <span className="text-muted-foreground">
-                          {item.units_of_measure?.code || "--"}
+                          {item.units_of_measure?.code || t("noValue")}
                         </span>
                       </td>
                       <td className="p-3">
-                        <span className="text-muted-foreground">{item.notes || "--"}</span>
+                        <span className="text-muted-foreground">{item.notes || t("noValue")}</span>
                       </td>
                     </tr>
                   ))}
                   {(!request.stock_request_items || request.stock_request_items.length === 0) && (
                     <tr className="border-t">
                       <td colSpan={5} className="p-3 text-center text-muted-foreground">
-                        No items found.
+                        {t("noItems")}
                       </td>
                     </tr>
                   )}
@@ -236,26 +246,26 @@ export function StockRequestViewDialog({
 
           <div>
             <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              Fulfillment Summary
+              {t("fulfillmentSummary")}
             </h3>
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-lg border bg-muted/20 p-3">
-                <div className="mb-1 text-xs text-muted-foreground">Total Requested</div>
-                <div className="text-2xl font-bold">{fulfillmentSummary.totalRequested.toFixed(2)}</div>
+                <div className="mb-1 text-xs text-muted-foreground">{t("totalRequested")}</div>
+                <div className="text-2xl font-bold">{fulfillmentSummary.totalRequested.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
               <div className="rounded-lg border bg-green-50/40 p-3">
-                <div className="mb-1 text-xs text-muted-foreground">Total Delivered</div>
+                <div className="mb-1 text-xs text-muted-foreground">{t("totalDelivered")}</div>
                 <div className="text-2xl font-bold text-green-600">
-                  {fulfillmentSummary.totalDelivered.toFixed(2)}
+                  {fulfillmentSummary.totalDelivered.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
               </div>
               <div className="rounded-lg border bg-orange-50/50 p-3">
-                <div className="mb-1 text-xs text-muted-foreground">Remaining Qty</div>
-                <div className="text-2xl font-bold text-orange-600">{remainingQty.toFixed(2)}</div>
+                <div className="mb-1 text-xs text-muted-foreground">{t("remainingQty")}</div>
+                <div className="text-2xl font-bold text-orange-600">{remainingQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
               </div>
             </div>
             <div className="rounded-lg border p-4 text-sm">
-              <div className="mb-2 text-xs text-muted-foreground">Fulfilling Delivery Notes</div>
+              <div className="mb-2 text-xs text-muted-foreground">{t("fulfillingDeliveryNotes")}</div>
               {linkedFulfillmentNotes.length > 0 ? (
                 <div className="space-y-2">
                   {linkedFulfillmentNotes.map((note) => (
@@ -273,7 +283,7 @@ export function StockRequestViewDialog({
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-muted-foreground">No linked delivery notes yet.</div>
+                <div className="text-xs text-muted-foreground">{t("noLinkedDeliveryNotes")}</div>
               )}
             </div>
           </div>

@@ -5,16 +5,13 @@
  * seamlessly with Next.js 13+ App Router.
  */
 
-export const locales = ["en", "es", "fr", "de", "zh", "ja"] as const;
+export const locales = ["en", "zh"] as const;
 export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = "en";
+export const localeCookieName = "preferredLanguage";
 
 export const languageNames: Record<Locale, string> = {
   en: "English",
-  es: "Español",
-  fr: "Français",
-  de: "Deutsch",
   zh: "中文",
-  ja: "日本語",
 };

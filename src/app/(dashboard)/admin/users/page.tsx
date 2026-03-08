@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, Shield, UserCheck, UserX, Key } from "lucide-react";
 import { useUsers, useToggleUserStatus } from "@/hooks/useUsers";
 import { toast } from "sonner";
@@ -33,6 +34,9 @@ type User = {
 };
 
 function UserManagementContent() {
+  const t = useTranslations("adminUsersPage");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -66,10 +70,12 @@ function UserManagementContent() {
         isActive: !user.is_active,
       });
       toast.success(
-        user.is_active ? `User ${user.email} deactivated` : `User ${user.email} activated`
+        user.is_active
+          ? t("statusUpdatedInactive", { email: user.email })
+          : t("statusUpdatedActive", { email: user.email })
       );
     } catch {
-      toast.error("Failed to update user status");
+      toast.error(t("statusUpdateError"));
     }
   };
 
@@ -77,8 +83,8 @@ function UserManagementContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">User Management</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage users and assign roles</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
         </div>
       </div>
 
@@ -87,7 +93,7 @@ function UserManagementContent() {
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search users by email, username, or name..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
@@ -100,7 +106,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("all")}
               className="w-full sm:w-auto"
             >
-              All
+              {t("all")}
             </Button>
             <Button
               variant={statusFilter === "active" ? "default" : "outline"}
@@ -108,7 +114,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("active")}
               className="w-full sm:w-auto"
             >
-              Active
+              {t("active")}
             </Button>
             <Button
               variant={statusFilter === "inactive" ? "default" : "outline"}
@@ -116,7 +122,7 @@ function UserManagementContent() {
               onClick={() => setStatusFilter("inactive")}
               className="w-full sm:w-auto"
             >
-              Inactive
+              {t("inactive")}
             </Button>
           </div>
         </div>
@@ -126,11 +132,11 @@ function UserManagementContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("user")}</TableHead>
+                  <TableHead>{t("username")}</TableHead>
+                  <TableHead>{tCommon("status")}</TableHead>
+                  <TableHead>{t("created")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -158,24 +164,24 @@ function UserManagementContent() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading users. Please try again.
+            {t("loadError")}
           </div>
         ) : users.length === 0 ? (
           <EmptyStatePanel
             icon={UserCheck}
-            title="No users found"
-            description="Try adjusting your search or filters."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
           />
         ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Username</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("user")}</TableHead>
+                  <TableHead>{t("username")}</TableHead>
+                  <TableHead>{tCommon("status")}</TableHead>
+                  <TableHead>{t("created")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -199,15 +205,15 @@ function UserManagementContent() {
                             : ""
                         }
                       >
-                        {user.is_active ? "Active" : "Inactive"}
+                        {user.is_active ? t("active") : t("inactive")}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(user.created_at).toLocaleDateString(locale)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => handleManageRoles(user)}>
                           <Shield className="mr-2 h-4 w-4" />
-                          Manage Roles
+                          {t("manageRoles")}
                         </Button>
                         <Button
                           variant="outline"
@@ -215,7 +221,7 @@ function UserManagementContent() {
                           onClick={() => handleViewPermissions(user)}
                         >
                           <Key className="mr-2 h-4 w-4" />
-                          View Permissions
+                          {t("viewPermissions")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -226,12 +232,12 @@ function UserManagementContent() {
                           {user.is_active ? (
                             <>
                               <UserX className="mr-2 h-4 w-4" />
-                              Deactivate
+                              {t("deactivate")}
                             </>
                           ) : (
                             <>
                               <UserCheck className="mr-2 h-4 w-4" />
-                              Activate
+                              {t("activate")}
                             </>
                           )}
                         </Button>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { LayoutDashboard, RefreshCw, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,14 +101,15 @@ const LocationAssignmentWidget = dynamic(
 );
 
 export default function PurchasingOverviewPage() {
+  const t = useTranslations("purchasingOverviewPage");
   const queryClient = useQueryClient();
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const { data: warehousesData } = useWarehouses();
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all");
 
   useEffect(() => {
-    document.title = "Purchasing Overview | ERP";
-  }, []);
+    document.title = `${t("title")} | ERP`;
+  }, [t]);
 
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: ["purchasing-dashboard"] });
@@ -123,20 +125,20 @@ export default function PurchasingOverviewPage() {
         <div>
           <div className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Overview</h1>
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">{t("title")}</h1>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            Strategic and operational overview of purchasing
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="All Warehouses" />
+              <SelectValue placeholder={t("allWarehouses")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Warehouses</SelectItem>
+              <SelectItem value="all">{t("allWarehouses")}</SelectItem>
               {warehouses.map((wh) => (
                 <SelectItem key={wh.id} value={wh.id}>
                   {wh.name}
@@ -147,7 +149,7 @@ export default function PurchasingOverviewPage() {
 
           <Button onClick={handleRefresh} variant="outline" size="sm" className="w-full sm:w-auto">
             <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
+            {t("refresh")}
           </Button>
         </div>
       </div>
@@ -165,9 +167,9 @@ export default function PurchasingOverviewPage() {
       {/* Warehouse Operations */}
       <section className="space-y-3 sm:space-y-4">
         <div>
-          <h2 className="text-lg sm:text-xl font-semibold">Warehouse Operations</h2>
+          <h2 className="text-lg sm:text-xl font-semibold">{t("warehouseOperations")}</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Live operational queues and capacity status
+            {t("warehouseOperationsDescription")}
           </p>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -185,8 +187,7 @@ export default function PurchasingOverviewPage() {
       {/* Footer Info */}
       <div className="rounded-lg border bg-muted/50 p-3 sm:p-4 text-center">
         <p className="text-xs sm:text-sm text-muted-foreground">
-          Dashboard auto-refreshes every 2-5 minutes depending on the widget. Click refresh for
-          immediate updates.
+          {t("footerAutoRefresh")}
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { ArrowLeft, Package, CheckCircle, Clock, Download, Printer } from "lucide-react";
 
-// Mock data for a single goods receipt
 const mockReceiptDetails = {
   "GR-2024-001": {
     id: "GR-2024-001",
@@ -185,39 +185,57 @@ const mockReceiptDetails = {
   },
 };
 
-const statusConfig = {
-  completed: {
-    label: "Completed",
-    variant: "default" as const,
-    icon: CheckCircle,
-    color: "text-green-600",
-  },
-  partial: {
-    label: "Partial",
-    variant: "secondary" as const,
-    icon: Clock,
-    color: "text-yellow-600",
-  },
-  pending: {
-    label: "Pending",
-    variant: "outline" as const,
-    icon: Clock,
-    color: "text-gray-600",
-  },
-  received: {
-    label: "Received",
-    variant: "default" as const,
-    icon: CheckCircle,
-    color: "text-green-600",
-  },
-};
-
 export default function GoodsReceiptDetailPage() {
+  const t = useTranslations("purchaseReceiptDetailPage");
+  const locale = useLocale();
   const params = useParams();
   const router = useRouter();
   const receiptId = params.id as string;
 
   const receipt = mockReceiptDetails[receiptId as keyof typeof mockReceiptDetails];
+
+  const statusConfig = {
+    completed: {
+      label: t("completed"),
+      variant: "default" as const,
+      icon: CheckCircle,
+      color: "text-green-600",
+    },
+    partial: {
+      label: t("partial"),
+      variant: "secondary" as const,
+      icon: Clock,
+      color: "text-yellow-600",
+    },
+    pending: {
+      label: t("pending"),
+      variant: "outline" as const,
+      icon: Clock,
+      color: "text-gray-600",
+    },
+    received: {
+      label: t("received"),
+      variant: "default" as const,
+      icon: CheckCircle,
+      color: "text-green-600",
+    },
+  };
+
+  const formatDateTime = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "PHP",
+      maximumFractionDigits: 2,
+    }).format(value);
 
   if (!receipt) {
     return (
@@ -226,11 +244,11 @@ export default function GoodsReceiptDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Receipt Not Found</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("receiptNotFound")}</h1>
         </div>
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            The goods receipt you&apos;re looking for doesn&apos;t exist.
+            {t("receiptNotFoundDescription")}
           </CardContent>
         </Card>
       </div>
@@ -247,7 +265,6 @@ export default function GoodsReceiptDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -255,86 +272,69 @@ export default function GoodsReceiptDetailPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{receipt.id}</h1>
-            <p className="text-muted-foreground">Goods Receipt Details</p>
+            <p className="text-muted-foreground">{t("goodsReceiptDetails")}</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">
             <Printer className="mr-2 h-4 w-4" />
-            Print
+            {t("print")}
           </Button>
           <Button variant="outline">
             <Download className="mr-2 h-4 w-4" />
-            Export
+            {t("export")}
           </Button>
         </div>
       </div>
 
-      {/* Receipt Information */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Receipt Information</CardTitle>
+            <CardTitle>{t("receiptInformation")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Receipt ID</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("receiptId")}</p>
                 <p className="text-sm font-semibold">{receipt.id}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("status")}</p>
                 <Badge variant={status.variant} className="gap-1">
                   <StatusIcon className={`h-3 w-3 ${status.color}`} />
                   {status.label}
                 </Badge>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Purchase Order</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("purchaseOrder")}</p>
                 <p className="cursor-pointer text-sm font-semibold text-blue-600 hover:underline">
                   {receipt.purchaseOrderId}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Received By</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("receivedBy")}</p>
                 <p className="text-sm">{receipt.receivedBy}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Receipt Date</p>
-                <p className="text-sm">
-                  {new Date(receipt.receiptDate).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">{t("receiptDate")}</p>
+                <p className="text-sm">{formatDateTime(receipt.receiptDate)}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Delivery Date</p>
-                <p className="text-sm">
-                  {new Date(receipt.deliveryDate).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+                <p className="text-sm font-medium text-muted-foreground">{t("deliveryDate")}</p>
+                <p className="text-sm">{formatDateTime(receipt.deliveryDate)}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Batch</p>
-                <p className="text-sm">{receipt.batchSequenceNumber || "—"}</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("batch")}</p>
+                <p className="text-sm">{receipt.batchSequenceNumber || t("noValue")}</p>
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Warehouse</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("warehouse")}</p>
               <p className="text-sm">{receipt.warehouse}</p>
             </div>
             {receipt.notes && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                <p className="text-sm font-medium text-muted-foreground">{t("notes")}</p>
                 <p className="text-sm">{receipt.notes}</p>
               </div>
             )}
@@ -343,34 +343,33 @@ export default function GoodsReceiptDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Supplier Information</CardTitle>
+            <CardTitle>{t("supplierInformation")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Supplier Name</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("supplierName")}</p>
               <p className="text-sm font-semibold">{receipt.supplier.name}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Supplier Code</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("supplierCode")}</p>
               <p className="text-sm">{receipt.supplier.code}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Address</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("address")}</p>
               <p className="text-sm">{receipt.supplier.address}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Contact</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("contact")}</p>
               <p className="text-sm">{receipt.supplier.contact}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("totalItems")}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -379,7 +378,7 @@ export default function GoodsReceiptDetailPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ordered Quantity</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("orderedQuantity")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalOrderedQty}</div>
@@ -387,50 +386,48 @@ export default function GoodsReceiptDetailPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Received Quantity</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("receivedQuantity")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalReceivedQty}</div>
             <p className="text-xs text-muted-foreground">
-              {totalOrderedQty > 0 ? ((totalReceivedQty / totalOrderedQty) * 100).toFixed(1) : 0}%
-              of total
+              {totalOrderedQty > 0 ? ((totalReceivedQty / totalOrderedQty) * 100).toFixed(1) : 0}% {t("ofTotal")}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("totalValue")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱{totalValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Items Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Receipt Items</CardTitle>
-          <CardDescription>Items included in this goods receipt</CardDescription>
+          <CardTitle>{t("receiptItems")}</CardTitle>
+          <CardDescription>{t("receiptItemsDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Product Code</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead className="text-right">Ordered Qty</TableHead>
-                  <TableHead className="text-right">Received Qty</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Total Price</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("productCode")}</TableHead>
+                  <TableHead>{t("productName")}</TableHead>
+                  <TableHead className="text-right">{t("orderedQty")}</TableHead>
+                  <TableHead className="text-right">{t("receivedQty")}</TableHead>
+                  <TableHead>{t("unit")}</TableHead>
+                  <TableHead className="text-right">{t("unitPrice")}</TableHead>
+                  <TableHead className="text-right">{t("totalPrice")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {receipt.items.map((item) => {
-                  const itemStatus = statusConfig[item.status as keyof typeof statusConfig];
+                  const itemStatus = statusConfig[item.status as keyof typeof statusConfig] ?? statusConfig.pending;
                   const ItemStatusIcon = itemStatus.icon;
                   return (
                     <TableRow key={item.id}>
@@ -439,12 +436,8 @@ export default function GoodsReceiptDetailPage() {
                       <TableCell className="text-right">{item.orderedQty}</TableCell>
                       <TableCell className="text-right font-semibold">{item.receivedQty}</TableCell>
                       <TableCell>{item.unit}</TableCell>
-                      <TableCell className="text-right">
-                        ₱{item.unitPrice.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        ₱{item.totalPrice.toLocaleString()}
-                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                      <TableCell className="text-right font-semibold">{formatCurrency(item.totalPrice)}</TableCell>
                       <TableCell>
                         <Badge variant={itemStatus.variant} className="gap-1">
                           <ItemStatusIcon className={`h-3 w-3 ${itemStatus.color}`} />

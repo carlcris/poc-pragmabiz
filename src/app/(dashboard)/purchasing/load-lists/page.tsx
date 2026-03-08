@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, Search, Pencil, Filter, Package, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useLoadLists, useDeleteLoadList } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
@@ -49,6 +49,8 @@ const LoadListFormDialog = dynamic(
 );
 
 export default function LoadListsPage() {
+  const t = useTranslations("loadListsPage");
+  const locale = useLocale();
   const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -88,17 +90,26 @@ export default function LoadListsPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
+  const formatDate = (value?: string | null) => {
+    if (!value) return t("noValue");
+    return new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(value));
+  };
+
   const getStatusBadge = (status: LoadListStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "confirmed":
         return (
           <Badge
             variant="outline"
             className="border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
           >
-            Confirmed
+            {t("confirmed")}
           </Badge>
         );
       case "in_transit":
@@ -107,7 +118,7 @@ export default function LoadListsPage() {
             variant="outline"
             className="border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-400"
           >
-            In Transit
+            {t("inTransit")}
           </Badge>
         );
       case "arrived":
@@ -116,7 +127,7 @@ export default function LoadListsPage() {
             variant="outline"
             className="border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
           >
-            Arrived
+            {t("arrived")}
           </Badge>
         );
       case "receiving":
@@ -125,7 +136,7 @@ export default function LoadListsPage() {
             variant="outline"
             className="border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-400"
           >
-            Receiving
+            {t("receiving")}
           </Badge>
         );
       case "pending_approval":
@@ -134,7 +145,7 @@ export default function LoadListsPage() {
             variant="outline"
             className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
           >
-            Pending Approval
+            {t("pendingApproval")}
           </Badge>
         );
       case "received":
@@ -143,11 +154,11 @@ export default function LoadListsPage() {
             variant="outline"
             className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
           >
-            Received
+            {t("received")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -180,11 +191,11 @@ export default function LoadListsPage() {
 
     try {
       await deleteMutation.mutateAsync(llToDelete.id);
-      toast.success("Load List deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setLLToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete load list"));
+      toast.error(getErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -192,12 +203,12 @@ export default function LoadListsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Load Lists</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage supplier shipments and deliveries</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
         </div>
         <Button onClick={handleCreateLL} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          Create Load List
+          {t("createAction")}
         </Button>
       </div>
 
@@ -206,7 +217,7 @@ export default function LoadListsPage() {
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by LL number, container, seal, batch..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
@@ -222,18 +233,18 @@ export default function LoadListsPage() {
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="in_transit">In Transit</SelectItem>
-                <SelectItem value="arrived">Arrived</SelectItem>
-                <SelectItem value="receiving">Receiving</SelectItem>
-                <SelectItem value="pending_approval">Pending Approval</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">{t("allStatus")}</SelectItem>
+                <SelectItem value="draft">{t("draft")}</SelectItem>
+                <SelectItem value="confirmed">{t("confirmed")}</SelectItem>
+                <SelectItem value="in_transit">{t("inTransit")}</SelectItem>
+                <SelectItem value="arrived">{t("arrived")}</SelectItem>
+                <SelectItem value="receiving">{t("receiving")}</SelectItem>
+                <SelectItem value="pending_approval">{t("pendingApproval")}</SelectItem>
+                <SelectItem value="received">{t("received")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
               </SelectContent>
             </Select>
           </ClientOnly>
@@ -247,10 +258,10 @@ export default function LoadListsPage() {
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Supplier" />
+                <SelectValue placeholder={t("supplierPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Suppliers</SelectItem>
+                <SelectItem value="all">{t("allSuppliers")}</SelectItem>
                 {suppliers.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.name}
@@ -269,10 +280,10 @@ export default function LoadListsPage() {
             >
               <SelectTrigger className="w-full sm:w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Warehouse" />
+                <SelectValue placeholder={t("warehousePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Warehouses</SelectItem>
+                <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                 {warehouses.map((warehouse) => (
                   <SelectItem key={warehouse.id} value={warehouse.id}>
                     {warehouse.name}
@@ -288,15 +299,15 @@ export default function LoadListsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>LL Number</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Container / Seal</TableHead>
-                  <TableHead>Batch</TableHead>
-                  <TableHead>Arrival Date</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("llNumber")}</TableHead>
+                  <TableHead>{t("supplier")}</TableHead>
+                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead>{t("containerSeal")}</TableHead>
+                  <TableHead>{t("batch")}</TableHead>
+                  <TableHead>{t("arrivalDate")}</TableHead>
+                  <TableHead className="text-center">{t("status")}</TableHead>
+                  <TableHead>{t("createdBy")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -340,13 +351,13 @@ export default function LoadListsPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading load lists. Please try again.
+            {t("loadError")}
           </div>
         ) : !data?.data || data.data.length === 0 ? (
           <EmptyStatePanel
             icon={Package}
-            title="No load lists found"
-            description="Create your first load list to get started."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
           />
         ) : (
           <>
@@ -354,15 +365,15 @@ export default function LoadListsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>LL Number</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Warehouse</TableHead>
-                    <TableHead>Container / Seal</TableHead>
-                    <TableHead>Batch</TableHead>
-                    <TableHead>Arrival Date</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead>Created By</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("llNumber")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead>{t("containerSeal")}</TableHead>
+                    <TableHead>{t("batch")}</TableHead>
+                    <TableHead>{t("arrivalDate")}</TableHead>
+                    <TableHead className="text-center">{t("status")}</TableHead>
+                    <TableHead>{t("createdBy")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -375,7 +386,7 @@ export default function LoadListsPage() {
                             <div className="font-medium">{ll.llNumber}</div>
                             {ll.supplierLlNumber && (
                               <div className="text-xs text-muted-foreground">
-                                Supplier: {ll.supplierLlNumber}
+                                {t("supplierPrefix", { value: ll.supplierLlNumber })}
                               </div>
                             )}
                           </div>
@@ -396,28 +407,28 @@ export default function LoadListsPage() {
                       <TableCell>
                         <div className="text-sm">
                           {(!ll.containerNumber && !ll.sealNumber) ? (
-                            "-"
+                            t("noValue")
                           ) : (
-                            <div>{ll.containerNumber ?? "-"} / {ll.sealNumber ?? "-"}</div>
+                            <div>{ll.containerNumber ?? t("noValue")} / {ll.sealNumber ?? t("noValue")}</div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">{ll.batchNumber || "-"}</div>
+                        <div className="text-sm">{ll.batchNumber || t("noValue")}</div>
                       </TableCell>
                       <TableCell>
                         <div>
                           {ll.estimatedArrivalDate && (
                             <div className="text-sm">
-                              Est: {format(new Date(ll.estimatedArrivalDate), "MMM dd, yyyy")}
+                              {t("estimatedPrefix", { date: formatDate(ll.estimatedArrivalDate) })}
                             </div>
                           )}
                           {ll.actualArrivalDate && (
                             <div className="text-sm font-medium text-green-600">
-                              Act: {format(new Date(ll.actualArrivalDate), "MMM dd, yyyy")}
+                              {t("actualPrefix", { date: formatDate(ll.actualArrivalDate) })}
                             </div>
                           )}
-                          {!ll.estimatedArrivalDate && !ll.actualArrivalDate && "-"}
+                          {!ll.estimatedArrivalDate && !ll.actualArrivalDate && t("noValue")}
                         </div>
                       </TableCell>
                       <TableCell className="text-center">{getStatusBadge(ll.status)}</TableCell>
@@ -425,23 +436,23 @@ export default function LoadListsPage() {
                         <div className="text-sm">
                           {ll.createdByUser
                             ? `${ll.createdByUser.firstName} ${ll.createdByUser.lastName}`
-                            : "-"}
+                            : t("noValue")}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {format(new Date(ll.createdAt), "MMM dd, yyyy")}
+                          {formatDate(ll.createdAt)}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewLL(ll)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleViewLL(ll)} aria-label={t("view")}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           {(ll.status === "draft" || ll.status === "confirmed") && (
                             <>
-                              <Button variant="ghost" size="sm" onClick={() => handleEditLL(ll)}>
+                              <Button variant="ghost" size="sm" onClick={() => handleEditLL(ll)} aria-label={t("edit")}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteLL(ll)}>
+                              <Button variant="ghost" size="sm" onClick={() => handleDeleteLL(ll)} aria-label={t("delete")}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
@@ -477,20 +488,19 @@ export default function LoadListsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Load List</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {llToDelete?.llNumber}? This action cannot be undone.
-              The load list will be permanently removed from the system.
+              {t("deleteDescription", { code: llToDelete?.llNumber ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

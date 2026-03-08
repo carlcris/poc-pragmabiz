@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import {
   Plus,
   Search,
@@ -59,6 +60,8 @@ const ConfirmDialog = dynamic(
 );
 
 function ItemsPageContent() {
+  const t = useTranslations("itemsPage");
+  const tCommon = useTranslations("common");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
@@ -166,35 +169,35 @@ function ItemsPageContent() {
 
   const stats = [
     {
-      title: "Total Items",
+      title: t("totalItems"),
       value: pagination?.total || 0,
-      description: "In inventory",
+      description: t("totalItemsDescription"),
       icon: Package,
       iconColor: "text-blue-600",
     },
     {
-      title: "Total Available Value",
+      title: t("totalAvailableValue"),
       value: hasStatsError
         ? "—"
         : totalValue !== undefined
           ? formatCurrency(totalValue)
           : "—",
-      description: "Current sellable stock",
+      description: t("totalAvailableValueDescription"),
       icon: TrendingUp,
       iconColor: "text-green-600",
     },
     {
-      title: "Low Stock",
+      title: t("lowStock"),
       value: hasStatsError ? "—" : (lowStockItems ?? "—"),
-      description: "At or below reorder point",
+      description: t("lowStockDescription"),
       icon: AlertTriangle,
       iconColor: "text-yellow-600",
       filterValue: "low_stock" as const,
     },
     {
-      title: "Out of Stock",
+      title: t("outOfStock"),
       value: hasStatsError ? "—" : (outOfStockItems ?? "—"),
-      description: "No available inventory",
+      description: t("outOfStockDescription"),
       icon: AlertCircle,
       iconColor: "text-red-600",
       filterValue: "out_of_stock" as const,
@@ -203,15 +206,15 @@ function ItemsPageContent() {
 
   const getStatusBadge = (status?: ItemWithStock["status"]) => {
     const variants: Record<ItemWithStock["status"], { label: string; className: string }> = {
-      normal: { label: "Normal", className: "text-emerald-700" },
-      low_stock: { label: "Low Stock", className: "text-amber-700" },
-      out_of_stock: { label: "Out of Stock", className: "text-red-700" },
-      overstock: { label: "Overstock", className: "text-blue-700" },
-      discontinued: { label: "Discontinued", className: "text-slate-500" },
+      normal: { label: t("normal"), className: "text-emerald-700" },
+      low_stock: { label: t("lowStock"), className: "text-amber-700" },
+      out_of_stock: { label: t("outOfStock"), className: "text-red-700" },
+      overstock: { label: t("overstock"), className: "text-blue-700" },
+      discontinued: { label: t("discontinued"), className: "text-slate-500" },
     };
 
     const config = status ? variants[status] : undefined;
-    const fallback = { label: "Unknown", className: "text-slate-500" };
+    const fallback = { label: t("unknown"), className: "text-slate-500" };
     const resolved = config ?? fallback;
     return (
       <span className={`text-xs font-semibold tracking-wide ${resolved.className}`}>
@@ -253,16 +256,16 @@ function ItemsPageContent() {
 
     try {
       await deleteItem.mutateAsync(itemToDelete.id);
-      toast.success("Item deleted successfully");
+      toast.success(t("deleteSuccess"));
       setItemToDelete(null);
     } catch {
-      toast.error("Failed to delete item");
+      toast.error(t("deleteError"));
     }
   };
 
   const handleExportCSV = () => {
     if (!items || items.length === 0) {
-      toast.error("No data to export");
+      toast.error(t("noDataToExport"));
       return;
     }
 
@@ -313,24 +316,28 @@ function ItemsPageContent() {
     link.click();
     document.body.removeChild(link);
 
-    toast.success("Inventory exported to CSV");
+    toast.success(t("exportSuccess"));
   };
 
   return (
     <div className="flex flex-col gap-2 sm:gap-4 md:gap-6 md:h-full">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Inventory Master</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage items with real-time stock levels</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+            {t("title")}
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+            {t("subtitle")}
+          </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
           <Button variant="outline" onClick={handleExportCSV} className="w-full sm:w-auto flex-shrink-0">
             <Download className="mr-2 h-4 w-4" />
-            <span className="sm:inline">Export CSV</span>
+            <span className="sm:inline">{t("exportCsv")}</span>
           </Button>
           <Button onClick={handleCreateItem} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
-            <span className="sm:inline">Create Item</span>
+            <span className="sm:inline">{t("createItem")}</span>
           </Button>
         </div>
       </div>
@@ -413,7 +420,7 @@ function ItemsPageContent() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by item code or name..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
@@ -430,10 +437,10 @@ function ItemsPageContent() {
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={t("categoryPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="all">{t("allCategories")}</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
@@ -450,15 +457,15 @@ function ItemsPageContent() {
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4 shrink-0" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={tCommon("status")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="normal">Normal</SelectItem>
-              <SelectItem value="low_stock">Low Stock</SelectItem>
-              <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-              <SelectItem value="overstock">Overstock</SelectItem>
-              <SelectItem value="discontinued">Discontinued</SelectItem>
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              <SelectItem value="normal">{t("normal")}</SelectItem>
+              <SelectItem value="low_stock">{t("lowStock")}</SelectItem>
+              <SelectItem value="out_of_stock">{t("outOfStock")}</SelectItem>
+              <SelectItem value="overstock">{t("overstock")}</SelectItem>
+              <SelectItem value="discontinued">{t("discontinued")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -470,17 +477,17 @@ function ItemsPageContent() {
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
-                    <TableHead className="w-[80px]">Image</TableHead>
-                    <TableHead>Item Code</TableHead>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>UOM</TableHead>
-                    <TableHead className="text-right">On Hand</TableHead>
-                    <TableHead className="text-right">Allocated</TableHead>
-                    <TableHead className="text-right">In Transit Qty</TableHead>
-                    <TableHead className="text-right">Available</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[80px]">{t("image")}</TableHead>
+                    <TableHead>{t("itemCode")}</TableHead>
+                    <TableHead>{t("itemName")}</TableHead>
+                    <TableHead>{t("category")}</TableHead>
+                    <TableHead>{t("uom")}</TableHead>
+                    <TableHead className="text-right">{t("onHand")}</TableHead>
+                    <TableHead className="text-right">{t("allocated")}</TableHead>
+                    <TableHead className="text-right">{t("inTransitQty")}</TableHead>
+                    <TableHead className="text-right">{t("available")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -528,37 +535,39 @@ function ItemsPageContent() {
             <div className="flex h-[200px] md:h-full items-center justify-center text-center">
               <div>
                 <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
-                <h3 className="mb-2 text-lg font-semibold text-destructive">Error Loading Items</h3>
+                <h3 className="mb-2 text-lg font-semibold text-destructive">
+                  {t("errorLoadingTitle")}
+                </h3>
                 <p className="mb-4 text-muted-foreground">
                   {error instanceof Error && error.message.includes("Unauthorized")
-                    ? "Please log in to view inventory items."
-                    : "Unable to load inventory data. Please try again."}
+                    ? t("unauthorizedMessage")
+                    : t("loadErrorMessage")}
                 </p>
                 <Button variant="outline" onClick={() => window.location.reload()}>
-                  Retry
+                  {t("retry")}
                 </Button>
               </div>
             </div>
           ) : items.length === 0 ? (
             <div className="flex h-[200px] md:h-full items-center justify-center text-muted-foreground">
-              No items found. Create your first item to get started.
+              {t("empty")}
             </div>
           ) : (
             <div className="h-[200px] md:h-full overflow-auto overscroll-contain rounded-md border">
               <Table containerClassName="min-w-[1200px] overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
-                    <TableHead className="w-[80px]">Image</TableHead>
-                    <TableHead>Item Code</TableHead>
-                    <TableHead>Item Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>UOM</TableHead>
-                    <TableHead className="text-right">On Hand</TableHead>
-                    <TableHead className="text-right">Allocated</TableHead>
-                    <TableHead className="text-right">In Transit Qty</TableHead>
-                    <TableHead className="text-right">Available</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[80px]">{t("image")}</TableHead>
+                    <TableHead>{t("itemCode")}</TableHead>
+                    <TableHead>{t("itemName")}</TableHead>
+                    <TableHead>{t("category")}</TableHead>
+                    <TableHead>{t("uom")}</TableHead>
+                    <TableHead className="text-right">{t("onHand")}</TableHead>
+                    <TableHead className="text-right">{t("allocated")}</TableHead>
+                    <TableHead className="text-right">{t("inTransitQty")}</TableHead>
+                    <TableHead className="text-right">{t("available")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -627,7 +636,7 @@ function ItemsPageContent() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <EditGuard resource={RESOURCES.ITEMS}>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditItem(item)} aria-label="Edit">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditItem(item)} aria-label={t("editAriaLabel")}>
                               <Pencil className="h-4 w-4" />
                             </Button>
                           </EditGuard>
@@ -638,7 +647,7 @@ function ItemsPageContent() {
                               className="h-8 w-8 p-0"
                               onClick={() => handleDeleteItem(item)}
                               disabled={deleteItem.isPending}
-                              aria-label="Delete"
+                              aria-label={t("deleteAriaLabel")}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -681,14 +690,14 @@ function ItemsPageContent() {
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={confirmDelete}
-          title="Delete Item"
+          title={t("deleteTitle")}
           description={
             itemToDelete
-              ? `Are you sure you want to delete "${itemToDelete.name}"? This action cannot be undone.`
-              : "Are you sure you want to delete this item?"
+              ? t("deleteDescriptionWithName", { name: itemToDelete.name })
+              : t("deleteDescription")
           }
-          confirmText="Delete"
-          cancelText="Cancel"
+          confirmText={tCommon("delete")}
+          cancelText={tCommon("cancel")}
           variant="destructive"
           isLoading={deleteItem.isPending}
         />

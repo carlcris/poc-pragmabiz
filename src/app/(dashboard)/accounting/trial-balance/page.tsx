@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -15,9 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Download, Printer, Search, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { TrialBalance } from "@/types/accounting";
-import { format } from "date-fns";
 
 export default function TrialBalancePage() {
+  const t = useTranslations("trialBalancePage");
+  const locale = useLocale();
   const [trialBalance, setTrialBalance] = useState<TrialBalance | null>(null);
   const [loading, setLoading] = useState(false);
   const [asOfDate, setAsOfDate] = useState(() => {
@@ -50,7 +52,7 @@ export default function TrialBalancePage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-PH", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "PHP",
     }).format(amount);
@@ -73,18 +75,18 @@ export default function TrialBalancePage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Trial Balance</h1>
-          <p className="text-muted-foreground">Verify that debits equal credits</p>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         {trialBalance && (
           <div className="flex gap-2">
             <Button variant="outline">
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {t("export")}
             </Button>
             <Button variant="outline">
               <Printer className="mr-2 h-4 w-4" />
-              Print
+              {t("print")}
             </Button>
           </div>
         )}
@@ -94,14 +96,14 @@ export default function TrialBalancePage() {
       <div className="space-y-4 rounded-lg border p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>As of Date</Label>
+            <Label>{t("asOfDate")}</Label>
             <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} />
           </div>
 
           <div className="flex items-end">
             <Button onClick={fetchTrialBalance} disabled={!asOfDate || loading} className="w-full">
               <Search className="mr-2 h-4 w-4" />
-              {loading ? "Loading..." : "Generate Report"}
+              {loading ? t("loading") : t("generateReport")}
             </Button>
           </div>
         </div>
@@ -114,21 +116,25 @@ export default function TrialBalancePage() {
           <div className="rounded-lg border p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-muted-foreground">As of</div>
+                <div className="text-sm text-muted-foreground">{t("asOf")}</div>
                 <div className="text-lg font-semibold">
-                  {format(new Date(trialBalance.asOfDate), "MMMM dd, yyyy")}
+                  {new Date(trialBalance.asOfDate).toLocaleDateString(locale, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {trialBalance.isBalanced ? (
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle2 className="h-5 w-5" />
-                    <span className="font-semibold">Balanced</span>
+                    <span className="font-semibold">{t("balanced")}</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-red-600">
                     <AlertTriangle className="h-5 w-5" />
-                    <span className="font-semibold">Not Balanced</span>
+                    <span className="font-semibold">{t("notBalanced")}</span>
                   </div>
                 )}
               </div>
@@ -138,19 +144,19 @@ export default function TrialBalancePage() {
           {/* Summary Cards */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">Total Debits</div>
+              <div className="text-sm text-muted-foreground">{t("totalDebits")}</div>
               <div className="text-2xl font-bold text-blue-600">
                 {formatCurrency(trialBalance.totalDebits)}
               </div>
             </div>
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">Total Credits</div>
+              <div className="text-sm text-muted-foreground">{t("totalCredits")}</div>
               <div className="text-2xl font-bold text-purple-600">
                 {formatCurrency(trialBalance.totalCredits)}
               </div>
             </div>
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">Difference</div>
+              <div className="text-sm text-muted-foreground">{t("difference")}</div>
               <div
                 className={`text-2xl font-bold ${
                   trialBalance.isBalanced ? "text-green-600" : "text-red-600"
@@ -166,18 +172,18 @@ export default function TrialBalancePage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[150px]">Account Number</TableHead>
-                  <TableHead>Account Name</TableHead>
-                  <TableHead className="w-[120px]">Type</TableHead>
-                  <TableHead className="w-[150px] text-right">Debit</TableHead>
-                  <TableHead className="w-[150px] text-right">Credit</TableHead>
+                  <TableHead className="w-[150px]">{t("accountNumber")}</TableHead>
+                  <TableHead>{t("accountName")}</TableHead>
+                  <TableHead className="w-[120px]">{t("type")}</TableHead>
+                  <TableHead className="w-[150px] text-right">{t("debit")}</TableHead>
+                  <TableHead className="w-[150px] text-right">{t("credit")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {trialBalance.accounts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                      No account activity found for the selected period
+                      {t("noActivity")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -192,16 +198,16 @@ export default function TrialBalancePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {account.debit > 0 ? formatCurrency(account.debit) : "-"}
+                          {account.debit > 0 ? formatCurrency(account.debit) : t("notAvailable")}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {account.credit > 0 ? formatCurrency(account.credit) : "-"}
+                          {account.credit > 0 ? formatCurrency(account.credit) : t("notAvailable")}
                         </TableCell>
                       </TableRow>
                     ))}
                     {/* Totals Row */}
                     <TableRow className="bg-muted/50 font-bold">
-                      <TableCell colSpan={3}>Total</TableCell>
+                      <TableCell colSpan={3}>{t("total")}</TableCell>
                       <TableCell className="text-right font-mono">
                         {formatCurrency(trialBalance.totalDebits)}
                       </TableCell>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -51,6 +52,7 @@ type FormData = {
 type PricePayload = Omit<FormData, "price"> & { price: number };
 
 export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceFormDialogProps) => {
+  const t = useTranslations("priceFormDialog");
   const queryClient = useQueryClient();
   const isEditing = !!price;
 
@@ -102,12 +104,12 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["item-prices", itemId] });
-      toast.success("Price created successfully");
+      toast.success(t("createSuccess"));
       onOpenChange(false);
       reset();
     },
     onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create price";
+      const errorMessage = error instanceof Error ? error.message : t("createError");
       toast.error(errorMessage);
     },
   });
@@ -115,7 +117,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: PricePayload) => {
-      if (!price) throw new Error("No price selected");
+      if (!price) throw new Error(t("noPriceSelected"));
       const response = await apiClient.put<{ data: ItemPrice }>(
         `/api/items/${itemId}/prices/${price.id}`,
         data
@@ -124,11 +126,11 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["item-prices", itemId] });
-      toast.success("Price updated successfully");
+      toast.success(t("updateSuccess"));
       onOpenChange(false);
     },
     onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update price";
+      const errorMessage = error instanceof Error ? error.message : t("updateError");
       toast.error(errorMessage);
     },
   });
@@ -167,9 +169,9 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Price" : "Create Price"}</DialogTitle>
+          <DialogTitle>{isEditing ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
-            {isEditing ? "Update price tier information" : "Add a new price tier for this item"}
+            {isEditing ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -177,31 +179,31 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
           {/* Price Tier Code */}
           <div className="space-y-2">
             <Label htmlFor="priceTier">
-              Price Tier Code <span className="text-destructive">*</span>
+              {t("priceTierCodeLabel")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="priceTier"
-              {...register("priceTier", { required: "Price tier code is required" })}
-              placeholder="e.g., fc, ws, srp"
+              {...register("priceTier", { required: t("priceTierCodeRequired") })}
+              placeholder={t("priceTierCodePlaceholder")}
               disabled={isPending}
             />
             {errors.priceTier && (
               <p className="text-sm text-destructive">{errors.priceTier.message}</p>
             )}
             <p className="text-xs text-muted-foreground">
-              Common tiers: {commonTiers.map((t) => t.code).join(", ")}
+              {t("commonTiers")}: {commonTiers.map((tier) => tier.code).join(", ")}
             </p>
           </div>
 
           {/* Price Tier Name */}
           <div className="space-y-2">
             <Label htmlFor="priceTierName">
-              Price Tier Name <span className="text-destructive">*</span>
+              {t("priceTierNameLabel")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="priceTierName"
-              {...register("priceTierName", { required: "Price tier name is required" })}
-              placeholder="e.g., Factory Cost, Wholesale"
+              {...register("priceTierName", { required: t("priceTierNameRequired") })}
+              placeholder={t("priceTierNamePlaceholder")}
               disabled={isPending}
             />
             {errors.priceTierName && (
@@ -212,22 +214,22 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
           {/* Price */}
           <div className="space-y-2">
             <Label htmlFor="price">
-              Price <span className="text-destructive">*</span>
+              {t("priceLabel")} <span className="text-destructive">*</span>
             </Label>
             <Controller
               name="price"
               control={control}
               rules={{
-                required: "Price is required",
+                required: t("priceRequired"),
                 validate: (value) =>
-                  value === "" || Number(value) >= 0 || "Price must be 0 or greater",
+                  value === "" || Number(value) >= 0 || t("priceMin"),
               }}
               render={({ field }) => (
                 <Input
                   id="price"
                   type="number"
                   step="0.0001"
-                  placeholder="0.0000"
+                  placeholder={t("pricePlaceholder")}
                   disabled={isPending}
                   value={field.value ?? ""}
                   onChange={(event) => field.onChange(event.target.value)}
@@ -240,26 +242,26 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
 
           {/* Currency Code */}
           <div className="space-y-2">
-            <Label htmlFor="currencyCode">Currency Code</Label>
+            <Label htmlFor="currencyCode">{t("currencyCodeLabel")}</Label>
             <Input
               id="currencyCode"
               {...register("currencyCode")}
-              placeholder="PHP"
+              placeholder={t("currencyCodePlaceholder")}
               disabled={isPending}
             />
-            <p className="text-xs text-muted-foreground">Default: PHP (Philippine Peso)</p>
+            <p className="text-xs text-muted-foreground">{t("currencyCodeDescription")}</p>
           </div>
 
           {/* Date Range */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="effectiveFrom">
-                Effective From <span className="text-destructive">*</span>
+                {t("effectiveFromLabel")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="effectiveFrom"
                 type="date"
-                {...register("effectiveFrom", { required: "Effective from date is required" })}
+                {...register("effectiveFrom", { required: t("effectiveFromRequired") })}
                 disabled={isPending}
               />
               {errors.effectiveFrom && (
@@ -268,14 +270,14 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="effectiveTo">Effective To (Optional)</Label>
+              <Label htmlFor="effectiveTo">{t("effectiveToLabel")}</Label>
               <Input
                 id="effectiveTo"
                 type="date"
                 {...register("effectiveTo")}
                 disabled={isPending}
               />
-              <p className="text-xs text-muted-foreground">Leave empty for no expiry</p>
+              <p className="text-xs text-muted-foreground">{t("effectiveToDescription")}</p>
             </div>
           </div>
 
@@ -288,7 +290,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
               disabled={isPending}
             />
             <Label htmlFor="isActive" className="cursor-pointer">
-              Active
+              {t("activeLabel")}
             </Label>
           </div>
 
@@ -299,11 +301,11 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
               onClick={() => onOpenChange(false)}
               disabled={isPending}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? "Update" : "Create"} Price
+              {isEditing ? t("updateAction") : t("createAction")}
             </Button>
           </DialogFooter>
         </form>

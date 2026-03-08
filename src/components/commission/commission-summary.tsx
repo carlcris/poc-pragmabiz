@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCommissionSummary } from "@/hooks/useCommission";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -15,6 +16,7 @@ interface CommissionSummaryProps {
 }
 
 export function CommissionSummary({ dateRange, employeeId }: CommissionSummaryProps) {
+  const t = useTranslations("commissionSummary");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useCommissionSummary({
     dateFrom: dateRange?.from,
@@ -26,50 +28,50 @@ export function CommissionSummary({ dateRange, employeeId }: CommissionSummaryPr
 
   const stats = [
     {
-      title: "Total Commission",
+      title: t("totalCommission"),
       value: summary ? formatCurrency(summary.totalCommission) : "-",
       icon: DollarSign,
-      description: `From ${summary?.transactionCount || 0} transactions`,
+      description: t("fromTransactions", { count: summary?.transactionCount || 0 }),
       color: "text-blue-600",
       bgColor: "bg-blue-100",
     },
     {
-      title: "Total Sales",
+      title: t("totalSales"),
       value: summary ? formatCurrency(summary.totalSales) : "-",
       icon: TrendingUp,
-      description: "Total sales volume",
+      description: t("totalSalesVolume"),
       color: "text-green-600",
       bgColor: "bg-green-100",
     },
     {
-      title: "Paid Commission",
+      title: t("paidCommission"),
       value: summary ? formatCurrency(summary.paidCommission) : "-",
       icon: CheckCircle,
-      description: "From paid invoices",
+      description: t("fromPaidInvoices"),
       color: "text-emerald-600",
       bgColor: "bg-emerald-100",
     },
     {
-      title: "Pending Commission",
+      title: t("pendingCommission"),
       value: summary ? formatCurrency(summary.pendingCommission) : "-",
       icon: Clock,
-      description: "From unpaid invoices",
+      description: t("fromUnpaidInvoices"),
       color: "text-orange-600",
       bgColor: "bg-orange-100",
     },
     {
-      title: "Active Employees",
+      title: t("activeEmployees"),
       value: summary?.uniqueEmployees || 0,
       icon: Users,
-      description: "Employees with commissions",
+      description: t("employeesWithCommissions"),
       color: "text-purple-600",
       bgColor: "bg-purple-100",
     },
     {
-      title: "Effective Rate",
+      title: t("effectiveRate"),
       value: summary ? `${summary.effectiveRate.toFixed(2)}%` : "-",
       icon: Percent,
-      description: "Average commission rate",
+      description: t("averageCommissionRate"),
       color: "text-pink-600",
       bgColor: "bg-pink-100",
     },
@@ -122,20 +124,20 @@ export function CommissionSummary({ dateRange, employeeId }: CommissionSummaryPr
       {summary && (
         <Card>
           <CardHeader>
-            <CardTitle>Commission Insights</CardTitle>
-            <CardDescription>Key performance indicators</CardDescription>
+            <CardTitle>{t("commissionInsights")}</CardTitle>
+            <CardDescription>{t("keyPerformanceIndicators")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
-                Average Commission per Transaction
+                {t("averageCommissionPerTransaction")}
               </span>
               <span className="text-sm font-semibold">
                 {formatCurrency(summary.avgCommissionPerTransaction)}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Commission Payout Rate</span>
+              <span className="text-sm text-muted-foreground">{t("commissionPayoutRate")}</span>
               <span className="text-sm font-semibold">
                 {summary.totalCommission > 0
                   ? `${((summary.paidCommission / summary.totalCommission) * 100).toFixed(1)}%`
@@ -143,7 +145,7 @@ export function CommissionSummary({ dateRange, employeeId }: CommissionSummaryPr
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Average Sales per Transaction</span>
+              <span className="text-sm text-muted-foreground">{t("averageSalesPerTransaction")}</span>
               <span className="text-sm font-semibold">
                 {formatCurrency(
                   summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0

@@ -4,13 +4,15 @@ import type { Priority } from "@/types/warehouse-dashboard";
 type StatusBadgeProps = {
   status: string;
   variant?: "default" | "secondary" | "outline" | "destructive";
+  label?: string;
 };
 
 type PriorityBadgeProps = {
   priority: Priority;
+  label?: string;
 };
 
-export const StatusBadge = ({ status, variant = "default" }: StatusBadgeProps) => {
+export const StatusBadge = ({ status, variant = "default", label }: StatusBadgeProps) => {
   const statusConfig: Record<
     string,
     { label: string; variant: typeof variant; className?: string }
@@ -39,12 +41,12 @@ export const StatusBadge = ({ status, variant = "default" }: StatusBadgeProps) =
 
   return (
     <Badge variant={config.variant} className={config.className}>
-      {config.label}
+      {label ?? config.label}
     </Badge>
   );
 };
 
-export const PriorityBadge = ({ priority }: PriorityBadgeProps) => {
+export const PriorityBadge = ({ priority, label }: PriorityBadgeProps) => {
   const priorityConfig: Record<Priority, { label: string; className: string }> = {
     low: { label: "Low", className: "bg-gray-500 text-white" },
     normal: { label: "Normal", className: "bg-blue-500 text-white" },
@@ -56,7 +58,7 @@ export const PriorityBadge = ({ priority }: PriorityBadgeProps) => {
 
   return (
     <Badge variant="default" className={config.className}>
-      {config.label}
+      {label ?? config.label}
     </Badge>
   );
 };

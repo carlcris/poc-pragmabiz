@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { ChevronLeft, User, LogOut, Warehouse } from "lucide-react";
+import { ChevronLeft, User, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import { useState, useEffect, useRef } from "react";

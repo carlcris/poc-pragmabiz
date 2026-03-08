@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
@@ -89,12 +90,14 @@ export function StockTransactionDetailDialog({
   onOpenChange,
   transactionId,
 }: StockTransactionDetailDialogProps) {
-  const { data: transaction, isLoading } = useQuery<TransactionDetail>({
+  const t = useTranslations("stockTransactionDetail");
+  const locale = useLocale();
+  const { data: transaction, isLoading, error } = useQuery<TransactionDetail>({
     queryKey: ["stock-transaction", transactionId],
     queryFn: async () => {
-      if (!transactionId) throw new Error("No transaction ID");
+      if (!transactionId) throw new Error(t("loadError"));
       const response = await fetch(`/api/stock-transactions/${transactionId}`);
-      if (!response.ok) throw new Error("Failed to fetch stock transaction");
+      if (!response.ok) throw new Error(t("loadError"));
       return response.json();
     },
     enabled: !!transactionId && open,
@@ -118,10 +121,10 @@ export function StockTransactionDetailDialog({
       TransactionType,
       { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
     > = {
-      in: { label: "Stock In", variant: "default" },
-      out: { label: "Stock Out", variant: "destructive" },
-      transfer: { label: "Transfer", variant: "outline" },
-      adjustment: { label: "Adjustment", variant: "secondary" },
+      in: { label: t("stockIn"), variant: "default" },
+      out: { label: t("stockOut"), variant: "destructive" },
+      transfer: { label: t("transfer"), variant: "outline" },
+      adjustment: { label: t("adjustment"), variant: "secondary" },
     };
 
     const config = configs[type];
@@ -136,7 +139,7 @@ export function StockTransactionDetailDialog({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -144,7 +147,7 @@ export function StockTransactionDetailDialog({
   };
 
   const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
+    return new Date(dateString).toLocaleString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -154,18 +157,50 @@ export function StockTransactionDetailDialog({
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "PHP",
     }).format(amount);
   };
+
+  const formatQuantity = (value: number) =>
+    value.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const formatReferenceType = (referenceType: string | null) => {
     if (!referenceType) return null;
     return toProperCase(referenceType);
   };
 
+  const formatStatus = (status: string) => {
+    switch (status) {
+      case "posted":
+        return t("statusPosted");
+      case "draft":
+        return t("statusDraft");
+      case "completed":
+        return t("statusCompleted");
+      case "cancelled":
+        return t("statusCancelled");
+      default:
+        return toProperCase(status);
+    }
+  };
+
   if (isLoading || !transaction) {
+    if (error && !transaction) {
+      return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{t("loadError")}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              {error instanceof Error ? error.message : t("loadError")}
+            </p>
+          </DialogContent>
+        </Dialog>
+      );
+    }
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-6xl p-0">
@@ -236,7 +271,7 @@ export function StockTransactionDetailDialog({
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-2xl">{transaction.transactionCode}</DialogTitle>
-              <p className="mt-1 text-sm text-muted-foreground">Stock Transaction Details</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("titleDescription")}</p>
             </div>
           </div>
         </DialogHeader>
@@ -249,34 +284,34 @@ export function StockTransactionDetailDialog({
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <FileText className="h-4 w-4" />
-                    Transaction Information
+                    {t("transactionInformation")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Transaction Code:</span>
+                    <span className="text-muted-foreground">{t("transactionCode")}:</span>
                     <span className="font-semibold">{transaction.transactionCode}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Type:</span>
+                    <span className="text-muted-foreground">{t("type")}:</span>
                     {getTransactionTypeBadge(transaction.transactionType)}
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Status:</span>
+                    <span className="text-muted-foreground">{t("status")}:</span>
                     <Badge
                       variant={transaction.status === "posted" ? "default" : "secondary"}
                       className="text-xs"
                     >
-                      {transaction.status.toUpperCase()}
+                      {formatStatus(transaction.status)}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Transaction Date:</span>
+                    <span className="text-muted-foreground">{t("transactionDate")}:</span>
                     <span className="font-medium">{formatDate(transaction.transactionDate)}</span>
                   </div>
                   {transaction.referenceType && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Reference:</span>
+                      <span className="text-muted-foreground">{t("reference")}:</span>
                       <span className="font-medium">
                         {formatReferenceType(transaction.referenceType)}
                       </span>
@@ -284,7 +319,7 @@ export function StockTransactionDetailDialog({
                   )}
                   {transaction.notes && (
                     <div className="pt-2">
-                      <p className="mb-1 text-xs text-muted-foreground">Notes:</p>
+                      <p className="mb-1 text-xs text-muted-foreground">{t("notes")}:</p>
                       <p className="text-xs">{transaction.notes}</p>
                     </div>
                   )}
@@ -295,18 +330,18 @@ export function StockTransactionDetailDialog({
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <Package className="h-4 w-4" />
-                    Warehouse Information
+                    {t("warehouseInformation")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div>
-                    <p className="mb-1 text-xs text-muted-foreground">Source Location:</p>
+                    <p className="mb-1 text-xs text-muted-foreground">{t("sourceLocation")}:</p>
                     <p className="text-sm font-semibold">
                       {transaction.warehouseCode} - {transaction.warehouseName}
                     </p>
                     {(transaction.fromLocationCode || transaction.fromLocationName) && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Location: {transaction.fromLocationCode}
+                        {t("location")}: {transaction.fromLocationCode}
                         {transaction.fromLocationName ? ` - ${transaction.fromLocationName}` : ""}
                       </p>
                     )}
@@ -315,13 +350,15 @@ export function StockTransactionDetailDialog({
                     <>
                       <Separator />
                       <div>
-                        <p className="mb-1 text-xs text-muted-foreground">Destination Location:</p>
+                        <p className="mb-1 text-xs text-muted-foreground">
+                          {t("destinationLocation")}:
+                        </p>
                         <p className="text-sm font-semibold">
                           {transaction.toWarehouseCode} - {transaction.toWarehouseName}
                         </p>
                         {(transaction.toLocationCode || transaction.toLocationName) && (
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Location: {transaction.toLocationCode}
+                            {t("location")}: {transaction.toLocationCode}
                             {transaction.toLocationName ? ` - ${transaction.toLocationName}` : ""}
                           </p>
                         )}
@@ -332,14 +369,14 @@ export function StockTransactionDetailDialog({
                   <div className="flex justify-between text-xs">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <User className="h-3 w-3" />
-                      Created By:
+                      {t("createdBy")}:
                     </span>
                     <span className="font-medium">{transaction.createdByName}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Calendar className="h-3 w-3" />
-                      Created At:
+                      {t("createdAt")}:
                     </span>
                     <span className="font-medium">{formatDateTime(transaction.createdAt)}</span>
                   </div>
@@ -350,20 +387,20 @@ export function StockTransactionDetailDialog({
             {/* Transaction Items */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Transaction Items</CardTitle>
+                <CardTitle className="text-sm">{t("transactionItems")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Item Code</TableHead>
-                        <TableHead className="text-xs">Item Name</TableHead>
-                        <TableHead className="text-right text-xs">Qty Before</TableHead>
-                        <TableHead className="text-right text-xs">Quantity</TableHead>
-                        <TableHead className="text-right text-xs">Qty After</TableHead>
-                        <TableHead className="text-right text-xs">Unit Cost</TableHead>
-                        <TableHead className="text-right text-xs">Total Cost</TableHead>
+                        <TableHead className="text-xs">{t("itemCode")}</TableHead>
+                        <TableHead className="text-xs">{t("itemName")}</TableHead>
+                        <TableHead className="text-right text-xs">{t("qtyBefore")}</TableHead>
+                        <TableHead className="text-right text-xs">{t("quantity")}</TableHead>
+                        <TableHead className="text-right text-xs">{t("qtyAfter")}</TableHead>
+                        <TableHead className="text-right text-xs">{t("unitCost")}</TableHead>
+                        <TableHead className="text-right text-xs">{t("totalCost")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -374,7 +411,7 @@ export function StockTransactionDetailDialog({
                           <TableCell className="text-right text-xs">
                             {item.qtyBefore !== null ? (
                               <span className="text-muted-foreground">
-                                {item.qtyBefore.toFixed(2)} {item.uom}
+                                {formatQuantity(item.qtyBefore)} {item.uom}
                               </span>
                             ) : (
                               "-"
@@ -395,13 +432,13 @@ export function StockTransactionDetailDialog({
                                 : transaction.transactionType === "out"
                                   ? "-"
                                   : ""}
-                              {item.quantity.toFixed(2)} {item.uom}
+                              {formatQuantity(item.quantity)} {item.uom}
                             </span>
                           </TableCell>
                           <TableCell className="text-right text-xs">
                             {item.qtyAfter !== null ? (
                               <span className="font-semibold">
-                                {item.qtyAfter.toFixed(2)} {item.uom}
+                                {formatQuantity(item.qtyAfter)} {item.uom}
                               </span>
                             ) : (
                               "-"
@@ -424,7 +461,7 @@ export function StockTransactionDetailDialog({
                   <div className="w-64 space-y-2">
                     <Separator />
                     <div className="flex justify-between text-base font-bold">
-                      <span>Total Cost:</span>
+                      <span>{t("totalCostLabel")}:</span>
                       <span>
                         {formatCurrency(
                           transaction.items.reduce((sum, item) => sum + item.totalCost, 0)
@@ -440,18 +477,18 @@ export function StockTransactionDetailDialog({
             {transaction.items.some((item) => item.stockValueBefore !== null) && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Stock Value Changes</CardTitle>
+                  <CardTitle className="text-sm">{t("stockValueChanges")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs">Item</TableHead>
-                          <TableHead className="text-right text-xs">Valuation Rate</TableHead>
-                          <TableHead className="text-right text-xs">Value Before</TableHead>
-                          <TableHead className="text-right text-xs">Value After</TableHead>
-                          <TableHead className="text-right text-xs">Change</TableHead>
+                          <TableHead className="text-xs">{t("item")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("valuationRate")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("valueBefore")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("valueAfter")}</TableHead>
+                          <TableHead className="text-right text-xs">{t("change")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

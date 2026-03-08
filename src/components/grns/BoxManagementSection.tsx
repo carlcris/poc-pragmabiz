@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Plus, Printer, MapPin, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,8 @@ interface BoxManagementSectionProps {
 }
 
 export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionProps) {
+  const t = useTranslations("grnBoxManagementSection");
+  const common = useTranslations("common");
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<GRNItem | null>(null);
   const [numBoxes, setNumBoxes] = useState(1);
@@ -50,11 +53,10 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
   const [isPrinting, setIsPrinting] = useState(false);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
 
-  // Fetch boxes when component mounts or GRN changes
   const fetchBoxes = useCallback(async (): Promise<GRNBox[]> => {
     try {
       const response = await fetch(`/api/grns/${grn.id}/boxes`);
-      if (!response.ok) throw new Error("Failed to fetch boxes");
+      if (!response.ok) throw new Error(t("generateError"));
       const data = await response.json();
       const nextBoxes = (data.data || []) as GRNBox[];
       setBoxes(nextBoxes);
@@ -63,31 +65,29 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
       console.error("Error fetching boxes:", error);
       return [];
     }
-  }, [grn.id]);
+  }, [grn.id, t]);
 
   useEffect(() => {
     fetchBoxes();
   }, [fetchBoxes]);
 
-  // Fetch warehouse locations for the GRN warehouse
   const fetchLocations = useCallback(async () => {
     if (!grn.warehouseId) return;
 
     try {
       setIsLoadingLocations(true);
       const response = await fetch(`/api/warehouses/${grn.warehouseId}/locations`);
-      if (!response.ok) throw new Error("Failed to fetch locations");
+      if (!response.ok) throw new Error(t("loadLocationsError"));
       const data = await response.json();
       setLocations(data.data || []);
     } catch (error) {
       console.error("Error fetching locations:", error);
-      toast.error("Failed to load warehouse locations");
+      toast.error(t("loadLocationsError"));
     } finally {
       setIsLoadingLocations(false);
     }
-  }, [grn.warehouseId]);
+  }, [grn.warehouseId, t]);
 
-  // Load locations when dialog opens
   useEffect(() => {
     if (generateDialogOpen) {
       fetchLocations();
@@ -118,14 +118,14 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to generate boxes");
+        throw new Error(error.error || t("generateError"));
       }
 
-      toast.success(`${numBoxes} boxes generated successfully`);
+      toast.success(t("generateSuccess", { count: numBoxes }));
       setGenerateDialogOpen(false);
-      fetchBoxes();
+      await fetchBoxes();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to generate boxes");
+      toast.error(error instanceof Error ? error.message : t("generateError"));
     } finally {
       setIsGenerating(false);
     }
@@ -137,16 +137,15 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
 
       const latestBoxes = await fetchBoxes();
       const boxesToPrint = itemBoxes
-        ? latestBoxes.filter((latestBox) => itemBoxes.some((b) => b.id === latestBox.id))
+        ? latestBoxes.filter((latestBox) => itemBoxes.some((box) => box.id === latestBox.id))
         : latestBoxes;
       if (boxesToPrint.length === 0) {
-        toast.error("No boxes to print");
+        toast.error(t("printNoBoxes"));
         return;
       }
 
-      // Convert boxes to barcode data
       const barcodeData: BarcodeData[] = boxesToPrint.map((box) => {
-        const item = grn.items.find((i) => i.id === box.grnItemId);
+        const item = grn.items.find((grnItem) => grnItem.id === box.grnItemId);
         return {
           boxId: box.id,
           itemId: box.itemId,
@@ -167,22 +166,24 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
       });
 
       await printBarcodeLabels(barcodeData);
-      toast.success("Barcode labels sent to printer");
+      toast.success(t("printSuccess"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to print labels");
+      toast.error(error instanceof Error ? error.message : t("printError"));
     } finally {
       setIsPrinting(false);
     }
   };
 
-  // Group boxes by item
-  const boxesByItem = boxes.reduce((acc, box) => {
-    if (!acc[box.grnItemId]) {
-      acc[box.grnItemId] = [];
-    }
-    acc[box.grnItemId].push(box);
-    return acc;
-  }, {} as Record<string, GRNBox[]>);
+  const boxesByItem = boxes.reduce(
+    (acc, box) => {
+      if (!acc[box.grnItemId]) {
+        acc[box.grnItemId] = [];
+      }
+      acc[box.grnItemId].push(box);
+      return acc;
+    },
+    {} as Record<string, GRNBox[]>
+  );
 
   return (
     <>
@@ -192,14 +193,14 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-blue-600" />
-                Box Management & Barcodes
+                {t("title")}
               </CardTitle>
-              <CardDescription>Generate boxes and print barcode labels</CardDescription>
+              <CardDescription>{t("description")}</CardDescription>
             </div>
             {boxes.length > 0 && (
               <Button onClick={() => handlePrintLabels()} disabled={isPrinting}>
                 <Printer className="mr-2 h-4 w-4" />
-                {isPrinting ? "Printing..." : "Print All Labels"}
+                {isPrinting ? t("printing") : t("printAllLabels")}
               </Button>
             )}
           </div>
@@ -216,10 +217,10 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                     <div className="font-medium">{item.item?.code}</div>
                     <div className="text-sm text-muted-foreground">{item.item?.name}</div>
                     <div className="mt-1 text-sm">
-                      Received: <span className="font-medium">{item.receivedQty}</span> units
+                      {t("receivedUnits", { count: item.receivedQty })}
                       {hasBoxes && (
                         <span className="ml-3 text-muted-foreground">
-                          • {itemBoxes.length} boxes generated
+                          • {t("boxesGenerated", { count: itemBoxes.length })}
                         </span>
                       )}
                     </div>
@@ -233,7 +234,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                         disabled={isPrinting}
                       >
                         <Printer className="mr-2 h-4 w-4" />
-                        Print Labels
+                        {t("printLabels")}
                       </Button>
                     )}
                     {isEditable && (
@@ -243,7 +244,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                         onClick={() => handleOpenDialog(item)}
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        {hasBoxes ? "Regenerate" : "Generate"} Box Labels
+                        {hasBoxes ? t("regenerate") : t("generate")} {t("generateBoxLabels")}
                       </Button>
                     )}
                   </div>
@@ -254,10 +255,10 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-24">Box #</TableHead>
-                          <TableHead>Barcode</TableHead>
-                          <TableHead className="text-right">Qty</TableHead>
-                          <TableHead>Location</TableHead>
+                          <TableHead className="w-24">{t("boxNumber")}</TableHead>
+                          <TableHead>{t("barcode")}</TableHead>
+                          <TableHead className="text-right">{t("qty")}</TableHead>
+                          <TableHead>{t("location")}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -276,7 +277,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                                     </span>
                                   </>
                                 ) : (
-                                  <span className="text-sm text-muted-foreground">Not assigned</span>
+                                  <span className="text-sm text-muted-foreground">{t("notAssigned")}</span>
                                 )}
                               </div>
                               {box.batchLocationSku ? (
@@ -296,75 +297,76 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
           })}
 
           {grn.items.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground">
-              No items to generate boxes for
-            </div>
+            <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
           )}
         </CardContent>
       </Card>
 
-      {/* Generate Boxes Dialog */}
       <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Generate Boxes for Item</DialogTitle>
+            <DialogTitle>{t("dialogTitle")}</DialogTitle>
             <DialogDescription>
               {selectedItem?.item?.code} - {selectedItem?.item?.name}
               <br />
-              Received Quantity: {selectedItem?.receivedQty}
+              {t("receivedQuantity", { count: selectedItem?.receivedQty ?? 0 })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="numBoxes">Number of Boxes *</Label>
+              <Label htmlFor="numBoxes">{t("numberOfBoxesLabel")}</Label>
               <Input
                 id="numBoxes"
                 type="number"
                 min="1"
                 value={numBoxes}
-                onChange={(e) => setNumBoxes(parseInt(e.target.value) || 1)}
+                onChange={(e) => setNumBoxes(parseInt(e.target.value, 10) || 1)}
               />
               <p className="mt-1 text-sm text-muted-foreground">
-                Qty per box: {selectedItem ? (selectedItem.receivedQty / numBoxes).toFixed(2) : 0}
+                {t("qtyPerBox", {
+                  count: selectedItem ? (selectedItem.receivedQty / numBoxes).toFixed(2) : 0,
+                })}
               </p>
             </div>
             <div>
-              <Label htmlFor="location">Warehouse Location (Optional)</Label>
+              <Label htmlFor="location">{t("warehouseLocationOptional")}</Label>
               <Select
                 value={locationId}
                 onValueChange={(value) => setLocationId(value === "none" ? undefined : value)}
                 disabled={isLoadingLocations}
               >
                 <SelectTrigger id="location">
-                  <SelectValue placeholder={isLoadingLocations ? "Loading locations..." : "Assign location later"} />
+                  <SelectValue
+                    placeholder={
+                      isLoadingLocations ? t("loadingLocations") : t("assignLocationLater")
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No location</SelectItem>
+                  <SelectItem value="none">{t("noLocation")}</SelectItem>
                   {locations
                     .filter((loc) => loc.isActive && loc.isStorable)
                     .map((loc) => (
                       <SelectItem key={loc.id} value={loc.id}>
-                        {loc.code} - {loc.name || "Unnamed"}
+                        {loc.code} - {loc.name || t("unnamed")}
                       </SelectItem>
                     ))}
                   {locations.length === 0 && !isLoadingLocations && (
                     <SelectItem value="no-locations" disabled>
-                      No locations available
+                      {t("noLocationsAvailable")}
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
-              <p className="mt-1 text-sm text-muted-foreground">
-                You can assign locations later using the putaway screen
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("assignLaterDescription")}</p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
-              Cancel
+              {common("cancel")}
             </Button>
             <Button onClick={handleGenerateBoxes} disabled={isGenerating || numBoxes < 1}>
-              {isGenerating ? "Generating..." : "Generate Boxes"}
+              {isGenerating ? t("generating") : t("generateBoxes")}
             </Button>
           </DialogFooter>
         </DialogContent>

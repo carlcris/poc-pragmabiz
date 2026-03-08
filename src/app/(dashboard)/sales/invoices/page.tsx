@@ -2,20 +2,21 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import { useLocale, useTranslations } from "next-intl";
 import {
-  Plus,
-  Search,
-  Pencil,
-  Filter,
+  AlertCircle,
+  CheckCircle,
+  DollarSign,
   Eye,
   FileText,
-  CheckCircle,
-  Send,
-  XCircle,
-  AlertCircle,
-  DollarSign,
+  Filter,
+  Pencil,
+  Plus,
   Printer,
+  Search,
+  Send,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import {
   useInvoices,
@@ -59,18 +60,18 @@ const InvoiceFormDialog = dynamic(
   () => import("@/components/invoices/InvoiceFormDialog").then((mod) => mod.InvoiceFormDialog),
   { ssr: false }
 );
-
 const RecordPaymentDialog = dynamic(
   () => import("@/components/invoices/RecordPaymentDialog").then((mod) => mod.RecordPaymentDialog),
   { ssr: false }
 );
-
 const InvoiceViewDialog = dynamic(
   () => import("@/components/invoices/InvoiceViewDialog").then((mod) => mod.InvoiceViewDialog),
   { ssr: false }
 );
 
 export default function InvoicesPage() {
+  const t = useTranslations("invoicesPage");
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -87,9 +88,9 @@ export default function InvoicesPage() {
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
 
   const { formatCurrency } = useCurrency();
-  const sendInvoice = useSendInvoice();
-  const cancelInvoice = useCancelInvoice();
-  const deleteInvoice = useDeleteInvoice();
+  const sendInvoice = useSendInvoice({ success: t("sendSuccess"), error: t("sendError") });
+  const cancelInvoice = useCancelInvoice({ success: t("cancelSuccess"), error: t("cancelError") });
+  const deleteInvoice = useDeleteInvoice({ success: t("deleteSuccess"), error: t("deleteError") });
 
   const { data, isLoading, error } = useInvoices({
     search,
@@ -121,140 +122,42 @@ export default function InvoicesPage() {
   const getStatusBadge = (status: InvoiceStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "sent":
-        return (
-          <Badge variant="default" className="bg-blue-600">
-            Sent
-          </Badge>
-        );
+        return <Badge className="bg-blue-600">{t("sent")}</Badge>;
       case "paid":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            Paid
-          </Badge>
-        );
+        return <Badge className="bg-green-600">{t("paidStatus")}</Badge>;
       case "partially_paid":
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            Partially Paid
-          </Badge>
-        );
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">{t("partiallyPaid")}</Badge>;
       case "overdue":
-        return <Badge variant="destructive">Overdue</Badge>;
+        return <Badge variant="destructive">{t("overdueStatus")}</Badge>;
       case "cancelled":
-        return <Badge variant="secondary">Cancelled</Badge>;
+        return <Badge variant="secondary">{t("cancelledStatus")}</Badge>;
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
-  };
 
   const isOverdue = (dueDate: string, status: InvoiceStatus) => {
     if (status === "paid" || status === "cancelled") return false;
     return new Date(dueDate) < new Date();
   };
 
-  const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
-    setPage(1);
-  };
-
-  const handleCreateInvoice = () => {
-    setSelectedInvoice(null);
-    setFormDialogOpen(true);
-  };
-
-  const handleViewInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setViewDialogOpen(true);
-  };
-
-  const handleEditInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setFormDialogOpen(true);
-  };
-
-  const handleRecordPayment = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setPaymentDialogOpen(true);
-  };
-
-  const handlePrintInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    setViewDialogOpen(true);
-    // Delay print to ensure dialog is rendered
-    setTimeout(() => {
-      window.print();
-    }, 300);
-  };
-
-  const handleSendInvoice = (invoice: Invoice) => {
-    setInvoiceToSend(invoice);
-    setSendDialogOpen(true);
-  };
-
-  const confirmSendInvoice = async () => {
-    if (!invoiceToSend) return;
-
-    try {
-      await sendInvoice.mutateAsync(invoiceToSend.id);
-      setSendDialogOpen(false);
-      setInvoiceToSend(null);
-    } catch {
-      // Error is handled by the mutation hook with toast
-    }
-  };
-
-  const handleCancelInvoice = (invoice: Invoice) => {
-    setInvoiceToCancel(invoice);
-    setCancelDialogOpen(true);
-  };
-
-  const confirmCancelInvoice = async () => {
-    if (!invoiceToCancel) return;
-
-    try {
-      await cancelInvoice.mutateAsync(invoiceToCancel.id);
-      setCancelDialogOpen(false);
-      setInvoiceToCancel(null);
-    } catch {
-      // Error is handled by the mutation hook with toast
-    }
-  };
-
-  const handleDeleteInvoice = (invoice: Invoice) => {
-    setInvoiceToDelete(invoice);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteInvoice = async () => {
-    if (!invoiceToDelete) return;
-
-    try {
-      await deleteInvoice.mutateAsync(invoiceToDelete.id);
-      setDeleteDialogOpen(false);
-      setInvoiceToDelete(null);
-    } catch {
-      // Error is handled by the mutation hook with toast
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Invoices</h1>
-          <p className="text-muted-foreground">Create and manage sales invoices</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button onClick={handleCreateInvoice}>
+        <Button onClick={() => { setSelectedInvoice(null); setFormDialogOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Invoice
+          {t("createInvoice")}
         </Button>
       </div>
 
@@ -263,7 +166,7 @@ export default function InvoicesPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search invoices..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -272,19 +175,19 @@ export default function InvoicesPage() {
               className="pl-8"
             />
           </div>
-          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+          <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
             <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="sent">Sent</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="partially_paid">Partially Paid</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{t("allStatus")}</SelectItem>
+              <SelectItem value="draft">{t("draft")}</SelectItem>
+              <SelectItem value="sent">{t("sent")}</SelectItem>
+              <SelectItem value="paid">{t("paidStatus")}</SelectItem>
+              <SelectItem value="partially_paid">{t("partiallyPaid")}</SelectItem>
+              <SelectItem value="overdue">{t("overdueStatus")}</SelectItem>
+              <SelectItem value="cancelled">{t("cancelledStatus")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -294,28 +197,24 @@ export default function InvoicesPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            Error loading invoices. Please try again.
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : invoices.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No invoices found. Create your first invoice to get started.
-          </div>
+          <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Invoice Date</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Paid</TableHead>
-                    <TableHead className="text-right">Due</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("invoiceNumber")}</TableHead>
+                    <TableHead>{t("customer")}</TableHead>
+                    <TableHead>{t("invoiceDate")}</TableHead>
+                    <TableHead>{t("dueDate")}</TableHead>
+                    <TableHead className="text-right">{t("amount")}</TableHead>
+                    <TableHead className="text-right">{t("paid")}</TableHead>
+                    <TableHead className="text-right">{t("due")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -327,9 +226,7 @@ export default function InvoicesPage() {
                           {invoice.invoiceNumber}
                         </div>
                         {invoice.salesOrderNumber && (
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            From {invoice.salesOrderNumber}
-                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">{t("fromSalesOrder", { number: invoice.salesOrderNumber })}</div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -341,106 +238,54 @@ export default function InvoicesPage() {
                         <div className="flex items-center gap-2">
                           {formatDate(invoice.dueDate)}
                           {isOverdue(invoice.dueDate, invoice.status) && (
-                            <Badge variant="secondary" className="bg-red-100 text-xs text-red-800">
-                              Overdue
-                            </Badge>
+                            <Badge variant="secondary" className="bg-red-100 text-xs text-red-800">{t("overdue")}</Badge>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="font-medium">{formatCurrency(invoice.totalAmount)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {invoice.lineItems.length} item{invoice.lineItems.length !== 1 ? "s" : ""}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{t("itemsCount", { count: invoice.lineItems.length })}</div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="font-medium text-green-600">
-                          {formatCurrency(invoice.amountPaid)}
-                        </div>
+                        <div className="font-medium text-green-600">{formatCurrency(invoice.amountPaid)}</div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div
-                          className={`font-medium ${invoice.amountDue > 0 ? "text-orange-600" : "text-muted-foreground"}`}
-                        >
+                        <div className={`font-medium ${invoice.amountDue > 0 ? "text-orange-600" : "text-muted-foreground"}`}>
                           {formatCurrency(invoice.amountDue)}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewInvoice(invoice)}
-                            title="View"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setViewDialogOpen(true); }} title={t("view")}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handlePrintInvoice(invoice)}
-                            title="Print Invoice"
-                            className="text-gray-600 hover:text-gray-700"
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setViewDialogOpen(true); setTimeout(() => window.print(), 300); }} title={t("printInvoice")} className="text-gray-600 hover:text-gray-700">
                             <Printer className="h-4 w-4" />
                           </Button>
                           {invoice.status === "draft" && (
                             <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleEditInvoice(invoice)}
-                                title="Edit"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setFormDialogOpen(true); }} title={t("edit")}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleSendInvoice(invoice)}
-                                title="Send to Customer"
-                                className="text-blue-600 hover:text-blue-700"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => { setInvoiceToSend(invoice); setSendDialogOpen(true); }} title={t("sendToCustomer")} className="text-blue-600 hover:text-blue-700">
                                 <Send className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteInvoice(invoice)}
-                                title="Delete Invoice"
-                                className="text-red-600 hover:text-red-700"
-                              >
+                              <Button variant="ghost" size="sm" onClick={() => { setInvoiceToDelete(invoice); setDeleteDialogOpen(true); }} title={t("deleteInvoice")} className="text-red-600 hover:text-red-700">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
                           )}
-                          {(invoice.status === "sent" ||
-                            invoice.status === "partially_paid" ||
-                            invoice.status === "overdue") && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRecordPayment(invoice)}
-                              title="Record Payment"
-                              className="text-green-600 hover:text-green-700"
-                            >
+                          {(["sent", "partially_paid", "overdue"] as InvoiceStatus[]).includes(invoice.status) && (
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedInvoice(invoice); setPaymentDialogOpen(true); }} title={t("recordPayment")} className="text-green-600 hover:text-green-700">
                               <DollarSign className="h-4 w-4" />
                             </Button>
                           )}
-                          {invoice.status !== "draft" &&
-                            invoice.status !== "paid" &&
-                            invoice.status !== "cancelled" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCancelInvoice(invoice)}
-                                title="Cancel Invoice"
-                                className="text-orange-600 hover:text-orange-700"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            )}
+                          {invoice.status !== "draft" && invoice.status !== "paid" && invoice.status !== "cancelled" && (
+                            <Button variant="ghost" size="sm" onClick={() => { setInvoiceToCancel(invoice); setCancelDialogOpen(true); }} title={t("cancelInvoice")} className="text-orange-600 hover:text-orange-700">
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -465,51 +310,25 @@ export default function InvoicesPage() {
         )}
       </div>
 
-      {viewDialogOpen && (
-        <InvoiceViewDialog
-          open={viewDialogOpen}
-          onOpenChange={setViewDialogOpen}
-          invoice={selectedInvoice}
-        />
-      )}
-
-      {formDialogOpen && (
-        <InvoiceFormDialog
-          open={formDialogOpen}
-          onOpenChange={setFormDialogOpen}
-          invoice={selectedInvoice}
-        />
-      )}
-
-      {paymentDialogOpen && (
-        <RecordPaymentDialog
-          open={paymentDialogOpen}
-          onOpenChange={setPaymentDialogOpen}
-          invoice={selectedInvoice}
-        />
-      )}
+      {viewDialogOpen && <InvoiceViewDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} invoice={selectedInvoice} />}
+      {formDialogOpen && <InvoiceFormDialog open={formDialogOpen} onOpenChange={setFormDialogOpen} invoice={selectedInvoice} />}
+      {paymentDialogOpen && <RecordPaymentDialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen} invoice={selectedInvoice} />}
 
       <AlertDialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Send Invoice to Customer</AlertDialogTitle>
+            <AlertDialogTitle>{t("sendTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to send invoice <strong>{invoiceToSend?.invoiceNumber}</strong>{" "}
-              to <strong>{invoiceToSend?.customerName}</strong>?
+              {invoiceToSend && t("sendDescription", { invoiceNumber: invoiceToSend.invoiceNumber, customerName: invoiceToSend.customerName })}
               <br />
               <br />
-              This will update the invoice status to &quot;Sent&quot; and the customer will be able
-              to view and pay the invoice.
+              {t("sendDescriptionBody")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmSendInvoice}
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={sendInvoice.isPending}
-            >
-              {sendInvoice.isPending ? "Sending..." : "Send Invoice"}
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { if (!invoiceToSend) return; try { await sendInvoice.mutateAsync(invoiceToSend.id); setSendDialogOpen(false); setInvoiceToSend(null); } catch {} }} className="bg-blue-600 hover:bg-blue-700" disabled={sendInvoice.isPending}>
+              {sendInvoice.isPending ? t("sending") : t("sendAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -518,24 +337,15 @@ export default function InvoicesPage() {
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Invoice</AlertDialogTitle>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel invoice{" "}
-              <strong>{invoiceToCancel?.invoiceNumber}</strong>?
-              <br />
-              <br />
-              This will mark the invoice as cancelled and it cannot be sent or paid. This action
-              cannot be undone.
+              {invoiceToCancel && t("cancelDescription", { invoiceNumber: invoiceToCancel.invoiceNumber })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmCancelInvoice}
-              className="bg-orange-600 hover:bg-orange-700"
-              disabled={cancelInvoice.isPending}
-            >
-              {cancelInvoice.isPending ? "Cancelling..." : "Cancel Invoice"}
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { if (!invoiceToCancel) return; try { await cancelInvoice.mutateAsync(invoiceToCancel.id); setCancelDialogOpen(false); setInvoiceToCancel(null); } catch {} }} className="bg-orange-600 hover:bg-orange-700" disabled={cancelInvoice.isPending}>
+              {cancelInvoice.isPending ? t("cancelling") : t("cancelAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -544,33 +354,22 @@ export default function InvoicesPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Draft Invoice</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete invoice{" "}
-              <strong>{invoiceToDelete?.invoiceNumber}</strong>?
-              <br />
-              <br />
-              This will permanently delete the draft invoice and all its line items.
+              {invoiceToDelete && t("deleteDescription", { invoiceNumber: invoiceToDelete.invoiceNumber })}
               {invoiceToDelete?.salesOrderId && (
                 <>
-                  {" "}
-                  The linked sales order will be reverted back to &quot;Confirmed&quot; status so it
-                  can be converted to a new invoice.
+                  <br />
+                  <br />
+                  {t("deleteLinkedSalesOrderNotice")}
                 </>
               )}
-              <br />
-              <br />
-              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDeleteInvoice}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteInvoice.isPending}
-            >
-              {deleteInvoice.isPending ? "Deleting..." : "Delete Invoice"}
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { if (!invoiceToDelete) return; try { await deleteInvoice.mutateAsync(invoiceToDelete.id); setDeleteDialogOpen(false); setInvoiceToDelete(null); } catch {} }} className="bg-red-600 hover:bg-red-700" disabled={deleteInvoice.isPending}>
+              {deleteInvoice.isPending ? t("deleting") : t("deleteAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

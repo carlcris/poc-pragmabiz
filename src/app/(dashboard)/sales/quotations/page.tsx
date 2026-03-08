@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import {
   Plus,
@@ -65,6 +66,9 @@ const QuotationViewDialog = dynamic(
 );
 
 export default function QuotationsPage() {
+  const t = useTranslations("quotationsPage");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -120,38 +124,38 @@ export default function QuotationsPage() {
   const getStatusBadge = (status: QuotationStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "sent":
         return (
           <Badge variant="default" className="bg-blue-600">
-            Sent
+            {t("sent")}
           </Badge>
         );
       case "accepted":
         return (
           <Badge variant="default" className="bg-green-600">
-            Accepted
+            {t("accepted")}
           </Badge>
         );
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <Badge variant="destructive">{t("rejected")}</Badge>;
       case "expired":
         return (
           <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-            Expired
+            {t("expired")}
           </Badge>
         );
       case "ordered":
         return (
           <Badge variant="default" className="bg-purple-600">
-            Ordered
+            {t("ordered")}
           </Badge>
         );
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -223,12 +227,12 @@ export default function QuotationsPage() {
     const statuses = [];
 
     if (currentStatus === "draft") {
-      statuses.push({ value: "sent", label: "Mark as Sent", icon: Send });
-      statuses.push({ value: "accepted", label: "Mark as Accepted", icon: CheckCircle });
-      statuses.push({ value: "rejected", label: "Mark as Rejected", icon: XCircle });
+      statuses.push({ value: "sent", label: t("markAsSent"), icon: Send });
+      statuses.push({ value: "accepted", label: t("markAsAccepted"), icon: CheckCircle });
+      statuses.push({ value: "rejected", label: t("markAsRejected"), icon: XCircle });
     } else if (currentStatus === "sent") {
-      statuses.push({ value: "accepted", label: "Mark as Accepted", icon: CheckCircle });
-      statuses.push({ value: "rejected", label: "Mark as Rejected", icon: XCircle });
+      statuses.push({ value: "accepted", label: t("markAsAccepted"), icon: CheckCircle });
+      statuses.push({ value: "rejected", label: t("markAsRejected"), icon: XCircle });
     }
 
     return statuses;
@@ -238,12 +242,12 @@ export default function QuotationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Quotations</h1>
-          <p className="text-muted-foreground">Create and manage sales quotations</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button onClick={handleCreateQuotation}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Quotation
+          {t("createQuotation")}
         </Button>
       </div>
 
@@ -252,7 +256,7 @@ export default function QuotationsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search quotations..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
@@ -263,16 +267,16 @@ export default function QuotationsPage() {
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={tCommon("status")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="sent">Sent</SelectItem>
-              <SelectItem value="accepted">Accepted</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
-              <SelectItem value="ordered">Ordered</SelectItem>
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              <SelectItem value="draft">{t("draft")}</SelectItem>
+              <SelectItem value="sent">{t("sent")}</SelectItem>
+              <SelectItem value="accepted">{t("accepted")}</SelectItem>
+              <SelectItem value="rejected">{t("rejected")}</SelectItem>
+              <SelectItem value="expired">{t("expired")}</SelectItem>
+              <SelectItem value="ordered">{t("ordered")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -283,25 +287,23 @@ export default function QuotationsPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading quotations. Please try again.
+            {t("loadError")}
           </div>
         ) : quotations.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No quotations found. Create your first quotation to get started.
-          </div>
+          <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Quotation #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Valid Until</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("quotationNumber")}</TableHead>
+                    <TableHead>{tCommon("customer")}</TableHead>
+                    <TableHead>{t("date")}</TableHead>
+                    <TableHead>{t("validUntil")}</TableHead>
+                    <TableHead className="text-right">{t("amount")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -328,7 +330,7 @@ export default function QuotationsPage() {
                               variant="secondary"
                               className="bg-yellow-100 text-xs text-yellow-800"
                             >
-                              Expiring Soon
+                              {t("expiringSoon")}
                             </Badge>
                           )}
                         </div>
@@ -336,8 +338,7 @@ export default function QuotationsPage() {
                       <TableCell className="text-right">
                         <div className="font-medium">{formatCurrency(quotation.totalAmount)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {quotation.lineItems.length} item
-                          {quotation.lineItems.length !== 1 ? "s" : ""}
+                          {t("itemsCount", { count: String(quotation.lineItems.length) })}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(quotation.status)}</TableCell>
@@ -367,7 +368,7 @@ export default function QuotationsPage() {
                                   size="sm"
                                   disabled={changeStatus.isPending}
                                 >
-                                  Change Status
+                                  {t("changeStatus")}
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -394,12 +395,12 @@ export default function QuotationsPage() {
                               className="bg-green-600 hover:bg-green-700"
                             >
                               <ShoppingCart className="mr-1 h-4 w-4" />
-                              Convert to Order
+                              {t("convertToOrder")}
                             </Button>
                           )}
                           {quotation.salesOrderId && (
                             <Badge variant="outline" className="text-xs">
-                              Converted
+                              {t("converted")}
                             </Badge>
                           )}
                         </div>
@@ -445,30 +446,29 @@ export default function QuotationsPage() {
       <AlertDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Convert Quotation to Sales Order</AlertDialogTitle>
+            <AlertDialogTitle>{t("convertTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to convert quotation{" "}
-              <strong>{quotationToConvert?.quotationNumber}</strong> to a sales order?
+              {t("convertDescription", { number: quotationToConvert?.quotationNumber ?? "" })}
             </AlertDialogDescription>
             <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-              <p>This will:</p>
+              <p>{t("convertWillLabel")}</p>
               <ul className="ml-2 list-inside list-disc space-y-1">
-                <li>Create a new sales order with all quotation details</li>
-                <li>Copy all line items to the sales order</li>
-                <li>Update the quotation status to &quot;Ordered&quot;</li>
-                <li>Link the quotation to the new sales order</li>
+                <li>{t("convertBulletCreateOrder")}</li>
+                <li>{t("convertBulletCopyItems")}</li>
+                <li>{t("convertBulletStatus")}</li>
+                <li>{t("convertBulletLink")}</li>
               </ul>
-              <p className="font-medium">This action cannot be undone.</p>
+              <p className="font-medium">{t("convertCannotUndo")}</p>
             </div>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmConvert}
               className="bg-green-600 hover:bg-green-700"
               disabled={convertToOrder.isPending}
             >
-              {convertToOrder.isPending ? "Converting..." : "Convert to Sales Order"}
+              {convertToOrder.isPending ? t("converting") : t("convertAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

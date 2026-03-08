@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Container, Ship, Calendar, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,13 @@ type ActiveContainersWidgetProps = {
 };
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  confirmed: { label: "Confirmed", className: "bg-blue-100 text-blue-700 border-blue-200" },
-  in_transit: { label: "In Transit", className: "bg-purple-100 text-purple-700 border-purple-200" },
-  arrived: { label: "Arrived", className: "bg-green-100 text-green-700 border-green-200" },
+  confirmed: { label: "confirmed", className: "bg-blue-100 text-blue-700 border-blue-200" },
+  in_transit: { label: "inTransit", className: "bg-purple-100 text-purple-700 border-purple-200" },
+  arrived: { label: "arrived", className: "bg-green-100 text-green-700 border-green-200" },
 };
 
 export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useActiveContainers({ businessUnitId });
 
   // Loading state
@@ -31,8 +33,8 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
           <div className="flex items-center gap-2">
             <Container className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Active Containers</CardTitle>
-              <CardDescription>Containers currently in transit</CardDescription>
+              <CardTitle>{t("activeContainersTitle")}</CardTitle>
+              <CardDescription>{t("containersCurrentlyInTransit")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -53,16 +55,16 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
           <div className="flex items-center gap-2">
             <Container className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Active Containers</CardTitle>
-              <CardDescription>Containers currently in transit</CardDescription>
+              <CardTitle>{t("activeContainersTitle")}</CardTitle>
+              <CardDescription>{t("containersCurrentlyInTransit")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load containers data</p>
+            <p className="text-sm text-destructive">{t("failedLoadContainersData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -78,16 +80,16 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
           <div className="flex items-center gap-2">
             <Container className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Active Containers</CardTitle>
-              <CardDescription>Containers currently in transit</CardDescription>
+              <CardTitle>{t("activeContainersTitle")}</CardTitle>
+              <CardDescription>{t("containersCurrentlyInTransit")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={Container}
-            title="No active containers"
-            description="All containers have been received"
+            title={t("noActiveContainers")}
+            description={t("allContainersReceived")}
           />
         </CardContent>
       </Card>
@@ -107,8 +109,8 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
         <div className="flex items-center gap-2">
           <Container className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Active Containers</CardTitle>
-            <CardDescription>Containers currently in transit</CardDescription>
+            <CardTitle>{t("activeContainersTitle")}</CardTitle>
+            <CardDescription>{t("containersCurrentlyInTransit")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -117,18 +119,18 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
         <div className="rounded-lg border bg-muted/50 p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Ship className="h-4 w-4" />
-            <span>In Transit</span>
+            <span>{t("inTransit")}</span>
           </div>
           <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
         </div>
 
         {/* Containers List */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Tracked Containers</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("trackedContainers")}</p>
           <div className="space-y-2">
             {sortedItems.slice(0, 5).map((container) => {
               const statusConfig = STATUS_CONFIG[container.status] || {
-                label: container.status,
+                label: t(container.status),
                 className: "bg-gray-100 text-gray-700 border-gray-200",
               };
               const eta = container.estimatedArrival ? parseISO(container.estimatedArrival) : null;
@@ -152,19 +154,19 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
                     </div>
                     <span className="text-xs text-muted-foreground truncate">{container.llNumber}</span>
                     <span className="text-xs text-muted-foreground truncate">
-                      {container.supplierName || "Unknown Supplier"}
+                      {container.supplierName || t("unknownSupplier")}
                     </span>
                     {eta && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3 flex-shrink-0" />
                         <span className={cn(isOverdue && "text-destructive font-medium")}>
-                          {isOverdue ? "Overdue: " : "ETA: "}
+                          {isOverdue ? `${t("overdueLabel")}: ` : `${t("eta")}: `}
                           {format(eta, "MMM d, yyyy")}
                         </span>
                       </div>
                     )}
                   </div>
-                  <Badge className={cn(statusConfig.className, "flex-shrink-0")}>{statusConfig.label}</Badge>
+                  <Badge className={cn(statusConfig.className, "flex-shrink-0")}>{t(statusConfig.label)}</Badge>
                 </Link>
               );
             })}
@@ -175,7 +177,7 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
         {data.count > 5 && (
           <Button asChild variant="outline" className="w-full">
             <Link href="/purchasing/load-lists?hasContainer=true">
-              View All Containers
+              {t("viewAllContainers")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

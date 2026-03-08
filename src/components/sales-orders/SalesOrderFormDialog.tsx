@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pencil, Trash2, Calculator, Check, ChevronsUpDown } from "lucide-react";
@@ -79,6 +80,8 @@ export function SalesOrderFormDialog({
   onOpenChange,
   salesOrder,
 }: SalesOrderFormDialogProps) {
+  const t = useTranslations("salesOrderForm");
+  const tCommon = useTranslations("common");
   const isEditMode = !!salesOrder;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateSalesOrder();
@@ -203,7 +206,7 @@ export function SalesOrderFormDialog({
 
   const onSubmit = async (data: SalesOrderFormInput) => {
     if (lineItems.length === 0) {
-      alert("Please add at least one line item");
+      alert(t("addLineItemRequired"));
       return;
     }
 
@@ -251,22 +254,18 @@ export function SalesOrderFormDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Sales Order" : "Create New Sales Order"}</DialogTitle>
-            <DialogDescription>
-              {isEditMode
-                ? "Update sales order details and line items."
-                : "Fill in the sales order details and add line items."}
-            </DialogDescription>
+            <DialogTitle>{isEditMode ? t("editTitle") : t("createTitle")}</DialogTitle>
+            <DialogDescription>{isEditMode ? t("editDescription") : t("createDescription")}</DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="general">General</TabsTrigger>
-                  <TabsTrigger value="items">Line Items ({lineItems.length})</TabsTrigger>
-                  <TabsTrigger value="shipping">Shipping</TabsTrigger>
-                  <TabsTrigger value="other">Terms & Notes</TabsTrigger>
+                  <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
+                  <TabsTrigger value="items">{t("lineItemsTab", { count: String(lineItems.length) })}</TabsTrigger>
+                  <TabsTrigger value="shipping">{t("shippingTab")}</TabsTrigger>
+                  <TabsTrigger value="other">{t("termsTab")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="mt-4 space-y-4">
@@ -277,7 +276,7 @@ export function SalesOrderFormDialog({
                       const selectedCustomer = customers.find((c) => c.id === field.value);
                       return (
                         <FormItem className="flex flex-col">
-                          <FormLabel>Customer *</FormLabel>
+                          <FormLabel>{t("customer")} *</FormLabel>
                           <Popover open={customerOpen} onOpenChange={setCustomerOpen}>
                             <PopoverTrigger asChild>
                               <FormControl>
@@ -290,16 +289,16 @@ export function SalesOrderFormDialog({
                                     !field.value && "text-muted-foreground"
                                   )}
                                 >
-                                  {selectedCustomer ? selectedCustomer.name : "Search customer..."}
+                                  {selectedCustomer ? selectedCustomer.name : t("searchCustomer")}
                                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent className="w-[400px] p-0" align="start">
                               <Command>
-                                <CommandInput placeholder="Search by code or name..." />
+                                <CommandInput placeholder={t("customerSearchPlaceholder")} />
                                 <CommandList className="max-h-[300px] overflow-y-auto">
-                                  <CommandEmpty>No customer found.</CommandEmpty>
+                                  <CommandEmpty>{t("noCustomerFound")}</CommandEmpty>
                                   <CommandGroup>
                                     {customers
                                       .filter((c) => c.isActive)
@@ -346,7 +345,7 @@ export function SalesOrderFormDialog({
                       name="orderDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Order Date *</FormLabel>
+                          <FormLabel>{t("orderDate")} *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -360,7 +359,7 @@ export function SalesOrderFormDialog({
                       name="expectedDeliveryDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Expected Delivery *</FormLabel>
+                          <FormLabel>{t("expectedDelivery")} *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -374,21 +373,19 @@ export function SalesOrderFormDialog({
                 <TabsContent value="items" className="mt-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-medium">Line Items</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Manage products or services in this order
-                      </p>
+                      <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
+                      <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
                     </div>
                     <Button type="button" onClick={handleAddItem} size="sm">
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Item
+                      {t("addItem")}
                     </Button>
                   </div>
 
                   {lineItems.length === 0 ? (
                     <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                      <p>No items added yet.</p>
-                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
+                      <p>{t("noItems")}</p>
+                      <p className="text-sm">{t("noItemsDescription")}</p>
                     </div>
                   ) : (
                     <>
@@ -396,14 +393,14 @@ export function SalesOrderFormDialog({
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Item</TableHead>
-                              <TableHead className="text-right">Qty</TableHead>
-                              <TableHead className="text-center">Unit</TableHead>
-                              <TableHead className="text-right">Price</TableHead>
-                              <TableHead className="text-right">Disc %</TableHead>
-                              <TableHead className="text-right">Tax %</TableHead>
-                              <TableHead className="text-right">Total</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
+                              <TableHead>{tCommon("item")}</TableHead>
+                              <TableHead className="text-right">{t("qty")}</TableHead>
+                              <TableHead className="text-center">{t("unit")}</TableHead>
+                              <TableHead className="text-right">{t("price")}</TableHead>
+                              <TableHead className="text-right">{t("discountPct")}</TableHead>
+                              <TableHead className="text-right">{t("taxPct")}</TableHead>
+                              <TableHead className="text-right">{t("total")}</TableHead>
+                              <TableHead className="w-[100px]">{tCommon("actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -469,25 +466,25 @@ export function SalesOrderFormDialog({
                       <div className="rounded-lg bg-muted p-4">
                         <div className="mb-3 flex items-center gap-2">
                           <Calculator className="h-5 w-5" />
-                          <h4 className="font-semibold">Totals</h4>
+                          <h4 className="font-semibold">{t("totals")}</h4>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <span>Subtotal:</span>
+                            <span>{t("subtotal")}:</span>
                             <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                           </div>
                           <div className="flex justify-between text-red-600">
-                            <span>Discount:</span>
+                            <span>{t("discount")}:</span>
                             <span className="font-medium">
                               -{formatCurrency(totals.totalDiscount)}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Tax:</span>
+                            <span>{t("tax")}:</span>
                             <span className="font-medium">{formatCurrency(totals.totalTax)}</span>
                           </div>
                           <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                            <span>Total:</span>
+                            <span>{t("total")}:</span>
                             <span>{formatCurrency(totals.totalAmount)}</span>
                           </div>
                         </div>
@@ -502,9 +499,9 @@ export function SalesOrderFormDialog({
                     name="shippingAddress"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Address</FormLabel>
+                          <FormLabel>{t("address")}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Street address" />
+                            <Input {...field} placeholder={t("addressPlaceholder")} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -517,9 +514,9 @@ export function SalesOrderFormDialog({
                       name="shippingCity"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>City</FormLabel>
+                          <FormLabel>{t("city")}</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="City" />
+                            <Input {...field} placeholder={t("cityPlaceholder")} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -531,9 +528,9 @@ export function SalesOrderFormDialog({
                       name="shippingState"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>State/Province</FormLabel>
+                          <FormLabel>{t("stateProvince")}</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="State" />
+                            <Input {...field} placeholder={t("statePlaceholder")} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -547,9 +544,9 @@ export function SalesOrderFormDialog({
                       name="shippingPostalCode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Postal Code</FormLabel>
+                          <FormLabel>{t("postalCode")}</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Postal code" />
+                            <Input {...field} placeholder={t("postalCodePlaceholder")} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -561,9 +558,9 @@ export function SalesOrderFormDialog({
                       name="shippingCountry"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Country</FormLabel>
+                          <FormLabel>{t("country")}</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Country" />
+                            <Input {...field} placeholder={t("countryPlaceholder")} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -578,7 +575,7 @@ export function SalesOrderFormDialog({
                     name="paymentTerms"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Payment Terms</FormLabel>
+                        <FormLabel>{t("paymentTerms")}</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={3} />
                         </FormControl>
@@ -592,7 +589,7 @@ export function SalesOrderFormDialog({
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Internal Notes</FormLabel>
+                        <FormLabel>{t("internalNotes")}</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={4} />
                         </FormControl>
@@ -605,17 +602,17 @@ export function SalesOrderFormDialog({
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
+                  {tCommon("cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
+                    ? t("saving")
                     : isEditMode
-                      ? "Update Order"
-                      : "Create Order"}
+                      ? t("updateOrder")
+                      : t("createOrder")}
                 </Button>
               </DialogFooter>
             </form>

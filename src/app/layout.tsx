@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { cookies } from "next/headers";
+import { NextIntlClientProvider } from "next-intl";
 import "./globals.css";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
-import { LanguageProvider } from "@/contexts/LanguageContext";
 import { UserPreferencesProvider } from "@/contexts/UserPreferencesContext";
 import { Toaster } from "@/components/ui/sonner";
+import { defaultLocale, localeCookieName, locales, type Locale } from "@/lib/i18n";
+import { translations } from "@/lib/i18n/translations";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,22 +21,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+const isLocale = (value: string): value is Locale => {
+  return locales.includes(value as Locale);
+};
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const localeValue = cookieStore.get(localeCookieName)?.value;
+  const locale = localeValue && isLocale(localeValue) ? localeValue : defaultLocale;
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={`${inter.className} overscroll-contain`}>
-        <LanguageProvider>
+        <NextIntlClientProvider locale={locale} messages={translations[locale]}>
           <UserPreferencesProvider>
             <ReactQueryProvider>
               {children}
               <Toaster richColors position="top-right" />
             </ReactQueryProvider>
           </UserPreferencesProvider>
-        </LanguageProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

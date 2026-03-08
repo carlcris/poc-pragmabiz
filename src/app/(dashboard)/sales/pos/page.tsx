@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Search, Trash2, CreditCard, Banknote, Smartphone, X, AlertCircle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
+import { AlertCircle, Banknote, CreditCard, Search, Smartphone, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
 import { useCurrency } from "@/hooks/useCurrency";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,9 +38,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
-// No need for BasePackageLabel component - we already have UOM in cart item
 
 export default function POSPage() {
+  const t = useTranslations("posPage");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<POSCartItem[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("walk-in");
@@ -55,25 +56,21 @@ export default function POSPage() {
     limit: 100,
     includeStock: true,
   });
-  const { data: customersData, isLoading: customersLoading } = useCustomers({
-    page: 1,
-    limit: 50,
+  const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, limit: 50 });
+  const createTransaction = useCreatePOSTransaction({
+    success: t("transactionSuccess"),
+    error: t("transactionError"),
   });
-  const createTransaction = useCreatePOSTransaction();
 
   const items = useMemo(() => (itemsData?.data || []) as ItemWithStock[], [itemsData]);
   const customers = customersData?.data || [];
 
-  // Create a map of item stock for quick lookup
   const itemStockMap = useMemo(() => {
     const map = new Map<string, number>();
-    items.forEach((item) => {
-      map.set(item.id, item.available);
-    });
+    items.forEach((item) => map.set(item.id, item.available));
     return map;
   }, [items]);
 
-  // Calculate cart totals
   const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
   const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
   const taxRate = 0.12;
@@ -82,7 +79,6 @@ export default function POSPage() {
   const received = parseFloat(amountReceived) || 0;
   const changeAmount = received - totalAmount;
 
-  // Sync cart to localStorage for customer display
   useEffect(() => {
     const cartData = cart.map((item) => ({
       id: item.id,
@@ -91,18 +87,10 @@ export default function POSPage() {
       price: item.unitPrice,
       total: item.lineTotal,
     }));
-
     localStorage.setItem("pos_cart", JSON.stringify(cartData));
-
-    // Dispatch custom event for same-window updates
-    window.dispatchEvent(
-      new CustomEvent("pos_update", {
-        detail: { cart: cartData },
-      })
-    );
+    window.dispatchEvent(new CustomEvent("pos_update", { detail: { cart: cartData } }));
   }, [cart]);
 
-  // Sync totals to localStorage for customer display
   useEffect(() => {
     const totals = {
       subtotal,
@@ -112,37 +100,29 @@ export default function POSPage() {
       paid: received,
       change: changeAmount,
     };
-
     localStorage.setItem("pos_totals", JSON.stringify(totals));
-
-    // Dispatch custom event for same-window updates
-    window.dispatchEvent(
-      new CustomEvent("pos_update", {
-        detail: { totals },
-      })
-    );
+    window.dispatchEvent(new CustomEvent("pos_update", { detail: { totals } }));
   }, [subtotal, totalDiscount, totalTax, totalAmount, received, changeAmount]);
 
   const addToCart = (item: ItemWithStock) => {
-    // Strict validation: Check if item is out of stock
     if (item.available <= 0) {
-      toast.error(`${item.name} is out of stock`, {
-        description: "Cannot add items with zero or negative stock",
+      toast.error(t("outOfStockError", { name: item.name }), {
+        description: t("outOfStockDescription"),
         icon: <AlertCircle className="h-4 w-4" />,
       });
       return;
     }
 
-    const existingItemIndex = cart.findIndex((c) => c.itemId === item.id);
-
+    const existingItemIndex = cart.findIndex((entry) => entry.itemId === item.id);
     if (existingItemIndex >= 0) {
       const currentQty = cart[existingItemIndex].quantity;
       const newQty = currentQty + 1;
-
-      // Strict validation: Check if new quantity exceeds available stock
       if (newQty > item.available) {
-        toast.error(`Insufficient stock for ${item.name}`, {
-          description: `Only ${item.available} units available. Currently in cart: ${currentQty}`,
+        toast.error(t("insufficientStockError", { name: item.name }), {
+          description: t("insufficientStockDescription", {
+            available: item.available,
+            current: currentQty,
+          }),
           icon: <AlertCircle className="h-4 w-4" />,
         });
         return;
@@ -152,27 +132,31 @@ export default function POSPage() {
       newCart[existingItemIndex] = {
         ...newCart[existingItemIndex],
         quantity: newQty,
-        lineTotal:
-          newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
+        lineTotal: newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
       };
       setCart(newCart);
     } else {
-      const newItem: POSCartItem = {
-        id: `cart-${Date.now()}`,
-        itemId: item.id,
-        itemCode: item.code,
-        itemName: item.name,
-        quantity: 1,
-        uom: item.uom || "",
-        unitPrice: item.listPrice,
-        discount: 0,
-        lineTotal: item.listPrice,
-      };
-      setCart([...cart, newItem]);
+      setCart([
+        ...cart,
+        {
+          id: `cart-${Date.now()}`,
+          itemId: item.id,
+          itemCode: item.code,
+          itemName: item.name,
+          quantity: 1,
+          uom: item.uom || "",
+          unitPrice: item.listPrice,
+          discount: 0,
+          lineTotal: item.listPrice,
+        },
+      ]);
     }
+
     setItemSearchOpen(false);
     setSearch("");
   };
+
+  const removeFromCart = (index: number) => setCart(cart.filter((_, itemIndex) => itemIndex !== index));
 
   const updateQuantity = (index: number, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -182,11 +166,12 @@ export default function POSPage() {
 
     const cartItem = cart[index];
     const availableStock = itemStockMap.get(cartItem.itemId) || 0;
-
-    // Strict validation: Check if new quantity exceeds available stock
     if (newQuantity > availableStock) {
-      toast.error(`Insufficient stock for ${cartItem.itemName}`, {
-        description: `Only ${availableStock} units available`,
+      toast.error(t("insufficientStockError", { name: cartItem.itemName }), {
+        description: t("insufficientStockDescription", {
+          available: availableStock,
+          current: cartItem.quantity,
+        }),
         icon: <AlertCircle className="h-4 w-4" />,
       });
       return;
@@ -205,32 +190,25 @@ export default function POSPage() {
     const newCart = [...cart];
     newCart[index] = {
       ...newCart[index],
-      discount: discount,
+      discount,
       lineTotal: newCart[index].quantity * newCart[index].unitPrice - discount,
     };
     setCart(newCart);
   };
 
-  const removeFromCart = (index: number) => {
-    setCart(cart.filter((_, i) => i !== index));
-  };
-
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
-    // Final validation: Check all items have sufficient stock before checkout
     const stockIssues: string[] = [];
     for (const cartItem of cart) {
       const availableStock = itemStockMap.get(cartItem.itemId) || 0;
       if (cartItem.quantity > availableStock) {
-        stockIssues.push(
-          `${cartItem.itemName}: Need ${cartItem.quantity}, only ${availableStock} available`
-        );
+        stockIssues.push(`${cartItem.itemName}: ${cartItem.quantity}/${availableStock}`);
       }
     }
 
     if (stockIssues.length > 0) {
-      toast.error("Cannot complete checkout - Insufficient stock", {
+      toast.error(t("checkoutStockError"), {
         description: stockIssues.join("; "),
         icon: <AlertCircle className="h-4 w-4" />,
         duration: 5000,
@@ -243,30 +221,21 @@ export default function POSPage() {
       amount: paymentMethod === "cash" ? received : totalAmount,
     };
 
-    const transactionData = {
+    await createTransaction.mutateAsync({
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
       items: cart.map(({ id, ...item }) => {
         void id;
         return item;
       }),
       payments: [payment],
-    };
+    });
 
-    await createTransaction.mutateAsync(transactionData);
-
-    // Reset cart and form
     setCart([]);
     setSelectedCustomerId("walk-in");
     setAmountReceived("");
     setShowCheckout(false);
-
-    // Clear customer display
     localStorage.removeItem("pos_cart");
     localStorage.removeItem("pos_totals");
-  };
-
-  const clearCart = () => {
-    setCart([]);
   };
 
   const getPaymentIcon = (method: PaymentMethod) => {
@@ -284,29 +253,23 @@ export default function POSPage() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-4">
-      {/* Left Side - Cart Items Table */}
       <div className="flex flex-1 flex-col space-y-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Point of Sale</h1>
-          <p className="text-muted-foreground">Quick checkout for walk-in customers</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
 
-        {/* Item Search */}
         <div className="flex gap-2">
           <Popover open={itemSearchOpen} onOpenChange={setItemSearchOpen}>
             <PopoverTrigger asChild>
               <Button variant="outline" className="flex-1 justify-start">
                 <Search className="mr-2 h-4 w-4" />
-                Search and add items...
+                {t("searchAndAddItems")}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[600px] p-0" align="start">
               <Command>
-                <CommandInput
-                  placeholder="Search items..."
-                  value={search}
-                  onValueChange={setSearch}
-                />
+                <CommandInput placeholder={t("searchItems")} value={search} onValueChange={setSearch} />
                 <CommandList>
                   {itemsLoading ? (
                     <CommandGroup>
@@ -324,52 +287,36 @@ export default function POSPage() {
                     </CommandGroup>
                   ) : (
                     <>
-                      <CommandEmpty>No items found.</CommandEmpty>
+                      <CommandEmpty>{t("noItemsFound")}</CommandEmpty>
                       <CommandGroup>
-                        {items
-                          .filter((item) => item.isActive)
-                          .slice(0, 20)
-                          .map((item) => {
-                            const isOutOfStock = item.available <= 0;
-                            const isLowStock =
-                              item.available > 0 && item.available <= item.reorderPoint;
+                        {items.filter((item) => item.isActive).slice(0, 20).map((item) => {
+                          const isOutOfStock = item.available <= 0;
+                          const isLowStock = item.available > 0 && item.available <= item.reorderPoint;
 
-                            return (
-                              <CommandItem
-                                key={item.id}
-                                value={item.name}
-                                onSelect={() => addToCart(item)}
-                                disabled={isOutOfStock}
-                                className={
-                                  isOutOfStock ? "cursor-not-allowed opacity-50" : "cursor-pointer"
-                                }
-                              >
-                                <div className="flex w-full items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{item.name}</span>
-                                      {isOutOfStock && (
-                                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-950 dark:text-red-400">
-                                          Out of Stock
-                                        </span>
-                                      )}
-                                      {isLowStock && (
-                                        <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700 dark:bg-orange-950 dark:text-orange-400">
-                                          Low Stock
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {item.code} • {item.uom} • Stock: {item.available}
-                                    </div>
+                          return (
+                            <CommandItem
+                              key={item.id}
+                              value={item.name}
+                              onSelect={() => addToCart(item)}
+                              disabled={isOutOfStock}
+                              className={isOutOfStock ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
+                            >
+                              <div className="flex w-full items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{item.name}</span>
+                                    {isOutOfStock && <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">{t("outOfStock")}</span>}
+                                    {isLowStock && <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700">{t("lowStock")}</span>}
                                   </div>
-                                  <div className="text-sm font-medium">
-                                    {formatCurrency(item.listPrice)}
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.code} • {item.uom} • {t("stockLabel", { count: item.available })}
                                   </div>
                                 </div>
-                              </CommandItem>
-                            );
-                          })}
+                                <div className="text-sm font-medium">{formatCurrency(item.listPrice)}</div>
+                              </div>
+                            </CommandItem>
+                          );
+                        })}
                       </CommandGroup>
                     </>
                   )}
@@ -378,89 +325,71 @@ export default function POSPage() {
             </PopoverContent>
           </Popover>
           {cart.length > 0 && (
-            <Button variant="outline" onClick={clearCart}>
+            <Button variant="outline" onClick={() => setCart([])}>
               <X className="mr-2 h-4 w-4" />
-              Clear
+              {t("clear")}
             </Button>
           )}
         </div>
 
-        {/* Cart Table */}
         <div className="flex-1 overflow-hidden rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50px]">#</TableHead>
-                <TableHead className="w-[200px]">Item</TableHead>
-                <TableHead className="w-[250px]">Unit</TableHead>
-                <TableHead className="w-[120px]">Price</TableHead>
-                <TableHead className="w-[50px]">Qty</TableHead>
-                <TableHead className="w-[80px]">Discount</TableHead>
-                <TableHead className="w-[120px] text-right">Total</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
+                <TableHead className="w-[50px]">{t("itemNumber")}</TableHead>
+                <TableHead className="w-[200px]">{t("item")}</TableHead>
+                <TableHead className="w-[250px]">{t("unit")}</TableHead>
+                <TableHead className="w-[120px]">{t("price")}</TableHead>
+                <TableHead className="w-[50px]">{t("qty")}</TableHead>
+                <TableHead className="w-[80px]">{t("discount")}</TableHead>
+                <TableHead className="w-[120px] text-right">{t("total")}</TableHead>
+                <TableHead className="w-[50px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {cart.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
-                    No items in cart. Search and add items to begin.
+                    <div>{t("noItemsInCart")}</div>
+                    <div className="text-sm">{t("noItemsInCartDescription")}</div>
                   </TableCell>
                 </TableRow>
               ) : (
-                cart.map((item, index) => {
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{item.itemName}</div>
-                        <div className="text-xs text-muted-foreground">{item.itemCode}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{item.uom || "Unit"}</div>
-                      </TableCell>
-                      <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                          className="w-20"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={item.discount}
-                          onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)}
-                          className="w-24"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.lineTotal)}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => removeFromCart(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                cart.map((item, index) => (
+                  <TableRow key={item.id}>
+                    <TableCell className="font-medium">{index + 1}</TableCell>
+                    <TableCell>
+                      <div className="font-medium">{item.itemName}</div>
+                      <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{item.uom || t("unit")}</div>
+                    </TableCell>
+                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                    <TableCell>
+                      <Input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)} className="w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Input type="number" min="0" value={item.discount} onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)} className="w-24" />
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(item.lineTotal)}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="icon" onClick={() => removeFromCart(index)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
         </div>
       </div>
 
-      {/* Right Side - Summary & Payment */}
       <div className="flex w-[400px] flex-col space-y-4">
-        {/* Customer Selection */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Customer</CardTitle>
+            <CardTitle className="text-base">{t("customer")}</CardTitle>
           </CardHeader>
           <CardContent>
             {customersLoading ? (
@@ -468,10 +397,10 @@ export default function POSPage() {
             ) : (
               <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Walk-in Customer" />
+                  <SelectValue placeholder={t("walkInCustomer")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="walk-in">Walk-in Customer</SelectItem>
+                  <SelectItem value="walk-in">{t("walkInCustomer")}</SelectItem>
                   {customers.map((customer) => (
                     <SelectItem key={customer.id} value={customer.id}>
                       {customer.name}
@@ -483,82 +412,60 @@ export default function POSPage() {
           </CardContent>
         </Card>
 
-        {/* Summary */}
         <Card className="flex-1">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Bill Summary</CardTitle>
+            <CardTitle className="text-base">{t("billSummary")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Items:</span>
+                <span className="text-muted-foreground">{t("items")}:</span>
                 <span className="font-medium">{cart.length}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="text-muted-foreground">{t("subtotal")}:</span>
                 <span className="font-medium">{formatCurrency(subtotal)}</span>
               </div>
               {totalDiscount > 0 && (
                 <div className="flex justify-between text-sm text-red-600">
-                  <span>Discount:</span>
+                  <span>{t("discount")}:</span>
                   <span>-{formatCurrency(totalDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">VAT (12%):</span>
+                <span className="text-muted-foreground">{t("vat")}:</span>
                 <span className="font-medium">{formatCurrency(totalTax)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-xl font-bold">
-                <span>Total:</span>
+                <span>{t("total")}:</span>
                 <span>{formatCurrency(totalAmount)}</span>
               </div>
             </div>
 
             {!showCheckout ? (
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={cart.length === 0}
-                onClick={() => setShowCheckout(true)}
-              >
-                Proceed to Payment
+              <Button size="lg" className="w-full" disabled={cart.length === 0} onClick={() => setShowCheckout(true)}>
+                {t("proceedToPayment")}
               </Button>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Payment Method</label>
+                  <label className="mb-2 block text-sm font-medium">{t("paymentMethod")}</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      variant={paymentMethod === "cash" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPaymentMethod("cash")}
-                    >
+                    <Button variant={paymentMethod === "cash" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("cash")}>
                       {getPaymentIcon("cash")}
-                      <span className="ml-2">Cash</span>
+                      <span className="ml-2">{t("cash")}</span>
                     </Button>
-                    <Button
-                      variant={paymentMethod === "credit_card" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPaymentMethod("credit_card")}
-                    >
+                    <Button variant={paymentMethod === "credit_card" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("credit_card")}>
                       {getPaymentIcon("credit_card")}
-                      <span className="ml-2">Card</span>
+                      <span className="ml-2">{t("card")}</span>
                     </Button>
-                    <Button
-                      variant={paymentMethod === "gcash" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPaymentMethod("gcash")}
-                    >
+                    <Button variant={paymentMethod === "gcash" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("gcash")}>
                       {getPaymentIcon("gcash")}
-                      <span className="ml-2">GCash</span>
+                      <span className="ml-2">{t("gcash")}</span>
                     </Button>
-                    <Button
-                      variant={paymentMethod === "paymaya" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPaymentMethod("paymaya")}
-                    >
+                    <Button variant={paymentMethod === "paymaya" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("paymaya")}>
                       {getPaymentIcon("paymaya")}
-                      <span className="ml-2">Maya</span>
+                      <span className="ml-2">{t("maya")}</span>
                     </Button>
                   </div>
                 </div>
@@ -566,39 +473,23 @@ export default function POSPage() {
                 {paymentMethod === "cash" && (
                   <>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Amount Received</label>
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        value={amountReceived}
-                        onChange={(e) => setAmountReceived(e.target.value)}
-                        autoFocus
-                      />
+                      <label className="text-sm font-medium">{t("amountReceived")}</label>
+                      <Input type="number" placeholder="0.00" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} autoFocus />
                     </div>
 
                     {received > 0 && (
                       <div className="flex justify-between text-lg font-bold">
-                        <span>Change:</span>
-                        <span className={changeAmount < 0 ? "text-red-600" : "text-green-600"}>
-                          {formatCurrency(Math.abs(changeAmount))}
-                        </span>
+                        <span>{t("change")}:</span>
+                        <span className={changeAmount < 0 ? "text-red-600" : "text-green-600"}>{formatCurrency(Math.abs(changeAmount))}</span>
                       </div>
                     )}
                   </>
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" onClick={() => setShowCheckout(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCheckout}
-                    disabled={
-                      createTransaction.isPending ||
-                      (paymentMethod === "cash" && (received < totalAmount || received === 0))
-                    }
-                  >
-                    Complete Sale
+                  <Button variant="outline" onClick={() => setShowCheckout(false)}>{t("cancel")}</Button>
+                  <Button onClick={handleCheckout} disabled={createTransaction.isPending || (paymentMethod === "cash" && (received < totalAmount || received === 0))}>
+                    {t("completeSale")}
                   </Button>
                 </div>
               </div>

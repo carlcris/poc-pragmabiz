@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
-import { z } from "zod";
 import { toast } from "sonner";
 import {
   useCreateStockRequisition,
@@ -56,16 +56,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
+import {
+  createStockRequisitionFormSchema,
+  type StockRequisitionFormValues,
+} from "@/lib/validations/stock-requisition";
 import type { StockRequisition } from "@/types/stock-requisition";
-
-const srFormSchema = z.object({
-  supplierId: z.string().min(1, "Supplier is required"),
-  requisitionDate: z.string().min(1, "Requisition date is required"),
-  requiredByDate: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type SRFormValues = z.infer<typeof srFormSchema>;
 
 type LineItem = {
   itemId: string;
@@ -87,10 +82,16 @@ export function StockRequisitionFormDialog({
   onOpenChange,
   stockRequisition,
 }: StockRequisitionFormDialogProps) {
+  const t = useTranslations("stockRequisitionForm");
+  const tValidation = useTranslations("stockRequisitionValidation");
   const isEditMode = !!stockRequisition;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateStockRequisition();
   const updateMutation = useUpdateStockRequisition();
+  const srFormSchema = useMemo(
+    () => createStockRequisitionFormSchema((key) => tValidation(key)),
+    [tValidation]
+  );
 
   const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
@@ -108,7 +109,7 @@ export function StockRequisitionFormDialog({
   const [activeTab, setActiveTab] = useState("general");
 
   // Default values
-  const defaultValues = useMemo<SRFormValues>(
+  const defaultValues = useMemo<StockRequisitionFormValues>(
     () => ({
       supplierId: "",
       requisitionDate: new Date().toISOString().split("T")[0],
@@ -118,7 +119,7 @@ export function StockRequisitionFormDialog({
     []
   );
 
-  const form = useForm<SRFormValues>({
+  const form = useForm<StockRequisitionFormValues>({
     resolver: zodResolver(srFormSchema),
     defaultValues,
   });
@@ -177,13 +178,13 @@ export function StockRequisitionFormDialog({
 
     // Validation
     if (!selectedItemId || !quantity || !price) {
-      setAddItemError("Please select an item and enter quantity and price");
+      setAddItemError(t("addItemMissingFields"));
       return;
     }
 
     const selectedItem = items.find((i) => i.id === selectedItemId);
     if (!selectedItem) {
-      setAddItemError("Item not found");
+      setAddItemError(t("itemNotFound"));
       return;
     }
 
@@ -199,16 +200,16 @@ export function StockRequisitionFormDialog({
     setSelectedItemId("");
     setQuantity("");
     setPrice("");
-    toast.success("Item added successfully");
+    toast.success(t("itemAddedSuccess"));
   };
 
   const handleRemoveItem = (index: number) => {
     setLineItems(lineItems.filter((_, i) => i !== index));
   };
 
-  async function onSubmit(values: SRFormValues) {
+  async function onSubmit(values: StockRequisitionFormValues) {
     if (lineItems.length === 0) {
-      toast.error("Please add at least one line item");
+      toast.error(t("lineItemsRequired"));
       return;
     }
 
@@ -231,10 +232,10 @@ export function StockRequisitionFormDialog({
           id: stockRequisition.id,
           data: requestData,
         });
-        toast.success("Stock Requisition updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         await createMutation.mutateAsync(requestData);
-        toast.success("Stock Requisition created successfully");
+        toast.success(t("createSuccess"));
       }
 
       onOpenChange(false);
@@ -242,7 +243,7 @@ export function StockRequisitionFormDialog({
       setLineItems([]);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save stock requisition"
+        error instanceof Error ? error.message : t("saveError")
       );
     }
   }
@@ -256,12 +257,12 @@ export function StockRequisitionFormDialog({
               <div className="flex items-center gap-4">
                 <div>
                   <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
-                  {isEditMode ? "Edit Stock Requisition" : "New Stock Requisition"}
+                  {isEditMode ? t("editTitle") : t("createTitle")}
                   </DialogTitle>
                   <DialogDescription className="text-sm text-gray-500">
                     {isEditMode
-                      ? "Update requisition details and modify line items"
-                      : "Create a new requisition by filling in supplier details and adding items"}
+                      ? t("editDescription")
+                      : t("createDescription")}
                   </DialogDescription>
                 </div>
               </div>
@@ -279,11 +280,11 @@ export function StockRequisitionFormDialog({
                 <TabsList className="grid w-full grid-cols-2 h-9">
                   <TabsTrigger value="general" className="gap-1.5 text-xs font-semibold">
                     <FileText className="h-3.5 w-3.5" />
-                    General
+                    {t("generalTab")}
                   </TabsTrigger>
                   <TabsTrigger value="items" className="gap-1.5 text-xs font-semibold">
                     <Package className="h-3.5 w-3.5" />
-                    Items {lineItems.length > 0 && (
+                    {t("itemsTab")} {lineItems.length > 0 && (
                       <span className="ml-1 rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
                         {lineItems.length}
                       </span>
@@ -301,7 +302,7 @@ export function StockRequisitionFormDialog({
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
                           <FileText className="h-4 w-4 text-gray-600" />
                         </div>
-                        <h3 className="text-sm font-semibold text-gray-900">Basic Information</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">{t("basicInformation")}</h3>
                       </div>
                     </div>
                     <div className="p-5">
@@ -311,11 +312,11 @@ export function StockRequisitionFormDialog({
                           name="supplierId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">Supplier *</FormLabel>
+                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("supplierLabel")}</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger className="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                                    <SelectValue placeholder="Select supplier" />
+                                    <SelectValue placeholder={t("selectSupplier")} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -336,7 +337,7 @@ export function StockRequisitionFormDialog({
                           name="requisitionDate"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">Requisition Date *</FormLabel>
+                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("requisitionDateLabel")}</FormLabel>
                               <FormControl>
                                 <Input type="date" {...field} className="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
                               </FormControl>
@@ -350,7 +351,7 @@ export function StockRequisitionFormDialog({
                           name="requiredByDate"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">Required By Date</FormLabel>
+                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("requiredByDateLabel")}</FormLabel>
                               <FormControl>
                                 <Input type="date" {...field} className="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
                               </FormControl>
@@ -365,9 +366,9 @@ export function StockRequisitionFormDialog({
                         name="notes"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">Notes</FormLabel>
+                            <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("notesLabel")}</FormLabel>
                             <FormControl>
-                              <Textarea {...field} rows={2} placeholder="Add any additional notes or comments..." className="resize-none text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
+                              <Textarea {...field} rows={2} placeholder={t("notesPlaceholder")} className="resize-none text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -387,13 +388,13 @@ export function StockRequisitionFormDialog({
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
                           <Package className="h-4 w-4 text-gray-600" />
                         </div>
-                      <h3 className="text-sm font-semibold text-gray-900">Add Items to Stock Requisition</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">{t("addItemsTitle")}</h3>
                       </div>
                     </div>
                     <div className="p-5 bg-gradient-to-br from-purple-50/30 to-violet-50/30">
                       <div className="grid grid-cols-12 gap-3">
                       <div className="col-span-5">
-                        <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">Item *</label>
+                        <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("itemLabel")}</label>
                         <Popover open={itemOpen} onOpenChange={setItemOpen}>
                           <PopoverTrigger asChild>
                             <Button
@@ -412,17 +413,17 @@ export function StockRequisitionFormDialog({
                                     );
                                     return selectedItem
                                       ? `${selectedItem.code} - ${selectedItem.name}`
-                                      : "Select an item";
+                                      : t("selectItem");
                                   })()
-                                : "Search item..."}
+                                : t("searchItemPlaceholder")}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-[520px] p-0" align="start">
                             <Command>
-                              <CommandInput placeholder="Search by code or name..." />
+                              <CommandInput placeholder={t("searchItemByCodeOrName")} />
                               <CommandList className="max-h-[280px] overflow-y-auto">
-                                <CommandEmpty>No item found.</CommandEmpty>
+                                <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                                 <CommandGroup>
                                   {items
                                     .filter((item) => item.isActive)
@@ -469,10 +470,10 @@ export function StockRequisitionFormDialog({
                         </Popover>
                       </div>
                         <div className="col-span-2">
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">Quantity *</label>
+                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("quantityLabel")}</label>
                           <Input
                             type="number"
-                            placeholder="0"
+                            placeholder={t("quantityPlaceholder")}
                             value={quantity}
                             onChange={(e) => {
                               setQuantity(e.target.value);
@@ -483,13 +484,13 @@ export function StockRequisitionFormDialog({
                           />
                         </div>
                         <div className="col-span-3">
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">Unit Price *</label>
+                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitPriceLabel")}</label>
                         <Input
                           key={`unit-price-${selectedItemId}`}
                           type="text"
                           inputMode="decimal"
                           pattern="^-?\\d*(\\.\\d{0,2})?$"
-                          placeholder="0.00"
+                          placeholder={t("unitPricePlaceholder")}
                           value={price ?? ""}
                           onChange={(e) => {
                             const next = e.target.value;
@@ -508,7 +509,7 @@ export function StockRequisitionFormDialog({
                             className="w-full h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
                           >
                             <Plus className="mr-2 h-4 w-4" />
-                            Add Item
+                            {t("addItem")}
                           </Button>
                         </div>
                       </div>
@@ -534,13 +535,13 @@ export function StockRequisitionFormDialog({
                             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
                               <Package className="h-4 w-4 text-gray-600" />
                             </div>
-                          <h3 className="text-sm font-semibold text-gray-900">Stock Requisition Items</h3>
+                          <h3 className="text-sm font-semibold text-gray-900">{t("itemsTitle")}</h3>
                             <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-                              {lineItems.length} {lineItems.length === 1 ? 'item' : 'items'}
+                              {lineItems.length} {lineItems.length === 1 ? t("itemSingular") : t("itemPlural")}
                             </span>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs font-medium text-gray-500">Total Amount</p>
+                            <p className="text-xs font-medium text-gray-500">{t("totalAmount")}</p>
                             <p className="text-xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
                               {formatCurrency(totalAmount)}
                             </p>
@@ -551,11 +552,11 @@ export function StockRequisitionFormDialog({
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-gray-50 border-b border-gray-200">
-                              <TableHead className="font-semibold text-xs text-gray-700 h-10">ITEM CODE</TableHead>
-                              <TableHead className="font-semibold text-xs text-gray-700 h-10">ITEM NAME</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">QTY</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">UNIT PRICE</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">TOTAL</TableHead>
+                              <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("itemCode")}</TableHead>
+                              <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("itemName")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("qty")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("unitPrice")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("total")}</TableHead>
                               <TableHead className="w-[60px] h-10"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -594,9 +595,9 @@ export function StockRequisitionFormDialog({
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-violet-100">
                           <ShoppingCart className="h-8 w-8 text-purple-600" />
                         </div>
-                        <h3 className="mb-2 text-base font-semibold text-gray-900">No items added yet</h3>
+                        <h3 className="mb-2 text-base font-semibold text-gray-900">{t("noItemsTitle")}</h3>
                         <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                          Start by selecting an item, entering quantity and price, then click &quot;Add Item&quot;
+                          {t("noItemsDescription")}
                         </p>
                       </div>
                     </div>
@@ -611,7 +612,11 @@ export function StockRequisitionFormDialog({
                 <div className="text-sm text-gray-500">
                   {lineItems.length > 0 && (
                     <span>
-                      <span className="font-semibold text-gray-900">{lineItems.length}</span> item{lineItems.length !== 1 ? 's' : ''} • Total: <span className="font-semibold text-purple-600">{formatCurrency(totalAmount)}</span>
+                      {t("footerSummary", {
+                        count: lineItems.length,
+                        label: lineItems.length === 1 ? t("itemSingular") : t("itemPlural"),
+                        total: formatCurrency(totalAmount),
+                      })}
                     </span>
                   )}
                 </div>
@@ -622,7 +627,7 @@ export function StockRequisitionFormDialog({
                     onClick={() => onOpenChange(false)}
                     className="min-w-[100px] h-10 text-sm border-gray-300 hover:bg-gray-50"
                   >
-                    Cancel
+                    {t("cancel")}
                   </Button>
                   <Button
                     type="submit"
@@ -632,11 +637,11 @@ export function StockRequisitionFormDialog({
                     {createMutation.isPending || updateMutation.isPending ? (
                       <span className="flex items-center gap-2">
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                        Saving...
+                        {t("saving")}
                       </span>
                     ) : (
                       <>
-                        {isEditMode ? "Update Stock Requisition" : "Create Stock Requisition"}
+                        {isEditMode ? t("updateAction") : t("createAction")}
                       </>
                     )}
                   </Button>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import {
   ClipboardList,
   Search,
@@ -48,22 +49,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { toProperCase } from "@/lib/string";
 
-const getStatusBadge = (status: string) => {
+const getStatusBadge = (status: string, label: string) => {
   const baseClass = "text-xs font-medium";
 
   switch (status) {
     case "pending":
-      return <span className={`${baseClass} text-amber-600`}>Pending</span>;
+      return <span className={`${baseClass} text-amber-600`}>{label}</span>;
     case "in_progress":
-      return <span className={`${baseClass} text-blue-600`}>In Progress</span>;
+      return <span className={`${baseClass} text-blue-600`}>{label}</span>;
     case "paused":
-      return <span className={`${baseClass} text-orange-600`}>Paused</span>;
+      return <span className={`${baseClass} text-orange-600`}>{label}</span>;
     case "done":
-      return <span className={`${baseClass} text-emerald-600`}>Done</span>;
+      return <span className={`${baseClass} text-emerald-600`}>{label}</span>;
     case "cancelled":
-      return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
+      return <span className={`${baseClass} text-red-600`}>{label}</span>;
     default:
-      return <span className={`${baseClass} text-muted-foreground`}>{toProperCase(status)}</span>;
+      return <span className={`${baseClass} text-muted-foreground`}>{label}</span>;
   }
 };
 
@@ -84,9 +85,9 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const formatDate = (value?: string | null) => {
-  if (!value) return "--";
-  return new Date(value).toLocaleDateString("en-US", {
+const formatDate = (value: string | null | undefined, locale: string, emptyValue: string) => {
+  if (!value) return emptyValue;
+  return new Date(value).toLocaleDateString(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -104,13 +105,15 @@ const toNumber = (value: number | string | null | undefined) => {
 const toItemLabel = (item: {
   items?: { item_name: string | null; item_code: string | null } | null;
   item_id: string;
-}) => item.items?.item_name || item.items?.item_code || item.item_id;
+}, fallback: string) => item.items?.item_name || item.items?.item_code || item.item_id || fallback;
 
 const toUomLabel = (item: {
   units_of_measure?: { symbol: string | null; name: string | null } | null;
-}) => item.units_of_measure?.symbol || item.units_of_measure?.name || "--";
+}, fallback: string) => item.units_of_measure?.symbol || item.units_of_measure?.name || fallback;
 
 export default function PickListsPage() {
+  const locale = useLocale();
+  const t = useTranslations("pickListsPage");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [detailId, setDetailId] = useState<string>("");
@@ -123,6 +126,23 @@ export default function PickListsPage() {
 
   const updateStatusMutation = useUpdatePickListStatus();
   const updateItemsMutation = useUpdatePickListItems();
+
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case "pending":
+        return t("pending");
+      case "in_progress":
+        return t("inProgress");
+      case "paused":
+        return t("paused");
+      case "done":
+        return t("done");
+      case "cancelled":
+        return t("cancelled");
+      default:
+        return toProperCase(status);
+    }
+  };
 
   // Client-side filtering
   const allPickLists = useMemo(() => data?.data || [], [data?.data]);
@@ -189,10 +209,8 @@ export default function PickListsPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Pick Lists</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-            Manage picker assignments, picking quantities, and status flow
-          </p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
         </div>
       </div>
 
@@ -201,7 +219,7 @@ export default function PickListsPage() {
         <div className="relative w-full sm:flex-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search pick lists, delivery notes, or assignees..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8"
@@ -210,15 +228,15 @@ export default function PickListsPage() {
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-full sm:w-[180px]">
             <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter status" />
+            <SelectValue placeholder={t("filterStatus")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="paused">Paused</SelectItem>
-            <SelectItem value="done">Done</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
+            <SelectItem value="all">{t("allStatuses")}</SelectItem>
+            <SelectItem value="pending">{t("pending")}</SelectItem>
+            <SelectItem value="in_progress">{t("inProgress")}</SelectItem>
+            <SelectItem value="paused">{t("paused")}</SelectItem>
+            <SelectItem value="done">{t("done")}</SelectItem>
+            <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -229,12 +247,12 @@ export default function PickListsPage() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead>Pick List #</TableHead>
-                <TableHead>Delivery Note</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assignees</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("pickListNumber")}</TableHead>
+                <TableHead>{t("deliveryNote")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead>{t("assignees")}</TableHead>
+                <TableHead>{t("created")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -268,11 +286,11 @@ export default function PickListsPage() {
       ) : pickLists.length === 0 ? (
         <EmptyStatePanel
           icon={ClipboardList}
-          title="No pick lists found"
+          title={t("emptyTitle")}
           description={
             search || statusFilter !== "all"
-              ? "Try adjusting your search or filters."
-              : "Pick lists will appear here once created from delivery notes."
+              ? t("emptyFilteredDescription")
+              : t("emptyDescription")
           }
         />
       ) : (
@@ -280,12 +298,12 @@ export default function PickListsPage() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead>Pick List #</TableHead>
-                <TableHead>Delivery Note</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Assignees</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("pickListNumber")}</TableHead>
+                <TableHead>{t("deliveryNote")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead>{t("assignees")}</TableHead>
+                <TableHead>{t("created")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -318,23 +336,23 @@ export default function PickListsPage() {
                           {row.delivery_notes.dn_no}
                         </Link>
                       ) : (
-                        <span className="text-muted-foreground">--</span>
+                        <span className="text-muted-foreground">{t("noValue")}</span>
                       )}
                     </TableCell>
-                    <TableCell>{getStatusBadge(row.status)}</TableCell>
+                    <TableCell>{getStatusBadge(row.status, statusLabel(row.status))}</TableCell>
                     <TableCell className="max-w-60 truncate text-sm">
                       {assignees.length > 0 ? assignees.join(", ") : (
-                        <span className="text-muted-foreground">No assignees</span>
+                        <span className="text-muted-foreground">{t("noAssignees")}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{formatDate(row.created_at)}</TableCell>
+                    <TableCell className="text-sm">{formatDate(row.created_at, locale, t("noValue"))}</TableCell>
                     <TableCell
                       className="text-right"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => setDetailId(row.id)}>
-                          View Details
+                          {t("viewDetails")}
                         </Button>
                       </div>
                     </TableCell>
@@ -361,11 +379,11 @@ export default function PickListsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {getStatusIcon(selected?.status || "")}
-              {selected?.pick_list_no || "Pick List Details"}
+              {selected?.pick_list_no || t("pickListDetails")}
             </DialogTitle>
             <DialogDescription>
-              Delivery Note: {selected?.delivery_notes?.dn_no || "--"} | Status:{" "}
-              {selected ? getStatusBadge(selected.status) : "--"}
+              {t("deliveryNoteLabel")} {selected?.delivery_notes?.dn_no || t("noValue")} | {t("statusLabel")}{" "}
+              {selected ? getStatusBadge(selected.status, statusLabel(selected.status)) : t("noValue")}
             </DialogDescription>
           </DialogHeader>
 
@@ -374,11 +392,11 @@ export default function PickListsPage() {
               {/* Pick List Summary */}
               <div className="grid grid-cols-2 gap-4 rounded-lg border bg-muted/30 p-4 text-sm md:grid-cols-3">
                 <div>
-                  <div className="text-xs text-muted-foreground">Pick List #</div>
+                  <div className="text-xs text-muted-foreground">{t("pickListNumber")}</div>
                   <div className="font-medium">{selected.pick_list_no}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Delivery Note</div>
+                  <div className="text-xs text-muted-foreground">{t("deliveryNote")}</div>
                   <div className="font-medium">
                     {selected.delivery_notes ? (
                       <Link
@@ -388,25 +406,25 @@ export default function PickListsPage() {
                         {selected.delivery_notes.dn_no}
                       </Link>
                     ) : (
-                      "--"
+                      t("noValue")
                     )}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-muted-foreground">Created</div>
-                  <div className="font-medium">{formatDate(selected.created_at)}</div>
+                  <div className="text-xs text-muted-foreground">{t("created")}</div>
+                  <div className="font-medium">{formatDate(selected.created_at, locale, t("noValue"))}</div>
                 </div>
               </div>
 
               {/* Assignees */}
               {selected.pick_list_assignees && selected.pick_list_assignees.length > 0 && (
                 <div className="rounded-lg border p-4">
-                  <div className="mb-2 text-sm font-medium">Assigned Pickers</div>
+                  <div className="mb-2 text-sm font-medium">{t("assignedPickers")}</div>
                   <div className="flex flex-wrap gap-2">
                     {selected.pick_list_assignees.map((assignee) => {
                       const user = assignee.users;
                       const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
-                      const displayName = fullName || user?.email || "Unknown";
+                      const displayName = fullName || user?.email || t("unknown");
                       return (
                         <div
                           key={assignee.user_id}
@@ -422,16 +440,16 @@ export default function PickListsPage() {
 
               {/* Items Table */}
               <div className="space-y-2">
-                <div className="text-sm font-medium">Pick List Items</div>
+                <div className="text-sm font-medium">{t("pickListItems")}</div>
                 <div className="overflow-hidden rounded-lg border">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead>Item</TableHead>
-                        <TableHead>UOM</TableHead>
-                        <TableHead className="text-right">Allocated</TableHead>
-                        <TableHead className="text-right">Picked</TableHead>
-                        <TableHead className="text-right">Short</TableHead>
+                        <TableHead>{t("item")}</TableHead>
+                        <TableHead>{t("uom")}</TableHead>
+                        <TableHead className="text-right">{t("allocated")}</TableHead>
+                        <TableHead className="text-right">{t("picked")}</TableHead>
+                        <TableHead className="text-right">{t("short")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -442,8 +460,8 @@ export default function PickListsPage() {
 
                         return (
                           <TableRow key={item.id}>
-                            <TableCell className="text-sm font-medium">{toItemLabel(item)}</TableCell>
-                            <TableCell className="text-sm">{toUomLabel(item)}</TableCell>
+                            <TableCell className="text-sm font-medium">{toItemLabel(item, t("unknown"))}</TableCell>
+                            <TableCell className="text-sm">{toUomLabel(item, t("noValue"))}</TableCell>
                             <TableCell className="text-right font-medium">{allocated.toFixed(2)}</TableCell>
                             <TableCell className="text-right">
                               <Input
@@ -482,7 +500,7 @@ export default function PickListsPage() {
               {selected.status !== "cancelled" && selected.status !== "done" && (
                 <div className="flex justify-end">
                   <Button onClick={submitItems} disabled={updateItemsMutation.isPending}>
-                    {updateItemsMutation.isPending ? "Saving..." : "Save Picked Quantities"}
+                    {updateItemsMutation.isPending ? t("saving") : t("savePickedQuantities")}
                   </Button>
                 </div>
               )}
@@ -490,7 +508,7 @@ export default function PickListsPage() {
               {/* Status Actions */}
               {selected.status !== "done" && selected.status !== "cancelled" && (
                 <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                  <div className="text-sm font-medium">Status Actions</div>
+                  <div className="text-sm font-medium">{t("statusActions")}</div>
                   <div className="flex flex-wrap gap-2">
                     {selected.status === "pending" && (
                       <Button
@@ -499,7 +517,7 @@ export default function PickListsPage() {
                         className="gap-2"
                       >
                         <Play className="h-4 w-4" />
-                        Start Picking
+                        {t("startPicking")}
                       </Button>
                     )}
                     {selected.status === "in_progress" && (
@@ -511,7 +529,7 @@ export default function PickListsPage() {
                           className="gap-2"
                         >
                           <Pause className="h-4 w-4" />
-                          Pause
+                          {t("pause")}
                         </Button>
                         <Button
                           onClick={() => transitionStatus("done")}
@@ -519,7 +537,7 @@ export default function PickListsPage() {
                           className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                         >
                           <CheckCircle className="h-4 w-4" />
-                          Complete Picking
+                          {t("completePicking")}
                         </Button>
                       </>
                     )}
@@ -530,16 +548,16 @@ export default function PickListsPage() {
                         className="gap-2"
                       >
                         <Play className="h-4 w-4" />
-                        Resume Picking
+                        {t("resumePicking")}
                       </Button>
                     )}
                   </div>
 
                   {/* Cancel Section */}
                   <div className="space-y-2 border-t pt-3">
-                    <div className="text-xs text-muted-foreground">Cancel this pick list</div>
+                    <div className="text-xs text-muted-foreground">{t("cancelThisPickList")}</div>
                     <Textarea
-                      placeholder="Cancel reason (optional)"
+                      placeholder={t("cancelReasonPlaceholder")}
                       value={cancelReason}
                       onChange={(event) => setCancelReason(event.target.value)}
                       rows={2}
@@ -551,7 +569,7 @@ export default function PickListsPage() {
                       className="gap-2"
                     >
                       <XCircle className="h-4 w-4" />
-                      Cancel Pick List
+                      {t("cancelPickList")}
                     </Button>
                   </div>
                 </div>
@@ -561,7 +579,7 @@ export default function PickListsPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailId("")}>
-              Close
+              {t("close")}
             </Button>
           </DialogFooter>
         </DialogContent>

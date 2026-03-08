@@ -7,22 +7,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLocale } from "next-intl";
 import { Globe } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { locales, languageNames, type Locale } from "@/lib/i18n";
+import { useRouter } from "next/navigation";
+import { languageNames, localeCookieName, locales, type Locale } from "@/lib/i18n";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function LanguageSwitcher() {
-  const { locale, setLocale } = useLanguage();
+  const locale = useLocale() as Locale;
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const handleLanguageChange = (newLocale: string) => {
-    setLocale(newLocale as Locale);
+    localStorage.setItem("preferredLanguage", newLocale);
+    document.cookie = `${localeCookieName}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    document.documentElement.lang = newLocale;
+    router.refresh();
   };
 
   if (!mounted) {

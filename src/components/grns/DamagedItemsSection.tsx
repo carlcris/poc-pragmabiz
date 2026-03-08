@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, Trash2, Edit, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import {
   useDamagedItems,
   useCreateDamagedItem,
@@ -58,6 +58,8 @@ interface DamagedItemsSectionProps {
 }
 
 export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItemsSectionProps) {
+  const t = useTranslations("grnDamagedItemsSection");
+  const locale = useLocale();
   const { data: damagedItemsData, isLoading } = useDamagedItems(grnId);
   const createMutation = useCreateDamagedItem();
   const updateMutation = useUpdateDamagedItem();
@@ -82,28 +84,37 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
 
   const damagedItems = damagedItemsData?.data || [];
 
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return t("noValue");
+    return new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(dateString));
+  };
+
   const getDamageTypeBadge = (type: DamageType) => {
     switch (type) {
       case "broken":
-        return <Badge variant="destructive">Broken</Badge>;
+        return <Badge variant="destructive">{t("broken")}</Badge>;
       case "defective":
-        return <Badge variant="destructive">Defective</Badge>;
+        return <Badge variant="destructive">{t("defective")}</Badge>;
       case "missing":
         return (
           <Badge variant="outline" className="border-orange-600 text-orange-700">
-            Missing
+            {t("missing")}
           </Badge>
         );
       case "expired":
-        return <Badge variant="destructive">Expired</Badge>;
+        return <Badge variant="destructive">{t("expired")}</Badge>;
       case "wrong_item":
         return (
           <Badge variant="outline" className="border-orange-600 text-orange-700">
-            Wrong Item
+            {t("wrongItem")}
           </Badge>
         );
       case "other":
-        return <Badge variant="secondary">Other</Badge>;
+        return <Badge variant="secondary">{t("other")}</Badge>;
       default:
         return <Badge>{type}</Badge>;
     }
@@ -114,19 +125,19 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
       case "reported":
         return (
           <Badge variant="outline" className="border-yellow-600 text-yellow-700">
-            Reported
+            {t("reported")}
           </Badge>
         );
       case "processing":
         return (
           <Badge variant="outline" className="border-blue-600 text-blue-700">
-            Processing
+            {t("processing")}
           </Badge>
         );
       case "resolved":
         return (
           <Badge variant="outline" className="border-green-600 text-green-700">
-            Resolved
+            {t("resolved")}
           </Badge>
         );
       default:
@@ -136,7 +147,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
 
   const handleCreate = async () => {
     if (!formData.itemId || formData.qty <= 0) {
-      toast.error("Please select an item and enter a valid quantity");
+      toast.error(t("validationError"));
       return;
     }
 
@@ -145,7 +156,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
         grnId,
         data: formData,
       });
-      toast.success("Damaged item reported successfully");
+      toast.success(t("createSuccess"));
       setDialogOpen(false);
       setFormData({
         itemId: "",
@@ -154,7 +165,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
         description: "",
       });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to report damaged item");
+      toast.error(err instanceof Error ? err.message : t("createError"));
     }
   };
 
@@ -166,11 +177,11 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
         id: selectedItem.id,
         data: updateData,
       });
-      toast.success("Damaged item updated successfully");
+      toast.success(t("updateSuccess"));
       setUpdateDialogOpen(false);
       setSelectedItem(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update damaged item");
+      toast.error(err instanceof Error ? err.message : t("updateError"));
     }
   };
 
@@ -179,11 +190,11 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
 
     try {
       await deleteMutation.mutateAsync(selectedItem.id);
-      toast.success("Damaged item deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setSelectedItem(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete damaged item");
+      toast.error(err instanceof Error ? err.message : t("deleteError"));
     }
   };
 
@@ -207,7 +218,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-600" />
-            Damaged Items
+            {t("title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -227,36 +238,34 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
             <div>
               <CardTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-600" />
-                Damaged Items
+                {t("title")}
               </CardTitle>
-              <CardDescription>Report and track damaged or defective items</CardDescription>
+              <CardDescription>{t("description")}</CardDescription>
             </div>
             {isEditable && (
               <Button onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Report Damage
+                {t("reportDamage")}
               </Button>
             )}
           </div>
         </CardHeader>
         <CardContent>
           {damagedItems.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              No damaged items reported
-            </div>
+            <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Item</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Damage Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Reported By</TableHead>
-                  <TableHead>Reported Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Action Taken</TableHead>
-                  {isEditable && <TableHead className="text-right">Actions</TableHead>}
+                  <TableHead>{t("item")}</TableHead>
+                  <TableHead className="text-right">{t("quantity")}</TableHead>
+                  <TableHead>{t("damageType")}</TableHead>
+                  <TableHead>{t("descriptionLabel")}</TableHead>
+                  <TableHead>{t("reportedBy")}</TableHead>
+                  <TableHead>{t("reportedDate")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead>{t("actionTaken")}</TableHead>
+                  {isEditable && <TableHead className="text-right">{t("actions")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -264,46 +273,36 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                   <TableRow key={item.id}>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{item.item?.code || "-"}</div>
-                        <div className="text-sm text-muted-foreground">{item.item?.name || "-"}</div>
+                        <div className="font-medium">{item.item?.code || t("noValue")}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {item.item?.name || t("noValue")}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">{item.qty}</TableCell>
                     <TableCell>{getDamageTypeBadge(item.damageType)}</TableCell>
                     <TableCell>
-                      <div className="max-w-xs truncate text-sm">{item.description || "-"}</div>
+                      <div className="max-w-xs truncate text-sm">{item.description || t("noValue")}</div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
                         {item.reportedByUser
                           ? `${item.reportedByUser.firstName} ${item.reportedByUser.lastName}`
-                          : "-"}
+                          : t("noValue")}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {item.reportedDate
-                        ? format(new Date(item.reportedDate), "MMM dd, yyyy")
-                        : "-"}
-                    </TableCell>
+                    <TableCell>{formatDate(item.reportedDate)}</TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     <TableCell>
-                      <div className="max-w-xs truncate text-sm">{item.actionTaken || "-"}</div>
+                      <div className="max-w-xs truncate text-sm">{item.actionTaken || t("noValue")}</div>
                     </TableCell>
                     {isEditable && (
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openUpdateDialog(item)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => openUpdateDialog(item)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDeleteDialog(item)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(item)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -317,24 +316,21 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
         </CardContent>
       </Card>
 
-      {/* Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Report Damaged Item</DialogTitle>
-            <DialogDescription>
-              Record a damaged or defective item from this GRN
-            </DialogDescription>
+            <DialogTitle>{t("createTitle")}</DialogTitle>
+            <DialogDescription>{t("createDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="item">Item *</Label>
+              <Label htmlFor="item">{t("itemLabel")}</Label>
               <Select
                 value={formData.itemId}
                 onValueChange={(value) => setFormData({ ...formData, itemId: value })}
               >
                 <SelectTrigger id="item">
-                  <SelectValue placeholder="Select an item" />
+                  <SelectValue placeholder={t("selectItem")} />
                 </SelectTrigger>
                 <SelectContent>
                   {grnItems.map((item) => (
@@ -346,7 +342,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
               </Select>
             </div>
             <div>
-              <Label htmlFor="qty">Quantity *</Label>
+              <Label htmlFor="qty">{t("quantityLabel")}</Label>
               <Input
                 id="qty"
                 type="number"
@@ -359,7 +355,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
               />
             </div>
             <div>
-              <Label htmlFor="damageType">Damage Type *</Label>
+              <Label htmlFor="damageType">{t("damageTypeLabel")}</Label>
               <Select
                 value={formData.damageType}
                 onValueChange={(value) =>
@@ -370,47 +366,46 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="broken">Broken</SelectItem>
-                  <SelectItem value="defective">Defective</SelectItem>
-                  <SelectItem value="missing">Missing</SelectItem>
-                  <SelectItem value="expired">Expired</SelectItem>
-                  <SelectItem value="wrong_item">Wrong Item</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="broken">{t("broken")}</SelectItem>
+                  <SelectItem value="defective">{t("defective")}</SelectItem>
+                  <SelectItem value="missing">{t("missing")}</SelectItem>
+                  <SelectItem value="expired">{t("expired")}</SelectItem>
+                  <SelectItem value="wrong_item">{t("wrongItem")}</SelectItem>
+                  <SelectItem value="other">{t("other")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t("descriptionLabel")}</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe the damage..."
+                placeholder={t("descriptionPlaceholder")}
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Reporting..." : "Report"}
+              {createMutation.isPending ? t("reporting") : t("report")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Update Dialog */}
       <Dialog open={updateDialogOpen} onOpenChange={setUpdateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Damaged Item</DialogTitle>
-            <DialogDescription>Update the action taken and status</DialogDescription>
+            <DialogTitle>{t("updateTitle")}</DialogTitle>
+            <DialogDescription>{t("updateDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status">{t("statusLabel")}</Label>
               <Select
                 value={updateData.status}
                 onValueChange={(value) =>
@@ -421,52 +416,48 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="reported">Reported</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="reported">{t("reported")}</SelectItem>
+                  <SelectItem value="processing">{t("processing")}</SelectItem>
+                  <SelectItem value="resolved">{t("resolved")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="actionTaken">Action Taken</Label>
+              <Label htmlFor="actionTaken">{t("actionTakenLabel")}</Label>
               <Textarea
                 id="actionTaken"
                 value={updateData.actionTaken}
                 onChange={(e) => setUpdateData({ ...updateData, actionTaken: e.target.value })}
-                placeholder="Describe the action taken..."
+                placeholder={t("actionTakenPlaceholder")}
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUpdateDialogOpen(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Updating..." : "Update"}
+              {updateMutation.isPending ? t("updating") : t("update")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Damaged Item</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this damaged item record? This action cannot be
-              undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("deleteDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

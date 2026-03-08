@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,19 +33,22 @@ import {
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 
-const lineItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
+const createLineItemSchema = (
+  tValidation: (key: "itemRequired" | "uomRequired" | "currentQtyMin" | "adjustedQtyMin" | "unitCostMin") => string
+) => z.object({
+  itemId: z.string().min(1, tValidation("itemRequired")),
   itemCode: z.string().optional(),
   itemName: z.string().optional(),
-  uomId: z.string().min(1, "Unit of measure is required"),
-  currentQty: z.number().min(0, "Current quantity cannot be negative"),
-  adjustedQty: z.number().min(0, "Adjusted quantity cannot be negative"), // This will store the FINAL quantity
-  unitCost: z.number().min(0, "Unit cost cannot be negative"),
+  uomId: z.string().min(1, tValidation("uomRequired")),
+  currentQty: z.number().min(0, tValidation("currentQtyMin")),
+  adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
+  unitCost: z.number().min(0, tValidation("unitCostMin")),
   adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
   adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
 });
 
-export type StockAdjustmentLineItemFormValues = z.infer<typeof lineItemSchema>;
+type LineItemSchema = ReturnType<typeof createLineItemSchema>;
+export type StockAdjustmentLineItemFormValues = z.infer<LineItemSchema>;
 
 interface StockAdjustmentLineItemDialogProps {
   open: boolean;
@@ -67,11 +71,15 @@ export function StockAdjustmentLineItemDialog({
   locationId,
   onItemSelect,
 }: StockAdjustmentLineItemDialogProps) {
+  const t = useTranslations("stockAdjustmentLineItemDialog");
+  const tValidation = useTranslations("stockAdjustmentLineItemValidation");
+  const locale = useLocale();
   const { data: itemsData } = useItems({ limit: 50 });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
   const { formatCurrency } = useCurrency();
   const [uomLabel, setUomLabel] = useState<string>("");
   const [itemSearch, setItemSearch] = useState("");
+  const lineItemSchema = createLineItemSchema((key) => tValidation(key));
 
   const form = useForm<StockAdjustmentLineItemFormValues>({
     resolver: zodResolver(lineItemSchema),
@@ -182,12 +190,12 @@ export function StockAdjustmentLineItemDialog({
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader className="border-b pb-4">
           <DialogTitle className="text-xl">
-            {mode === "edit" ? "Edit Stock Adjustment" : "New Stock Adjustment"}
+            {mode === "edit" ? t("editTitle") : t("createTitle")}
           </DialogTitle>
           <DialogDescription>
             {mode === "edit"
-              ? "Update the adjustment details below"
-              : "Adjust inventory levels for a specific item"}
+              ? t("editDescription")
+              : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -199,7 +207,7 @@ export function StockAdjustmentLineItemDialog({
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
                   <span className="text-lg font-bold text-purple-700">1</span>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">Select Item</h3>
+                <h3 className="text-base font-semibold text-gray-900">{t("selectItemStep")}</h3>
               </div>
 
               <FormField
@@ -208,7 +216,7 @@ export function StockAdjustmentLineItemDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Inventory Item <span className="text-red-500">*</span>
+                      {t("itemLabel")} <span className="text-red-500">*</span>
                     </FormLabel>
                     <Select
                       onValueChange={(value) => {
@@ -219,13 +227,13 @@ export function StockAdjustmentLineItemDialog({
                     >
                       <FormControl>
                         <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Choose an item to adjust" />
+                          <SelectValue placeholder={t("chooseItem")} />
                         </SelectTrigger>
                       </FormControl>
                     <SelectContent>
                       <div className="p-2">
                         <Input
-                          placeholder="Search by code or name..."
+                          placeholder={t("searchByCodeOrName")}
                           value={itemSearch}
                           onChange={(e) => setItemSearch(e.target.value)}
                           className="h-9"
@@ -260,12 +268,12 @@ export function StockAdjustmentLineItemDialog({
               {/* Current Stock Display */}
               <div className="rounded-lg bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Current Stock on Hand</span>
+                  <span className="text-sm font-medium text-gray-600">{t("currentStockOnHand")}</span>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
-                      {currentQty.toFixed(2)}
+                      {currentQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                    <p className="text-xs text-gray-500">{uomLabel || "units"}</p>
+                    <p className="text-xs text-gray-500">{uomLabel || t("units")}</p>
                   </div>
                 </div>
               </div>
@@ -277,7 +285,7 @@ export function StockAdjustmentLineItemDialog({
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
                   <span className="text-lg font-bold text-purple-700">2</span>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">Adjustment Details</h3>
+                <h3 className="text-base font-semibold text-gray-900">{t("adjustmentDetailsStep")}</h3>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -287,7 +295,7 @@ export function StockAdjustmentLineItemDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium text-gray-700">
-                        Type <span className="text-red-500">*</span>
+                        {t("typeLabel")} <span className="text-red-500">*</span>
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -296,7 +304,7 @@ export function StockAdjustmentLineItemDialog({
                       >
                         <FormControl>
                           <SelectTrigger className="h-11" disabled={!isItemSelected}>
-                            <SelectValue placeholder="Select type" />
+                            <SelectValue placeholder={t("selectType")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -306,7 +314,7 @@ export function StockAdjustmentLineItemDialog({
                                 <span className="text-sm font-bold text-green-700">+</span>
                               </div>
                               <div>
-                                <p className="font-medium">Increase Stock</p>
+                                <p className="font-medium">{t("increaseStock")}</p>
                               </div>
                             </div>
                           </SelectItem>
@@ -316,7 +324,7 @@ export function StockAdjustmentLineItemDialog({
                                 <span className="text-sm font-bold text-red-700">−</span>
                               </div>
                               <div>
-                                <p className="font-medium">Decrease Stock</p>
+                                <p className="font-medium">{t("decreaseStock")}</p>
                               </div>
                             </div>
                           </SelectItem>
@@ -333,7 +341,7 @@ export function StockAdjustmentLineItemDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium text-gray-700">
-                        Quantity <span className="text-red-500">*</span>
+                        {t("quantityLabel")} <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <div className="relative">
@@ -343,12 +351,12 @@ export function StockAdjustmentLineItemDialog({
                             min="0"
                             {...field}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            placeholder="0.00"
+                            placeholder={t("quantityPlaceholder")}
                             className="h-11 pr-20 text-right text-base font-semibold"
                             disabled={!isItemSelected}
                           />
                           <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
-                            {uomLabel || "units"}
+                            {uomLabel || t("units")}
                           </div>
                         </div>
                       </FormControl>
@@ -364,7 +372,7 @@ export function StockAdjustmentLineItemDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
-                      Unit Cost <span className="text-red-500">*</span>
+                      {t("unitCostLabel")} <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <div className="relative">
@@ -377,7 +385,7 @@ export function StockAdjustmentLineItemDialog({
                           min="0"
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          placeholder="0.00"
+                            placeholder={t("quantityPlaceholder")}
                           className="h-11 pl-8 pr-4 text-right text-base font-semibold"
                           disabled={!isItemSelected}
                         />
@@ -395,7 +403,7 @@ export function StockAdjustmentLineItemDialog({
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
                   <span className="text-lg font-bold text-purple-700">3</span>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">Summary</h3>
+                <h3 className="text-base font-semibold text-gray-900">{t("summaryStep")}</h3>
               </div>
 
               <div className={`space-y-3 ${isItemSelected ? "" : "opacity-60"}`}>
@@ -403,26 +411,26 @@ export function StockAdjustmentLineItemDialog({
                 <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-5">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">New Stock Level</span>
+                      <span className="text-sm font-medium text-gray-700">{t("newStockLevel")}</span>
                       <div className="text-right">
                         <p className="text-3xl font-bold text-purple-900">
-                          {newStockQty.toFixed(2)}
+                          {newStockQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                         <p className="text-xs font-medium text-purple-600">
-                          {uomLabel || "units"}
+                          {uomLabel || t("units")}
                         </p>
                       </div>
                     </div>
 
                     <div className="space-y-2 border-t border-purple-200 pt-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Current Stock</span>
+                        <span className="text-gray-600">{t("currentStock")}</span>
                         <span className="font-semibold text-gray-900">
-                          {currentQty.toFixed(2)}
+                          {currentQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Adjustment</span>
+                        <span className="text-gray-600">{t("adjustment")}</span>
                         <span
                           className={`font-bold ${
                             adjustmentInBaseUnits > 0
@@ -431,13 +439,13 @@ export function StockAdjustmentLineItemDialog({
                           }`}
                         >
                           {adjustmentInBaseUnits > 0 ? "+" : ""}
-                          {adjustmentInBaseUnits.toFixed(2)}
+                          {adjustmentInBaseUnits.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between border-t border-purple-200 pt-2 text-sm">
-                        <span className="font-semibold text-gray-700">New Stock</span>
+                        <span className="font-semibold text-gray-700">{t("newStock")}</span>
                         <span className="font-bold text-purple-900">
-                          {newStockQty.toFixed(2)}
+                          {newStockQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
@@ -448,10 +456,16 @@ export function StockAdjustmentLineItemDialog({
                 <div className="rounded-lg bg-gray-50 p-5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-700">Value Impact</p>
+                      <p className="text-sm font-medium text-gray-700">{t("valueImpact")}</p>
                       <p className="mt-1 text-xs text-gray-500">
-                        {Math.abs(adjustmentInBaseUnits).toFixed(2)} {uomLabel || "units"} ×{" "}
-                        {formatCurrency(unitCost)}
+                        {t("valueImpactFormula", {
+                          quantity: Math.abs(adjustmentInBaseUnits).toLocaleString(locale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }),
+                          uom: uomLabel || t("units"),
+                          unitCost: formatCurrency(unitCost),
+                        })}
                       </p>
                     </div>
                     <div className="text-right">
@@ -476,14 +490,14 @@ export function StockAdjustmentLineItemDialog({
 
             <DialogFooter className="border-t pt-6">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} size="lg">
-                Cancel
+                {t("cancel")}
               </Button>
               <Button
                 type="submit"
                 size="lg"
                 className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700"
               >
-                {mode === "edit" ? "Update Adjustment" : "Add Adjustment"}
+                {mode === "edit" ? t("updateAction") : t("createAction")}
               </Button>
             </DialogFooter>
           </form>

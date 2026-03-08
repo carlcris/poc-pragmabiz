@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { Printer } from "lucide-react";
 import {
   Dialog,
@@ -21,6 +22,8 @@ interface QuotationViewDialogProps {
 }
 
 export function QuotationViewDialog({ open, onOpenChange, quotation }: QuotationViewDialogProps) {
+  const t = useTranslations("quotationViewDialog");
+  const locale = useLocale();
   const { formatCurrency } = useCurrency();
 
   if (!quotation) return null;
@@ -63,7 +66,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -75,29 +78,29 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto print:max-h-none">
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <DialogTitle>Quotation Details</DialogTitle>
+            <DialogTitle>{t("title")}</DialogTitle>
             {getStatusBadge(quotation.status)}
           </div>
-          <DialogDescription>Quotation #{quotation.quotationNumber}</DialogDescription>
+          <DialogDescription>{t("description", { number: quotation.quotationNumber })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Header Information */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Customer Information</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("customerInformation")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Name:</span>
+                  <span className="text-muted-foreground">{t("name")}:</span>
                   <div className="font-medium">{quotation.customerName}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">{t("email")}:</span>
                   <div className="font-medium">{quotation.customerEmail}</div>
                 </div>
                 {quotation.salesOrderId && (
                   <div>
-                    <span className="text-muted-foreground">Sales Order:</span>
+                    <span className="text-muted-foreground">{t("salesOrder")}:</span>
                     <div className="font-medium">{quotation.salesOrderId}</div>
                   </div>
                 )}
@@ -105,19 +108,19 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Quotation Details</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("quotationDetails")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Quotation Date:</span>
+                  <span className="text-muted-foreground">{t("quotationDate")}:</span>
                   <div className="font-medium">{formatDate(quotation.quotationDate)}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Valid Until:</span>
+                  <span className="text-muted-foreground">{t("validUntil")}:</span>
                   <div className="font-medium">{formatDate(quotation.validUntil)}</div>
                 </div>
                 {quotation.terms && (
                   <div>
-                    <span className="text-muted-foreground">Payment Terms:</span>
+                    <span className="text-muted-foreground">{t("paymentTerms")}:</span>
                     <div className="font-medium">{quotation.terms}</div>
                   </div>
                 )}
@@ -128,7 +131,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
           {/* Billing Address */}
           {quotation.billingAddress && (
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Billing Address</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("billingAddress")}</h3>
               <div className="text-sm text-muted-foreground">
                 <div>{quotation.billingAddress}</div>
                 <div>
@@ -145,7 +148,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
 
           {/* Line Items */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Line Items</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
@@ -194,22 +197,22 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="text-muted-foreground">{t("subtotal")}:</span>
                 <span className="font-medium">{formatCurrency(quotation.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Discount:</span>
+                <span className="text-muted-foreground">{t("discount")}:</span>
                 <span className="font-medium text-red-600">
                   -{formatCurrency(quotation.totalDiscount)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax:</span>
+                <span className="text-muted-foreground">{t("tax")}:</span>
                 <span className="font-medium">{formatCurrency(quotation.totalTax)}</span>
               </div>
               <hr className="border-t" />
               <div className="flex justify-between text-base font-bold">
-                <span>Total Amount:</span>
+                <span>{t("totalAmount")}:</span>
                 <span>{formatCurrency(quotation.totalAmount)}</span>
               </div>
             </div>
@@ -222,7 +225,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
               <div className="space-y-4">
                 {quotation.terms && (
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold">Terms & Conditions</h3>
+                    <h3 className="mb-2 text-sm font-semibold">{t("termsConditions")}</h3>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {quotation.terms}
                     </p>
@@ -230,7 +233,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                 )}
                 {quotation.notes && (
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold">Notes</h3>
+                    <h3 className="mb-2 text-sm font-semibold">{t("notes")}</h3>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {quotation.notes}
                     </p>
@@ -244,7 +247,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
         <DialogFooter className="print:hidden">
           <Button onClick={handlePrint} variant="outline">
             <Printer className="mr-2 h-4 w-4" />
-            Print Quotation
+            {t("printQuotation")}
           </Button>
         </DialogFooter>
       </DialogContent>

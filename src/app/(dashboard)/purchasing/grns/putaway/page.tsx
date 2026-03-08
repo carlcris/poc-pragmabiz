@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Scan, MapPin, CheckCircle, Package, ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -45,6 +46,7 @@ type ScannedBox = {
 };
 
 export default function PutawayPage() {
+  const t = useTranslations("grnPutawayPage");
   const router = useRouter();
   const [barcodeInput, setBarcodeInput] = useState("");
   const [scannedBox, setScannedBox] = useState<ScannedBox | null>(null);
@@ -60,7 +62,6 @@ export default function PutawayPage() {
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = warehousesData?.data || [];
 
-  // Fetch warehouse locations when warehouse is selected
   useEffect(() => {
     const fetchLocations = async () => {
       if (!warehouseId) {
@@ -71,12 +72,12 @@ export default function PutawayPage() {
       try {
         setIsLoadingLocations(true);
         const response = await fetch(`/api/warehouses/${warehouseId}/locations`);
-        if (!response.ok) throw new Error("Failed to fetch locations");
+        if (!response.ok) throw new Error(t("fetchLocationsError"));
         const data = await response.json();
         setLocations(data.data || []);
       } catch (error) {
         console.error("Error fetching locations:", error);
-        toast.error("Failed to load warehouse locations");
+        toast.error(t("fetchLocationsError"));
         setLocations([]);
       } finally {
         setIsLoadingLocations(false);
@@ -84,33 +85,28 @@ export default function PutawayPage() {
     };
 
     fetchLocations();
-  }, [warehouseId]);
+  }, [warehouseId, t]);
 
-  // Filter active and storable locations
   const availableLocations = useMemo(
     () => locations.filter((loc) => loc.isActive && loc.isStorable),
     [locations]
   );
 
-  // Get selected location details
   const selectedLocation = availableLocations.find((loc) => loc.id === selectedLocationId);
 
   const handleScanBarcode = async () => {
     if (!barcodeInput.trim()) {
-      toast.error("Please enter or scan a barcode");
+      toast.error(t("enterBarcodeError"));
       return;
     }
 
     try {
       setIsScanning(true);
 
-      // Parse QR code data
       try {
         const qrData = JSON.parse(barcodeInput);
-
-        // Fetch box details from API
         const response = await fetch(`/api/grn-boxes/${qrData.id}`);
-        if (!response.ok) throw new Error("Box not found");
+        if (!response.ok) throw new Error(t("boxNotFound"));
 
         const boxData = await response.json();
 
@@ -119,7 +115,7 @@ export default function PutawayPage() {
           barcode: barcodeInput,
           grnNumber: qrData.grn,
           itemCode: qrData.item,
-          itemName: "", // TODO: Fetch from API
+          itemName: "",
           boxNumber: qrData.box,
           qtyPerBox: qrData.qty,
           deliveryDate: qrData.date,
@@ -127,17 +123,15 @@ export default function PutawayPage() {
         });
 
         if (boxData.warehouseLocation) {
-          toast.info(`Box already assigned to ${boxData.warehouseLocation.code}`);
+          toast.info(t("alreadyAssignedTo", { code: boxData.warehouseLocation.code }));
         }
       } catch {
-        // If not JSON, treat as simple barcode
-        // Search for box by barcode string
         const response = await fetch(`/api/grn-boxes?barcode=${encodeURIComponent(barcodeInput)}`);
-        if (!response.ok) throw new Error("Box not found");
+        if (!response.ok) throw new Error(t("boxNotFound"));
 
         const data = await response.json();
         if (!data.data || data.data.length === 0) {
-          throw new Error("Box not found");
+          throw new Error(t("boxNotFound"));
         }
 
         const boxData = data.data[0];
@@ -154,9 +148,9 @@ export default function PutawayPage() {
         });
       }
 
-      toast.success("Box scanned successfully");
+      toast.success(t("scanSuccess"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to scan barcode");
+      toast.error(error instanceof Error ? error.message : t("scanError"));
       setScannedBox(null);
     } finally {
       setIsScanning(false);
@@ -166,26 +160,25 @@ export default function PutawayPage() {
   const handleAssignLocation = async () => {
     if (!scannedBox) return;
     if (!selectedLocationId) {
-      toast.error("Please select a warehouse location");
+      toast.error(t("selectLocationError"));
       return;
     }
     if (!warehouseId) {
-      toast.error("Please select a warehouse first");
+      toast.error(t("selectWarehouseError"));
       return;
     }
 
     try {
       setIsAssigning(true);
 
-      // Validate location exists and belongs to selected warehouse
       const location = availableLocations.find((loc) => loc.id === selectedLocationId);
       if (!location) {
-        toast.error("Invalid location selected");
+        toast.error(t("invalidLocationSelected"));
         return;
       }
 
       if (location.warehouseId !== warehouseId) {
-        toast.error("Location does not belong to selected warehouse");
+        toast.error(t("locationWarehouseMismatch"));
         return;
       }
 
@@ -199,13 +192,12 @@ export default function PutawayPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to assign location");
+        throw new Error(error.error || t("assignError"));
       }
 
       const locationDisplayName = `${location.code}${location.name ? ` - ${location.name}` : ""}`;
-      toast.success(`Box assigned to ${locationDisplayName}`);
+      toast.success(t("assignSuccess", { location: locationDisplayName }));
 
-      // Add to completed list
       setCompletedBoxes([
         ...completedBoxes,
         {
@@ -217,12 +209,11 @@ export default function PutawayPage() {
         },
       ]);
 
-      // Reset for next box
       setScannedBox(null);
       setBarcodeInput("");
       setSelectedLocationId("");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to assign location");
+      toast.error(error instanceof Error ? error.message : t("assignError"));
     } finally {
       setIsAssigning(false);
     }
@@ -236,28 +227,26 @@ export default function PutawayPage() {
 
   return (
     <div className="container max-w-4xl space-y-6 py-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <Button variant="ghost" size="sm" onClick={() => router.back()} className="mb-2">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
+            {t("back")}
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Putaway Station</h1>
-          <p className="text-muted-foreground">Scan boxes and assign warehouse locations</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
 
-      {/* Warehouse Selection */}
       <Card>
         <CardHeader>
-          <CardTitle>Select Warehouse</CardTitle>
-          <CardDescription>Choose the warehouse you are working in</CardDescription>
+          <CardTitle>{t("selectWarehouseTitle")}</CardTitle>
+          <CardDescription>{t("selectWarehouseDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
           <Select value={warehouseId} onValueChange={setWarehouseId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select warehouse" />
+              <SelectValue placeholder={t("selectWarehousePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {warehouses.map((wh) => (
@@ -270,31 +259,30 @@ export default function PutawayPage() {
         </CardContent>
       </Card>
 
-      {/* Scan Box */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Scan className="h-5 w-5 text-blue-600" />
-            Scan Box Barcode
+            {t("scanTitle")}
           </CardTitle>
-          <CardDescription>Scan QR code or enter barcode manually</CardDescription>
+          <CardDescription>{t("scanDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <div className="flex-1">
               <Input
                 id="barcode"
-                placeholder="Scan or enter barcode..."
+                placeholder={t("barcodePlaceholder")}
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 autoFocus
                 className="text-lg"
               />
             </div>
             <Button onClick={handleScanBarcode} disabled={isScanning || !barcodeInput.trim()}>
               <Scan className="mr-2 h-4 w-4" />
-              {isScanning ? "Scanning..." : "Scan"}
+              {isScanning ? t("scanning") : t("scan")}
             </Button>
           </div>
 
@@ -302,31 +290,31 @@ export default function PutawayPage() {
             <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
               <div className="mb-2 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="font-medium text-green-900 dark:text-green-100">Box Scanned</span>
+                <span className="font-medium text-green-900 dark:text-green-100">{t("boxScanned")}</span>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-muted-foreground">GRN:</span>{" "}
+                    <span className="text-muted-foreground">{t("grn")}:</span>{" "}
                     <span className="font-medium">{scannedBox.grnNumber}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Box:</span>{" "}
+                    <span className="text-muted-foreground">{t("box")}:</span>{" "}
                     <span className="font-medium">#{scannedBox.boxNumber}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Item:</span>{" "}
+                    <span className="text-muted-foreground">{t("item")}:</span>{" "}
                     <span className="font-medium">{scannedBox.itemCode}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Qty:</span>{" "}
+                    <span className="text-muted-foreground">{t("qty")}:</span>{" "}
                     <span className="font-medium">{scannedBox.qtyPerBox}</span>
                   </div>
                 </div>
                 {scannedBox.currentLocation && (
                   <div className="mt-2 rounded bg-yellow-100 p-2 dark:bg-yellow-900">
                     <span className="text-xs text-yellow-900 dark:text-yellow-100">
-                      Currently assigned to: {scannedBox.currentLocation.code}
+                      {t("currentlyAssignedTo", { code: scannedBox.currentLocation.code })}
                     </span>
                   </div>
                 )}
@@ -336,25 +324,24 @@ export default function PutawayPage() {
         </CardContent>
       </Card>
 
-      {/* Assign Location */}
       {scannedBox && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-orange-600" />
-              Assign Storage Location
+              {t("assignLocationTitle")}
             </CardTitle>
-            <CardDescription>Search and select a warehouse location</CardDescription>
+            <CardDescription>{t("assignLocationDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {!warehouseId ? (
               <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200">
-                Please select a warehouse first
+                {t("selectWarehouseFirstNotice")}
               </div>
             ) : (
               <>
                 <div>
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="location">{t("locationLabel")}</Label>
                   <Popover open={locationSearchOpen} onOpenChange={setLocationSearchOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -373,10 +360,10 @@ export default function PutawayPage() {
                         ) : (
                           <span className="text-muted-foreground">
                             {isLoadingLocations
-                              ? "Loading locations..."
+                              ? t("loadingLocations")
                               : availableLocations.length === 0
-                              ? "No locations available"
-                              : "Search location..."}
+                                ? t("noLocationsAvailable")
+                                : t("searchLocation")}
                           </span>
                         )}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -384,9 +371,9 @@ export default function PutawayPage() {
                     </PopoverTrigger>
                     <PopoverContent className="w-[400px] p-0" align="start">
                       <Command>
-                        <CommandInput placeholder="Search by code or name..." />
+                        <CommandInput placeholder={t("searchByCodeOrName")} />
                         <CommandList>
-                          <CommandEmpty>No location found.</CommandEmpty>
+                          <CommandEmpty>{t("noLocationFound")}</CommandEmpty>
                           <CommandGroup>
                             {availableLocations.map((location) => (
                               <CommandItem
@@ -417,7 +404,7 @@ export default function PutawayPage() {
                     </PopoverContent>
                   </Popover>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {availableLocations.length} location{availableLocations.length !== 1 ? "s" : ""} available
+                    {t("locationsAvailable", { count: availableLocations.length })}
                   </p>
                 </div>
                 <Button
@@ -427,7 +414,7 @@ export default function PutawayPage() {
                   size="lg"
                 >
                   <CheckCircle className="mr-2 h-5 w-5" />
-                  {isAssigning ? "Assigning..." : "Confirm Location"}
+                  {isAssigning ? t("assigning") : t("confirmLocation")}
                 </Button>
               </>
             )}
@@ -435,37 +422,36 @@ export default function PutawayPage() {
         </Card>
       )}
 
-      {/* Completed Boxes */}
       {completedBoxes.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-green-600" />
-              Completed ({completedBoxes.length})
+              {t("completedTitle", { count: completedBoxes.length })}
             </CardTitle>
-            <CardDescription>Boxes processed in this session</CardDescription>
+            <CardDescription>{t("completedDescription")}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {completedBoxes.slice().reverse().map((box, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div>
-                    <div className="font-medium">
-                      {box.grnNumber} - Box #{box.boxNumber}
+              {completedBoxes
+                .slice()
+                .reverse()
+                .map((box, index) => (
+                  <div key={`${box.id}-${index}`} className="flex items-center justify-between rounded-lg border p-3">
+                    <div>
+                      <div className="font-medium">
+                        {box.grnNumber} - #{box.boxNumber}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {box.itemCode} • {t("qty")}: {box.qtyPerBox}
+                      </div>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {box.itemCode} • Qty: {box.qtyPerBox}
-                    </div>
+                    <Badge variant="outline" className="border-green-600 text-green-700">
+                      <MapPin className="mr-1 h-3 w-3" />
+                      {box.currentLocation?.code}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className="border-green-600 text-green-700">
-                    <MapPin className="mr-1 h-3 w-3" />
-                    {box.currentLocation?.code}
-                  </Badge>
-                </div>
-              ))}
+                ))}
             </div>
           </CardContent>
         </Card>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
@@ -46,29 +46,10 @@ import {
 } from "@/components/ui/table";
 import type { PurchaseOrder, PurchaseOrderLineItem } from "@/types/purchase-order";
 import type { WarehouseLocation } from "@/types/inventory-location";
-import { format } from "date-fns";
-
-const receiveGoodsSchema = z.object({
-  warehouseId: z.string().min(1, "Warehouse is required"),
-  locationId: z.string().optional(),
-  receiptDate: z.string().min(1, "Receipt date is required"),
-  batchSequenceNumber: z.string().optional(),
-  supplierInvoiceNumber: z.string().optional(),
-  supplierInvoiceDate: z.string().optional(),
-  notes: z.string().optional(),
-  items: z.array(
-    z.object({
-      purchaseOrderItemId: z.string(),
-      itemId: z.string(),
-      quantityOrdered: z.number(),
-      quantityReceived: z.number().min(0, "Quantity cannot be negative"),
-      uomId: z.string(),
-      rate: z.number(),
-    })
-  ),
-});
-
-type ReceiveGoodsFormValues = z.infer<typeof receiveGoodsSchema>;
+import {
+  createReceiveGoodsSchema,
+  type ReceiveGoodsFormValues,
+} from "@/lib/validations/purchase-order-dialog";
 
 interface ReceiveGoodsDialogProps {
   open: boolean;
@@ -77,9 +58,38 @@ interface ReceiveGoodsDialogProps {
 }
 
 export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: ReceiveGoodsDialogProps) {
+  const t = useTranslations("receiveGoodsDialog");
+  const tValidation = useTranslations("purchaseOrderValidation");
+  const locale = useLocale();
   const receiveMutation = useReceiveGoodsFromPO();
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 100 });
   const warehouses = warehousesData?.data || [];
+  const receiveGoodsSchema = createReceiveGoodsSchema((key) => tValidation(key));
+  const today = new Date().toISOString().split("T")[0];
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric" }).format(
+      new Date(value)
+    );
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "draft":
+        return t("draft");
+      case "submitted":
+        return t("submitted");
+      case "approved":
+        return t("approved");
+      case "in_transit":
+        return t("inTransit");
+      case "partially_received":
+        return t("partiallyReceived");
+      case "received":
+        return t("received");
+      case "cancelled":
+        return t("cancelled");
+      default:
+        return status;
+    }
+  };
 
   const form = useForm<ReceiveGoodsFormValues>({
     resolver: zodResolver(receiveGoodsSchema),
@@ -87,7 +97,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
     defaultValues: {
       warehouseId: "",
       locationId: "",
-      receiptDate: format(new Date(), "yyyy-MM-dd"),
+      receiptDate: today,
       batchSequenceNumber: "",
       supplierInvoiceNumber: "",
       supplierInvoiceDate: "",
@@ -118,7 +128,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
       form.reset({
         warehouseId: "",
         locationId: "",
-        receiptDate: format(new Date(), "yyyy-MM-dd"),
+        receiptDate: today,
         batchSequenceNumber: "",
         supplierInvoiceNumber: "",
         supplierInvoiceDate: "",
@@ -126,7 +136,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
         items,
       });
     }
-  }, [purchaseOrder, open, form]);
+  }, [purchaseOrder, open, form, today]);
 
   const selectedWarehouseId = form.watch("warehouseId");
 
@@ -154,7 +164,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
     const itemsToReceive = data.items.filter((item) => item.quantityReceived > 0);
 
     if (itemsToReceive.length === 0) {
-      toast.error("Please enter quantities to receive for at least one item");
+      toast.error(t("lineItemRequired"));
       return;
     }
 
@@ -173,10 +183,10 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
         },
       });
 
-      toast.success("Goods received successfully! Stock levels updated.");
+      toast.success(t("success"));
       onOpenChange(false);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to receive goods";
+      const message = error instanceof Error ? error.message : t("error");
       toast.error(message);
     }
   };
@@ -198,9 +208,9 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Receive Goods</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            Receive items from Purchase Order {purchaseOrder.orderCode}
+            {t("description", { code: purchaseOrder.orderCode })}
           </DialogDescription>
         </DialogHeader>
 
@@ -209,24 +219,24 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
             {/* Purchase Order Info */}
             <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted p-4">
               <div>
-                <div className="text-sm text-muted-foreground">Supplier</div>
+                <div className="text-sm text-muted-foreground">{t("supplier")}</div>
                 <div className="font-medium">{purchaseOrder.supplier?.name}</div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Order Date</div>
+                <div className="text-sm text-muted-foreground">{t("orderDate")}</div>
                 <div className="font-medium">
-                  {format(new Date(purchaseOrder.orderDate), "MMM d, yyyy")}
+                  {formatDate(purchaseOrder.orderDate)}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Expected Delivery</div>
+                <div className="text-sm text-muted-foreground">{t("expectedDelivery")}</div>
                 <div className="font-medium">
-                  {format(new Date(purchaseOrder.expectedDeliveryDate), "MMM d, yyyy")}
+                  {formatDate(purchaseOrder.expectedDeliveryDate)}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-muted-foreground">Status</div>
-                <Badge>{purchaseOrder.status}</Badge>
+                <div className="text-sm text-muted-foreground">{t("status")}</div>
+                <Badge>{getStatusLabel(purchaseOrder.status)}</Badge>
               </div>
             </div>
 
@@ -237,11 +247,11 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 name="warehouseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Warehouse *</FormLabel>
+                    <FormLabel>{t("warehouseLabel")}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select warehouse" />
+                          <SelectValue placeholder={t("selectWarehouse")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -262,7 +272,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 name="locationId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location</FormLabel>
+                    <FormLabel>{t("locationLabel")}</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       value={field.value}
@@ -272,7 +282,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                         <SelectTrigger>
                           <SelectValue
                             placeholder={
-                              selectedWarehouseId ? "Select location" : "Select warehouse first"
+                              selectedWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")
                             }
                           />
                         </SelectTrigger>
@@ -295,7 +305,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 name="receiptDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Receipt Date *</FormLabel>
+                    <FormLabel>{t("receiptDateLabel")}</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -309,9 +319,9 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 name="supplierInvoiceNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Supplier Invoice Number</FormLabel>
+                    <FormLabel>{t("supplierInvoiceNumberLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="INV-001" {...field} />
+                      <Input placeholder={t("supplierInvoiceNumberPlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -323,7 +333,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 name="supplierInvoiceDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Supplier Invoice Date</FormLabel>
+                    <FormLabel>{t("supplierInvoiceDateLabel")}</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -337,9 +347,9 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                 name="batchSequenceNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Batch</FormLabel>
+                    <FormLabel>{t("batchLabel")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Batch reference" {...field} />
+                      <Input placeholder={t("batchPlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -349,16 +359,16 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
 
             {/* Items to Receive */}
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Items to Receive</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("itemsToReceive")}</h3>
               <div className="overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead className="text-right">Ordered</TableHead>
-                      <TableHead className="text-right">Already Received</TableHead>
-                      <TableHead className="text-right">Remaining</TableHead>
-                      <TableHead className="text-right">Receive Now *</TableHead>
+                      <TableHead>{t("item")}</TableHead>
+                      <TableHead className="text-right">{t("ordered")}</TableHead>
+                      <TableHead className="text-right">{t("alreadyReceived")}</TableHead>
+                      <TableHead className="text-right">{t("remaining")}</TableHead>
+                      <TableHead className="text-right">{t("receiveNow")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -407,10 +417,10 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>{t("notesLabel")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Any notes about the receipt..."
+                      placeholder={t("notesPlaceholder")}
                       className="min-h-[80px]"
                       {...field}
                     />
@@ -423,7 +433,7 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
             {/* Display form errors */}
             {Object.keys(form.formState.errors).length > 0 && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                <p className="font-semibold">Please fix the following errors:</p>
+                <p className="font-semibold">{t("fixErrors")}</p>
                 <ul className="mt-1 list-inside list-disc">
                   {form.formState.errors.warehouseId && (
                     <li>{String(form.formState.errors.warehouseId.message)}</li>
@@ -451,29 +461,22 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                         (itemError, idx: number) =>
                           itemError && (
                             <li key={idx}>
-                              Item {idx + 1}: {JSON.stringify(itemError)}
+                              {t("itemError", { index: idx + 1, message: JSON.stringify(itemError) })}
                             </li>
                           )
                       )}
                     </>
                   )}
-                  {/* Fallback - show raw error object for debugging */}
-                  {Object.keys(form.formState.errors).length > 0 &&
-                    !form.formState.errors.warehouseId &&
-                    !form.formState.errors.receiptDate &&
-                    !form.formState.errors.items && (
-                      <li className="text-xs">Debug: {JSON.stringify(form.formState.errors)}</li>
-                    )}
                 </ul>
               </div>
             )}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
               <Button type="submit" disabled={receiveMutation.isPending}>
-                {receiveMutation.isPending ? "Receiving..." : "Receive Goods"}
+                {receiveMutation.isPending ? t("receiving") : t("receiveAction")}
               </Button>
             </DialogFooter>
           </form>

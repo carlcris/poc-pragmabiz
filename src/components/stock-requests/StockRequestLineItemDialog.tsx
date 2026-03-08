@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocale, useTranslations } from "next-intl";
 import { z } from "zod";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,16 +37,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { useItems } from "@/hooks/useItems";
 
-const lineItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
+const createLineItemSchema = (
+  tValidation: (key: "itemRequired" | "uomRequired" | "requestedQtyMin") => string
+) => z.object({
+  itemId: z.string().min(1, tValidation("itemRequired")),
   itemCode: z.string().optional(),
   itemName: z.string().optional(),
-  uomId: z.string().min(1, "Unit of measure is required"),
-  requestedQty: z.number().min(0.01, "Requested quantity must be greater than 0"),
+  uomId: z.string().min(1, tValidation("uomRequired")),
+  requestedQty: z.number().min(0.01, tValidation("requestedQtyMin")),
   notes: z.string().optional(),
 });
 
-export type StockRequestLineItemFormValues = z.infer<typeof lineItemSchema>;
+type StockRequestLineItemSchema = ReturnType<typeof createLineItemSchema>;
+export type StockRequestLineItemFormValues = z.infer<StockRequestLineItemSchema>;
 export type StockRequestLineItemPayload = StockRequestLineItemFormValues & {
   uomLabel?: string;
 };
@@ -65,6 +69,9 @@ export function StockRequestLineItemDialog({
   item,
   mode = "add",
 }: StockRequestLineItemDialogProps) {
+  const t = useTranslations("stockRequestLineItemDialog");
+  const tValidation = useTranslations("stockRequestLineItemValidation");
+  const locale = useLocale();
   const [itemOpen, setItemOpen] = useState(false);
   const [itemSearchInput, setItemSearchInput] = useState("");
   const [itemSearch, setItemSearch] = useState("");
@@ -75,6 +82,7 @@ export function StockRequestLineItemDialog({
     enabled: open && itemOpen,
   });
   const items = itemsData?.data || [];
+  const lineItemSchema = createLineItemSchema((key) => tValidation(key));
 
   const form = useForm<StockRequestLineItemFormValues>({
     resolver: zodResolver(lineItemSchema),
@@ -159,11 +167,11 @@ export function StockRequestLineItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit Request Item" : "Add Request Item"}</DialogTitle>
+          <DialogTitle>{mode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
             {mode === "edit"
-              ? "Update the request item details."
-              : "Fill in the details for the new request item."}
+              ? t("editDescription")
+              : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -174,7 +182,7 @@ export function StockRequestLineItemDialog({
               name="itemId"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Item *</FormLabel>
+                  <FormLabel>{t("itemLabel")} *</FormLabel>
                   <Popover open={itemOpen} onOpenChange={setItemOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -197,9 +205,9 @@ export function StockRequestLineItemDialog({
                                 const currentName = form.getValues("itemName");
                                 return currentCode && currentName
                                   ? `${currentCode} - ${currentName}`
-                                  : "Select an item";
+                                  : t("selectItem");
                               })()
-                            : "Search item..."}
+                            : t("searchItem")}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
@@ -207,7 +215,7 @@ export function StockRequestLineItemDialog({
                     <PopoverContent className="w-[min(95vw,520px)] p-0" align="start">
                       <Command>
                         <CommandInput
-                          placeholder="Search by code or name..."
+                          placeholder={t("searchItem")}
                           value={itemSearchInput}
                           onValueChange={setItemSearchInput}
                         />
@@ -215,11 +223,11 @@ export function StockRequestLineItemDialog({
                           {isItemsLoading || isItemsFetching ? (
                             <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
                               <Loader2 className="h-4 w-4 animate-spin" />
-                              <span>Loading items...</span>
+                              <span>{t("loadingItems")}</span>
                             </div>
                           ) : (
                             <>
-                              <CommandEmpty>No item found.</CommandEmpty>
+                              <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                               <CommandGroup>
                                 {items
                                   .filter((i) => i.isActive)
@@ -248,9 +256,9 @@ export function StockRequestLineItemDialog({
                                           {item.name}
                                         </div>
                                         <div className="mt-1 text-xs text-muted-foreground break-words">
-                                          On hand:{" "}
+                                          {t("onHand")}:{" "}
                                           {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
-                                          {"uom" in item ? item.uom : ""} • Available:{" "}
+                                          {"uom" in item ? item.uom : ""} • {t("available")}:{" "}
                                           {("available" in item ? item.available : 0).toFixed(2)}{" "}
                                           {"uom" in item ? item.uom : ""}
                                         </div>
@@ -274,7 +282,7 @@ export function StockRequestLineItemDialog({
               name="requestedQty"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Requested Quantity *</FormLabel>
+                  <FormLabel>{t("requestedQuantityLabel")} *</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -282,7 +290,7 @@ export function StockRequestLineItemDialog({
                       min="0.01"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      placeholder="Enter quantity"
+                      placeholder={t("requestedQuantityPlaceholder")}
                     />
                   </FormControl>
                   <FormMessage />
@@ -295,10 +303,10 @@ export function StockRequestLineItemDialog({
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel>{t("notesLabel")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Additional notes for this item..."
+                      placeholder={t("notesPlaceholder")}
                       className="resize-none"
                       {...field}
                     />
@@ -311,16 +319,16 @@ export function StockRequestLineItemDialog({
             {/* Summary Display */}
             <div className="rounded-md border-2 border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Quantity to Request:</span>
-                <span className="text-2xl font-bold">{requestedQty.toFixed(2)}</span>
+                <span className="text-sm font-medium">{t("quantityToRequest")}:</span>
+                <span className="text-2xl font-bold">{requestedQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
-              <Button type="submit">{mode === "edit" ? "Update Item" : "Add Item"}</Button>
+              <Button type="submit">{mode === "edit" ? t("updateAction") : t("addAction")}</Button>
             </DialogFooter>
           </form>
         </Form>

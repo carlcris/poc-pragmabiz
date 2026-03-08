@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
   Search,
@@ -92,6 +93,9 @@ const StockRequestViewDialog = dynamic(
 );
 
 export default function StockRequestsPage() {
+  const t = useTranslations("stockRequestsPage");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -144,33 +148,33 @@ export default function StockRequestsPage() {
 
     switch (status) {
       case "draft":
-        return <span className={`${baseClass} text-muted-foreground`}>Draft</span>;
+        return <span className={`${baseClass} text-muted-foreground`}>{t("draft")}</span>;
       case "submitted":
-        return <span className={`${baseClass} text-amber-600`}>Submitted</span>;
+        return <span className={`${baseClass} text-amber-600`}>{t("submitted")}</span>;
       case "approved":
-        return <span className={`${baseClass} text-blue-600`}>Approved</span>;
+        return <span className={`${baseClass} text-blue-600`}>{t("approved")}</span>;
       case "picked":
-        return <span className={`${baseClass} text-indigo-600`}>Picked</span>;
+        return <span className={`${baseClass} text-indigo-600`}>{t("picked")}</span>;
       case "picking":
-        return <span className={`${baseClass} text-indigo-600`}>Picking</span>;
+        return <span className={`${baseClass} text-indigo-600`}>{t("picking")}</span>;
       case "received":
-        return <span className={`${baseClass} text-emerald-600`}>Received</span>;
+        return <span className={`${baseClass} text-emerald-600`}>{t("received")}</span>;
       case "completed":
-        return <span className={`${baseClass} text-emerald-600`}>Completed</span>;
+        return <span className={`${baseClass} text-emerald-600`}>{t("completed")}</span>;
       case "cancelled":
-        return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
+        return <span className={`${baseClass} text-red-600`}>{t("cancelled")}</span>;
       case "allocating":
-        return <span className={`${baseClass} text-amber-600`}>Allocating</span>;
+        return <span className={`${baseClass} text-amber-600`}>{t("allocating")}</span>;
       case "partially_allocated":
-        return <span className={`${baseClass} text-orange-600`}>Partially Allocated</span>;
+        return <span className={`${baseClass} text-orange-600`}>{t("partiallyAllocated")}</span>;
       case "allocated":
-        return <span className={`${baseClass} text-orange-700`}>Allocated</span>;
+        return <span className={`${baseClass} text-orange-700`}>{t("allocated")}</span>;
       case "dispatched":
-        return <span className={`${baseClass} text-indigo-600`}>Dispatched</span>;
+        return <span className={`${baseClass} text-indigo-600`}>{t("dispatched")}</span>;
       case "partially_fulfilled":
-        return <span className={`${baseClass} text-emerald-600`}>Partially Fulfilled</span>;
+        return <span className={`${baseClass} text-emerald-600`}>{t("partiallyFulfilled")}</span>;
       case "fulfilled":
-        return <span className={`${baseClass} text-emerald-700`}>Fulfilled</span>;
+        return <span className={`${baseClass} text-emerald-700`}>{t("fulfilled")}</span>;
       default:
         return (
           <span className={`${baseClass} text-muted-foreground`}>
@@ -214,18 +218,18 @@ export default function StockRequestsPage() {
 
     switch (priority) {
       case "low":
-        return <span className={`${baseClass} text-slate-500`}>Low</span>;
+        return <span className={`${baseClass} text-slate-500`}>{t("low")}</span>;
       case "normal":
-        return <span className={`${baseClass} text-slate-600`}>Normal</span>;
+        return <span className={`${baseClass} text-slate-600`}>{t("normal")}</span>;
       case "high":
-        return <span className={`${baseClass} text-orange-600`}>High</span>;
+        return <span className={`${baseClass} text-orange-600`}>{t("high")}</span>;
       case "urgent":
-        return <span className={`${baseClass} text-red-600`}>Urgent</span>;
+        return <span className={`${baseClass} text-red-600`}>{t("urgent")}</span>;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -388,45 +392,44 @@ export default function StockRequestsPage() {
       }
     > = {
       submit: {
-        title: "Submit Stock Request",
-        description: "Submit this stock request for approval?",
-        confirmText: "Submit",
+        title: t("submitTitle"),
+        description: t("submitDescription"),
+        confirmText: t("submit"),
         confirmClass: "bg-blue-600 hover:bg-blue-700",
         needsReason: false,
       },
       approve: {
-        title: "Approve Stock Request",
-        description: "Approve this stock request?",
-        confirmText: "Approve",
+        title: t("approveTitle"),
+        description: t("approveDescription"),
+        confirmText: t("approve"),
         confirmClass: "bg-green-600 hover:bg-green-700",
         needsReason: false,
       },
       reject: {
-        title: "Reject Stock Request",
-        description: "Reject this stock request? Please provide a reason.",
-        confirmText: "Reject",
+        title: t("rejectTitle"),
+        description: t("rejectDescription"),
+        confirmText: t("reject"),
         confirmClass: "bg-red-600 hover:bg-red-700",
         needsReason: true,
       },
       dispatch: {
-        title: "Dispatch Stock Request",
-        description: "Dispatch picked quantities and post outbound inventory movement?",
-        confirmText: "Dispatch",
+        title: t("dispatchTitle"),
+        description: t("dispatchDescription"),
+        confirmText: t("dispatch"),
         confirmClass: "bg-indigo-600 hover:bg-indigo-700",
         needsReason: false,
       },
       complete: {
-        title: "Complete Stock Request",
-        description:
-          "Complete this stock request? This will create stock transactions and update inventory levels.",
-        confirmText: "Complete",
+        title: t("completeTitle"),
+        description: t("completeDescription"),
+        confirmText: t("completed"),
         confirmClass: "bg-green-600 hover:bg-green-700",
         needsReason: false,
       },
       cancel: {
-        title: "Cancel Stock Request",
-        description: "Cancel this stock request? Please provide a reason.",
-        confirmText: "Cancel",
+        title: t("cancelTitle"),
+        description: t("cancelDescription"),
+        confirmText: t("cancel"),
         confirmClass: "bg-red-600 hover:bg-red-700",
         needsReason: true,
       },
@@ -444,16 +447,16 @@ export default function StockRequestsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Stock Requests</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage stock requests and fulfillment workflow</p>
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
           </div>
           <div className="flex w-full gap-2 sm:w-auto">
             <Button asChild variant="outline" className="w-full sm:w-auto flex-shrink-0">
-              <Link href="/inventory/delivery-notes">Delivery Notes</Link>
+              <Link href="/inventory/delivery-notes">{t("deliveryNotes")}</Link>
             </Button>
             <Button onClick={handleCreateRequest} className="w-full sm:w-auto flex-shrink-0">
               <Plus className="mr-2 h-4 w-4" />
-              Create Request
+              {t("createRequest")}
             </Button>
           </div>
         </div>
@@ -463,7 +466,7 @@ export default function StockRequestsPage() {
             <div className="relative w-full sm:flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search stock requests..."
+                placeholder={t("searchPlaceholder")}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-8"
@@ -472,37 +475,37 @@ export default function StockRequestsPage() {
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="picking">Picking</SelectItem>
-                <SelectItem value="picked">Picked</SelectItem>
-                <SelectItem value="dispatched">Dispatched</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="allocating">Allocating</SelectItem>
-                <SelectItem value="partially_allocated">Partially Allocated</SelectItem>
-                <SelectItem value="allocated">Allocated</SelectItem>
-                <SelectItem value="partially_fulfilled">Partially Fulfilled</SelectItem>
-                <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">{t("allStatus")}</SelectItem>
+                <SelectItem value="draft">{t("draft")}</SelectItem>
+                <SelectItem value="submitted">{t("submitted")}</SelectItem>
+                <SelectItem value="approved">{t("approved")}</SelectItem>
+                <SelectItem value="picking">{t("picking")}</SelectItem>
+                <SelectItem value="picked">{t("picked")}</SelectItem>
+                <SelectItem value="dispatched">{t("dispatched")}</SelectItem>
+                <SelectItem value="received">{t("received")}</SelectItem>
+                <SelectItem value="allocating">{t("allocating")}</SelectItem>
+                <SelectItem value="partially_allocated">{t("partiallyAllocated")}</SelectItem>
+                <SelectItem value="allocated">{t("allocated")}</SelectItem>
+                <SelectItem value="partially_fulfilled">{t("partiallyFulfilled")}</SelectItem>
+                <SelectItem value="fulfilled">{t("fulfilled")}</SelectItem>
+                <SelectItem value="completed">{t("completed")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={handlePriorityFilterChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Priority" />
+                <SelectValue placeholder={t("priorityPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="normal">Normal</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="all">{t("allPriority")}</SelectItem>
+                <SelectItem value="low">{t("low")}</SelectItem>
+                <SelectItem value="normal">{t("normal")}</SelectItem>
+                <SelectItem value="high">{t("high")}</SelectItem>
+                <SelectItem value="urgent">{t("urgent")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -512,16 +515,16 @@ export default function StockRequestsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Request #</TableHead>
-                    <TableHead>Request Date</TableHead>
-                    <TableHead>Required Date</TableHead>
-                    <TableHead>Requested By</TableHead>
-                    <TableHead>Requested To</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    {!hasAnyActions && <TableHead>Received</TableHead>}
-                    <TableHead>Requested By</TableHead>
-                    {hasAnyActions && <TableHead className="text-right">Actions</TableHead>}
+                    <TableHead>{t("requestNumber")}</TableHead>
+                    <TableHead>{t("requestDate")}</TableHead>
+                    <TableHead>{t("requiredDate")}</TableHead>
+                    <TableHead>{t("requestedByWarehouse")}</TableHead>
+                    <TableHead>{t("requestedToWarehouse")}</TableHead>
+                    <TableHead>{t("priority")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    {!hasAnyActions && <TableHead>{t("receivedDate")}</TableHead>}
+                    <TableHead>{t("requestedByUser")}</TableHead>
+                    {hasAnyActions && <TableHead className="text-right">{t("actions")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -570,13 +573,13 @@ export default function StockRequestsPage() {
             </div>
           ) : error ? (
             <div className="py-8 text-center text-destructive">
-              Error loading stock requests. Please try again.
+              {t("loadingError")}
             </div>
           ) : requests.length === 0 ? (
             <EmptyStatePanel
               icon={Package}
-              title="No stock requests found"
-              description="Create your first request to get started."
+              title={t("emptyTitle")}
+              description={t("emptyDescription")}
             />
           ) : (
             <>
@@ -584,16 +587,16 @@ export default function StockRequestsPage() {
                 <Table>
                   <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow>
-                      <TableHead>Request #</TableHead>
-                      <TableHead>Request Date</TableHead>
-                      <TableHead>Required Date</TableHead>
-                      <TableHead>Requested By</TableHead>
-                      <TableHead>Requested To</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Status</TableHead>
-                      {!hasAnyActions && <TableHead>Received</TableHead>}
-                      <TableHead>Requested By</TableHead>
-                      {hasAnyActions && <TableHead className="text-right">Actions</TableHead>}
+                      <TableHead>{t("requestNumber")}</TableHead>
+                      <TableHead>{t("requestDate")}</TableHead>
+                      <TableHead>{t("requiredDate")}</TableHead>
+                      <TableHead>{t("requestedByWarehouse")}</TableHead>
+                      <TableHead>{t("requestedToWarehouse")}</TableHead>
+                      <TableHead>{t("priority")}</TableHead>
+                      <TableHead>{t("status")}</TableHead>
+                      {!hasAnyActions && <TableHead>{t("receivedDate")}</TableHead>}
+                      <TableHead>{t("requestedByUser")}</TableHead>
+                      {hasAnyActions && <TableHead className="text-right">{t("actions")}</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -611,8 +614,8 @@ export default function StockRequestsPage() {
                         </TableCell>
                         <TableCell>{formatDate(request.request_date)}</TableCell>
                         <TableCell>{formatDate(request.required_date)}</TableCell>
-                        <TableCell>{request.requesting_warehouse?.warehouse_code || "--"}</TableCell>
-                        <TableCell>{request.fulfilling_warehouse?.warehouse_code || "--"}</TableCell>
+                        <TableCell>{request.requesting_warehouse?.warehouse_code || t("noWarehouse")}</TableCell>
+                        <TableCell>{request.fulfilling_warehouse?.warehouse_code || t("noWarehouse")}</TableCell>
                         <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         {!hasAnyActions && (
@@ -623,7 +626,7 @@ export default function StockRequestsPage() {
                         <TableCell>
                           {request.requested_by_user?.full_name ||
                             request.requested_by_user?.email ||
-                            "--"}
+                            t("noWarehouse")}
                         </TableCell>
                         {hasAnyActions && (
                           <TableCell
@@ -639,7 +642,7 @@ export default function StockRequestsPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleEditRequest(request)}
-                                        title="Edit"
+                                        title={t("edit")}
                                       >
                                         <Pencil className="h-4 w-4" />
                                       </Button>
@@ -647,7 +650,7 @@ export default function StockRequestsPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleDeleteRequest(request)}
-                                        title="Delete"
+                                        title={t("delete")}
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
@@ -655,7 +658,7 @@ export default function StockRequestsPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleAction("submit", request)}
-                                        title="Submit"
+                                        title={t("submit")}
                                       >
                                         <Send className="h-4 w-4 text-blue-600" />
                                       </Button>
@@ -668,7 +671,7 @@ export default function StockRequestsPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleAction("approve", request)}
-                                        title="Approve"
+                                        title={t("approve")}
                                       >
                                         <ThumbsUp className="h-4 w-4 text-green-600" />
                                       </Button>
@@ -676,7 +679,7 @@ export default function StockRequestsPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleAction("reject", request)}
-                                        title="Reject"
+                                        title={t("reject")}
                                       >
                                         <ThumbsDown className="h-4 w-4 text-red-600" />
                                       </Button>
@@ -689,7 +692,7 @@ export default function StockRequestsPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleAction("dispatch", request)}
-                                        title="Dispatch"
+                                        title={t("dispatch")}
                                       >
                                         <Truck className="h-4 w-4 text-indigo-600" />
                                       </Button>
@@ -700,7 +703,7 @@ export default function StockRequestsPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => handleAction("receive", request)}
-                                      title="Receive"
+                                        title={t("receive")}
                                     >
                                       <CheckCircle className="h-4 w-4 text-emerald-600" />
                                     </Button>
@@ -711,14 +714,14 @@ export default function StockRequestsPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => handleAction("cancel", request)}
-                                      title="Cancel"
+                                      title={t("cancel")}
                                     >
                                       <XCircle className="h-4 w-4 text-red-600" />
                                     </Button>
                                   )}
                                 </>
                               ) : (
-                                <span className="text-xs text-muted-foreground">--</span>
+                                <span className="text-xs text-muted-foreground">{t("noActions")}</span>
                               )}
                             </div>
                           </TableCell>
@@ -793,20 +796,19 @@ export default function StockRequestsPage() {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Stock Request</AlertDialogTitle>
+              <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete request{" "}
-                <strong>{requestToDelete?.request_code}</strong>? This action cannot be undone.
+                {requestToDelete ? t("deleteDescription", { code: requestToDelete.request_code }) : ""}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirmDelete}
                 className="bg-destructive hover:bg-destructive/90"
                 disabled={deleteMutation.isPending}
               >
-                {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                {deleteMutation.isPending ? t("deleting") : tCommon("delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -822,12 +824,12 @@ export default function StockRequestsPage() {
                   <p>{actionConfig.description}</p>
                   {requestToAction && (
                     <p>
-                      <strong>Request:</strong> {requestToAction.request_code}
+                      <strong>{t("actionRequestLabel")}:</strong> {requestToAction.request_code}
                     </p>
                   )}
                   {actionConfig.needsReason && (
                     <Textarea
-                      placeholder="Enter reason..."
+                      placeholder={t("reasonPlaceholder")}
                       value={actionReason}
                       onChange={(e) => setActionReason(e.target.value)}
                       className="mt-2"
@@ -837,7 +839,7 @@ export default function StockRequestsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleConfirmAction}
                 className={actionConfig.confirmClass}
@@ -857,7 +859,7 @@ export default function StockRequestsPage() {
                 dispatchMutation.isPending ||
                 completeMutation.isPending ||
                 cancelMutation.isPending
-                  ? "Processing..."
+                  ? t("processing")
                   : actionConfig.confirmText}
               </AlertDialogAction>
             </AlertDialogFooter>

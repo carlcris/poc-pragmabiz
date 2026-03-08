@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TrendingUp, DollarSign, Users, ShoppingCart, BarChart3, PieChart } from "lucide-react";
@@ -35,6 +36,7 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ filters }: OverviewTabProps) {
+  const t = useTranslations("analyticsOverviewTab");
   const { formatCurrency } = useCurrency();
   const { data: overviewData, isLoading: overviewLoading } = useSalesOverview(filters);
   const { data: employeeData, isLoading: employeeLoading } = useSalesByEmployee(filters);
@@ -79,16 +81,16 @@ export function OverviewTab({ filters }: OverviewTabProps) {
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
-          title="Total Sales"
+          title={t("totalSales")}
           value={overview ? formatCurrency(overview.totalSales) : formatCurrency(0)}
-          description={`${overview?.transactionCount || 0} transactions`}
+          description={t("transactions", { count: overview?.transactionCount || 0 })}
           icon={DollarSign}
           iconColor="text-green-600"
           trend={
             overview?.comparison
               ? {
                   value: overview.comparison.salesGrowthPercentage,
-                  label: "vs previous period",
+                  label: t("vsPreviousPeriod"),
                   isPositive: overview.comparison.salesGrowthPercentage >= 0,
                 }
               : undefined
@@ -96,25 +98,25 @@ export function OverviewTab({ filters }: OverviewTabProps) {
           isLoading={overviewLoading}
         />
         <KPICard
-          title="Total Commissions"
+          title={t("totalCommissions")}
           value={overview ? formatCurrency(overview.totalCommissions) : formatCurrency(0)}
-          description="Earned by all agents"
+          description={t("earnedByAllAgents")}
           icon={TrendingUp}
           iconColor="text-blue-600"
           isLoading={overviewLoading}
         />
         <KPICard
-          title="Active Agents"
+          title={t("activeAgents")}
           value={overview?.activeAgents || 0}
-          description="Sales agents with activity"
+          description={t("salesAgentsWithActivity")}
           icon={Users}
           iconColor="text-purple-600"
           isLoading={overviewLoading}
         />
         <KPICard
-          title="Average Order Value"
+          title={t("averageOrderValue")}
           value={overview ? formatCurrency(overview.averageOrderValue) : formatCurrency(0)}
-          description="Per transaction"
+          description={t("perTransaction")}
           icon={ShoppingCart}
           iconColor="text-orange-600"
           isLoading={overviewLoading}
@@ -126,16 +128,16 @@ export function OverviewTab({ filters }: OverviewTabProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            Sales Trend
+            {t("salesTrend")}
           </CardTitle>
-          <CardDescription>Daily sales performance</CardDescription>
+          <CardDescription>{t("dailySalesPerformance")}</CardDescription>
         </CardHeader>
         <CardContent>
           {timeLoading ? (
             <Skeleton className="h-[300px] w-full" />
           ) : salesTrendData.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No sales data available
+              {t("noSalesData")}
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -156,7 +158,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                   dataKey="sales"
                   stroke="#3b82f6"
                   strokeWidth={2}
-                  name="Sales"
+                  name={t("sales")}
                   dot={{ fill: "#3b82f6" }}
                 />
                 <Line
@@ -164,7 +166,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                   dataKey="commissions"
                   stroke="#10b981"
                   strokeWidth={2}
-                  name="Commission"
+                  name={t("commission")}
                   dot={{ fill: "#10b981" }}
                 />
               </LineChart>
@@ -180,16 +182,16 @@ export function OverviewTab({ filters }: OverviewTabProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Top 5 Sales Agents
+              {t("topSalesAgents")}
             </CardTitle>
-            <CardDescription>By total sales</CardDescription>
+            <CardDescription>{t("byTotalSales")}</CardDescription>
           </CardHeader>
           <CardContent>
             {employeeLoading ? (
               <Skeleton className="h-[300px] w-full" />
             ) : topEmployeesChartData.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No employee data available
+                {t("noEmployeeData")}
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
@@ -213,11 +215,11 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />
-                  <Bar dataKey="sales" fill="#3b82f6" name="Sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sales" fill="#3b82f6" name={t("sales")} radius={[4, 4, 0, 0]} />
                   <Bar
                     dataKey="commissions"
                     fill="#10b981"
-                    name="Commission"
+                    name={t("commission")}
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -231,16 +233,16 @@ export function OverviewTab({ filters }: OverviewTabProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
-              Top 5 Locations
+              {t("topLocations")}
             </CardTitle>
-            <CardDescription>By total sales</CardDescription>
+            <CardDescription>{t("byTotalSalesLocations")}</CardDescription>
           </CardHeader>
           <CardContent>
             {locationLoading ? (
               <Skeleton className="h-[300px] w-full" />
             ) : topLocationsChartData.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No location data available
+                {t("noLocationData")}
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>

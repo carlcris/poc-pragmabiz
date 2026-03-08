@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { MapPin, Package, AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 
 export function LocationAssignmentWidget() {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useLocationAssignmentStatus();
 
   // Loading state
@@ -20,8 +22,8 @@ export function LocationAssignmentWidget() {
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Location Assignment</CardTitle>
-              <CardDescription>Warehouse location assignment status</CardDescription>
+              <CardTitle>{t("locationAssignmentTitle")}</CardTitle>
+              <CardDescription>{t("warehouseLocationAssignmentStatus")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -42,16 +44,16 @@ export function LocationAssignmentWidget() {
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Location Assignment</CardTitle>
-              <CardDescription>Warehouse location assignment status</CardDescription>
+              <CardTitle>{t("locationAssignmentTitle")}</CardTitle>
+              <CardDescription>{t("warehouseLocationAssignmentStatus")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load location data</p>
+            <p className="text-sm text-destructive">{t("failedLoadLocationData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -67,16 +69,16 @@ export function LocationAssignmentWidget() {
           <div className="flex items-center gap-2">
             <MapPin className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Location Assignment</CardTitle>
-              <CardDescription>Warehouse location assignment status</CardDescription>
+              <CardTitle>{t("locationAssignmentTitle")}</CardTitle>
+              <CardDescription>{t("warehouseLocationAssignmentStatus")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={MapPin}
-            title="No boxes in system"
-            description="No location data available"
+            title={t("noBoxesInSystem")}
+            description={t("noLocationDataAvailable")}
           />
         </CardContent>
       </Card>
@@ -89,7 +91,7 @@ export function LocationAssignmentWidget() {
 
   // Determine status color
   const statusConfig = {
-    label: isLowAssignment ? "Poor" : isMediumAssignment ? "Good" : "Excellent",
+    label: isLowAssignment ? t("poor") : isMediumAssignment ? t("good") : t("excellent"),
     color: isLowAssignment
       ? "text-red-600"
       : isMediumAssignment
@@ -113,8 +115,8 @@ export function LocationAssignmentWidget() {
         <div className="flex items-center gap-2">
           <MapPin className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Location Assignment</CardTitle>
-            <CardDescription>Warehouse location assignment status</CardDescription>
+            <CardTitle>{t("locationAssignmentTitle")}</CardTitle>
+            <CardDescription>{t("warehouseLocationAssignmentStatus")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -124,8 +126,7 @@ export function LocationAssignmentWidget() {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              Only {assignmentPercent.toFixed(1)}% of boxes have locations assigned. Please assign
-              locations to improve tracking.
+              {t("boxesAssignedAlert", { value: assignmentPercent.toFixed(1) })}
             </AlertDescription>
           </Alert>
         )}
@@ -133,7 +134,7 @@ export function LocationAssignmentWidget() {
         {/* Assignment Percentage */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Assignment Rate</span>
+            <span className="text-sm font-medium text-muted-foreground">{t("assignmentRate")}</span>
             <span className={cn("text-xl sm:text-2xl font-bold", statusConfig.color)}>
               {assignmentPercent.toFixed(1)}%
             </span>
@@ -154,15 +155,15 @@ export function LocationAssignmentWidget() {
         {/* Box Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
           <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
-            <div className="text-xs text-muted-foreground">Total</div>
+            <div className="text-xs text-muted-foreground">{t("total")}</div>
             <p className="mt-1 text-base sm:text-lg font-bold">{data.totalBoxes}</p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
-            <div className="text-xs text-muted-foreground">Assigned</div>
+            <div className="text-xs text-muted-foreground">{t("assigned")}</div>
             <p className="mt-1 text-base sm:text-lg font-bold text-green-600">{data.assignedBoxes}</p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
-            <div className="text-xs text-muted-foreground">Unassigned</div>
+            <div className="text-xs text-muted-foreground">{t("unassigned")}</div>
             <p className="mt-1 text-base sm:text-lg font-bold text-red-600">{data.unassignedBoxes}</p>
           </div>
         </div>
@@ -172,19 +173,19 @@ export function LocationAssignmentWidget() {
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="h-4 w-4 text-green-600" />
-              <span>Locations Assigned</span>
+              <span>{t("locationsAssigned")}</span>
             </div>
             <span className="font-semibold text-green-600">
-              {data.assignedBoxes} boxes
+              {t("boxesCount", { count: data.assignedBoxes })}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Package className="h-4 w-4 text-red-600" />
-              <span>Need Assignment</span>
+              <span>{t("needAssignment")}</span>
             </div>
             <span className="font-semibold text-red-600">
-              {data.unassignedBoxes} boxes
+              {t("boxesCount", { count: data.unassignedBoxes })}
             </span>
           </div>
         </div>
@@ -194,7 +195,7 @@ export function LocationAssignmentWidget() {
           <Button asChild variant="default" className="w-full">
             <Link href="/purchasing/grns?tab=unassigned-boxes">
               <Package className="mr-2 h-4 w-4" />
-              View Unassigned Boxes ({data.unassignedBoxes})
+              {t("viewUnassignedBoxes", { count: data.unassignedBoxes })}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -203,11 +204,11 @@ export function LocationAssignmentWidget() {
         {/* Recommendations */}
         {isLowAssignment && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-xs font-medium text-amber-800">Recommendations:</p>
+            <p className="text-xs font-medium text-amber-800">{t("recommendations")}:</p>
             <ul className="mt-1 space-y-1 text-xs text-amber-700">
-              <li>• Assign locations to improve inventory tracking</li>
-              <li>• Use batch assignment for efficiency</li>
-              <li>• Review warehouse layout optimization</li>
+              <li>• {t("assignLocationsImproveTracking")}</li>
+              <li>• {t("useBatchAssignmentForEfficiency")}</li>
+              <li>• {t("reviewWarehouseLayoutOptimization")}</li>
             </ul>
           </div>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { Plus, Search, Pencil, Filter, Building2, User, Landmark, Trash2 } from "lucide-react";
 import { useCustomers, useDeleteCustomer } from "@/hooks/useCustomers";
@@ -41,6 +42,8 @@ const ConfirmDialog = dynamic(
 );
 
 function CustomersPageContent() {
+  const t = useTranslations("customersPage");
+  const tCommon = useTranslations("common");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -88,11 +91,11 @@ function CustomersPageContent() {
   const getCustomerTypeBadge = (type: Customer["customerType"]) => {
     switch (type) {
       case "company":
-        return <Badge variant="default">Company</Badge>;
+        return <Badge variant="default">{t("typeCompany")}</Badge>;
       case "government":
-        return <Badge className="bg-purple-600 hover:bg-purple-700">Government</Badge>;
+        return <Badge className="bg-purple-600 hover:bg-purple-700">{t("typeGovernment")}</Badge>;
       default:
-        return <Badge variant="secondary">Individual</Badge>;
+        return <Badge variant="secondary">{t("typeIndividual")}</Badge>;
     }
   };
 
@@ -116,10 +119,10 @@ function CustomersPageContent() {
 
     try {
       await deleteCustomer.mutateAsync(customerToDelete.id);
-      toast.success("Customer deleted successfully");
+      toast.success(t("deleteSuccess"));
       setCustomerToDelete(null);
     } catch {
-      toast.error("Failed to delete customer");
+      toast.error(t("deleteError"));
     }
   };
 
@@ -137,13 +140,13 @@ function CustomersPageContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Customer Master</h1>
-          <p className="text-muted-foreground">Manage your customer accounts</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <CreateGuard resource={RESOURCES.CUSTOMERS}>
           <Button onClick={handleCreateCustomer}>
             <Plus className="mr-2 h-4 w-4" />
-            Create Customer
+            {t("createCustomer")}
           </Button>
         </CreateGuard>
       </div>
@@ -153,7 +156,7 @@ function CustomersPageContent() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search customers..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
@@ -164,24 +167,24 @@ function CustomersPageContent() {
           <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
             <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Type" />
+              <SelectValue placeholder={t("typePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="individual">Individual</SelectItem>
-              <SelectItem value="company">Company</SelectItem>
-              <SelectItem value="government">Government</SelectItem>
+              <SelectItem value="all">{t("allTypes")}</SelectItem>
+              <SelectItem value="individual">{t("typeIndividual")}</SelectItem>
+              <SelectItem value="company">{t("typeCompany")}</SelectItem>
+              <SelectItem value="government">{t("typeGovernment")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-[150px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={tCommon("status")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              <SelectItem value="active">{tCommon("active")}</SelectItem>
+              <SelectItem value="inactive">{tCommon("inactive")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -192,14 +195,14 @@ function CustomersPageContent() {
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
                   <TableHead>Code</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Credit Limit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("customer")}</TableHead>
+                  <TableHead>{t("typePlaceholder")}</TableHead>
+                  <TableHead>{t("contact")}</TableHead>
+                  <TableHead>{t("location")}</TableHead>
+                  <TableHead className="text-right">{t("creditLimit")}</TableHead>
+                  <TableHead className="text-right">{t("balance")}</TableHead>
+                  <TableHead>{tCommon("status")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -247,12 +250,10 @@ function CustomersPageContent() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading customers. Please try again.
+            {t("loadError")}
           </div>
         ) : customers.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No customers found. Create your first customer to get started.
-          </div>
+          <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
@@ -260,14 +261,14 @@ function CustomersPageContent() {
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
                     <TableHead>Code</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Credit Limit</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("customer")}</TableHead>
+                    <TableHead>{t("typePlaceholder")}</TableHead>
+                    <TableHead>{t("contact")}</TableHead>
+                    <TableHead>{t("location")}</TableHead>
+                    <TableHead className="text-right">{t("creditLimit")}</TableHead>
+                    <TableHead className="text-right">{t("balance")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -321,7 +322,7 @@ function CustomersPageContent() {
                               : ""
                           }
                         >
-                          {customer.isActive ? "Active" : "Inactive"}
+                          {customer.isActive ? tCommon("active") : tCommon("inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -382,14 +383,14 @@ function CustomersPageContent() {
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={confirmDelete}
-          title="Delete Customer"
+          title={t("deleteTitle")}
           description={
             customerToDelete
-              ? `Are you sure you want to delete "${customerToDelete.name}"? This action cannot be undone.`
-              : "Are you sure you want to delete this customer?"
+              ? t("deleteDescriptionWithName", { name: customerToDelete.name })
+              : t("deleteDescription")
           }
-          confirmText="Delete"
-          cancelText="Cancel"
+          confirmText={tCommon("delete")}
+          cancelText={tCommon("cancel")}
           variant="destructive"
           isLoading={deleteCustomer.isPending}
         />

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
   CheckCircle,
@@ -50,6 +51,7 @@ const PurchaseOrderFormDialog = dynamic(
 
 export default function ReorderManagementPage() {
   const [selectedTab, setSelectedTab] = useState("suggestions");
+  const t = useTranslations("reorderManagementPage");
   const { formatCurrency } = useCurrency();
 
   const { data: suggestionsData, isLoading: suggestionsLoading } = useReorderSuggestions();
@@ -132,7 +134,7 @@ export default function ReorderManagementPage() {
     });
 
     if (lineItems.length === 0) {
-      toast.error("No matching items found for the selected alerts.");
+      toast.error(t("noMatchingItemsForAlerts"));
       return;
     }
 
@@ -145,9 +147,9 @@ export default function ReorderManagementPage() {
 
   const getPriorityBadge = (priority: "high" | "medium" | "low") => {
     const variants = {
-      high: { variant: "destructive" as const, label: "High Priority" },
-      medium: { variant: "default" as const, label: "Medium Priority" },
-      low: { variant: "secondary" as const, label: "Low Priority" },
+      high: { variant: "destructive" as const, label: t("highPriority") },
+      medium: { variant: "default" as const, label: t("mediumPriority") },
+      low: { variant: "secondary" as const, label: t("lowPriority") },
     };
     const config = variants[priority];
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -155,10 +157,10 @@ export default function ReorderManagementPage() {
 
   const getStatusBadge = (status: ReorderSuggestion["status"]) => {
     const variants = {
-      pending: { variant: "outline" as const, label: "Pending" },
-      approved: { variant: "default" as const, label: "Approved" },
-      rejected: { variant: "destructive" as const, label: "Rejected" },
-      ordered: { variant: "secondary" as const, label: "Ordered" },
+      pending: { variant: "outline" as const, label: t("pending") },
+      approved: { variant: "default" as const, label: t("approved") },
+      rejected: { variant: "destructive" as const, label: t("rejected") },
+      ordered: { variant: "secondary" as const, label: t("ordered") },
     };
     const config = variants[status];
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -166,9 +168,9 @@ export default function ReorderManagementPage() {
 
   const getSeverityBadge = (severity: ReorderAlert["severity"]) => {
     const variants = {
-      critical: { variant: "destructive" as const, label: "Critical", icon: AlertTriangle },
-      warning: { variant: "default" as const, label: "Warning", icon: AlertTriangle },
-      info: { variant: "secondary" as const, label: "Info", icon: Package },
+      critical: { variant: "destructive" as const, label: t("critical"), icon: AlertTriangle },
+      warning: { variant: "default" as const, label: t("warning"), icon: AlertTriangle },
+      info: { variant: "secondary" as const, label: t("info"), icon: Package },
     };
     const config = variants[severity];
     const Icon = config.icon;
@@ -183,10 +185,8 @@ export default function ReorderManagementPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">Reorder Management</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          Monitor stock levels, manage reorder suggestions, and configure automated restocking
-        </p>
+        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">{t("title")}</h1>
+        <p className="text-xs sm:text-sm text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Statistics Cards */}
@@ -210,58 +210,58 @@ export default function ReorderManagementPage() {
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Items OK</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("itemsOk")}</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{statistics.itemsOk}</div>
-                <p className="text-xs text-muted-foreground">Adequately stocked</p>
+                <p className="text-xs text-muted-foreground">{t("adequatelyStocked")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("lowStock")}</CardTitle>
                 <AlertTriangle className="h-4 w-4 text-yellow-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{statistics.itemsLowStock}</div>
-                <p className="text-xs text-muted-foreground">Below reorder point</p>
+                <p className="text-xs text-muted-foreground">{t("belowReorderPoint")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Critical</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("critical")}</CardTitle>
                 <XCircle className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{statistics.itemsCritical}</div>
-                <p className="text-xs text-muted-foreground">Below minimum level</p>
+                <p className="text-xs text-muted-foreground">{t("belowMinimumLevel")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("pendingOrders")}</CardTitle>
                 <ShoppingCart className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{statistics.pendingSuggestions}</div>
-                <p className="text-xs text-muted-foreground">Awaiting approval</p>
+                <p className="text-xs text-muted-foreground">{t("awaitingApproval")}</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Est. Cost</CardTitle>
+                <CardTitle className="text-sm font-medium">{t("estimatedCost")}</CardTitle>
                 <TrendingUp className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {formatCurrency(statistics.totalEstimatedReorderCost)}
                 </div>
-                <p className="text-xs text-muted-foreground">Total reorder value</p>
+                <p className="text-xs text-muted-foreground">{t("totalReorderValue")}</p>
               </CardContent>
             </Card>
           </>
@@ -271,18 +271,16 @@ export default function ReorderManagementPage() {
       {/* Tabs for Suggestions and Alerts */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="suggestions">Reorder Suggestions ({suggestions.length})</TabsTrigger>
-          <TabsTrigger value="alerts">Active Alerts ({alerts.length})</TabsTrigger>
+          <TabsTrigger value="suggestions">{t("reorderSuggestionsTab", { count: suggestions.length })}</TabsTrigger>
+          <TabsTrigger value="alerts">{t("activeAlertsTab", { count: alerts.length })}</TabsTrigger>
         </TabsList>
 
         {/* Reorder Suggestions Tab */}
         <TabsContent value="suggestions" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Reorder Suggestions</CardTitle>
-              <CardDescription>
-                Review and approve automatic reorder suggestions based on stock levels
-              </CardDescription>
+              <CardTitle>{t("reorderSuggestions")}</CardTitle>
+              <CardDescription>{t("reorderSuggestionsDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               {suggestionsLoading ? (
@@ -307,8 +305,8 @@ export default function ReorderManagementPage() {
               ) : suggestions.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <Package className="mx-auto mb-4 h-12 w-12 opacity-50" />
-                  <p>No reorder suggestions at this time</p>
-                  <p className="mt-1 text-sm">All items are adequately stocked</p>
+                  <p>{t("noReorderSuggestions")}</p>
+                  <p className="mt-1 text-sm">{t("allItemsAdequatelyStocked")}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -325,48 +323,48 @@ export default function ReorderManagementPage() {
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                           <div>
-                            <span className="text-muted-foreground">Item Code:</span>
+                            <span className="text-muted-foreground">{t("itemCode")}:</span>
                             <span className="ml-2 font-medium">{suggestion.itemCode}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Warehouse:</span>
+                            <span className="text-muted-foreground">{t("warehouse")}:</span>
                             <span className="ml-2 font-medium">{suggestion.warehouseName}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Current Stock:</span>
+                            <span className="text-muted-foreground">{t("currentStock")}:</span>
                             <span className="ml-2 font-medium text-red-600">
                               {suggestion.currentStock}
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Reorder Point:</span>
+                            <span className="text-muted-foreground">{t("reorderPoint")}:</span>
                             <span className="ml-2 font-medium">{suggestion.reorderPoint}</span>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                           <div>
-                            <span className="text-muted-foreground">Suggested Qty:</span>
+                            <span className="text-muted-foreground">{t("suggestedQty")}:</span>
                             <span className="ml-2 font-medium">{suggestion.suggestedQuantity}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Est. Cost:</span>
+                            <span className="text-muted-foreground">{t("estimatedCostShort")}:</span>
                             <span className="ml-2 font-medium">
                               {formatCurrency(suggestion.estimatedCost)}
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Supplier:</span>
+                            <span className="text-muted-foreground">{t("supplier")}:</span>
                             <span className="ml-2 font-medium">{suggestion.supplierName}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Lead Time:</span>
+                            <span className="text-muted-foreground">{t("leadTime")}:</span>
                             <span className="ml-2 font-medium">
-                              {suggestion.expectedDeliveryDays} days
+                              {t("leadTimeDays", { count: suggestion.expectedDeliveryDays })}
                             </span>
                           </div>
                         </div>
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Reason:</span>
+                          <span className="text-muted-foreground">{t("reason")}:</span>
                           <span className="ml-2">{suggestion.reason}</span>
                         </div>
                       </div>
@@ -379,7 +377,7 @@ export default function ReorderManagementPage() {
                             disabled={approveSuggestion.isPending}
                           >
                             <Check className="mr-1 h-4 w-4" />
-                            Approve
+                            {t("approve")}
                           </Button>
                           <Button
                             size="sm"
@@ -388,7 +386,7 @@ export default function ReorderManagementPage() {
                             disabled={rejectSuggestion.isPending}
                           >
                             <X className="mr-1 h-4 w-4" />
-                            Reject
+                            {t("reject")}
                           </Button>
                         </div>
                       )}
@@ -406,17 +404,15 @@ export default function ReorderManagementPage() {
             <CardHeader>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <CardTitle>Stock Level Alerts</CardTitle>
-                  <CardDescription>
-                    Critical and warning alerts for items requiring immediate attention
-                  </CardDescription>
+                  <CardTitle>{t("stockLevelAlerts")}</CardTitle>
+                  <CardDescription>{t("stockLevelAlertsDescription")}</CardDescription>
                 </div>
                 <Button
                   size="sm"
                   disabled={selectedAlertIds.length === 0}
                   onClick={handleCreatePurchaseOrder}
                 >
-                  Create Purchase Order
+                  {t("createPurchaseOrder")}
                 </Button>
               </div>
             </CardHeader>
@@ -427,12 +423,12 @@ export default function ReorderManagementPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[40px]"></TableHead>
-                        <TableHead>Severity</TableHead>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Warehouse</TableHead>
-                        <TableHead>Stock Level</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead>{t("severity")}</TableHead>
+                        <TableHead>{t("item")}</TableHead>
+                        <TableHead>{t("warehouse")}</TableHead>
+                        <TableHead>{t("stockLevel")}</TableHead>
+                        <TableHead>{t("message")}</TableHead>
+                        <TableHead className="text-right">{t("action")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -467,8 +463,8 @@ export default function ReorderManagementPage() {
               ) : alerts.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <CheckCircle className="mx-auto mb-4 h-12 w-12 text-green-600 opacity-50" />
-                  <p>No active alerts</p>
-                  <p className="mt-1 text-sm">All stock levels are within acceptable ranges</p>
+                  <p>{t("noActiveAlerts")}</p>
+                  <p className="mt-1 text-sm">{t("allStockLevelsAcceptable")}</p>
                 </div>
               ) : (
                 <div className="rounded-md border">
@@ -485,15 +481,15 @@ export default function ReorderManagementPage() {
                                   : false
                             }
                             onCheckedChange={(checked) => handleSelectAllAlerts(Boolean(checked))}
-                            aria-label="Select all alerts"
+                            aria-label={t("selectAllAlerts")}
                           />
                         </TableHead>
-                        <TableHead>Severity</TableHead>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Warehouse</TableHead>
-                        <TableHead>Stock Level</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
+                        <TableHead>{t("severity")}</TableHead>
+                        <TableHead>{t("item")}</TableHead>
+                        <TableHead>{t("warehouse")}</TableHead>
+                        <TableHead>{t("stockLevel")}</TableHead>
+                        <TableHead>{t("message")}</TableHead>
+                        <TableHead className="text-right">{t("action")}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -505,7 +501,7 @@ export default function ReorderManagementPage() {
                               onCheckedChange={(checked) =>
                                 toggleAlertSelection(alert.id, Boolean(checked))
                               }
-                              aria-label={`Select alert for ${alert.itemName}`}
+                              aria-label={t("selectAlertFor", { itemName: alert.itemName })}
                             />
                           </TableCell>
                           <TableCell>{getSeverityBadge(alert.severity)}</TableCell>
@@ -517,7 +513,7 @@ export default function ReorderManagementPage() {
                           <TableCell>
                             <div className="font-medium text-red-600">{alert.currentStock}</div>
                             <div className="text-xs text-muted-foreground">
-                              Min: {alert.minimumLevel} | Reorder: {alert.reorderPoint}
+                              {t("minLabel")}: {alert.minimumLevel} | {t("reorderShort")}: {alert.reorderPoint}
                             </div>
                           </TableCell>
                           <TableCell className="max-w-md">{alert.message}</TableCell>
@@ -529,7 +525,7 @@ export default function ReorderManagementPage() {
                               disabled={acknowledgeAlerts.isPending}
                             >
                               <Check className="mr-1 h-4 w-4" />
-                              Acknowledge
+                              {t("acknowledge")}
                             </Button>
                           </TableCell>
                         </TableRow>

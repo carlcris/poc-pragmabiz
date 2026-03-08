@@ -2,38 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
 
-const pathNameMap: Record<string, string> = {
-  dashboard: "Dashboard",
-  inventory: "Inventory",
-  items: "Item Master",
-  warehouses: "Warehouses",
-  stock: "Stock Transactions",
-  adjustments: "Stock Adjustments",
-  "stock-requests": "Stock Requests",
-  "delivery-notes": "Delivery Notes",
-  "pick-lists": "Pick Lists",
-  transformations: "Stock Transformations",
-  reorder: "Reorder Management",
-  purchasing: "Purchasing",
-  overview: "Overview",
-  suppliers: "Suppliers",
-  "stock-requisitions": "Stock Requisitions",
-  "load-lists": "Load Lists",
-  grns: "Goods Receipt Notes",
-  reports: "Reports",
-  admin: "Admin",
-  users: "Users",
-  roles: "Roles",
-  settings: "Company Settings",
-  "business-units": "Business Units",
-};
-
 export function Breadcrumb() {
+  const t = useTranslations("navigation");
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
 
@@ -51,14 +27,16 @@ export function Breadcrumb() {
   // Handle detail pages that use dynamic ids in the URL.
   const currentPageLabel =
     parentSegment === "stock-requisitions"
-      ? "Stock Requisition Details"
+      ? t("Stock Requisition Details")
       : parentSegment === "load-lists"
-        ? "Load List Details"
+        ? t("Load List Details")
         : parentSegment === "grns"
-          ? "GRN Details"
+          ? t("GRN Details")
           : parentSegment === "delivery-notes"
-            ? "Delivery Note Details"
-          : pathNameMap[lastSegment] || lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+            ? t("Delivery Note Details")
+          : t.has(lastSegment)
+            ? t(lastSegment)
+            : lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
 
   if (isDeliveryNoteDetail) {
     return (
@@ -67,14 +45,14 @@ export function Breadcrumb() {
           href="/dashboard"
           className="flex items-center hover:text-foreground transition-colors font-medium"
         >
-          Home
+          {t("Home")}
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         <Link
           href="/inventory/delivery-notes"
           className="flex items-center hover:text-foreground transition-colors font-medium"
         >
-          Delivery Note
+          {t("Delivery Note")}
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         <span className="font-medium text-foreground">{deliveryNote?.dn_no || lastSegment}</span>
@@ -88,7 +66,7 @@ export function Breadcrumb() {
         href="/dashboard"
         className="flex items-center hover:text-foreground transition-colors font-medium"
       >
-        Home
+        {t("Home")}
       </Link>
       <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
       <span className="font-medium text-foreground">{currentPageLabel}</span>

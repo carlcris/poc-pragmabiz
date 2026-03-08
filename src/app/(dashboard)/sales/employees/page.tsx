@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Plus, Search, MapPin, DollarSign, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,8 @@ import { TerritoryManagementDialog } from "@/components/employees/territory-mana
 import type { Employee } from "@/types/employee";
 
 export default function EmployeesPage() {
+  const t = useTranslations("employeesPage");
+  const tCommon = useTranslations("common");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -56,19 +59,30 @@ export default function EmployeesPage() {
       .join(" ");
   };
 
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "sales_agent":
+        return t("salesAgent");
+      case "sales_manager":
+        return t("salesManager");
+      case "territory_manager":
+        return t("territoryManager");
+      default:
+        return formatRole(role);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sales Employees</h1>
-          <p className="text-muted-foreground">
-            Manage sales agents, territories, and commission rates
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Add Employee
+          {t("addEmployee")}
         </Button>
       </div>
 
@@ -76,20 +90,20 @@ export default function EmployeesPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("totalEmployees")}</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{employees.length}</div>
             <p className="text-xs text-muted-foreground">
-              {employees.filter((e) => e.isActive).length} active
+              {t("activeEmployees", { count: String(employees.filter((e) => e.isActive).length) })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Commission Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("avgCommissionRate")}</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -102,20 +116,20 @@ export default function EmployeesPage() {
                 : "0.00"}
               %
             </div>
-            <p className="text-xs text-muted-foreground">Across all employees</p>
+            <p className="text-xs text-muted-foreground">{t("avgCommissionRateDescription")}</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Territories Covered</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("territoriesCovered")}</CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {new Set(employees.flatMap((e) => e.territories || [])).size}
             </div>
-            <p className="text-xs text-muted-foreground">Unique locations</p>
+            <p className="text-xs text-muted-foreground">{t("territoriesCoveredDescription")}</p>
           </CardContent>
         </Card>
       </div>
@@ -123,13 +137,13 @@ export default function EmployeesPage() {
       {/* Employees Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Employees</CardTitle>
-          <CardDescription>View and manage sales employees</CardDescription>
+          <CardTitle>{t("employees")}</CardTitle>
+          <CardDescription>{t("employeesDescription")}</CardDescription>
           <div className="flex items-center gap-2 pt-4">
             <div className="relative flex-1">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, code, or email..."
+                placeholder={t("searchPlaceholder")}
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-8"
@@ -148,20 +162,20 @@ export default function EmployeesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>First Name</TableHead>
-                  <TableHead>Last Name</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Commission Rate</TableHead>
-                  <TableHead>Territories</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("firstName")}</TableHead>
+                  <TableHead>{t("lastName")}</TableHead>
+                  <TableHead>{t("role")}</TableHead>
+                  <TableHead>{t("commissionRate")}</TableHead>
+                  <TableHead>{t("territories")}</TableHead>
+                  <TableHead>{tCommon("status")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {employees.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No employees found
+                      {t("noEmployeesFound")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -169,7 +183,7 @@ export default function EmployeesPage() {
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">{employee.firstName}</TableCell>
                       <TableCell>{employee.lastName}</TableCell>
-                      <TableCell>{formatRole(employee.role)}</TableCell>
+                      <TableCell>{getRoleLabel(employee.role)}</TableCell>
                       <TableCell>{Number(employee.commissionRate).toFixed(2)}%</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -180,18 +194,18 @@ export default function EmployeesPage() {
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-sm text-muted-foreground">No territories</span>
+                            <span className="text-sm text-muted-foreground">{t("noTerritories")}</span>
                           )}
                           {employee.territories && employee.territories.length > 2 && (
                             <Badge variant="outline" className="text-xs">
-                              +{employee.territories.length - 2} more
+                              {t("moreCount", { count: String(employee.territories.length - 2) })}
                             </Badge>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={employee.isActive ? "default" : "secondary"}>
-                          {employee.isActive ? "Active" : "Inactive"}
+                          {employee.isActive ? tCommon("active") : tCommon("inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -202,10 +216,10 @@ export default function EmployeesPage() {
                             onClick={() => handleManageTerritories(employee)}
                           >
                             <MapPin className="mr-1 h-4 w-4" />
-                            Territories
+                            {t("manageTerritories")}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(employee)}>
-                            Edit
+                            {tCommon("edit")}
                           </Button>
                         </div>
                       </TableCell>
@@ -220,9 +234,11 @@ export default function EmployeesPage() {
           {!isLoading && pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-between px-2 py-4">
               <div className="text-sm text-muted-foreground">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
-                {pagination.total} employees
+                {t("showingEmployees", {
+                  from: String((pagination.page - 1) * pagination.limit + 1),
+                  to: String(Math.min(pagination.page * pagination.limit, pagination.total)),
+                  total: String(pagination.total),
+                })}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -231,10 +247,13 @@ export default function EmployeesPage() {
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
                 >
-                  Previous
+                  {t("previous")}
                 </Button>
                 <div className="text-sm">
-                  Page {pagination.page} of {pagination.totalPages}
+                  {t("pageOf", {
+                    page: String(pagination.page),
+                    totalPages: String(pagination.totalPages),
+                  })}
                 </div>
                 <Button
                   variant="outline"
@@ -242,7 +261,7 @@ export default function EmployeesPage() {
                   onClick={() => setPage(page + 1)}
                   disabled={page === pagination.totalPages}
                 >
-                  Next
+                  {t("next")}
                 </Button>
               </div>
             </div>

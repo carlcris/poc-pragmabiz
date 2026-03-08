@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
+import { z } from "zod";
 import { useRecordPayment } from "@/hooks/useInvoices";
 import {
   Dialog,
@@ -21,8 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { recordPaymentSchema } from "@/lib/validations/invoice";
-import type { z } from "zod";
+import { createRecordPaymentSchema } from "@/lib/validations/invoice";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { Invoice } from "@/types/invoice";
 
@@ -33,9 +34,14 @@ interface RecordPaymentDialogProps {
 }
 
 export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPaymentDialogProps) {
+  const t = useTranslations("recordPaymentDialog");
   const { formatCurrency } = useCurrency();
-  const recordPayment = useRecordPayment();
+  const recordPaymentSchema = createRecordPaymentSchema((key) => t(key));
   type RecordPaymentInput = z.input<typeof recordPaymentSchema>;
+  const recordPayment = useRecordPayment({
+    success: t("recordSuccess"),
+    error: t("recordError"),
+  });
 
   const {
     register,
@@ -83,111 +89,74 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Record Payment</DialogTitle>
-          <DialogDescription>
-            Record a payment for invoice {invoice.invoiceNumber}
-          </DialogDescription>
+          <DialogTitle>{t("title")}</DialogTitle>
+          <DialogDescription>{t("description", { invoiceNumber: invoice.invoiceNumber })}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-4">
             <div className="space-y-2 rounded-md bg-muted p-4">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Amount:</span>
+                <span className="text-muted-foreground">{t("totalAmount")}:</span>
                 <span className="font-medium">{formatCurrency(invoice.totalAmount)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Amount Paid:</span>
-                <span className="font-medium text-green-600">
-                  {formatCurrency(invoice.amountPaid)}
-                </span>
+                <span className="text-muted-foreground">{t("amountPaid")}:</span>
+                <span className="font-medium text-green-600">{formatCurrency(invoice.amountPaid)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-sm">
-                <span className="text-muted-foreground">Amount Due:</span>
-                <span className="font-bold text-orange-600">
-                  {formatCurrency(invoice.amountDue)}
-                </span>
+                <span className="text-muted-foreground">{t("amountDue")}:</span>
+                <span className="font-bold text-orange-600">{formatCurrency(invoice.amountDue)}</span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">
-                Payment Amount <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="0.01"
-                {...register("amount", { valueAsNumber: true })}
-                placeholder="0.00"
-              />
+              <Label htmlFor="amount">{t("paymentAmount")} <span className="text-red-500">*</span></Label>
+              <Input id="amount" type="number" step="0.01" {...register("amount", { valueAsNumber: true })} placeholder="0.00" />
               {errors.amount && <p className="text-sm text-red-500">{errors.amount.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentDate">
-                Payment Date <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="paymentDate">{t("paymentDate")} <span className="text-red-500">*</span></Label>
               <Input id="paymentDate" type="date" {...register("paymentDate")} />
-              {errors.paymentDate && (
-                <p className="text-sm text-red-500">{errors.paymentDate.message}</p>
-              )}
+              {errors.paymentDate && <p className="text-sm text-red-500">{errors.paymentDate.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentMethod">
-                Payment Method <span className="text-red-500">*</span>
-              </Label>
-              <Select
-                value={watch("paymentMethod")}
-                onValueChange={(value) => setValue("paymentMethod", value)}
-              >
+              <Label htmlFor="paymentMethod">{t("paymentMethod")} <span className="text-red-500">*</span></Label>
+              <Select value={watch("paymentMethod")} onValueChange={(value) => setValue("paymentMethod", value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select payment method" />
+                  <SelectValue placeholder={t("selectPaymentMethod")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="check">Check</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="credit_card">Credit Card</SelectItem>
-                  <SelectItem value="wire_transfer">Wire Transfer</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="bank_transfer">{t("bankTransfer")}</SelectItem>
+                  <SelectItem value="check">{t("check")}</SelectItem>
+                  <SelectItem value="cash">{t("cash")}</SelectItem>
+                  <SelectItem value="credit_card">{t("creditCard")}</SelectItem>
+                  <SelectItem value="wire_transfer">{t("wireTransfer")}</SelectItem>
+                  <SelectItem value="other">{t("other")}</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.paymentMethod && (
-                <p className="text-sm text-red-500">{errors.paymentMethod.message}</p>
-              )}
+              {errors.paymentMethod && <p className="text-sm text-red-500">{errors.paymentMethod.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reference">Reference Number</Label>
-              <Input
-                id="reference"
-                {...register("reference")}
-                placeholder="Check number, transaction ID, etc."
-              />
-              {errors.reference && (
-                <p className="text-sm text-red-500">{errors.reference.message}</p>
-              )}
+              <Label htmlFor="reference">{t("referenceNumber")}</Label>
+              <Input id="reference" {...register("reference")} placeholder={t("referencePlaceholder")} />
+              {errors.reference && <p className="text-sm text-red-500">{errors.reference.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Input
-                id="notes"
-                {...register("notes")}
-                placeholder="Additional payment details..."
-              />
+              <Label htmlFor="notes">{t("notes")}</Label>
+              <Input id="notes" {...register("notes")} placeholder={t("notesPlaceholder")} />
               {errors.notes && <p className="text-sm text-red-500">{errors.notes.message}</p>}
             </div>
           </div>
 
           <div className="flex justify-end gap-3 border-t pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
             <Button type="submit" disabled={recordPayment.isPending}>
-              {recordPayment.isPending ? "Recording..." : "Record Payment"}
+              {recordPayment.isPending ? t("recording") : t("recordPayment")}
             </Button>
           </div>
         </form>

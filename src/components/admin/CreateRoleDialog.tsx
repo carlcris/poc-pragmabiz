@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Shield, Copy } from "lucide-react";
 import { useRoles, useRole, useCreateRole, useAssignPermissions } from "@/hooks/useRoles";
 import { toast } from "sonner";
@@ -38,6 +39,8 @@ type RolePermission = {
 };
 
 export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) {
+  const t = useTranslations("adminCreateRoleDialog");
+  const tCommon = useTranslations("common");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [copyFromRoleId, setCopyFromRoleId] = useState<string>("");
@@ -62,7 +65,7 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Role name is required");
+      toast.error(t("roleNameRequired"));
       return;
     }
 
@@ -94,16 +97,14 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
           permissions: permissionsToAssign,
         });
 
-        toast.success(
-          `Role "${name}" created with permissions copied from "${copyFromRoleData.name}"`
-        );
+        toast.success(t("roleCreatedWithCopySuccess", { name, source: copyFromRoleData.name }));
       } else {
-        toast.success(`Role "${name}" created successfully`);
+        toast.success(t("roleCreatedSuccess", { name }));
       }
 
       onOpenChange(false);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to create role";
+      const errorMessage = error instanceof Error ? error.message : t("roleCreateError");
       toast.error(errorMessage);
     }
   };
@@ -116,21 +117,19 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Create New Role
+            {t("title")}
           </DialogTitle>
-          <DialogDescription>
-            Create a new role with optional permissions copied from an existing role
-          </DialogDescription>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">
-              Role Name <span className="text-destructive">*</span>
+              {t("roleName")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
-              placeholder="e.g., Warehouse Manager"
+              placeholder={t("roleNamePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isLoading}
@@ -139,10 +138,10 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t("descriptionLabel")}</Label>
             <Textarea
               id="description"
-              placeholder="Describe the role's purpose and responsibilities"
+              placeholder={t("descriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={isLoading}
@@ -153,11 +152,11 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
           <div className="space-y-2">
             <Label htmlFor="copyFrom" className="flex items-center gap-2">
               <Copy className="h-4 w-4" />
-              Copy Permissions From (Optional)
+              {t("copyPermissionsFrom")}
             </Label>
             <Select value={copyFromRoleId} onValueChange={setCopyFromRoleId} disabled={isLoading}>
               <SelectTrigger id="copyFrom">
-                <SelectValue placeholder="Select a role to copy permissions from" />
+                <SelectValue placeholder={t("selectRolePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {roles.map((role) => (
@@ -166,7 +165,7 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
                       <Shield className="h-3 w-3" />
                       <span>{role.name}</span>
                       {role.is_system_role && (
-                        <span className="text-xs text-muted-foreground">(System)</span>
+                        <span className="text-xs text-muted-foreground">{t("system")}</span>
                       )}
                     </div>
                   </SelectItem>
@@ -175,8 +174,10 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
             </Select>
             {copyFromRoleId && copyFromRoleData && (
               <p className="text-xs text-muted-foreground">
-                Will copy {copyFromRoleData.permissions?.length || 0} permission(s) from &quot;
-                {copyFromRoleData.name}&quot;
+                {t("copySummary", {
+                  count: String(copyFromRoleData.permissions?.length || 0),
+                  name: copyFromRoleData.name,
+                })}
               </p>
             )}
           </div>
@@ -188,10 +189,10 @@ export function CreateRoleDialog({ open, onOpenChange }: CreateRoleDialogProps) 
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Role"}
+              {isLoading ? t("creating") : t("createRole")}
             </Button>
           </DialogFooter>
         </form>

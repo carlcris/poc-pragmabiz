@@ -3,12 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useCreateItem, useItem, useUpdateItem } from "@/hooks/useItems";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
 import { useAuthStore } from "@/stores/authStore";
-import { itemFormSchema } from "@/lib/validations/item";
+import { createItemFormSchema } from "@/lib/validations/item";
 import type { z } from "zod";
 import {
   Package,
@@ -61,14 +62,9 @@ interface ItemFormDialogProps {
   mode?: ItemDialogMode;
 }
 
-const ITEM_TYPES = [
-  { value: "raw_material", label: "Raw Material" },
-  { value: "finished_good", label: "Finished Good" },
-  { value: "asset", label: "Asset" },
-  { value: "service", label: "Service" },
-] as const;
-
 export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemFormDialogProps) {
+  const t = useTranslations("itemDialog");
+  const tValidation = useTranslations("itemValidation");
   const { user } = useAuthStore();
   const createItem = useCreateItem();
   const updateItem = useUpdateItem();
@@ -80,12 +76,23 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
   const [createdItemId, setCreatedItemId] = useState<string | null>(null);
   const [isEditingExisting, setIsEditingExisting] = useState(false);
   const [dialogMode, setDialogMode] = useState<ItemDialogMode>("create");
+  const itemFormSchema = createItemFormSchema((key) => tValidation(key));
   const categories = useMemo(() => categoriesData?.data || [], [categoriesData?.data]);
   const unitsOfMeasure = useMemo(
     () => (uomsData?.data || []).filter((unit) => unit.isActive !== false),
     [uomsData?.data]
   );
   type ItemFormInput = z.input<typeof itemFormSchema>;
+
+  const itemTypes = useMemo(
+    () => [
+      { value: "raw_material", label: t("rawMaterial") },
+      { value: "finished_good", label: t("finishedGood") },
+      { value: "asset", label: t("asset") },
+      { value: "service", label: t("service") },
+    ] as const,
+    [t]
+  );
 
   const form = useForm<ItemFormInput>({
     resolver: zodResolver(itemFormSchema),
@@ -206,11 +213,11 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
           });
         }
         setDialogMode("view");
-        toast.success("Item updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         // Create new item
         if (!user?.companyId) {
-          toast.error("User company information not available");
+          toast.error(t("missingCompany"));
           return;
         }
 
@@ -223,15 +230,15 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
 
         if (itemId) {
           setCreatedItemId(itemId);
-          toast.success("Item created successfully!", {
-            description: "You can now add pricing and locations",
+          toast.success(t("createSuccess"), {
+            description: t("createSuccessDescription"),
           });
           // Switch to prices tab to continue adding details
           setActiveTab("prices");
         }
       }
     } catch {
-      toast.error(resolvedItem ? "Failed to update item" : "Failed to create item");
+      toast.error(resolvedItem ? t("updateError") : t("createError"));
     }
   };
 
@@ -256,8 +263,8 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Loading Item...</DialogTitle>
-            <DialogDescription>Please wait while we load the item details...</DialogDescription>
+            <DialogTitle>{t("loadingTitle")}</DialogTitle>
+            <DialogDescription>{t("loadingDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
@@ -273,14 +280,14 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="text-destructive">Error Loading Item</DialogTitle>
+            <DialogTitle className="text-destructive">{t("errorLoadingTitle")}</DialogTitle>
             <DialogDescription>
-              {itemError instanceof Error ? itemError.message : "Item not found"}
+              {itemError instanceof Error ? itemError.message : t("itemNotFound")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={handleClose}>
-              Close
+              {t("close")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -298,21 +305,21 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
           <DialogTitle>
             {resolvedItem
               ? isReadOnly
-                ? "Item Details"
-                : "Edit Item"
+                ? t("itemDetails")
+                : t("editItem")
               : createdItemId
-                ? "Add Item Details"
-                : "Create New Item"}
+                ? t("addItemDetails")
+                : t("createNewItem")}
             {showHeaderName ? ` - ${headerName}` : ""}
           </DialogTitle>
           <DialogDescription>
             {resolvedItem
               ? isReadOnly
-                ? "Review item information, pricing tiers, and stock locations."
-                : "Update item information and manage pricing tiers across tabs."
+                ? t("itemDetailsDescription")
+                : t("editItemDescription")
               : createdItemId
-                ? "Item created successfully! Continue to the Prices and Locations tabs to complete setup."
-                : "Create a new item by filling in the basic information. You will be able to add pricing and locations after saving."}
+                ? t("addItemDetailsDescription")
+                : t("createNewItemDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -320,9 +327,9 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
           {showTabs ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-full flex-col">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="prices">Prices</TabsTrigger>
-                <TabsTrigger value="locations">Locations</TabsTrigger>
+                <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
+                <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+                <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
               </TabsList>
 
               {/* General Tab */}
@@ -340,7 +347,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       <div className="rounded-lg border bg-card">
                         <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                           <Package className="h-4 w-4 text-muted-foreground" />
-                          <h4 className="font-semibold text-sm">Basic Information</h4>
+                          <h4 className="font-semibold text-sm">{t("basicInformation")}</h4>
                         </div>
 
                         {/* Two Column Layout: Form Fields | Image Upload */}
@@ -353,10 +360,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                 name="code"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>Item Code *</FormLabel>
+                                    <FormLabel>{t("itemCodeLabel")}</FormLabel>
                                     <FormControl>
                                       <Input
-                                        placeholder="ITEM-001"
+                                        placeholder={t("itemCodePlaceholder")}
                                         {...field}
                                         disabled={!!resolvedItem || !!createdItemId || isReadOnly}
                                         onChange={(event) =>
@@ -374,7 +381,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                 name="itemType"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>Item Type *</FormLabel>
+                                    <FormLabel>{t("itemTypeLabel")}</FormLabel>
                                     <Select
                                       onValueChange={field.onChange}
                                       value={field.value}
@@ -382,11 +389,11 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                     >
                                       <FormControl>
                                         <SelectTrigger>
-                                          <SelectValue placeholder="Select item type" />
+                                          <SelectValue placeholder={t("selectItemType")} />
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
-                                        {ITEM_TYPES.map((type) => (
+                                        {itemTypes.map((type) => (
                                           <SelectItem key={type.value} value={type.value}>
                                             {type.label}
                                           </SelectItem>
@@ -404,10 +411,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               name="name"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Item Name *</FormLabel>
+                                  <FormLabel>{t("itemNameLabel")}</FormLabel>
                                   <FormControl>
                                     <Input
-                                      placeholder="Enter item name"
+                                      placeholder={t("itemNamePlaceholder")}
                                       {...field}
                                       disabled={isReadOnly}
                                     />
@@ -422,10 +429,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               name="chineseName"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Chinese Name</FormLabel>
+                                  <FormLabel>{t("chineseNameLabel")}</FormLabel>
                                   <FormControl>
                                     <Input
-                                      placeholder="Optional Chinese name"
+                                      placeholder={t("chineseNamePlaceholder")}
                                       {...field}
                                       disabled={isReadOnly}
                                     />
@@ -440,10 +447,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               name="description"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Description</FormLabel>
+                                  <FormLabel>{t("descriptionLabel")}</FormLabel>
                                   <FormControl>
                                     <Input
-                                      placeholder="Enter description"
+                                      placeholder={t("descriptionPlaceholder")}
                                       {...field}
                                       disabled={isReadOnly}
                                     />
@@ -461,10 +468,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               name="imageUrl"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel className="flex items-center gap-2">
-                                    <ImageIcon className="h-3.5 w-3.5" />
-                                    Item Image
-                                  </FormLabel>
+                                <FormLabel className="flex items-center gap-2">
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                  {t("itemImageLabel")}
+                                </FormLabel>
                                   <FormControl>
                                     <ImageUpload
                                       value={field.value}
@@ -499,7 +506,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       <div className="rounded-lg border bg-card">
                         <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                           <Tag className="h-4 w-4 text-muted-foreground" />
-                          <h4 className="font-semibold text-sm">Classification & Unit of Measure</h4>
+                          <h4 className="font-semibold text-sm">{t("classificationAndUnit")}</h4>
                         </div>
                         <div className="grid grid-cols-2 gap-4 p-6">
                           <FormField
@@ -507,7 +514,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             name="category"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Category *</FormLabel>
+                                <FormLabel>{t("categoryLabel")}</FormLabel>
                                 <Select
                                   onValueChange={field.onChange}
                                   value={field.value}
@@ -515,7 +522,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                 >
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select category" />
+                                      <SelectValue placeholder={t("selectCategory")} />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
@@ -536,7 +543,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             name="uom"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Unit of Measure *</FormLabel>
+                                <FormLabel>{t("unitOfMeasureLabel")}</FormLabel>
                                 <Select
                                   onValueChange={field.onChange}
                                   value={field.value}
@@ -544,7 +551,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                                 >
                                   <FormControl>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select UOM" />
+                                      <SelectValue placeholder={t("selectUom")} />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
@@ -566,7 +573,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       <div className="rounded-lg border bg-card">
                         <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                           <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <h4 className="font-semibold text-sm">Pricing Information</h4>
+                          <h4 className="font-semibold text-sm">{t("pricingInformation")}</h4>
                         </div>
                         <div className="grid grid-cols-2 gap-4 p-6">
                           <FormField
@@ -574,12 +581,12 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             name="standardCost"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Standard Cost</FormLabel>
+                                <FormLabel>{t("standardCostLabel")}</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
                                     step="0.01"
-                                    placeholder="0.00"
+                                    placeholder={t("standardCostPlaceholder")}
                                     {...field}
                                     disabled={isReadOnly}
                                     onChange={(e) =>
@@ -597,12 +604,12 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             name="listPrice"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>List Price *</FormLabel>
+                                <FormLabel>{t("listPriceLabel")}</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
                                     step="0.01"
-                                    placeholder="0.00"
+                                    placeholder={t("listPricePlaceholder")}
                                     {...field}
                                     disabled={isReadOnly}
                                     onChange={(e) =>
@@ -621,7 +628,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       <div className="rounded-lg border bg-card">
                         <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                           <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                          <h4 className="font-semibold text-sm">Inventory Management</h4>
+                          <h4 className="font-semibold text-sm">{t("inventoryManagement")}</h4>
                         </div>
                         <div className="grid grid-cols-2 gap-4 p-6">
                           <FormField
@@ -629,19 +636,17 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             name="reorderLevel"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Reorder Level</FormLabel>
+                                <FormLabel>{t("reorderLevelLabel")}</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
-                                    placeholder="0"
+                                    placeholder={t("reorderLevelPlaceholder")}
                                     {...field}
                                     disabled={isReadOnly}
                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                   />
                                 </FormControl>
-                                <FormDescription>
-                                  Alert when stock falls below this level
-                                </FormDescription>
+                                <FormDescription>{t("reorderLevelDescription")}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -652,17 +657,17 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             name="reorderQty"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Reorder Quantity</FormLabel>
+                                <FormLabel>{t("reorderQtyLabel")}</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
-                                    placeholder="0"
+                                    placeholder={t("reorderQtyPlaceholder")}
                                     {...field}
                                     disabled={isReadOnly}
                                     onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                                   />
                                 </FormControl>
-                                <FormDescription>Suggested quantity to reorder</FormDescription>
+                                <FormDescription>{t("reorderQtyDescription")}</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -673,7 +678,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={handleClose}>
-                          {createdItemId ? "Close" : "Cancel"}
+                          {createdItemId ? t("close") : t("cancel")}
                         </Button>
                         {isReadOnly ? (
                           <Button
@@ -683,7 +688,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               setDialogMode("edit");
                             }}
                           >
-                            Edit
+                            {t("edit")}
                           </Button>
                         ) : (
                           <Button
@@ -691,10 +696,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                             disabled={createItem.isPending || updateItem.isPending}
                           >
                             {createItem.isPending || updateItem.isPending
-                              ? "Saving..."
+                              ? t("saving")
                               : resolvedItem
-                                ? "Update Item"
-                                : "Save & Continue"}
+                                ? t("updateItem")
+                                : t("saveAndContinue")}
                           </Button>
                         )}
                     </DialogFooter>
@@ -725,7 +730,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                     <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
                       <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
-                        Fill in the basic item information below. After saving, you will be able to add pricing tiers and location details.
+                        {t("workflowInfo")}
                       </AlertDescription>
                     </Alert>
 
@@ -733,7 +738,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                     <div className="rounded-lg border bg-card">
                       <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                         <Package className="h-4 w-4 text-muted-foreground" />
-                        <h4 className="font-semibold text-sm">Basic Information</h4>
+                        <h4 className="font-semibold text-sm">{t("basicInformation")}</h4>
                       </div>
                       <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-3">
                         {/* Left Column - Form Fields */}
@@ -744,10 +749,10 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="code"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Item Code *</FormLabel>
+                          <FormLabel>{t("itemCodeLabel")}</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="ITEM-001"
+                              placeholder={t("itemCodePlaceholder")}
                               {...field}
                               onChange={(event) =>
                                 field.onChange(event.target.value.toUpperCase())
@@ -764,15 +769,15 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="itemType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Item Type *</FormLabel>
+                          <FormLabel>{t("itemTypeLabel")}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select item type" />
+                                <SelectValue placeholder={t("selectItemType")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {ITEM_TYPES.map((type) => (
+                              {itemTypes.map((type) => (
                                 <SelectItem key={type.value} value={type.value}>
                                   {type.label}
                                 </SelectItem>
@@ -790,9 +795,9 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Item Name *</FormLabel>
+                        <FormLabel>{t("itemNameLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter item name" {...field} />
+                          <Input placeholder={t("itemNamePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -804,9 +809,9 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                     name="chineseName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Chinese Name</FormLabel>
+                        <FormLabel>{t("chineseNameLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Optional Chinese name" {...field} />
+                          <Input placeholder={t("chineseNamePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -818,9 +823,9 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>{t("descriptionLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter description" {...field} />
+                          <Input placeholder={t("descriptionPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -837,7 +842,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                               <FormItem>
                                 <FormLabel className="flex items-center gap-2">
                                   <ImageIcon className="h-3.5 w-3.5" />
-                                  Item Image
+                                  {t("itemImageLabel")}
                                 </FormLabel>
                                 <FormControl>
                                   <ImageUpload
@@ -859,7 +864,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                   <div className="rounded-lg border bg-card">
                     <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                       <Tag className="h-4 w-4 text-muted-foreground" />
-                      <h4 className="font-semibold text-sm">Classification & Unit of Measure</h4>
+                      <h4 className="font-semibold text-sm">{t("classificationAndUnit")}</h4>
                     </div>
                     <div className="p-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -868,11 +873,11 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="category"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Category *</FormLabel>
+                          <FormLabel>{t("categoryLabel")}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select category" />
+                                <SelectValue placeholder={t("selectCategory")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -893,11 +898,11 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="uom"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Unit of Measure *</FormLabel>
+                          <FormLabel>{t("unitOfMeasureLabel")}</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select UOM" />
+                                <SelectValue placeholder={t("selectUom")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -920,7 +925,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                   <div className="rounded-lg border bg-card">
                     <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <h4 className="font-semibold text-sm">Pricing Information</h4>
+                      <h4 className="font-semibold text-sm">{t("pricingInformation")}</h4>
                     </div>
                     <div className="p-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -929,12 +934,12 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="standardCost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Standard Cost</FormLabel>
+                          <FormLabel>{t("standardCostLabel")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="0.01"
-                              placeholder="0.00"
+                              placeholder={t("standardCostPlaceholder")}
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />
@@ -949,12 +954,12 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="listPrice"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>List Price *</FormLabel>
+                          <FormLabel>{t("listPriceLabel")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="0.01"
-                              placeholder="0.00"
+                              placeholder={t("listPricePlaceholder")}
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />
@@ -971,7 +976,7 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                   <div className="rounded-lg border bg-card">
                     <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
                       <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                      <h4 className="font-semibold text-sm">Inventory Management</h4>
+                      <h4 className="font-semibold text-sm">{t("inventoryManagement")}</h4>
                     </div>
                     <div className="p-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -980,16 +985,16 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="reorderLevel"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Reorder Level</FormLabel>
+                          <FormLabel>{t("reorderLevelLabel")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
-                              placeholder="0"
+                              placeholder={t("reorderLevelPlaceholder")}
                               {...field}
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                             />
                           </FormControl>
-                          <FormDescription>Alert when stock falls below this level</FormDescription>
+                          <FormDescription>{t("reorderLevelDescription")}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1000,16 +1005,16 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                       name="reorderQty"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Reorder Quantity</FormLabel>
+                          <FormLabel>{t("reorderQtyLabel")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
-                              placeholder="0"
+                              placeholder={t("reorderQtyPlaceholder")}
                               {...field}
                               onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                             />
                           </FormControl>
-                          <FormDescription>Suggested quantity to reorder</FormDescription>
+                          <FormDescription>{t("reorderQtyDescription")}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1025,18 +1030,18 @@ export function ItemFormDialog({ open, onOpenChange, item, itemId, mode }: ItemF
                 {isReadOnly ? (
                   <DialogFooter className="shrink-0 border-t bg-background pt-4">
                     <Button type="button" variant="outline" onClick={handleClose}>
-                      Close
+                      {t("close")}
                     </Button>
                   </DialogFooter>
                 ) : (
                   <DialogFooter className="shrink-0 border-t bg-background pt-4">
                     <Button type="button" variant="outline" onClick={handleClose}>
-                      Cancel
+                      {t("cancel")}
                     </Button>
                     <Button type="submit" disabled={createItem.isPending || updateItem.isPending}>
                       {createItem.isPending || updateItem.isPending
-                        ? "Saving..."
-                        : "Save & Continue"}
+                        ? t("saving")
+                        : t("saveAndContinue")}
                     </Button>
                   </DialogFooter>
                 )}

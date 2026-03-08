@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { CheckCircle, Clock, AlertCircle, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 
 export function PendingApprovalsWidget() {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = usePendingApprovals();
 
   // Loading state
@@ -22,8 +24,8 @@ export function PendingApprovalsWidget() {
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Pending Approvals</CardTitle>
-              <CardDescription>GRNs awaiting approval</CardDescription>
+              <CardTitle>{t("pendingApprovalsTitle")}</CardTitle>
+              <CardDescription>{t("grnsAwaitingApproval")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -44,16 +46,16 @@ export function PendingApprovalsWidget() {
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Pending Approvals</CardTitle>
-              <CardDescription>GRNs awaiting approval</CardDescription>
+              <CardTitle>{t("pendingApprovalsTitle")}</CardTitle>
+              <CardDescription>{t("grnsAwaitingApproval")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load pending approvals</p>
+            <p className="text-sm text-destructive">{t("failedLoadPendingApprovals")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -69,16 +71,16 @@ export function PendingApprovalsWidget() {
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Pending Approvals</CardTitle>
-              <CardDescription>GRNs awaiting approval</CardDescription>
+              <CardTitle>{t("pendingApprovalsTitle")}</CardTitle>
+              <CardDescription>{t("grnsAwaitingApproval")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={CheckCircle}
-            title="All caught up!"
-            description="No GRNs awaiting approval"
+            title={t("allCaughtUp")}
+            description={t("noGrnsAwaitingApproval")}
             variant="success"
           />
         </CardContent>
@@ -97,7 +99,7 @@ export function PendingApprovalsWidget() {
       ...grn,
       hoursPending,
       isOverdue,
-      timeAgo: createdDate ? formatDistanceToNow(createdDate, { addSuffix: true }) : "Unknown",
+      timeAgo: createdDate ? formatDistanceToNow(createdDate, { addSuffix: true }) : t("unknown"),
     };
   });
 
@@ -111,8 +113,8 @@ export function PendingApprovalsWidget() {
         <div className="flex items-center gap-2">
           <CheckCircle className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Pending Approvals</CardTitle>
-            <CardDescription>GRNs awaiting approval</CardDescription>
+            <CardTitle>{t("pendingApprovalsTitle")}</CardTitle>
+            <CardDescription>{t("grnsAwaitingApproval")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -122,8 +124,7 @@ export function PendingApprovalsWidget() {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {overdueCount} {overdueCount === 1 ? "GRN has" : "GRNs have"} been pending for more than
-              24 hours
+              {t("overdueGrnsAlert", { count: overdueCount })}
             </AlertDescription>
           </Alert>
         )}
@@ -133,7 +134,7 @@ export function PendingApprovalsWidget() {
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />
-              <span>Awaiting Approval</span>
+              <span>{t("awaitingApprovalLabel")}</span>
             </div>
             <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
           </div>
@@ -141,10 +142,10 @@ export function PendingApprovalsWidget() {
 
         {/* Pending GRNs List */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">GRNs</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("grns")}</p>
           <div className="space-y-2">
             {sortedItems.slice(0, 5).map((grn) => {
-              const llNumber = grn.load_list?.ll_number || "N/A";
+              const llNumber = grn.load_list?.ll_number || t("notAvailable");
 
               return (
                 <Link
@@ -160,13 +161,13 @@ export function PendingApprovalsWidget() {
                       <span className="text-sm font-medium truncate">{grn.grn_number}</span>
                       {grn.isOverdue && <AlertCircle className="h-4 w-4 text-destructive flex-shrink-0" />}
                     </div>
-                    <span className="text-xs text-muted-foreground truncate">Load List: {llNumber}</span>
+                    <span className="text-xs text-muted-foreground truncate">{t("loadList")}: {llNumber}</span>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
                       <Clock className="h-3 w-3 flex-shrink-0" />
                       <span>{grn.timeAgo}</span>
                       {grn.hoursPending > 0 && (
                         <span className="text-muted-foreground/70">
-                          ({grn.hoursPending} {grn.hoursPending === 1 ? "hr" : "hrs"})
+                          ({t("hoursShort", { count: grn.hoursPending })})
                         </span>
                       )}
                     </div>
@@ -176,7 +177,7 @@ export function PendingApprovalsWidget() {
                       variant={grn.isOverdue ? "destructive" : "secondary"}
                       className="justify-center whitespace-nowrap"
                     >
-                      {grn.isOverdue ? "Overdue" : "Pending"}
+                      {grn.isOverdue ? t("overdue") : t("pending")}
                     </Badge>
                   </div>
                 </Link>
@@ -189,7 +190,7 @@ export function PendingApprovalsWidget() {
         {data.count > 5 && (
           <Button asChild variant="outline" className="w-full">
             <Link href="/purchasing/grns?status=pending_approval">
-              View All GRNs
+              {t("viewAllGrns")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -36,22 +37,23 @@ import { useCreateEmployee, useUpdateEmployee } from "@/hooks/useEmployees";
 import { toast } from "sonner";
 import type { Employee } from "@/types/employee";
 
-const employeeFormSchema = z.object({
-  employeeCode: z.string().min(1, "Employee code is required"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
-  role: z.enum(["sales_agent", "sales_manager", "territory_manager"]),
-  commissionRate: z
-    .string()
-    .refine((val) => !isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100, {
-      message: "Commission rate must be between 0 and 100",
-    }),
-  isActive: z.boolean().default(true),
-});
+const createEmployeeFormSchema = (t: (key: string) => string) =>
+  z.object({
+    employeeCode: z.string().min(1, t("employeeCodeRequired")),
+    firstName: z.string().min(1, t("firstNameRequired")),
+    lastName: z.string().min(1, t("lastNameRequired")),
+    email: z.string().email(t("invalidEmail")),
+    phone: z.string().optional(),
+    role: z.enum(["sales_agent", "sales_manager", "territory_manager"]),
+    commissionRate: z
+      .string()
+      .refine((val) => !isNaN(Number(val)) && Number(val) >= 0 && Number(val) <= 100, {
+        message: t("commissionRateRange"),
+      }),
+    isActive: z.boolean().default(true),
+  });
 
-type EmployeeFormInput = z.input<typeof employeeFormSchema>;
+type EmployeeFormInput = z.input<ReturnType<typeof createEmployeeFormSchema>>;
 
 interface EmployeeFormDialogProps {
   open: boolean;
@@ -66,8 +68,12 @@ export function EmployeeFormDialog({
   mode,
   employee,
 }: EmployeeFormDialogProps) {
+  const t = useTranslations("employeeForm");
+  const tCommon = useTranslations("common");
+  const tRoles = useTranslations("employeesPage");
   const createEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
+  const employeeFormSchema = createEmployeeFormSchema(t);
 
   const form = useForm<EmployeeFormInput>({
     resolver: zodResolver(employeeFormSchema),
@@ -120,16 +126,16 @@ export function EmployeeFormDialog({
 
       if (mode === "create") {
         await createEmployee.mutateAsync(payload);
-        toast.success("Employee created successfully");
+        toast.success(t("creatingSuccess"));
       } else if (employee) {
         await updateEmployee.mutateAsync({ id: employee.id, ...payload });
-        toast.success("Employee updated successfully");
+        toast.success(t("updatingSuccess"));
       }
 
       onOpenChange(false);
       form.reset();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save employee");
+      toast.error(error instanceof Error ? error.message : t("saveError"));
     }
   };
 
@@ -139,11 +145,9 @@ export function EmployeeFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Add New Employee" : "Edit Employee"}</DialogTitle>
+          <DialogTitle>{mode === "create" ? t("createTitle") : t("editTitle")}</DialogTitle>
           <DialogDescription>
-            {mode === "create"
-              ? "Create a new sales employee account"
-              : "Update employee information"}
+            {mode === "create" ? t("createDescription") : t("editDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -155,9 +159,9 @@ export function EmployeeFormDialog({
                 name="employeeCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Employee Code</FormLabel>
+                    <FormLabel>{t("employeeCode")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="EMP-001" {...field} disabled={mode === "edit"} />
+                      <Input placeholder={t("employeeCodePlaceholder")} {...field} disabled={mode === "edit"} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -169,17 +173,17 @@ export function EmployeeFormDialog({
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Role</FormLabel>
+                    <FormLabel>{t("role")}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
+                          <SelectValue placeholder={t("selectRole")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="sales_agent">Sales Agent</SelectItem>
-                        <SelectItem value="sales_manager">Sales Manager</SelectItem>
-                        <SelectItem value="territory_manager">Territory Manager</SelectItem>
+                        <SelectItem value="sales_agent">{tRoles("salesAgent")}</SelectItem>
+                        <SelectItem value="sales_manager">{tRoles("salesManager")}</SelectItem>
+                        <SelectItem value="territory_manager">{tRoles("territoryManager")}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -194,9 +198,9 @@ export function EmployeeFormDialog({
                 name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First Name</FormLabel>
+                    <FormLabel>{t("firstName")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="John" {...field} />
+                      <Input placeholder={t("firstNamePlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -208,9 +212,9 @@ export function EmployeeFormDialog({
                 name="lastName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Name</FormLabel>
+                    <FormLabel>{t("lastName")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Doe" {...field} />
+                      <Input placeholder={t("lastNamePlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -224,9 +228,9 @@ export function EmployeeFormDialog({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t("email")}</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" {...field} />
+                      <Input type="email" placeholder={t("emailPlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -238,9 +242,9 @@ export function EmployeeFormDialog({
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>{t("phone")}</FormLabel>
                     <FormControl>
-                      <Input placeholder="+63 912 345 6789" {...field} />
+                      <Input placeholder={t("phonePlaceholder")} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -253,19 +257,19 @@ export function EmployeeFormDialog({
               name="commissionRate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Commission Rate (%)</FormLabel>
+                  <FormLabel>{t("commissionRate")}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
                       max="100"
-                      placeholder="5.00"
+                      placeholder={t("commissionRatePlaceholder")}
                       {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    Percentage of sales this employee will earn as commission
+                    {t("commissionRateDescription")}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -278,9 +282,9 @@ export function EmployeeFormDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
-                    <FormLabel className="text-base">Active Status</FormLabel>
+                    <FormLabel className="text-base">{t("activeStatus")}</FormLabel>
                     <FormDescription>
-                      Inactive employees cannot be assigned to new invoices
+                      {t("activeStatusDescription")}
                     </FormDescription>
                   </div>
                   <FormControl>
@@ -292,11 +296,11 @@ export function EmployeeFormDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tCommon("cancel")}
               </Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {mode === "create" ? "Create Employee" : "Save Changes"}
+                {mode === "create" ? t("createAction") : t("saveChanges")}
               </Button>
             </DialogFooter>
           </form>

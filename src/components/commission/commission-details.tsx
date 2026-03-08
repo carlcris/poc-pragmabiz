@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLocale, useTranslations } from "next-intl";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -13,7 +14,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useCommissionSummary } from "@/hooks/useCommission";
 import { useCurrency } from "@/hooks/useCurrency";
-import { format } from "date-fns";
 
 interface CommissionDetailsProps {
   dateRange?: {
@@ -24,6 +24,8 @@ interface CommissionDetailsProps {
 }
 
 export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsProps) {
+  const t = useTranslations("commissionDetails");
+  const locale = useLocale();
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useCommissionSummary({
     dateFrom: dateRange?.from,
@@ -38,19 +40,19 @@ export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsPr
       case "paid":
         return (
           <Badge variant="default" className="bg-green-600">
-            Paid
+            {t("paid")}
           </Badge>
         );
       case "partially_paid":
         return (
           <Badge variant="default" className="bg-orange-500">
-            Partially Paid
+            {t("partiallyPaid")}
           </Badge>
         );
       case "sent":
-        return <Badge variant="secondary">Sent</Badge>;
+        return <Badge variant="secondary">{t("sent")}</Badge>;
       case "overdue":
-        return <Badge variant="destructive">Overdue</Badge>;
+        return <Badge variant="destructive">{t("overdue")}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -59,8 +61,8 @@ export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsPr
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Commission Details</CardTitle>
-        <CardDescription>Detailed breakdown of all commission records</CardDescription>
+        <CardTitle>{t("title")}</CardTitle>
+        <CardDescription>{t("subtitle")}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -71,21 +73,21 @@ export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsPr
           </div>
         ) : commissions.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No commission records found for the selected period
+            {t("noRecords")}
           </p>
         ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Invoice</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Employee</TableHead>
-                  <TableHead className="text-right">Invoice Amount</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Split %</TableHead>
-                  <TableHead className="text-right">Commission</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t("invoice")}</TableHead>
+                  <TableHead>{t("date")}</TableHead>
+                  <TableHead>{t("employee")}</TableHead>
+                  <TableHead className="text-right">{t("invoiceAmount")}</TableHead>
+                  <TableHead className="text-right">{t("rate")}</TableHead>
+                  <TableHead className="text-right">{t("splitPct")}</TableHead>
+                  <TableHead className="text-right">{t("commission")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -95,7 +97,7 @@ export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsPr
                       <code className="text-xs">{commission.invoiceCode}</code>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {format(new Date(commission.invoiceDate), "MMM dd, yyyy")}
+                      {new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "2-digit" }).format(new Date(commission.invoiceDate))}
                     </TableCell>
                     <TableCell>
                       <div>

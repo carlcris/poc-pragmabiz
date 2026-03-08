@@ -2,9 +2,9 @@
 
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import {
   ArrowLeft,
   Package,
@@ -48,7 +48,11 @@ const DamagedItemsSection = dynamic(
   () => import("@/components/grns/DamagedItemsSection").then((mod) => mod.DamagedItemsSection),
   {
     ssr: false,
-    loading: () => <div className="p-4 text-sm text-muted-foreground">Loading damage items...</div>,
+    loading: () => (
+      <div className="flex items-center justify-center p-6">
+        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+      </div>
+    ),
   }
 );
 
@@ -57,7 +61,9 @@ const BoxManagementSection = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="p-4 text-sm text-muted-foreground">Loading box management...</div>
+      <div className="flex items-center justify-center p-6">
+        <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary"></div>
+      </div>
     ),
   }
 );
@@ -67,6 +73,9 @@ interface GRNDetailPageProps {
 }
 
 export default function GRNDetailPage({ params }: GRNDetailPageProps) {
+  const t = useTranslations("grnDetailPage");
+  const common = useTranslations("common");
+  const locale = useLocale();
   const { id } = use(params);
   const router = useRouter();
   const { data: grn, isLoading, error } = useGRN(id);
@@ -90,17 +99,27 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  const formatDate = (dateString?: string | null, fallback = t("noValue")) => {
+    if (!dateString) return fallback;
+    return new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(dateString));
+  };
+
   const getStatusBadge = (status: GRNStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "receiving":
         return (
           <Badge
             variant="outline"
             className="border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-400"
           >
-            Receiving
+            {t("receiving")}
           </Badge>
         );
       case "pending_approval":
@@ -109,7 +128,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
             variant="outline"
             className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
           >
-            Pending Approval
+            {t("pendingApproval")}
           </Badge>
         );
       case "approved":
@@ -118,13 +137,13 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
             variant="outline"
             className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
           >
-            Approved
+            {t("approved")}
           </Badge>
         );
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <Badge variant="destructive">{t("rejected")}</Badge>;
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -169,10 +188,10 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         },
       });
 
-      toast.success("GRN updated successfully");
+      toast.success(t("updateSuccess"));
       setEditedItems({});
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update GRN");
+      toast.error(err instanceof Error ? err.message : t("updateError"));
     }
   };
 
@@ -181,9 +200,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
     try {
       await submitMutation.mutateAsync(grn.id);
-      toast.success("GRN submitted for approval");
+      toast.success(t("submitSuccess"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to submit GRN");
+      toast.error(err instanceof Error ? err.message : t("submitError"));
     }
   };
 
@@ -192,26 +211,26 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
     try {
       await approveMutation.mutateAsync({ id: grn.id, notes });
-      toast.success("GRN approved successfully");
+      toast.success(t("approveSuccess"));
       setApproveDialogOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to approve GRN");
+      toast.error(err instanceof Error ? err.message : t("approveError"));
     }
   };
 
   const handleReject = async () => {
     if (!grn || !rejectReason.trim()) {
-      toast.error("Please provide a rejection reason");
+      toast.error(t("rejectReasonRequired"));
       return;
     }
 
     try {
       await rejectMutation.mutateAsync({ id: grn.id, reason: rejectReason });
-      toast.success("GRN rejected");
+      toast.success(t("rejectSuccess"));
       setRejectDialogOpen(false);
       setRejectReason("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to reject GRN");
+      toast.error(err instanceof Error ? err.message : t("rejectError"));
     }
   };
 
@@ -241,16 +260,15 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   if (error || !grn) {
     return (
       <div className="flex h-[calc(100vh-200px)] flex-col items-center justify-center gap-4">
-        <p className="text-destructive">Failed to load GRN. Please try again.</p>
-        <Button onClick={() => router.back()}>Go Back</Button>
+        <p className="text-destructive">{t("loadError")}</p>
+        <Button onClick={() => router.back()}>{t("goBack")}</Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 pb-8">
-      {/* Modern Header */}
-      <div className="bg-white border-b border-gray-200 -mx-6 px-6 py-6 sticky top-0 z-10 shadow-sm">
+      <div className="sticky top-0 z-10 -mx-6 border-b border-gray-200 bg-white px-6 py-6 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4">
             <Button
@@ -268,11 +286,11 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">{grn.grnNumber}</h1>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="mt-1 flex items-center gap-2">
                     {getStatusBadge(grn.status)}
                     {grn.loadList && (
                       <span className="text-sm text-gray-500">
-                        • Load List: <span className="font-medium text-gray-700">{grn.loadList.llNumber}</span>
+                        • {t("loadListLabel", { value: grn.loadList.llNumber })}
                       </span>
                     )}
                   </div>
@@ -285,20 +303,20 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
               <Button
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 shadow-md"
+                className="bg-blue-600 shadow-md hover:bg-blue-700"
               >
                 <Save className="mr-2 h-4 w-4" />
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                {updateMutation.isPending ? t("saving") : t("saveChanges")}
               </Button>
             )}
             {canSubmit && (
               <Button
                 onClick={handleSubmit}
                 disabled={submitMutation.isPending}
-                className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-md"
+                className="bg-gradient-to-r from-purple-600 to-violet-600 shadow-md hover:from-purple-700 hover:to-violet-700"
               >
                 <Send className="mr-2 h-4 w-4" />
-                {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
+                {submitMutation.isPending ? t("submitting") : t("submitForApproval")}
               </Button>
             )}
             {canApprove && (
@@ -306,10 +324,10 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                 <Button
                   onClick={() => setApproveDialogOpen(true)}
                   disabled={approveMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700 shadow-md"
+                  className="bg-emerald-600 shadow-md hover:bg-emerald-700"
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve
+                  {t("approve")}
                 </Button>
                 <Button
                   variant="destructive"
@@ -318,7 +336,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                   className="shadow-md"
                 >
                   <XCircle className="mr-2 h-4 w-4" />
-                  Reject
+                  {t("reject")}
                 </Button>
               </>
             )}
@@ -326,123 +344,115 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         </div>
       </div>
 
-      {/* GRN Details - Modern Card Grid */}
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        {/* GRN Information */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 pb-4">
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 pb-4">
             <CardTitle className="flex items-center gap-2.5 text-base">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
                 <Package className="h-4 w-4 text-emerald-600" />
               </div>
-              <span className="font-semibold text-gray-900">GRN Information</span>
+              <span className="font-semibold text-gray-900">{t("grnInformation")}</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-5 space-y-4">
+          <CardContent className="space-y-4 pt-5">
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">GRN Number</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("grnNumber")}</Label>
               <p className="mt-1 text-sm font-semibold text-gray-900">{grn.grnNumber}</p>
             </div>
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Load List</Label>
-              <p className="mt-1 text-sm font-medium text-gray-900">{grn.loadList?.llNumber || "-"}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("loadList")}</Label>
+              <p className="mt-1 text-sm font-medium text-gray-900">{grn.loadList?.llNumber || t("noValue")}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Container</Label>
-                <p className="mt-1 text-sm font-medium text-gray-900">{grn.containerNumber || "-"}</p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("container")}</Label>
+                <p className="mt-1 text-sm font-medium text-gray-900">{grn.containerNumber || t("noValue")}</p>
               </div>
               <div>
-                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Seal</Label>
-                <p className="mt-1 text-sm font-medium text-gray-900">{grn.sealNumber || "-"}</p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("seal")}</Label>
+                <p className="mt-1 text-sm font-medium text-gray-900">{grn.sealNumber || t("noValue")}</p>
               </div>
             </div>
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Batch Number</Label>
-              <p className="mt-1 text-sm font-medium text-gray-900">{grn.batchNumber || "-"}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("batchNumber")}</Label>
+              <p className="mt-1 text-sm font-medium text-gray-900">{grn.batchNumber || t("noValue")}</p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Location & Dates */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 pb-4">
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 pb-4">
             <CardTitle className="flex items-center gap-2.5 text-base">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100">
                 <Warehouse className="h-4 w-4 text-blue-600" />
               </div>
-              <span className="font-semibold text-gray-900">Location & Dates</span>
+              <span className="font-semibold text-gray-900">{t("locationDates")}</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-5 space-y-4">
+          <CardContent className="space-y-4 pt-5">
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Warehouse</Label>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{grn.warehouse?.name || "-"}</p>
-              {grn.warehouse?.code && (
-                <p className="text-xs text-gray-500">{grn.warehouse.code}</p>
-              )}
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("warehouse")}</Label>
+              <p className="mt-1 text-sm font-semibold text-gray-900">{grn.warehouse?.name || t("noValue")}</p>
+              {grn.warehouse?.code && <p className="text-xs text-gray-500">{grn.warehouse.code}</p>}
             </div>
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business Unit</Label>
-              <p className="mt-1 text-sm font-medium text-gray-900">{grn.businessUnit?.name || "-"}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("businessUnit")}</Label>
+              <p className="mt-1 text-sm font-medium text-gray-900">{grn.businessUnit?.name || t("noValue")}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Delivery Date</Label>
-                <p className="mt-1 text-sm font-medium text-gray-900">
-                  {grn.deliveryDate ? format(new Date(grn.deliveryDate), "MMM dd, yyyy") : "-"}
-                </p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("deliveryDate")}</Label>
+                <p className="mt-1 text-sm font-medium text-gray-900">{formatDate(grn.deliveryDate)}</p>
               </div>
               <div>
-                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Receiving Date</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("receivingDate")}</Label>
                 <p className="mt-1 text-sm font-medium text-gray-900">
-                  {grn.receivingDate ? format(new Date(grn.receivingDate), "MMM dd, yyyy") : <span className="text-gray-400">Not started</span>}
+                  {formatDate(grn.receivingDate, t("notStarted"))}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Supplier & Personnel Combined */}
-        <Card className="shadow-sm border-gray-200">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 pb-4">
+        <Card className="border-gray-200 shadow-sm">
+          <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 pb-4">
             <CardTitle className="flex items-center gap-2.5 text-base">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
                 <User className="h-4 w-4 text-purple-600" />
               </div>
-              <span className="font-semibold text-gray-900">Supplier & Personnel</span>
+              <span className="font-semibold text-gray-900">{t("supplierPersonnel")}</span>
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-5 space-y-4">
+          <CardContent className="space-y-4 pt-5">
             {grn.loadList?.supplier && (
-              <div className="pb-4 border-b border-gray-100">
-                <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Supplier</Label>
+              <div className="border-b border-gray-100 pb-4">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("supplier")}</Label>
                 <p className="mt-1 text-sm font-semibold text-gray-900">{grn.loadList.supplier.name}</p>
                 <p className="text-xs text-gray-500">{grn.loadList.supplier.code}</p>
               </div>
             )}
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Created By</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("createdBy")}</Label>
               <p className="mt-1 text-sm font-medium text-gray-900">
                 {grn.createdByUser
                   ? `${grn.createdByUser.firstName} ${grn.createdByUser.lastName}`
-                  : "-"}
+                  : t("noValue")}
               </p>
             </div>
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Received By</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("receivedBy")}</Label>
               <p className="mt-1 text-sm font-medium text-gray-900">
                 {grn.receivedByUser
                   ? `${grn.receivedByUser.firstName} ${grn.receivedByUser.lastName}`
-                  : "-"}
+                  : t("noValue")}
               </p>
             </div>
             <div>
-              <Label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Checked By</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("checkedBy")}</Label>
               <p className="mt-1 text-sm font-medium text-gray-900">
                 {grn.checkedByUser
                   ? `${grn.checkedByUser.firstName} ${grn.checkedByUser.lastName}`
-                  : "-"}
+                  : t("noValue")}
               </p>
             </div>
           </CardContent>
@@ -451,29 +461,31 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
       <Tabs defaultValue="receive-items" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="receive-items">Receive Items</TabsTrigger>
-          <TabsTrigger value="damage-items">Damage Items</TabsTrigger>
-          <TabsTrigger value="box-management">Box Labels Management</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="receive-items">{t("receiveItemsTab")}</TabsTrigger>
+          <TabsTrigger value="damage-items">{t("damageItemsTab")}</TabsTrigger>
+          <TabsTrigger value="box-management">{t("boxManagementTab")}</TabsTrigger>
+          <TabsTrigger value="notes">{t("notesTab")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="receive-items">
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+          <Card className="border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2.5 text-base">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100">
                       <Package className="h-4 w-4 text-indigo-600" />
                     </div>
-                    <span className="font-semibold text-gray-900">Received Items</span>
+                    <span className="font-semibold text-gray-900">{t("receivedItems")}</span>
                   </CardTitle>
                   <CardDescription className="mt-1 text-xs">
-                    {isEditable ? "Enter received quantities and damage information" : "View received items details"}
+                    {isEditable
+                      ? t("receiveItemsEditableDescription")
+                      : t("receiveItemsReadonlyDescription")}
                   </CardDescription>
                 </div>
                 <Badge variant="secondary" className="text-xs">
-                  {grn.items.length} {grn.items.length === 1 ? "item" : "items"}
+                  {t("itemsCount", { count: grn.items.length })}
                 </Badge>
               </div>
             </CardHeader>
@@ -481,15 +493,15 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
-                      <TableHead className="font-semibold text-xs text-gray-700">ITEM CODE</TableHead>
-                      <TableHead className="font-semibold text-xs text-gray-700">ITEM NAME</TableHead>
-                      <TableHead className="text-right font-semibold text-xs text-gray-700">EXPECTED</TableHead>
-                      <TableHead className="text-right font-semibold text-xs text-gray-700">RECEIVED</TableHead>
-                      <TableHead className="text-right font-semibold text-xs text-gray-700">DAMAGED</TableHead>
-                      <TableHead className="text-right font-semibold text-xs text-gray-700">BOXES</TableHead>
-                      <TableHead className="text-right font-semibold text-xs text-gray-700">VARIANCE</TableHead>
-                      <TableHead className="font-semibold text-xs text-gray-700 min-w-[200px]">NOTES</TableHead>
+                    <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
+                      <TableHead className="text-xs font-semibold text-gray-700">{t("itemCode")}</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-700">{t("itemName")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("expected")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("received")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("damaged")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("boxes")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("variance")}</TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-semibold text-gray-700">{t("notes")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -497,12 +509,19 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                       const receivedQty = Number(getItemValue(item, "receivedQty")) || 0;
                       const variance = receivedQty - item.loadListQty;
                       const varianceClass =
-                        variance > 0 ? "text-emerald-600 bg-emerald-50" : variance < 0 ? "text-red-600 bg-red-50" : "text-gray-600";
+                        variance > 0
+                          ? "text-emerald-600 bg-emerald-50"
+                          : variance < 0
+                            ? "text-red-600 bg-red-50"
+                            : "text-gray-600";
 
                       return (
-                        <TableRow key={item.id} className={`border-b border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"} hover:bg-blue-50/50 transition-colors`}>
-                          <TableCell className="font-semibold text-sm text-gray-900">{item.item?.code || "-"}</TableCell>
-                          <TableCell className="text-sm text-gray-700">{item.item?.name || "-"}</TableCell>
+                        <TableRow
+                          key={item.id}
+                          className={`border-b border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"} transition-colors hover:bg-blue-50/50`}
+                        >
+                          <TableCell className="text-sm font-semibold text-gray-900">{item.item?.code || t("noValue")}</TableCell>
+                          <TableCell className="text-sm text-gray-700">{item.item?.name || t("noValue")}</TableCell>
                           <TableCell className="text-right text-sm font-medium text-gray-900">{item.loadListQty}</TableCell>
                           <TableCell className="text-right">
                             {isEditable ? (
@@ -513,7 +532,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 onChange={(e) =>
                                   handleItemChange(item.id, "receivedQty", parseFloat(e.target.value) || 0)
                                 }
-                                className="w-24 h-9 text-right text-sm border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
+                                className="h-9 w-24 border-gray-300 text-right text-sm focus:border-indigo-500 focus:ring-indigo-500"
                               />
                             ) : (
                               <span className="text-sm font-medium text-gray-900">{receivedQty}</span>
@@ -528,10 +547,12 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 onChange={(e) =>
                                   handleItemChange(item.id, "damagedQty", parseFloat(e.target.value) || 0)
                                 }
-                                className="w-24 h-9 text-right text-sm border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                className="h-9 w-24 border-gray-300 text-right text-sm focus:border-red-500 focus:ring-red-500"
                               />
                             ) : (
-                              <span className="text-sm font-medium text-gray-900">{getItemValue(item, "damagedQty")}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {getItemValue(item, "damagedQty")}
+                              </span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -541,12 +562,14 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 min="0"
                                 value={getItemValue(item, "numBoxes")}
                                 onChange={(e) =>
-                                  handleItemChange(item.id, "numBoxes", parseInt(e.target.value) || 0)
+                                  handleItemChange(item.id, "numBoxes", parseInt(e.target.value, 10) || 0)
                                 }
-                                className="w-24 h-9 text-right text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                                className="h-9 w-24 border-gray-300 text-right text-sm focus:border-blue-500 focus:ring-blue-500"
                               />
                             ) : (
-                              <span className="text-sm font-medium text-gray-900">{getItemValue(item, "numBoxes")}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {getItemValue(item, "numBoxes")}
+                              </span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -561,11 +584,11 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 type="text"
                                 value={getItemValue(item, "notes")}
                                 onChange={(e) => handleItemChange(item.id, "notes", e.target.value)}
-                                className="w-full h-9 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                                placeholder="Add notes..."
+                                className="h-9 w-full border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                                placeholder={t("addNotesPlaceholder")}
                               />
                             ) : (
-                              <span className="text-sm text-gray-700">{getItemValue(item, "notes") || "-"}</span>
+                              <span className="text-sm text-gray-700">{getItemValue(item, "notes") || t("noValue")}</span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -587,87 +610,84 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         </TabsContent>
 
         <TabsContent value="notes">
-          <Card className="shadow-sm border-gray-200">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-amber-100">
+          <Card className="border-gray-200 shadow-sm">
+            <CardHeader className="border-b border-amber-100 bg-gradient-to-r from-amber-50 to-yellow-50">
               <CardTitle className="flex items-center gap-2.5 text-base">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
                   <Calendar className="h-4 w-4 text-amber-600" />
                 </div>
-                <span className="font-semibold text-gray-900">Additional Notes</span>
+                <span className="font-semibold text-gray-900">{t("additionalNotes")}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-5">
               {grn.notes ? (
-                <p className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">{grn.notes}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{grn.notes}</p>
               ) : (
-                <p className="text-sm text-muted-foreground">No notes added.</p>
+                <p className="text-sm text-muted-foreground">{t("noNotes")}</p>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Approve Dialog */}
       <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Approve GRN</AlertDialogTitle>
+            <AlertDialogTitle>{t("approveTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to approve {grn.grnNumber}? This will create stock entries and
-              update inventory levels. This action cannot be undone.
+              {t("approveDescription", { grnNumber: grn.grnNumber })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <Label htmlFor="approve-notes">Approval Notes (optional)</Label>
+            <Label htmlFor="approve-notes">{t("approvalNotes")}</Label>
             <Textarea
               id="approve-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add any approval notes..."
+              placeholder={t("approvalNotesPlaceholder")}
               rows={3}
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{common("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleApprove}
               disabled={approveMutation.isPending}
               className="bg-green-600 hover:bg-green-700"
             >
-              {approveMutation.isPending ? "Approving..." : "Approve"}
+              {approveMutation.isPending ? t("approving") : t("approve")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reject Dialog */}
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject GRN</AlertDialogTitle>
+            <AlertDialogTitle>{t("rejectTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to reject {grn.grnNumber}? Please provide a reason for rejection.
+              {t("rejectDescription", { grnNumber: grn.grnNumber })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <Label htmlFor="reject-reason">Rejection Reason *</Label>
+            <Label htmlFor="reject-reason">{t("rejectionReason")}</Label>
             <Textarea
               id="reject-reason"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Enter reason for rejection..."
+              placeholder={t("rejectionReasonPlaceholder")}
               rows={3}
               required
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{common("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReject}
               disabled={rejectMutation.isPending || !rejectReason.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+              {rejectMutation.isPending ? t("rejecting") : t("reject")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

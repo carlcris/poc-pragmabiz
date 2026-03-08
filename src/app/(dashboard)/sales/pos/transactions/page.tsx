@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
+import { useLocale, useTranslations } from "next-intl";
+import { Eye, Printer, Search, XCircle } from "lucide-react";
+import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -21,7 +24,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Eye, Printer, XCircle } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,22 +38,14 @@ import { DateRangePicker } from "@/components/analytics/date-range-picker";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { usePOSTransaction, usePOSTransactions, useVoidPOSTransaction } from "@/hooks/usePos";
 import type { POSTransaction } from "@/types/pos";
-import type { DateRange } from "react-day-picker";
 
-const AdminPinDialog = dynamic(
-  () => import("@/components/pos/AdminPinDialog").then((mod) => mod.AdminPinDialog),
-  { ssr: false }
-);
-const ReceiptPanel = dynamic(
-  () => import("@/components/pos/ReceiptPanel").then((mod) => mod.ReceiptPanel),
-  { ssr: false }
-);
-const TransactionDetailsDialog = dynamic(
-  () => import("@/components/pos/TransactionDetailsDialog").then((mod) => mod.TransactionDetailsDialog),
-  { ssr: false }
-);
+const AdminPinDialog = dynamic(() => import("@/components/pos/AdminPinDialog").then((mod) => mod.AdminPinDialog), { ssr: false });
+const ReceiptPanel = dynamic(() => import("@/components/pos/ReceiptPanel").then((mod) => mod.ReceiptPanel), { ssr: false });
+const TransactionDetailsDialog = dynamic(() => import("@/components/pos/TransactionDetailsDialog").then((mod) => mod.TransactionDetailsDialog), { ssr: false });
 
 export default function POSTransactionsPage() {
+  const t = useTranslations("posTransactionsPage");
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -76,230 +70,118 @@ export default function POSTransactionsPage() {
       page: currentPage,
       limit: pageSize,
     };
-    // Remove undefined values
-    return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined)) as Record<
-      string,
-      string | number
-    >;
+    return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined)) as Record<string, string | number>;
   }, [search, statusFilter, dateRange, cashierFilter, currentPage, pageSize]);
 
   const { data, isLoading } = usePOSTransactions(queryParams);
   const { data: selectedTransaction } = usePOSTransaction(selectedTransactionId || "");
   const { data: receiptTransaction } = usePOSTransaction(receiptTransactionId || "");
-  const voidTransaction = useVoidPOSTransaction();
+  const voidTransaction = useVoidPOSTransaction({ success: t("voidSuccess"), error: t("voidError") });
 
   useEffect(() => {
     const value = searchInput.trim();
     const timer = window.setTimeout(() => {
-      if (value.length === 0 || value.length >= 3) {
-        setSearch(value);
-      } else {
-        setSearch("");
-      }
+      if (value.length === 0 || value.length >= 3) setSearch(value);
+      else setSearch("");
     }, 400);
-
     return () => window.clearTimeout(timer);
   }, [searchInput]);
 
   const transactions = useMemo(() => data?.data || [], [data]);
-
-  // Get unique cashiers for filter dropdown
   const uniqueCashiers = useMemo(() => {
     const cashiers = new Map<string, string>();
     transactions.forEach((txn: POSTransaction) => {
-      if (txn.cashierId && txn.cashierName) {
-        cashiers.set(txn.cashierId, txn.cashierName);
-      }
+      if (txn.cashierId && txn.cashierName) cashiers.set(txn.cashierId, txn.cashierName);
     });
     return Array.from(cashiers.entries()).map(([id, name]) => ({ id, name }));
   }, [transactions]);
 
-  const handleVoidClick = (transaction: POSTransaction) => {
-    setTransactionToVoid(transaction);
-    setShowAdminPinDialog(true);
-  };
-
-  const handleAdminPinVerify = async (pin: string): Promise<boolean> => {
-    // Hardcoded admin PIN for now
-    const ADMIN_PIN = "0000";
-
-    if (pin === ADMIN_PIN) {
-      setShowAdminPinDialog(false);
-      setShowVoidConfirmDialog(true);
-      return true;
-    }
-
-    return false;
-  };
-
-  const handleVoidTransaction = async () => {
-    if (transactionToVoid) {
-      await voidTransaction.mutateAsync(transactionToVoid.id);
-      setTransactionToVoid(null);
-      setShowVoidConfirmDialog(false);
-    }
-  };
-
-  const handleCancelVoid = () => {
-    setTransactionToVoid(null);
-    setShowAdminPinDialog(false);
-    setShowVoidConfirmDialog(false);
-  };
-
-  const handlePrintReceipt = (transactionId: string) => {
-    setReceiptTransactionId(transactionId);
-    setShowReceiptPanel(true);
-  };
-
-  const handleCloseReceipt = () => {
-    setShowReceiptPanel(false);
-    setReceiptTransactionId(null);
-  };
-
-  const handleClearFilters = () => {
-    setSearch("");
-    setSearchInput("");
-    setStatusFilter("all");
-    setDateRange(undefined);
-    setCashierFilter("all");
-    setCurrentPage(1);
-  };
-
-  // Reset to page 1 when filters change
-  const handleSearchChange = (value: string) => {
-    setSearchInput(value);
-    setCurrentPage(1);
-  };
-
-  const handleStatusChange = (value: string) => {
-    setStatusFilter(value);
-    setCurrentPage(1);
-  };
-
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    setCurrentPage(1);
-  };
-
-  const handleCashierChange = (value: string) => {
-    setCashierFilter(value);
-    setCurrentPage(1);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "PHP",
-    }).format(amount);
-  };
-
+  const formatCurrency = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "PHP" }).format(amount);
   const formatDateTime = (dateString: string) => {
     try {
-      return format(new Date(dateString), "MMM dd, yyyy hh:mm a");
+      return new Intl.DateTimeFormat(locale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(dateString));
     } catch {
       return dateString;
     }
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "completed") {
-      return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
-    }
-    if (status === "voided") {
-      return <Badge variant="secondary">Voided</Badge>;
-    }
+    if (status === "completed") return <Badge className="bg-green-100 text-green-800">{t("completedStatus")}</Badge>;
+    if (status === "voided") return <Badge variant="secondary">{t("voidedStatus")}</Badge>;
     return <Badge>{status}</Badge>;
   };
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold md:text-3xl">POS Transactions</h1>
-          <p className="text-sm text-muted-foreground md:text-base">
-            View and manage point of sale transactions
-          </p>
+          <h1 className="text-2xl font-bold md:text-3xl">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground md:text-base">{t("subtitle")}</p>
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <div className="rounded-lg border p-3 md:p-4">
-          <div className="text-xs text-muted-foreground md:text-sm">Total Transactions</div>
+          <div className="text-xs text-muted-foreground md:text-sm">{t("totalTransactions")}</div>
           <div className="text-xl font-bold md:text-2xl">{transactions.length}</div>
         </div>
         <div className="rounded-lg border p-3 md:p-4">
-          <div className="text-xs text-muted-foreground md:text-sm">Completed</div>
-          <div className="text-xl font-bold text-green-600 md:text-2xl">
-            {transactions.filter((t: POSTransaction) => t.status === "completed").length}
-          </div>
+          <div className="text-xs text-muted-foreground md:text-sm">{t("completed")}</div>
+          <div className="text-xl font-bold text-green-600 md:text-2xl">{transactions.filter((txn) => txn.status === "completed").length}</div>
         </div>
         <div className="rounded-lg border p-3 md:p-4">
-          <div className="text-xs text-muted-foreground md:text-sm">Voided</div>
-          <div className="text-xl font-bold text-gray-500 md:text-2xl">
-            {transactions.filter((t: POSTransaction) => t.status === "voided").length}
-          </div>
+          <div className="text-xs text-muted-foreground md:text-sm">{t("voided")}</div>
+          <div className="text-xl font-bold text-gray-500 md:text-2xl">{transactions.filter((txn) => txn.status === "voided").length}</div>
         </div>
         <div className="rounded-lg border p-3 md:p-4">
-          <div className="text-xs text-muted-foreground md:text-sm">Total Sales</div>
-          <div className="text-lg font-bold md:text-2xl">
-            {formatCurrency(
-              transactions
-                .filter((t: POSTransaction) => t.status === "completed")
-                .reduce((sum: number, t: POSTransaction) => sum + t.totalAmount, 0)
-            )}
-          </div>
+          <div className="text-xs text-muted-foreground md:text-sm">{t("totalSales")}</div>
+          <div className="text-lg font-bold md:text-2xl">{formatCurrency(transactions.filter((txn) => txn.status === "completed").reduce((sum, txn) => sum + txn.totalAmount, 0))}</div>
         </div>
       </div>
 
-      {/* Filters */}
       <div className="space-y-4">
         <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-            <Input
-              placeholder="Search by transaction number, customer, or cashier (3+ chars)"
-              value={searchInput}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder={t("searchPlaceholder")} value={searchInput} onChange={(e) => { setSearchInput(e.target.value); setCurrentPage(1); }} className="pl-10" />
           </div>
 
-          <Select value={statusFilter} onValueChange={handleStatusChange}>
+          <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}>
             <SelectTrigger className="w-full md:w-[180px]">
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="voided">Voided</SelectItem>
+              <SelectItem value="all">{t("allStatus")}</SelectItem>
+              <SelectItem value="completed">{t("completedStatus")}</SelectItem>
+              <SelectItem value="voided">{t("voidedStatus")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-center">
           <div className="w-full md:w-[300px]">
-            <DateRangePicker value={dateRange} onChange={handleDateRangeChange} />
+            <DateRangePicker value={dateRange} onChange={(range) => { setDateRange(range); setCurrentPage(1); }} />
           </div>
 
-          <Select value={cashierFilter} onValueChange={handleCashierChange}>
+          <Select value={cashierFilter} onValueChange={(value) => { setCashierFilter(value); setCurrentPage(1); }}>
             <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="All Cashiers" />
+              <SelectValue placeholder={t("allCashiers")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Cashiers</SelectItem>
-              {uniqueCashiers.map((cashier) => (
-                <SelectItem key={cashier.id} value={cashier.id}>
-                  {cashier.name}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">{t("allCashiers")}</SelectItem>
+              {uniqueCashiers.map((cashier) => <SelectItem key={cashier.id} value={cashier.id}>{cashier.name}</SelectItem>)}
             </SelectContent>
           </Select>
 
           {(searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all") && (
-            <Button variant="ghost" onClick={handleClearFilters} className="w-full md:w-auto">
-              Clear Filters
+            <Button variant="ghost" onClick={() => { setSearch(""); setSearchInput(""); setStatusFilter("all"); setDateRange(undefined); setCashierFilter("all"); setCurrentPage(1); }} className="w-full md:w-auto">
+              {t("clearFilters")}
             </Button>
           )}
         </div>
@@ -310,30 +192,26 @@ export default function POSTransactionsPage() {
           <Table>
             <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
-                <TableHead>Transaction #</TableHead>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Cashier</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t("transactionNumber")}</TableHead>
+                <TableHead>{t("dateTime")}</TableHead>
+                <TableHead>{t("customer")}</TableHead>
+                <TableHead>{t("cashier")}</TableHead>
+                <TableHead>{t("items")}</TableHead>
+                <TableHead className="text-right">{t("amount")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead className="text-right">{t("actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center">
-                  Loading transactions...
-                </TableCell>
+                <TableCell colSpan={8} className="py-8 text-center">{t("loading")}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </div>
       ) : transactions.length === 0 ? (
         <div className="rounded-md border py-8 text-center text-muted-foreground">
-          {searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all"
-            ? "No transactions found matching your filters"
-            : "No transactions yet"}
+          {searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all" ? t("emptyFiltered") : t("empty")}
         </div>
       ) : (
         <>
@@ -341,58 +219,36 @@ export default function POSTransactionsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>Transaction #</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Cashier</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("transactionNumber")}</TableHead>
+                  <TableHead>{t("dateTime")}</TableHead>
+                  <TableHead>{t("customer")}</TableHead>
+                  <TableHead>{t("cashier")}</TableHead>
+                  <TableHead>{t("items")}</TableHead>
+                  <TableHead className="text-right">{t("amount")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {transactions.map((transaction: POSTransaction) => (
+                {transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell className="font-mono font-medium">
-                      {transaction.transactionNumber}
-                    </TableCell>
+                    <TableCell className="font-mono font-medium">{transaction.transactionNumber}</TableCell>
                     <TableCell>{formatDateTime(transaction.transactionDate)}</TableCell>
-                    <TableCell>
-                      {transaction.customerName || (
-                        <span className="italic text-muted-foreground">Walk-in Customer</span>
-                      )}
-                    </TableCell>
+                    <TableCell>{transaction.customerName || <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>}</TableCell>
                     <TableCell>{transaction.cashierName}</TableCell>
-                    <TableCell>{transaction.itemCount ?? transaction.items.length} items</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(transaction.totalAmount)}
-                    </TableCell>
+                    <TableCell>{t("itemsCount", { count: transaction.itemCount ?? transaction.items.length })}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(transaction.totalAmount)}</TableCell>
                     <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedTransactionId(transaction.id)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedTransactionId(transaction.id)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title="Print Receipt"
-                          onClick={() => handlePrintReceipt(transaction.id)}
-                        >
+                        <Button variant="ghost" size="sm" title={t("printReceipt")} onClick={() => { setReceiptTransactionId(transaction.id); setShowReceiptPanel(true); }}>
                           <Printer className="h-4 w-4" />
                         </Button>
                         {transaction.status === "completed" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Void Transaction"
-                            onClick={() => handleVoidClick(transaction)}
-                          >
+                          <Button variant="ghost" size="sm" title={t("voidTransaction")} onClick={() => { setTransactionToVoid(transaction); setShowAdminPinDialog(true); }}>
                             <XCircle className="h-4 w-4" />
                           </Button>
                         )}
@@ -404,7 +260,6 @@ export default function POSTransactionsPage() {
             </Table>
           </div>
 
-          {/* Pagination */}
           {data?.pagination && data.pagination.total > 0 && (
             <div className="mt-4">
               <DataTablePagination
@@ -420,57 +275,38 @@ export default function POSTransactionsPage() {
         </>
       )}
 
-      {/* Transaction Details Dialog */}
-      {selectedTransactionId && (
-        <TransactionDetailsDialog
-          transaction={selectedTransaction ?? null}
-          open={!!selectedTransactionId}
-          onOpenChange={(open) => !open && setSelectedTransactionId(null)}
-        />
-      )}
+      {selectedTransactionId && <TransactionDetailsDialog transaction={selectedTransaction ?? null} open={!!selectedTransactionId} onOpenChange={(open) => !open && setSelectedTransactionId(null)} />}
 
-      {/* Admin PIN Verification Dialog */}
-      <AdminPinDialog
-        open={showAdminPinDialog}
-        onOpenChange={handleCancelVoid}
-        onVerify={handleAdminPinVerify}
-        title="Administrator Verification Required"
-        description="Please enter administrator PIN to void this transaction."
-      />
+      <AdminPinDialog open={showAdminPinDialog} onOpenChange={() => { setTransactionToVoid(null); setShowAdminPinDialog(false); setShowVoidConfirmDialog(false); }} onVerify={async (pin: string) => {
+        const isValid = pin === "0000";
+        if (isValid) {
+          setShowAdminPinDialog(false);
+          setShowVoidConfirmDialog(true);
+        }
+        return isValid;
+      }} title={t("adminPinTitle")} description={t("adminPinDescription")} />
 
-      {/* Void Confirmation Dialog */}
-      <AlertDialog open={showVoidConfirmDialog} onOpenChange={handleCancelVoid}>
+      <AlertDialog open={showVoidConfirmDialog} onOpenChange={() => { setTransactionToVoid(null); setShowAdminPinDialog(false); setShowVoidConfirmDialog(false); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void Transaction</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to void transaction{" "}
-              <span className="font-mono font-semibold">
-                {transactionToVoid?.transactionNumber}
-              </span>
-              ? This action cannot be undone.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("voidTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{transactionToVoid && t("voidDescription", { transactionNumber: transactionToVoid.transactionNumber })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelVoid}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleVoidTransaction}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Void Transaction
+            <AlertDialogCancel onClick={() => { setTransactionToVoid(null); setShowAdminPinDialog(false); setShowVoidConfirmDialog(false); }}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!transactionToVoid) return;
+              await voidTransaction.mutateAsync(transactionToVoid.id);
+              setTransactionToVoid(null);
+              setShowVoidConfirmDialog(false);
+            }} className="bg-red-600 hover:bg-red-700">
+              {t("voidAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Receipt Panel */}
-      {showReceiptPanel && (
-        <ReceiptPanel
-          transaction={receiptTransaction ?? null}
-          open={showReceiptPanel}
-          onClose={handleCloseReceipt}
-        />
-      )}
+      {showReceiptPanel && <ReceiptPanel transaction={receiptTransaction ?? null} open={showReceiptPanel} onClose={() => { setShowReceiptPanel(false); setReceiptTransactionId(null); }} />}
     </div>
   );
 }

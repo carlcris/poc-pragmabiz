@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, TrendingDown, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,12 @@ import { WidgetEmptyState } from "./WidgetEmptyState";
 const COLORS = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#06b6d4"];
 
 const DAMAGE_TYPE_LABELS: Record<string, string> = {
-  broken: "Broken",
-  defective: "Defective",
-  missing: "Missing",
-  expired: "Expired",
-  wrong_item: "Wrong Item",
-  other: "Other",
+  broken: "broken",
+  defective: "defective",
+  missing: "missing",
+  expired: "expired",
+  wrong_item: "wrongItem",
+  other: "other",
 };
 
 type DamagedItemsWidgetProps = {
@@ -27,6 +28,7 @@ type DamagedItemsWidgetProps = {
 };
 
 export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItemsWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useDamagedItemsThisMonth({ businessUnitId, warehouseId });
 
   // Loading state
@@ -37,8 +39,8 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Damaged Items This Month</CardTitle>
-              <CardDescription>Quality issues and value impact</CardDescription>
+              <CardTitle>{t("damagedItemsThisMonthTitle")}</CardTitle>
+              <CardDescription>{t("qualityIssuesAndValueImpact")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -59,16 +61,16 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Damaged Items This Month</CardTitle>
-              <CardDescription>Quality issues and value impact</CardDescription>
+              <CardTitle>{t("damagedItemsThisMonthTitle")}</CardTitle>
+              <CardDescription>{t("qualityIssuesAndValueImpact")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load damaged items data</p>
+            <p className="text-sm text-destructive">{t("failedLoadDamagedItemsData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -84,16 +86,16 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Damaged Items This Month</CardTitle>
-              <CardDescription>Quality issues and value impact</CardDescription>
+              <CardTitle>{t("damagedItemsThisMonthTitle")}</CardTitle>
+              <CardDescription>{t("qualityIssuesAndValueImpact")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={AlertTriangle}
-            title="No damaged items this month"
-            description="Excellent quality record!"
+            title={t("noDamagedItemsThisMonth")}
+            description={t("excellentQualityRecord")}
             variant="success"
           />
         </CardContent>
@@ -110,8 +112,8 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Damaged Items This Month</CardTitle>
-            <CardDescription>Quality issues and value impact</CardDescription>
+            <CardTitle>{t("damagedItemsThisMonthTitle")}</CardTitle>
+            <CardDescription>{t("qualityIssuesAndValueImpact")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -121,7 +123,7 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              High damage count detected ({data.count} items). Review quality with suppliers.
+              {t("highDamageCountDetected", { count: data.count })}
             </AlertDescription>
           </Alert>
         )}
@@ -131,14 +133,14 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <AlertTriangle className="h-4 w-4" />
-              <span>Count</span>
+              <span>{t("count")}</span>
             </div>
             <p className="mt-2 text-xl sm:text-2xl font-bold text-destructive">{data.count}</p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TrendingDown className="h-4 w-4" />
-              <span>Total Value</span>
+              <span>{t("totalValue")}</span>
             </div>
             <p className="mt-2 text-xl sm:text-2xl font-bold text-destructive">{formatCurrency(data.totalValue)}</p>
           </div>
@@ -149,7 +151,7 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           {/* By Supplier Pie Chart */}
           {topSuppliers.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">By Supplier</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("bySupplier")}</p>
               <div className="rounded-lg border bg-card p-3">
                 <ResponsiveContainer width="100%" height={180}>
                   <PieChart>
@@ -176,13 +178,13 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
           {/* By Damage Type Bar Chart */}
           {data.byDamageType.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">By Type</p>
+              <p className="text-sm font-medium text-muted-foreground">{t("byType")}</p>
               <div className="rounded-lg border bg-card p-3">
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={data.byDamageType}>
                     <XAxis
                       dataKey="damageType"
-                      tickFormatter={(value) => DAMAGE_TYPE_LABELS[value] || value}
+                      tickFormatter={(value) => t(DAMAGE_TYPE_LABELS[value] || value)}
                       tick={{ fontSize: 11 }}
                     />
                     <YAxis tick={{ fontSize: 11 }} />
@@ -198,7 +200,7 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
         {/* View Details Link */}
         <Button asChild variant="outline" className="w-full">
           <Link href="/purchasing/damaged-items">
-            View Damage Reports
+            {t("viewDamageReports")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

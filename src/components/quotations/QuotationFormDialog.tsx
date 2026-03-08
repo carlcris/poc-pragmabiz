@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
@@ -66,6 +67,8 @@ interface QuotationFormDialogProps {
 }
 
 export function QuotationFormDialog({ open, onOpenChange, quotation }: QuotationFormDialogProps) {
+  const t = useTranslations("quotationForm");
+  const tCommon = useTranslations("common");
   const isEditMode = !!quotation;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateQuotation();
@@ -189,7 +192,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
 
   const onSubmit = async (data: QuotationFormValues) => {
     if (lineItems.length === 0) {
-      alert("Please add at least one line item");
+      alert(t("addLineItemRequired"));
       return;
     }
 
@@ -237,21 +240,17 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Quotation" : "Create New Quotation"}</DialogTitle>
-            <DialogDescription>
-              {isEditMode
-                ? "Update quotation details and line items."
-                : "Fill in the quotation details and add line items."}
-            </DialogDescription>
+            <DialogTitle>{isEditMode ? t("editTitle") : t("createTitle")}</DialogTitle>
+            <DialogDescription>{isEditMode ? t("editDescription") : t("createDescription")}</DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="general">General</TabsTrigger>
-                  <TabsTrigger value="items">Line Items ({lineItems.length})</TabsTrigger>
-                  <TabsTrigger value="terms">Terms & Notes</TabsTrigger>
+                  <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
+                  <TabsTrigger value="items">{t("lineItemsTab", { count: String(lineItems.length) })}</TabsTrigger>
+                  <TabsTrigger value="terms">{t("termsTab")}</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="general" className="mt-4 space-y-4">
@@ -260,11 +259,11 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                     name="customerId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Customer *</FormLabel>
+                        <FormLabel>{t("customer")} *</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select a customer" />
+                              <SelectValue placeholder={t("selectCustomer")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -288,7 +287,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                       name="quotationDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quotation Date *</FormLabel>
+                          <FormLabel>{t("quotationDate")} *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -302,7 +301,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                       name="validUntil"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Valid Until *</FormLabel>
+                          <FormLabel>{t("validUntil")} *</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
@@ -316,21 +315,19 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                 <TabsContent value="items" className="mt-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-medium">Line Items</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Manage products or services in this quotation
-                      </p>
+                      <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
+                      <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
                     </div>
                     <Button type="button" onClick={handleAddItem} size="sm">
                       <Plus className="mr-2 h-4 w-4" />
-                      Add Item
+                      {t("addItem")}
                     </Button>
                   </div>
 
                   {lineItems.length === 0 ? (
                     <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                      <p>No items added yet.</p>
-                      <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
+                      <p>{t("noItems")}</p>
+                      <p className="text-sm">{t("noItemsDescription")}</p>
                     </div>
                   ) : (
                     <>
@@ -338,14 +335,14 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Item</TableHead>
-                              <TableHead className="text-right">Qty</TableHead>
-                              <TableHead className="text-center">Unit</TableHead>
-                              <TableHead className="text-right">Price</TableHead>
-                              <TableHead className="text-right">Disc %</TableHead>
-                              <TableHead className="text-right">Tax %</TableHead>
-                              <TableHead className="text-right">Total</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
+                              <TableHead>{tCommon("item")}</TableHead>
+                              <TableHead className="text-right">{t("qty")}</TableHead>
+                              <TableHead className="text-center">{t("unit")}</TableHead>
+                              <TableHead className="text-right">{t("price")}</TableHead>
+                              <TableHead className="text-right">{t("discountPct")}</TableHead>
+                              <TableHead className="text-right">{t("taxPct")}</TableHead>
+                              <TableHead className="text-right">{t("total")}</TableHead>
+                              <TableHead className="w-[100px]">{tCommon("actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -407,25 +404,25 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                       <div className="rounded-lg bg-muted p-4">
                         <div className="mb-3 flex items-center gap-2">
                           <Calculator className="h-5 w-5" />
-                          <h4 className="font-semibold">Totals</h4>
+                          <h4 className="font-semibold">{t("totals")}</h4>
                         </div>
                         <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <span>Subtotal:</span>
+                            <span>{t("subtotal")}:</span>
                             <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                           </div>
                           <div className="flex justify-between text-red-600">
-                            <span>Discount:</span>
+                            <span>{t("discount")}:</span>
                             <span className="font-medium">
                               -{formatCurrency(totals.totalDiscount)}
                             </span>
                           </div>
                           <div className="flex justify-between">
-                            <span>Tax:</span>
+                            <span>{t("tax")}:</span>
                             <span className="font-medium">{formatCurrency(totals.totalTax)}</span>
                           </div>
                           <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                            <span>Total:</span>
+                            <span>{t("total")}:</span>
                             <span>{formatCurrency(totals.totalAmount)}</span>
                           </div>
                         </div>
@@ -440,7 +437,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                     name="terms"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Terms & Conditions</FormLabel>
+                        <FormLabel>{t("termsConditions")}</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={4} />
                         </FormControl>
@@ -454,7 +451,7 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Internal Notes</FormLabel>
+                        <FormLabel>{t("internalNotes")}</FormLabel>
                         <FormControl>
                           <Textarea {...field} rows={4} />
                         </FormControl>
@@ -467,17 +464,17 @@ export function QuotationFormDialog({ open, onOpenChange, quotation }: Quotation
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
+                  {tCommon("cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? "Saving..."
+                    ? t("saving")
                     : isEditMode
-                      ? "Update Quotation"
-                      : "Create Quotation"}
+                      ? t("updateQuotation")
+                      : t("createQuotation")}
                 </Button>
               </DialogFooter>
             </form>

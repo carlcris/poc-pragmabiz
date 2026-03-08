@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Key, Search, Shield, Eye, Plus, Edit, Trash2 } from "lucide-react";
 import { useUserPermissions } from "@/hooks/useUserPermissions";
 import { toProperCase } from "@/lib/string";
@@ -45,6 +46,8 @@ export function UserPermissionsDialog({
   user,
   businessUnitId,
 }: UserPermissionsDialogProps) {
+  const t = useTranslations("adminUserPermissionsDialog");
+  const tCommon = useTranslations("common");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: permissionsData, isLoading } = useUserPermissions(user.id, businessUnitId);
@@ -69,16 +72,13 @@ export function UserPermissionsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            Effective Permissions - {user.first_name} {user.last_name}
+            {t("title", { name: `${user.first_name} ${user.last_name}` })}
           </DialogTitle>
-          <DialogDescription>
-            Aggregated permissions from all roles assigned to this user
-          </DialogDescription>
+          <DialogDescription>{t("description")}</DialogDescription>
           <div className="flex items-center gap-2 pt-2">
             <Badge variant="outline" className="flex items-center gap-1">
               <Shield className="h-3 w-3" />
-              {activePermissions.length} Active Permission
-              {activePermissions.length !== 1 ? "s" : ""}
+              {t("activePermissions", { count: String(activePermissions.length) })}
             </Badge>
             <Badge variant="secondary">{user.email}</Badge>
           </div>
@@ -88,7 +88,7 @@ export function UserPermissionsDialog({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search permissions by resource..."
+            placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -105,9 +105,9 @@ export function UserPermissionsDialog({
           ) : filteredPermissions.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               {searchQuery ? (
-                <>No permissions match your search &quot;{searchQuery}&quot;</>
+                <>{t("noSearchResults", { query: searchQuery })}</>
               ) : (
-                <>This user has no permissions assigned.</>
+                <>{t("noPermissions")}</>
               )}
             </div>
           ) : (
@@ -115,29 +115,29 @@ export function UserPermissionsDialog({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Resource</TableHead>
+                    <TableHead>{t("resource")}</TableHead>
                     <TableHead className="w-24 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Eye className="h-3 w-3" />
-                        <span>View</span>
+                        <span>{tCommon("view")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="w-24 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Plus className="h-3 w-3" />
-                        <span>Create</span>
+                        <span>{tCommon("create")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="w-24 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Edit className="h-3 w-3" />
-                        <span>Edit</span>
+                        <span>{tCommon("edit")}</span>
                       </div>
                     </TableHead>
                     <TableHead className="w-24 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <Trash2 className="h-3 w-3" />
-                        <span>Delete</span>
+                        <span>{tCommon("delete")}</span>
                       </div>
                     </TableHead>
                   </TableRow>
@@ -217,11 +217,13 @@ export function UserPermissionsDialog({
 
         <div className="flex items-center justify-between pt-2">
           <div className="text-sm text-muted-foreground">
-            Showing {filteredPermissions.length} of {permissions.length} permission
-            {permissions.length !== 1 ? "s" : ""}
+            {t("showingSummary", {
+              filtered: String(filteredPermissions.length),
+              total: String(permissions.length),
+            })}
           </div>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {tCommon("close")}
           </Button>
         </div>
       </DialogContent>

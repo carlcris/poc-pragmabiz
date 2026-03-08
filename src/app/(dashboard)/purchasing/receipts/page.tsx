@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, Eye, Filter, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePurchaseReceipts, useDeletePurchaseReceipt } from "@/hooks/usePurchaseReceipts";
@@ -38,9 +39,10 @@ import { PurchaseReceiptViewDialog } from "@/components/purchase-receipts/Purcha
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { PurchaseReceipt, PurchaseReceiptStatus } from "@/types/purchase-receipt";
-import { format } from "date-fns";
 
 export default function PurchaseReceiptsPage() {
+  const t = useTranslations("purchaseReceiptsPage");
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -68,18 +70,25 @@ export default function PurchaseReceiptsPage() {
   const getErrorMessage = (err: unknown, fallback: string) =>
     err instanceof Error ? err.message : fallback;
 
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(value));
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "received":
         return (
           <Badge variant="default" className="bg-green-600">
-            Received
+            {t("received")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -104,11 +113,11 @@ export default function PurchaseReceiptsPage() {
     if (!receiptForAction) return;
     try {
       await deleteMutation.mutateAsync(receiptForAction.id);
-      toast.success("Receipt deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setReceiptForAction(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete receipt"));
+      toast.error(getErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -116,10 +125,8 @@ export default function PurchaseReceiptsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Purchase Receipts</h1>
-          <p className="text-muted-foreground">
-            Receive and manage incoming goods from purchase orders
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
       </div>
 
@@ -128,7 +135,7 @@ export default function PurchaseReceiptsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search receipts..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -141,13 +148,13 @@ export default function PurchaseReceiptsPage() {
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
               <SelectTrigger className="w-[200px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="received">Received</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">{t("allStatus")}</SelectItem>
+                <SelectItem value="draft">{t("draft")}</SelectItem>
+                <SelectItem value="received">{t("received")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
               </SelectContent>
             </Select>
           </ClientOnly>
@@ -158,15 +165,15 @@ export default function PurchaseReceiptsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>Receipt Code</TableHead>
-                  <TableHead>Purchase Order</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Batch</TableHead>
-                  <TableHead>Receipt Date</TableHead>
-                  <TableHead className="text-right">Total Value</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("receiptCode")}</TableHead>
+                  <TableHead>{t("purchaseOrder")}</TableHead>
+                  <TableHead>{t("supplier")}</TableHead>
+                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead>{t("batch")}</TableHead>
+                  <TableHead>{t("receiptDate")}</TableHead>
+                  <TableHead className="text-right">{t("totalValue")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -209,11 +216,11 @@ export default function PurchaseReceiptsPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading purchase receipts. Please try again.
+            {t("loadError")}
           </div>
         ) : receipts.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
-            No purchase receipts found. Receive goods from approved purchase orders to get started.
+            {t("emptyTitle")} {t("emptyDescription")}
           </div>
         ) : (
           <>
@@ -221,15 +228,15 @@ export default function PurchaseReceiptsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Receipt Code</TableHead>
-                    <TableHead>Purchase Order</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Warehouse</TableHead>
-                    <TableHead>Batch</TableHead>
-                    <TableHead>Receipt Date</TableHead>
-                    <TableHead className="text-right">Total Value</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("receiptCode")}</TableHead>
+                    <TableHead>{t("purchaseOrder")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead>{t("batch")}</TableHead>
+                    <TableHead>{t("receiptDate")}</TableHead>
+                    <TableHead className="text-right">{t("totalValue")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -245,7 +252,7 @@ export default function PurchaseReceiptsPage() {
                           <div>{receipt.receiptCode}</div>
                           {receipt.batchSequenceNumber && (
                             <div className="text-xs text-muted-foreground">
-                              Batch: {receipt.batchSequenceNumber}
+                              {t("batchPrefix", { batch: receipt.batchSequenceNumber })}
                             </div>
                           )}
                         </TableCell>
@@ -265,9 +272,9 @@ export default function PurchaseReceiptsPage() {
                         <TableCell>
                           <div className="text-sm">{receipt.warehouse?.code}</div>
                         </TableCell>
-                        <TableCell>{receipt.batchSequenceNumber || "--"}</TableCell>
+                        <TableCell>{receipt.batchSequenceNumber || t("noValue")}</TableCell>
                         <TableCell>
-                          {format(new Date(receipt.receiptDate), "MMM d, yyyy")}
+                          {formatDate(receipt.receiptDate)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(totalValue)}
@@ -279,7 +286,7 @@ export default function PurchaseReceiptsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewReceipt(receipt)}
-                              title="View"
+                              title={t("view")}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -288,7 +295,7 @@ export default function PurchaseReceiptsPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDeleteReceipt(receipt)}
-                                title="Delete"
+                                title={t("delete")}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -329,20 +336,19 @@ export default function PurchaseReceiptsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Receipt</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {receiptForAction?.receiptCode}? This action cannot be
-              undone. The receipt will be permanently removed from the system.
+              {t("deleteDescription", { code: receiptForAction?.receiptCode ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

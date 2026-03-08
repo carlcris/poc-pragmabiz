@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Key, Loader2, Search } from "lucide-react";
 import { useRole } from "@/hooks/useRoles";
 import { usePermissionsList } from "@/hooks/usePermissionsManagement";
@@ -62,6 +63,8 @@ type RolePermissionsDialogProps = {
 };
 
 export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissionsDialogProps) {
+  const t = useTranslations("adminRolePermissionsDialog");
+  const tCommon = useTranslations("common");
   const { data: roleData, isLoading: loadingRole } = useRole(role.id);
   const { data: permissionsData, isLoading: loadingPermissions } = usePermissionsList();
   const assignPermissions = useAssignPermissions();
@@ -168,11 +171,11 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         roleId: role.id,
         permissions: permissionsToAssign,
       });
-      toast.success("Permissions updated successfully");
+      toast.success(t("permissionsUpdatedSuccess"));
       setHasChanges(false);
       onOpenChange(false);
     } catch {
-      toast.error("Failed to update permissions");
+      toast.error(t("permissionsUpdatedError"));
     }
   };
 
@@ -206,14 +209,12 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            Manage Permissions - {role.name}
+            {t("title", { name: role.name })}
           </DialogTitle>
-          <DialogDescription>
-            Select permissions and customize which actions this role can perform for each resource.
-          </DialogDescription>
+          <DialogDescription>{t("description")}</DialogDescription>
           {role.is_system_role && (
             <Badge variant="secondary" className="w-fit">
-              System Role
+              {t("systemRole")}
             </Badge>
           )}
         </DialogHeader>
@@ -222,7 +223,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search permissions by resource or description..."
+            placeholder={t("searchPlaceholder")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -239,9 +240,9 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
           ) : filteredPermissions.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               {searchQuery ? (
-                <>No permissions match your search &quot;{searchQuery}&quot;</>
+                <>{t("noSearchResults", { query: searchQuery })}</>
               ) : (
-                <>No permissions found in the system.</>
+                <>{t("noPermissionsInSystem")}</>
               )}
             </div>
           ) : (
@@ -285,7 +286,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_view")}
                                 disabled={!permission.can_view}
                               />
-                              <span className="text-sm">View</span>
+                              <span className="text-sm">{tCommon("view")}</span>
                             </label>
 
                             <label className="flex cursor-pointer items-center gap-2">
@@ -294,7 +295,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_create")}
                                 disabled={!permission.can_create}
                               />
-                              <span className="text-sm">Create</span>
+                              <span className="text-sm">{tCommon("create")}</span>
                             </label>
 
                             <label className="flex cursor-pointer items-center gap-2">
@@ -303,7 +304,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_edit")}
                                 disabled={!permission.can_edit}
                               />
-                              <span className="text-sm">Edit</span>
+                              <span className="text-sm">{tCommon("edit")}</span>
                             </label>
 
                             <label className="flex cursor-pointer items-center gap-2">
@@ -312,7 +313,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                 onCheckedChange={() => toggleCrudFlag(permission.id, "can_delete")}
                                 disabled={!permission.can_delete}
                               />
-                              <span className="text-sm">Delete</span>
+                              <span className="text-sm">{tCommon("delete")}</span>
                             </label>
                           </div>
                         )}
@@ -320,14 +321,14 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                         {/* Show available CRUD operations for reference */}
                         {!isAssigned && (
                           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>Available:</span>
-                            {permission.can_view && <span className="text-green-600">View</span>}
+                            <span>{t("available")}</span>
+                            {permission.can_view && <span className="text-green-600">{tCommon("view")}</span>}
                             {permission.can_create && (
-                              <span className="text-green-600">Create</span>
+                              <span className="text-green-600">{tCommon("create")}</span>
                             )}
-                            {permission.can_edit && <span className="text-green-600">Edit</span>}
+                            {permission.can_edit && <span className="text-green-600">{tCommon("edit")}</span>}
                             {permission.can_delete && (
-                              <span className="text-green-600">Delete</span>
+                              <span className="text-green-600">{tCommon("delete")}</span>
                             )}
                           </div>
                         )}
@@ -342,12 +343,17 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
 
         <DialogFooter className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            {permissionSettings.size} of {allPermissions.length} permissions assigned
-            {searchQuery && <span className="ml-2">({filteredPermissions.length} shown)</span>}
+            {t("assignedSummary", {
+              assigned: String(permissionSettings.size),
+              total: String(allPermissions.length),
+            })}
+            {searchQuery && (
+              <span className="ml-2">{t("shownSummary", { count: String(filteredPermissions.length) })}</span>
+            )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCancel}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button
               onClick={handleSave}
@@ -356,10 +362,10 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
               {assignPermissions.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {t("saving")}
                 </>
               ) : (
-                "Save Changes"
+                t("saveChanges")
               )}
             </Button>
           </div>

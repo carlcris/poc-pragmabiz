@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, CheckCircle2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -43,6 +44,9 @@ type PricesTabProps = {
 };
 
 export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
+  const t = useTranslations("itemPricesTab");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [selectedPrice, setSelectedPrice] = useState<ItemPrice | null>(null);
@@ -67,12 +71,12 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["item-prices", itemId] });
-      toast.success("Price deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setPriceToDelete(null);
     },
     onError: (error) => {
-      const errorMessage = error instanceof Error ? error.message : "Failed to delete price";
+      const errorMessage = error instanceof Error ? error.message : t("deleteError");
       toast.error(errorMessage);
     },
   });
@@ -100,7 +104,7 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -122,15 +126,13 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Item Prices</CardTitle>
-              <CardDescription>
-                Manage multi-tier pricing for this item (e.g., Factory Cost, Wholesale, SRP)
-              </CardDescription>
+              <CardTitle>{t("title")}</CardTitle>
+              <CardDescription>{t("description")}</CardDescription>
             </div>
             {!readOnly && (
               <Button onClick={handleCreatePrice}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Price
+                {t("addPrice")}
               </Button>
             )}
           </div>
@@ -145,21 +147,21 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
             </div>
           ) : prices.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
-              <p>No prices found for this item.</p>
-              <p className="mt-2 text-sm">Add your first price tier to get started.</p>
+              <p>{t("empty")}</p>
+              <p className="mt-2 text-sm">{t("emptyDescription")}</p>
             </div>
           ) : (
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Price Tier</TableHead>
-                    <TableHead>Tier Name</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead>Effective From</TableHead>
-                    <TableHead>Effective To</TableHead>
-                    <TableHead>Status</TableHead>
-                    {!readOnly && <TableHead className="text-right">Actions</TableHead>}
+                    <TableHead>{t("priceTier")}</TableHead>
+                    <TableHead>{t("tierName")}</TableHead>
+                    <TableHead className="text-right">{t("price")}</TableHead>
+                    <TableHead>{t("effectiveFrom")}</TableHead>
+                    <TableHead>{t("effectiveTo")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    {!readOnly && <TableHead className="text-right">{t("actions")}</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -190,7 +192,7 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
                                 : ""
                             }
                           >
-                            {price.isActive ? "Active" : "Inactive"}
+                            {price.isActive ? t("active") : t("inactive")}
                           </Badge>
                         </TableCell>
                         {!readOnly && (
@@ -238,14 +240,17 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={confirmDelete}
-          title="Delete Price"
+          title={t("deleteTitle")}
           description={
             priceToDelete
-              ? `Are you sure you want to delete the price ₱${priceToDelete.price.toFixed(4)} for "${priceToDelete.priceTierName}"? This action cannot be undone.`
-              : "Are you sure you want to delete this price?"
+              ? t("deleteDescriptionWithName", {
+                  price: priceToDelete.price.toFixed(4),
+                  name: priceToDelete.priceTierName,
+                })
+              : t("deleteDescription")
           }
-          confirmText="Delete"
-          cancelText="Cancel"
+          confirmText={tCommon("delete")}
+          cancelText={tCommon("cancel")}
           variant="destructive"
           isLoading={deleteMutation.isPending}
         />

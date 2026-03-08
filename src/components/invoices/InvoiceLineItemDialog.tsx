@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,22 +33,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
+import {
+  createInvoiceLineItemSchema,
+  invoiceLineItemSchema,
+} from "@/lib/validations/invoice";
 
-const lineItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
-  itemCode: z.string().optional(),
-  itemName: z.string().optional(),
-  description: z.string().default(""),
-  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  unitPrice: z.number().min(0, "Unit price cannot be negative"),
-  uomId: z.string().min(1, "Unit of measure is required"),
-  discount: z.number().min(0).max(100).default(0),
-  taxRate: z.number().min(0).max(100).default(0),
-  lineTotal: z.number().optional(),
-});
-
-type LineItemFormInput = z.input<typeof lineItemSchema>;
-export type LineItemFormValues = z.output<typeof lineItemSchema> & {
+export type LineItemFormValues = z.output<typeof invoiceLineItemSchema> & {
   lineTotal?: number;
 };
 
@@ -66,9 +57,12 @@ export function InvoiceLineItemDialog({
   item,
   mode = "add",
 }: InvoiceLineItemDialogProps) {
+  const t = useTranslations("invoiceLineItemDialog");
   const { data: itemsData } = useItems({ limit: 50 });
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
+  const lineItemSchema = createInvoiceLineItemSchema((key) => t(key));
+  type LineItemFormInput = z.input<typeof lineItemSchema>;
 
   const form = useForm<LineItemFormInput>({
     resolver: zodResolver(lineItemSchema),
@@ -103,17 +97,17 @@ export function InvoiceLineItemDialog({
     }
   }, [open, item, form]);
 
-  const handleItemSelect = async (itemId: string) => {
-    const selectedItem = items.find((i) => i.id === itemId);
-    if (selectedItem) {
-      form.setValue("itemId", selectedItem.id);
-      form.setValue("itemCode", selectedItem.code);
-      form.setValue("itemName", selectedItem.name);
-      const itemDescription = "description" in selectedItem ? selectedItem.description : "";
-      form.setValue("description", itemDescription);
-      form.setValue("unitPrice", selectedItem.listPrice);
-      form.setValue("uomId", selectedItem.uomId);
-    }
+  const handleItemSelect = (itemId: string) => {
+    const selectedItem = items.find((entry) => entry.id === itemId);
+    if (!selectedItem) return;
+
+    form.setValue("itemId", selectedItem.id);
+    form.setValue("itemCode", selectedItem.code);
+    form.setValue("itemName", selectedItem.name);
+    const itemDescription = "description" in selectedItem ? selectedItem.description : "";
+    form.setValue("description", itemDescription);
+    form.setValue("unitPrice", selectedItem.listPrice);
+    form.setValue("uomId", selectedItem.uomId);
   };
 
   const onSubmit = (data: LineItemFormInput) => {
@@ -139,11 +133,9 @@ export function InvoiceLineItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit Line Item" : "Add Line Item"}</DialogTitle>
+          <DialogTitle>{mode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
-            {mode === "edit"
-              ? "Update the line item details."
-              : "Fill in the details for the new line item."}
+            {mode === "edit" ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -154,7 +146,7 @@ export function InvoiceLineItemDialog({
               name="itemId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item *</FormLabel>
+                  <FormLabel>{t("item")} *</FormLabel>
                   <Select
                     onValueChange={(value) => {
                       field.onChange(value);
@@ -164,15 +156,15 @@ export function InvoiceLineItemDialog({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select an item" />
+                        <SelectValue placeholder={t("selectItem")} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {items
-                        .filter((i) => i.isActive)
-                        .map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.code} - {item.name}
+                        .filter((entry) => entry.isActive)
+                        .map((entry) => (
+                          <SelectItem key={entry.id} value={entry.id}>
+                            {entry.code} - {entry.name}
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -187,7 +179,7 @@ export function InvoiceLineItemDialog({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t("description")}</FormLabel>
                   <FormControl>
                     <Textarea {...field} rows={2} />
                   </FormControl>
@@ -202,7 +194,7 @@ export function InvoiceLineItemDialog({
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantity *</FormLabel>
+                    <FormLabel>{t("quantity")} *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -221,7 +213,7 @@ export function InvoiceLineItemDialog({
                 name="unitPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Unit Price *</FormLabel>
+                    <FormLabel>{t("unitPrice")} *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -242,7 +234,7 @@ export function InvoiceLineItemDialog({
                 name="discount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Discount %</FormLabel>
+                    <FormLabel>{t("discountRate")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -261,7 +253,7 @@ export function InvoiceLineItemDialog({
                 name="taxRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tax Rate %</FormLabel>
+                    <FormLabel>{t("taxRate")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -276,22 +268,22 @@ export function InvoiceLineItemDialog({
               />
             </div>
 
-            <div className="rounded-md bg-muted p-4">
-              <div className="space-y-1 text-sm">
+            <div className="rounded-lg bg-muted p-4">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                  <span>{t("subtotal")}:</span>
                   <span className="font-medium">{formatCurrency(lineSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-red-600">
-                  <span>Discount:</span>
+                  <span>{t("discount")}:</span>
                   <span className="font-medium">-{formatCurrency(discountAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax:</span>
+                  <span>{t("tax")}:</span>
                   <span className="font-medium">{formatCurrency(taxAmount)}</span>
                 </div>
-                <div className="flex justify-between border-t pt-1 font-bold">
-                  <span>Line Total:</span>
+                <div className="flex justify-between border-t pt-2 text-lg font-bold">
+                  <span>{t("lineTotal")}:</span>
                   <span>{formatCurrency(lineTotal)}</span>
                 </div>
               </div>
@@ -299,9 +291,9 @@ export function InvoiceLineItemDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
-              <Button type="submit">{mode === "edit" ? "Update Item" : "Add Item"}</Button>
+              <Button type="submit">{mode === "edit" ? t("updateItem") : t("addItem")}</Button>
             </DialogFooter>
           </form>
         </Form>

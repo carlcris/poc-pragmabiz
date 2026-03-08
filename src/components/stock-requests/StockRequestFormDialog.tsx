@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { z } from "zod";
@@ -16,12 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
-const requestFormSchema = z
+const createRequestFormSchema = (
+  tValidation: (key: "requestDateRequired" | "requiredDateRequired" | "requestedByRequired" | "requestedToRequired" | "requestingAndFulfillingMustDiffer") => string
+) =>
+  z
   .object({
-    request_date: z.string().min(1, "Request date is required"),
-    required_date: z.string().min(1, "Required date is required"),
-    requesting_warehouse_id: z.string().min(1, "Requested by is required"),
-    fulfilling_warehouse_id: z.string().min(1, "Requested to is required"),
+    request_date: z.string().min(1, tValidation("requestDateRequired")),
+    required_date: z.string().min(1, tValidation("requiredDateRequired")),
+    requesting_warehouse_id: z.string().min(1, tValidation("requestedByRequired")),
+    fulfilling_warehouse_id: z.string().min(1, tValidation("requestedToRequired")),
     priority: z.enum(["low", "normal", "high", "urgent"]),
     purpose: z.string().optional(),
     notes: z.string().optional(),
@@ -30,13 +34,14 @@ const requestFormSchema = z
     if (values.fulfilling_warehouse_id && values.fulfilling_warehouse_id === values.requesting_warehouse_id) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Requested to must be different from requested by",
+        message: tValidation("requestingAndFulfillingMustDiffer"),
         path: ["fulfilling_warehouse_id"],
       });
     }
   });
 
-export type StockRequestFormValues = z.infer<typeof requestFormSchema>;
+type StockRequestFormSchema = ReturnType<typeof createRequestFormSchema>;
+export type StockRequestFormValues = z.infer<StockRequestFormSchema>;
 
 type WarehouseOption = {
   id: string;
@@ -67,6 +72,10 @@ export function StockRequestFormDialog({
   isSaving,
   onSave,
 }: StockRequestFormDialogProps) {
+  const t = useTranslations("stockRequestForm");
+  const tPage = useTranslations("stockRequestsPage");
+  const tValidation = useTranslations("stockRequestValidation");
+  const locale = useLocale();
   const [lineItems, setLineItems] = useState<StockRequestLineItemPayload[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{
@@ -74,6 +83,7 @@ export function StockRequestFormDialog({
     item: StockRequestLineItemPayload;
   } | null>(null);
 
+  const requestFormSchema = createRequestFormSchema((key) => tValidation(key));
   const form = useForm<StockRequestFormValues>({
     resolver: zodResolver(requestFormSchema),
     mode: "onChange",
@@ -150,7 +160,7 @@ export function StockRequestFormDialog({
 
   const onSubmit = async (values: StockRequestFormValues) => {
     if (lineItems.length === 0) {
-      alert("Please add at least one line item");
+      window.alert(t("lineItemRequired"));
       return;
     }
 
@@ -169,11 +179,11 @@ export function StockRequestFormDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col overflow-hidden">
           <DialogHeader className="flex-shrink-0">
-            <DialogTitle>{selectedRequest ? "Edit Stock Request" : "Create Stock Request"}</DialogTitle>
+            <DialogTitle>{selectedRequest ? t("editTitle") : t("createTitle")}</DialogTitle>
             <DialogDescription>
               {selectedRequest
-                ? `Edit request ${selectedRequest.request_code}`
-                : "Create a new stock request"}
+                ? t("editDescription", { code: selectedRequest.request_code })
+                : t("createDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -187,7 +197,7 @@ export function StockRequestFormDialog({
                       name="request_date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Request Date<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                          <FormLabel className="text-xs">{t("requestDateLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9" />
                           </FormControl>
@@ -201,7 +211,7 @@ export function StockRequestFormDialog({
                       name="required_date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Required Date<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                          <FormLabel className="text-xs">{t("requiredDateLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9" />
                           </FormControl>
@@ -215,18 +225,18 @@ export function StockRequestFormDialog({
                       name="priority"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">Priority<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                          <FormLabel className="text-xs">{t("priorityLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-9">
-                                <SelectValue placeholder="Select priority" />
+                                <SelectValue placeholder={t("selectPriority")} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="low">Low</SelectItem>
-                              <SelectItem value="normal">Normal</SelectItem>
-                              <SelectItem value="high">High</SelectItem>
-                              <SelectItem value="urgent">Urgent</SelectItem>
+                              <SelectItem value="low">{tPage("low")}</SelectItem>
+                              <SelectItem value="normal">{tPage("normal")}</SelectItem>
+                              <SelectItem value="high">{tPage("high")}</SelectItem>
+                              <SelectItem value="urgent">{tPage("urgent")}</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -240,11 +250,11 @@ export function StockRequestFormDialog({
                         name="requesting_warehouse_id"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Requested By<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                            <FormLabel className="text-xs">{t("requestedByLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Select requested by" />
+                                  <SelectValue placeholder={t("selectRequestedBy")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -265,11 +275,11 @@ export function StockRequestFormDialog({
                         name="fulfilling_warehouse_id"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">Requested To<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                            <FormLabel className="text-xs">{t("requestedToLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger className="h-9">
-                                  <SelectValue placeholder="Select requested to" />
+                                  <SelectValue placeholder={t("selectRequestedTo")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -291,9 +301,9 @@ export function StockRequestFormDialog({
                       name="purpose"
                       render={({ field }) => (
                         <FormItem className="col-span-3">
-                          <FormLabel className="text-xs">Purpose</FormLabel>
+                          <FormLabel className="text-xs">{t("purposeLabel")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter purpose of request (optional)" {...field} className="h-9" />
+                            <Input placeholder={t("purposePlaceholder")} {...field} className="h-9" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -305,9 +315,9 @@ export function StockRequestFormDialog({
                       name="notes"
                       render={({ field }) => (
                         <FormItem className="col-span-3">
-                          <FormLabel className="text-xs">Notes</FormLabel>
+                          <FormLabel className="text-xs">{t("notesLabel")}</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Additional notes (optional)" className="h-16 resize-none" {...field} />
+                            <Textarea placeholder={t("notesPlaceholder")} className="h-16 resize-none" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -318,30 +328,30 @@ export function StockRequestFormDialog({
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-medium">Line Items</h3>
-                        <p className="text-xs text-muted-foreground">Add items to request</p>
+                        <h3 className="text-sm font-medium">{t("lineItemsTitle")}</h3>
+                        <p className="text-xs text-muted-foreground">{t("lineItemsDescription")}</p>
                       </div>
                       <Button type="button" onClick={handleAddItem} size="sm" className="h-8">
                         <Plus className="mr-1 h-3 w-3" />
-                        Add Item
+                        {t("addItem")}
                       </Button>
                     </div>
 
                     {lineItems.length === 0 ? (
                       <div className="rounded-lg border-2 border-dashed py-8 text-center text-muted-foreground">
-                        <p className="text-sm">No items added yet.</p>
-                        <p className="text-xs">Click &quot;Add Item&quot; to get started.</p>
+                        <p className="text-sm">{t("noItems")}</p>
+                        <p className="text-xs">{t("noItemsDescription")}</p>
                       </div>
                     ) : (
                       <div className="max-h-[300px] overflow-y-auto rounded-lg border">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="py-2 text-xs">Item</TableHead>
-                              <TableHead className="py-2 text-right text-xs">Qty</TableHead>
-                              <TableHead className="py-2 text-xs">Unit</TableHead>
-                              <TableHead className="py-2 text-xs">Notes</TableHead>
-                              <TableHead className="w-[80px] py-2 text-xs">Actions</TableHead>
+                              <TableHead className="py-2 text-xs">{t("item")}</TableHead>
+                              <TableHead className="py-2 text-right text-xs">{t("qty")}</TableHead>
+                              <TableHead className="py-2 text-xs">{t("unit")}</TableHead>
+                              <TableHead className="py-2 text-xs">{t("notes")}</TableHead>
+                              <TableHead className="w-[80px] py-2 text-xs">{t("actions")}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -353,10 +363,10 @@ export function StockRequestFormDialog({
                                     <div className="text-xs text-muted-foreground">{item.itemCode}</div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="py-2 text-right text-sm">{item.requestedQty.toFixed(2)}</TableCell>
-                                <TableCell className="py-2 text-sm">{item.uomLabel || "--"}</TableCell>
+                                <TableCell className="py-2 text-right text-sm">{item.requestedQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="py-2 text-sm">{item.uomLabel || t("noValue")}</TableCell>
                                 <TableCell className="py-2">
-                                  <div className="max-w-[150px] truncate text-sm">{item.notes || "--"}</div>
+                                  <div className="max-w-[150px] truncate text-sm">{item.notes || t("noValue")}</div>
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <div className="flex items-center gap-1">
@@ -380,14 +390,14 @@ export function StockRequestFormDialog({
 
               <DialogFooter className="mt-4 flex-shrink-0">
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-9">
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={isSaving || !form.formState.isValid || lineItems.length === 0}
                   className="h-9"
                 >
-                  {isSaving ? "Saving..." : selectedRequest ? "Update Request" : "Create Request"}
+                  {isSaving ? t("saving") : selectedRequest ? t("updateAction") : t("createAction")}
                 </Button>
               </DialogFooter>
             </form>

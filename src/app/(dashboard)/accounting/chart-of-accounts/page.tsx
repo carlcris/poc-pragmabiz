@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -24,6 +25,8 @@ import type { Account, AccountType } from "@/types/accounting";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 
 export default function ChartOfAccountsPage() {
+  const t = useTranslations("chartOfAccountsPage");
+  const tCommon = useTranslations("common");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,7 +84,7 @@ export default function ChartOfAccountsPage() {
   }, [searchTerm, accountTypeFilter, activeFilter]);
 
   const getAccountTypeBadge = (type: AccountType | undefined) => {
-    if (!type) return <Badge variant="secondary">UNKNOWN</Badge>;
+    if (!type) return <Badge variant="secondary">{t("unknown").toUpperCase()}</Badge>;
 
     const colors: Record<AccountType, string> = {
       asset: "bg-blue-100 text-blue-800",
@@ -94,7 +97,7 @@ export default function ChartOfAccountsPage() {
 
     return (
       <Badge className={colors[type]} variant="secondary">
-        {type.toUpperCase()}
+        {t(type).toUpperCase()}
       </Badge>
     );
   };
@@ -104,12 +107,12 @@ export default function ChartOfAccountsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Chart of Accounts</h1>
-          <p className="text-muted-foreground">Manage your general ledger accounts</p>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
-          New Account
+          {t("newAccount")}
         </Button>
       </div>
 
@@ -118,7 +121,7 @@ export default function ChartOfAccountsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
           <Input
-            placeholder="Search by account number or name..."
+            placeholder={t("searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -130,16 +133,16 @@ export default function ChartOfAccountsPage() {
           onValueChange={(value) => setAccountTypeFilter(value as AccountType | "all")}
         >
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Account Type" />
+            <SelectValue placeholder={t("accountType")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="asset">Asset</SelectItem>
-            <SelectItem value="liability">Liability</SelectItem>
-            <SelectItem value="equity">Equity</SelectItem>
-            <SelectItem value="revenue">Revenue</SelectItem>
-            <SelectItem value="expense">Expense</SelectItem>
-            <SelectItem value="cogs">COGS</SelectItem>
+            <SelectItem value="all">{t("allTypes")}</SelectItem>
+            <SelectItem value="asset">{t("asset")}</SelectItem>
+            <SelectItem value="liability">{t("liability")}</SelectItem>
+            <SelectItem value="equity">{t("equity")}</SelectItem>
+            <SelectItem value="revenue">{t("revenue")}</SelectItem>
+            <SelectItem value="expense">{t("expense")}</SelectItem>
+            <SelectItem value="cogs">{t("cogs")}</SelectItem>
           </SelectContent>
         </Select>
 
@@ -148,12 +151,12 @@ export default function ChartOfAccountsPage() {
           onValueChange={(value) => setActiveFilter(value as "all" | "active" | "inactive")}
         >
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder={tCommon("status")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="all">{t("allStatus")}</SelectItem>
+            <SelectItem value="active">{t("active")}</SelectItem>
+            <SelectItem value="inactive">{t("inactive")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -161,23 +164,23 @@ export default function ChartOfAccountsPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Total Accounts</div>
+          <div className="text-sm text-muted-foreground">{t("totalAccounts")}</div>
           <div className="text-2xl font-bold">{totalItems}</div>
         </div>
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Assets</div>
+          <div className="text-sm text-muted-foreground">{t("assets")}</div>
           <div className="text-2xl font-bold">
             {accounts.filter((a) => a.accountType === "asset").length}
           </div>
         </div>
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Liabilities</div>
+          <div className="text-sm text-muted-foreground">{t("liabilities")}</div>
           <div className="text-2xl font-bold">
             {accounts.filter((a) => a.accountType === "liability").length}
           </div>
         </div>
         <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Revenue</div>
+          <div className="text-sm text-muted-foreground">{t("revenue")}</div>
           <div className="text-2xl font-bold">
             {accounts.filter((a) => a.accountType === "revenue").length}
           </div>
@@ -189,26 +192,26 @@ export default function ChartOfAccountsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Account Number</TableHead>
-              <TableHead>Account Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>System</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead>{t("accountNumber")}</TableHead>
+              <TableHead>{t("accountName")}</TableHead>
+              <TableHead>{t("type")}</TableHead>
+              <TableHead>{t("level")}</TableHead>
+              <TableHead>{t("status")}</TableHead>
+              <TableHead>{t("system")}</TableHead>
+              <TableHead className="text-right">{t("viewActions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell colSpan={7} className="py-8 text-center">
-                  Loading accounts...
+                  {t("loading")}
                 </TableCell>
               </TableRow>
             ) : accounts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                  No accounts found
+                  {t("empty")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -224,13 +227,13 @@ export default function ChartOfAccountsPage() {
                   <TableCell>{account.level}</TableCell>
                   <TableCell>
                     {account.isActive ? (
-                      <Badge variant="default">Active</Badge>
+                      <Badge variant="default">{t("active")}</Badge>
                     ) : (
-                      <Badge variant="secondary">Inactive</Badge>
+                      <Badge variant="secondary">{t("inactive")}</Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    {account.isSystemAccount && <Badge variant="outline">System</Badge>}
+                    {account.isSystemAccount && <Badge variant="outline">{t("systemAccount")}</Badge>}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { Printer, DollarSign, FileText, Download } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
 import QRCode from "qrcode";
@@ -30,6 +31,8 @@ export function SalesOrderViewDialog({
   onOpenChange,
   salesOrder,
 }: SalesOrderViewDialogProps) {
+  const t = useTranslations("salesOrderViewDialog");
+  const locale = useLocale();
   const { formatCurrency, symbol } = useCurrency();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
@@ -201,7 +204,7 @@ export function SalesOrderViewDialog({
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -213,29 +216,29 @@ export function SalesOrderViewDialog({
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <DialogTitle>Sales Order Details</DialogTitle>
+            <DialogTitle>{t("title")}</DialogTitle>
             {getStatusBadge(salesOrder.status)}
           </div>
-          <DialogDescription>Order #{salesOrder.orderNumber}</DialogDescription>
+          <DialogDescription>{t("description", { number: salesOrder.orderNumber })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Header Information */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Customer Information</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("customerInformation")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Name:</span>
+                  <span className="text-muted-foreground">{t("name")}:</span>
                   <div className="font-medium">{salesOrder.customerName}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Email:</span>
+                  <span className="text-muted-foreground">{t("email")}:</span>
                   <div className="font-medium">{salesOrder.customerEmail}</div>
                 </div>
                 {salesOrder.quotationNumber && (
                   <div>
-                    <span className="text-muted-foreground">Quotation:</span>
+                    <span className="text-muted-foreground">{t("quotation")}:</span>
                     <div className="font-medium">{salesOrder.quotationNumber}</div>
                   </div>
                 )}
@@ -243,14 +246,14 @@ export function SalesOrderViewDialog({
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Order Details</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("orderDetails")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Order Date:</span>
+                  <span className="text-muted-foreground">{t("orderDate")}:</span>
                   <div className="font-medium">{formatDate(salesOrder.orderDate)}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Expected Delivery:</span>
+                  <span className="text-muted-foreground">{t("expectedDelivery")}:</span>
                   <div className="font-medium">{formatDate(salesOrder.expectedDeliveryDate)}</div>
                 </div>
               </div>
@@ -260,7 +263,7 @@ export function SalesOrderViewDialog({
           {/* Delivery Address */}
           {salesOrder.shippingAddress && (
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Delivery Address</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("deliveryAddress")}</h3>
               <div className="text-sm text-muted-foreground">
                 <div>{salesOrder.shippingAddress}</div>
                 <div>
@@ -277,7 +280,7 @@ export function SalesOrderViewDialog({
 
           {/* Line Items */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Line Items</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
@@ -328,22 +331,22 @@ export function SalesOrderViewDialog({
           <div className="flex justify-end">
             <div className="w-64 space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="text-muted-foreground">{t("subtotal")}:</span>
                 <span className="font-medium">{formatCurrency(salesOrder.subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Discount:</span>
+                <span className="text-muted-foreground">{t("discount")}:</span>
                 <span className="font-medium text-red-600">
                   -{formatCurrency(salesOrder.totalDiscount)}
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax:</span>
+                <span className="text-muted-foreground">{t("tax")}:</span>
                 <span className="font-medium">{formatCurrency(salesOrder.totalTax)}</span>
               </div>
               <hr className="border-t" />
               <div className="flex justify-between text-base font-bold">
-                <span>Total Amount:</span>
+                <span>{t("totalAmount")}:</span>
                 <span>{formatCurrency(salesOrder.totalAmount)}</span>
               </div>
             </div>
@@ -356,25 +359,25 @@ export function SalesOrderViewDialog({
               <div>
                 <div className="mb-3 flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  <h3 className="text-sm font-semibold">Payment Summary</h3>
+                  <h3 className="text-sm font-semibold">{t("paymentSummary")}</h3>
                 </div>
 
                 {/* Summary Cards */}
                 <div className="mb-4 grid grid-cols-3 gap-4">
                   <div className="rounded-lg border p-3">
-                    <div className="mb-1 text-xs text-muted-foreground">Total Invoiced</div>
+                    <div className="mb-1 text-xs text-muted-foreground">{t("totalInvoiced")}</div>
                     <div className="text-lg font-bold">
                       {formatCurrency(paymentSummary.summary.totalInvoiced)}
                     </div>
                   </div>
                   <div className="rounded-lg border p-3">
-                    <div className="mb-1 text-xs text-muted-foreground">Total Paid</div>
+                    <div className="mb-1 text-xs text-muted-foreground">{t("totalPaid")}</div>
                     <div className="text-lg font-bold text-green-600">
                       {formatCurrency(paymentSummary.summary.totalPaid)}
                     </div>
                   </div>
                   <div className="rounded-lg border p-3">
-                    <div className="mb-1 text-xs text-muted-foreground">Balance Due</div>
+                    <div className="mb-1 text-xs text-muted-foreground">{t("balanceDue")}</div>
                     <div className="text-lg font-bold text-orange-600">
                       {formatCurrency(paymentSummary.summary.totalDue)}
                     </div>
@@ -402,7 +405,7 @@ export function SalesOrderViewDialog({
                     {invoice.payments.length > 0 && (
                       <div className="mt-3 border-t pt-3">
                         <div className="mb-2 text-xs font-semibold">
-                          Payments ({invoice.payments.length})
+                          {t("payments", { count: String(invoice.payments.length) })}
                         </div>
                         <div className="space-y-2">
                           {invoice.payments.map((payment) => (
@@ -413,7 +416,7 @@ export function SalesOrderViewDialog({
                               <div>
                                 <div className="font-medium">{payment.paymentCode}</div>
                                 <div className="text-muted-foreground">
-                                  {new Date(payment.paymentDate).toLocaleDateString("en-US", {
+                                  {new Date(payment.paymentDate).toLocaleDateString(locale, {
                                     month: "short",
                                     day: "numeric",
                                     year: "numeric",
@@ -443,7 +446,7 @@ export function SalesOrderViewDialog({
               <div className="space-y-4">
                 {salesOrder.paymentTerms && (
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold">Terms & Conditions</h3>
+                    <h3 className="mb-2 text-sm font-semibold">{t("termsConditions")}</h3>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {salesOrder.paymentTerms}
                     </p>
@@ -451,7 +454,7 @@ export function SalesOrderViewDialog({
                 )}
                 {salesOrder.notes && (
                   <div>
-                    <h3 className="mb-2 text-sm font-semibold">Notes</h3>
+                    <h3 className="mb-2 text-sm font-semibold">{t("notes")}</h3>
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                       {salesOrder.notes}
                     </p>
@@ -469,11 +472,11 @@ export function SalesOrderViewDialog({
             disabled={isGeneratingPDF || isPrinting}
           >
             <Download className="mr-2 h-4 w-4" />
-            {isGeneratingPDF ? "Generating PDF..." : "Download PDF"}
+            {isGeneratingPDF ? t("generatingPdf") : t("downloadPdf")}
           </Button>
           <Button onClick={handlePrint} variant="outline" disabled={isGeneratingPDF || isPrinting}>
             <Printer className="mr-2 h-4 w-4" />
-            {isPrinting ? "Preparing Print..." : "Print Order"}
+            {isPrinting ? t("preparingPrint") : t("printOrder")}
           </Button>
         </DialogFooter>
       </DialogContent>

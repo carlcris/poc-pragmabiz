@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Eye, Pencil, Trash2, Power, PowerOff, ArrowLeft } from "lucide-react";
 import {
@@ -10,7 +11,6 @@ import {
   useActivateTransformationTemplate,
   useDeactivateTransformationTemplate,
 } from "@/hooks/useTransformationTemplates";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +52,10 @@ const TransformationTemplateDetailDialog = dynamic(
 
 export default function TransformationTemplatesPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const t = useTranslations("transformation");
+  const tCommon = useTranslations("common");
+  const tForms = useTranslations("forms");
+  const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -112,13 +115,13 @@ export default function TransformationTemplatesPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-3xl font-bold">{t.transformation.templates}</h1>
+            <h1 className="text-3xl font-bold">{t("templates")}</h1>
           </div>
-          <p className="ml-10 text-muted-foreground">{t.transformation.manageTemplates}</p>
+          <p className="ml-10 text-muted-foreground">{t("manageTemplates")}</p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          {t.transformation.newTemplate}
+          {t("newTemplate")}
         </Button>
       </div>
 
@@ -126,7 +129,7 @@ export default function TransformationTemplatesPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder={t.common.search_}
+          placeholder={tCommon("search_")}
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="pl-10"
@@ -138,27 +141,27 @@ export default function TransformationTemplatesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t.common.code}</TableHead>
-              <TableHead>{t.common.name}</TableHead>
-              <TableHead>{t.common.status}</TableHead>
-              <TableHead>{t.transformation.inputMaterials}</TableHead>
-              <TableHead>{t.transformation.outputProducts}</TableHead>
-              <TableHead>Usage Count</TableHead>
-              <TableHead>{t.common.date}</TableHead>
-              <TableHead className="text-right">{t.common.actions}</TableHead>
+              <TableHead>{tCommon("code")}</TableHead>
+              <TableHead>{tCommon("name")}</TableHead>
+              <TableHead>{tCommon("status")}</TableHead>
+              <TableHead>{t("inputMaterials")}</TableHead>
+              <TableHead>{t("outputProducts")}</TableHead>
+              <TableHead>{tCommon("usageCount")}</TableHead>
+              <TableHead>{tCommon("date")}</TableHead>
+              <TableHead className="text-right">{tCommon("actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-8 text-center">
-                  {t.common.loading}
+                  {tCommon("loading")}
                 </TableCell>
               </TableRow>
             ) : templatesData?.data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-8 text-center">
-                  {t.forms.noDataFound}
+                  {tForms("noDataFound")}
                 </TableCell>
               </TableRow>
             ) : (
@@ -172,7 +175,7 @@ export default function TransformationTemplatesPage() {
                   <TableCell>{template.template_name}</TableCell>
                   <TableCell>
                     <Badge className={template.is_active ? "bg-green-500" : "bg-gray-500"}>
-                      {template.is_active ? "Active" : "Inactive"}
+                      {template.is_active ? tCommon("active") : tCommon("inactive")}
                     </Badge>
                   </TableCell>
                   <TableCell>{template.inputs?.length || 0}</TableCell>
@@ -180,12 +183,12 @@ export default function TransformationTemplatesPage() {
                   <TableCell>
                     <Badge variant="outline">{template.usage_count}</Badge>
                     {template.usage_count > 0 && (
-                      <span className="ml-2 text-xs text-muted-foreground">(locked)</span>
+                      <span className="ml-2 text-xs text-muted-foreground">{tCommon("locked")}</span>
                     )}
                   </TableCell>
                   <TableCell>
                     {template.created_at
-                      ? new Date(template.created_at).toLocaleDateString()
+                      ? new Date(template.created_at).toLocaleDateString(locale)
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right">
@@ -270,13 +273,13 @@ export default function TransformationTemplatesPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t.common.delete} {t.transformation.transformationTemplate}?
+              {tCommon("delete")} {t("transformationTemplate")}?
             </AlertDialogTitle>
-            <AlertDialogDescription>{t.forms.deleteConfirm}</AlertDialogDescription>
+            <AlertDialogDescription>{tForms("deleteConfirm")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t.common.cancel}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>{t.common.delete}</AlertDialogAction>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>{tCommon("delete")}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

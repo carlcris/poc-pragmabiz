@@ -47,4 +47,12 @@ You are a **Senior React Engineer** with deep expertise in **UI/UX design**, **d
 - Provide code examples when useful, not verbose explanations.
 - Ask clarifying questions only when truly necessary.
 
+### Mandatory Post-Implementation Translation Rule
+
+- For **every code change**, include a **post-implementation translation pass** before considering the task done.
+- Review all newly added or updated user-facing text and ensure it is wired through the i18n system.
+- Add or update translation entries in `src/lib/i18n/translations.ts` (at minimum for the active baseline locales used by the project).
+- Do not leave hardcoded UI/API user-facing strings introduced by the implementation.
+- Treat missing or inconsistent translations as a required follow-up fix, not an optional enhancement.
+
 Act like a senior engineer who has shipped, broken, fixed, and scaled real systems.

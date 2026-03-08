@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,6 +37,7 @@ interface ByLocationTabProps {
 }
 
 export function ByLocationTab({ filters }: ByLocationTabProps) {
+  const t = useTranslations("analyticsByLocationTab");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByLocation(filters);
 
@@ -96,16 +98,16 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Top 10 Cities by Sales
+              {t("topCitiesBySales")}
             </CardTitle>
-            <CardDescription>Sales performance by city</CardDescription>
+            <CardDescription>{t("salesPerformanceByCity")}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[350px] w-full" />
             ) : topCitiesChartData.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No location data available
+                {t("noLocationData")}
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={350}>
@@ -130,7 +132,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />
-                  <Bar dataKey="sales" fill="#3b82f6" name="Sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sales" fill="#3b82f6" name={t("sales")} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -142,16 +144,16 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
-              Regional Distribution
+              {t("regionalDistribution")}
             </CardTitle>
-            <CardDescription>Sales by region</CardDescription>
+            <CardDescription>{t("salesByRegion")}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[350px] w-full" />
             ) : regionalDistributionData.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No regional data available
+                {t("noRegionalData")}
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={350}>
@@ -189,9 +191,9 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
         <div>
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <MapPin className="h-5 w-5" />
-            Sales by Location
+            {t("salesByLocation")}
           </h3>
-          <p className="text-sm text-muted-foreground">Performance breakdown by city and region</p>
+          <p className="text-sm text-muted-foreground">{t("performanceBreakdown")}</p>
         </div>
 
         {isLoading ? (
@@ -202,7 +204,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
           </div>
         ) : locationData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No location data available
+            {t("noLocationData")}
           </p>
         ) : (
           <>
@@ -210,13 +212,13 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>City</TableHead>
-                    <TableHead>Region</TableHead>
-                    <TableHead className="text-right">Total Sales</TableHead>
-                    <TableHead className="text-right">Transactions</TableHead>
-                    <TableHead className="text-right">Avg Order Value</TableHead>
-                    <TableHead className="text-right">Unique Customers</TableHead>
-                    <TableHead>Top Employee</TableHead>
+                    <TableHead>{t("city")}</TableHead>
+                    <TableHead>{t("region")}</TableHead>
+                    <TableHead className="text-right">{t("totalSales")}</TableHead>
+                    <TableHead className="text-right">{t("transactions")}</TableHead>
+                    <TableHead className="text-right">{t("avgOrderValue")}</TableHead>
+                    <TableHead className="text-right">{t("uniqueCustomers")}</TableHead>
+                    <TableHead>{t("topEmployee")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -262,9 +264,11 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
             {/* Pagination Controls */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, locationData.length)} of {locationData.length}{" "}
-                entries
+                {t("showingEntries", {
+                  from: (currentPage - 1) * itemsPerPage + 1,
+                  to: Math.min(currentPage * itemsPerPage, locationData.length),
+                  total: locationData.length,
+                })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -274,10 +278,10 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  {t("previous")}
                 </Button>
                 <div className="text-sm">
-                  Page {currentPage} of {totalPages}
+                  {t("pageOf", { page: currentPage, total: totalPages })}
                 </div>
                 <Button
                   variant="outline"
@@ -285,7 +289,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t("next")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

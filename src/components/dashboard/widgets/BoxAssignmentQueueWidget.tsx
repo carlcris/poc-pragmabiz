@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Package, BoxIcon, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { useBoxAssignmentQueue } from "@/hooks/usePurchasingDashboard";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 
 export function BoxAssignmentQueueWidget() {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useBoxAssignmentQueue();
 
   // Loading state
@@ -19,8 +21,8 @@ export function BoxAssignmentQueueWidget() {
           <div className="flex items-center gap-2">
             <BoxIcon className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Box Assignment Queue</CardTitle>
-              <CardDescription>Items awaiting box assignment</CardDescription>
+              <CardTitle>{t("boxAssignmentQueueTitle")}</CardTitle>
+              <CardDescription>{t("itemsAwaitingBoxAssignment")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -41,16 +43,16 @@ export function BoxAssignmentQueueWidget() {
           <div className="flex items-center gap-2">
             <BoxIcon className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Box Assignment Queue</CardTitle>
-              <CardDescription>Items awaiting box assignment</CardDescription>
+              <CardTitle>{t("boxAssignmentQueueTitle")}</CardTitle>
+              <CardDescription>{t("itemsAwaitingBoxAssignment")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load box assignment queue</p>
+            <p className="text-sm text-destructive">{t("failedLoadBoxAssignmentQueue")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -66,16 +68,16 @@ export function BoxAssignmentQueueWidget() {
           <div className="flex items-center gap-2">
             <BoxIcon className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Box Assignment Queue</CardTitle>
-              <CardDescription>Items awaiting box assignment</CardDescription>
+              <CardTitle>{t("boxAssignmentQueueTitle")}</CardTitle>
+              <CardDescription>{t("itemsAwaitingBoxAssignment")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={BoxIcon}
-            title="All items assigned!"
-            description="No items awaiting box assignment"
+            title={t("allItemsAssigned")}
+            description={t("noItemsAwaitingBoxAssignment")}
             variant="success"
           />
         </CardContent>
@@ -92,8 +94,8 @@ export function BoxAssignmentQueueWidget() {
         <div className="flex items-center gap-2">
           <BoxIcon className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Box Assignment Queue</CardTitle>
-            <CardDescription>Items awaiting box assignment</CardDescription>
+            <CardTitle>{t("boxAssignmentQueueTitle")}</CardTitle>
+            <CardDescription>{t("itemsAwaitingBoxAssignment")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -102,14 +104,14 @@ export function BoxAssignmentQueueWidget() {
         <div className="rounded-lg border bg-muted/50 p-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Package className="h-4 w-4" />
-            <span>Items Pending</span>
+            <span>{t("itemsPending")}</span>
           </div>
           <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
         </div>
 
         {/* Queue Items */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">Queue</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("queue")}</p>
           <div className="space-y-2">
             {sortedItems.slice(0, 6).map((item) => (
               <Link
@@ -128,13 +130,13 @@ export function BoxAssignmentQueueWidget() {
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Package className="h-3 w-3 flex-shrink-0" />
                     <span>
-                      {item.receivedQty} {item.receivedQty === 1 ? "unit" : "units"} received
+                      {t("unitsReceived", { count: item.receivedQty })}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <Button size="sm" variant="default">
-                    Assign
+                    {t("assign")}
                   </Button>
                 </div>
               </Link>
@@ -146,7 +148,7 @@ export function BoxAssignmentQueueWidget() {
         {data.count > 6 && (
           <Button asChild variant="outline" className="w-full">
             <Link href="/purchasing/grns?tab=box-assignment">
-              View All Items
+              {t("viewAllItems")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

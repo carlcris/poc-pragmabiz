@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, ArrowDown, ArrowUp, ArrowLeftRight, Settings } from "lucide-react";
@@ -6,9 +9,11 @@ import type { StockMovementItem } from "@/types/warehouse-dashboard";
 type StockMovementsListProps = {
   movements: StockMovementItem[];
   isLoading: boolean;
+  locale: string;
 };
 
-export const StockMovementsList = ({ movements, isLoading }: StockMovementsListProps) => {
+export const StockMovementsList = ({ movements, isLoading, locale }: StockMovementsListProps) => {
+  const t = useTranslations("warehouseDashboard");
   const getMovementIcon = (type: string) => {
     const lowerType = type.toLowerCase();
     if (lowerType.includes("in") || lowerType.includes("receive")) {
@@ -50,10 +55,10 @@ export const StockMovementsList = ({ movements, isLoading }: StockMovementsListP
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleString("en-PH", {
+    if (diffMins < 1) return t("justNow");
+    if (diffMins < 60) return t("minutesAgo", { count: diffMins });
+    if (diffHours < 24) return t("hoursAgo", { count: diffHours });
+    return date.toLocaleString(locale, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -66,7 +71,7 @@ export const StockMovementsList = ({ movements, isLoading }: StockMovementsListP
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="h-5 w-5" />
-          Last 5 Stock Movements
+          {t("lastStockMovements")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -78,7 +83,7 @@ export const StockMovementsList = ({ movements, isLoading }: StockMovementsListP
           </div>
         ) : movements.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No recent stock movements
+            {t("noRecentStockMovements")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -97,7 +102,7 @@ export const StockMovementsList = ({ movements, isLoading }: StockMovementsListP
                     <p className="truncate text-sm font-medium">{movement.item_name}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    by {movement.performed_by} • {formatTime(movement.timestamp)}
+                    {t("byUser", { user: movement.performed_by })} • {formatTime(movement.timestamp)}
                   </p>
                 </div>
 

@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -7,13 +10,16 @@ type InventoryHealthPanelProps = {
   lowStocks: LowStockItem[];
   outOfStocks: OutOfStockItem[];
   isLoading: boolean;
+  locale: string;
 };
 
 export const InventoryHealthPanel = ({
   lowStocks,
   outOfStocks,
   isLoading,
+  locale,
 }: InventoryHealthPanelProps) => {
+  const t = useTranslations("warehouseDashboard");
   const lowStockItems = lowStocks.slice(0, 5);
   const outOfStockItems = outOfStocks.slice(0, 5);
 
@@ -24,7 +30,7 @@ export const InventoryHealthPanel = ({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <AlertTriangle className="h-5 w-5 text-yellow-600" />
-            Low Stocks
+            {t("lowStocks")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -35,7 +41,7 @@ export const InventoryHealthPanel = ({
               ))}
             </div>
           ) : lowStocks.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No low stock items</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t("noLowStockItems")}</p>
           ) : (
             <div className="space-y-2">
               {lowStockItems.map((item) => (
@@ -49,7 +55,7 @@ export const InventoryHealthPanel = ({
                       <p className="truncate text-sm font-medium">{item.item_name}</p>
                       {item.location_code && (
                         <p className="text-xs text-muted-foreground">
-                          Location: {item.location_code}
+                          {t("locationLabel")}: {item.location_code}
                         </p>
                       )}
                     </div>
@@ -58,7 +64,7 @@ export const InventoryHealthPanel = ({
                         {item.qty.toFixed(2)} {item.uom}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Reorder: {item.reorder_level.toFixed(2)}
+                        {t("reorderLabel")}: {item.reorder_level.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -68,7 +74,7 @@ export const InventoryHealthPanel = ({
                 href="/inventory/items"
                 className="block text-sm font-medium text-primary hover:underline"
               >
-                View all inventory
+                {t("viewAllInventory")}
               </Link>
             </div>
           )}
@@ -80,7 +86,7 @@ export const InventoryHealthPanel = ({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <AlertCircle className="h-5 w-5 text-red-600" />
-            Out of Stocks
+            {t("outOfStocks")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -91,7 +97,7 @@ export const InventoryHealthPanel = ({
               ))}
             </div>
           ) : outOfStocks.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No out of stock items</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t("noOutOfStockItems")}</p>
           ) : (
             <div className="space-y-2">
               {outOfStockItems.map((item) => (
@@ -105,7 +111,7 @@ export const InventoryHealthPanel = ({
                       <p className="truncate text-sm font-medium">{item.item_name}</p>
                       {item.location_code && (
                         <p className="text-xs text-muted-foreground">
-                          Location: {item.location_code}
+                          {t("locationLabel")}: {item.location_code}
                         </p>
                       )}
                     </div>
@@ -115,7 +121,7 @@ export const InventoryHealthPanel = ({
                       </p>
                       {item.last_moved_at && (
                         <p className="text-xs text-muted-foreground">
-                          Last: {new Date(item.last_moved_at).toLocaleDateString()}
+                          {t("lastLabel")}: {new Date(item.last_moved_at).toLocaleDateString(locale)}
                         </p>
                       )}
                     </div>
@@ -126,7 +132,7 @@ export const InventoryHealthPanel = ({
                 href="/inventory/items"
                 className="block text-sm font-medium text-primary hover:underline"
               >
-                View all inventory
+                {t("viewAllInventory")}
               </Link>
             </div>
           )}

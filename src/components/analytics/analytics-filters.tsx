@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Select,
   SelectContent,
@@ -26,92 +27,54 @@ interface AnalyticsFiltersProps {
   onReset: () => void;
 }
 
-export function AnalyticsFilters({
-  dateRange,
-  onDateRangeChange,
-  employeeId,
-  onEmployeeChange,
-  city,
-  onCityChange,
-  regionState,
-  onRegionChange,
-  onReset,
-}: AnalyticsFiltersProps) {
+export function AnalyticsFilters({ dateRange, onDateRangeChange, employeeId, onEmployeeChange, city, onCityChange, regionState, onRegionChange, onReset }: AnalyticsFiltersProps) {
+  const t = useTranslations("analyticsFilters");
   const { data: employeesData } = useEmployees({ limit: 100 });
   const employees = employeesData?.data || [];
-
-  // Filter only sales agents
   const salesAgents = employees.filter((emp) => emp.role === "sales_agent" && emp.isActive);
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {/* Date Range */}
         <div className="lg:col-span-2">
-          <label className="mb-2 block text-sm font-medium">Date Range</label>
+          <label className="mb-2 block text-sm font-medium">{t("dateRange")}</label>
           <DateRangePicker value={dateRange} onChange={onDateRangeChange} />
         </div>
-
-        {/* Employee Filter */}
         <div>
-          <label className="mb-2 block text-sm font-medium">Sales Agent</label>
+          <label className="mb-2 block text-sm font-medium">{t("salesAgent")}</label>
           <Select value={employeeId || "all"} onValueChange={onEmployeeChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All agents" />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t("allAgents")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All agents</SelectItem>
-              {salesAgents.map((emp) => (
-                <SelectItem key={emp.id} value={emp.id}>
-                  {emp.firstName} {emp.lastName}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">{t("allAgents")}</SelectItem>
+              {salesAgents.map((emp) => <SelectItem key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-
-        {/* City Filter */}
         <div>
-          <label className="mb-2 block text-sm font-medium">City</label>
+          <label className="mb-2 block text-sm font-medium">{t("city")}</label>
           <Select value={city || "all"} onValueChange={onCityChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All cities" />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t("allCities")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All cities</SelectItem>
-              {MINDANAO_CITIES.map((cityName) => (
-                <SelectItem key={cityName} value={cityName}>
-                  {cityName}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">{t("allCities")}</SelectItem>
+              {MINDANAO_CITIES.map((cityName) => <SelectItem key={cityName} value={cityName}>{cityName}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-
-        {/* Region Filter */}
         <div>
-          <label className="mb-2 block text-sm font-medium">Region</label>
+          <label className="mb-2 block text-sm font-medium">{t("region")}</label>
           <Select value={regionState || "all"} onValueChange={onRegionChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All regions" />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t("allRegions")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All regions</SelectItem>
-              {MINDANAO_REGIONS.map((region) => (
-                <SelectItem key={region} value={region}>
-                  {region}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">{t("allRegions")}</SelectItem>
+              {MINDANAO_REGIONS.map((region) => <SelectItem key={region} value={region}>{region}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
       </div>
-
-      {/* Reset Button */}
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={onReset}>
           <RotateCcw className="mr-2 h-4 w-4" />
-          Reset Filters
+          {t("resetFilters")}
         </Button>
       </div>
     </div>

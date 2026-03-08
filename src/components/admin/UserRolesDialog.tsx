@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Shield, Plus, X, Loader2 } from "lucide-react";
 import { useUserRoles, useAssignRole, useRemoveRole } from "@/hooks/useUsers";
 import { useRoles } from "@/hooks/useRoles";
@@ -41,6 +42,7 @@ type UserRolesDialogProps = {
 };
 
 export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogProps) {
+  const t = useTranslations("adminUserRolesDialog");
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [selectedBusinessUnitId, setSelectedBusinessUnitId] = useState<string>("");
 
@@ -57,7 +59,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
 
   const handleAssignRole = async () => {
     if (!selectedRoleId || !selectedBusinessUnitId) {
-      toast.error("Please select both a role and business unit");
+      toast.error(t("selectRoleAndBusinessUnit"));
       return;
     }
 
@@ -68,11 +70,11 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
         businessUnitId: selectedBusinessUnitId,
       });
 
-      toast.success("Role assigned successfully");
+      toast.success(t("roleAssignedSuccess"));
       setSelectedRoleId("");
       setSelectedBusinessUnitId("");
     } catch {
-      toast.error("Failed to assign role");
+      toast.error(t("roleAssignedError"));
     }
   };
 
@@ -84,9 +86,9 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
         businessUnitId,
       });
 
-      toast.success("Role removed successfully");
+      toast.success(t("roleRemovedSuccess"));
     } catch {
-      toast.error("Failed to remove role");
+      toast.error(t("roleRemovedError"));
     }
   };
 
@@ -95,17 +97,15 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            Manage Roles - {user.first_name} {user.last_name}
+            {t("title", { name: `${user.first_name} ${user.last_name}` })}
           </DialogTitle>
-          <DialogDescription>
-            Assign or remove roles for this user across different business units
-          </DialogDescription>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Current Roles */}
           <div className="space-y-3">
-            <h3 className="text-sm font-medium">Current Roles</h3>
+            <h3 className="text-sm font-medium">{t("currentRoles")}</h3>
             {loadingUserRoles ? (
               <div className="space-y-2">
                 {[...Array(2)].map((_, i) => (
@@ -113,7 +113,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
                 ))}
               </div>
             ) : userRoles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No roles assigned yet</p>
+              <p className="text-sm text-muted-foreground">{t("noRoles")}</p>
             ) : (
               <div className="space-y-2">
                 {userRoles.map((userRole) => (
@@ -126,7 +126,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
                       <div>
                         <p className="text-sm font-medium">{userRole.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {userRole.business_unit_name || "Unknown Business Unit"}
+                          {userRole.business_unit_name || t("unknownBusinessUnit")}
                         </p>
                       </div>
                     </div>
@@ -150,16 +150,16 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
 
           {/* Assign New Role */}
           <div className="space-y-3 border-t pt-4">
-            <h3 className="text-sm font-medium">Assign New Role</h3>
+            <h3 className="text-sm font-medium">{t("assignNewRole")}</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Role</label>
+                <label className="text-sm font-medium">{t("role")}</label>
                 {loadingRoles ? (
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
+                      <SelectValue placeholder={t("selectRole")} />
                     </SelectTrigger>
                     <SelectContent>
                       {allRoles.map((role) => (
@@ -168,7 +168,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
                             {role.name}
                             {role.is_system_role && (
                               <Badge variant="secondary" className="text-xs">
-                                System
+                                {t("system")}
                               </Badge>
                             )}
                           </div>
@@ -180,13 +180,13 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Business Unit</label>
+                <label className="text-sm font-medium">{t("businessUnit")}</label>
                 {loadingBusinessUnits ? (
                   <Skeleton className="h-10 w-full" />
                 ) : (
                   <Select value={selectedBusinessUnitId} onValueChange={setSelectedBusinessUnitId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select business unit" />
+                      <SelectValue placeholder={t("selectBusinessUnit")} />
                     </SelectTrigger>
                     <SelectContent>
                       {businessUnits.map((bu) => (
@@ -208,12 +208,12 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
               {assignRole.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Assigning...
+                  {t("assigning")}
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Assign Role
+                  {t("assignRole")}
                 </>
               )}
             </Button>

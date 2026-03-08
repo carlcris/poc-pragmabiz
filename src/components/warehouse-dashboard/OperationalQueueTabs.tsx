@@ -1,4 +1,7 @@
+"use client";
+
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, TruckIcon, ClipboardList } from "lucide-react";
@@ -14,9 +17,11 @@ import { StatusBadge, PriorityBadge } from "./StatusBadge";
 type OperationalQueueTabsProps = {
   queues: DashboardQueues;
   isLoading: boolean;
+  locale: string;
 };
 
-export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabsProps) => {
+export const OperationalQueueTabs = ({ queues, isLoading, locale }: OperationalQueueTabsProps) => {
+  const t = useTranslations("warehouseDashboard");
   const [activeTab, setActiveTab] = useState("pick-list");
 
   return (
@@ -24,7 +29,7 @@ export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabs
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5" />
-          Operational Queue
+          {t("operationalQueue")}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -32,15 +37,15 @@ export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabs
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="pick-list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              Pick List ({queues.pick_list.length})
+              {t("pickListTab", { count: queues.pick_list.length })}
             </TabsTrigger>
             <TabsTrigger value="incoming" className="flex items-center gap-2">
               <TruckIcon className="h-4 w-4" />
-              Incoming ({queues.incoming_deliveries.length})
+              {t("incomingTab", { count: queues.incoming_deliveries.length })}
             </TabsTrigger>
             <TabsTrigger value="requests" className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4" />
-              Requests ({queues.stock_requests.length})
+              {t("requestsTab", { count: queues.stock_requests.length })}
             </TabsTrigger>
           </TabsList>
 
@@ -53,9 +58,9 @@ export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabs
                 ))}
               </div>
             ) : queues.pick_list.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No items to pick</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">{t("noItemsToPick")}</p>
             ) : (
-              queues.pick_list.map((item) => <PickListCard key={item.id} item={item} />)
+              queues.pick_list.map((item) => <PickListCard key={item.id} item={item} locale={locale} />)
             )}
           </TabsContent>
 
@@ -69,11 +74,11 @@ export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabs
               </div>
             ) : queues.incoming_deliveries.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No incoming deliveries
+                {t("noIncomingDeliveries")}
               </p>
             ) : (
               queues.incoming_deliveries.map((item) => (
-                <IncomingDeliveryCard key={item.id} item={item} />
+                <IncomingDeliveryCard key={item.id} item={item} locale={locale} />
               ))
             )}
           </TabsContent>
@@ -87,9 +92,9 @@ export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabs
                 ))}
               </div>
             ) : queues.stock_requests.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No pending requests</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">{t("noPendingRequests")}</p>
             ) : (
-              queues.stock_requests.map((item) => <StockRequestCard key={item.id} item={item} />)
+              queues.stock_requests.map((item) => <StockRequestCard key={item.id} item={item} locale={locale} />)
             )}
           </TabsContent>
         </Tabs>
@@ -102,75 +107,89 @@ export const OperationalQueueTabs = ({ queues, isLoading }: OperationalQueueTabs
 
 type PickListCardProps = {
   item: PickListItem;
+  locale: string;
 };
 
-const PickListCard = ({ item }: PickListCardProps) => (
-  <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
-    <Link href={`/stock-requests/${item.id}`} className="flex-1">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <p className="font-semibold">{item.request_code}</p>
-          <PriorityBadge priority={item.priority} />
-          <StatusBadge status={item.status} />
+const PickListCard = ({ item, locale }: PickListCardProps) => {
+  const t = useTranslations("warehouseDashboard");
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
+      <Link href={`/stock-requests/${item.id}`} className="flex-1">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold">{item.request_code}</p>
+            <PriorityBadge priority={item.priority} label={t(`priority_${item.priority}`)} />
+            <StatusBadge status={item.status} label={t(`status_${item.status}`)} />
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>{t("itemsCount", { count: item.lines })}</span>
+            <span>•</span>
+            <span>{t("dueLabel")}: {new Date(item.required_date).toLocaleDateString(locale)}</span>
+            <span>•</span>
+            <span>{t("byLabel")}: {item.requested_by}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{item.lines} items</span>
-          <span>•</span>
-          <span>Due: {new Date(item.required_date).toLocaleDateString()}</span>
-          <span>•</span>
-          <span>By: {item.requested_by}</span>
-        </div>
-      </div>
-    </Link>
-  </div>
-);
+      </Link>
+    </div>
+  );
+};
 
 type IncomingDeliveryCardProps = {
   item: IncomingDeliveryItem;
+  locale: string;
 };
 
-const IncomingDeliveryCard = ({ item }: IncomingDeliveryCardProps) => (
-  <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
-    <Link href={`/purchasing/load-lists/${item.id}`} className="flex-1">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <p className="font-semibold">{item.order_code}</p>
-          <PriorityBadge priority={item.priority} />
-          <StatusBadge status={item.status} />
+const IncomingDeliveryCard = ({ item, locale }: IncomingDeliveryCardProps) => {
+  const t = useTranslations("warehouseDashboard");
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
+      <Link href={`/purchasing/load-lists/${item.id}`} className="flex-1">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold">{item.order_code}</p>
+            <PriorityBadge priority={item.priority} label={t(`priority_${item.priority}`)} />
+            <StatusBadge status={item.status} label={t(`status_${item.status}`)} />
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>{item.supplier}</span>
+            <span>•</span>
+            <span>{t("itemsCount", { count: item.lines })}</span>
+            <span>•</span>
+            <span>
+              {t("etaLabel")}: {item.eta ? new Date(item.eta).toLocaleDateString(locale) : "--"}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>{item.supplier}</span>
-          <span>•</span>
-          <span>{item.lines} items</span>
-          <span>•</span>
-          <span>ETA: {item.eta ? new Date(item.eta).toLocaleDateString() : "--"}</span>
-        </div>
-      </div>
-    </Link>
-  </div>
-);
+      </Link>
+    </div>
+  );
+};
 
 type StockRequestCardProps = {
   item: StockRequestItem;
+  locale: string;
 };
 
-const StockRequestCard = ({ item }: StockRequestCardProps) => (
-  <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
-    <Link href={`/stock-requests/${item.id}`} className="flex-1">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <p className="font-semibold">{item.request_code}</p>
-          <PriorityBadge priority={item.priority} />
-          <StatusBadge status={item.status} />
+const StockRequestCard = ({ item, locale }: StockRequestCardProps) => {
+  const t = useTranslations("warehouseDashboard");
+  return (
+    <div className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50">
+      <Link href={`/stock-requests/${item.id}`} className="flex-1">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold">{item.request_code}</p>
+            <PriorityBadge priority={item.priority} label={t(`priority_${item.priority}`)} />
+            <StatusBadge status={item.status} label={t(`status_${item.status}`)} />
+          </div>
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>{t("byLabel")}: {item.requested_by}</span>
+            <span>•</span>
+            <span>{t("itemsCount", { count: item.lines })}</span>
+            <span>•</span>
+            <span>{t("requiredLabel")}: {new Date(item.required_date).toLocaleDateString(locale)}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>By: {item.requested_by}</span>
-          <span>•</span>
-          <span>{item.lines} items</span>
-          <span>•</span>
-          <span>Required: {new Date(item.required_date).toLocaleDateString()}</span>
-        </div>
-      </div>
-    </Link>
-  </div>
-);
+      </Link>
+    </div>
+  );
+};

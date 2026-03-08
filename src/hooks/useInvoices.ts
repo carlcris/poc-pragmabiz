@@ -10,6 +10,11 @@ import { toast } from "sonner";
 
 const INVOICES_KEY = "invoices";
 
+type InvoiceMutationMessages = {
+  success: string;
+  error: string;
+};
+
 export function useInvoices(filters?: InvoiceFilters) {
   return useQuery({
     queryKey: [INVOICES_KEY, filters],
@@ -26,22 +31,22 @@ export function useInvoice(id: string) {
   });
 }
 
-export function useCreateInvoice() {
+export function useCreateInvoice(messages?: InvoiceMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CreateInvoiceRequest) => invoicesApi.createInvoice(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
-      toast.success("Invoice created successfully");
+      toast.success(messages?.success || "Invoice created successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to create invoice");
+      toast.error(error.message || messages?.error || "Failed to create invoice");
     },
   });
 }
 
-export function useUpdateInvoice() {
+export function useUpdateInvoice(messages?: InvoiceMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -49,15 +54,15 @@ export function useUpdateInvoice() {
       invoicesApi.updateInvoice(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
-      toast.success("Invoice updated successfully");
+      toast.success(messages?.success || "Invoice updated successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to update invoice");
+      toast.error(error.message || messages?.error || "Failed to update invoice");
     },
   });
 }
 
-export function useDeleteInvoice() {
+export function useDeleteInvoice(messages?: InvoiceMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -65,30 +70,30 @@ export function useDeleteInvoice() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
       queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
-      toast.success("Invoice deleted successfully");
+      toast.success(messages?.success || "Invoice deleted successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete invoice");
+      toast.error(error.message || messages?.error || "Failed to delete invoice");
     },
   });
 }
 
-export function useSendInvoice() {
+export function useSendInvoice(messages?: InvoiceMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => invoicesApi.sendInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
-      toast.success("Invoice sent successfully");
+      toast.success(messages?.success || "Invoice sent successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to send invoice");
+      toast.error(error.message || messages?.error || "Failed to send invoice");
     },
   });
 }
 
-export function useRecordPayment() {
+export function useRecordPayment(messages?: InvoiceMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -96,25 +101,25 @@ export function useRecordPayment() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY, variables.invoiceId, "payments"] });
-      toast.success("Payment recorded successfully");
+      toast.success(messages?.success || "Payment recorded successfully");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to record payment");
+      toast.error(error.message || messages?.error || "Failed to record payment");
     },
   });
 }
 
-export function useCancelInvoice() {
+export function useCancelInvoice(messages?: InvoiceMutationMessages) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (id: string) => invoicesApi.cancelInvoice(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
-      toast.success("Invoice cancelled");
+      toast.success(messages?.success || "Invoice cancelled");
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to cancel invoice");
+      toast.error(error.message || messages?.error || "Failed to cancel invoice");
     },
   });
 }

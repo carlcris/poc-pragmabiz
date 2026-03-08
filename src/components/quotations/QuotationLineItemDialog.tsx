@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -69,6 +70,8 @@ export function QuotationLineItemDialog({
   item,
   mode = "add",
 }: QuotationLineItemDialogProps) {
+  const t = useTranslations("quotationLineItemDialog");
+  const tCommon = useTranslations("common");
   // Fetch basic items (for uomId and description)
   const { data: basicItemsData } = useItems({ limit: 50 });
   const basicItems = basicItemsData?.data || [];
@@ -151,12 +154,8 @@ export function QuotationLineItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit Line Item" : "Add Line Item"}</DialogTitle>
-          <DialogDescription>
-            {mode === "edit"
-              ? "Update the line item details."
-              : "Fill in the details for the new line item."}
-          </DialogDescription>
+          <DialogTitle>{mode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
+          <DialogDescription>{mode === "edit" ? t("editDescription") : t("createDescription")}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -168,7 +167,7 @@ export function QuotationLineItemDialog({
                 const selectedItem = basicItems.find((i) => i.id === field.value);
                 return (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Item *</FormLabel>
+                    <FormLabel>{tCommon("item")} *</FormLabel>
                     <Popover open={itemOpen} onOpenChange={setItemOpen}>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -183,16 +182,16 @@ export function QuotationLineItemDialog({
                           >
                             {selectedItem
                               ? `${selectedItem.code} - ${selectedItem.name}`
-                              : "Search item..."}
+                              : t("searchItem")}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-[600px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Search by code or name..." />
+                          <CommandInput placeholder={t("itemSearchPlaceholder")} />
                           <CommandList className="max-h-[300px] overflow-y-auto">
-                            <CommandEmpty>No item found.</CommandEmpty>
+                            <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                             <CommandGroup>
                               {selectableItems
                                 .filter((i) => i.isActive)
@@ -230,7 +229,7 @@ export function QuotationLineItemDialog({
                                                   : ""
                                             )}
                                           >
-                                            Stock:{" "}
+                                            {t("stockLabel")}:{" "}
                                             {("available" in item ? item.available : 0).toFixed(2)}{" "}
                                             {"uom" in item ? item.uom : ""}
                                           </span>
@@ -260,7 +259,7 @@ export function QuotationLineItemDialog({
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{tCommon("description")}</FormLabel>
                   <FormControl>
                     <Textarea {...field} rows={2} />
                   </FormControl>
@@ -275,7 +274,7 @@ export function QuotationLineItemDialog({
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantity *</FormLabel>
+                    <FormLabel>{t("quantity")} *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -294,7 +293,7 @@ export function QuotationLineItemDialog({
                 name="unitPrice"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Unit Price *</FormLabel>
+                    <FormLabel>{t("unitPrice")} *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -315,7 +314,7 @@ export function QuotationLineItemDialog({
                 name="discount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Discount %</FormLabel>
+                    <FormLabel>{t("discountRate")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -334,7 +333,7 @@ export function QuotationLineItemDialog({
                 name="taxRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tax Rate %</FormLabel>
+                    <FormLabel>{t("taxRate")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -353,19 +352,19 @@ export function QuotationLineItemDialog({
             <div className="rounded-md bg-muted p-4">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                  <span>{t("subtotal")}:</span>
                   <span className="font-medium">{formatCurrency(lineSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-red-600">
-                  <span>Discount:</span>
+                  <span>{t("discount")}:</span>
                   <span className="font-medium">-{formatCurrency(discountAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax:</span>
+                  <span>{t("tax")}:</span>
                   <span className="font-medium">{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 font-bold">
-                  <span>Line Total:</span>
+                  <span>{t("lineTotal")}:</span>
                   <span>{formatCurrency(lineTotal)}</span>
                 </div>
               </div>
@@ -373,9 +372,9 @@ export function QuotationLineItemDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tCommon("cancel")}
               </Button>
-              <Button type="submit">{mode === "edit" ? "Update Item" : "Add Item"}</Button>
+              <Button type="submit">{mode === "edit" ? t("updateItem") : t("addItem")}</Button>
             </DialogFooter>
           </form>
         </Form>

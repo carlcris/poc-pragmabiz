@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Shield, Loader2 } from "lucide-react";
 import { useUpdateRole } from "@/hooks/useRoles";
 import { toast } from "sonner";
@@ -31,6 +32,8 @@ type EditRoleDialogProps = {
 };
 
 export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps) {
+  const t = useTranslations("adminEditRoleDialog");
+  const tCommon = useTranslations("common");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
@@ -48,7 +51,7 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
     e.preventDefault();
 
     if (!name.trim()) {
-      toast.error("Role name is required");
+      toast.error(t("roleNameRequired"));
       return;
     }
 
@@ -61,10 +64,10 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
         },
       });
 
-      toast.success(`Role "${name}" updated successfully`);
+      toast.success(t("roleUpdatedSuccess", { name }));
       onOpenChange(false);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to update role";
+      const errorMessage = error instanceof Error ? error.message : t("roleUpdateError");
       toast.error(errorMessage);
     }
   };
@@ -75,19 +78,19 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Edit Role
+            {t("title")}
           </DialogTitle>
-          <DialogDescription>Update the role name and description</DialogDescription>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">
-              Role Name <span className="text-destructive">*</span>
+              {t("roleName")} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
-              placeholder="e.g., Warehouse Manager"
+              placeholder={t("roleNamePlaceholder")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={updateRole.isPending}
@@ -96,10 +99,10 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t("descriptionLabel")}</Label>
             <Textarea
               id="description"
-              placeholder="Describe the role's purpose and responsibilities"
+              placeholder={t("descriptionPlaceholder")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={updateRole.isPending}
@@ -114,16 +117,16 @@ export function EditRoleDialog({ open, onOpenChange, role }: EditRoleDialogProps
               onClick={() => onOpenChange(false)}
               disabled={updateRole.isPending}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button type="submit" disabled={updateRole.isPending}>
               {updateRole.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  {t("updating")}
                 </>
               ) : (
-                "Update Role"
+                t("updateRole")
               )}
             </Button>
           </DialogFooter>

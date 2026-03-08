@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useTranslations } from "next-intl";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,20 +35,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
+import {
+  createPurchaseOrderLineItemSchema,
+  type PurchaseOrderLineItemInput,
+} from "@/lib/validations/purchase-order-dialog";
 
-const lineItemSchema = z.object({
-  itemId: z.string().min(1, "Item is required"),
-  itemCode: z.string().optional(),
-  itemName: z.string().optional(),
-  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  rate: z.number().min(0, "Rate cannot be negative"),
-  uomId: z.string().min(1, "Unit of measure is required"),
-  discountPercent: z.number().min(0).max(100).default(0),
-  taxPercent: z.number().min(0).max(100).default(0),
-});
-
-type PurchaseOrderLineItemInput = z.input<typeof lineItemSchema>;
-export type PurchaseOrderLineItemFormValues = z.output<typeof lineItemSchema> & {
+export type PurchaseOrderLineItemFormValues = PurchaseOrderLineItemInput & {
   lineTotal?: number;
 };
 
@@ -67,10 +59,13 @@ export function PurchaseOrderLineItemDialog({
   item,
   mode = "add",
 }: PurchaseOrderLineItemDialogProps) {
+  const t = useTranslations("purchaseOrderLineItemDialog");
+  const tValidation = useTranslations("purchaseOrderValidation");
   const { data: itemsData } = useItems({ limit: 50, includeStock: true });
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
   const [itemOpen, setItemOpen] = useState(false);
+  const lineItemSchema = createPurchaseOrderLineItemSchema((key) => tValidation(key));
 
   const form = useForm<PurchaseOrderLineItemInput>({
     resolver: zodResolver(lineItemSchema),
@@ -138,11 +133,11 @@ export function PurchaseOrderLineItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{mode === "edit" ? "Edit Line Item" : "Add Line Item"}</DialogTitle>
+          <DialogTitle>{mode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
             {mode === "edit"
-              ? "Update the line item details."
-              : "Fill in the details for the new line item."}
+              ? t("editDescription")
+              : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -153,7 +148,7 @@ export function PurchaseOrderLineItemDialog({
               name="itemId"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Item *</FormLabel>
+                  <FormLabel>{t("itemLabel")}</FormLabel>
                   <Popover open={itemOpen} onOpenChange={setItemOpen}>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -171,18 +166,18 @@ export function PurchaseOrderLineItemDialog({
                                 const selectedItem = items.find((i) => i.id === field.value);
                                 return selectedItem
                                   ? `${selectedItem.code} - ${selectedItem.name}`
-                                  : "Select an item";
+                                  : t("selectItem");
                               })()
-                            : "Search item..."}
+                            : t("searchItem")}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-[520px] p-0" align="start">
                       <Command>
-                        <CommandInput placeholder="Search by code or name..." />
+                        <CommandInput placeholder={t("searchByCodeOrName")} />
                         <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandEmpty>No item found.</CommandEmpty>
+                          <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                           <CommandGroup>
                             {items
                               .filter((i) => i.isActive)
@@ -211,9 +206,9 @@ export function PurchaseOrderLineItemDialog({
                                       </span>
                                     </div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">
-                                      On hand:{" "}
+                                      {t("onHand")}:{" "}
                                       {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom : ""} • Available:{" "}
+                                      {"uom" in item ? item.uom : ""} • {t("available")}:{" "}
                                       {("available" in item ? item.available : 0).toFixed(2)}{" "}
                                       {"uom" in item ? item.uom : ""}
                                     </div>
@@ -239,7 +234,7 @@ export function PurchaseOrderLineItemDialog({
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Quantity *</FormLabel>
+                    <FormLabel>{t("quantityLabel")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -258,7 +253,7 @@ export function PurchaseOrderLineItemDialog({
                 name="rate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Rate *</FormLabel>
+                    <FormLabel>{t("rateLabel")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -279,7 +274,7 @@ export function PurchaseOrderLineItemDialog({
                 name="discountPercent"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Discount %</FormLabel>
+                    <FormLabel>{t("discountLabel")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -298,7 +293,7 @@ export function PurchaseOrderLineItemDialog({
                 name="taxPercent"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tax %</FormLabel>
+                    <FormLabel>{t("taxLabel")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -316,19 +311,19 @@ export function PurchaseOrderLineItemDialog({
             <div className="rounded-md bg-muted p-4">
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span>Subtotal:</span>
+                  <span>{t("subtotal")}</span>
                   <span className="font-medium">{formatCurrency(lineSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-red-600">
-                  <span>Discount:</span>
+                  <span>{t("discount")}</span>
                   <span className="font-medium">-{formatCurrency(discountAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax:</span>
+                  <span>{t("tax")}</span>
                   <span className="font-medium">{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between border-t pt-1 font-bold">
-                  <span>Line Total:</span>
+                  <span>{t("lineTotal")}</span>
                   <span>{formatCurrency(lineTotal)}</span>
                 </div>
               </div>
@@ -336,9 +331,9 @@ export function PurchaseOrderLineItemDialog({
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {t("cancel")}
               </Button>
-              <Button type="submit">{mode === "edit" ? "Update Item" : "Add Item"}</Button>
+              <Button type="submit">{mode === "edit" ? t("updateAction") : t("createAction")}</Button>
             </DialogFooter>
           </form>
         </Form>

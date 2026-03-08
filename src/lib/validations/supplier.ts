@@ -12,43 +12,36 @@ export const paymentTermsEnum = z.enum([
   "net_90",
 ]);
 
-export const supplierFormSchema = z.object({
-  code: z.string().min(1, "Supplier code is required"),
-  name: z.string().min(1, "Supplier name is required"),
-  contactPerson: z.string().min(1, "Contact person is required"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(1, "Phone number is required"),
-  mobile: z.string().optional(),
-  website: z.string().optional(),
-  taxId: z.string().optional(),
+export const createSupplierFormSchema = (t: (key: string) => string) =>
+  z.object({
+    code: z.string().min(1, t("codeRequired")),
+    name: z.string().min(1, t("nameRequired")),
+    contactPerson: z.string().min(1, t("contactPersonRequired")),
+    email: z.string().email(t("invalidEmail")),
+    phone: z.string().min(1, t("phoneRequired")),
+    mobile: z.string().optional(),
+    website: z.string().optional(),
+    taxId: z.string().optional(),
+    billingAddress: z.string().min(1, t("billingAddressRequired")),
+    billingCity: z.string().min(1, t("cityRequired")),
+    billingState: z.string().min(1, t("stateRequired")),
+    billingPostalCode: z.string().min(1, t("postalCodeRequired")),
+    billingCountry: z.string().min(1, t("countryRequired")),
+    shippingAddress: z.string().optional(),
+    shippingCity: z.string().optional(),
+    shippingState: z.string().optional(),
+    shippingPostalCode: z.string().optional(),
+    shippingCountry: z.string().optional(),
+    paymentTerms: paymentTermsEnum,
+    creditLimit: z.number().min(0, t("creditLimitMin")).optional(),
+    bankName: z.string().optional(),
+    bankAccountNumber: z.string().optional(),
+    bankAccountName: z.string().optional(),
+    lang: supplierLanguageEnum,
+    status: supplierStatusEnum,
+    notes: z.string().optional(),
+  });
 
-  // Billing address
-  billingAddress: z.string().min(1, "Billing address is required"),
-  billingCity: z.string().min(1, "City is required"),
-  billingState: z.string().min(1, "State is required"),
-  billingPostalCode: z.string().min(1, "Postal code is required"),
-  billingCountry: z.string().min(1, "Country is required"),
-
-  // Shipping address
-  shippingAddress: z.string().optional(),
-  shippingCity: z.string().optional(),
-  shippingState: z.string().optional(),
-  shippingPostalCode: z.string().optional(),
-  shippingCountry: z.string().optional(),
-
-  // Payment info
-  paymentTerms: paymentTermsEnum,
-  creditLimit: z.number().min(0).optional(),
-
-  // Bank details
-  bankName: z.string().optional(),
-  bankAccountNumber: z.string().optional(),
-  bankAccountName: z.string().optional(),
-
-  // Status
-  lang: supplierLanguageEnum,
-  status: supplierStatusEnum,
-  notes: z.string().optional(),
-});
+export const supplierFormSchema = createSupplierFormSchema((key) => key);
 
 export type SupplierFormValues = z.infer<typeof supplierFormSchema>;

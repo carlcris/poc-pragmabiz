@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ClipboardList, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,14 +22,15 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
-  partiallyFulfilled: "Partially Fulfilled",
-  fulfilled: "Fulfilled",
-  cancelled: "Cancelled",
+  draft: "pendingDraft",
+  submitted: "submitted",
+  partiallyFulfilled: "partiallyFulfilled",
+  fulfilled: "fulfilled",
+  cancelled: "cancelled",
 };
 
 export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsWidgetProps) {
+  const t = useTranslations("purchasingOverviewWidgets");
   const { data, isLoading, error } = useActiveRequisitions({ businessUnitId });
 
   // Loading state
@@ -39,8 +41,8 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Active Requisitions</CardTitle>
-              <CardDescription>Requisition status breakdown</CardDescription>
+              <CardTitle>{t("activeRequisitionsTitle")}</CardTitle>
+              <CardDescription>{t("requisitionStatusBreakdown")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -61,16 +63,16 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Active Requisitions</CardTitle>
-              <CardDescription>Requisition status breakdown</CardDescription>
+              <CardTitle>{t("activeRequisitionsTitle")}</CardTitle>
+              <CardDescription>{t("requisitionStatusBreakdown")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-center">
-            <p className="text-sm text-destructive">Failed to load requisitions data</p>
+            <p className="text-sm text-destructive">{t("failedLoadRequisitionsData")}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {error instanceof Error ? error.message : "An error occurred"}
+              {error instanceof Error ? error.message : t("anErrorOccurred")}
             </p>
           </div>
         </CardContent>
@@ -86,15 +88,15 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
           <div className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
             <div className="flex flex-col gap-1">
-              <CardTitle>Active Requisitions</CardTitle>
-              <CardDescription>Requisition status breakdown</CardDescription>
+              <CardTitle>{t("activeRequisitionsTitle")}</CardTitle>
+              <CardDescription>{t("requisitionStatusBreakdown")}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <WidgetEmptyState
             icon={ClipboardList}
-            title="No active requisitions"
+            title={t("noActiveRequisitions")}
           />
         </CardContent>
       </Card>
@@ -103,11 +105,11 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
 
   // Prepare chart data (exclude zero values)
   const chartData = [
-    { name: "Draft", value: data.draft, status: "draft" },
-    { name: "Submitted", value: data.submitted, status: "submitted" },
-    { name: "Partially Fulfilled", value: data.partiallyFulfilled, status: "partiallyFulfilled" },
-    { name: "Fulfilled", value: data.fulfilled, status: "fulfilled" },
-    { name: "Cancelled", value: data.cancelled, status: "cancelled" },
+    { name: t("pendingDraft"), value: data.draft, status: "draft" },
+    { name: t("submitted"), value: data.submitted, status: "submitted" },
+    { name: t("partiallyFulfilled"), value: data.partiallyFulfilled, status: "partiallyFulfilled" },
+    { name: t("fulfilled"), value: data.fulfilled, status: "fulfilled" },
+    { name: t("cancelled"), value: data.cancelled, status: "cancelled" },
   ].filter((item) => item.value > 0);
 
   return (
@@ -116,8 +118,8 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
         <div className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-muted-foreground" />
           <div className="flex flex-col gap-1">
-            <CardTitle>Active Requisitions</CardTitle>
-            <CardDescription>Requisition status breakdown</CardDescription>
+            <CardTitle>{t("activeRequisitionsTitle")}</CardTitle>
+            <CardDescription>{t("requisitionStatusBreakdown")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -125,7 +127,7 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
         {/* Total Count */}
         <div className="rounded-lg border bg-muted/50 p-4">
           <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-            <span>Total Requisitions</span>
+            <span>{t("totalRequisitions")}</span>
             <span className="text-2xl sm:text-3xl font-bold text-right text-gray-900">{data.total}</span>
           </div>
         </div>
@@ -133,7 +135,7 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
         {/* Donut Chart */}
         {chartData.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-muted-foreground">Status Distribution</p>
+            <p className="text-sm font-medium text-muted-foreground">{t("statusDistribution")}</p>
             <div className="rounded-lg border bg-card p-3">
               <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
@@ -160,12 +162,12 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
 
         {/* Status Breakdown List */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">By Status</p>
+          <p className="text-sm font-medium text-muted-foreground">{t("byStatus")}</p>
           <div className="space-y-2">
             {Object.entries(data).map(([key, value]) => {
               if (key === "total" || value === 0) return null;
               const status = key as keyof typeof STATUS_LABELS;
-              const label = STATUS_LABELS[status];
+              const label = t(STATUS_LABELS[status]);
               const color = STATUS_COLORS[status];
               const percentage = data.total > 0 ? ((value / data.total) * 100).toFixed(0) : 0;
 
@@ -192,7 +194,7 @@ export function ActiveRequisitionsWidget({ businessUnitId }: ActiveRequisitionsW
         {/* View All Link */}
         <Button asChild variant="outline" className="w-full">
           <Link href="/purchasing/stock-requisitions">
-            View All Requisitions
+            {t("viewAllRequisitions")}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>

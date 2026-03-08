@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
@@ -10,7 +11,6 @@ import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -42,7 +42,8 @@ const toDateInputValue = (value: Date) => {
 export default function NewTransformationOrderPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { t } = useLanguage();
+  const t = useTranslations("transformation");
+  const tCommon = useTranslations("common");
   const companyId = user?.companyId;
 
   const createOrder = useCreateTransformationOrder();
@@ -69,11 +70,11 @@ export default function NewTransformationOrderPage() {
   const validate = (): FormErrors => {
     const nextErrors: FormErrors = {};
 
-    if (!values.templateId) nextErrors.templateId = "Template is required";
-    if (!values.warehouseId) nextErrors.warehouseId = "Warehouse is required";
-    if (!values.orderDate) nextErrors.orderDate = "Order date is required";
+    if (!values.templateId) nextErrors.templateId = t("templateRequired");
+    if (!values.warehouseId) nextErrors.warehouseId = t("warehouseRequired");
+    if (!values.orderDate) nextErrors.orderDate = t("orderDateRequired");
     if (!Number.isFinite(plannedQuantityNumber) || plannedQuantityNumber <= 0) {
-      nextErrors.plannedQuantity = "Planned quantity must be greater than 0";
+      nextErrors.plannedQuantity = t("plannedQuantityGreaterThanZero");
     }
 
     return nextErrors;
@@ -89,7 +90,7 @@ export default function NewTransformationOrderPage() {
     }
 
     if (!companyId) {
-      setErrors({ root: "Company ID is missing. Please try logging in again." });
+      setErrors({ root: t("companyIdMissing") });
       return;
     }
 
@@ -108,7 +109,7 @@ export default function NewTransformationOrderPage() {
 
       router.push("/inventory/transformations");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create transformation order";
+      const message = error instanceof Error ? error.message : t("failedCreateTransformationOrder");
       setErrors({ root: message });
     }
   };
@@ -127,22 +128,22 @@ export default function NewTransformationOrderPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">{t.transformation.newTransformation}</h1>
-          <p className="text-muted-foreground">{t.transformation.createNewOrder}</p>
+          <h1 className="text-3xl font-bold">{t("newTransformation")}</h1>
+          <p className="text-muted-foreground">{t("createNewOrder")}</p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>{t.transformation.orderDetails}</CardTitle>
+          <CardTitle>{t("orderDetails")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t.transformation.transformationTemplate} *</label>
+              <label className="text-sm font-medium">{t("transformationTemplate")} *</label>
               <Select value={values.templateId} onValueChange={(value) => onFieldChange("templateId", value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t.transformation.selectTemplate} />
+                  <SelectValue placeholder={t("selectTemplate")} />
                 </SelectTrigger>
                 <SelectContent>
                   {templatesData?.data.map((template) => (
@@ -156,10 +157,10 @@ export default function NewTransformationOrderPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t.common.warehouse} *</label>
+              <label className="text-sm font-medium">{tCommon("warehouse")} *</label>
               <Select value={values.warehouseId} onValueChange={(value) => onFieldChange("warehouseId", value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t.transformation.selectWarehouse} />
+                  <SelectValue placeholder={t("selectWarehouse")} />
                 </SelectTrigger>
                 <SelectContent>
                   {warehousesData?.data.map((warehouse) => (
@@ -174,7 +175,7 @@ export default function NewTransformationOrderPage() {
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t.transformation.plannedQuantity} *</label>
+                <label className="text-sm font-medium">{t("plannedQuantity")} *</label>
                 <Input
                   type="number"
                   step="0.0001"
@@ -185,7 +186,7 @@ export default function NewTransformationOrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t.transformation.orderDate} *</label>
+                <label className="text-sm font-medium">{t("orderDate")} *</label>
                 <Input
                   type="date"
                   value={values.orderDate}
@@ -195,7 +196,7 @@ export default function NewTransformationOrderPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">{t.transformation.plannedExecutionDate}</label>
+                <label className="text-sm font-medium">{t("plannedExecutionDate")}</label>
                 <Input
                   type="date"
                   value={values.plannedDate}
@@ -205,9 +206,9 @@ export default function NewTransformationOrderPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t.common.notes}</label>
+              <label className="text-sm font-medium">{tCommon("notes")}</label>
               <Textarea
-                placeholder={`${t.common.notes}...`}
+                placeholder={`${tCommon("notes")}...`}
                 rows={3}
                 value={values.notes}
                 onChange={(event) => onFieldChange("notes", event.target.value)}
@@ -218,10 +219,10 @@ export default function NewTransformationOrderPage() {
 
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={() => router.push("/inventory/transformations")}>
-                {t.common.cancel}
+                {tCommon("cancel")}
               </Button>
               <Button type="submit" disabled={createOrder.isPending}>
-                {createOrder.isPending ? `${t.common.create}...` : t.transformation.createFromTemplate}
+                {createOrder.isPending ? `${tCommon("create")}...` : t("createFromTemplate")}
               </Button>
             </div>
           </form>

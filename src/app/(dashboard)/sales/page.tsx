@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   Users,
   FileText,
@@ -16,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 
 export default function SalesPage() {
+  const t = useTranslations("salesPage");
   const { data } = useCustomers({ limit: 50 });
   const { formatCurrency } = useCurrency();
   const customers = data?.data || [];
@@ -30,30 +32,30 @@ export default function SalesPage() {
 
   const stats = [
     {
-      title: "Total Customers",
+      title: t("totalCustomers"),
       value: totalCustomers,
-      description: "Active customer accounts",
+      description: t("totalCustomersDescription"),
       icon: Users,
       iconColor: "text-blue-600",
     },
     {
-      title: "Total Revenue",
+      title: t("totalRevenue"),
       value: formatCurrency(totalRevenue),
-      description: "This month",
+      description: t("totalRevenueDescription"),
       icon: DollarSign,
       iconColor: "text-green-600",
     },
     {
-      title: "Outstanding Credit",
+      title: t("outstandingCredit"),
       value: formatCurrency(totalCredit),
-      description: "Customer balances",
+      description: t("outstandingCreditDescription"),
       icon: TrendingUp,
       iconColor: "text-orange-600",
     },
     {
-      title: "Pending Orders",
+      title: t("pendingOrders"),
       value: pendingOrders,
-      description: "Awaiting fulfillment",
+      description: t("pendingOrdersDescription"),
       icon: Package,
       iconColor: "text-purple-600",
     },
@@ -61,32 +63,32 @@ export default function SalesPage() {
 
   const quickLinks = [
     {
-      title: "Point of Sale",
-      description: "Quick checkout for walk-in customers",
+      title: t("pointOfSale"),
+      description: t("pointOfSaleDescription"),
       href: "/sales/pos",
       icon: Laptop2,
     },
     {
-      title: "Customers",
-      description: "Manage customer accounts",
+      title: t("customers"),
+      description: t("customersDescription"),
       href: "/sales/customers",
       icon: Users,
     },
     {
-      title: "Quotations",
-      description: "Create and manage quotations",
+      title: t("quotations"),
+      description: t("quotationsDescription"),
       href: "/sales/quotations",
       icon: FileText,
     },
     {
-      title: "Sales Orders",
-      description: "Process sales orders",
+      title: t("salesOrders"),
+      description: t("salesOrdersDescription"),
       href: "/sales/orders",
       icon: FileText,
     },
     {
-      title: "Invoices",
-      description: "Generate and track invoices",
+      title: t("invoices"),
+      description: t("invoicesDescription"),
       href: "/sales/invoices",
       icon: FileText,
     },
@@ -95,8 +97,8 @@ export default function SalesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Sales Management</h1>
-        <p className="text-muted-foreground">Manage customers, orders, quotations, and invoices</p>
+        <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Stats Cards */}
@@ -120,7 +122,7 @@ export default function SalesPage() {
 
       {/* Quick Links */}
       <div>
-        <h2 className="mb-4 text-xl font-semibold">Quick Access</h2>
+        <h2 className="mb-4 text-xl font-semibold">{t("quickAccess")}</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {quickLinks.map((link) => {
             const Icon = link.icon;
@@ -134,7 +136,7 @@ export default function SalesPage() {
                   </CardHeader>
                   <CardContent>
                     <Button variant="ghost" className="w-full justify-between">
-                      Go to {link.title}
+                      {t("goTo")} {link.title}
                       <ArrowRight className="h-4 w-4" />
                     </Button>
                   </CardContent>

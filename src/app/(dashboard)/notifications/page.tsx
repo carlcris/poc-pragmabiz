@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { CheckCircle2, Filter } from "lucide-react";
 import { useMarkNotificationRead, useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/types/notifications";
@@ -16,11 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleString();
-}
-
 export default function NotificationsPage() {
+  const t = useTranslations("notificationsPage");
+  const locale = useLocale();
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const { data, isLoading } = useNotifications({
     unreadOnly: filter === "unread",
@@ -40,17 +39,17 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Notifications</h1>
-          <p className="text-muted-foreground">Stay updated on important events.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Select value={filter} onValueChange={(value) => setFilter(value as "all" | "unread")}>
           <SelectTrigger className="w-[180px]">
             <Filter className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="Filter" />
+            <SelectValue placeholder={t("filter")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="unread">Unread</SelectItem>
+            <SelectItem value="all">{t("all")}</SelectItem>
+            <SelectItem value="unread">{t("unread")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -70,7 +69,7 @@ export default function NotificationsPage() {
       ) : notifications.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            No notifications found.
+            {t("empty")}
           </CardContent>
         </Card>
       ) : (
@@ -82,12 +81,14 @@ export default function NotificationsPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{notification.title}</span>
                     {!notification.is_read && (
-                      <Badge className="bg-blue-600 text-[10px] hover:bg-blue-700">New</Badge>
+                      <Badge className="bg-blue-600 text-[10px] hover:bg-blue-700">
+                        {t("new")}
+                      </Badge>
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">{notification.message}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatTime(notification.created_at)}
+                    {new Date(notification.created_at).toLocaleString(locale)}
                   </p>
                 </div>
                 <Button
@@ -95,7 +96,7 @@ export default function NotificationsPage() {
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-foreground"
                   onClick={() => handleMarkRead(notification)}
-                  title="Mark as read"
+                  title={t("markAsRead")}
                 >
                   <CheckCircle2 className="h-4 w-4" />
                 </Button>

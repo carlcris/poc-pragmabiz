@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,10 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckCircle2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import type { JournalEntryWithLines, JournalEntryStatus } from "@/types/accounting";
+import type { JournalEntryStatus, JournalEntryWithLines } from "@/types/accounting";
 
 interface JournalEntryViewDialogProps {
   open: boolean;
@@ -37,43 +37,23 @@ export function JournalEntryViewDialog({
   journal,
   onSuccess,
 }: JournalEntryViewDialogProps) {
+  const t = useTranslations("journalEntryViewDialog");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [posting, setPosting] = useState(false);
 
   if (!journal) return null;
 
-  const handlePost = async () => {
-    try {
-      setPosting(true);
-
-      const response = await fetch(`/api/accounting/journals/${journal.id}/post`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to post journal entry");
-      }
-
-      toast.success("Journal entry posted successfully", {
-        description: `${journal.journalCode} has been posted to the General Ledger`,
-      });
-
-      onOpenChange(false);
-      if (onSuccess) onSuccess();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to post journal entry");
-    } finally {
-      setPosting(false);
-    }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-PH", {
-      style: "currency",
-      currency: "PHP",
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat(locale, { style: "currency", currency: "PHP" }).format(amount);
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: value.includes("T") ? "2-digit" : undefined,
+      minute: value.includes("T") ? "2-digit" : undefined,
+    });
 
   const getStatusBadge = (status: JournalEntryStatus) => {
     const colors: Record<JournalEntryStatus, string> = {
@@ -84,65 +64,82 @@ export function JournalEntryViewDialog({
 
     return (
       <Badge className={colors[status]} variant="secondary">
-        {status.toUpperCase()}
+        {tCommon(status).toUpperCase()}
       </Badge>
     );
   };
 
   const isBalanced = Math.abs(journal.totalDebit - journal.totalCredit) < 0.01;
 
+  const handlePost = async () => {
+    try {
+      setPosting(true);
+      const response = await fetch(`/api/accounting/journals/${journal.id}/post`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || t("postError"));
+      }
+
+      toast.success(t("postSuccess"), {
+        description: t("postSuccessDescription", { journalCode: journal.journalCode }),
+      });
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("postError"));
+    } finally {
+      setPosting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <span>Journal Entry: {journal.journalCode}</span>
+            <span>{t("title", { journalCode: journal.journalCode })}</span>
             {getStatusBadge(journal.status)}
           </DialogTitle>
-          <DialogDescription>{journal.description || "No description"}</DialogDescription>
+          <DialogDescription>{journal.description || t("noDescription")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Header Information */}
           <div className="grid grid-cols-3 gap-4 rounded-lg bg-muted/50 p-4">
             <div>
-              <div className="text-sm text-muted-foreground">Posting Date</div>
-              <div className="font-semibold">
-                {format(new Date(journal.postingDate), "MMM dd, yyyy")}
-              </div>
+              <div className="text-sm text-muted-foreground">{t("postingDate")}</div>
+              <div className="font-semibold">{formatDate(journal.postingDate)}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Source Module</div>
+              <div className="text-sm text-muted-foreground">{t("sourceModule")}</div>
               <div className="font-semibold">{journal.sourceModule}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Reference Code</div>
-              <div className="font-mono font-semibold">{journal.referenceCode || "-"}</div>
+              <div className="text-sm text-muted-foreground">{t("referenceCode")}</div>
+              <div className="font-mono font-semibold">{journal.referenceCode || tCommon("no")}</div>
             </div>
             {journal.postedAt && (
-              <>
-                <div>
-                  <div className="text-sm text-muted-foreground">Posted At</div>
-                  <div className="font-semibold">
-                    {format(new Date(journal.postedAt), "MMM dd, yyyy HH:mm")}
-                  </div>
-                </div>
-              </>
+              <div>
+                <div className="text-sm text-muted-foreground">{t("postedAt")}</div>
+                <div className="font-semibold">{formatDate(journal.postedAt)}</div>
+              </div>
             )}
           </div>
 
-          {/* Journal Lines */}
           <div>
-            <h4 className="mb-3 text-sm font-medium">Journal Lines</h4>
+            <h4 className="mb-3 text-sm font-medium">{t("journalLines")}</h4>
             <div className="rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">Line #</TableHead>
-                    <TableHead>Account</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-[150px] text-right">Debit</TableHead>
-                    <TableHead className="w-[150px] text-right">Credit</TableHead>
+                    <TableHead className="w-[100px]">{t("lineNumber")}</TableHead>
+                    <TableHead>{t("account")}</TableHead>
+                    <TableHead>{t("descriptionLabel")}</TableHead>
+                    <TableHead className="w-[150px] text-right">{t("debit")}</TableHead>
+                    <TableHead className="w-[150px] text-right">{t("credit")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -151,11 +148,9 @@ export function JournalEntryViewDialog({
                       <TableCell className="text-center font-mono">{line.lineNumber}</TableCell>
                       <TableCell>
                         <div className="font-medium">{line.account?.accountName}</div>
-                        <div className="font-mono text-sm text-muted-foreground">
-                          {line.account?.accountNumber}
-                        </div>
+                        <div className="font-mono text-sm text-muted-foreground">{line.account?.accountNumber}</div>
                       </TableCell>
-                      <TableCell className="text-sm">{line.description || "-"}</TableCell>
+                      <TableCell className="text-sm">{line.description || tCommon("no")}</TableCell>
                       <TableCell className="text-right font-mono">
                         {line.debit > 0 ? formatCurrency(line.debit) : "-"}
                       </TableCell>
@@ -164,37 +159,24 @@ export function JournalEntryViewDialog({
                       </TableCell>
                     </TableRow>
                   ))}
-                  {/* Totals Row */}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={3} className="text-right">
-                      TOTALS:
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(journal.totalDebit)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(journal.totalCredit)}
-                    </TableCell>
+                    <TableCell colSpan={3} className="text-right">{t("totals")}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(journal.totalDebit)}</TableCell>
+                    <TableCell className="text-right font-mono">{formatCurrency(journal.totalCredit)}</TableCell>
                   </TableRow>
-                  {/* Balance Check Row */}
-                  <TableRow
-                    className={
-                      isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"
-                    }
-                  >
+                  <TableRow className={isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"}>
                     <TableCell colSpan={3} className="text-right font-semibold">
                       {isBalanced ? (
                         <span className="flex items-center justify-end gap-2">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          BALANCED
+                          {t("balanced").toUpperCase()}
                         </span>
                       ) : (
-                        "⚠ OUT OF BALANCE"
+                        `⚠ ${t("outOfBalance").toUpperCase()}`
                       )}
                     </TableCell>
                     <TableCell colSpan={2} className="text-right font-semibold">
-                      Difference:{" "}
-                      {formatCurrency(Math.abs(journal.totalDebit - journal.totalCredit))}
+                      {t("difference", { amount: formatCurrency(Math.abs(journal.totalDebit - journal.totalCredit)) })}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -202,34 +184,33 @@ export function JournalEntryViewDialog({
             </div>
           </div>
 
-          {/* Additional Information */}
           <div className="grid grid-cols-2 gap-4 rounded-lg bg-muted/50 p-4 text-sm">
             <div>
-              <div className="text-muted-foreground">Created At</div>
-              <div>{format(new Date(journal.createdAt), "MMM dd, yyyy HH:mm")}</div>
+              <div className="text-muted-foreground">{t("createdAt")}</div>
+              <div>{formatDate(journal.createdAt)}</div>
             </div>
             <div>
-              <div className="text-muted-foreground">Last Updated</div>
-              <div>{format(new Date(journal.updatedAt), "MMM dd, yyyy HH:mm")}</div>
+              <div className="text-muted-foreground">{t("lastUpdated")}</div>
+              <div>{formatDate(journal.updatedAt)}</div>
             </div>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={posting}>
-            Close
+            {tCommon("close")}
           </Button>
           {journal.status === "draft" && (
             <Button onClick={handlePost} disabled={posting || !isBalanced}>
               {posting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Posting...
+                  {t("posting")}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Post to GL
+                  {t("postToGl")}
                 </>
               )}
             </Button>

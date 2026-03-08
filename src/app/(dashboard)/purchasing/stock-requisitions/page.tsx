@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, Search, Pencil, Filter, FileText, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import {
   useStockRequisitions,
@@ -54,6 +54,8 @@ const StockRequisitionFormDialog = dynamic(
 );
 
 export default function StockRequisitionsPage() {
+  const t = useTranslations("stockRequisitionsPage");
+  const locale = useLocale();
   const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -89,17 +91,26 @@ export default function StockRequisitionsPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
+  const formatDate = (value?: string | null) => {
+    if (!value) return t("noValue");
+    return new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(value));
+  };
+
   const getStatusBadge = (status: StockRequisitionStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "submitted":
         return (
           <Badge
             variant="outline"
             className="border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
           >
-            Submitted
+            {t("submitted")}
           </Badge>
         );
       case "partially_fulfilled":
@@ -108,7 +119,7 @@ export default function StockRequisitionsPage() {
             variant="outline"
             className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
           >
-            Partially Fulfilled
+            {t("partiallyFulfilled")}
           </Badge>
         );
       case "fulfilled":
@@ -117,11 +128,11 @@ export default function StockRequisitionsPage() {
             variant="outline"
             className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
           >
-            Fulfilled
+            {t("fulfilled")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -154,11 +165,11 @@ export default function StockRequisitionsPage() {
 
     try {
       await deleteMutation.mutateAsync(srToDelete.id);
-      toast.success("Stock Requisition deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setSRToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete stock requisition"));
+      toast.error(getErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -167,15 +178,15 @@ export default function StockRequisitionsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
-            Stock Requisitions
+            {t("title")}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-            Manage stock requisitions for your suppliers
+            {t("subtitle")}
           </p>
         </div>
         <Button onClick={handleCreateSR} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          <span className="sm:inline">Create Stock Requisition</span>
+          <span className="sm:inline">{t("createAction")}</span>
         </Button>
       </div>
 
@@ -184,7 +195,7 @@ export default function StockRequisitionsPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by SR number or notes..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
@@ -200,15 +211,15 @@ export default function StockRequisitionsPage() {
             >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="partially_fulfilled">Partially Fulfilled</SelectItem>
-                <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="all">{t("allStatus")}</SelectItem>
+                <SelectItem value="draft">{t("draft")}</SelectItem>
+                <SelectItem value="submitted">{t("submitted")}</SelectItem>
+                <SelectItem value="partially_fulfilled">{t("partiallyFulfilled")}</SelectItem>
+                <SelectItem value="fulfilled">{t("fulfilled")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
               </SelectContent>
             </Select>
           </ClientOnly>
@@ -222,10 +233,10 @@ export default function StockRequisitionsPage() {
             >
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Supplier" />
+                <SelectValue placeholder={t("supplierPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Suppliers</SelectItem>
+                <SelectItem value="all">{t("allSuppliers")}</SelectItem>
                 {suppliers.map((supplier) => (
                   <SelectItem key={supplier.id} value={supplier.id}>
                     {supplier.name}
@@ -240,15 +251,15 @@ export default function StockRequisitionsPage() {
           <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-md border">
             <Table className="min-w-[800px]">
               <TableHeader className="sticky top-0 z-10 bg-background">
-                <TableRow>
-                  <TableHead>SR Number</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Requisition Date</TableHead>
-                  <TableHead>Required By</TableHead>
-                  <TableHead className="text-right">Total Amount</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableRow>
+                  <TableHead>{t("srNumber")}</TableHead>
+                  <TableHead>{t("supplier")}</TableHead>
+                  <TableHead>{t("requisitionDate")}</TableHead>
+                  <TableHead>{t("requiredBy")}</TableHead>
+                  <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                  <TableHead className="text-center">{t("status")}</TableHead>
+                  <TableHead>{t("createdBy")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -289,11 +300,11 @@ export default function StockRequisitionsPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading stock requisitions. Please try again.
+            {t("loadError")}
           </div>
         ) : !data?.data || data.data.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
-            No stock requisitions found. Create your first stock requisition to get started.
+            {t("emptyTitle")} {t("emptyDescription")}
           </div>
         ) : (
           <>
@@ -301,14 +312,14 @@ export default function StockRequisitionsPage() {
               <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>SR Number</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Requisition Date</TableHead>
-                    <TableHead>Required By</TableHead>
-                    <TableHead className="text-right">Total Amount</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead>Created By</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("srNumber")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("requisitionDate")}</TableHead>
+                    <TableHead>{t("requiredBy")}</TableHead>
+                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                    <TableHead className="text-center">{t("status")}</TableHead>
+                    <TableHead>{t("createdBy")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -332,12 +343,10 @@ export default function StockRequisitionsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {format(new Date(sr.requisitionDate), "MMM dd, yyyy")}
+                        {formatDate(sr.requisitionDate)}
                       </TableCell>
                       <TableCell>
-                        {sr.requiredByDate
-                          ? format(new Date(sr.requiredByDate), "MMM dd, yyyy")
-                          : "-"}
+                        {formatDate(sr.requiredByDate)}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(sr.totalAmount)}
@@ -347,10 +356,10 @@ export default function StockRequisitionsPage() {
                         <div className="text-sm">
                           {sr.createdByUser
                             ? `${sr.createdByUser.firstName} ${sr.createdByUser.lastName}`
-                            : "-"}
+                            : t("noValue")}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {format(new Date(sr.createdAt), "MMM dd, yyyy")}
+                          {formatDate(sr.createdAt)}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
@@ -360,7 +369,7 @@ export default function StockRequisitionsPage() {
                             size="sm"
                             onClick={() => handleViewSR(sr)}
                             className="h-8 w-8 p-0"
-                            aria-label="View"
+                            aria-label={t("view")}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -371,7 +380,7 @@ export default function StockRequisitionsPage() {
                                 size="sm"
                                 onClick={() => handleEditSR(sr)}
                                 className="h-8 w-8 p-0"
-                                aria-label="Edit"
+                                aria-label={t("edit")}
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -380,7 +389,7 @@ export default function StockRequisitionsPage() {
                                 size="sm"
                                 onClick={() => handleDeleteSR(sr)}
                                 className="h-8 w-8 p-0"
-                                aria-label="Delete"
+                                aria-label={t("delete")}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -421,20 +430,19 @@ export default function StockRequisitionsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Stock Requisition</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {srToDelete?.srNumber}? This action cannot be undone.
-              The stock requisition will be permanently removed from the system.
+              {t("deleteDescription", { number: srToDelete?.srNumber ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

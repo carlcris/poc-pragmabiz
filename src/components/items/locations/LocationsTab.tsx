@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
 import { apiClient } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,9 +46,13 @@ type LocationsTabProps = {
   itemId: string;
 };
 
-const formatQty = (value: number) => value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+const formatQty = (value: number, locale: string) =>
+  value.toLocaleString(locale, { maximumFractionDigits: 4 });
 
 export const LocationsTab = ({ itemId }: LocationsTabProps) => {
+  const t = useTranslations("itemLocationsTab");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const queryClient = useQueryClient();
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
@@ -113,13 +118,13 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["item-locations", itemId] });
-      toast.success("Default location updated");
+      toast.success(t("defaultUpdated"));
     },
     onError: (mutationError) => {
       const message =
         mutationError instanceof Error
           ? mutationError.message
-          : "Failed to update default location";
+          : t("updateDefaultError");
       toast.error(message);
     },
   });
@@ -128,13 +133,13 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     mutationFn: async () => {
       const quantity = Number(moveQty);
       if (!selectedWarehouseId || !fromLocationId || !toLocationId) {
-        throw new Error("Select warehouse and locations to move stock.");
+        throw new Error(t("selectWarehouseAndLocations"));
       }
       if (fromLocationId === toLocationId) {
-        throw new Error("Select two different locations.");
+        throw new Error(t("selectDifferentLocations"));
       }
       if (!Number.isFinite(quantity) || quantity <= 0) {
-        throw new Error("Enter a valid quantity to move.");
+        throw new Error(t("enterValidQuantity"));
       }
 
       return apiClient.post("/api/stock-transactions", {
@@ -155,7 +160,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["item-locations", itemId] });
-      toast.success("Stock moved successfully");
+      toast.success(t("stockMoved"));
       setMoveDialogOpen(false);
       setSelectedWarehouseId("");
       setFromLocationId("");
@@ -164,7 +169,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     },
     onError: (mutationError) => {
       const message =
-        mutationError instanceof Error ? mutationError.message : "Failed to move stock";
+        mutationError instanceof Error ? mutationError.message : t("moveStockError");
       toast.error(message);
     },
   });
@@ -191,34 +196,34 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Locations</CardTitle>
-            <CardDescription>Stock by warehouse location</CardDescription>
+            <CardTitle>{t("title")}</CardTitle>
+            <CardDescription>{t("description")}</CardDescription>
           </div>
           <Button onClick={() => setMoveDialogOpen(true)} disabled={locations.length === 0}>
-            Move Stock
+            {t("moveStock")}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         {error ? (
-          <div className="text-sm text-destructive">Failed to load item locations.</div>
+          <div className="text-sm text-destructive">{t("loadError")}</div>
         ) : locations.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No location stock found.</div>
+          <div className="text-sm text-muted-foreground">{t("empty")}</div>
         ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[50px]"></TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="text-right">On Hand</TableHead>
-                  <TableHead className="text-right">Reserved</TableHead>
-                  <TableHead className="text-right">Available</TableHead>
-                  <TableHead className="text-right">In Transit</TableHead>
-                  <TableHead>Est Arrival</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead>{t("location")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead className="text-right">{t("onHand")}</TableHead>
+                  <TableHead className="text-right">{t("reserved")}</TableHead>
+                  <TableHead className="text-right">{t("available")}</TableHead>
+                  <TableHead className="text-right">{t("inTransit")}</TableHead>
+                  <TableHead>{t("estArrival")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -256,26 +261,28 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                             {location.locationCode}
                             {location.isDefault && (
                               <Badge variant="secondary" className="text-xs">
-                                Default
+                                {t("defaultBadge")}
                               </Badge>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">{location.locationName}</div>
                         </TableCell>
                         <TableCell className="text-sm capitalize">{location.locationType}</TableCell>
-                        <TableCell className="text-right">{formatQty(location.qtyOnHand)}</TableCell>
                         <TableCell className="text-right">
-                          {formatQty(location.qtyReserved)}
+                          {formatQty(location.qtyOnHand, locale)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatQty(location.qtyAvailable)}
+                          {formatQty(location.qtyReserved, locale)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatQty(location.inTransit || 0)}
+                          {formatQty(location.qtyAvailable, locale)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatQty(location.inTransit || 0, locale)}
                         </TableCell>
                         <TableCell>
                           {location.estimatedArrivalDate
-                            ? new Date(location.estimatedArrivalDate).toLocaleDateString()
+                            ? new Date(location.estimatedArrivalDate).toLocaleDateString(locale)
                             : "--"}
                         </TableCell>
                         <TableCell className="text-right">
@@ -285,7 +292,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                             disabled={location.isDefault || setDefaultLocation.isPending}
                             onClick={() => setDefaultLocation.mutate(location)}
                           >
-                            Set Default
+                            {t("setDefault")}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -296,16 +303,16 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                               <Table>
                                 <TableHeader>
                                   <TableRow className="hover:bg-transparent">
-                                    <TableHead className="h-8 text-xs">Batch Code</TableHead>
-                                    <TableHead className="h-8 text-xs">Received Date</TableHead>
+                                    <TableHead className="h-8 text-xs">{t("batchCode")}</TableHead>
+                                    <TableHead className="h-8 text-xs">{t("receivedDate")}</TableHead>
                                     <TableHead className="h-8 text-right text-xs">
-                                      On Hand
+                                      {t("onHand")}
                                     </TableHead>
                                     <TableHead className="h-8 text-right text-xs">
-                                      Reserved
+                                      {t("reserved")}
                                     </TableHead>
                                     <TableHead className="h-8 text-right text-xs">
-                                      Available
+                                      {t("available")}
                                     </TableHead>
                                   </TableRow>
                                 </TableHeader>
@@ -316,16 +323,16 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                                         {batch.batchCode}
                                       </TableCell>
                                       <TableCell className="py-2 text-xs">
-                                        {new Date(batch.receivedAt).toLocaleDateString()}
+                                        {new Date(batch.receivedAt).toLocaleDateString(locale)}
                                       </TableCell>
                                       <TableCell className="py-2 text-right text-xs">
-                                        {formatQty(batch.qtyOnHand)}
+                                        {formatQty(batch.qtyOnHand, locale)}
                                       </TableCell>
                                       <TableCell className="py-2 text-right text-xs">
-                                        {formatQty(batch.qtyReserved)}
+                                        {formatQty(batch.qtyReserved, locale)}
                                       </TableCell>
                                       <TableCell className="py-2 text-right text-xs">
-                                        {formatQty(batch.qtyAvailable)}
+                                        {formatQty(batch.qtyAvailable, locale)}
                                       </TableCell>
                                     </TableRow>
                                   ))}
@@ -357,17 +364,15 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Move Stock</DialogTitle>
-            <DialogDescription>
-              Transfer stock between locations in the same warehouse.
-            </DialogDescription>
+            <DialogTitle>{t("moveDialogTitle")}</DialogTitle>
+            <DialogDescription>{t("moveDialogDescription")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Warehouse</label>
+              <label className="text-sm font-medium">{t("warehouseLabel")}</label>
               <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select warehouse" />
+                  <SelectValue placeholder={t("selectWarehouse")} />
                 </SelectTrigger>
                 <SelectContent>
                   {warehouses.map((warehouse) => (
@@ -379,61 +384,62 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">From Location</label>
+              <label className="text-sm font-medium">{t("fromLocationLabel")}</label>
               <Select
                 value={fromLocationId}
                 onValueChange={setFromLocationId}
                 disabled={!selectedWarehouseId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select source location" />
+                  <SelectValue placeholder={t("selectSourceLocation")} />
                 </SelectTrigger>
                 <SelectContent>
                   {fromLocations.map((loc) => (
                     <SelectItem key={loc.locationId} value={loc.locationId}>
-                      {loc.locationCode} - {loc.locationName} (Avail {formatQty(loc.qtyAvailable)})
+                      {loc.locationCode} - {loc.locationName} ({t("availableShort")}{" "}
+                      {formatQty(loc.qtyAvailable, locale)})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">To Location</label>
+              <label className="text-sm font-medium">{t("toLocationLabel")}</label>
               <Select
                 value={toLocationId}
                 onValueChange={setToLocationId}
                 disabled={!selectedWarehouseId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select destination location" />
+                  <SelectValue placeholder={t("selectDestinationLocation")} />
                 </SelectTrigger>
                 <SelectContent>
                   {toLocations.map((loc) => (
                     <SelectItem key={loc.id} value={loc.id}>
-                      {loc.code} - {loc.name || "Unnamed"}
+                      {loc.code} - {loc.name || t("unnamed")}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm font-medium">Quantity</label>
+              <label className="text-sm font-medium">{t("quantityLabel")}</label>
               <Input
                 type="number"
                 min="0"
                 step="0.0001"
                 value={moveQty}
                 onChange={(event) => setMoveQty(event.target.value)}
-                placeholder="Enter quantity to move"
+                placeholder={t("quantityPlaceholder")}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMoveDialogOpen(false)}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button onClick={() => moveStock.mutate()} disabled={moveStock.isPending}>
-              {moveStock.isPending ? "Moving..." : "Move Stock"}
+              {moveStock.isPending ? t("moving") : t("moveStock")}
             </Button>
           </DialogFooter>
         </DialogContent>

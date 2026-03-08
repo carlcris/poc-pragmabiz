@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import {
   Plus,
@@ -64,6 +65,9 @@ const SalesOrderViewDialog = dynamic(
 );
 
 export default function SalesOrdersPage() {
+  const t = useTranslations("salesOrdersPage");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -127,44 +131,44 @@ export default function SalesOrdersPage() {
   const getStatusBadge = (status: SalesOrderStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "confirmed":
         return (
           <Badge variant="default" className="bg-blue-600">
-            Confirmed
+            {t("confirmed")}
           </Badge>
         );
       case "in_progress":
         return (
           <Badge variant="default" className="bg-yellow-600">
-            In Progress
+            {t("inProgress")}
           </Badge>
         );
       case "shipped":
         return (
           <Badge variant="default" className="bg-purple-600">
-            Shipped
+            {t("shipped")}
           </Badge>
         );
       case "delivered":
         return (
           <Badge variant="default" className="bg-green-600">
-            Delivered
+            {t("delivered")}
           </Badge>
         );
       case "invoiced":
         return (
           <Badge variant="default" className="bg-indigo-600">
-            Invoiced
+            {t("invoiced")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -232,12 +236,12 @@ export default function SalesOrdersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Sales Orders</h1>
-          <p className="text-muted-foreground">Process and manage customer orders</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         <Button onClick={handleCreateOrder}>
           <Plus className="mr-2 h-4 w-4" />
-          Create Order
+          {t("createOrder")}
         </Button>
       </div>
 
@@ -246,7 +250,7 @@ export default function SalesOrdersPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search orders..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -258,17 +262,17 @@ export default function SalesOrdersPage() {
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={tCommon("status")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="confirmed">Confirmed</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="shipped">Shipped</SelectItem>
-              <SelectItem value="delivered">Delivered</SelectItem>
-              <SelectItem value="invoiced">Invoiced</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+              <SelectItem value="draft">{t("draft")}</SelectItem>
+              <SelectItem value="confirmed">{t("confirmed")}</SelectItem>
+              <SelectItem value="in_progress">{t("inProgress")}</SelectItem>
+              <SelectItem value="shipped">{t("shipped")}</SelectItem>
+              <SelectItem value="delivered">{t("delivered")}</SelectItem>
+              <SelectItem value="invoiced">{t("invoiced")}</SelectItem>
+              <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -278,13 +282,13 @@ export default function SalesOrdersPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>Order #</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Order Date</TableHead>
-                  <TableHead>Expected Delivery</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("orderNumber")}</TableHead>
+                  <TableHead>{t("customer")}</TableHead>
+                  <TableHead>{t("orderDate")}</TableHead>
+                  <TableHead>{t("expectedDelivery")}</TableHead>
+                  <TableHead className="text-right">{t("amount")}</TableHead>
+                  <TableHead>{tCommon("status")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -329,25 +333,23 @@ export default function SalesOrdersPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading sales orders. Please try again.
+            {t("loadError")}
           </div>
         ) : orders.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No sales orders found. Create your first order to get started.
-          </div>
+          <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (
           <>
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Order Date</TableHead>
-                    <TableHead>Expected Delivery</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("orderNumber")}</TableHead>
+                    <TableHead>{t("customer")}</TableHead>
+                    <TableHead>{t("orderDate")}</TableHead>
+                    <TableHead>{t("expectedDelivery")}</TableHead>
+                    <TableHead className="text-right">{t("amount")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -360,7 +362,7 @@ export default function SalesOrdersPage() {
                             <div>{order.orderNumber}</div>
                             {order.quotationNumber && (
                               <div className="text-xs text-muted-foreground">
-                                From {order.quotationNumber}
+                                {t("fromQuotation", { number: order.quotationNumber })}
                               </div>
                             )}
                           </div>
@@ -376,7 +378,7 @@ export default function SalesOrdersPage() {
                           {formatDate(order.expectedDeliveryDate)}
                           {isOverdue(order.expectedDeliveryDate, order.status) && (
                             <Badge variant="secondary" className="bg-red-100 text-xs text-red-800">
-                              Overdue
+                              {t("overdue")}
                             </Badge>
                           )}
                         </div>
@@ -384,8 +386,7 @@ export default function SalesOrdersPage() {
                       <TableCell className="text-right">
                         <div className="font-medium">{formatCurrency(order.totalAmount)}</div>
                         <div className="text-xs text-muted-foreground">
-                          {order.lineItems.length} item
-                          {order.lineItems.length !== 1 ? "s" : ""}
+                          {t("itemsCount", { count: String(order.lineItems.length) })}
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
@@ -412,7 +413,7 @@ export default function SalesOrdersPage() {
                               disabled={confirmOrder.isPending}
                             >
                               <CheckCircle className="mr-1 h-4 w-4" />
-                              Confirm
+                              {t("confirm")}
                             </Button>
                           )}
                           {(order.status === "confirmed" || order.status === "in_progress") && (
@@ -424,7 +425,7 @@ export default function SalesOrdersPage() {
                               disabled={convertToInvoice.isPending}
                             >
                               <Receipt className="mr-1 h-4 w-4" />
-                              Invoice
+                              {t("invoice")}
                             </Button>
                           )}
                         </div>
@@ -470,9 +471,9 @@ export default function SalesOrdersPage() {
       <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Select Warehouse</DialogTitle>
+            <DialogTitle>{t("selectWarehouseTitle")}</DialogTitle>
             <DialogDescription>
-              Choose the warehouse from which stock will be deducted for this invoice.
+              {t("selectWarehouseDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -484,7 +485,7 @@ export default function SalesOrdersPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a warehouse" />
+                <SelectValue placeholder={t("selectWarehouse")} />
               </SelectTrigger>
               <SelectContent>
                 {warehouses.map((warehouse) => (
@@ -504,7 +505,7 @@ export default function SalesOrdersPage() {
               <SelectTrigger>
                 <SelectValue
                   placeholder={
-                    selectedWarehouse ? "Select a location (optional)" : "Select warehouse first"
+                    selectedWarehouse ? t("selectLocationOptional") : t("selectWarehouseFirst")
                   }
                 />
               </SelectTrigger>
@@ -519,13 +520,13 @@ export default function SalesOrdersPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
             <Button
               onClick={handleConfirmInvoiceConversion}
               disabled={!selectedWarehouse || convertToInvoice.isPending}
             >
-              {convertToInvoice.isPending ? "Converting..." : "Create Invoice"}
+              {convertToInvoice.isPending ? t("converting") : t("createInvoice")}
             </Button>
           </DialogFooter>
         </DialogContent>

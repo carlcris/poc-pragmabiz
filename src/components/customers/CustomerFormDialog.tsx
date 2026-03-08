@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { useCreateCustomer, useUpdateCustomer } from "@/hooks/useCustomers";
 import { useAuthStore } from "@/stores/authStore";
-import { customerFormSchema } from "@/lib/validations/customer";
+import { createCustomerFormSchema } from "@/lib/validations/customer";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,28 +44,30 @@ interface CustomerFormDialogProps {
   customer?: Customer | null;
 }
 
-const CUSTOMER_TYPES = [
-  { value: "individual", label: "Individual" },
-  { value: "company", label: "Company" },
-  { value: "government", label: "Government" },
-] as const;
-
-const PAYMENT_TERMS = [
-  { value: "cash", label: "Cash" },
-  { value: "due_on_receipt", label: "Due on Receipt" },
-  { value: "net_30", label: "Net 30" },
-  { value: "net_60", label: "Net 60" },
-  { value: "net_90", label: "Net 90" },
-  { value: "cod", label: "Cash on Delivery" },
-] as const;
-
 const COUNTRIES = ["USA", "Canada", "Mexico", "United Kingdom"];
 
 export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFormDialogProps) {
+  const t = useTranslations("customerForm");
+  const tCommon = useTranslations("common");
+  const tValidation = useTranslations("customerValidation");
   const { user } = useAuthStore();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const [sameAsBilling, setSameAsBilling] = useState(false);
+  const customerFormSchema = createCustomerFormSchema(tValidation);
+  const customerTypes = [
+    { value: "individual", label: t("typeIndividual") },
+    { value: "company", label: t("typeCompany") },
+    { value: "government", label: t("typeGovernment") },
+  ] as const;
+  const paymentTerms = [
+    { value: "cash", label: t("paymentCash") },
+    { value: "due_on_receipt", label: t("paymentDueOnReceipt") },
+    { value: "net_30", label: t("paymentNet30") },
+    { value: "net_60", label: t("paymentNet60") },
+    { value: "net_90", label: t("paymentNet90") },
+    { value: "cod", label: t("paymentCod") },
+  ] as const;
   type CustomerFormInput = z.input<typeof customerFormSchema>;
 
   const form = useForm<CustomerFormInput>({
@@ -178,11 +181,11 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
           id: customer.id,
           data: parsed,
         });
-        toast.success("Customer updated successfully");
+        toast.success(t("updateSuccess"));
       } else {
         // Create new customer - requires companyId
         if (!user?.companyId) {
-          toast.error("User company information not available");
+          toast.error(t("missingCompany"));
           return;
         }
 
@@ -190,13 +193,13 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
           ...parsed,
           companyId: user.companyId,
         });
-        toast.success("Customer created successfully");
+        toast.success(t("createSuccess"));
       }
       onOpenChange(false);
       form.reset();
       setSameAsBilling(false);
     } catch {
-      toast.error(customer ? "Failed to update customer" : "Failed to create customer");
+      toast.error(customer ? t("updateError") : t("createError"));
     }
   };
 
@@ -207,22 +210,18 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>{customer ? "Edit Customer" : "Create New Customer"}</DialogTitle>
-          <DialogDescription>
-            {customer
-              ? "Update the customer information below"
-              : "Fill in the customer details below to create a new customer"}
-          </DialogDescription>
+          <DialogTitle>{customer ? t("editTitle") : t("createTitle")}</DialogTitle>
+          <DialogDescription>{customer ? t("editDescription") : t("createDescription")}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs defaultValue="general" className="w-full">
               <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="general">General</TabsTrigger>
-                <TabsTrigger value="billing">Billing</TabsTrigger>
-                <TabsTrigger value="shipping">Shipping</TabsTrigger>
-                <TabsTrigger value="payment">Payment</TabsTrigger>
+                <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
+                <TabsTrigger value="billing">{t("billingTab")}</TabsTrigger>
+                <TabsTrigger value="shipping">{t("shippingTab")}</TabsTrigger>
+                <TabsTrigger value="payment">{t("paymentTab")}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="mt-4 space-y-4">
@@ -232,9 +231,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Customer Code *</FormLabel>
+                        <FormLabel>{t("customerCode")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="CUST-001" {...field} disabled={!!customer} />
+                          <Input placeholder={t("customerCodePlaceholder")} {...field} disabled={!!customer} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -246,15 +245,15 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="customerType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Customer Type *</FormLabel>
+                        <FormLabel>{t("customerType")} *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
+                              <SelectValue placeholder={t("selectType")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {CUSTOMER_TYPES.map((type) => (
+                            {customerTypes.map((type) => (
                               <SelectItem key={type.value} value={type.value}>
                                 {type.label}
                               </SelectItem>
@@ -272,9 +271,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter customer name" {...field} />
+                        <FormLabel>{t("customerName")} *</FormLabel>
+                        <FormControl>
+                          <Input placeholder={t("customerNamePlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -287,9 +286,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email *</FormLabel>
+                        <FormLabel>{t("email")} *</FormLabel>
                         <FormControl>
-                          <Input type="email" placeholder="customer@email.com" {...field} />
+                          <Input type="email" placeholder={t("emailPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -301,9 +300,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone *</FormLabel>
+                        <FormLabel>{t("phone")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="+1-555-0000" {...field} />
+                          <Input placeholder={t("phonePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -317,9 +316,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="mobile"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Mobile</FormLabel>
+                        <FormLabel>{t("mobile")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="+1-555-0001" {...field} />
+                          <Input placeholder={t("mobilePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -331,9 +330,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="website"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Website</FormLabel>
+                        <FormLabel>{t("website")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="www.customer.com" {...field} />
+                          <Input placeholder={t("websitePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -346,9 +345,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="taxId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tax ID</FormLabel>
+                      <FormLabel>{t("taxId")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="TAX-12345678" {...field} />
+                        <Input placeholder={t("taxIdPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -356,16 +355,16 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                 />
 
                 <div className="border-t pt-4">
-                  <h4 className="mb-4 text-sm font-medium">Contact Person (Optional)</h4>
+                  <h4 className="mb-4 text-sm font-medium">{t("contactPersonOptional")}</h4>
                   <div className="grid grid-cols-3 gap-4">
                     <FormField
                       control={form.control}
                       name="contactPersonName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Name</FormLabel>
+                          <FormLabel>{t("name")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="John Doe" {...field} />
+                            <Input placeholder={t("contactNamePlaceholder")} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -377,9 +376,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                       name="contactPersonEmail"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{t("email")}</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="john@email.com" {...field} />
+                            <Input type="email" placeholder={t("contactEmailPlaceholder")} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -391,9 +390,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                       name="contactPersonPhone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Phone</FormLabel>
+                          <FormLabel>{t("phone")}</FormLabel>
                           <FormControl>
-                            <Input placeholder="+1-555-0002" {...field} />
+                            <Input placeholder={t("contactPhonePlaceholder")} {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -409,9 +408,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="billingAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address *</FormLabel>
+                      <FormLabel>{t("address")} *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Street address" {...field} />
+                        <Input placeholder={t("addressPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -424,9 +423,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="billingCity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City *</FormLabel>
+                        <FormLabel>{t("city")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="City" {...field} />
+                          <Input placeholder={t("cityPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -438,9 +437,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="billingState"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State *</FormLabel>
+                        <FormLabel>{t("state")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="State" {...field} />
+                          <Input placeholder={t("statePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -452,9 +451,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="billingPostalCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Postal Code *</FormLabel>
+                        <FormLabel>{t("postalCode")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Postal code" {...field} />
+                          <Input placeholder={t("postalCodePlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -467,11 +466,11 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="billingCountry"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country *</FormLabel>
+                      <FormLabel>{t("country")} *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
+                            <SelectValue placeholder={t("selectCountry")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -499,7 +498,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     htmlFor="sameAsBilling"
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Same as billing address
+                    {t("sameAsBilling")}
                   </label>
                 </div>
 
@@ -508,9 +507,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="shippingAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address *</FormLabel>
+                      <FormLabel>{t("address")} *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Street address" {...field} disabled={sameAsBilling} />
+                        <Input placeholder={t("addressPlaceholder")} {...field} disabled={sameAsBilling} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -523,9 +522,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="shippingCity"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City *</FormLabel>
+                        <FormLabel>{t("city")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="City" {...field} disabled={sameAsBilling} />
+                          <Input placeholder={t("cityPlaceholder")} {...field} disabled={sameAsBilling} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -537,9 +536,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="shippingState"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State *</FormLabel>
+                        <FormLabel>{t("state")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="State" {...field} disabled={sameAsBilling} />
+                          <Input placeholder={t("statePlaceholder")} {...field} disabled={sameAsBilling} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -551,9 +550,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     name="shippingPostalCode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Postal Code *</FormLabel>
+                        <FormLabel>{t("postalCode")} *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Postal code" {...field} disabled={sameAsBilling} />
+                          <Input placeholder={t("postalCodePlaceholder")} {...field} disabled={sameAsBilling} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -566,7 +565,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="shippingCountry"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Country *</FormLabel>
+                      <FormLabel>{t("country")} *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
@@ -574,7 +573,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
+                            <SelectValue placeholder={t("selectCountry")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -597,15 +596,15 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="paymentTerms"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Terms *</FormLabel>
+                      <FormLabel>{t("paymentTerms")} *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select payment terms" />
+                            <SelectValue placeholder={t("selectPaymentTerms")} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {PAYMENT_TERMS.map((term) => (
+                          {paymentTerms.map((term) => (
                             <SelectItem key={term.value} value={term.value}>
                               {term.label}
                             </SelectItem>
@@ -622,12 +621,12 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="creditLimit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Credit Limit *</FormLabel>
+                      <FormLabel>{t("creditLimit")} *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
-                          placeholder="0.00"
+                          placeholder={t("creditLimitPlaceholder")}
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
@@ -642,9 +641,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notes</FormLabel>
+                      <FormLabel>{t("notes")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Additional notes" {...field} />
+                        <Input placeholder={t("notesPlaceholder")} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -660,7 +659,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                         <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel>Active Customer</FormLabel>
+                        <FormLabel>{t("activeCustomer")}</FormLabel>
                       </div>
                     </FormItem>
                   )}
@@ -670,14 +669,14 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
+                {tCommon("cancel")}
               </Button>
               <Button type="submit" disabled={createCustomer.isPending || updateCustomer.isPending}>
                 {createCustomer.isPending || updateCustomer.isPending
-                  ? "Saving..."
+                  ? t("saving")
                   : customer
-                    ? "Update Customer"
-                    : "Create Customer"}
+                    ? t("updateCustomer")
+                    : t("createCustomer")}
               </Button>
             </DialogFooter>
           </form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { Printer } from "lucide-react";
 import {
   Dialog,
@@ -25,6 +26,8 @@ export function PurchaseReceiptViewDialog({
   onOpenChange,
   receipt,
 }: PurchaseReceiptViewDialogProps) {
+  const t = useTranslations("purchaseReceiptViewDialog");
+  const locale = useLocale();
   const { formatCurrency } = useCurrency();
 
   if (!receipt) return null;
@@ -36,22 +39,22 @@ export function PurchaseReceiptViewDialog({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "received":
         return (
           <Badge variant="default" className="bg-green-600">
-            Received
+            {t("receivedStatus")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -63,46 +66,46 @@ export function PurchaseReceiptViewDialog({
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto print:max-h-none">
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <DialogTitle>Purchase Receipt Details</DialogTitle>
+            <DialogTitle>{t("title")}</DialogTitle>
             {getStatusBadge(receipt.status)}
           </div>
-          <DialogDescription>GRN #{receipt.receiptCode}</DialogDescription>
+          <DialogDescription>{t("receiptCode", { code: receipt.receiptCode })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Header Information */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Supplier Information</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("supplierInformation")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Name:</span>
+                  <span className="text-muted-foreground">{t("name")}</span>
                   <div className="font-medium">{receipt.supplier?.name}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Code:</span>
+                  <span className="text-muted-foreground">{t("code")}</span>
                   <div className="font-medium">{receipt.supplier?.code}</div>
                 </div>
               </div>
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Receipt Details</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("receiptDetails")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Purchase Order:</span>
+                  <span className="text-muted-foreground">{t("purchaseOrder")}</span>
                   <div className="font-medium">{receipt.purchaseOrder?.orderCode}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Receipt Date:</span>
+                  <span className="text-muted-foreground">{t("receiptDate")}</span>
                   <div className="font-medium">{formatDate(receipt.receiptDate)}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Batch:</span>
-                  <div className="font-medium">{receipt.batchSequenceNumber || "—"}</div>
+                  <span className="text-muted-foreground">{t("batch")}</span>
+                  <div className="font-medium">{receipt.batchSequenceNumber || t("noValue")}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Warehouse:</span>
+                  <span className="text-muted-foreground">{t("warehouse")}</span>
                   <div className="font-medium">
                     {receipt.warehouse?.code} - {receipt.warehouse?.name}
                   </div>
@@ -114,17 +117,17 @@ export function PurchaseReceiptViewDialog({
           {/* Supplier Invoice Details */}
           {(receipt.supplierInvoiceNumber || receipt.supplierInvoiceDate) && (
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Supplier Invoice</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("supplierInvoice")}</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 {receipt.supplierInvoiceNumber && (
                   <div>
-                    <span className="text-muted-foreground">Invoice Number:</span>
+                    <span className="text-muted-foreground">{t("invoiceNumber")}</span>
                     <div className="font-medium">{receipt.supplierInvoiceNumber}</div>
                   </div>
                 )}
                 {receipt.supplierInvoiceDate && (
                   <div>
-                    <span className="text-muted-foreground">Invoice Date:</span>
+                    <span className="text-muted-foreground">{t("invoiceDate")}</span>
                     <div className="font-medium">{formatDate(receipt.supplierInvoiceDate)}</div>
                   </div>
                 )}
@@ -136,17 +139,17 @@ export function PurchaseReceiptViewDialog({
 
           {/* Line Items */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Received Items</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("receivedItems")}</h3>
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="p-3 text-left">Item</th>
-                    <th className="p-3 text-right">Ordered</th>
-                    <th className="p-3 text-right">Received</th>
-                    <th className="p-3 text-center">Unit</th>
-                    <th className="p-3 text-right">Rate</th>
-                    <th className="p-3 text-right">Total Value</th>
+                    <th className="p-3 text-left">{t("item")}</th>
+                    <th className="p-3 text-right">{t("ordered")}</th>
+                    <th className="p-3 text-right">{t("received")}</th>
+                    <th className="p-3 text-center">{t("unit")}</th>
+                    <th className="p-3 text-right">{t("rate")}</th>
+                    <th className="p-3 text-right">{t("totalValue")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,7 +172,7 @@ export function PurchaseReceiptViewDialog({
                         </td>
                         <td className="p-3 text-center">
                           <span className="text-muted-foreground">
-                            {item.uom?.code || item.uom?.name || "—"}
+                            {item.uom?.code || item.uom?.name || t("noUnit")}
                           </span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.rate)}</td>
@@ -188,7 +191,7 @@ export function PurchaseReceiptViewDialog({
           <div className="flex justify-end">
             <div className="w-64 space-y-2 text-sm">
               <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                <span>Total Value:</span>
+                <span>{t("totalValue")}:</span>
                 <span>
                   {formatCurrency(
                     receipt.items?.reduce((sum, item) => {
@@ -205,7 +208,7 @@ export function PurchaseReceiptViewDialog({
             <>
               <hr className="border-t" />
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Notes</h3>
+                <h3 className="mb-2 text-sm font-semibold">{t("notes")}</h3>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">{receipt.notes}</p>
               </div>
             </>
@@ -214,11 +217,11 @@ export function PurchaseReceiptViewDialog({
 
         <DialogFooter className="print:hidden">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {t("close")}
           </Button>
           <Button onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" />
-            Print GRN
+            {t("print")}
           </Button>
         </DialogFooter>
       </DialogContent>

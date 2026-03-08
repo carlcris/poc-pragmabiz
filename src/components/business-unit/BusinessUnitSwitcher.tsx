@@ -40,6 +40,7 @@ export const BusinessUnitSwitcher = ({
 }: BusinessUnitSwitcherProps) => {
   const [open, setOpen] = useState(false);
   const tabletDropdownRef = useRef<HTMLDivElement | null>(null);
+  const hasBootstrappedRef = useRef(false);
   const [fallbackBusinessUnits, setFallbackBusinessUnits] = useState<BusinessUnitWithAccess[]>([]);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
@@ -66,7 +67,8 @@ export const BusinessUnitSwitcher = ({
     let active = true;
 
     const bootstrapBusinessUnits = async () => {
-      if (availableBusinessUnits.length > 0 || isBootstrapping) return;
+      if (availableBusinessUnits.length > 0 || hasBootstrappedRef.current) return;
+      hasBootstrappedRef.current = true;
       try {
         setIsBootstrapping(true);
         setBootstrapError(null);
@@ -89,7 +91,7 @@ export const BusinessUnitSwitcher = ({
     return () => {
       active = false;
     };
-  }, [availableBusinessUnits.length, setAvailableBusinessUnits]);
+  }, [availableBusinessUnits.length, isBootstrapping, setAvailableBusinessUnits]);
 
   // Sort business units: default first, then alphabetically by name
   const sortedBusinessUnits = useMemo(() => {

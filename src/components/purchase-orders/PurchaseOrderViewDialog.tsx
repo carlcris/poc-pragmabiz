@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { Printer, Package } from "lucide-react";
 import {
   Dialog,
@@ -26,6 +27,8 @@ export function PurchaseOrderViewDialog({
   onOpenChange,
   purchaseOrder,
 }: PurchaseOrderViewDialogProps) {
+  const t = useTranslations("purchaseOrderViewDialog");
+  const locale = useLocale();
   const { formatCurrency } = useCurrency();
 
   // Fetch receipts for this purchase order
@@ -44,46 +47,46 @@ export function PurchaseOrderViewDialog({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "submitted":
         return (
           <Badge variant="default" className="bg-blue-600">
-            Submitted
+            {t("submitted")}
           </Badge>
         );
       case "approved":
         return (
           <Badge variant="default" className="bg-green-600">
-            Approved
+            {t("approved")}
           </Badge>
         );
       case "in_transit":
         return (
           <Badge variant="default" className="bg-purple-600">
-            In Transit
+            {t("inTransit")}
           </Badge>
         );
       case "partially_received":
         return (
           <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            Partially Received
+            {t("partiallyReceived")}
           </Badge>
         );
       case "received":
         return (
           <Badge variant="default" className="bg-green-700">
-            Received
+            {t("receivedStatus")}
           </Badge>
         );
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -95,35 +98,35 @@ export function PurchaseOrderViewDialog({
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto print:max-h-none">
         <DialogHeader>
           <div className="flex items-center gap-4">
-            <DialogTitle>Purchase Order Details</DialogTitle>
+            <DialogTitle>{t("title")}</DialogTitle>
             {getStatusBadge(purchaseOrder.status)}
           </div>
-          <DialogDescription>PO #{purchaseOrder.orderCode}</DialogDescription>
+          <DialogDescription>{t("orderCode", { code: purchaseOrder.orderCode })}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Header Information */}
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Supplier Information</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("supplierInformation")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Name:</span>
+                  <span className="text-muted-foreground">{t("name")}</span>
                   <div className="font-medium">{purchaseOrder.supplier?.name}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Code:</span>
+                  <span className="text-muted-foreground">{t("code")}</span>
                   <div className="font-medium">{purchaseOrder.supplier?.code}</div>
                 </div>
                 {purchaseOrder.supplier?.email && (
                   <div>
-                    <span className="text-muted-foreground">Email:</span>
+                    <span className="text-muted-foreground">{t("email")}</span>
                     <div className="font-medium">{purchaseOrder.supplier.email}</div>
                   </div>
                 )}
                 {purchaseOrder.supplier?.phone && (
                   <div>
-                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="text-muted-foreground">{t("phone")}</span>
                     <div className="font-medium">{purchaseOrder.supplier.phone}</div>
                   </div>
                 )}
@@ -131,23 +134,23 @@ export function PurchaseOrderViewDialog({
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-semibold">Order Details</h3>
+              <h3 className="mb-3 text-sm font-semibold">{t("orderDetails")}</h3>
               <div className="space-y-2 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Order Date:</span>
+                  <span className="text-muted-foreground">{t("orderDate")}</span>
                   <div className="font-medium">{formatDate(purchaseOrder.orderDate)}</div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Expected Delivery:</span>
+                  <span className="text-muted-foreground">{t("expectedDelivery")}</span>
                   <div className="font-medium">
                     {formatDate(purchaseOrder.expectedDeliveryDate)}
                   </div>
                 </div>
                 {purchaseOrder.approvedBy && (
                   <div>
-                    <span className="text-muted-foreground">Approved On:</span>
+                    <span className="text-muted-foreground">{t("approvedOn")}</span>
                     <div className="font-medium">
-                      {purchaseOrder.approvedAt ? formatDate(purchaseOrder.approvedAt) : "N/A"}
+                      {purchaseOrder.approvedAt ? formatDate(purchaseOrder.approvedAt) : t("na")}
                     </div>
                   </div>
                 )}
@@ -157,7 +160,7 @@ export function PurchaseOrderViewDialog({
 
           {/* Delivery Address */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Delivery Address</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("deliveryAddress")}</h3>
             <div className="text-sm text-muted-foreground">
               {purchaseOrder.deliveryAddress && (
                 <>
@@ -177,21 +180,21 @@ export function PurchaseOrderViewDialog({
 
           {/* Line Items */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Line Items</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t("lineItems")}</h3>
             <div className="overflow-hidden rounded-lg border">
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
-                    <th className="p-3 text-left">Item</th>
-                    <th className="p-3 text-right">Quantity</th>
-                    <th className="p-3 text-center">Unit</th>
-                    <th className="p-3 text-right">Rate</th>
-                    <th className="p-3 text-right">Discount</th>
-                    <th className="p-3 text-right">Tax</th>
-                    <th className="p-3 text-right">Total</th>
+                    <th className="p-3 text-left">{t("item")}</th>
+                    <th className="p-3 text-right">{t("quantity")}</th>
+                    <th className="p-3 text-center">{t("unit")}</th>
+                    <th className="p-3 text-right">{t("rate")}</th>
+                    <th className="p-3 text-right">{t("discount")}</th>
+                    <th className="p-3 text-right">{t("tax")}</th>
+                    <th className="p-3 text-right">{t("total")}</th>
                     {(purchaseOrder.status === "partially_received" ||
                       purchaseOrder.status === "received") && (
-                      <th className="p-3 text-right">Received</th>
+                      <th className="p-3 text-right">{t("received")}</th>
                     )}
                   </tr>
                 </thead>
@@ -212,7 +215,7 @@ export function PurchaseOrderViewDialog({
                         </td>
                         <td className="p-3 text-center">
                           <span className="text-muted-foreground">
-                            {item.uom?.code || item.uom?.name || "—"}
+                            {item.uom?.code || item.uom?.name || t("noUnit")}
                           </span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.rate)}</td>
@@ -254,19 +257,19 @@ export function PurchaseOrderViewDialog({
           <div className="flex justify-end">
             <div className="w-64 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="text-muted-foreground">{t("subtotal")}</span>
                 <span className="font-medium">{formatCurrency(purchaseOrder.subtotal)}</span>
               </div>
               <div className="flex justify-between text-red-600">
-                <span>Discount:</span>
+                <span>{t("discountAmount")}</span>
                 <span className="font-medium">-{formatCurrency(purchaseOrder.discountAmount)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Tax:</span>
+                <span className="text-muted-foreground">{t("taxAmount")}</span>
                 <span className="font-medium">{formatCurrency(purchaseOrder.taxAmount)}</span>
               </div>
               <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                <span>Total:</span>
+                <span>{t("totalAmount")}</span>
                 <span>{formatCurrency(purchaseOrder.totalAmount)}</span>
               </div>
             </div>
@@ -277,7 +280,7 @@ export function PurchaseOrderViewDialog({
             <>
               <hr className="border-t" />
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Notes</h3>
+                <h3 className="mb-2 text-sm font-semibold">{t("notes")}</h3>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                   {purchaseOrder.notes}
                 </p>
@@ -292,7 +295,7 @@ export function PurchaseOrderViewDialog({
               <div>
                 <div className="mb-3 flex items-center gap-2">
                   <Package className="h-4 w-4" />
-                  <h3 className="text-sm font-semibold">Goods Received ({receipts.length})</h3>
+                  <h3 className="text-sm font-semibold">{t("goodsReceived", { count: receipts.length })}</h3>
                 </div>
                 <div className="space-y-3">
                   {receipts.map((receipt) => (
@@ -301,8 +304,8 @@ export function PurchaseOrderViewDialog({
                         <div>
                           <div className="text-sm font-medium">{receipt.receiptCode}</div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            Received on {formatDate(receipt.receiptDate)}
-                            {receipt.warehouse && ` at ${receipt.warehouse.name}`}
+                            {t("receivedOn", { date: formatDate(receipt.receiptDate) })}
+                            {receipt.warehouse ? t("atWarehouse", { warehouse: receipt.warehouse.name }) : ""}
                           </div>
                         </div>
                         <Badge variant="default" className="bg-green-600">
@@ -312,9 +315,12 @@ export function PurchaseOrderViewDialog({
 
                       {receipt.supplierInvoiceNumber && (
                         <div className="mb-2 text-xs text-muted-foreground">
-                          Supplier Invoice: {receipt.supplierInvoiceNumber}
-                          {receipt.supplierInvoiceDate &&
-                            ` (${formatDate(receipt.supplierInvoiceDate)})`}
+                          {receipt.supplierInvoiceDate
+                            ? t("supplierInvoiceWithDate", {
+                                number: receipt.supplierInvoiceNumber,
+                                date: formatDate(receipt.supplierInvoiceDate),
+                              })
+                            : t("supplierInvoice", { number: receipt.supplierInvoiceNumber })}
                         </div>
                       )}
 
@@ -323,10 +329,10 @@ export function PurchaseOrderViewDialog({
                           <table className="w-full text-xs">
                             <thead>
                               <tr className="text-muted-foreground">
-                                <th className="pb-2 text-left">Item</th>
-                                <th className="pb-2 text-right">Ordered</th>
-                                <th className="pb-2 text-right">Received</th>
-                                <th className="pb-2 text-right">Rate</th>
+                                <th className="pb-2 text-left">{t("item")}</th>
+                                <th className="pb-2 text-right">{t("ordered")}</th>
+                                <th className="pb-2 text-right">{t("received")}</th>
+                                <th className="pb-2 text-right">{t("rate")}</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -352,7 +358,7 @@ export function PurchaseOrderViewDialog({
 
                       {receipt.notes && (
                         <div className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-                          <span className="font-medium">Notes:</span> {receipt.notes}
+                          <span className="font-medium">{t("notes")}:</span> {receipt.notes}
                         </div>
                       )}
                     </div>
@@ -365,11 +371,11 @@ export function PurchaseOrderViewDialog({
 
         <DialogFooter className="print:hidden">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {t("close")}
           </Button>
           <Button onClick={handlePrint}>
             <Printer className="mr-2 h-4 w-4" />
-            Print
+            {t("print")}
           </Button>
         </DialogFooter>
       </DialogContent>

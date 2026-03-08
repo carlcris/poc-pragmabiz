@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useLocale, useTranslations } from "next-intl";
 import {
   Plus,
   Search,
@@ -52,6 +53,8 @@ const StockTransactionDetailDialog = dynamic(
 );
 
 export default function StockTransactionsPage() {
+  const t = useTranslations("stockTransactionsPage");
+  const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
@@ -99,10 +102,10 @@ export default function StockTransactionsPage() {
       TransactionType,
       { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
     > = {
-      in: { label: "IN", variant: "default" },
-      out: { label: "OUT", variant: "destructive" },
-      transfer: { label: "TRANSFER", variant: "outline" },
-      adjustment: { label: "ADJUSTMENT", variant: "secondary" },
+      in: { label: t("badgeIn"), variant: "default" },
+      out: { label: t("badgeOut"), variant: "destructive" },
+      transfer: { label: t("badgeTransfer"), variant: "outline" },
+      adjustment: { label: t("badgeAdjustment"), variant: "secondary" },
     };
 
     const config = configs[type];
@@ -115,7 +118,7 @@ export default function StockTransactionsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
+    return new Date(dateString).toLocaleString(locale, {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -123,6 +126,9 @@ export default function StockTransactionsPage() {
       minute: "2-digit",
     });
   };
+
+  const formatQuantity = (value: number) =>
+    value.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
   const formatLocationLabel = (transaction: (typeof transactions)[number]) => {
     if (transaction.transactionType === "transfer") {
@@ -150,15 +156,15 @@ export default function StockTransactionsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
-            Stock Transactions
+            {t("title")}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-            Track all inventory movements and adjustments
+            {t("subtitle")}
           </p>
         </div>
         <Button onClick={handleCreateTransaction} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          New Transaction
+          {t("newTransaction")}
         </Button>
       </div>
 
@@ -167,7 +173,7 @@ export default function StockTransactionsPage() {
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search transactions..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
@@ -176,14 +182,14 @@ export default function StockTransactionsPage() {
           <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Type" />
+              <SelectValue placeholder={t("typePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="in">Stock In</SelectItem>
-              <SelectItem value="out">Stock Out</SelectItem>
-              <SelectItem value="transfer">Transfer</SelectItem>
-              <SelectItem value="adjustment">Adjustment</SelectItem>
+              <SelectItem value="all">{t("allTypes")}</SelectItem>
+              <SelectItem value="in">{t("stockIn")}</SelectItem>
+              <SelectItem value="out">{t("stockOut")}</SelectItem>
+              <SelectItem value="transfer">{t("transfer")}</SelectItem>
+              <SelectItem value="adjustment">{t("adjustment")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -193,15 +199,15 @@ export default function StockTransactionsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Created By</TableHead>
+                  <TableHead>{t("date")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead>{t("item")}</TableHead>
+                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead>{t("location")}</TableHead>
+                  <TableHead className="text-right">{t("quantity")}</TableHead>
+                  <TableHead>{t("reference")}</TableHead>
+                  <TableHead>{t("reason")}</TableHead>
+                  <TableHead>{t("createdBy")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -244,13 +250,13 @@ export default function StockTransactionsPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading stock transactions. Please try again.
+            {t("loadingError")}
           </div>
         ) : transactions.length === 0 ? (
           <EmptyStatePanel
             icon={Calendar}
-            title="No stock transactions found"
-            description="Try adjusting your search or filters."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
           />
         ) : (
           <>
@@ -258,15 +264,15 @@ export default function StockTransactionsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Warehouse</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Created By</TableHead>
+                    <TableHead>{t("date")}</TableHead>
+                    <TableHead>{t("type")}</TableHead>
+                    <TableHead>{t("item")}</TableHead>
+                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead>{t("location")}</TableHead>
+                    <TableHead className="text-right">{t("quantity")}</TableHead>
+                    <TableHead>{t("reference")}</TableHead>
+                    <TableHead>{t("reason")}</TableHead>
+                    <TableHead>{t("createdBy")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -321,7 +327,7 @@ export default function StockTransactionsPage() {
                             : transaction.transactionType === "out"
                               ? "-"
                               : ""}
-                          {Math.abs(transaction.quantity)} {transaction.uom}
+                          {formatQuantity(Math.abs(transaction.quantity))} {transaction.uom}
                         </span>
                       </TableCell>
                       <TableCell>

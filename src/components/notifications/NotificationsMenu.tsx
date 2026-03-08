@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,12 +16,9 @@ import {
 import { useMarkNotificationRead, useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/types/notifications";
 
-function formatTime(value: string) {
-  const date = new Date(value);
-  return date.toLocaleString();
-}
-
 export function NotificationsMenu() {
+  const t = useTranslations("notificationsPage");
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const { data } = useNotifications({ unreadOnly: false, limit: 8, offset: 0, enabled: true });
   const markRead = useMarkNotificationRead();
@@ -47,16 +45,16 @@ export function NotificationsMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-96">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
+          <span>{t("title")}</span>
           <Link href="/notifications" className="text-xs text-muted-foreground hover:text-foreground">
-            View all
+            {t("viewAll")}
           </Link>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-[320px] overflow-y-auto">
           {notifications.length === 0 ? (
             <div className="px-4 py-6 text-sm text-muted-foreground">
-              No notifications yet.
+              {t("emptyMenu")}
             </div>
           ) : (
             notifications.map((notification) => (
@@ -66,12 +64,14 @@ export function NotificationsMenu() {
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{notification.title}</span>
                       {!notification.is_read && (
-                        <Badge className="bg-blue-600 text-[10px] hover:bg-blue-700">New</Badge>
+                        <Badge className="bg-blue-600 text-[10px] hover:bg-blue-700">
+                          {t("new")}
+                        </Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">{notification.message}</p>
                     <p className="text-[11px] text-muted-foreground">
-                      {formatTime(notification.created_at)}
+                      {new Date(notification.created_at).toLocaleString(locale)}
                     </p>
                   </div>
                   <Button
@@ -79,7 +79,7 @@ export function NotificationsMenu() {
                     size="icon"
                     className="h-7 w-7 text-muted-foreground hover:text-foreground"
                     onClick={() => handleMarkRead(notification)}
-                    title="Mark as read"
+                    title={t("markAsRead")}
                   >
                     <CheckCircle2 className="h-4 w-4" />
                   </Button>

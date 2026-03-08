@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function UserMenu() {
+  const t = useTranslations("userMenu");
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const [mounted, setMounted] = useState(false);
@@ -61,20 +63,20 @@ export function UserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => router.push("/profile")}>
           <User className="mr-2 h-4 w-4" />
-          <span>My Profile</span>
+          <span>{t("myProfile")}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/profile/preferences")}>
           <Settings className="mr-2 h-4 w-4" />
-          <span>My Preferences</span>
+          <span>{t("myPreferences")}</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/profile/change-password")}>
           <KeyRound className="mr-2 h-4 w-4" />
-          <span>Change Password</span>
+          <span>{t("changePassword")}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{t("logOut")}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

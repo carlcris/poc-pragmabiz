@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
@@ -18,16 +19,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
-const adjustmentFormSchema = z.object({
-  adjustmentType: z.enum(["physical_count", "damage", "loss", "found", "quality_issue", "other"]),
-  adjustmentDate: z.string().min(1, "Adjustment date is required"),
-  warehouseId: z.string().min(1, "Warehouse is required"),
-  locationId: z.string().optional(),
-  reason: z.string().min(1, "Reason is required"),
-  notes: z.string().optional(),
-});
+const createAdjustmentFormSchema = (
+  tValidation: (key: "adjustmentDateRequired" | "warehouseRequired" | "reasonRequired") => string
+) =>
+  z.object({
+    adjustmentType: z.enum(["physical_count", "damage", "loss", "found", "quality_issue", "other"]),
+    adjustmentDate: z.string().min(1, tValidation("adjustmentDateRequired")),
+    warehouseId: z.string().min(1, tValidation("warehouseRequired")),
+    locationId: z.string().optional(),
+    reason: z.string().min(1, tValidation("reasonRequired")),
+    notes: z.string().optional(),
+  });
 
-export type StockAdjustmentFormValues = z.infer<typeof adjustmentFormSchema>;
+type AdjustmentFormSchema = ReturnType<typeof createAdjustmentFormSchema>;
+export type StockAdjustmentFormValues = z.infer<AdjustmentFormSchema>;
 
 export type StockAdjustmentFormSubmitPayload = {
   values: StockAdjustmentFormValues;
@@ -62,6 +67,10 @@ export function StockAdjustmentFormDialog({
   onItemSelect,
   formatCurrency,
 }: StockAdjustmentFormDialogProps) {
+  const t = useTranslations("stockAdjustmentForm");
+  const tPage = useTranslations("stockAdjustmentsPage");
+  const tValidation = useTranslations("stockAdjustmentValidation");
+  const locale = useLocale();
   const [lineItems, setLineItems] = useState<StockAdjustmentLineItemFormValues[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<{
@@ -69,6 +78,7 @@ export function StockAdjustmentFormDialog({
     item: StockAdjustmentLineItemFormValues;
   } | null>(null);
 
+  const adjustmentFormSchema = createAdjustmentFormSchema((key) => tValidation(key));
   const form = useForm<StockAdjustmentFormValues>({
     resolver: zodResolver(adjustmentFormSchema),
     defaultValues: {
@@ -171,7 +181,7 @@ export function StockAdjustmentFormDialog({
 
   const handleSubmit = async (values: StockAdjustmentFormValues) => {
     if (lineItems.length === 0) {
-      alert("Please add at least one line item");
+      window.alert(t("lineItemRequired"));
       return;
     }
 
@@ -195,39 +205,39 @@ export function StockAdjustmentFormDialog({
         <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedAdjustment ? "Edit Stock Adjustment" : "Create Stock Adjustment"}
+              {selectedAdjustment ? t("editTitle") : t("createTitle")}
             </DialogTitle>
             <DialogDescription>
               {selectedAdjustment
-                ? `Edit adjustment ${selectedAdjustment.adjustmentCode}`
-                : "Create a new stock adjustment"}
+                ? t("editDescription", { code: selectedAdjustment.adjustmentCode })
+                : t("createDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">General Information</h3>
+                <h3 className="text-lg font-medium">{t("generalInformation")}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="adjustmentType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Adjustment Type</FormLabel>
+                        <FormLabel>{t("adjustmentTypeLabel")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
+                              <SelectValue placeholder={t("selectType")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="physical_count">Physical Count</SelectItem>
-                            <SelectItem value="damage">Damage</SelectItem>
-                            <SelectItem value="loss">Loss</SelectItem>
-                            <SelectItem value="found">Found</SelectItem>
-                            <SelectItem value="quality_issue">Quality Issue</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="physical_count">{tPage("physicalCount")}</SelectItem>
+                            <SelectItem value="damage">{tPage("damage")}</SelectItem>
+                            <SelectItem value="loss">{tPage("loss")}</SelectItem>
+                            <SelectItem value="found">{tPage("found")}</SelectItem>
+                            <SelectItem value="quality_issue">{tPage("qualityIssue")}</SelectItem>
+                            <SelectItem value="other">{tPage("other")}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -240,7 +250,7 @@ export function StockAdjustmentFormDialog({
                     name="adjustmentDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Adjustment Date</FormLabel>
+                        <FormLabel>{t("adjustmentDateLabel")}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -254,11 +264,11 @@ export function StockAdjustmentFormDialog({
                     name="warehouseId"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Warehouse</FormLabel>
+                        <FormLabel>{t("warehouseLabel")}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select warehouse" />
+                              <SelectValue placeholder={t("selectWarehouse")} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -279,7 +289,7 @@ export function StockAdjustmentFormDialog({
                     name="locationId"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Location</FormLabel>
+                        <FormLabel>{t("locationLabel")}</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
@@ -289,7 +299,7 @@ export function StockAdjustmentFormDialog({
                             <SelectTrigger>
                               <SelectValue
                                 placeholder={
-                                  selectedWarehouseId ? "Select location" : "Select warehouse first"
+                                  selectedWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")
                                 }
                               />
                             </SelectTrigger>
@@ -312,9 +322,9 @@ export function StockAdjustmentFormDialog({
                     name="reason"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Reason</FormLabel>
+                        <FormLabel>{t("reasonLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter reason for adjustment" {...field} />
+                          <Input placeholder={t("reasonPlaceholder")} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -326,9 +336,9 @@ export function StockAdjustmentFormDialog({
                     name="notes"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Notes (Optional)</FormLabel>
+                        <FormLabel>{t("notesLabel")}</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Additional notes..." className="resize-none" {...field} />
+                          <Textarea placeholder={t("notesPlaceholder")} className="resize-none" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -340,25 +350,25 @@ export function StockAdjustmentFormDialog({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium">Line Items</h3>
-                    <p className="text-sm text-muted-foreground">Add items to adjust stock levels</p>
+                    <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
                   </div>
                   <Button type="button" onClick={handleAddItem} size="sm" disabled={!selectedWarehouseId}>
                     <Plus className="mr-2 h-4 w-4" />
-                    Add Item
+                    {t("addItem")}
                   </Button>
                 </div>
 
                 {!selectedWarehouseId && (
                   <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-600">
-                    Please select a warehouse before adding items
+                    {t("selectWarehouseBeforeItems")}
                   </div>
                 )}
 
                 {lineItems.length === 0 ? (
                   <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                    <p>No items added yet.</p>
-                    <p className="text-sm">Click &quot;Add Item&quot; to get started.</p>
+                    <p>{t("noItems")}</p>
+                    <p className="text-sm">{t("noItemsDescription")}</p>
                   </div>
                 ) : (
                   <>
@@ -366,13 +376,13 @@ export function StockAdjustmentFormDialog({
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Item</TableHead>
-                            <TableHead className="text-right">Current Qty</TableHead>
-                            <TableHead className="text-right">Adjusted Qty</TableHead>
-                            <TableHead className="text-right">Difference</TableHead>
-                            <TableHead className="text-right">Unit Cost</TableHead>
-                            <TableHead className="text-right">Total Value</TableHead>
-                            <TableHead className="w-[100px]">Actions</TableHead>
+                            <TableHead>{t("item")}</TableHead>
+                            <TableHead className="text-right">{t("currentQty")}</TableHead>
+                            <TableHead className="text-right">{t("adjustedQty")}</TableHead>
+                            <TableHead className="text-right">{t("difference")}</TableHead>
+                            <TableHead className="text-right">{t("unitCost")}</TableHead>
+                            <TableHead className="text-right">{t("totalValue")}</TableHead>
+                            <TableHead className="w-[100px]">{t("actions")}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -388,8 +398,8 @@ export function StockAdjustmentFormDialog({
                                     <div className="text-sm text-muted-foreground">{item.itemCode}</div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-right">{item.currentQty.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">{item.adjustedQty.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{item.currentQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">{item.adjustedQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell className="text-right">
                                   <span
                                     className={`font-medium ${
@@ -401,7 +411,7 @@ export function StockAdjustmentFormDialog({
                                     }`}
                                   >
                                     {difference > 0 ? "+" : ""}
-                                    {difference.toFixed(2)}
+                                    {difference.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </span>
                                 </TableCell>
                                 <TableCell className="text-right">{formatCurrency(item.unitCost)}</TableCell>
@@ -434,10 +444,10 @@ export function StockAdjustmentFormDialog({
                     <div className="rounded-lg bg-muted p-4">
                       <div className="mb-3 flex items-center gap-2">
                         <Calculator className="h-5 w-5" />
-                        <h4 className="font-semibold">Summary</h4>
+                        <h4 className="font-semibold">{t("summary")}</h4>
                       </div>
                       <div className="flex justify-between text-lg font-bold">
-                        <span>Total Adjustment Value:</span>
+                        <span>{t("totalAdjustmentValue")}:</span>
                         <span
                           className={
                             totals.totalValue > 0
@@ -457,10 +467,10 @@ export function StockAdjustmentFormDialog({
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button type="submit" disabled={isSaving}>
-                  {isSaving ? "Saving..." : selectedAdjustment ? "Update Adjustment" : "Create Adjustment"}
+                  {isSaving ? t("saving") : selectedAdjustment ? t("updateAction") : t("createAction")}
                 </Button>
               </DialogFooter>
             </form>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Plus, Search, Pencil, MapPin, Filter, Trash2 } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
 import { toast } from "sonner";
@@ -40,6 +41,8 @@ const ConfirmDialog = dynamic(
 );
 
 export default function WarehousesPage() {
+  const t = useTranslations("warehousesPage");
+  const tCommon = useTranslations("common");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -93,10 +96,10 @@ export default function WarehousesPage() {
 
     try {
       await deleteWarehouse.mutateAsync(warehouseToDelete.id);
-      toast.success("Warehouse deleted successfully");
+      toast.success(t("deleteSuccess"));
       setWarehouseToDelete(null);
     } catch {
-      toast.error("Failed to delete warehouse");
+      toast.error(t("deleteError"));
     }
   };
 
@@ -109,12 +112,16 @@ export default function WarehousesPage() {
     <div className="flex h-full flex-col gap-4 sm:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Warehouse Management</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage warehouse locations and storage facilities</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+            {t("title")}
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+            {t("subtitle")}
+          </p>
         </div>
         <Button onClick={handleCreateWarehouse} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          <span className="sm:inline">Create Warehouse</span>
+          <span className="sm:inline">{t("createWarehouse")}</span>
         </Button>
       </div>
 
@@ -123,7 +130,7 @@ export default function WarehousesPage() {
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search warehouses..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-8"
@@ -132,12 +139,12 @@ export default function WarehousesPage() {
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="all">{t("allStatus")}</SelectItem>
+              <SelectItem value="active">{tCommon("active")}</SelectItem>
+              <SelectItem value="inactive">{tCommon("inactive")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -148,13 +155,13 @@ export default function WarehousesPage() {
               <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Manager</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{tCommon("code")}</TableHead>
+                    <TableHead>{tCommon("name")}</TableHead>
+                    <TableHead>{t("location")}</TableHead>
+                    <TableHead>{t("manager")}</TableHead>
+                    <TableHead>{t("contact")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -174,24 +181,24 @@ export default function WarehousesPage() {
             </div>
           ) : error ? (
             <div className="flex h-full items-center justify-center text-center text-destructive">
-              Error loading warehouses. Please try again.
+              {t("loadingError")}
             </div>
           ) : warehouses.length === 0 ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
-              No warehouses found
+              {t("empty")}
             </div>
           ) : (
             <div className="h-full overflow-auto overscroll-contain rounded-md border">
               <Table className="min-w-[800px]">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Manager</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{tCommon("code")}</TableHead>
+                    <TableHead>{tCommon("name")}</TableHead>
+                    <TableHead>{t("location")}</TableHead>
+                    <TableHead>{t("manager")}</TableHead>
+                    <TableHead>{t("contact")}</TableHead>
+                    <TableHead>{tCommon("status")}</TableHead>
+                    <TableHead className="text-right">{tCommon("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -222,14 +229,16 @@ export default function WarehousesPage() {
                               : ""
                           }
                         >
-                          {warehouse.isActive ? "Active" : "Inactive"}
+                          {warehouse.isActive ? tCommon("active") : tCommon("inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>Locations</Link>
+                              <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
+                                {t("locations")}
+                              </Link>
                             </Button>
                           </ViewGuard>
                           <Button variant="ghost" size="sm" onClick={() => handleEditWarehouse(warehouse)}>
@@ -280,14 +289,14 @@ export default function WarehousesPage() {
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={confirmDelete}
-          title="Delete Warehouse"
+          title={t("deleteTitle")}
           description={
             warehouseToDelete
-              ? `Are you sure you want to delete "${warehouseToDelete.name}"? This action cannot be undone.`
-              : "Are you sure you want to delete this warehouse?"
+              ? t("deleteDescriptionWithName", { name: warehouseToDelete.name })
+              : t("deleteDescription")
           }
-          confirmText="Delete"
-          cancelText="Cancel"
+          confirmText={tCommon("delete")}
+          cancelText={tCommon("cancel")}
           variant="destructive"
           isLoading={deleteWarehouse.isPending}
         />

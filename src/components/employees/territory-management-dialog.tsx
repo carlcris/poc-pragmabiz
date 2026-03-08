@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -42,13 +43,14 @@ import {
 import { toast } from "sonner";
 import type { Employee } from "@/types/employee";
 
-const territoryFormSchema = z.object({
-  city: z.string().min(1, "City is required"),
-  regionState: z.string().min(1, "Region/State is required"),
-  isPrimary: z.boolean().default(false),
-});
+const createTerritoryFormSchema = (t: (key: string) => string) =>
+  z.object({
+    city: z.string().min(1, t("cityRequired")),
+    regionState: z.string().min(1, t("regionStateRequired")),
+    isPrimary: z.boolean().default(false),
+  });
 
-type TerritoryFormInput = z.input<typeof territoryFormSchema>;
+type TerritoryFormInput = z.input<ReturnType<typeof createTerritoryFormSchema>>;
 
 interface TerritoryManagementDialogProps {
   open: boolean;
@@ -110,6 +112,8 @@ export function TerritoryManagementDialog({
   onOpenChange,
   employee,
 }: TerritoryManagementDialogProps) {
+  const t = useTranslations("territoryManagementDialog");
+  const tCommon = useTranslations("common");
   const [showAddForm, setShowAddForm] = useState(false);
 
   const { data: territoriesData, isLoading } = useEmployeeTerritories(employee.id);
@@ -118,6 +122,7 @@ export function TerritoryManagementDialog({
   const updateTerritory = useUpdateEmployeeTerritory();
 
   const territories = territoriesData?.data || [];
+  const territoryFormSchema = createTerritoryFormSchema(t);
 
   const form = useForm<TerritoryFormInput>({
     resolver: zodResolver(territoryFormSchema),
@@ -136,12 +141,12 @@ export function TerritoryManagementDialog({
         ...parsed,
       });
 
-      toast.success("Territory assigned successfully");
+      toast.success(t("territoryAssignedSuccess"));
 
       form.reset();
       setShowAddForm(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to add territory");
+      toast.error(error instanceof Error ? error.message : t("territoryAssignError"));
     }
   };
 
@@ -149,9 +154,9 @@ export function TerritoryManagementDialog({
     try {
       await removeTerritory.mutateAsync({ employeeId: employee.id, territoryId });
 
-      toast.success("Territory removed successfully");
+      toast.success(t("territoryRemovedSuccess"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to remove territory");
+      toast.error(error instanceof Error ? error.message : t("territoryRemoveError"));
     }
   };
 
@@ -163,9 +168,9 @@ export function TerritoryManagementDialog({
         isPrimary: !currentIsPrimary,
       });
 
-      toast.success(`Territory ${!currentIsPrimary ? "set as" : "removed from"} primary`);
+      toast.success(!currentIsPrimary ? t("territoryPrimaryAdded") : t("territoryPrimaryRemoved"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update territory");
+      toast.error(error instanceof Error ? error.message : t("territoryPrimaryError"));
     }
   };
 
@@ -173,9 +178,12 @@ export function TerritoryManagementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Manage Territories</DialogTitle>
+          <DialogTitle>{t("title")}</DialogTitle>
           <DialogDescription>
-            Assign territories to {employee.firstName} {employee.lastName} ({employee.employeeCode})
+            {t("description", {
+              name: `${employee.firstName} ${employee.lastName}`,
+              code: employee.employeeCode,
+            })}
           </DialogDescription>
         </DialogHeader>
 
@@ -183,10 +191,10 @@ export function TerritoryManagementDialog({
           {/* Current Territories */}
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-medium">Assigned Territories</h3>
+              <h3 className="text-sm font-medium">{t("assignedTerritories")}</h3>
               <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Territory
+                {t("addTerritory")}
               </Button>
             </div>
 
@@ -199,8 +207,8 @@ export function TerritoryManagementDialog({
               <Card>
                 <CardContent className="pt-6 text-center text-muted-foreground">
                   <MapPin className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                  <p>No territories assigned yet</p>
-                  <p className="text-xs">Click &quot;Add Territory&quot; to assign one</p>
+                  <p>{t("noTerritories")}</p>
+                  <p className="text-xs">{t("noTerritoriesDescription")}</p>
                 </CardContent>
               </Card>
             ) : (
@@ -216,9 +224,9 @@ export function TerritoryManagementDialog({
                               {territory.city}, {territory.regionState}
                             </span>
                             {territory.isPrimary && (
-                              <Badge variant="default" className="text-xs">
-                                Primary
-                              </Badge>
+                                <Badge variant="default" className="text-xs">
+                                {t("primary")}
+                                </Badge>
                             )}
                           </div>
                         </div>
@@ -229,7 +237,7 @@ export function TerritoryManagementDialog({
                           size="sm"
                           onClick={() => handleTogglePrimary(territory.id, territory.isPrimary)}
                         >
-                          {territory.isPrimary ? "Remove Primary" : "Set as Primary"}
+                          {territory.isPrimary ? t("removePrimary") : t("setAsPrimary")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -258,11 +266,11 @@ export function TerritoryManagementDialog({
                         name="city"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>City</FormLabel>
+                            <FormLabel>{t("city")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select city" />
+                                  <SelectValue placeholder={t("selectCity")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -283,11 +291,11 @@ export function TerritoryManagementDialog({
                         name="regionState"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Region/State</FormLabel>
+                            <FormLabel>{t("regionState")}</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select region" />
+                                  <SelectValue placeholder={t("selectRegion")} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -310,9 +318,9 @@ export function TerritoryManagementDialog({
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-sm">Primary Territory</FormLabel>
+                            <FormLabel className="text-sm">{t("primaryTerritory")}</FormLabel>
                             <FormDescription className="text-xs">
-                              Primary territory is used for auto-assignment
+                              {t("primaryTerritoryDescription")}
                             </FormDescription>
                           </div>
                           <FormControl>
@@ -331,13 +339,13 @@ export function TerritoryManagementDialog({
                           form.reset();
                         }}
                       >
-                        Cancel
+                        {tCommon("cancel")}
                       </Button>
                       <Button type="submit" disabled={addTerritory.isPending}>
                         {addTerritory.isPending && (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         )}
-                        Add Territory
+                        {t("addTerritory")}
                       </Button>
                     </div>
                   </form>
@@ -349,7 +357,7 @@ export function TerritoryManagementDialog({
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Close
+            {tCommon("close")}
           </Button>
         </DialogFooter>
       </DialogContent>

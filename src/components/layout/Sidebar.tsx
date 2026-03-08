@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
   Package,
@@ -216,6 +217,7 @@ export function Sidebar({
   initialBusinessUnitName = null,
 }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations("navigation");
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const isOpen = useSidebarStore((state) => state.isOpen);
@@ -328,7 +330,7 @@ export function Sidebar({
                   <div key={item.href} className="pt-2">
                     <div className="px-3 pb-1">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
-                        {item.title}
+                        {t(item.title)}
                       </div>
                     </div>
                     <div className="space-y-1 pl-4">
@@ -347,7 +349,7 @@ export function Sidebar({
                             )}
                           >
                             {ChildIcon && <ChildIcon className="h-4 w-4" />}
-                            {child.title}
+                            {t(child.title)}
                           </Link>
                         );
                       })}
@@ -370,7 +372,7 @@ export function Sidebar({
                     )}
                   >
                     <Icon className="h-4 w-4" />
-                    {item.title}
+                    {t(item.title)}
                   </Link>
                 );
               }
@@ -399,7 +401,7 @@ export function Sidebar({
                       <Link
                         key={child.href}
                         href={child.href}
-                        title={child.title}
+                        title={t(child.title)}
                         className={cn(
                           "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
                           pathname === child.href
@@ -419,7 +421,7 @@ export function Sidebar({
                     <Link
                       key={item.href}
                       href={item.href}
-                      title={item.title}
+                      title={t(item.title)}
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
                         isActive

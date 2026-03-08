@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { Plus, Search, Pencil, Filter, Package, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSuppliers, useDeleteSupplier } from "@/hooks/useSuppliers";
@@ -46,6 +47,7 @@ const SupplierFormDialog = dynamic(
 );
 
 export default function SuppliersPage() {
+  const t = useTranslations("suppliersPage");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -86,13 +88,13 @@ export default function SuppliersPage() {
             variant="outline"
             className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
           >
-            Active
+            {t("statusActive")}
           </Badge>
         );
       case "inactive":
-        return <Badge variant="secondary">Inactive</Badge>;
+        return <Badge variant="secondary">{t("statusInactive")}</Badge>;
       case "blacklisted":
-        return <Badge variant="destructive">Blacklisted</Badge>;
+        return <Badge variant="destructive">{t("statusBlacklisted")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -100,13 +102,13 @@ export default function SuppliersPage() {
 
   const getPaymentTermsLabel = (terms: string) => {
     const labels: Record<string, string> = {
-      cod: "COD",
-      net_7: "Net 7",
-      net_15: "Net 15",
-      net_30: "Net 30",
-      net_45: "Net 45",
-      net_60: "Net 60",
-      net_90: "Net 90",
+      cod: t("paymentCod"),
+      net_7: t("paymentNet7"),
+      net_15: t("paymentNet15"),
+      net_30: t("paymentNet30"),
+      net_45: t("paymentNet45"),
+      net_60: t("paymentNet60"),
+      net_90: t("paymentNet90"),
     };
     return labels[terms] || terms;
   };
@@ -139,11 +141,11 @@ export default function SuppliersPage() {
 
     try {
       await deleteMutation.mutateAsync(supplierToDelete.id);
-      toast.success("Supplier deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setSupplierToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete supplier"));
+      toast.error(getErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -151,14 +153,14 @@ export default function SuppliersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Supplier Master</h1>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
           <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-            Manage your supplier accounts and vendor relationships
+            {t("subtitle")}
           </p>
         </div>
         <Button onClick={handleCreateSupplier} className="w-full sm:w-auto flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
-          Create Supplier
+          {t("createSupplier")}
         </Button>
       </div>
 
@@ -167,7 +169,7 @@ export default function SuppliersPage() {
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search suppliers..."
+              placeholder={t("searchPlaceholder")}
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
@@ -179,13 +181,13 @@ export default function SuppliersPage() {
             <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder={t("statusPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                <SelectItem value="all">{t("allStatus")}</SelectItem>
+                <SelectItem value="active">{t("statusActive")}</SelectItem>
+                <SelectItem value="inactive">{t("statusInactive")}</SelectItem>
+                <SelectItem value="blacklisted">{t("statusBlacklisted")}</SelectItem>
               </SelectContent>
             </Select>
           </ClientOnly>
@@ -196,16 +198,16 @@ export default function SuppliersPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Contact Info</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Payment Terms</TableHead>
-                  <TableHead className="text-right">Credit Limit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("code")}</TableHead>
+                  <TableHead>{t("supplier")}</TableHead>
+                  <TableHead>{t("contactPerson")}</TableHead>
+                  <TableHead>{t("contactInfo")}</TableHead>
+                  <TableHead>{t("location")}</TableHead>
+                  <TableHead>{t("paymentTerms")}</TableHead>
+                  <TableHead className="text-right">{t("creditLimit")}</TableHead>
+                  <TableHead className="text-right">{t("balance")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -251,13 +253,13 @@ export default function SuppliersPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading suppliers. Please try again.
+            {t("loadError")}
           </div>
         ) : suppliers.length === 0 ? (
           <EmptyStatePanel
             icon={Package}
-            title="No suppliers found"
-            description="Create your first supplier to get started."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
           />
         ) : (
           <>
@@ -265,16 +267,16 @@ export default function SuppliersPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Contact Person</TableHead>
-                    <TableHead>Contact Info</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Payment Terms</TableHead>
-                    <TableHead className="text-right">Credit Limit</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("code")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("contactPerson")}</TableHead>
+                    <TableHead>{t("contactInfo")}</TableHead>
+                    <TableHead>{t("location")}</TableHead>
+                    <TableHead>{t("paymentTerms")}</TableHead>
+                    <TableHead className="text-right">{t("creditLimit")}</TableHead>
+                    <TableHead className="text-right">{t("balance")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -331,6 +333,7 @@ export default function SuppliersPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditSupplier(supplier)}
+                            aria-label={t("editSupplier")}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -338,6 +341,7 @@ export default function SuppliersPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteSupplier(supplier)}
+                            aria-label={t("deleteSupplier")}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -376,20 +380,19 @@ export default function SuppliersPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Supplier</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {supplierToDelete?.name}? This action cannot be
-              undone. The supplier will be permanently removed from the system.
+              {t("deleteDescription", { name: supplierToDelete?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

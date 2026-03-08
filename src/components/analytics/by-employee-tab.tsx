@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,6 +37,7 @@ interface ByEmployeeTabProps {
 }
 
 export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
+  const t = useTranslations("analyticsByEmployeeTab");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByEmployee(filters);
 
@@ -115,16 +117,16 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Top 10 Employees by Sales
+              {t("topEmployeesBySales")}
             </CardTitle>
-            <CardDescription>Sales and commission comparison</CardDescription>
+            <CardDescription>{t("salesCommissionComparison")}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[350px] w-full" />
             ) : topEmployeesChartData.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No employee data available
+                {t("noEmployeeData")}
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={350}>
@@ -149,11 +151,11 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                     contentStyle={{ borderRadius: "8px" }}
                   />
                   <Legend />
-                  <Bar dataKey="sales" fill="#3b82f6" name="Sales" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sales" fill="#3b82f6" name={t("sales")} radius={[4, 4, 0, 0]} />
                   <Bar
                     dataKey="commission"
                     fill="#10b981"
-                    name="Commission"
+                    name={t("commission")}
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -167,16 +169,16 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
-              Commission Distribution
+              {t("commissionDistribution")}
             </CardTitle>
-            <CardDescription>Top 5 earners by commission</CardDescription>
+            <CardDescription>{t("topEarnersByCommission")}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-[350px] w-full" />
             ) : commissionDistributionData.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                No commission data available
+                {t("noCommissionData")}
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={350}>
@@ -212,8 +214,8 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
       {/* Employee Leaderboard */}
       <div className="space-y-4">
         <div>
-          <h3 className="text-lg font-semibold">Employee Performance Leaderboard</h3>
-          <p className="text-sm text-muted-foreground">Ranked by total sales</p>
+          <h3 className="text-lg font-semibold">{t("employeePerformanceLeaderboard")}</h3>
+          <p className="text-sm text-muted-foreground">{t("rankedByTotalSales")}</p>
         </div>
 
         {isLoading ? (
@@ -224,7 +226,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
           </div>
         ) : employeeData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            No employee data available
+            {t("noEmployeeData")}
           </p>
         ) : (
           <>
@@ -232,15 +234,15 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-16">Rank</TableHead>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Territory</TableHead>
-                    <TableHead className="text-right">Total Sales</TableHead>
-                    <TableHead className="text-right">Transactions</TableHead>
-                    <TableHead className="text-right">Avg Order</TableHead>
-                    <TableHead className="text-right">Commission</TableHead>
-                    <TableHead className="text-right">Rate</TableHead>
+                    <TableHead className="w-16">{t("rank")}</TableHead>
+                    <TableHead>{t("employee")}</TableHead>
+                    <TableHead>{t("code")}</TableHead>
+                    <TableHead>{t("territory")}</TableHead>
+                    <TableHead className="text-right">{t("totalSales")}</TableHead>
+                    <TableHead className="text-right">{t("transactions")}</TableHead>
+                    <TableHead className="text-right">{t("avgOrder")}</TableHead>
+                    <TableHead className="text-right">{t("commission")}</TableHead>
+                    <TableHead className="text-right">{t("rate")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -255,7 +257,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                         <div className="text-sm text-muted-foreground">
                           {employee.territories.length > 0
                             ? employee.territories[0]
-                            : "No territory"}
+                            : t("noTerritory")}
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
@@ -280,9 +282,11 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
             {/* Pagination Controls */}
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                {Math.min(currentPage * itemsPerPage, employeeData.length)} of {employeeData.length}{" "}
-                entries
+                {t("showingEntries", {
+                  from: (currentPage - 1) * itemsPerPage + 1,
+                  to: Math.min(currentPage * itemsPerPage, employeeData.length),
+                  total: employeeData.length,
+                })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -292,10 +296,10 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  Previous
+                  {t("previous")}
                 </Button>
                 <div className="text-sm">
-                  Page {currentPage} of {totalPages}
+                  {t("pageOf", { page: currentPage, total: totalPages })}
                 </div>
                 <Button
                   variant="outline"
@@ -303,7 +307,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t("next")}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, Filter, Package, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useGRNs, useDeleteGRN } from "@/hooks/useGRNs";
 import { useWarehouses } from "@/hooks/useWarehouses";
@@ -41,6 +41,8 @@ import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type { GRN, GRNStatus } from "@/types/grn";
 
 export default function GRNsPage() {
+  const t = useTranslations("grnsPage");
+  const locale = useLocale();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -63,17 +65,24 @@ export default function GRNsPage() {
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = warehousesData?.data || [];
 
+  const formatDate = (value: string) =>
+    new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(value));
+
   const getStatusBadge = (status: GRNStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">Draft</Badge>;
+        return <Badge variant="secondary">{t("draft")}</Badge>;
       case "receiving":
         return (
           <Badge
             variant="outline"
             className="border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-400"
           >
-            Receiving
+            {t("receiving")}
           </Badge>
         );
       case "pending_approval":
@@ -82,7 +91,7 @@ export default function GRNsPage() {
             variant="outline"
             className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
           >
-            Pending Approval
+            {t("pendingApproval")}
           </Badge>
         );
       case "approved":
@@ -91,13 +100,13 @@ export default function GRNsPage() {
             variant="outline"
             className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
           >
-            Approved
+            {t("approved")}
           </Badge>
         );
       case "rejected":
-        return <Badge variant="destructive">Rejected</Badge>;
+        return <Badge variant="destructive">{t("rejected")}</Badge>;
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>;
+        return <Badge variant="destructive">{t("cancelled")}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -120,11 +129,11 @@ export default function GRNsPage() {
 
     try {
       await deleteMutation.mutateAsync(grnToDelete.id);
-      toast.success("GRN deleted successfully");
+      toast.success(t("deleteSuccess"));
       setDeleteDialogOpen(false);
       setGRNToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to delete GRN"));
+      toast.error(getErrorMessage(err, t("deleteError")));
     }
   };
 
@@ -132,8 +141,8 @@ export default function GRNsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Goods Receipt Notes</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage warehouse receiving and stock entry</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
         </div>
       </div>
 
@@ -142,7 +151,7 @@ export default function GRNsPage() {
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by GRN number, container, seal number..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
@@ -151,25 +160,25 @@ export default function GRNsPage() {
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="receiving">Receiving</SelectItem>
-              <SelectItem value="pending_approval">Pending Approval</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{t("allStatus")}</SelectItem>
+              <SelectItem value="draft">{t("draft")}</SelectItem>
+              <SelectItem value="receiving">{t("receiving")}</SelectItem>
+              <SelectItem value="pending_approval">{t("pendingApproval")}</SelectItem>
+              <SelectItem value="approved">{t("approved")}</SelectItem>
+              <SelectItem value="rejected">{t("rejected")}</SelectItem>
+              <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
             </SelectContent>
           </Select>
           <Select value={warehouseFilter} onValueChange={(value) => setWarehouseFilter(value)}>
             <SelectTrigger className="w-full sm:w-[200px]">
               <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Warehouse" />
+              <SelectValue placeholder={t("warehousePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Warehouses</SelectItem>
+              <SelectItem value="all">{t("allWarehouses")}</SelectItem>
               {warehouses.map((warehouse) => (
                 <SelectItem key={warehouse.id} value={warehouse.id}>
                   {warehouse.name}
@@ -184,15 +193,15 @@ export default function GRNsPage() {
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-background">
                 <TableRow>
-                  <TableHead>GRN Number</TableHead>
-                  <TableHead>Load List</TableHead>
-                  <TableHead>Supplier</TableHead>
-                  <TableHead>Warehouse</TableHead>
-                  <TableHead>Container / Seal</TableHead>
-                  <TableHead>Receiving Date</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead>Received By</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("grnNumber")}</TableHead>
+                  <TableHead>{t("loadList")}</TableHead>
+                  <TableHead>{t("supplier")}</TableHead>
+                  <TableHead>{t("warehouse")}</TableHead>
+                  <TableHead>{t("containerSeal")}</TableHead>
+                  <TableHead>{t("receivingDate")}</TableHead>
+                  <TableHead className="text-center">{t("status")}</TableHead>
+                  <TableHead>{t("receivedBy")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,13 +244,13 @@ export default function GRNsPage() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading GRNs. Please try again.
+            {t("loadError")}
           </div>
         ) : !data?.data || data.data.length === 0 ? (
           <EmptyStatePanel
             icon={Package}
-            title="No GRNs found"
-            description="GRNs are automatically created when load lists arrive."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
           />
         ) : (
           <>
@@ -249,15 +258,15 @@ export default function GRNsPage() {
               <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
-                    <TableHead>GRN Number</TableHead>
-                    <TableHead>Load List</TableHead>
-                    <TableHead>Supplier</TableHead>
-                    <TableHead>Warehouse</TableHead>
-                    <TableHead>Container / Seal</TableHead>
-                    <TableHead>Receiving Date</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead>Received By</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("grnNumber")}</TableHead>
+                    <TableHead>{t("loadList")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("warehouse")}</TableHead>
+                    <TableHead>{t("containerSeal")}</TableHead>
+                    <TableHead>{t("receivingDate")}</TableHead>
+                    <TableHead className="text-center">{t("status")}</TableHead>
+                    <TableHead>{t("receivedBy")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -276,12 +285,12 @@ export default function GRNsPage() {
                               <div className="font-medium">{grn.loadList.llNumber}</div>
                               {grn.loadList.supplierLlNumber && (
                                 <div className="text-xs text-muted-foreground">
-                                  Supplier: {grn.loadList.supplierLlNumber}
+                                  {t("supplierPrefix", { value: grn.loadList.supplierLlNumber })}
                                 </div>
                               )}
                             </>
                           )}
-                          {!grn.loadList && "-"}
+                          {!grn.loadList && t("noValue")}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -293,7 +302,7 @@ export default function GRNsPage() {
                             </div>
                           </div>
                         ) : (
-                          "-"
+                          t("noValue")
                         )}
                       </TableCell>
                       <TableCell>
@@ -303,25 +312,25 @@ export default function GRNsPage() {
                             <div className="text-xs text-muted-foreground">{grn.warehouse.code}</div>
                           </div>
                         ) : (
-                          "-"
+                          t("noValue")
                         )}
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
                           {(!grn.containerNumber && !grn.sealNumber) ? (
-                            "-"
+                            t("noValue")
                           ) : (
-                            <div>{grn.containerNumber ?? "-"} / {grn.sealNumber ?? "-"}</div>
+                            <div>{grn.containerNumber ?? t("noValue")} / {grn.sealNumber ?? t("noValue")}</div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         {grn.receivingDate ? (
                           <div className="text-sm">
-                            {format(new Date(grn.receivingDate), "MMM dd, yyyy")}
+                            {formatDate(grn.receivingDate)}
                           </div>
                         ) : (
-                          <div className="text-sm text-muted-foreground">Not started</div>
+                          <div className="text-sm text-muted-foreground">{t("notStarted")}</div>
                         )}
                       </TableCell>
                       <TableCell className="text-center">{getStatusBadge(grn.status)}</TableCell>
@@ -329,21 +338,21 @@ export default function GRNsPage() {
                         <div className="text-sm">
                           {grn.receivedByUser
                             ? `${grn.receivedByUser.firstName} ${grn.receivedByUser.lastName}`
-                            : "-"}
+                            : t("noValue")}
                         </div>
                         {grn.receivingDate && (
                           <div className="text-xs text-muted-foreground">
-                            {format(new Date(grn.receivingDate), "MMM dd, yyyy")}
+                            {formatDate(grn.receivingDate)}
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewGRN(grn)}>
+                          <Button variant="ghost" size="sm" onClick={() => handleViewGRN(grn)} aria-label={t("view")}>
                             <Eye className="h-4 w-4" />
                           </Button>
                           {grn.status === "draft" && (
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteGRN(grn)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleDeleteGRN(grn)} aria-label={t("delete")}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
@@ -374,20 +383,19 @@ export default function GRNsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete GRN</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {grnToDelete?.grnNumber}? This action cannot be
-              undone. The GRN will be permanently removed from the system.
+              {t("deleteDescription", { code: grnToDelete?.grnNumber ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? t("deleting") : t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

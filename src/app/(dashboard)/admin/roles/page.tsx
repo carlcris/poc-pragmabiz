@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, Shield, Plus, Pencil, Trash2, Key } from "lucide-react";
 import { useRoles, useDeleteRole } from "@/hooks/useRoles";
 import { toast } from "sonner";
@@ -44,6 +45,9 @@ type Role = {
 };
 
 function RoleManagementContent() {
+  const t = useTranslations("adminRolesPage");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
@@ -64,7 +68,7 @@ function RoleManagementContent() {
 
   const handleDeleteClick = (role: Role) => {
     if (role.is_system_role) {
-      toast.error("Cannot delete system roles");
+      toast.error(t("cannotDeleteSystemRoles"));
       return;
     }
     setRoleToDelete(role);
@@ -76,11 +80,11 @@ function RoleManagementContent() {
 
     try {
       await deleteRole.mutateAsync(roleToDelete.id);
-      toast.success(`Role "${roleToDelete.name}" deleted successfully`);
+      toast.success(t("roleDeletedSuccess", { name: roleToDelete.name }));
       setDeleteDialogOpen(false);
       setRoleToDelete(null);
     } catch {
-      toast.error("Failed to delete role");
+      toast.error(t("roleDeletedError"));
     }
   };
 
@@ -98,13 +102,13 @@ function RoleManagementContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">Role Management</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">Manage roles and their permissions</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
         </div>
         <CreateGuard resource={RESOURCES.ROLES}>
           <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">
             <Plus className="mr-2 h-4 w-4" />
-            Create Role
+            {t("createRole")}
           </Button>
         </CreateGuard>
       </div>
@@ -113,7 +117,7 @@ function RoleManagementContent() {
         <div className="relative w-full">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search roles by name or description..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-8"
@@ -125,11 +129,11 @@ function RoleManagementContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("role")}</TableHead>
+                  <TableHead>{tCommon("description")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead>{t("created")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -157,24 +161,24 @@ function RoleManagementContent() {
           </div>
         ) : error ? (
           <div className="py-8 text-center text-destructive">
-            Error loading roles. Please try again.
+            {t("loadError")}
           </div>
         ) : roles.length === 0 ? (
           <EmptyStatePanel
             icon={Shield}
-            title="No roles found"
-            description="Try adjusting your search terms."
+            title={t("emptyTitle")}
+            description={t("emptyDescription")}
           />
         ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t("role")}</TableHead>
+                  <TableHead>{tCommon("description")}</TableHead>
+                  <TableHead>{t("type")}</TableHead>
+                  <TableHead>{t("created")}</TableHead>
+                  <TableHead className="text-right">{tCommon("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -188,17 +192,17 @@ function RoleManagementContent() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {role.description || "No description"}
+                        {role.description || t("noDescription")}
                       </span>
                     </TableCell>
                     <TableCell>
                       {role.is_system_role ? (
-                        <Badge variant="secondary">System</Badge>
+                        <Badge variant="secondary">{t("system")}</Badge>
                       ) : (
-                        <Badge variant="outline">Custom</Badge>
+                        <Badge variant="outline">{t("custom")}</Badge>
                       )}
                     </TableCell>
-                    <TableCell>{new Date(role.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(role.created_at).toLocaleDateString(locale)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <EditGuard resource={RESOURCES.ROLES}>
@@ -208,7 +212,7 @@ function RoleManagementContent() {
                             onClick={() => handleManagePermissions(role)}
                           >
                             <Key className="mr-2 h-4 w-4" />
-                            Permissions
+                            {t("permissions")}
                           </Button>
                         </EditGuard>
                         <EditGuard resource={RESOURCES.ROLES}>
@@ -245,19 +249,18 @@ function RoleManagementContent() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the role &quot;{roleToDelete?.name}&quot;. This action
-              cannot be undone.
+              {t("deleteDescription", { name: roleToDelete?.name ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteRole.isPending ? "Deleting..." : "Delete"}
+              {deleteRole.isPending ? t("deleting") : tCommon("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

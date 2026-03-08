@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -22,9 +23,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Search, Download, Printer } from "lucide-react";
 import type { Account, AccountLedger } from "@/types/accounting";
-import { format } from "date-fns";
 
 export default function GeneralLedgerPage() {
+  const t = useTranslations("generalLedgerPage");
+  const locale = useLocale();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [ledger, setLedger] = useState<AccountLedger | null>(null);
@@ -83,7 +85,7 @@ export default function GeneralLedgerPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-PH", {
+    return new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "PHP",
     }).format(amount);
@@ -100,18 +102,18 @@ export default function GeneralLedgerPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">General Ledger</h1>
-          <p className="text-muted-foreground">View detailed account transactions</p>
+          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
         {ledger && (
           <div className="flex gap-2">
             <Button variant="outline">
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {t("export")}
             </Button>
             <Button variant="outline">
               <Printer className="mr-2 h-4 w-4" />
-              Print
+              {t("print")}
             </Button>
           </div>
         )}
@@ -121,10 +123,10 @@ export default function GeneralLedgerPage() {
       <div className="space-y-4 rounded-lg border p-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div className="space-y-2">
-            <Label>Account</Label>
+            <Label>{t("account")}</Label>
             <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select account..." />
+                <SelectValue placeholder={t("selectAccount")} />
               </SelectTrigger>
               <SelectContent>
                 {accounts.map((account) => (
@@ -137,12 +139,12 @@ export default function GeneralLedgerPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>From Date</Label>
+            <Label>{t("fromDate")}</Label>
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           </div>
 
           <div className="space-y-2">
-            <Label>To Date</Label>
+            <Label>{t("toDate")}</Label>
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </div>
 
@@ -153,7 +155,7 @@ export default function GeneralLedgerPage() {
               className="w-full"
             >
               <Search className="mr-2 h-4 w-4" />
-              {loading ? "Loading..." : "View Ledger"}
+              {loading ? t("loading") : t("viewLedger")}
             </Button>
           </div>
         </div>
@@ -166,15 +168,15 @@ export default function GeneralLedgerPage() {
           <div className="rounded-lg border p-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <div className="text-sm text-muted-foreground">Account</div>
+                <div className="text-sm text-muted-foreground">{t("account")}</div>
                 <div className="text-lg font-semibold">
                   {ledger.account.accountNumber} - {ledger.account.accountName}
                 </div>
-                <Badge className="mt-1">{ledger.account.accountType.toUpperCase()}</Badge>
+                  <Badge className="mt-1">{ledger.account.accountType.toUpperCase()}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm text-muted-foreground">Opening Balance</div>
+                  <div className="text-sm text-muted-foreground">{t("openingBalance")}</div>
                   <div
                     className={`text-lg font-semibold ${getBalanceColor(ledger.openingBalance)}`}
                   >
@@ -182,7 +184,7 @@ export default function GeneralLedgerPage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm text-muted-foreground">Closing Balance</div>
+                  <div className="text-sm text-muted-foreground">{t("closingBalance")}</div>
                   <div
                     className={`text-lg font-semibold ${getBalanceColor(ledger.closingBalance)}`}
                   >
@@ -196,19 +198,19 @@ export default function GeneralLedgerPage() {
           {/* Summary */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">Total Debits</div>
+              <div className="text-sm text-muted-foreground">{t("totalDebits")}</div>
               <div className="text-2xl font-bold text-blue-600">
                 {formatCurrency(ledger.totalDebits)}
               </div>
             </div>
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">Total Credits</div>
+              <div className="text-sm text-muted-foreground">{t("totalCredits")}</div>
               <div className="text-2xl font-bold text-purple-600">
                 {formatCurrency(ledger.totalCredits)}
               </div>
             </div>
             <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">Net Change</div>
+              <div className="text-sm text-muted-foreground">{t("netChange")}</div>
               <div
                 className={`text-2xl font-bold ${getBalanceColor(ledger.closingBalance - ledger.openingBalance)}`}
               >
@@ -222,21 +224,21 @@ export default function GeneralLedgerPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Journal Code</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Reference</TableHead>
-                  <TableHead className="text-right">Debit</TableHead>
-                  <TableHead className="text-right">Credit</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead>{t("date")}</TableHead>
+                  <TableHead>{t("journalCode")}</TableHead>
+                  <TableHead>{t("descriptionLabel")}</TableHead>
+                  <TableHead>{t("source")}</TableHead>
+                  <TableHead>{t("reference")}</TableHead>
+                  <TableHead className="text-right">{t("debit")}</TableHead>
+                  <TableHead className="text-right">{t("credit")}</TableHead>
+                  <TableHead className="text-right">{t("balance")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {/* Opening Balance Row */}
                 <TableRow className="bg-muted/50">
                   <TableCell colSpan={7} className="font-medium">
-                    Opening Balance
+                    {t("openingBalance")}
                   </TableCell>
                   <TableCell
                     className={`text-right font-mono font-semibold ${getBalanceColor(ledger.openingBalance)}`}
@@ -249,22 +251,22 @@ export default function GeneralLedgerPage() {
                 {ledger.entries.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                      No transactions found for the selected period
+                      {t("noTransactions")}
                     </TableCell>
                   </TableRow>
                 ) : (
                   ledger.entries.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell>{format(new Date(entry.postingDate), "MMM dd, yyyy")}</TableCell>
+                      <TableCell>{new Date(entry.postingDate).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}</TableCell>
                       <TableCell className="font-mono">{entry.journalCode}</TableCell>
                       <TableCell className="max-w-xs truncate">
-                        {entry.description || "-"}
+                        {entry.description || t("notAvailable")}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{entry.sourceModule}</Badge>
                       </TableCell>
                       <TableCell className="font-mono text-sm">
-                        {entry.referenceCode || "-"}
+                        {entry.referenceCode || t("notAvailable")}
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {entry.debit > 0 ? formatCurrency(entry.debit) : "-"}
@@ -283,7 +285,7 @@ export default function GeneralLedgerPage() {
 
                 {/* Closing Balance Row */}
                 <TableRow className="bg-muted/50 font-bold">
-                  <TableCell colSpan={5}>Closing Balance</TableCell>
+                  <TableCell colSpan={5}>{t("closingBalance")}</TableCell>
                   <TableCell className="text-right font-mono">
                     {formatCurrency(ledger.totalDebits)}
                   </TableCell>
