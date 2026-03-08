@@ -4,7 +4,7 @@ import type {
   UpdateLoadListRequest,
   LoadListFilters,
   LoadListsResponse,
-  LoadListStatus,
+  UpdateLoadListStatusRequest,
   LoadListSRLink,
   CreateLoadListSRLinkRequest,
 } from "@/types/load-list";
@@ -45,11 +45,11 @@ export const loadListsApi = {
 
   updateLoadListStatus: async (
     id: string,
-    status: LoadListStatus
+    data: UpdateLoadListStatusRequest
   ): Promise<{ id: string; llNumber: string; status: string; message: string }> => {
     return apiClient.patch<{ id: string; llNumber: string; status: string; message: string }>(
       `${API_BASE}/${id}/status`,
-      { status }
+      data
     );
   },
 

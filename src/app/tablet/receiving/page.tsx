@@ -40,7 +40,7 @@ export default function ReceivingPage() {
     try {
       await updateStatusMutation.mutateAsync({
         id: loadListId,
-        status: "arrived",
+        data: { status: "arrived" },
       });
       toast.success("Load List marked as arrived");
     } catch (err) {

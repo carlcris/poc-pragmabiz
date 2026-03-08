@@ -6,7 +6,7 @@ import type {
   LoadListFilters,
   CreateLoadListRequest,
   UpdateLoadListRequest,
-  LoadListStatus,
+  UpdateLoadListStatusRequest,
   CreateLoadListSRLinkRequest,
 } from "@/types/load-list";
 
@@ -71,8 +71,8 @@ export function useUpdateLoadListStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: LoadListStatus }) =>
-      loadListsApi.updateLoadListStatus(id, status),
+    mutationFn: ({ id, data }: { id: string; data: UpdateLoadListStatusRequest }) =>
+      loadListsApi.updateLoadListStatus(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
     },

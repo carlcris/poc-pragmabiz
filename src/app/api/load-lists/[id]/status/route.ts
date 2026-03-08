@@ -3,6 +3,12 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
+const normalizeOptionalDate = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 // PATCH /api/load-lists/[id]/status
 export async function PATCH(
   request: NextRequest,
@@ -46,6 +52,7 @@ export async function PATCH(
         container_number,
         seal_number,
         batch_number,
+        liner_name,
         estimated_arrival_date,
         actual_arrival_date,
         items:load_list_items(
@@ -67,6 +74,8 @@ export async function PATCH(
 
     const currentStatus = ll.status;
     const newStatus = body.status;
+    const effectiveEstimatedArrivalDate =
+      normalizeOptionalDate(body.estimatedArrivalDate) || ll.estimated_arrival_date || null;
 
     // Validate status transition
     if (currentStatus === "cancelled" && newStatus !== "cancelled") {
@@ -113,7 +122,7 @@ export async function PATCH(
               .from("item_warehouse")
               .update({
                 in_transit: newInTransit,
-                estimated_arrival_date: ll.estimated_arrival_date,
+                estimated_arrival_date: effectiveEstimatedArrivalDate,
                 updated_by: userId,
               })
               .eq("id", existingRecord.id);
@@ -127,7 +136,7 @@ export async function PATCH(
               item_id: item.item_id,
               warehouse_id: ll.warehouse_id,
               in_transit: qty,
-              estimated_arrival_date: ll.estimated_arrival_date,
+              estimated_arrival_date: effectiveEstimatedArrivalDate,
               current_stock: 0,
               reserved_stock: 0,
               created_by: userId,
@@ -235,6 +244,11 @@ export async function PATCH(
       status: newStatus,
       updated_by: userId,
     };
+
+    if (newStatus === "in_transit") {
+      updateData.estimated_arrival_date = effectiveEstimatedArrivalDate;
+      updateData.liner_name = body.linerName ?? ll.liner_name ?? null;
+    }
 
     // Set timestamps based on status
     if (newStatus === "arrived" && !ll.actual_arrival_date) {

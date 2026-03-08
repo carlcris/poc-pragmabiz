@@ -55,6 +55,7 @@ export type LoadList = {
   containerNumber?: string;
   sealNumber?: string;
   batchNumber?: string;
+  linerName?: string;
   estimatedArrivalDate?: string;
   actualArrivalDate?: string;
   loadDate?: string;
@@ -97,6 +98,7 @@ export type CreateLoadListRequest = {
   containerNumber?: string;
   sealNumber?: string;
   batchNumber?: string;
+  linerName?: string;
   estimatedArrivalDate?: string;
   loadDate?: string;
   notes?: string;
@@ -109,6 +111,12 @@ export type CreateLoadListRequest = {
 };
 
 export type UpdateLoadListRequest = Partial<CreateLoadListRequest>;
+
+export type UpdateLoadListStatusRequest = {
+  status: LoadListStatus;
+  estimatedArrivalDate?: string;
+  linerName?: string;
+};
 
 export type LoadListFilters = {
   search?: string;

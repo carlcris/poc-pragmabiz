@@ -8,6 +8,7 @@ export const createLoadListFormSchema = (t: (key: string) => string) =>
     containerNumber: z.string().optional(),
     sealNumber: z.string().optional(),
     batchNumber: z.string().optional(),
+    linerName: z.string().optional(),
     estimatedArrivalDate: z.string().optional(),
     loadDate: z.string().optional(),
     notes: z.string().optional(),

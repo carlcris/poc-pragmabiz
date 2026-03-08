@@ -3,6 +3,12 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 
+const normalizeOptionalDate = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 // GET /api/load-lists/[id]
 export async function GET(
   request: NextRequest,
@@ -31,6 +37,7 @@ export async function GET(
         container_number,
         seal_number,
         batch_number,
+        liner_name,
         estimated_arrival_date,
         actual_arrival_date,
         load_date,
@@ -124,6 +131,7 @@ export async function GET(
       containerNumber: ll.container_number,
       sealNumber: ll.seal_number,
       batchNumber: ll.batch_number,
+      linerName: ll.liner_name,
       estimatedArrivalDate: ll.estimated_arrival_date,
       actualArrivalDate: ll.actual_arrival_date,
       loadDate: ll.load_date,
@@ -228,6 +236,9 @@ export async function PUT(
       );
     }
 
+    const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
+    const loadDate = normalizeOptionalDate(body.loadDate);
+
     // Update load list
     const { data: ll, error: updateError } = await supabase
       .from("load_lists")
@@ -238,8 +249,9 @@ export async function PUT(
         container_number: body.containerNumber,
         seal_number: body.sealNumber,
         batch_number: body.batchNumber,
-        estimated_arrival_date: body.estimatedArrivalDate,
-        load_date: body.loadDate,
+        liner_name: body.linerName,
+        estimated_arrival_date: estimatedArrivalDate,
+        load_date: loadDate,
         notes: body.notes,
         updated_by: userId,
       })

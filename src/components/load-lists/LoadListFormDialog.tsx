@@ -111,6 +111,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       containerNumber: "",
       sealNumber: "",
       batchNumber: "",
+      linerName: "",
       estimatedArrivalDate: "",
       loadDate: new Date().toISOString().split("T")[0],
       notes: "",
@@ -138,6 +139,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
         containerNumber: resolvedLoadList.containerNumber || "",
         sealNumber: resolvedLoadList.sealNumber || "",
         batchNumber: resolvedLoadList.batchNumber || "",
+        linerName: resolvedLoadList.linerName || "",
         estimatedArrivalDate: resolvedLoadList.estimatedArrivalDate?.split("T")[0] || "",
         loadDate: resolvedLoadList.loadDate?.split("T")[0] || "",
         notes: resolvedLoadList.notes || "",
@@ -208,6 +210,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
         containerNumber: values.containerNumber,
         sealNumber: values.sealNumber,
         batchNumber: values.batchNumber,
+        linerName: values.linerName,
         estimatedArrivalDate: values.estimatedArrivalDate,
         loadDate: values.loadDate,
         notes: values.notes,
@@ -398,7 +401,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900">{t("containerDetails")}</h3>
                   </div>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                     <FormField
                       control={form.control}
                       name="containerNumber"
@@ -454,6 +457,25 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="linerName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs font-medium">{t("linerName")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={t("linerNamePlaceholder")}
+                              {...field}
+                              className="h-9 text-sm"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                   </div>
                 </div>
 

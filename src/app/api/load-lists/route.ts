@@ -6,6 +6,12 @@ import { RESOURCES } from "@/constants/resources";
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
+const normalizeOptionalDate = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
 // GET /api/load-lists
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +37,7 @@ export async function GET(request: NextRequest) {
         container_number,
         seal_number,
         batch_number,
+        liner_name,
         estimated_arrival_date,
         actual_arrival_date,
         load_date,
@@ -162,6 +169,7 @@ export async function GET(request: NextRequest) {
         containerNumber: ll.container_number,
         sealNumber: ll.seal_number,
         batchNumber: ll.batch_number,
+        linerName: ll.liner_name,
         estimatedArrivalDate: ll.estimated_arrival_date,
         actualArrivalDate: ll.actual_arrival_date,
         loadDate: ll.load_date,
@@ -268,6 +276,8 @@ export async function POST(request: NextRequest) {
 
     const currentYear = new Date().getFullYear();
     const llNumber = `LL-${currentYear}-${String(nextNum).padStart(4, "0")}`;
+    const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
+    const loadDate = normalizeOptionalDate(body.loadDate);
 
     // Create load list
     const { data: ll, error: llError } = await supabase
@@ -282,8 +292,9 @@ export async function POST(request: NextRequest) {
         container_number: body.containerNumber,
         seal_number: body.sealNumber,
         batch_number: body.batchNumber,
-        estimated_arrival_date: body.estimatedArrivalDate,
-        load_date: body.loadDate,
+        liner_name: body.linerName,
+        estimated_arrival_date: estimatedArrivalDate,
+        load_date: loadDate,
         status: body.status || "draft",
         notes: body.notes,
         created_by: userId,

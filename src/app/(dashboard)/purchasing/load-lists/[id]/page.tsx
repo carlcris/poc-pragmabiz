@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Package, Pencil, Link as LinkIcon } from "lucide-react";
@@ -8,6 +8,15 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -48,6 +57,14 @@ export default function LoadListDetailPage() {
   const [receivedDialogOpen, setReceivedDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [inTransitEstimatedArrivalDate, setInTransitEstimatedArrivalDate] = useState("");
+  const [inTransitLinerName, setInTransitLinerName] = useState("");
+
+  useEffect(() => {
+    if (!ll || !inTransitDialogOpen) return;
+    setInTransitEstimatedArrivalDate(ll.estimatedArrivalDate?.split("T")[0] || "");
+    setInTransitLinerName(ll.linerName || "");
+  }, [inTransitDialogOpen, ll]);
 
   const getStatusBadge = (status: LoadListStatus) => {
     switch (status) {
@@ -114,11 +131,46 @@ export default function LoadListDetailPage() {
     }
   };
 
-  const handleStatusChange = async (newStatus: LoadListStatus, dialogSetter: (open: boolean) => void) => {
+  const handleStatusChange = async (
+    newStatus: LoadListStatus,
+    dialogSetter: (open: boolean) => void
+  ) => {
     try {
-      await updateStatusMutation.mutateAsync({ id, status: newStatus });
-      toast.success(t("statusUpdateSuccess", { status: t(newStatus === "in_transit" ? "inTransit" : newStatus === "pending_approval" ? "pendingApproval" : newStatus) }));
+      await updateStatusMutation.mutateAsync({
+        id,
+        data: {
+          status: newStatus,
+        },
+      });
+      toast.success(
+        t("statusUpdateSuccess", {
+          status: t(
+            newStatus === "in_transit"
+              ? "inTransit"
+              : newStatus === "pending_approval"
+                ? "pendingApproval"
+                : newStatus
+          ),
+        })
+      );
       dialogSetter(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("statusUpdateError"));
+    }
+  };
+
+  const handleMarkInTransit = async () => {
+    try {
+      await updateStatusMutation.mutateAsync({
+        id,
+        data: {
+          status: "in_transit",
+          estimatedArrivalDate: inTransitEstimatedArrivalDate || undefined,
+          linerName: inTransitLinerName.trim() || undefined,
+        },
+      });
+      toast.success(t("statusUpdateSuccess", { status: t("inTransit") }));
+      setInTransitDialogOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("statusUpdateError"));
     }
@@ -271,6 +323,10 @@ export default function LoadListDetailPage() {
                     <div className="font-medium">{ll.batchNumber || t("noValue")}</div>
                   </div>
                   <div>
+                    <span className="text-muted-foreground">{t("linerName")}</span>
+                    <div className="font-medium">{ll.linerName || t("noValue")}</div>
+                  </div>
+                  <div>
                     <span className="text-muted-foreground">{t("loadDate")}</span>
                     <div className="font-medium">{formatDate(ll.loadDate)}</div>
                   </div>
@@ -415,25 +471,46 @@ export default function LoadListDetailPage() {
       </AlertDialog>
 
       {/* In Transit Dialog */}
-      <AlertDialog open={inTransitDialogOpen} onOpenChange={setInTransitDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("inTransitTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("inTransitDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleStatusChange("in_transit", setInTransitDialogOpen)}
-              disabled={updateStatusMutation.isPending}
-            >
-              {updateStatusMutation.isPending ? t("updating") : t("markInTransit")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <Dialog open={inTransitDialogOpen} onOpenChange={setInTransitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("inTransitTitle")}</DialogTitle>
+            <DialogDescription>{t("inTransitDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium" htmlFor="load-list-estimated-arrival-date">
+                {t("estimatedArrivalDateLabel")}
+              </label>
+              <Input
+                id="load-list-estimated-arrival-date"
+                type="date"
+                value={inTransitEstimatedArrivalDate}
+                onChange={(event) => setInTransitEstimatedArrivalDate(event.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium" htmlFor="load-list-liner-name">
+                {t("linerNameLabel")}
+              </label>
+              <Input
+                id="load-list-liner-name"
+                value={inTransitLinerName}
+                onChange={(event) => setInTransitLinerName(event.target.value)}
+                placeholder={t("linerNamePlaceholder")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInTransitDialogOpen(false)}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={handleMarkInTransit} disabled={updateStatusMutation.isPending}>
+              {updateStatusMutation.isPending ? t("updating") : t("saveAndMarkInTransit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Arrived Dialog */}
       <AlertDialog open={arrivedDialogOpen} onOpenChange={setArrivedDialogOpen}>
