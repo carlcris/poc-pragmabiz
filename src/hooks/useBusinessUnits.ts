@@ -70,7 +70,7 @@ export function useBusinessUnits() {
  */
 export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
   const queryClient = useQueryClient();
-  const { setCurrentBusinessUnit } = useBusinessUnitStore();
+  const { setCurrentBusinessUnit, availableBusinessUnits } = useBusinessUnitStore();
   const silent = options?.silent ?? false;
 
   return useMutation({
@@ -101,7 +101,10 @@ export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
     onSuccess: (response) => {
       // Update current business unit in store first
       if (response.business_unit) {
-        setCurrentBusinessUnit(response.business_unit as BusinessUnitWithAccess);
+        const selectedBusinessUnit =
+          availableBusinessUnits.find((businessUnit) => businessUnit.id === response.business_unit.id) ??
+          (response.business_unit as BusinessUnitWithAccess);
+        setCurrentBusinessUnit(selectedBusinessUnit);
       }
 
       // Only clear and refetch queries if not in silent mode

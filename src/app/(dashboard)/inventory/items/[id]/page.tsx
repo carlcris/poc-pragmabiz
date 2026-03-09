@@ -1,271 +1,345 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
-  ArrowLeft,
   Package,
   DollarSign,
-  Layers,
   TrendingUp,
   AlertTriangle,
-  Edit,
+  Pencil,
+  Loader2,
+  Hash,
+  FileText,
+  Tag,
+  BarChart3,
+  ImageIcon,
+  QrCode,
 } from "lucide-react";
 import { useItem } from "@/hooks/useItems";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
+import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
+import { EditGuard } from "@/components/permissions/PermissionGuard";
+import { RESOURCES } from "@/constants/resources";
 
-export default function ItemDetailPage() {
-  const params = useParams();
-  const router = useRouter();
-  const itemId = params.id as string;
-  const [activeTab, setActiveTab] = useState("general");
+type ItemDetailsPageProps = {
+  params: Promise<{ id: string }>;
+};
+
+function ItemDetailsContent({ params }: ItemDetailsPageProps) {
+  const t = useTranslations("inventoryItemPage");
+  const searchParams = useSearchParams();
+  const unwrappedParams = React.use(params);
+  const itemId = unwrappedParams.id;
+  const [activeTab, setActiveTab] = useState("overview");
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const { data: itemResponse, isLoading, error } = useItem(itemId);
   const item = itemResponse?.data;
+  const tabPanelClassName = "mt-4 min-h-[52rem] space-y-4";
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (error || !item) {
     return (
-      <div className="space-y-6">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back
-        </Button>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center text-destructive">
-              <p className="text-lg font-semibold">Error loading item</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {error instanceof Error ? error.message : "Item not found"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <p className="text-red-500 mb-2">{t("errorLoadingTitle")}</p>
+          <p className="text-sm text-gray-500">{(error as Error)?.message || t("itemNotFound")}</p>
+          <Button asChild className="mt-4">
+            <Link href="/inventory/items">{t("backToItems")}</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header with Gradient Background */}
-      <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white shadow-lg">
-        <div className="relative z-10">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => router.back()}
-                className="text-white hover:bg-white/20"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight">{item.name}</h1>
-                  <Badge
-                    variant={item.isActive ? "outline" : "secondary"}
-                    className={
-                      item.isActive
-                        ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-                        : ""
-                    }
-                  >
-                    {item.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2 text-blue-100">
-                  <span className="font-mono font-semibold">{item.code}</span>
-                  <span>•</span>
-                  <span>{item.category || "No category"}</span>
-                  <span>•</span>
-                  <Badge variant="outline" className="border-white/30 text-white">
-                    {item.itemType}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/20"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Item
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{item.name}</h1>
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+            {item.code} • {item.category || t("noCategory")} • {item.itemType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+          </p>
         </div>
-        {/* Decorative Elements */}
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+        <div className="flex items-center gap-3">
+          <EditGuard resource={RESOURCES.ITEMS}>
+            <Button asChild>
+              <Link href={`/inventory/items/${itemId}/edit`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                {t("editItemAction")}
+              </Link>
+            </Button>
+          </EditGuard>
+        </div>
       </div>
 
-      {/* Quick Stats Cards */}
+      {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="border-l-4 border-l-blue-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Standard Cost
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium">{t("standardCostLabel")}</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {t("perUnitPrefix")} {item.uom}
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">List Price</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium">{t("listPriceLabel")}</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
             </div>
             {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Margin:{" "}
-                {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(1)}%
+              <p className="text-xs text-muted-foreground">
+                {t("marginLabel")}: {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(1)}%
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-orange-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Reorder Level
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <CardTitle className="text-sm font-medium">{t("reorderLevelLabel")}</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{item.reorderLevel || "0"}</div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Reorder Qty: {item.reorderQty || "0"}
+            <p className="text-xs text-muted-foreground">
+              {t("reorderQtyShortLabel")}: {item.reorderQty || "0"}
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-purple-500">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Base UOM</CardTitle>
-            <Package className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-sm font-medium">{t("baseUomLabel")}</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{item.uom || "N/A"}</div>
+            <div className="text-2xl font-bold">{item.uom || "-"}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="general" className="gap-2">
-            <Package className="h-4 w-4" />
-            General
-          </TabsTrigger>
-          <TabsTrigger value="prices" className="gap-2">
-            <DollarSign className="h-4 w-4" />
-            Prices
-          </TabsTrigger>
-          <TabsTrigger value="locations" className="gap-2">
-            <Layers className="h-4 w-4" />
-            Locations
-          </TabsTrigger>
+        <TabsList>
+          <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
+          <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+          <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
         </TabsList>
 
-        {/* General Tab */}
-        <TabsContent value="general" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Core item details and identification</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-3">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Item Code
-                  </label>
-                  <p className="font-mono text-lg font-semibold">{item.code}</p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Item Name
-                  </label>
-                  <p className="text-lg font-semibold">{item.name}</p>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Category
-                  </label>
-                  <Badge variant="outline" className="text-sm">
-                    {item.category || "Uncategorized"}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className={tabPanelClassName}>
+          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+            {/* Main Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
+                <CardDescription className="text-sm">{t("itemInformationDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Basic Details Grid */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted p-2">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">{t("itemCodeLabel")}</p>
+                      <p className="font-medium font-mono">{item.code}</p>
+                    </div>
+                  </div>
 
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted p-2">
+                      <Tag className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">{t("categoryLabel")}</p>
+                      <p className="font-medium">{item.category || t("uncategorized")}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted p-2">
+                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">{t("itemTypeLabel")}</p>
+                      <Badge variant="outline">
+                        {item.itemType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted p-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">{t("unitOfMeasureLabel")}</p>
+                      <p className="font-medium">{item.uom}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Full Width Item Name */}
+                <div className="flex items-start gap-3 border-t pt-4">
+                  <div className="mt-0.5 rounded-lg bg-muted p-2">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">{t("itemNameLabel")}</p>
+                    <p className="font-medium">{item.name}</p>
+                    {item.chineseName && (
+                      <p className="text-sm text-muted-foreground">{item.chineseName}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Description */}
+                {item.description && (
+                  <div className="flex items-start gap-3 border-t pt-4">
+                    <div className="mt-0.5 rounded-lg bg-muted p-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">{t("descriptionLabel")}</p>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Image and QR Code Sidebar */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" />
+                    {t("itemImageLabel")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {item.imageUrl ? (
+                    <div className="relative h-[240px] w-full overflow-hidden rounded-lg border bg-white">
+                      <Image
+                        src={item.imageUrl}
+                        alt={item.name}
+                        fill
+                        className="object-contain p-3"
+                        unoptimized
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30" style={{ height: '240px' }}>
+                      <div className="text-center text-muted-foreground">
+                        <ImageIcon className="mx-auto mb-2 h-8 w-8" />
+                        <p className="text-sm">{t("noImage")}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <QrCode className="h-4 w-4" />
+                    {t("qrCodeLabel")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {item.skuQrImage ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border bg-white p-4">
+                        <div className="relative mx-auto h-[200px] w-[200px]">
+                          <Image
+                            src={item.skuQrImage}
+                            alt={`SKU QR ${item.sku || item.code}`}
+                            fill
+                            className="object-contain"
+                            unoptimized
+                          />
+                        </div>
+                      </div>
+                      <p className="text-center text-sm font-mono font-medium bg-muted px-3 py-2 rounded">
+                        {item.sku || item.code}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30" style={{ height: '240px' }}>
+                      <div className="text-center text-muted-foreground">
+                        <QrCode className="mx-auto mb-2 h-8 w-8" />
+                        <p className="text-sm">{t("noQrCode")}</p>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Pricing and Inventory Summary */}
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Pricing Details</CardTitle>
+                <CardTitle className="text-base font-semibold">{t("pricingDetailsTitle")}</CardTitle>
+                <CardDescription className="text-sm">{t("pricingDetailsDescription")}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium text-muted-foreground">Standard Cost</span>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("standardCostLabel")}</span>
                   <span className="text-lg font-bold">
                     ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border bg-green-50 p-3 dark:bg-green-950">
-                  <span className="text-sm font-medium text-muted-foreground">List Price</span>
-                  <span className="text-lg font-bold text-green-700 dark:text-green-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("listPriceLabel")}</span>
+                  <span className="text-lg font-bold">
                     ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
                   </span>
                 </div>
                 {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
-                  <div className="flex items-center justify-between rounded-lg border bg-blue-50 p-3 dark:bg-blue-950">
-                    <span className="text-sm font-medium text-muted-foreground">Profit Margin</span>
-                    <span className="text-lg font-bold text-blue-700 dark:text-blue-400">
-                      {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(
-                        1
-                      )}
-                      %
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-sm font-medium text-muted-foreground">{t("profitMarginLabel")}</span>
+                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
+                      {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(1)}%
                     </span>
                   </div>
                 )}
@@ -274,51 +348,49 @@ export default function ItemDetailPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Inventory Management</CardTitle>
+                <CardTitle className="text-base font-semibold">{t("inventoryManagement")}</CardTitle>
+                <CardDescription className="text-sm">{t("reorderSettingsDescription")}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium text-muted-foreground">Base UOM</span>
-                  <Badge className="text-sm">{item.uom || "N/A"}</Badge>
-                </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium text-muted-foreground">Reorder Level</span>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("reorderLevelLabel")}</span>
                   <span className="text-lg font-bold">{item.reorderLevel || "0"}</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    Reorder Quantity
-                  </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("reorderQtyLabel")}</span>
                   <span className="text-lg font-bold">{item.reorderQty || "0"}</span>
                 </div>
+                {item.inTransit !== undefined && item.inTransit > 0 && (
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="text-sm font-medium text-muted-foreground">{t("inTransitLabel")}</span>
+                    <span className="text-lg font-bold text-amber-600 dark:text-amber-500">
+                      {item.inTransit}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
-
-          {item.description && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Description</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
-        {/* Packaging Tab */}
-
         {/* Prices Tab */}
-        <TabsContent value="prices">
+        <TabsContent value="prices" className={tabPanelClassName}>
           <PricesTab itemId={itemId} />
         </TabsContent>
 
         {/* Locations Tab */}
-        <TabsContent value="locations">
+        <TabsContent value="locations" className={tabPanelClassName}>
           <LocationsTab itemId={itemId} />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function ItemDetailPage(props: ItemDetailsPageProps) {
+  return (
+    <ProtectedRoute resource={RESOURCES.ITEMS}>
+      <ItemDetailsContent {...props} />
+    </ProtectedRoute>
   );
 }

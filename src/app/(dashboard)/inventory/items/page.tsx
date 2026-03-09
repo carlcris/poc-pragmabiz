@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Plus,
@@ -42,7 +43,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ItemDialogMode } from "@/components/items/ItemFormDialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
@@ -50,10 +50,6 @@ import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Item } from "@/types/item";
 
-const ItemFormDialog = dynamic(
-  () => import("@/components/items/ItemFormDialog").then((mod) => mod.ItemFormDialog),
-  { ssr: false }
-);
 const ConfirmDialog = dynamic(
   () => import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
   { ssr: false }
@@ -62,13 +58,11 @@ const ConfirmDialog = dynamic(
 function ItemsPageContent() {
   const t = useTranslations("itemsPage");
   const tCommon = useTranslations("common");
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [itemDialogMode, setItemDialogMode] = useState<ItemDialogMode>("create");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -229,21 +223,15 @@ function ItemsPageContent() {
   };
 
   const handleCreateItem = () => {
-    setSelectedItemId(null);
-    setItemDialogMode("create");
-    setDialogOpen(true);
+    router.push("/inventory/items/create");
   };
 
   const handleViewItem = (itemId: string) => {
-    setSelectedItemId(itemId);
-    setItemDialogMode("view");
-    setDialogOpen(true);
+    router.push(`/inventory/items/${itemId}`);
   };
 
   const handleEditItem = (item: ItemWithStock | Item) => {
-    setSelectedItemId(item.id);
-    setItemDialogMode("edit");
-    setDialogOpen(true);
+    router.push(`/inventory/items/${item.id}/edit`);
   };
 
   const handleDeleteItem = (item: ItemWithStock) => {
@@ -675,16 +663,6 @@ function ItemsPageContent() {
           </div>
         )}
       </div>
-
-      {dialogOpen && (
-        <ItemFormDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          itemId={selectedItemId}
-          mode={itemDialogMode}
-        />
-      )}
-
       {deleteDialogOpen && (
         <ConfirmDialog
           open={deleteDialogOpen}

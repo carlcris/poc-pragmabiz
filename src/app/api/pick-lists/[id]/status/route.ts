@@ -33,7 +33,6 @@ const ALLOWED_TRANSITIONS: Record<PickListStatus, PickListStatus[]> = {
 const DN_STATUS_BY_PICK_LIST_STATUS: Partial<Record<PickListStatus, "picking_in_progress" | "dispatch_ready" | "confirmed">> = {
   in_progress: "picking_in_progress",
   done: "dispatch_ready",
-  cancelled: "confirmed",
 };
 
 const asNumber = (value: number | string | null | undefined) => {
@@ -170,7 +169,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: updatePickListError.message }, { status: 500 });
     }
 
-    const mappedDnStatus = DN_STATUS_BY_PICK_LIST_STATUS[nextStatus];
+    let mappedDnStatus = DN_STATUS_BY_PICK_LIST_STATUS[nextStatus];
+    if (nextStatus === "cancelled") {
+      const { data: dnLineSummary, error: dnLineSummaryError } = await auth.supabase
+        .from("delivery_note_items")
+        .select("dispatched_qty")
+        .eq("company_id", auth.companyId)
+        .eq("dn_id", header.dn_id);
+
+      if (dnLineSummaryError) {
+        return NextResponse.json({ error: dnLineSummaryError.message }, { status: 500 });
+      }
+
+      const hasHistoricalDispatch = (dnLineSummary || []).some((row) => asNumber(row.dispatched_qty) > 0);
+      mappedDnStatus = hasHistoricalDispatch ? undefined : "confirmed";
+
+      if (!mappedDnStatus && (dnLineSummary || []).length > 0) {
+        const { error: fallbackDnStatusError } = await auth.supabase
+          .from("delivery_notes")
+          .update({
+            status: "dispatched",
+            updated_at: nowIso,
+            updated_by: auth.userId,
+          })
+          .eq("id", header.dn_id)
+          .eq("company_id", auth.companyId);
+
+        if (fallbackDnStatusError) {
+          return NextResponse.json({ error: fallbackDnStatusError.message }, { status: 500 });
+        }
+      }
+    }
+
     if (mappedDnStatus) {
       const dnUpdatePayload: Record<string, string | null> = {
         status: mappedDnStatus,

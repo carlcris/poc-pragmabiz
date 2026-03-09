@@ -14,6 +14,7 @@ type DbItem = {
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
+  category_id: string | null;
   item_type: string;
   uom_id: string;
   cost_price: number | string | null;
@@ -22,6 +23,14 @@ type DbItem = {
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
+};
+type ItemWarehouseRow = {
+  in_transit: number | string | null;
+  estimated_arrival_date: string | null;
+};
+type ItemWarehouseReorderRow = {
+  reorder_level: number | string | null;
+  reorder_quantity: number | string | null;
 };
 type DbItemCategory = {
   id: string;
@@ -34,9 +43,23 @@ type DbUoM = {
   name: string;
 };
 type ItemRow = DbItem & {
-  item_categories: DbItemCategory | DbItemCategory[] | null;
-  units_of_measure: DbUoM | DbUoM[] | null;
+  item_category: DbItemCategory | null;
+  unit_of_measure: DbUoM | null;
 };
+
+const ITEM_DETAIL_SELECT = `
+  *,
+  item_category:item_categories!items_category_id_fkey (
+    id,
+    name,
+    code
+  ),
+  unit_of_measure:units_of_measure!items_uom_id_fkey (
+    id,
+    code,
+    name
+  )
+`;
 
 const generateSkuQrDataUrl = async (sku: string) =>
   QRCode.toDataURL(sku, {
@@ -51,12 +74,6 @@ const generateSkuQrDataUrl = async (sku: string) =>
 
 // Transform database item to frontend Item type
 function transformDbItem(dbItem: ItemRow): Item {
-  const category = Array.isArray(dbItem.item_categories)
-    ? dbItem.item_categories[0]
-    : dbItem.item_categories;
-  const uom = Array.isArray(dbItem.units_of_measure)
-    ? dbItem.units_of_measure[0]
-    : dbItem.units_of_measure;
   return {
     id: dbItem.id,
     companyId: dbItem.company_id,
@@ -67,9 +84,9 @@ function transformDbItem(dbItem: ItemRow): Item {
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
     itemType: dbItem.item_type as Item["itemType"],
-    uom: uom?.code || "",
+    uom: dbItem.unit_of_measure?.code || "",
     uomId: dbItem.uom_id,
-    category: category?.name || "",
+    category: dbItem.item_category?.name || "",
     standardCost: Number(dbItem.cost_price) || 0,
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0,
@@ -105,21 +122,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Fetch item
     const { data: fetchedItem, error } = await supabase
       .from("items")
-      .select(
-        `
-        *,
-        item_categories (
-          id,
-          name,
-          code
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        )
-      `
-      )
+      .select(ITEM_DETAIL_SELECT)
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -144,21 +147,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         .update({ sku_qr_image: qrDataUrl })
         .eq("id", id)
         .eq("company_id", data.company_id)
-        .select(
-          `
-          *,
-          item_categories (
-            id,
-            name,
-            code
-          ),
-          units_of_measure (
-            id,
-            code,
-            name
-          )
-        `
-        )
+        .select(ITEM_DETAIL_SELECT)
         .maybeSingle();
 
       if (patchedItem) {
@@ -166,8 +155,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    let reorderLevel = 0;
+    let reorderQty = 0;
     let inTransit = 0;
     let estimatedArrivalDate: string | null = null;
+
+    const { data: reorderRows } = await supabase
+      .from("item_warehouse")
+      .select("reorder_level, reorder_quantity")
+      .eq("item_id", id)
+      .eq("company_id", data.company_id)
+      .is("deleted_at", null);
+
+    if (reorderRows && reorderRows.length > 0) {
+      for (const row of reorderRows as ItemWarehouseReorderRow[]) {
+        reorderLevel = Math.max(reorderLevel, Number(row.reorder_level || 0));
+        reorderQty = Math.max(reorderQty, Number(row.reorder_quantity || 0));
+      }
+    }
 
     let inventoryQuery = supabase
       .from("item_warehouse")
@@ -182,7 +187,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { data: inventoryRows } = await inventoryQuery;
     if (inventoryRows && inventoryRows.length > 0) {
-      for (const row of inventoryRows as { in_transit: number | string | null; estimated_arrival_date: string | null }[]) {
+      for (const row of inventoryRows as ItemWarehouseRow[]) {
         inTransit += Number(row.in_transit || 0);
         if (row.estimated_arrival_date) {
           if (!estimatedArrivalDate || row.estimated_arrival_date < estimatedArrivalDate) {
@@ -197,6 +202,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ...transformDbItem(data as ItemRow),
       inTransit,
       estimatedArrivalDate,
+      reorderLevel,
+      reorderQty,
     };
     return NextResponse.json({ data: item });
   } catch {
@@ -301,26 +308,40 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updateData.category_id = categoryData.id;
     }
 
+    if (body.reorderLevel !== undefined || body.reorderQty !== undefined) {
+      const reorderUpdate: Record<string, unknown> = {
+        updated_by: user.id,
+      };
+
+      if (body.reorderLevel !== undefined) {
+        reorderUpdate.reorder_level = body.reorderLevel;
+      }
+
+      if (body.reorderQty !== undefined) {
+        reorderUpdate.reorder_quantity = body.reorderQty;
+      }
+
+      const { error: reorderUpdateError } = await supabase
+        .from("item_warehouse")
+        .update(reorderUpdate)
+        .eq("company_id", existing.company_id)
+        .eq("item_id", id)
+        .is("deleted_at", null);
+
+      if (reorderUpdateError) {
+        return NextResponse.json(
+          { error: "Failed to update reorder settings", details: reorderUpdateError.message },
+          { status: 500 }
+        );
+      }
+    }
+
     // Update item
     const { data: updatedItem, error: updateError } = await supabase
       .from("items")
       .update(updateData)
       .eq("id", id)
-      .select(
-        `
-        *,
-        item_categories (
-          id,
-          name,
-          code
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        )
-      `
-      )
+      .select(ITEM_DETAIL_SELECT)
       .single();
 
     if (updateError) {

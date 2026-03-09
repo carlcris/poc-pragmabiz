@@ -119,6 +119,191 @@ export const fetchPickListHeader = async (supabase: SupabaseClient, companyId: s
   return (data as PickListRow | null) ?? null;
 };
 
+type CreatePickListForDnArgs = {
+  supabase: SupabaseClient;
+  companyId: string;
+  userId: string;
+  currentBusinessUnitId: string | null;
+  dnId: string;
+  dnBusinessUnitId: string | null;
+  fulfillingWarehouseId: string;
+  pickerUserIds: string[];
+  notes?: string | null;
+};
+
+export const createPickListForDn = async ({
+  supabase,
+  companyId,
+  userId,
+  currentBusinessUnitId,
+  dnId,
+  dnBusinessUnitId,
+  fulfillingWarehouseId,
+  pickerUserIds,
+  notes,
+}: CreatePickListForDnArgs) => {
+  const uniquePickers = Array.from(new Set(pickerUserIds.map((id) => id.trim()).filter(Boolean)));
+  if (uniquePickers.length === 0) {
+    throw new Error("At least one picker must be assigned");
+  }
+
+  const { data: existingActive, error: existingActiveError } = await supabase
+    .from("pick_lists")
+    .select("id, status")
+    .eq("company_id", companyId)
+    .eq("dn_id", dnId)
+    .in("status", ["pending", "in_progress", "paused"])
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existingActiveError) {
+    throw new Error(existingActiveError.message);
+  }
+
+  if (existingActive) {
+    throw new Error("Delivery note already has an active pick list");
+  }
+
+  const { data: dnItems, error: dnItemsError } = await supabase
+    .from("delivery_note_items")
+    .select("id, sr_id, sr_item_id, item_id, uom_id, allocated_qty, picked_qty, is_voided")
+    .eq("company_id", companyId)
+    .eq("dn_id", dnId)
+    .eq("is_voided", false)
+    .gt("allocated_qty", 0)
+    .order("created_at", { ascending: true });
+
+  if (dnItemsError) {
+    throw new Error(dnItemsError.message);
+  }
+
+  const pendingDnItems = (dnItems || []).filter((item) => {
+    const allocatedQty = Number(item.allocated_qty || 0);
+    const pickedQty = Number(item.picked_qty || 0);
+    return allocatedQty > pickedQty;
+  });
+
+  if (pendingDnItems.length === 0) {
+    throw new Error("Delivery note has no pending lines for picking");
+  }
+
+  const { data: fulfillingWarehouse, error: fulfillingWarehouseError } = await supabase
+    .from("warehouses")
+    .select("business_unit_id")
+    .eq("id", fulfillingWarehouseId)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fulfillingWarehouseError) {
+    throw new Error(fulfillingWarehouseError.message);
+  }
+
+  const pickListBusinessUnitId =
+    fulfillingWarehouse?.business_unit_id || dnBusinessUnitId || currentBusinessUnitId;
+
+  const { data: pickerUsers, error: pickerUserError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("is_active", true)
+    .in("id", uniquePickers)
+    .is("deleted_at", null);
+
+  if (pickerUserError) {
+    throw new Error(pickerUserError.message);
+  }
+
+  if (!pickerUsers || pickerUsers.length !== uniquePickers.length) {
+    throw new Error("One or more picker users are invalid");
+  }
+
+  const nowIso = new Date().toISOString();
+  const pickListNo = buildPickListNo();
+
+  const { data: createdPickList, error: createError } = await supabase
+    .from("pick_lists")
+    .insert({
+      company_id: companyId,
+      business_unit_id: pickListBusinessUnitId,
+      dn_id: dnId,
+      pick_list_no: pickListNo,
+      status: "pending",
+      notes: notes?.trim() || null,
+      created_by: userId,
+      updated_by: userId,
+      created_at: nowIso,
+      updated_at: nowIso,
+    })
+    .select("id")
+    .single();
+
+  if (createError || !createdPickList) {
+    if (createError?.code === "23505") {
+      throw new Error("Delivery note already has an active pick list");
+    }
+    throw new Error(createError?.message || "Failed to create pick list");
+  }
+
+  const assignees = uniquePickers.map((pickerUserId) => ({
+    company_id: companyId,
+    pick_list_id: createdPickList.id,
+    user_id: pickerUserId,
+    assigned_at: nowIso,
+    assigned_by: userId,
+  }));
+
+  const { error: assigneeError } = await supabase.from("pick_list_assignees").insert(assignees);
+  if (assigneeError) {
+    throw new Error(assigneeError.message);
+  }
+
+  const pickListItems = pendingDnItems.map((item) => {
+    const allocatedQty = Number(item.allocated_qty || 0);
+    const pickedQty = Number(item.picked_qty || 0);
+    const outstandingQty = Math.max(0, allocatedQty - pickedQty);
+
+    return {
+      company_id: companyId,
+      pick_list_id: createdPickList.id,
+      dn_item_id: item.id,
+      sr_id: item.sr_id,
+      sr_item_id: item.sr_item_id,
+      item_id: item.item_id,
+      uom_id: item.uom_id,
+      allocated_qty: outstandingQty,
+      picked_qty: 0,
+      short_qty: outstandingQty,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+  });
+
+  const { error: itemError } = await supabase.from("pick_list_items").insert(pickListItems);
+  if (itemError) {
+    throw new Error(itemError.message);
+  }
+
+  const { error: dnUpdateError } = await supabase
+    .from("delivery_notes")
+    .update({
+      status: "queued_for_picking",
+      updated_at: nowIso,
+      updated_by: userId,
+    })
+    .eq("id", dnId)
+    .eq("company_id", companyId);
+
+  if (dnUpdateError) {
+    throw new Error(dnUpdateError.message);
+  }
+
+  return {
+    pickListId: createdPickList.id,
+    pickListNo,
+  };
+};
+
 export const ensurePickListActorAuthorized = async (
   supabase: SupabaseClient,
   companyId: string,

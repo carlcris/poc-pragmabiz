@@ -33,6 +33,10 @@ export type DeliveryNoteItem = {
   picked_qty: number;
   short_qty: number;
   dispatched_qty: number;
+  is_voided?: boolean;
+  voided_at?: string | null;
+  voided_by?: string | null;
+  void_reason?: string | null;
   created_at: string;
   updated_at: string;
   items?: {
@@ -150,4 +154,36 @@ export type ReceiveDirectPickupDeliveryNotePayload = Omit<ReceiveDeliveryNotePay
     deliveryNoteItemId: string;
     receivedQty: number;
   }>;
+};
+
+export type AdjustDispatchedDeliveryNoteItemPayload = {
+  dispatchedQty: number;
+  reason?: string;
+};
+
+export type AddDeliveryNoteItemsPayload = {
+  pickerUserIds: string[];
+  notes?: string;
+  items: Array<{
+    srId: string;
+    srItemId: string;
+    itemId: string;
+    uomId: string;
+    allocatedQty: number;
+  }>;
+};
+
+export type DeliveryNoteAllocatableItem = {
+  srId: string;
+  srItemId: string;
+  requestCode: string;
+  itemId: string;
+  itemCode: string | null;
+  itemName: string | null;
+  uomId: string;
+  uomLabel: string | null;
+  requestedQty: number;
+  receivedQty: number;
+  allocatedInOtherDns: number;
+  allocatableQty: number;
 };

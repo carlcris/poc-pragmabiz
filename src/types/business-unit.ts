@@ -20,6 +20,12 @@ export type BusinessUnit = {
   updated_by: string | null;
 };
 
+export type CompanySummary = {
+  id: string;
+  code: string;
+  name: string;
+};
+
 export type UserBusinessUnitAccess = {
   user_id: string;
   business_unit_id: string;
@@ -30,6 +36,7 @@ export type UserBusinessUnitAccess = {
 };
 
 export type BusinessUnitWithAccess = BusinessUnit & {
+  company?: CompanySummary;
   access: {
     role: UserBusinessUnitAccess["role"];
     is_default: boolean;

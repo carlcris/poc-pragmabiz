@@ -258,7 +258,10 @@ export default function DeliveryNotesPage() {
       });
   }, [usersData?.data]);
 
-  const actionItems = useMemo(() => actionDn?.delivery_note_items || [], [actionDn?.delivery_note_items]);
+  const actionItems = useMemo(
+    () => (actionDn?.delivery_note_items || []).filter((item) => !item.is_voided),
+    [actionDn?.delivery_note_items]
+  );
 
   const filteredQueuePickerUsers = useMemo(() => {
     const q = queuePickerSearch.trim().toLowerCase();
@@ -697,10 +700,13 @@ export default function DeliveryNotesPage() {
         data: {
           driverName: driverName.trim() || undefined,
           notes: dispatchNotes.trim() || undefined,
-          items: actionItems.map((item) => ({
-            deliveryNoteItemId: item.id,
-            dispatchQty: Number(item.picked_qty || 0),
-          })),
+          items: actionItems
+            .filter((item) => !item.is_voided)
+            .map((item) => ({
+              deliveryNoteItemId: item.id,
+              dispatchQty: Math.max(0, Number(item.picked_qty || 0) - Number(item.dispatched_qty || 0)),
+            }))
+            .filter((item) => item.dispatchQty > 0),
         },
       });
     }

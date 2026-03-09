@@ -4,6 +4,8 @@ import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { PICK_LISTS_QUERY_KEY, DELIVERY_NOTES_QUERY_KEY } from "@/hooks/queryKeys";
 import { useInventoryRealtimeInvalidation } from "@/hooks/useInventoryRealtimeInvalidation";
 import type {
+  AddDeliveryNoteItemsPayload,
+  AdjustDispatchedDeliveryNoteItemPayload,
   CreateDeliveryNotePayload,
   DispatchDeliveryNotePayload,
   MarkDispatchReadyPayload,
@@ -32,6 +34,16 @@ export function useDeliveryNote(id: string) {
     queryKey: [DELIVERY_NOTES_QUERY_KEY, id],
     queryFn: () => deliveryNotesApi.getById(id),
     enabled: !!id,
+  });
+}
+
+export function useDeliveryNoteAllocatableItems(id: string, enabled = true) {
+  useInventoryRealtimeInvalidation([DELIVERY_NOTES_QUERY_KEY, PICK_LISTS_QUERY_KEY], !!id && enabled);
+
+  return useQuery({
+    queryKey: [DELIVERY_NOTES_QUERY_KEY, id, "allocatable-items"],
+    queryFn: () => deliveryNotesApi.getAllocatableItems(id),
+    enabled: !!id && enabled,
   });
 }
 
@@ -170,6 +182,53 @@ export function useVoidDeliveryNote() {
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, "Failed to void delivery note"));
+    },
+  });
+}
+
+export function useAdjustDispatchedDeliveryNoteItem() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      itemId,
+      data,
+    }: {
+      id: string;
+      itemId: string;
+      data: AdjustDispatchedDeliveryNoteItemPayload;
+    }) => deliveryNotesApi.adjustItem(id, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"] });
+      queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      toast.success("Delivery note item adjusted");
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to adjust delivery note item"));
+    },
+  });
+}
+
+export function useAddDeliveryNoteItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: AddDeliveryNoteItemsPayload }) =>
+      deliveryNotesApi.addItems(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"] });
+      queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      toast.success("Delivery note items added and queued for picking");
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, "Failed to add delivery note items"));
     },
   });
 }

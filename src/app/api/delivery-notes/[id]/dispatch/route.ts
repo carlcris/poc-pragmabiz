@@ -57,23 +57,64 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Delivery note has no items" }, { status: 400 });
     }
 
-    const dispatchOverrideMap = new Map(
-      (body.items || []).map((line) => [line.deliveryNoteItemId, toNumber(line.dispatchQty)])
-    );
+    const activeDnItems = dnItems.filter((item) => !item.is_voided);
+    const activeItemIds = new Set(activeDnItems.map((item) => item.id));
+    const dispatchOverrideMap = new Map<string, number>();
 
-    const dispatchItems = dnItems.map((item) => {
+    for (const line of body.items || []) {
+      if (!activeItemIds.has(line.deliveryNoteItemId)) {
+        return NextResponse.json(
+          { error: `Invalid delivery note item ${line.deliveryNoteItemId}` },
+          { status: 400 }
+        );
+      }
+
+      dispatchOverrideMap.set(line.deliveryNoteItemId, toNumber(line.dispatchQty));
+    }
+
+    const dispatchItems = activeDnItems.flatMap((item) => {
       const pickedQty = toNumber(item.picked_qty);
       const priorDispatchedQty = toNumber(item.dispatched_qty);
       const remainingPickedQty = Math.max(0, pickedQty - priorDispatchedQty);
-      const dispatchQty = dispatchOverrideMap.has(item.id)
-        ? dispatchOverrideMap.get(item.id) || 0
-        : remainingPickedQty;
+      const requestedDispatchQty = dispatchOverrideMap.get(item.id);
 
-      return {
-        deliveryNoteItemId: item.id,
-        dispatchQty,
-      };
+      if (remainingPickedQty === 0) {
+        return [];
+      }
+
+      if (requestedDispatchQty == null) {
+        return [
+          {
+            deliveryNoteItemId: item.id,
+            dispatchQty: remainingPickedQty,
+          },
+        ];
+      }
+
+      if (requestedDispatchQty < 0 || requestedDispatchQty > remainingPickedQty) {
+        return [
+          {
+            deliveryNoteItemId: item.id,
+            dispatchQty: requestedDispatchQty,
+          },
+        ];
+      }
+
+      if (requestedDispatchQty === 0) {
+        return [];
+      }
+
+      return [
+        {
+          deliveryNoteItemId: item.id,
+          dispatchQty: requestedDispatchQty,
+        },
+      ];
     });
+
+    if (dispatchItems.length === 0) {
+      return NextResponse.json({ error: "No picked quantities available for dispatch" }, { status: 400 });
+    }
 
     const businessUnitId = auth.currentBusinessUnitId || header.business_unit_id;
     if (!businessUnitId) {

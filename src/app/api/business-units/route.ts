@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import type { BusinessUnitWithAccess } from "@/types/business-unit";
+import type { BusinessUnitWithAccess, CompanySummary } from "@/types/business-unit";
 
 export async function GET() {
   try {
@@ -44,7 +44,12 @@ export async function GET() {
           created_at,
           created_by,
           updated_at,
-          updated_by
+          updated_by,
+          companies (
+            id,
+            code,
+            name
+          )
         )
       `
       )
@@ -62,21 +67,29 @@ export async function GET() {
       role: BusinessUnitWithAccess["access"]["role"];
       is_default: boolean;
       business_units:
-        | Omit<BusinessUnitWithAccess, "access">
-        | Omit<BusinessUnitWithAccess, "access">[]
+        | (Omit<BusinessUnitWithAccess, "access" | "company"> & {
+            companies?: CompanySummary | CompanySummary[] | null;
+          })
+        | (Omit<BusinessUnitWithAccess, "access" | "company"> & {
+            companies?: CompanySummary | CompanySummary[] | null;
+          })[]
         | null;
     };
 
     // Transform data to BusinessUnitWithAccess format
-    const businessUnits: BusinessUnitWithAccess[] = (accessRecords as AccessRecord[])
-      .map((record) => {
+    const businessUnits = (accessRecords as AccessRecord[])
+      .map((record): BusinessUnitWithAccess | null => {
         const businessUnit = Array.isArray(record.business_units)
           ? record.business_units[0]
           : record.business_units;
         if (!businessUnit) return null;
+        const company = Array.isArray(businessUnit.companies)
+          ? businessUnit.companies[0]
+          : businessUnit.companies;
 
         return {
           ...businessUnit,
+          company: company ?? undefined,
           access: {
             role: record.role,
             is_default: record.is_default,

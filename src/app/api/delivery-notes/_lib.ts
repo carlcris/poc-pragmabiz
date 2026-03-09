@@ -57,6 +57,7 @@ type DeliveryNoteItemRow = {
   picked_qty: number | string;
   short_qty: number | string;
   dispatched_qty: number | string;
+  is_voided?: boolean | null;
 };
 
 type DeliveryNoteWithRelations = {
@@ -204,6 +205,7 @@ export const computeStockRequestDerivedStatus = async (
       `
       allocated_qty,
       dispatched_qty,
+      is_voided,
       delivery_notes!inner(status)
     `
     )
@@ -221,7 +223,7 @@ export const computeStockRequestDerivedStatus = async (
 
   const activeDnItems = (dnItems || []).filter((item) => {
     const dnHeader = Array.isArray(item.delivery_notes) ? item.delivery_notes[0] : item.delivery_notes;
-    return dnHeader?.status !== "voided";
+    return dnHeader?.status !== "voided" && !item.is_voided;
   });
 
   const totalAllocated = activeDnItems.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0);

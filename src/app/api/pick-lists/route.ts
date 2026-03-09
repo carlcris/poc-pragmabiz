@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { fetchDeliveryNoteHeader, fetchDeliveryNoteItems } from "../delivery-notes/_lib";
+import { fetchDeliveryNoteHeader } from "../delivery-notes/_lib";
 import {
   getWarehouseBusinessUnitMap,
   notifyBusinessUnits,
 } from "@/app/api/_lib/workflow-notifications";
-import {
-  buildPickListNo,
-  fetchPickList,
-  getPickListAuthContext,
-  mapPickListRecord,
-  type PickListStatus,
-} from "./_lib";
+import { createPickListForDn, fetchPickList, getPickListAuthContext, mapPickListRecord, type PickListStatus } from "./_lib";
 
 type CreatePickListBody = {
   dnId?: string;
@@ -96,145 +90,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Delivery note not found" }, { status: 404 });
     }
 
-    if (header.status !== "confirmed") {
+    if (!["confirmed", "dispatched"].includes(header.status)) {
       return NextResponse.json(
-        { error: "Pick list can only be created from confirmed delivery notes" },
+        { error: "Pick list can only be created from confirmed or dispatched delivery notes" },
         { status: 400 }
       );
     }
-
-    const { data: existingActive, error: existingActiveError } = await auth.supabase
-      .from("pick_lists")
-      .select("id, status")
-      .eq("company_id", auth.companyId)
-      .eq("dn_id", dnId)
-      .neq("status", "cancelled")
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (existingActiveError) {
-      return NextResponse.json({ error: existingActiveError.message }, { status: 500 });
-    }
-
-    if (existingActive) {
-      return NextResponse.json(
-        { error: "Delivery note already has an active pick list" },
-        { status: 409 }
-      );
-    }
-
-    const dnItems = await fetchDeliveryNoteItems(auth.supabase, auth.companyId, dnId);
-    if (dnItems.length === 0) {
-      return NextResponse.json({ error: "Delivery note has no items" }, { status: 400 });
-    }
-
-    const { data: fulfillingWarehouse, error: fulfillingWarehouseError } = await auth.supabase
-      .from("warehouses")
-      .select("business_unit_id")
-      .eq("id", header.fulfilling_warehouse_id)
-      .eq("company_id", auth.companyId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (fulfillingWarehouseError) {
-      return NextResponse.json({ error: fulfillingWarehouseError.message }, { status: 500 });
-    }
-
-    const pickListBusinessUnitId =
-      fulfillingWarehouse?.business_unit_id || header.business_unit_id || auth.currentBusinessUnitId;
-
-    const { data: pickerUsers, error: pickerUserError } = await auth.supabase
-      .from("users")
-      .select("id")
-      .eq("company_id", auth.companyId)
-      .eq("is_active", true)
-      .in("id", uniquePickers)
-      .is("deleted_at", null);
-
-    if (pickerUserError) {
-      return NextResponse.json({ error: pickerUserError.message }, { status: 500 });
-    }
-
-    if (!pickerUsers || pickerUsers.length !== uniquePickers.length) {
-      return NextResponse.json({ error: "One or more picker users are invalid" }, { status: 400 });
-    }
-
-    const nowIso = new Date().toISOString();
-    const pickListNo = buildPickListNo();
-
-    const { data: createdPickList, error: createError } = await auth.supabase
-      .from("pick_lists")
-      .insert({
-        company_id: auth.companyId,
-        business_unit_id: pickListBusinessUnitId,
-        dn_id: dnId,
-        pick_list_no: pickListNo,
-        status: "pending",
+    let createdPickList;
+    try {
+      createdPickList = await createPickListForDn({
+        supabase: auth.supabase,
+        companyId: auth.companyId,
+        userId: auth.userId,
+        currentBusinessUnitId: auth.currentBusinessUnitId,
+        dnId,
+        dnBusinessUnitId: header.business_unit_id,
+        fulfillingWarehouseId: header.fulfilling_warehouse_id,
+        pickerUserIds: uniquePickers,
         notes: body.notes?.trim() || null,
-        created_by: auth.userId,
-        updated_by: auth.userId,
-        created_at: nowIso,
-        updated_at: nowIso,
-      })
-      .select("id")
-      .single();
-
-    if (createError || !createdPickList) {
-      if (createError?.code === "23505") {
-        return NextResponse.json(
-          { error: "Delivery note already has an active pick list" },
-          { status: 409 }
-        );
-      }
-      return NextResponse.json({ error: createError?.message || "Failed to create pick list" }, { status: 500 });
-    }
-
-    const assignees = uniquePickers.map((userId) => ({
-      company_id: auth.companyId,
-      pick_list_id: createdPickList.id,
-      user_id: userId,
-      assigned_at: nowIso,
-      assigned_by: auth.userId,
-    }));
-
-    const { error: assigneeError } = await auth.supabase.from("pick_list_assignees").insert(assignees);
-    if (assigneeError) {
-      return NextResponse.json({ error: assigneeError.message }, { status: 500 });
-    }
-
-    const pickListItems = dnItems.map((item) => ({
-      company_id: auth.companyId,
-      pick_list_id: createdPickList.id,
-      dn_item_id: item.id,
-      sr_id: item.sr_id,
-      sr_item_id: item.sr_item_id,
-      item_id: item.item_id,
-      uom_id: item.uom_id,
-      allocated_qty: item.allocated_qty,
-      picked_qty: 0,
-      short_qty: item.allocated_qty,
-      created_at: nowIso,
-      updated_at: nowIso,
-    }));
-
-    const { error: itemError } = await auth.supabase.from("pick_list_items").insert(pickListItems);
-    if (itemError) {
-      return NextResponse.json({ error: itemError.message }, { status: 500 });
-    }
-
-    const { error: dnUpdateError } = await auth.supabase
-      .from("delivery_notes")
-      .update({
-        status: "queued_for_picking",
-        updated_at: nowIso,
-        updated_by: auth.userId,
-      })
-      .eq("id", dnId)
-      .eq("company_id", auth.companyId)
-      .eq("status", "confirmed");
-
-    if (dnUpdateError) {
-      return NextResponse.json({ error: dnUpdateError.message }, { status: 500 });
+      });
+    } catch (createPickListError) {
+      const message =
+        createPickListError instanceof Error
+          ? createPickListError.message
+          : "Failed to create pick list";
+      const status = message === "Delivery note already has an active pick list" ? 409 : 400;
+      return NextResponse.json({ error: message }, { status });
     }
 
     try {
@@ -254,8 +135,8 @@ export async function POST(request: NextRequest) {
         metadata: {
           delivery_note_id: header.id,
           dn_no: header.dn_no,
-          pick_list_id: createdPickList.id,
-          pick_list_no: pickListNo,
+          pick_list_id: createdPickList.pickListId,
+          pick_list_no: createdPickList.pickListNo,
           status: "queued_for_picking",
         },
       });
@@ -263,7 +144,7 @@ export async function POST(request: NextRequest) {
       console.error("Error creating queue picking notifications:", notificationError);
     }
 
-    const pickList = await fetchPickList(auth.supabase, auth.companyId, createdPickList.id);
+    const pickList = await fetchPickList(auth.supabase, auth.companyId, createdPickList.pickListId);
     return NextResponse.json(pickList, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";

@@ -1,6 +1,9 @@
 import { apiClient } from "@/lib/api";
 import type {
+  AddDeliveryNoteItemsPayload,
+  AdjustDispatchedDeliveryNoteItemPayload,
   CreateDeliveryNotePayload,
+  DeliveryNoteAllocatableItem,
   DeliveryNote,
   DeliveryNoteListResponse,
   DispatchDeliveryNotePayload,
@@ -59,5 +62,17 @@ export const deliveryNotesApi = {
 
   async void(id: string, reason?: string): Promise<DeliveryNote> {
     return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/void`, { reason });
+  },
+
+  async adjustItem(id: string, itemId: string, data: AdjustDispatchedDeliveryNoteItemPayload): Promise<DeliveryNote> {
+    return apiClient.patch<DeliveryNote>(`/api/delivery-notes/${id}/items/${itemId}`, data);
+  },
+
+  async getAllocatableItems(id: string): Promise<{ data: DeliveryNoteAllocatableItem[] }> {
+    return apiClient.get<{ data: DeliveryNoteAllocatableItem[] }>(`/api/delivery-notes/${id}/allocatable-items`);
+  },
+
+  async addItems(id: string, data: AddDeliveryNoteItemsPayload): Promise<DeliveryNote> {
+    return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/items`, data);
   },
 };
