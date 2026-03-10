@@ -16,6 +16,9 @@ export interface Item {
   standardCost: number;
   purchasePrice?: number;
   listPrice: number;
+  onHand?: number;
+  allocated?: number;
+  available?: number;
   reorderLevel: number;
   reorderQty: number;
   inTransit?: number;

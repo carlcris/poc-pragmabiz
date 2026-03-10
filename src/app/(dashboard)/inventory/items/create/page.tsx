@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useCreateItem } from "@/hooks/useItems";
@@ -36,7 +35,6 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
-import Link from "next/link";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 function CreateItemContent() {
@@ -133,14 +131,9 @@ function CreateItemContent() {
   };
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/inventory/items">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+      <div>
         <div>
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t("createNewItem")}</h1>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">

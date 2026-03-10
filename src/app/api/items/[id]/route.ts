@@ -25,10 +25,11 @@ type DbItem = {
   updated_at: string;
 };
 type ItemWarehouseRow = {
+  current_stock: number | string | null;
+  reserved_stock: number | string | null;
+  available_stock: number | string | null;
   in_transit: number | string | null;
   estimated_arrival_date: string | null;
-};
-type ItemWarehouseReorderRow = {
   reorder_level: number | string | null;
   reorder_quantity: number | string | null;
 };
@@ -155,28 +156,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
+    let onHand = 0;
+    let allocated = 0;
+    let available = 0;
     let reorderLevel = 0;
     let reorderQty = 0;
     let inTransit = 0;
     let estimatedArrivalDate: string | null = null;
 
-    const { data: reorderRows } = await supabase
-      .from("item_warehouse")
-      .select("reorder_level, reorder_quantity")
-      .eq("item_id", id)
-      .eq("company_id", data.company_id)
-      .is("deleted_at", null);
-
-    if (reorderRows && reorderRows.length > 0) {
-      for (const row of reorderRows as ItemWarehouseReorderRow[]) {
-        reorderLevel = Math.max(reorderLevel, Number(row.reorder_level || 0));
-        reorderQty = Math.max(reorderQty, Number(row.reorder_quantity || 0));
-      }
-    }
-
     let inventoryQuery = supabase
       .from("item_warehouse")
-      .select("in_transit, estimated_arrival_date, warehouses!inner(business_unit_id)")
+      .select(
+        "current_stock, reserved_stock, available_stock, in_transit, estimated_arrival_date, reorder_level, reorder_quantity, warehouses!inner(business_unit_id)"
+      )
       .eq("item_id", id)
       .eq("company_id", data.company_id)
       .is("deleted_at", null);
@@ -188,7 +180,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { data: inventoryRows } = await inventoryQuery;
     if (inventoryRows && inventoryRows.length > 0) {
       for (const row of inventoryRows as ItemWarehouseRow[]) {
+        const rowOnHand = Number(row.current_stock || 0);
+        const rowAllocated = Number(row.reserved_stock || 0);
+        const rowAvailable =
+          row.available_stock == null
+            ? Math.max(0, rowOnHand - rowAllocated)
+            : Number(row.available_stock || 0);
+
+        onHand += rowOnHand;
+        allocated += rowAllocated;
+        available += rowAvailable;
         inTransit += Number(row.in_transit || 0);
+        reorderLevel = Math.max(reorderLevel, Number(row.reorder_level || 0));
+        reorderQty = Math.max(reorderQty, Number(row.reorder_quantity || 0));
         if (row.estimated_arrival_date) {
           if (!estimatedArrivalDate || row.estimated_arrival_date < estimatedArrivalDate) {
             estimatedArrivalDate = row.estimated_arrival_date;
@@ -200,6 +204,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Transform and return
     const item = {
       ...transformDbItem(data as ItemRow),
+      onHand,
+      allocated,
+      available,
       inTransit,
       estimatedArrivalDate,
       reorderLevel,

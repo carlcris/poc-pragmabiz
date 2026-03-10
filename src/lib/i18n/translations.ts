@@ -1512,6 +1512,9 @@ export type TranslationKeys = {
     pricingInformation: string;
     standardCostLabel: string;
     listPriceLabel: string;
+    availableQtyLabel: string;
+    reservedQtyLabel: string;
+    onHandLabel: string;
     inventoryManagement: string;
     reorderLevelLabel: string;
     reorderLevelDescription: string;
@@ -3763,6 +3766,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       pricingInformation: "Pricing Information",
       standardCostLabel: "Unit Cost",
       listPriceLabel: "Selling Price *",
+      availableQtyLabel: "Available Qty",
+      reservedQtyLabel: "Reserved Qty",
+      onHandLabel: "On Hand",
       inventoryManagement: "Inventory Management",
       reorderLevelLabel: "Reorder Level",
       reorderLevelDescription: "Alert when stock falls below this level",
@@ -8061,6 +8067,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       pricingInformation: "价格信息",
       standardCostLabel: "单位成本",
       listPriceLabel: "售价 *",
+      availableQtyLabel: "可用数量",
+      reservedQtyLabel: "预留数量",
+      onHandLabel: "现有库存",
       inventoryManagement: "库存管理",
       reorderLevelLabel: "补货水平",
       reorderLevelDescription: "当库存低于该水平时提醒",

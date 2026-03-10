@@ -7,23 +7,24 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
   Package,
-  DollarSign,
-  TrendingUp,
-  AlertTriangle,
   Pencil,
-  Loader2,
   Hash,
   FileText,
   Tag,
-  BarChart3,
   ImageIcon,
   QrCode,
+  Lock,
+  Warehouse,
+  Truck,
+  Ruler,
+  Layers,
 } from "lucide-react";
 import { useItem } from "@/hooks/useItems";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
@@ -51,16 +52,134 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
   const { data: itemResponse, isLoading, error } = useItem(itemId);
   const item = itemResponse?.data;
   const tabPanelClassName = "mt-4 min-h-[52rem] space-y-4";
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  const isItemLoading = isLoading && !item;
+  const itemTypeLabel = item?.itemType
+    ? item.itemType
+        .split("_")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")
+    : null;
+  const formatQuantity = (value: number | undefined) =>
+    new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(value ?? 0);
 
   if (error || !item) {
+    if (isItemLoading) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-72" />
+              <Skeleton className="h-4 w-80" />
+            </div>
+            <Skeleton className="h-10 w-28" />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map((card) => (
+              <Card key={card}>
+                <CardHeader className="space-y-2 pb-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-4 rounded-full" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
+              <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+              <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className={tabPanelClassName}>
+              <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-40" />
+                    <Skeleton className="h-4 w-56" />
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {[1, 2, 3, 4].map((field) => (
+                        <div key={field} className="flex items-start gap-3">
+                          <Skeleton className="h-9 w-9 rounded-lg" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-3 w-24" />
+                            <Skeleton className="h-5 w-40" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-start gap-3 border-t pt-4">
+                      <Skeleton className="h-9 w-9 rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-5 w-64" />
+                        <Skeleton className="h-4 w-48" />
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 border-t pt-4">
+                      <Skeleton className="h-9 w-9 rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3 w-24" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-11/12" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-4">
+                  {[1, 2].map((panel) => (
+                    <Card key={panel}>
+                      <CardHeader className="pb-3">
+                        <Skeleton className="h-5 w-28" />
+                      </CardHeader>
+                      <CardContent>
+                        <Skeleton className="h-[240px] w-full rounded-lg" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {[1, 2].map((panel) => (
+                  <Card key={panel}>
+                    <CardHeader>
+                      <Skeleton className="h-6 w-40" />
+                      <Skeleton className="h-4 w-52" />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {[1, 2, 3].map((row) => (
+                        <div key={row} className="flex items-center justify-between">
+                          <Skeleton className="h-4 w-28" />
+                          <Skeleton className="h-6 w-20" />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="prices" className={tabPanelClassName}>
+              <PricesTab itemId={itemId} />
+            </TabsContent>
+
+            <TabsContent value="locations" className={tabPanelClassName}>
+              <LocationsTab itemId={itemId} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -81,7 +200,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
         <div>
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{item.name}</h1>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
-            {item.code} • {item.category || t("noCategory")} • {item.itemType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+            {item.code} • {item.category || t("noCategory")} • {itemTypeLabel}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -100,56 +219,41 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("standardCostLabel")}</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t("perUnitPrefix")} {item.uom}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("listPriceLabel")}</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
-            </div>
-            {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {t("marginLabel")}: {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(1)}%
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("reorderLevelLabel")}</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{item.reorderLevel || "0"}</div>
-            <p className="text-xs text-muted-foreground">
-              {t("reorderQtyShortLabel")}: {item.reorderQty || "0"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("baseUomLabel")}</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("availableQtyLabel")}</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{item.uom || "-"}</div>
+            <div className="text-2xl font-bold">{formatQuantity(item.available)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t("reservedQtyLabel")}</CardTitle>
+            <Lock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatQuantity(item.allocated)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t("onHandLabel")}</CardTitle>
+            <Warehouse className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatQuantity(item.onHand)}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t("inTransitLabel")}</CardTitle>
+            <Truck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatQuantity(item.inTransit)}</div>
           </CardContent>
         </Card>
       </div>
@@ -196,19 +300,19 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 rounded-lg bg-muted p-2">
-                      <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      <Layers className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">{t("itemTypeLabel")}</p>
                       <Badge variant="outline">
-                        {item.itemType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                        {itemTypeLabel}
                       </Badge>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 rounded-lg bg-muted p-2">
-                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <Ruler className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">{t("unitOfMeasureLabel")}</p>

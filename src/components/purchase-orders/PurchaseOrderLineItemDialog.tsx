@@ -207,10 +207,10 @@ export function PurchaseOrderLineItemDialog({
                                     </div>
                                     <div className="mt-0.5 text-xs text-muted-foreground">
                                       {t("onHand")}:{" "}
-                                      {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom : ""} • {t("available")}:{" "}
-                                      {("available" in item ? item.available : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom : ""}
+                                      {("onHand" in item ? item.onHand ?? 0 : 0).toFixed(2)}{" "}
+                                      {"uom" in item ? item.uom ?? "" : ""} • {t("available")}:{" "}
+                                      {("available" in item ? item.available ?? 0 : 0).toFixed(2)}{" "}
+                                      {"uom" in item ? item.uom ?? "" : ""}
                                     </div>
                                   </div>
                                   <div className="ml-4 flex-shrink-0 text-sm font-semibold">

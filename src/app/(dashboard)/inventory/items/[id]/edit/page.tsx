@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, QrCode } from "lucide-react";
+import { Loader2, QrCode } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
@@ -170,14 +170,9 @@ function EditItemContent({ params }: EditItemPageProps) {
   }
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={`/inventory/items/${itemId}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
+      <div>
         <div>
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t("editItem")}</h1>
           <p className="mt-1 text-xs text-muted-foreground sm:text-sm">

@@ -221,17 +221,21 @@ export function QuotationLineItemDialog({
                                         <div className="mt-0.5 text-xs text-muted-foreground">
                                           <span
                                             className={cn(
-                                              ("available" in item ? item.available : 0) <= 0
+                                              ("available" in item ? item.available ?? 0 : 0) <= 0
                                                 ? "font-medium text-red-600"
-                                                : ("available" in item ? item.available : 0) <=
-                                                    ("reorderPoint" in item ? item.reorderPoint : 0)
+                                                : ("available" in item ? item.available ?? 0 : 0) <=
+                                                    ("reorderPoint" in item
+                                                      ? item.reorderPoint ?? 0
+                                                      : 0)
                                                   ? "text-orange-600"
                                                   : ""
                                             )}
                                           >
                                             {t("stockLabel")}:{" "}
-                                            {("available" in item ? item.available : 0).toFixed(2)}{" "}
-                                            {"uom" in item ? item.uom : ""}
+                                            {("available" in item ? item.available ?? 0 : 0).toFixed(
+                                              2
+                                            )}{" "}
+                                            {"uom" in item ? item.uom ?? "" : ""}
                                           </span>
                                         </div>
                                       </div>

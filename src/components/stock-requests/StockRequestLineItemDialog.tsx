@@ -257,10 +257,12 @@ export function StockRequestLineItemDialog({
                                         </div>
                                         <div className="mt-1 text-xs text-muted-foreground break-words">
                                           {t("onHand")}:{" "}
-                                          {("onHand" in item ? item.onHand : 0).toFixed(2)}{" "}
-                                          {"uom" in item ? item.uom : ""} • {t("available")}:{" "}
-                                          {("available" in item ? item.available : 0).toFixed(2)}{" "}
-                                          {"uom" in item ? item.uom : ""}
+                                          {("onHand" in item ? item.onHand ?? 0 : 0).toFixed(2)}{" "}
+                                          {"uom" in item ? item.uom ?? "" : ""} • {t("available")}:{" "}
+                                          {("available" in item ? item.available ?? 0 : 0).toFixed(
+                                            2
+                                          )}{" "}
+                                          {"uom" in item ? item.uom ?? "" : ""}
                                         </div>
                                       </div>
                                     </CommandItem>
