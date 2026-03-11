@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, Package2, Pencil, Plus, TrendingDown, XCircle } from "lucide-react";
+import { AlertCircle, Package2, Pencil, Plus, TrendingDown, XCircle } from "lucide-react";
 import {
   useAddDeliveryNoteItems,
   useAdjustDispatchedDeliveryNoteItem,
@@ -18,7 +18,10 @@ import {
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouse } from "@/hooks/useWarehouses";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -40,6 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toProperCase } from "@/lib/string";
 
 const formatDate = (value: string | null | undefined, locale: string) => {
@@ -55,7 +59,6 @@ const toNumber = (value: number | string | null | undefined) => {
 
 export default function DeliveryNoteDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const locale = useLocale();
   const t = useTranslations("deliveryNoteDetailPage");
   const id = params.id as string;
@@ -96,6 +99,7 @@ export default function DeliveryNoteDetailPage() {
   const [voidReason, setVoidReason] = useState("");
 
   const items = useMemo(() => dn?.delivery_note_items || [], [dn?.delivery_note_items]);
+  const shellItemRows = isLoading && items.length === 0 ? Array.from({ length: 4 }, (_, index) => `skeleton-${index}`) : [];
   const allocatableItems = useMemo(() => allocatableItemsData?.data || [], [allocatableItemsData?.data]);
   const { data: sourceWarehouseData } = useWarehouse(dn?.requesting_warehouse_id || "");
   const { data: destinationWarehouseData } = useWarehouse(dn?.fulfilling_warehouse_id || "");
@@ -255,6 +259,38 @@ export default function DeliveryNoteDetailPage() {
     !activePickList &&
     hasPendingPickableLines;
 
+  const pageActions = dn ? (
+    <>
+      {dn.status === "draft" && (
+        <Button onClick={() => confirmMutation.mutateAsync(dn.id)} disabled={confirmMutation.isPending}>
+          {t("confirm")}
+        </Button>
+      )}
+      {canQueuePicking && (
+        <Button onClick={() => setQueueOpen(true)} disabled={createPickListMutation.isPending}>
+          {t("queuePicking")}
+        </Button>
+      )}
+      {dn.status === "dispatched" && (
+        <Button variant="outline" onClick={() => setAddItemsOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          {t("addItems")}
+        </Button>
+      )}
+      {["picking_in_progress", "dispatch_ready", "draft", "confirmed", "queued_for_picking"].includes(
+        dn.status
+      ) && (
+        <Button
+          variant="destructive"
+          onClick={() => voidMutation.mutateAsync({ id: dn.id, reason: voidReason || undefined })}
+          disabled={voidMutation.isPending}
+        >
+          {t("void")}
+        </Button>
+      )}
+    </>
+  ) : null;
+
   const submitDispatch = async () => {
     if (!dn) return;
 
@@ -362,81 +398,70 @@ export default function DeliveryNoteDetailPage() {
     setSelectedAddQtyMap({});
   };
 
-  if (isLoading) {
-    return <div className="container mx-auto p-6 text-sm text-muted-foreground">{t("loading")}</div>;
-  }
-
-  if (error || !dn) {
-    return <div className="container mx-auto p-6 text-sm text-destructive">{t("loadError")}</div>;
-  }
-
   return (
     <div className="container mx-auto space-y-6 p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t("title")}</h1>
-            <p className="text-sm text-muted-foreground">{dn.dn_no}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {dn.status === "draft" && (
-            <Button onClick={() => confirmMutation.mutateAsync(dn.id)} disabled={confirmMutation.isPending}>
-              {t("confirm")}
-            </Button>
-          )}
-          {canQueuePicking && (
-            <Button onClick={() => setQueueOpen(true)} disabled={createPickListMutation.isPending}>
-              {t("queuePicking")}
-            </Button>
-          )}
-          {dn.status === "dispatched" && (
-            <Button variant="outline" onClick={() => setAddItemsOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("addItems")}
-            </Button>
-          )}
-          {["picking_in_progress", "dispatch_ready", "draft", "confirmed", "queued_for_picking"].includes(
-            dn.status
-          ) && (
-            <Button
-              variant="destructive"
-              onClick={() => voidMutation.mutateAsync({ id: dn.id, reason: voidReason || undefined })}
-              disabled={voidMutation.isPending}
-            >
-              {t("void")}
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={t("title")}
+        subtitle={
+          dn?.dn_no ? (
+            dn.dn_no
+          ) : isLoading ? (
+            <span
+              aria-label={t("loading")}
+              className="inline-block h-4 w-40 animate-pulse rounded bg-muted align-middle"
+            />
+          ) : (
+            t("noValue")
+          )
+        }
+        actions={pageActions}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("status")}</div>
-          <div className="mt-1 text-sm font-semibold">{statusLabel(dn.status)}</div>
+          <div className="mt-1 text-sm font-semibold">
+            {dn ? statusLabel(dn.status) : <Skeleton className="h-5 w-28" />}
+          </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("sourceWarehouse")}</div>
-          <div className="mt-1 text-sm font-medium">{sourceWarehouseLabel}</div>
+          <div className="mt-1 text-sm font-medium">
+            {dn ? sourceWarehouseLabel : <Skeleton className="h-5 w-40" />}
+          </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("destinationWarehouse")}</div>
-          <div className="mt-1 text-sm font-medium">{destinationWarehouseLabel}</div>
+          <div className="mt-1 text-sm font-medium">
+            {dn ? destinationWarehouseLabel : <Skeleton className="h-5 w-40" />}
+          </div>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("linkedPickList")}</div>
-          {linkedPickList ? (
+          {dn && linkedPickList ? (
             <Link href="/inventory/pick-lists" className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline">
               {linkedPickList.pick_list_no}
             </Link>
+          ) : isLoading ? (
+            <div className="mt-1">
+              <Skeleton className="h-5 w-28" />
+            </div>
           ) : (
             <div className="mt-1 text-sm font-medium text-muted-foreground">{t("noValue")}</div>
           )}
         </div>
       </div>
+
+      {error && !dn ? (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5">
+          <EmptyStatePanel
+            icon={AlertCircle}
+            title={t("loadError")}
+            description={t("loading")}
+            className="min-h-[180px]"
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -444,24 +469,27 @@ export default function DeliveryNoteDetailPage() {
             title={t("totalItems")}
             icon={Package2}
             iconClassName="h-4 w-4 text-blue-600"
-            value={String(items.length)}
+            value={dn ? String(items.length) : undefined}
+            isLoading={!dn && isLoading}
           />
           <MetricCard
             title={t("totalAllocated")}
             icon={Package2}
             iconClassName="h-4 w-4 text-green-600"
-            value={items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2)}
+            value={dn ? items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2) : undefined}
+            isLoading={!dn && isLoading}
           />
           <MetricCard
             title={t("totalShort")}
             icon={TrendingDown}
             iconClassName="h-4 w-4 text-orange-600"
-            value={items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2)}
+            value={dn ? items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2) : undefined}
             valueClassName="text-2xl font-bold text-orange-600"
+            isLoading={!dn && isLoading}
           />
         </div>
 
-        <div className="rounded-lg border bg-card">
+        <div className="min-h-[26rem] rounded-lg border bg-card">
           <div className="flex items-center gap-2 border-b bg-muted/50 px-4 py-3">
             <Package2 className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">{t("itemDetails")}</h3>
@@ -478,11 +506,35 @@ export default function DeliveryNoteDetailPage() {
                   <TableHead className="text-right font-semibold">{t("short")}</TableHead>
                   <TableHead className="text-right font-semibold">{t("dispatchedQty")}</TableHead>
                   <TableHead className="font-semibold">{t("lineState")}</TableHead>
-                  {dn.status === "dispatched" && <TableHead className="text-right font-semibold">{t("actions")}</TableHead>}
+                  {dn?.status === "dispatched" && <TableHead className="text-right font-semibold">{t("actions")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((item) => {
+                {!dn && isLoading
+                  ? shellItemRows.map((rowKey) => (
+                      <TableRow key={rowKey}>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <Skeleton className="h-4 w-44" />
+                            <Skeleton className="h-3 w-32" />
+                          </div>
+                        </TableCell>
+                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-14" /></TableCell>
+                        <TableCell className="text-right">
+                          <div className="ml-auto flex w-14 flex-col items-end gap-1">
+                            <Skeleton className="h-4 w-14" />
+                            <Skeleton className="h-3 w-10" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right"><Skeleton className="ml-auto h-6 w-16" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-14" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                        {dn?.status === "dispatched" && <TableCell className="text-right"><Skeleton className="ml-auto h-8 w-24" /></TableCell>}
+                      </TableRow>
+                    ))
+                  : items.map((item) => {
                   const allocatedQty = toNumber(item.allocated_qty);
                   const pickedQty = toNumber(item.picked_qty);
                   const shortQty = toNumber(item.short_qty);
@@ -567,22 +619,27 @@ export default function DeliveryNoteDetailPage() {
         </div>
       </div>
 
-      {(dn.status === "queued_for_picking" || dn.status === "picking_in_progress") && (
-        <div className="rounded-lg border bg-blue-50/50 p-4">
-          <h2 className="text-base font-semibold">{t("pickingControl")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("pickingControlDescription")}</p>
-          <div className="mt-3">
+      {dn && (dn.status === "queued_for_picking" || dn.status === "picking_in_progress") && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("pickingControl")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("pickingControlDescription")}</p>
+          </CardHeader>
+          <CardContent>
             <Button asChild variant="outline">
               <Link href="/inventory/pick-lists">{t("openPickLists")}</Link>
             </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {dn.status === "dispatch_ready" && (
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold">{t("dispatchInformation")}</h2>
-          <div className="space-y-3 rounded-lg border bg-card p-4">
+      {dn?.status === "dispatch_ready" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("dispatchInformation")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("optionalNotes")}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">{t("driverName")}</Label>
               <Input placeholder={t("enterDriverName")} value={driverName} onChange={(event) => setDriverName(event.target.value)} />
@@ -600,14 +657,17 @@ export default function DeliveryNoteDetailPage() {
             <Button onClick={submitDispatch} disabled={dispatchMutation.isPending || !driverSignature.trim()} className="w-full sm:w-auto">
               {dispatchMutation.isPending ? t("dispatching") : t("confirmDispatch")}
             </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {dn.status === "dispatched" && (
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold">{t("receiveDelivery")}</h2>
-          <div className="space-y-4 rounded-lg border bg-card p-4">
+      {dn?.status === "dispatched" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("receiveDelivery")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("receivedQuantities")}</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">{t("receiveNotes")}</Label>
               <Textarea placeholder={t("optionalNotes")} value={receiveNotes} onChange={(event) => setReceiveNotes(event.target.value)} rows={3} />
@@ -648,41 +708,62 @@ export default function DeliveryNoteDetailPage() {
             <Button onClick={submitReceive} disabled={receiveMutation.isPending} className="w-full sm:w-auto">
               {receiveMutation.isPending ? t("receiving") : t("confirmReceive")}
             </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {dn.status === "voided" && dn.void_reason && (
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold">{t("voidInformation")}</h2>
-          <div className="rounded-lg border border-red-200 bg-red-50/50 p-4">
+      {dn?.status === "voided" && dn.void_reason && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("voidInformation")}</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-1">
               <Label className="text-xs font-medium text-muted-foreground">{t("voidReason")}</Label>
               <p className="text-sm">{dn.void_reason}</p>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      {["draft", "confirmed", "queued_for_picking", "picking_in_progress", "dispatch_ready"].includes(dn.status) && (
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold">{t("voidDeliveryNote")}</h2>
-          <div className="space-y-3 rounded-lg border border-red-200 bg-red-50/50 p-4">
+      {dn && ["draft", "confirmed", "queued_for_picking", "picking_in_progress", "dispatch_ready"].includes(dn.status) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("voidDeliveryNote")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("reasonForVoidingOptional")}</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <Textarea
               placeholder={t("reasonForVoidingOptional")}
               value={voidReason}
               onChange={(event) => setVoidReason(event.target.value)}
               rows={3}
             />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="space-y-3">
-        <h2 className="text-base font-semibold">{t("timeline")}</h2>
-        <div className="relative rounded-lg border bg-muted/20 p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("timeline")}</CardTitle>
+        </CardHeader>
+        <CardContent className="relative min-h-[18rem]">
           <div className="space-y-6">
-            {timeline.map((event, index) => {
+            {!dn && isLoading
+              ? Array.from({ length: 5 }, (_, index) => (
+                  <div key={`timeline-skeleton-${index}`} className="relative flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <Skeleton className="h-3 w-3 rounded-full" />
+                      {index < 4 && <div className="mt-1 w-0.5 flex-1 bg-muted" style={{ minHeight: "24px" }} />}
+                    </div>
+                    <div className="flex-1 space-y-2 pb-2">
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-3 w-36" />
+                    </div>
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                ))
+              : timeline.map((event, index) => {
               const userName = getUserDisplayName(event.userId);
 
               return (
@@ -720,10 +801,10 @@ export default function DeliveryNoteDetailPage() {
               );
             })}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <Dialog open={queueOpen} onOpenChange={setQueueOpen}>
+      {dn ? <Dialog open={queueOpen} onOpenChange={setQueueOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>{t("createPickList")}</DialogTitle>
@@ -778,7 +859,7 @@ export default function DeliveryNoteDetailPage() {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> : null}
 
       <Dialog
         open={!!adjustItemId}
