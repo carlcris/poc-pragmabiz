@@ -66,6 +66,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Stock validation and deduction (only if warehouse is assigned)
     let stockTransactionCode: string | null = null;
+    let stockTransactionId: string | null = null;
 
     if (invoice.warehouse_id) {
       // Check stock availability before sending
@@ -89,25 +90,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
       }
 
-      // Generate stock transaction code (ST-YYYY-NNNN)
-      const currentYear = new Date().getFullYear();
-      const { data: lastStockTx } = await supabase
-        .from("stock_transactions")
-        .select("transaction_code")
-        .eq("company_id", userData.company_id)
-        .like("transaction_code", `ST-${currentYear}-%`)
-        .order("transaction_code", { ascending: false })
-        .limit(1);
-
-      let nextStockTxNum = 1;
-      if (lastStockTx && lastStockTx.length > 0) {
-        const match = lastStockTx[0].transaction_code.match(/ST-\d+-(\d+)/);
-        if (match) {
-          nextStockTxNum = parseInt(match[1]) + 1;
-        }
-      }
-      const stockTxCode = `ST-${currentYear}-${String(nextStockTxNum).padStart(4, "0")}`;
-
       const defaultLocationId = await ensureWarehouseDefaultLocation({
         supabase,
         companyId: userData.company_id,
@@ -121,7 +103,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         .from("stock_transactions")
         .insert({
           company_id: userData.company_id,
-          transaction_code: stockTxCode,
           transaction_type: "out",
           transaction_date: invoice.invoice_date,
           warehouse_id: invoice.warehouse_id,
@@ -143,7 +124,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         );
       }
 
-      stockTransactionCode = stockTxCode;
+      stockTransactionCode = stockTransaction.transaction_code;
+      stockTransactionId = stockTransaction.id;
 
       // Create stock transaction items and update stock ledger
       for (const item of invoice.items || []) {
@@ -241,17 +223,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (updateError) {
       // Rollback stock transactions if they were created
-      if (invoice.warehouse_id && stockTransactionCode) {
-        const { data: stockTx } = await supabase
-          .from("stock_transactions")
-          .select("id")
-          .eq("transaction_code", stockTransactionCode)
-          .single();
-
-        if (stockTx) {
-          await supabase.from("stock_transaction_items").delete().eq("transaction_id", stockTx.id);
-          await supabase.from("stock_transactions").delete().eq("id", stockTx.id);
-        }
+      if (invoice.warehouse_id && stockTransactionId) {
+        await supabase.from("stock_transaction_items").delete().eq("transaction_id", stockTransactionId);
+        await supabase.from("stock_transactions").delete().eq("id", stockTransactionId);
       }
       return NextResponse.json({ error: "Failed to send invoice" }, { status: 500 });
     }

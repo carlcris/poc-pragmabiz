@@ -259,22 +259,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Generate invoice number
-    const { data: lastInvoice } = await supabase
-      .from("sales_invoices")
-      .select("invoice_code")
-      .eq("company_id", userData.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let invoiceNumber = "INV-2025-0001";
-    if (lastInvoice?.invoice_code) {
-      const lastNum = parseInt(lastInvoice.invoice_code.split("-")[2]);
-      const nextNum = lastNum + 1;
-      invoiceNumber = `INV-2025-${String(nextNum).padStart(4, "0")}`;
-    }
-
     // Calculate totals
     const lineItems = (body.lineItems || []) as CreateInvoiceRequest["lineItems"];
     let subtotal = 0;
@@ -324,7 +308,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        invoice_code: invoiceNumber,
         customer_id: body.customerId,
         warehouse_id: body.warehouseId || null,
         custom_fields: body.locationId ? { locationId: body.locationId } : null,

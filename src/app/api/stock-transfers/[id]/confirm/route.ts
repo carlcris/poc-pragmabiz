@@ -135,24 +135,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }));
 
     // STEP 2: Create stock transaction for the transfer
-    const currentYear = new Date().getFullYear();
-    const { data: lastTransaction } = await supabase
-      .from("stock_transactions")
-      .select("transaction_code")
-      .eq("company_id", userData.company_id)
-      .like("transaction_code", `ST-${currentYear}-%`)
-      .order("transaction_code", { ascending: false })
-      .limit(1);
-
-    let nextNum = 1;
-    if (lastTransaction && lastTransaction.length > 0) {
-      const match = lastTransaction[0].transaction_code.match(/ST-\d+-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
-      }
-    }
-    const transactionCode = `ST-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
     // Create the stock transaction header
     const defaultFromLocationId = await ensureWarehouseDefaultLocation({
       supabase,
@@ -175,7 +157,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from("stock_transactions")
       .insert({
         company_id: userData.company_id,
-        transaction_code: transactionCode,
         transaction_type: "transfer",
         transaction_date: new Date().toISOString().split("T")[0],
         warehouse_id: typedTransfer.from_warehouse_id,

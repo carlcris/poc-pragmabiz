@@ -78,29 +78,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Quotation must have at least one item" }, { status: 400 });
     }
 
-    // Step 3: Generate sales order number
-    const { data: lastOrder } = await supabase
-      .from("sales_orders")
-      .select("order_code")
-      .eq("company_id", quotation.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let orderNumber = "SO-2025-0001";
-    if (lastOrder?.order_code) {
-      const lastNum = parseInt(lastOrder.order_code.split("-")[2]);
-      const nextNum = lastNum + 1;
-      orderNumber = `SO-2025-${String(nextNum).padStart(4, "0")}`;
-    }
-
-    // Step 4: Create sales order
+    // Step 3: Create sales order
     const { data: salesOrder, error: orderError } = await supabase
       .from("sales_orders")
       .insert({
         company_id: quotation.company_id,
         business_unit_id: currentBusinessUnitId,
-        order_code: orderNumber,
         customer_id: quotation.customer_id,
         quotation_id: quotationId,
         order_date: new Date().toISOString().split("T")[0],

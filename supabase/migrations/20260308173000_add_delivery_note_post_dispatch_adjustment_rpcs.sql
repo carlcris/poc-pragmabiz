@@ -222,7 +222,6 @@ DECLARE
   v_item_location_row item_location%ROWTYPE;
   v_warehouse_stock item_warehouse%ROWTYPE;
   v_tx_id UUID;
-  v_tx_code TEXT;
   v_current_stock NUMERIC;
   v_next_stock NUMERIC;
   v_new_allocated NUMERIC;
@@ -394,13 +393,9 @@ BEGIN
     RAISE EXCEPTION 'Insufficient dispatched pick rows to reverse delivery note item %', p_delivery_note_item_id;
   END IF;
 
-  v_tx_code := 'ST-REV-' || TO_CHAR(v_now, 'YYYYMMDDHH24MISSMS') ||
-               SUBSTRING(REPLACE(gen_random_uuid()::TEXT, '-', ''), 1, 4);
-
   INSERT INTO stock_transactions (
     company_id,
     business_unit_id,
-    transaction_code,
     transaction_type,
     transaction_date,
     warehouse_id,
@@ -415,7 +410,6 @@ BEGIN
   VALUES (
     p_company_id,
     v_dn.business_unit_id,
-    v_tx_code,
     'adjustment',
     v_now::DATE,
     v_dni.fulfilling_warehouse_id,

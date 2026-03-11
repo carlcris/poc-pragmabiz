@@ -80,13 +80,6 @@ export const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export const buildDnNo = () => {
-  const now = new Date();
-  const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-  const suffix = now.getTime().toString().slice(-5);
-  return `DN-${dateStr}${suffix}`;
-};
-
 export const getAuthContext = async (): Promise<AuthContext | NextResponse> => {
   const context = await requireRequestContext();
   if ("status" in context) return context;

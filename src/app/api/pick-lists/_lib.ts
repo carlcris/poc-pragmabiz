@@ -25,13 +25,6 @@ export type PickListRow = {
   deleted_at: string | null;
 };
 
-export const buildPickListNo = () => {
-  const now = new Date();
-  const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-  const suffix = now.getTime().toString().slice(-5);
-  return `PL-${dateStr}${suffix}`;
-};
-
 export const getPickListAuthContext = async () => {
   const auth = await getAuthContext();
   return auth;
@@ -219,7 +212,6 @@ export const createPickListForDn = async ({
   }
 
   const nowIso = new Date().toISOString();
-  const pickListNo = buildPickListNo();
 
   const { data: createdPickList, error: createError } = await supabase
     .from("pick_lists")
@@ -227,7 +219,6 @@ export const createPickListForDn = async ({
       company_id: companyId,
       business_unit_id: pickListBusinessUnitId,
       dn_id: dnId,
-      pick_list_no: pickListNo,
       status: "pending",
       notes: notes?.trim() || null,
       created_by: userId,
@@ -235,7 +226,7 @@ export const createPickListForDn = async ({
       created_at: nowIso,
       updated_at: nowIso,
     })
-    .select("id")
+    .select("id, pick_list_no")
     .single();
 
   if (createError || !createdPickList) {
@@ -300,7 +291,7 @@ export const createPickListForDn = async ({
 
   return {
     pickListId: createdPickList.id,
-    pickListNo,
+    pickListNo: createdPickList.pick_list_no,
   };
 };
 

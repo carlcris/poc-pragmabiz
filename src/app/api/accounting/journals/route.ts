@@ -349,24 +349,11 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Get next journal code using the database function
-    const { data: journalCodeResult, error: codeError } = await supabase.rpc(
-      "get_next_journal_code",
-      { p_company_id: companyId }
-    );
-
-    if (codeError || !journalCodeResult) {
-      return NextResponse.json({ error: "Failed to generate journal code" }, { status: 500 });
-    }
-
-    const journalCode = journalCodeResult as string;
-
     // Start transaction: Create journal entry header
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: body.postingDate,
         reference_type: body.referenceType || null,
         reference_id: body.referenceId || null,

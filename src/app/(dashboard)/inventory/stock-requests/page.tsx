@@ -347,8 +347,11 @@ export default function StockRequestsPage() {
     selectedRequest: StockRequest | null;
   }) => {
     try {
+      const requestingWarehouseId =
+        payload.selectedRequest?.requesting_warehouse_id || defaultRequestingWarehouseId;
       const submitData = {
         ...payload.values,
+        requesting_warehouse_id: requestingWarehouseId,
         items: payload.lineItems.map((item) => ({
           item_id: item.itemId,
           requested_qty: item.requestedQty,

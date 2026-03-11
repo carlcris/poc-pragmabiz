@@ -51,6 +51,7 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 - The shared generator must accept a `code_prefix` and produce a fixed-width numeric suffix.
 - Standard numeric suffix width is `9` digits.
 - Standard format is `<code_prefix><zero-padded-sequence>`, for example `ST-000000001`.
+- `code_prefix` is the sequence namespace. Reuse a prefix only if those tables are supposed to share the same numeric series.
 - Scope generated sequences by company unless there is a documented exception.
 - Application inserts must omit the generated code column so the trigger remains the single source of truth.
 - Do not backfill or rewrite historical codes unless explicitly required by the task.

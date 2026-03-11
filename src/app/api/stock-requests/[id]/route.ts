@@ -218,7 +218,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     // Check if request exists and is draft
     const { data: existingRequest, error: checkError } = await supabase
       .from("stock_requests")
-      .select("id, status")
+      .select("id, status, requesting_warehouse_id")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -235,12 +235,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
-    const requestingWarehouseId = body.requesting_warehouse_id;
+    const requestingWarehouseId = existingRequest.requesting_warehouse_id;
     const fulfillingWarehouseId = body.fulfilling_warehouse_id;
 
-    if (!requestingWarehouseId || !fulfillingWarehouseId) {
+    if (!requestingWarehouseId) {
       return NextResponse.json(
-        { error: "Requested by and requested to are required" },
+        { error: "Requested by is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!fulfillingWarehouseId) {
+      return NextResponse.json(
+        { error: "Requested to is required" },
+        { status: 400 }
+      );
+    }
+
+    if (requestingWarehouseId === fulfillingWarehouseId) {
+      return NextResponse.json(
+        { error: "Requested to must be different from requested by" },
         { status: 400 }
       );
     }

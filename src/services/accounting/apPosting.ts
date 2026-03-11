@@ -76,27 +76,11 @@ export async function postAPBill(
       };
     }
 
-    // Get next journal code
-    const { data: journalCodeResult, error: codeError } = await supabase.rpc(
-      "get_next_journal_code",
-      { p_company_id: companyId }
-    );
-
-    if (codeError || !journalCodeResult) {
-      return {
-        success: false,
-        error: "Failed to generate journal code",
-      };
-    }
-
-    const journalCode = journalCodeResult as string;
-
     // Create journal entry header
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: data.receiptDate,
         reference_type: "purchase_receipt",
         reference_id: data.purchaseReceiptId,
@@ -217,27 +201,11 @@ export async function postAPPayment(
       };
     }
 
-    // Get next journal code
-    const { data: journalCodeResult, error: codeError } = await supabase.rpc(
-      "get_next_journal_code",
-      { p_company_id: companyId }
-    );
-
-    if (codeError || !journalCodeResult) {
-      return {
-        success: false,
-        error: "Failed to generate journal code",
-      };
-    }
-
-    const journalCode = journalCodeResult as string;
-
     // Create journal entry header
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: data.paymentDate,
         reference_type: "purchase_receipt",
         reference_id: data.paymentId,

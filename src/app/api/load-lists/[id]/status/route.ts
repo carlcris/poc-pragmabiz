@@ -327,27 +327,6 @@ export async function PATCH(
           .single();
 
         if (!existingGRN) {
-          // Generate GRN number
-          const currentYear = new Date().getFullYear();
-          const { data: lastGRN } = await supabase
-            .from("grns")
-            .select("grn_number")
-            .eq("company_id", companyId)
-            .like("grn_number", `GRN-${currentYear}-%`)
-            .order("grn_number", { ascending: false })
-            .limit(1)
-            .single();
-
-          let nextNum = 1;
-          if (lastGRN?.grn_number) {
-            const match = lastGRN.grn_number.match(/GRN-\d{4}-(\d+)/);
-            if (match) {
-              nextNum = parseInt(match[1]) + 1;
-            }
-          }
-
-          grnNumber = `GRN-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
           // Create GRN header
           const deliveryDate =
             ll.actual_arrival_date ||
@@ -358,7 +337,6 @@ export async function PATCH(
           const { data: grn, error: grnError } = await supabase
             .from("grns")
             .insert({
-              grn_number: grnNumber,
               load_list_id: ll.id,
               company_id: companyId,
               business_unit_id: ll.business_unit_id,
@@ -380,6 +358,7 @@ export async function PATCH(
             console.error("Error creating GRN:", grnError);
             // Don't fail the status update if GRN creation fails
           } else if (grn) {
+            grnNumber = grn.grn_number;
             // Create GRN items from load list items
             const grnItemsToInsert = ll.items.map((item: Record<string, unknown>) => ({
               grn_id: grn.id,

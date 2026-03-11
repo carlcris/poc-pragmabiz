@@ -100,12 +100,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // Generate stock transaction code with timestamp to avoid duplicates
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-    const milliseconds = now.getTime().toString().slice(-4);
-    const stockTxCode = `ST-${dateStr}${milliseconds}`;
-
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId,
@@ -123,7 +117,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .insert({
         company_id: companyId,
         business_unit_id: currentBusinessUnitId,
-        transaction_code: stockTxCode,
         transaction_type: transactionType,
         transaction_date: adjustment.adjustment_date,
         warehouse_id: adjustment.warehouse_id,
@@ -147,6 +140,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // STEP 3: Create stock transaction items and update inventory
+    const now = new Date();
     const postingDate = adjustment.adjustment_date;
     const postingTime = now.toTimeString().split(" ")[0];
 
@@ -285,7 +279,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({
       success: true,
       message: "Stock adjustment posted successfully. Stock levels updated.",
-      stockTransactionCode: stockTxCode,
+      stockTransactionCode: stockTransaction.transaction_code,
       adjustment: {
         id: updatedAdjustment.id,
         companyId: updatedAdjustment.company_id,
@@ -326,7 +320,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           })) || [],
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("Error posting stock adjustment:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

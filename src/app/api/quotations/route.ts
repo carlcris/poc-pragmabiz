@@ -303,36 +303,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Auto-generate quotation code if not provided
-    let quotationCode = body.quotationCode;
-    if (!quotationCode) {
-      const { data: lastQuotation } = await supabase
-        .from("sales_quotations")
-        .select("quotation_code")
-        .eq("company_id", userData.company_id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (lastQuotation?.quotation_code) {
-        const lastNumber = parseInt(lastQuotation.quotation_code.split("-")[1] || "0");
-        quotationCode = `QT-${String(lastNumber + 1).padStart(5, "0")}`;
-      } else {
-        quotationCode = "QT-00001";
-      }
-    } else {
-      // Check for duplicate quotation code only if provided
-      const { data: existingQuotation } = await supabase
-        .from("sales_quotations")
-        .select("id")
-        .eq("company_id", userData.company_id)
-        .eq("quotation_code", quotationCode)
-        .is("deleted_at", null)
-        .single();
-
-      if (existingQuotation) {
-        return NextResponse.json({ error: "Quotation code already exists" }, { status: 400 });
-      }
+    const quotationCode = body.quotationCode?.trim();
+    if (quotationCode) {
+      return NextResponse.json(
+        { error: "quotationCode is generated automatically and must not be provided" },
+        { status: 400 }
+      );
     }
 
     // Calculate totals
@@ -369,7 +345,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        quotation_code: quotationCode,
         quotation_date: body.quotationDate,
         customer_id: body.customerId,
         valid_until: body.validUntil,

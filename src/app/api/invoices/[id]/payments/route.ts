@@ -128,33 +128,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // Generate payment code (PAY-YYYY-NNNN)
-    const year = new Date().getFullYear();
-    const { data: lastPayment } = await supabase
-      .from("invoice_payments")
-      .select("payment_code")
-      .eq("company_id", userData.company_id)
-      .like("payment_code", `PAY-${year}-%`)
-      .order("payment_code", { ascending: false })
-      .limit(1)
-      .single();
-
-    let nextNum = 1;
-    if (lastPayment?.payment_code) {
-      const match = lastPayment.payment_code.match(/PAY-\d+-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
-      }
-    }
-    const paymentCode = `PAY-${year}-${String(nextNum).padStart(4, "0")}`;
-
     // Record payment
     const { data: payment, error: paymentError } = await supabase
       .from("invoice_payments")
       .insert({
         company_id: userData.company_id,
         invoice_id: invoiceId,
-        payment_code: paymentCode,
         payment_date: body.paymentDate,
         amount: paymentAmount,
         payment_method: body.paymentMethod,

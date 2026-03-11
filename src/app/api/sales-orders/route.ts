@@ -343,21 +343,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Auto-generate order number
-    const { data: lastOrder } = await supabase
-      .from("sales_orders")
-      .select("order_code")
-      .eq("company_id", userData.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let orderNumber = "SO-00001";
-    if (lastOrder?.order_code) {
-      const lastNumber = parseInt(lastOrder.order_code.split("-")[1] || "0");
-      orderNumber = `SO-${String(lastNumber + 1).padStart(5, "0")}`;
-    }
-
     // Calculate totals
     let subtotal = 0;
     let totalDiscount = 0;
@@ -393,7 +378,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        order_code: orderNumber,
         order_date: orderData.orderDate,
         customer_id: orderData.customerId,
         quotation_id: orderData.quotationId,

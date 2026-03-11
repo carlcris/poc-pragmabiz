@@ -270,32 +270,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate GRN number
-    const currentYear = new Date().getFullYear();
-    const { data: lastGRN } = await supabase
-      .from("grns")
-      .select("grn_number")
-      .eq("company_id", userData.company_id)
-      .like("grn_number", `GRN-${currentYear}-%`)
-      .order("grn_number", { ascending: false })
-      .limit(1)
-      .single();
-
-    let nextNum = 1;
-    if (lastGRN?.grn_number) {
-      const match = lastGRN.grn_number.match(/GRN-\d{4}-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
-      }
-    }
-
-    const grnNumber = `GRN-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
     // Create GRN
     const { data: grn, error: createError } = await supabase
       .from("grns")
       .insert({
-        grn_number: grnNumber,
         load_list_id: body.loadListId,
         company_id: userData.company_id,
         business_unit_id: userData.business_unit_id,

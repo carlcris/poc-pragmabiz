@@ -483,11 +483,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           };
         });
 
-        const now = new Date();
-        const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-        const milliseconds = now.getTime().toString().slice(-4);
-        const stockTxCode = `ST-${dateStr}${milliseconds}`;
-
         const defaultLocationId = await ensureWarehouseDefaultLocation({
           supabase,
           companyId: userData.company_id,
@@ -500,7 +495,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           .insert({
             company_id: userData.company_id,
             business_unit_id: currentBusinessUnitId || null,
-            transaction_code: stockTxCode,
             transaction_type: "in",
             transaction_date: receiptData.receipt_date,
             warehouse_id: receiptData.warehouse_id,
@@ -522,6 +516,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           );
         }
 
+        const now = new Date();
         const postingDate = receiptData.receipt_date;
         const postingTime = now.toTimeString().split(" ")[0];
 

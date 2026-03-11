@@ -408,12 +408,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
-    // Generate adjustment code with timestamp to avoid duplicates
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-    const milliseconds = now.getTime().toString().slice(-4);
-    const adjustmentCode = `ADJ-${dateStr}${milliseconds}`;
-
     // Calculate total value using base quantities
     const totalValue = body.items.reduce((sum, item) => {
       const adjustedQty = Number(item.adjustedQty);
@@ -427,7 +421,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: companyId,
         business_unit_id: currentBusinessUnitId,
-        adjustment_code: adjustmentCode,
         adjustment_type: body.adjustmentType,
         adjustment_date: body.adjustmentDate,
         warehouse_id: body.warehouseId,

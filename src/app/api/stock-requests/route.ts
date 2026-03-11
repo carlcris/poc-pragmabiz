@@ -318,15 +318,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    if (requestingWarehouseId === fulfillingWarehouseId) {
+      return NextResponse.json(
+        { error: "Fulfilling warehouse must be different from requesting warehouse" },
+        { status: 400 }
+      );
+    }
+
     if (!body.items || body.items.length === 0) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
-
-    // Generate request code
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-    const milliseconds = now.getTime().toString().slice(-4);
-    const requestCode = `SR-${dateStr}${milliseconds}`;
 
     // Build requested_by_name from first_name and last_name
     const requestedByName =
@@ -340,7 +341,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: companyId,
         business_unit_id: currentBusinessUnitId,
-        request_code: requestCode,
         request_date: body.request_date,
         required_date: body.required_date,
         requesting_warehouse_id: requestingWarehouseId,

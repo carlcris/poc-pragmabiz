@@ -308,24 +308,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate order code if not provided (PO-YYYY-NNNN)
-    let orderCode = body.orderCode;
-    if (!orderCode) {
-      const year = new Date().getFullYear();
-      const { data: orders } = await supabase
-        .from("purchase_orders")
-        .select("order_code")
-        .eq("company_id", userData.company_id)
-        .like("order_code", `PO-${year}-%`)
-        .order("order_code", { ascending: false })
-        .limit(1);
-
-      let nextNum = 1;
-      if (orders && orders.length > 0) {
-        const lastNum = parseInt(orders[0].order_code.split("-")[2]);
-        nextNum = lastNum + 1;
-      }
-      orderCode = `PO-${year}-${String(nextNum).padStart(4, "0")}`;
+    const orderCode = body.orderCode?.trim();
+    if (orderCode) {
+      return NextResponse.json(
+        { error: "orderCode is generated automatically and must not be provided" },
+        { status: 400 }
+      );
     }
 
     // Calculate totals
@@ -355,7 +343,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        order_code: orderCode,
         supplier_id: body.supplierId,
         order_date: body.orderDate || new Date().toISOString().split("T")[0],
         expected_delivery_date: body.expectedDeliveryDate,

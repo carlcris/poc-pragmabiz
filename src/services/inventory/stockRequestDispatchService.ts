@@ -50,9 +50,6 @@ export const dispatchStockRequestInventory = async ({
   }
 
   const now = new Date();
-  const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-  const milliseconds = now.getTime().toString().slice(-4);
-  const transactionCode = `ST-${dateStr}${milliseconds}`;
   const transactionDate = dispatchDate || now.toISOString().split("T")[0];
   const postingDate = transactionDate;
   const postingTime = now.toTimeString().split(" ")[0];
@@ -71,7 +68,6 @@ export const dispatchStockRequestInventory = async ({
     .insert({
       company_id: companyId,
       business_unit_id: businessUnitId,
-      transaction_code: transactionCode,
       transaction_type: "out",
       transaction_date: transactionDate,
       warehouse_id: destinationWarehouseId,

@@ -105,14 +105,11 @@ export async function createPOSStockTransaction(
     });
 
     // STEP 3: Create stock transaction header
-    const stockTransactionCode = `ST-POS-${data.transactionCode}`;
-
     const { data: stockTransaction, error: transactionError } = await supabase
       .from("stock_transactions")
       .insert({
         company_id: companyId,
         business_unit_id: businessUnitId,
-        transaction_code: stockTransactionCode,
         transaction_type: "out",
         transaction_date: data.transactionDate.split("T")[0],
         warehouse_id: data.warehouseId,
@@ -266,9 +263,6 @@ export async function reversePOSStockTransaction(
       };
     }
 
-    // Generate reversal stock transaction code
-    const reversalCode = `ST-POS-VOID-${transactionCode}`;
-
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId,
@@ -282,7 +276,6 @@ export async function reversePOSStockTransaction(
       .insert({
         company_id: companyId,
         business_unit_id: businessUnitId,
-        transaction_code: reversalCode,
         transaction_type: "in", // Opposite of 'out'
         transaction_date: new Date().toISOString().split("T")[0], // Current date for reversal
         warehouse_id: warehouseId,

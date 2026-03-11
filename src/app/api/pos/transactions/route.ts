@@ -329,16 +329,12 @@ export async function POST(request: NextRequest) {
       customerName = customer?.name;
     }
 
-    // Generate transaction code
-    const transactionCode = `POS-${Date.now()}`;
-
     // Create transaction header
     const { data: transaction, error: transactionError } = await supabase
       .from("pos_transactions")
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        transaction_code: transactionCode,
         transaction_date: new Date().toISOString(),
         customer_id: customerId,
         customer_name: customerName,

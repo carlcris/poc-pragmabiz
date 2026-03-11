@@ -129,42 +129,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       ]) || []
     );
 
-    // Step 3: Generate invoice number (handle both old INV-NNNNN and new INV-YYYY-NNNN formats)
-    const { data: invoices } = await supabase
-      .from("sales_invoices")
-      .select("invoice_code")
-      .eq("company_id", salesOrder.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    let invoiceNumber = "INV-2025-0001";
-    if (invoices && invoices.length > 0 && invoices[0].invoice_code) {
-      const parts = invoices[0].invoice_code.split("-");
-      if (parts.length === 3) {
-        // New format: INV-YYYY-NNNN
-        const lastNum = parseInt(parts[2]);
-        const nextNum = lastNum + 1;
-        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, "0")}`;
-      } else if (parts.length === 2) {
-        // Old format: INV-NNNNN - convert to new format starting from that number
-        const lastNum = parseInt(parts[1]);
-        const nextNum = lastNum + 1;
-        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, "0")}`;
-      }
-    }
-
-    // Step 4: Calculate due date (default: 30 days from now)
+    // Step 3: Calculate due date (default: 30 days from now)
     const today = new Date();
     const dueDate = new Date(today);
     dueDate.setDate(dueDate.getDate() + 30);
 
-    // Step 5: Create invoice
+    // Step 4: Create invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from("sales_invoices")
       .insert({
         company_id: salesOrder.company_id,
         business_unit_id: currentBusinessUnitId,
-        invoice_code: invoiceNumber,
         customer_id: salesOrder.customer_id,
         warehouse_id: body.warehouseId,
         custom_fields: body.locationId ? { locationId: body.locationId } : null,
@@ -236,25 +211,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Step 7: Create stock transactions and ledger entries
-    // Generate stock transaction code
-    const currentYear = new Date().getFullYear();
-    const { data: lastTransaction } = await supabase
-      .from("stock_transactions")
-      .select("transaction_code")
-      .eq("company_id", salesOrder.company_id)
-      .like("transaction_code", `ST-${currentYear}-%`)
-      .order("transaction_code", { ascending: false })
-      .limit(1);
-
-    let nextTransactionNum = 1;
-    if (lastTransaction && lastTransaction.length > 0) {
-      const match = lastTransaction[0].transaction_code.match(/ST-\d+-(\d+)/);
-      if (match) {
-        nextTransactionNum = parseInt(match[1]) + 1;
-      }
-    }
-    const transactionCode = `ST-${currentYear}-${String(nextTransactionNum).padStart(4, "0")}`;
-
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId: salesOrder.company_id,
@@ -269,7 +225,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .insert({
         company_id: salesOrder.company_id,
         business_unit_id: currentBusinessUnitId,
-        transaction_code: transactionCode,
         transaction_type: "out",
         transaction_date: today.toISOString().split("T")[0],
         warehouse_id: body.warehouseId,

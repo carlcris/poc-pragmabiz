@@ -425,25 +425,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate transaction code (ST-YYYY-NNNN)
-    const currentYear = new Date().getFullYear();
-    const { data: lastTransaction } = await supabase
-      .from("stock_transactions")
-      .select("transaction_code")
-      .eq("company_id", companyId)
-      .like("transaction_code", `ST-${currentYear}-%`)
-      .order("transaction_code", { ascending: false })
-      .limit(1);
-
-    let nextNum = 1;
-    if (lastTransaction && lastTransaction.length > 0) {
-      const match = lastTransaction[0].transaction_code.match(/ST-\d+-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
-      }
-    }
-    const transactionCode = `ST-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
     const defaultFromLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId,
@@ -473,7 +454,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: companyId,
         business_unit_id: currentBusinessUnitId,
-        transaction_code: transactionCode,
         transaction_type: body.transactionType,
         transaction_date: body.transactionDate || new Date().toISOString().split("T")[0],
         warehouse_id: body.warehouseId,

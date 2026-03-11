@@ -266,16 +266,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate transfer code
-    const transferCode = `ST-${Date.now()}`;
-
     // Create stock transfer with status='pending'
     const { data: transfer, error: transferError } = await supabase
       .from("stock_transfers")
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        transfer_code: transferCode,
         transfer_date: transferDate,
         from_warehouse_id: fromWarehouseId,
         to_warehouse_id: toWarehouseId,

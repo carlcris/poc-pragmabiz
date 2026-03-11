@@ -126,13 +126,9 @@ BEGIN
   SET updated_by = EXCLUDED.updated_by
   RETURNING id INTO v_default_location_id;
 
-  v_tx_code := 'ST-' || TO_CHAR(v_now, 'YYYYMMDDHH24MISSMS') ||
-               SUBSTRING(REPLACE(gen_random_uuid()::TEXT, '-', ''), 1, 4);
-
   INSERT INTO stock_transactions (
     company_id,
     business_unit_id,
-    transaction_code,
     transaction_type,
     transaction_date,
     warehouse_id,
@@ -147,7 +143,6 @@ BEGIN
   VALUES (
     p_company_id,
     v_grn.business_unit_id,
-    v_tx_code,
     'in',
     v_posting_date,
     v_grn.warehouse_id,
@@ -159,7 +154,7 @@ BEGIN
     p_user_id,
     p_user_id
   )
-  RETURNING id INTO v_tx_id;
+  RETURNING id, transaction_code INTO v_tx_id, v_tx_code;
 
   FOR v_grn_item IN
     SELECT gi.*

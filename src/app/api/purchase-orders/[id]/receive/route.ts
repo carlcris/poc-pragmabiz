@@ -115,32 +115,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // Generate receipt code
-    const currentYear = new Date().getFullYear();
-    const { data: receipts } = await supabase
-      .from("purchase_receipts")
-      .select("receipt_code")
-      .eq("company_id", userData.company_id)
-      .like("receipt_code", `GRN-${currentYear}-%`)
-      .order("receipt_code", { ascending: false })
-      .limit(1);
-
-    let nextNum = 1;
-    if (receipts && receipts.length > 0) {
-      const match = receipts[0].receipt_code.match(/GRN-\d+-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
-      }
-    }
-    const receiptCode = `GRN-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
     // Create purchase receipt
     const { data: receipt, error: receiptError } = await supabase
       .from("purchase_receipts")
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        receipt_code: receiptCode,
         purchase_order_id: po.id,
         supplier_id: po.supplier_id,
         warehouse_id: body.warehouseId,
@@ -227,12 +207,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // STEP 2: Create stock IN transaction
-    // Generate stock transaction code with timestamp to avoid duplicates
-    const now = new Date();
-    const dateStr = now.toISOString().split("T")[0].replace(/-/g, "");
-    const milliseconds = now.getTime().toString().slice(-4);
-    const stockTxCode = `ST-${dateStr}${milliseconds}`;
-
     const defaultLocationId = body.locationId
       ? body.locationId
       : await ensureWarehouseDefaultLocation({
@@ -248,7 +222,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        transaction_code: stockTxCode,
         transaction_type: "in",
         transaction_date: body.receiptDate || new Date().toISOString().split("T")[0],
         warehouse_id: body.warehouseId,
@@ -256,7 +229,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         reference_type: "purchase_receipt",
         reference_id: receipt.id,
         status: "posted",
-        notes: `Goods received from PO ${po.order_code} - ${receiptCode}`,
+        notes: `Goods received from PO ${po.order_code} - ${receipt.receipt_code}`,
         created_by: user.id,
         updated_by: user.id,
       })
@@ -274,7 +247,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // STEP 3: Create stock transaction items and update inventory
-    const postingDate = body.receiptDate || new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const postingDate = body.receiptDate || now.toISOString().split("T")[0];
     const postingTime = now.toTimeString().split(" ")[0];
 
     for (let i = 0; i < resolvedItems.length; i++) {

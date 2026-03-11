@@ -131,21 +131,6 @@ export async function postPOSSale(
       taxAccount = taxAcct;
     }
 
-    // Get next journal code
-    const { data: journalCodeResult, error: codeError } = await supabase.rpc(
-      "get_next_journal_code",
-      { p_company_id: companyId }
-    );
-
-    if (codeError || !journalCodeResult) {
-      return {
-        success: false,
-        error: "Failed to generate journal code",
-      };
-    }
-
-    const journalCode = journalCodeResult as string;
-
     // Calculate net revenue (subtotal - discount)
     const netRevenue = data.subtotal - data.totalDiscount;
 
@@ -155,7 +140,6 @@ export async function postPOSSale(
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: data.transactionDate,
         reference_type: "pos_transaction",
         reference_id: data.transactionId,
@@ -406,27 +390,11 @@ export async function postPOSCOGS(
       };
     }
 
-    // Get next journal code
-    const { data: journalCodeResult, error: codeError } = await supabase.rpc(
-      "get_next_journal_code",
-      { p_company_id: companyId }
-    );
-
-    if (codeError || !journalCodeResult) {
-      return {
-        success: false,
-        error: "Failed to generate journal code",
-      };
-    }
-
-    const journalCode = journalCodeResult as string;
-
     // Create journal entry header
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: data.transactionDate,
         reference_type: "pos_transaction",
         reference_id: data.transactionId,
@@ -645,16 +613,6 @@ async function postPOSSaleReversal(
       taxAccount = taxAcct;
     }
 
-    // Get journal code
-    const { data: journalCodeResult } = await supabase.rpc("get_next_journal_code", {
-      p_company_id: companyId,
-    });
-
-    if (!journalCodeResult) {
-      return { success: false, error: "Failed to generate journal code" };
-    }
-
-    const journalCode = journalCodeResult as string;
     const netRevenue = data.subtotal - data.totalDiscount;
 
     // Create journal entry with reversed amounts
@@ -663,7 +621,6 @@ async function postPOSSaleReversal(
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: data.transactionDate,
         reference_type: "pos_transaction",
         reference_id: data.transactionId,
@@ -793,23 +750,11 @@ async function postPOSCOGSReversal(
       return { success: false, error: "Required accounts not found" };
     }
 
-    // Get journal code
-    const { data: journalCodeResult } = await supabase.rpc("get_next_journal_code", {
-      p_company_id: companyId,
-    });
-
-    if (!journalCodeResult) {
-      return { success: false, error: "Failed to generate journal code" };
-    }
-
-    const journalCode = journalCodeResult as string;
-
     // Create journal entry
     const { data: journalEntry, error: journalError } = await supabase
       .from("journal_entries")
       .insert({
         company_id: companyId,
-        journal_code: journalCode,
         posting_date: data.transactionDate,
         reference_type: "pos_transaction",
         reference_id: data.transactionId,

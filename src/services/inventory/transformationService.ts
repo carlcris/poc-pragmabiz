@@ -350,9 +350,7 @@ export async function executeTransformation(
     const inputTransactionIds: string[] = [];
     const inputCosts: Array<{ inputLineId: string; cost: number }> = [];
 
-    let inputIndex = 0;
     for (const inputData of executionData.inputs) {
-      inputIndex++;
       const inputLine = typedOrder.inputs.find((i) => i.id === inputData.inputLineId);
       if (!inputLine) continue;
 
@@ -404,13 +402,11 @@ export async function executeTransformation(
       const totalCost = unitCost * resolvedInput.quantity;
 
       // Create stock transaction (type='out')
-      // Add input index to make transaction code unique for each input
       const { data: stockTransaction, error: transactionError } = await supabase
         .from("stock_transactions")
         .insert({
           company_id: typedOrder.company_id,
           business_unit_id: typedOrder.business_unit_id,
-          transaction_code: `ST-TRANS-IN-${typedOrder.order_code}-${inputIndex}`,
           transaction_type: "out",
           transaction_date:
             executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -551,9 +547,7 @@ export async function executeTransformation(
 
     // Cost allocation strategy: quantity-based (across produced + wasted)
 
-    let outputIndex = 0;
     for (const outputData of executionData.outputs) {
-      outputIndex++;
       const outputLine = typedOrder.outputs.find((o) => o.id === outputData.outputLineId);
       if (!outputLine) continue;
 
@@ -597,13 +591,11 @@ export async function executeTransformation(
       const newStock = currentStock + resolvedOutput.quantity;
 
       // Create stock transaction (type='in') - same warehouse as inputs
-      // Add output index to make transaction code unique for each output
       const { data: stockTransaction, error: transactionError } = await supabase
         .from("stock_transactions")
         .insert({
           company_id: order.company_id,
           business_unit_id: order.business_unit_id,
-          transaction_code: `ST-TRANS-OUT-${order.order_code}-${outputIndex}`,
           transaction_type: "in",
           transaction_date:
             executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
@@ -724,7 +716,6 @@ export async function executeTransformation(
           .insert({
             company_id: order.company_id,
             business_unit_id: order.business_unit_id,
-            transaction_code: `ST-TRANS-WASTE-${order.order_code}-${outputIndex}`,
             transaction_type: "out", // Waste is recorded as outbound from a "virtual" waste location
             transaction_date:
               executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],

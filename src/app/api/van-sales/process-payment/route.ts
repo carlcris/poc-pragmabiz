@@ -128,21 +128,6 @@ export async function POST(request: NextRequest) {
     // STEP 1: Create Sales Order
     // ========================================================================
 
-    // Generate order number
-    const { data: lastOrder } = await supabase
-      .from("sales_orders")
-      .select("order_code")
-      .eq("company_id", userData.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let orderNumber = "SO-00001";
-    if (lastOrder?.order_code) {
-      const lastNumber = parseInt(lastOrder.order_code.split("-")[1] || "0");
-      orderNumber = `SO-${String(lastNumber + 1).padStart(5, "0")}`;
-    }
-
     // Calculate totals
     let subtotal = 0;
     let totalDiscount = 0;
@@ -190,7 +175,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        order_code: orderNumber,
         order_date: today,
         customer_id: body.customerId,
         expected_delivery_date: today,
@@ -244,37 +228,12 @@ export async function POST(request: NextRequest) {
     // STEP 2: Create Sales Invoice from Order
     // ========================================================================
 
-    // Generate invoice number (using same format as sales orders: INV-YYYY-NNNN)
-    const { data: invoices } = await supabase
-      .from("sales_invoices")
-      .select("invoice_code")
-      .eq("company_id", userData.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    let invoiceNumber = "INV-2025-0001";
-    if (invoices && invoices.length > 0 && invoices[0].invoice_code) {
-      const parts = invoices[0].invoice_code.split("-");
-      if (parts.length === 3) {
-        // Format: INV-YYYY-NNNN
-        const lastNum = parseInt(parts[2]);
-        const nextNum = lastNum + 1;
-        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, "0")}`;
-      } else if (parts.length === 2) {
-        // Old format: INV-NNNNN - convert to new format starting from that number
-        const lastNum = parseInt(parts[1]);
-        const nextNum = lastNum + 1;
-        invoiceNumber = `INV-2025-${String(nextNum).padStart(4, "0")}`;
-      }
-    }
-
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from("sales_invoices")
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        invoice_code: invoiceNumber,
         customer_id: body.customerId,
         sales_order_id: salesOrder.id,
         warehouse_id: body.warehouseId,
@@ -331,43 +290,22 @@ export async function POST(request: NextRequest) {
     // STEP 3: Record Multiple Payments
     // ========================================================================
 
-    // Get the last payment code to generate new ones
-    const { data: lastPayment } = await supabase
-      .from("invoice_payments")
-      .select("payment_code")
-      .eq("company_id", userData.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let lastPaymentNumber = 0;
-    if (lastPayment?.payment_code) {
-      lastPaymentNumber = parseInt(lastPayment.payment_code.split("-")[1] || "0");
-    }
-
     // Create payment records for each payment method
     const paymentRecords = [];
-    const paymentCodes = [];
 
-    for (let i = 0; i < body.payments.length; i++) {
-      const paymentMethod = body.payments[i];
-      const paymentNumber = lastPaymentNumber + i + 1;
-      const paymentCode = `PAY-${String(paymentNumber).padStart(5, "0")}`;
-      paymentCodes.push(paymentCode);
-
+    for (const paymentMethod of body.payments) {
       const { data: payment, error: paymentError } = await supabase
         .from("invoice_payments")
         .insert({
           company_id: userData.company_id,
           business_unit_id: currentBusinessUnitId,
           invoice_id: invoice.id,
-          payment_code: paymentCode,
           payment_date: today,
           amount: paymentMethod.amount.toFixed(4),
           payment_method: paymentMethod.paymentMethod,
           reference:
             paymentMethod.reference ||
-            `Van Sales - ${invoiceNumber} - ${paymentMethod.paymentMethod}`,
+            `Van Sales - ${invoice.invoice_code} - ${paymentMethod.paymentMethod}`,
           notes: body.notes || `Van sales payment via ${paymentMethod.paymentMethod}`,
           created_by: user.id,
           updated_by: user.id,
@@ -413,25 +351,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invoice items not found" }, { status: 404 });
     }
 
-    // Generate stock transaction code
-    const currentYear = new Date().getFullYear();
-    const { data: lastTransaction } = await supabase
-      .from("stock_transactions")
-      .select("transaction_code")
-      .eq("company_id", userData.company_id)
-      .like("transaction_code", `ST-${currentYear}-%`)
-      .order("transaction_code", { ascending: false })
-      .limit(1);
-
-    let nextTransactionNum = 1;
-    if (lastTransaction && lastTransaction.length > 0) {
-      const match = lastTransaction[0].transaction_code.match(/ST-\d+-(\d+)/);
-      if (match) {
-        nextTransactionNum = parseInt(match[1]) + 1;
-      }
-    }
-    const transactionCode = `ST-${currentYear}-${String(nextTransactionNum).padStart(4, "0")}`;
-
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
       companyId: userData.company_id,
@@ -445,7 +364,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        transaction_code: transactionCode,
         transaction_type: "out",
         transaction_date: invoice.invoice_date,
         warehouse_id: invoice.warehouse_id,
@@ -598,11 +516,11 @@ export async function POST(request: NextRequest) {
     // Post AR Invoice (DR AR, CR Revenue)
     const arInvoiceResult = await postARInvoice(userData.company_id, user.id, {
       invoiceId: invoice.id,
-      invoiceCode: invoiceNumber,
+      invoiceCode: invoice.invoice_code,
       customerId: body.customerId,
       invoiceDate: today,
       totalAmount: totalAmount,
-      description: `Van sales invoice ${invoiceNumber}`,
+      description: `Van sales invoice ${invoice.invoice_code}`,
     });
 
     if (!arInvoiceResult.success) {
@@ -613,12 +531,12 @@ export async function POST(request: NextRequest) {
       const arPaymentResult = await postARPayment(userData.company_id, user.id, {
         paymentId: payment.id,
         invoiceId: invoice.id,
-        invoiceCode: invoiceNumber,
+        invoiceCode: invoice.invoice_code,
         customerId: body.customerId,
         paymentDate: today,
         paymentAmount: parseFloat(payment.amount),
         paymentMethod: payment.payment_method,
-        description: `Van sales payment for ${invoiceNumber} via ${payment.payment_method}`,
+        description: `Van sales payment for ${invoice.invoice_code} via ${payment.payment_method}`,
       });
 
       if (!arPaymentResult.success) {
@@ -643,12 +561,12 @@ export async function POST(request: NextRequest) {
     if (cogsCalculation.success && cogsCalculation.items && cogsCalculation.totalCOGS) {
       cogsResult = await postCOGS(userData.company_id, user.id, {
         invoiceId: invoice.id,
-        invoiceCode: invoiceNumber,
+        invoiceCode: invoice.invoice_code,
         warehouseId: body.warehouseId,
         invoiceDate: today,
         items: cogsCalculation.items,
         totalCOGS: cogsCalculation.totalCOGS,
-        description: `COGS for van sales invoice ${invoiceNumber}`,
+        description: `COGS for van sales invoice ${invoice.invoice_code}`,
       });
 
       if (!cogsResult.success && cogsResult.error) {
@@ -666,7 +584,7 @@ export async function POST(request: NextRequest) {
         data: {
           orderNumber: salesOrder.order_code,
           invoiceNumber: invoice.invoice_code,
-          paymentCodes: paymentCodes,
+          paymentCodes: paymentRecords.map((payment) => payment.payment_code),
           payments: paymentRecords.map((p) => ({
             paymentCode: p.payment_code,
             method: p.payment_method,

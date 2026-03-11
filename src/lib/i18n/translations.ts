@@ -2070,6 +2070,7 @@ export type TranslationKeys = {
     selectPriority: string;
     requestedByLabel: string;
     selectRequestedBy: string;
+    autoAssignedWarehouseUnavailable: string;
     requestedToLabel: string;
     selectRequestedTo: string;
     purposeLabel: string;
@@ -6391,6 +6392,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectPriority: "Select priority",
       requestedByLabel: "Requested By",
       selectRequestedBy: "Select requested by",
+      autoAssignedWarehouseUnavailable: "No warehouse assigned to the current business unit",
       requestedToLabel: "Requested To",
       selectRequestedTo: "Select requested to",
       purposeLabel: "Purpose",
@@ -10640,6 +10642,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectPriority: "选择优先级",
       requestedByLabel: "申请方",
       selectRequestedBy: "选择申请方",
+      autoAssignedWarehouseUnavailable: "当前业务单元未分配仓库",
       requestedToLabel: "供货方",
       selectRequestedTo: "选择供货方",
       purposeLabel: "用途",

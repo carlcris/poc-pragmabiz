@@ -347,31 +347,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Purchase order not found" }, { status: 404 });
     }
 
-    // Generate receipt code
-    const currentYear = new Date().getFullYear();
-    const { data: lastReceipt } = await supabase
-      .from("purchase_receipts")
-      .select("receipt_code")
-      .eq("company_id", userData.company_id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let nextNum = 1;
-    if (lastReceipt?.receipt_code) {
-      const match = lastReceipt.receipt_code.match(/GRN-\d+-(\d+)/);
-      if (match) {
-        nextNum = parseInt(match[1]) + 1;
-      }
-    }
-    const receiptCode = `GRN-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
     // Create receipt
     const { data: receipt, error: receiptError } = await supabase
       .from("purchase_receipts")
       .insert({
         company_id: userData.company_id,
-        receipt_code: receiptCode,
         purchase_order_id: body.purchaseOrderId,
         supplier_id: poData.supplier_id,
         warehouse_id: body.warehouseId,

@@ -251,31 +251,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
-    // Generate LL number
-    const { data: lastLL } = await supabase
-      .from("load_lists")
-      .select("ll_number")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let nextNum = 1;
-    if (lastLL?.ll_number) {
-      const match = lastLL.ll_number.match(/LL-(\d{4})-(\d+)/);
-      if (match) {
-        const year = new Date().getFullYear();
-        const lastYear = parseInt(match[1]);
-        const lastNum = parseInt(match[2]);
-
-        if (year === lastYear) {
-          nextNum = lastNum + 1;
-        }
-      }
-    }
-
-    const currentYear = new Date().getFullYear();
-    const llNumber = `LL-${currentYear}-${String(nextNum).padStart(4, "0")}`;
     const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
@@ -285,7 +260,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: companyId,
         business_unit_id: currentBusinessUnitId,
-        ll_number: llNumber,
         supplier_ll_number: body.supplierLlNumber,
         supplier_id: body.supplierId,
         warehouse_id: body.warehouseId,

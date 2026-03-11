@@ -74,25 +74,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Invoice items not found" }, { status: 404 });
     }
 
-    // Generate stock transaction code
-    const currentYear = new Date().getFullYear();
-    const { data: lastTransaction } = await supabase
-      .from("stock_transactions")
-      .select("transaction_code")
-      .eq("company_id", userData.company_id)
-      .like("transaction_code", `ST-${currentYear}-%`)
-      .order("transaction_code", { ascending: false })
-      .limit(1);
-
-    let nextTransactionNum = 1;
-    if (lastTransaction && lastTransaction.length > 0) {
-      const match = lastTransaction[0].transaction_code.match(/ST-\d+-(\d+)/);
-      if (match) {
-        nextTransactionNum = parseInt(match[1]) + 1;
-      }
-    }
-    const transactionCode = `ST-${currentYear}-${String(nextTransactionNum).padStart(4, "0")}`;
-
     // Create stock transaction header
     const defaultLocationId = await ensureWarehouseDefaultLocation({
       supabase,
@@ -106,7 +87,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .from("stock_transactions")
       .insert({
         company_id: userData.company_id,
-        transaction_code: transactionCode,
         transaction_type: "out",
         transaction_date: invoice.invoice_date,
         warehouse_id: invoice.warehouse_id,

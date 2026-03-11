@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { buildDnNo, fetchDeliveryNote, getAuthContext, mapDeliveryNoteRecord, toNumber } from "./_lib";
+import { fetchDeliveryNote, getAuthContext, mapDeliveryNoteRecord, toNumber } from "./_lib";
 
 type CreateDeliveryNoteBody = {
   requestingWarehouseId?: string;
@@ -214,7 +214,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const dnNo = buildDnNo();
     const nowIso = new Date().toISOString();
 
     const { data: dn, error: createError } = await auth.supabase
@@ -222,7 +221,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: auth.companyId,
         business_unit_id: auth.currentBusinessUnitId,
-        dn_no: dnNo,
         status: "draft",
         requesting_warehouse_id: inferredRequestingWarehouseId,
         fulfilling_warehouse_id: inferredFulfillingWarehouseId,
@@ -234,7 +232,7 @@ export async function POST(request: NextRequest) {
         created_at: nowIso,
         updated_at: nowIso,
       })
-      .select("id")
+      .select("id, dn_no")
       .single();
 
     if (createError || !dn) {

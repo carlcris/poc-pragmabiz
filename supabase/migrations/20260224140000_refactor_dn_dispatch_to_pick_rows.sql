@@ -29,7 +29,6 @@ DECLARE
   v_dn_item delivery_note_items%ROWTYPE;
   v_warehouse_stock item_warehouse%ROWTYPE;
   v_tx_id UUID;
-  v_tx_code TEXT;
   v_now TIMESTAMP;
   v_posting_date DATE;
   v_posting_time TIME;
@@ -142,13 +141,9 @@ BEGIN
     SET updated_by = EXCLUDED.updated_by
     RETURNING id INTO v_line_default_location_id;
 
-    v_tx_code := 'ST-' || TO_CHAR(v_now, 'YYYYMMDDHH24MISSMS') ||
-                 SUBSTRING(REPLACE(gen_random_uuid()::TEXT, '-', ''), 1, 4);
-
     INSERT INTO stock_transactions (
       company_id,
       business_unit_id,
-      transaction_code,
       transaction_type,
       transaction_date,
       warehouse_id,
@@ -164,7 +159,6 @@ BEGIN
     VALUES (
       p_company_id,
       p_business_unit_id,
-      v_tx_code,
       'out',
       v_posting_date,
       v_line_fulfilling_warehouse_id,
@@ -390,4 +384,3 @@ END;
 $$;
 
 COMMIT;
-

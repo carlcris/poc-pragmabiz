@@ -98,6 +98,14 @@ export function StockRequestFormDialog({
       notes: "",
     },
   });
+  const requestingWarehouseId = form.watch("requesting_warehouse_id");
+  const requestingWarehouse = warehouses.find((warehouse) => warehouse.id === requestingWarehouseId) ?? null;
+  const requestingWarehouseLabel = requestingWarehouse
+    ? `${requestingWarehouse.code} - ${requestingWarehouse.name}`
+    : t("autoAssignedWarehouseUnavailable");
+  const fulfillingWarehouseOptions = warehouses.filter(
+    (warehouse) => warehouse.id !== requestingWarehouseId
+  );
 
   useEffect(() => {
     if (open && selectedRequest) {
@@ -251,20 +259,15 @@ export function StockRequestFormDialog({
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel className="text-xs">{t("requestedByLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder={t("selectRequestedBy")} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {warehouses.map((warehouse) => (
-                                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                                    {warehouse.code} - {warehouse.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <Input
+                                value={requestingWarehouseLabel}
+                                readOnly
+                                disabled
+                                className="h-9"
+                              />
+                            </FormControl>
+                            <input type="hidden" name={field.name} value={field.value} readOnly />
                             <FormMessage />
                           </FormItem>
                         )}
@@ -278,12 +281,12 @@ export function StockRequestFormDialog({
                             <FormLabel className="text-xs">{t("requestedToLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger className="h-9">
-                                  <SelectValue placeholder={t("selectRequestedTo")} />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {warehouses.map((warehouse) => (
+                              <SelectTrigger className="h-9">
+                                <SelectValue placeholder={t("selectRequestedTo")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {fulfillingWarehouseOptions.map((warehouse) => (
                                   <SelectItem key={warehouse.id} value={warehouse.id}>
                                     {warehouse.code} - {warehouse.name}
                                   </SelectItem>

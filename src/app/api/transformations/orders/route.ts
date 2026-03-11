@@ -224,19 +224,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
-    // Generate order code
-    const orderDate = new Date();
-    const dateStr = orderDate.toISOString().split("T")[0].replace(/-/g, "");
-    const randomStr = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const orderCode = `TRN-${dateStr}-${randomStr}`;
-
     // Create order header
     const { data: order, error: orderError } = await supabase
       .from("transformation_orders")
       .insert({
         company_id: userData.company_id,
         business_unit_id: currentBusinessUnitId,
-        order_code: orderCode,
         template_id: data.templateId,
         source_warehouse_id: data.warehouseId,
         status: "DRAFT",

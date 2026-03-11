@@ -463,6 +463,229 @@ export type Database = {
           },
         ]
       }
+      delivery_note_item_adjustments: {
+        Row: {
+          adjustment_type: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          delivery_note_item_id: string
+          dn_id: string
+          id: string
+          new_dispatched_qty: number
+          prior_dispatched_qty: number
+          qty_delta: number
+          reason: string | null
+        }
+        Insert: {
+          adjustment_type: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          delivery_note_item_id: string
+          dn_id: string
+          id?: string
+          new_dispatched_qty: number
+          prior_dispatched_qty: number
+          qty_delta: number
+          reason?: string | null
+        }
+        Update: {
+          adjustment_type?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          delivery_note_item_id?: string
+          dn_id?: string
+          id?: string
+          new_dispatched_qty?: number
+          prior_dispatched_qty?: number
+          qty_delta?: number
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_note_item_adjustments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_adjustments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_adjustments_delivery_note_item_id_fkey"
+            columns: ["delivery_note_item_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_note_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_adjustments_dn_id_fkey"
+            columns: ["dn_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_note_item_picks: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          delivery_note_item_id: string
+          dispatched_qty: number
+          dn_id: string
+          id: string
+          is_mismatch_warning_acknowledged: boolean
+          item_id: string
+          mismatch_reason: string | null
+          pick_list_id: string
+          picked_at: string
+          picked_batch_code: string
+          picked_batch_received_at: string
+          picked_location_id: string
+          picked_qty: number
+          picker_user_id: string | null
+          received_qty: number
+          reversed_qty: number
+          source_warehouse_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          delivery_note_item_id: string
+          dispatched_qty?: number
+          dn_id: string
+          id?: string
+          is_mismatch_warning_acknowledged?: boolean
+          item_id: string
+          mismatch_reason?: string | null
+          pick_list_id: string
+          picked_at?: string
+          picked_batch_code: string
+          picked_batch_received_at: string
+          picked_location_id: string
+          picked_qty?: number
+          picker_user_id?: string | null
+          received_qty?: number
+          reversed_qty?: number
+          source_warehouse_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          delivery_note_item_id?: string
+          dispatched_qty?: number
+          dn_id?: string
+          id?: string
+          is_mismatch_warning_acknowledged?: boolean
+          item_id?: string
+          mismatch_reason?: string | null
+          pick_list_id?: string
+          picked_at?: string
+          picked_batch_code?: string
+          picked_batch_received_at?: string
+          picked_location_id?: string
+          picked_qty?: number
+          picker_user_id?: string | null
+          received_qty?: number
+          reversed_qty?: number
+          source_warehouse_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_note_item_picks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_delivery_note_item_id_fkey"
+            columns: ["delivery_note_item_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_note_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_dn_id_fkey"
+            columns: ["dn_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_pick_list_id_fkey"
+            columns: ["pick_list_id"]
+            isOneToOne: false
+            referencedRelation: "pick_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_picked_location_id_fkey"
+            columns: ["picked_location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_picker_user_id_fkey"
+            columns: ["picker_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_source_warehouse_id_fkey"
+            columns: ["source_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_note_items: {
         Row: {
           allocated_qty: number
@@ -471,15 +694,25 @@ export type Database = {
           dispatched_qty: number
           dn_id: string
           fulfilling_warehouse_id: string
+          has_pick_source_override: boolean
           id: string
+          is_voided: boolean
           item_id: string
+          last_pick_source_override_at: string | null
+          last_pick_source_override_by: string | null
           picked_qty: number
           requesting_warehouse_id: string
           short_qty: number
           sr_id: string
           sr_item_id: string
+          suggested_pick_batch_code: string | null
+          suggested_pick_batch_received_at: string | null
+          suggested_pick_location_id: string | null
           uom_id: string
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           allocated_qty?: number
@@ -488,15 +721,25 @@ export type Database = {
           dispatched_qty?: number
           dn_id: string
           fulfilling_warehouse_id: string
+          has_pick_source_override?: boolean
           id?: string
+          is_voided?: boolean
           item_id: string
+          last_pick_source_override_at?: string | null
+          last_pick_source_override_by?: string | null
           picked_qty?: number
           requesting_warehouse_id: string
           short_qty?: number
           sr_id: string
           sr_item_id: string
+          suggested_pick_batch_code?: string | null
+          suggested_pick_batch_received_at?: string | null
+          suggested_pick_location_id?: string | null
           uom_id: string
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           allocated_qty?: number
@@ -505,15 +748,25 @@ export type Database = {
           dispatched_qty?: number
           dn_id?: string
           fulfilling_warehouse_id?: string
+          has_pick_source_override?: boolean
           id?: string
+          is_voided?: boolean
           item_id?: string
+          last_pick_source_override_at?: string | null
+          last_pick_source_override_by?: string | null
           picked_qty?: number
           requesting_warehouse_id?: string
           short_qty?: number
           sr_id?: string
           sr_item_id?: string
+          suggested_pick_batch_code?: string | null
+          suggested_pick_batch_received_at?: string | null
+          suggested_pick_location_id?: string | null
           uom_id?: string
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -545,6 +798,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "delivery_note_items_last_pick_source_override_by_fkey"
+            columns: ["last_pick_source_override_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "delivery_note_items_requesting_warehouse_id_fkey"
             columns: ["requesting_warehouse_id"]
             isOneToOne: false
@@ -566,10 +826,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "delivery_note_items_suggested_pick_location_id_fkey"
+            columns: ["suggested_pick_location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "delivery_note_items_uom_id_fkey"
             columns: ["uom_id"]
             isOneToOne: false
             referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -630,6 +904,7 @@ export type Database = {
           driver_name: string | null
           driver_signature: string | null
           fulfilling_warehouse_id: string
+          fulfillment_mode: string
           id: string
           notes: string | null
           picking_completed_at: string | null
@@ -656,6 +931,7 @@ export type Database = {
           driver_name?: string | null
           driver_signature?: string | null
           fulfilling_warehouse_id: string
+          fulfillment_mode?: string
           id?: string
           notes?: string | null
           picking_completed_at?: string | null
@@ -682,6 +958,7 @@ export type Database = {
           driver_name?: string | null
           driver_signature?: string | null
           fulfilling_warehouse_id?: string
+          fulfillment_mode?: string
           id?: string
           notes?: string | null
           picking_completed_at?: string | null
@@ -751,6 +1028,38 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_code_sequences: {
+        Row: {
+          code_prefix: string
+          company_id: string
+          created_at: string
+          last_number: number
+          updated_at: string
+        }
+        Insert: {
+          code_prefix: string
+          company_id: string
+          created_at?: string
+          last_number?: number
+          updated_at?: string
+        }
+        Update: {
+          code_prefix?: string
+          company_id?: string
+          created_at?: string
+          last_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_code_sequences_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -987,6 +1296,7 @@ export type Database = {
       grn_boxes: {
         Row: {
           barcode: string
+          batch_location_sku: string | null
           box_number: number
           container_number: string | null
           created_at: string
@@ -999,6 +1309,7 @@ export type Database = {
         }
         Insert: {
           barcode: string
+          batch_location_sku?: string | null
           box_number: number
           container_number?: string | null
           created_at?: string
@@ -1011,6 +1322,7 @@ export type Database = {
         }
         Update: {
           barcode?: string
+          batch_location_sku?: string | null
           box_number?: number
           container_number?: string | null
           created_at?: string
@@ -1468,6 +1780,96 @@ export type Database = {
           },
         ]
       }
+      item_batch: {
+        Row: {
+          batch_code: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          item_id: string
+          qty_available: number | null
+          qty_on_hand: number
+          qty_reserved: number
+          received_at: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+          warehouse_id: string
+        }
+        Insert: {
+          batch_code: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_id: string
+          qty_available?: number | null
+          qty_on_hand?: number
+          qty_reserved?: number
+          received_at: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id: string
+        }
+        Update: {
+          batch_code?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_id?: string
+          qty_available?: number | null
+          qty_on_hand?: number
+          qty_reserved?: number
+          received_at?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_batch_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_categories: {
         Row: {
           code: string
@@ -1635,6 +2037,120 @@ export type Database = {
           },
           {
             foreignKeyName: "item_location_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_location_batch: {
+        Row: {
+          batch_location_sku: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          item_batch_id: string
+          item_id: string
+          location_id: string
+          qty_available: number | null
+          qty_on_hand: number
+          qty_reserved: number
+          updated_at: string
+          updated_by: string | null
+          version: number
+          warehouse_id: string
+        }
+        Insert: {
+          batch_location_sku: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_batch_id: string
+          item_id: string
+          location_id: string
+          qty_available?: number | null
+          qty_on_hand?: number
+          qty_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id: string
+        }
+        Update: {
+          batch_location_sku?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_batch_id?: string
+          item_id?: string
+          location_id?: string
+          qty_available?: number | null
+          qty_on_hand?: number
+          qty_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_location_batch_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_item_batch_id_fkey"
+            columns: ["item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "item_batch"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_item_batch_id_fkey"
+            columns: ["item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_recon_item_batch_vs_location_batch"
+            referencedColumns: ["item_batch_id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_batch_warehouse_id_fkey"
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
@@ -1862,6 +2378,8 @@ export type Database = {
           item_type: string
           purchase_price: number | null
           sales_price: number | null
+          sku: string | null
+          sku_qr_image: string | null
           track_batch: boolean | null
           track_serial: boolean | null
           uom_id: string
@@ -1892,6 +2410,8 @@ export type Database = {
           item_type: string
           purchase_price?: number | null
           sales_price?: number | null
+          sku?: string | null
+          sku_qr_image?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
           uom_id: string
@@ -1922,6 +2442,8 @@ export type Database = {
           item_type?: string
           purchase_price?: number | null
           sales_price?: number | null
+          sku?: string | null
+          sku_qr_image?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
           uom_id?: string
@@ -2264,6 +2786,7 @@ export type Database = {
           deleted_at: string | null
           estimated_arrival_date: string | null
           id: string
+          liner_name: string | null
           ll_number: string
           load_date: string | null
           notes: string | null
@@ -2291,6 +2814,7 @@ export type Database = {
           deleted_at?: string | null
           estimated_arrival_date?: string | null
           id?: string
+          liner_name?: string | null
           ll_number: string
           load_date?: string | null
           notes?: string | null
@@ -2318,6 +2842,7 @@ export type Database = {
           deleted_at?: string | null
           estimated_arrival_date?: string | null
           id?: string
+          liner_name?: string | null
           ll_number?: string
           load_date?: string | null
           notes?: string | null
@@ -2393,6 +2918,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          business_unit_id: string | null
           company_id: string
           created_at: string
           id: string
@@ -2405,6 +2931,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_unit_id?: string | null
           company_id: string
           created_at?: string
           id?: string
@@ -2417,6 +2944,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_unit_id?: string | null
           company_id?: string
           created_at?: string
           id?: string
@@ -2429,6 +2957,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notifications_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notifications_company_id_fkey"
             columns: ["company_id"]
@@ -6475,6 +7010,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           template_code: string
           template_name: string
@@ -6490,6 +7026,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           template_code: string
           template_name: string
@@ -6505,6 +7042,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           template_code?: string
           template_name?: string
@@ -7179,6 +7717,149 @@ export type Database = {
       }
     }
     Views: {
+      v_inventory_recon_item_batch_vs_location_batch: {
+        Row: {
+          batch_code: string | null
+          batch_qty_on_hand: number | null
+          company_id: string | null
+          item_batch_id: string | null
+          item_id: string | null
+          location_batch_qty_on_hand_sum: number | null
+          qty_diff: number | null
+          received_at: string | null
+          warehouse_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_batch_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_inventory_recon_item_location_vs_location_batch: {
+        Row: {
+          company_id: string | null
+          item_id: string | null
+          location_batch_qty_on_hand_sum: number | null
+          location_id: string | null
+          location_qty_on_hand: number | null
+          qty_diff: number | null
+          warehouse_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_location_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_location_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_inventory_recon_item_warehouse_vs_batch: {
+        Row: {
+          batch_qty_on_hand_sum: number | null
+          company_id: string | null
+          item_id: string | null
+          qty_diff: number | null
+          warehouse_id: string | null
+          warehouse_qty_on_hand: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_warehouse_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_warehouse_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_warehouse_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_inventory_recon_item_warehouse_vs_location: {
+        Row: {
+          company_id: string | null
+          item_id: string | null
+          location_qty_on_hand_sum: number | null
+          qty_diff: number | null
+          warehouse_id: string | null
+          warehouse_qty_on_hand: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_warehouse_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_warehouse_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_warehouse_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_employee_commission_summary: {
         Row: {
           company_id: string | null
@@ -7228,6 +7909,45 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_dispatched_delivery_note_item: {
+        Args: {
+          p_company_id: string
+          p_delivery_note_item_id: string
+          p_dn_id: string
+          p_new_dispatched_qty: number
+          p_reason?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      approve_grn_with_batch_inventory: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      cancel_pick_list_reset_progress: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      complete_delivery_note_direct_customer_pickup: {
+        Args: {
+          p_company_id: string
+          p_dn_id: string
+          p_items: Json
+          p_notes: string
+          p_received_date: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       create_item_with_packages: {
         Args: {
           p_additional_packages?: Json
@@ -7251,7 +7971,80 @@ export type Database = {
         }[]
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      generate_document_code: {
+        Args: { p_code_prefix: string; p_company_id: string; p_digits?: number }
+        Returns: string
+      }
+      generate_item_location_batch_sku: { Args: never; Returns: string }
       get_current_business_unit_id: { Args: never; Returns: string }
+      get_inventory_batch_reconciliation_mismatches: {
+        Args: { p_company_id?: string; p_tolerance?: number }
+        Returns: {
+          batch_code: string
+          check_name: string
+          company_id: string
+          item_batch_id: string
+          item_id: string
+          location_id: string
+          qty_diff: number
+          warehouse_id: string
+        }[]
+      }
+      get_items_enhanced_page: {
+        Args: {
+          p_business_unit_id?: string
+          p_category_id?: string
+          p_company_id: string
+          p_item_type?: string
+          p_limit?: number
+          p_page?: number
+          p_search?: string
+          p_status?: string
+          p_warehouse_id?: string
+        }
+        Returns: {
+          allocated: number
+          available: number
+          category_id: string
+          category_name: string
+          cost_price: number
+          estimated_arrival_date: string
+          id: string
+          image_url: string
+          in_transit: number
+          is_active: boolean
+          item_code: string
+          item_name: string
+          item_name_cn: string
+          item_type: string
+          on_hand: number
+          purchase_price: number
+          reorder_point: number
+          sales_price: number
+          sku: string
+          status: string
+          total_count: number
+          uom_code: string
+          uom_id: string
+        }[]
+      }
+      get_items_enhanced_stats: {
+        Args: {
+          p_business_unit_id?: string
+          p_category_id?: string
+          p_company_id: string
+          p_item_type?: string
+          p_search?: string
+          p_status?: string
+          p_warehouse_id?: string
+        }
+        Returns: {
+          low_stock_count: number
+          out_of_stock_count: number
+          total_available_value: number
+          total_count: number
+        }[]
+      }
       get_next_journal_code: { Args: { p_company_id: string }; Returns: string }
       get_next_stock_request_code: {
         Args: { p_company_id: string }
@@ -7283,6 +8076,84 @@ export type Database = {
         Args: { p_date: string; p_van_warehouse_id: string }
         Returns: Json
       }
+      get_warehouse_business_units: {
+        Args: { p_company_id: string; p_warehouse_ids: string[] }
+        Returns: {
+          business_unit_id: string
+          warehouse_id: string
+        }[]
+      }
+      get_warehouses: {
+        Args: {
+          p_accessible_business_unit_ids?: string[]
+          p_company_id: string
+          p_country?: string
+          p_is_active?: boolean
+          p_limit?: number
+          p_page?: number
+          p_search?: string
+        }
+        Returns: {
+          address: string
+          businessUnitId: string
+          city: string
+          code: string
+          companyId: string
+          country: string
+          createdAt: string
+          description: string
+          email: string
+          id: string
+          isActive: boolean
+          isVan: boolean
+          managerName: string
+          name: string
+          phone: string
+          postalCode: string
+          state: string
+          total_count: number
+          updatedAt: string
+        }[]
+      }
+      notify_business_units: {
+        Args: {
+          p_actor_user_id: string
+          p_company_id: string
+          p_exclude_user_ids?: string[]
+          p_message: string
+          p_metadata?: Json
+          p_target_business_unit_ids: string[]
+          p_title: string
+          p_type: string
+        }
+        Returns: number
+      }
+      notify_users:
+        | {
+            Args: {
+              p_actor_user_id: string
+              p_company_id: string
+              p_message: string
+              p_metadata?: Json
+              p_target_user_ids: string[]
+              p_title: string
+              p_type: string
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_actor_user_id: string
+              p_business_unit_id?: string
+              p_company_id: string
+              p_message: string
+              p_metadata?: Json
+              p_target_user_ids: string[]
+              p_title: string
+              p_type: string
+            }
+            Returns: number
+          }
       post_delivery_note_dispatch: {
         Args: {
           p_business_unit_id: string
@@ -7309,12 +8180,64 @@ export type Database = {
         }
         Returns: undefined
       }
+      reserve_delivery_note_inventory: {
+        Args: { p_company_id: string; p_dn_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      reserve_delivery_note_inventory_lines: {
+        Args: {
+          p_company_id: string
+          p_dn_id: string
+          p_line_ids: string[]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       setup_company_rbac: { Args: { p_company_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       update_current_business_unit: {
         Args: { p_business_unit_id: string }
         Returns: Json
+      }
+      update_transformation_template: {
+        Args: {
+          p_company_id: string
+          p_description?: string
+          p_description_provided?: boolean
+          p_image_url?: string
+          p_image_url_provided?: boolean
+          p_inputs?: Json
+          p_is_active?: boolean
+          p_is_active_provided?: boolean
+          p_outputs?: Json
+          p_template_id: string
+          p_template_name?: string
+          p_template_name_provided?: boolean
+          p_user_id: string
+        }
+        Returns: {
+          business_unit_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          template_code: string
+          template_name: string
+          updated_at: string
+          updated_by: string
+          usage_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transformation_templates"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       user_has_permission: {
         Args: {
@@ -7324,6 +8247,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: boolean
+      }
+      void_delivery_note_pre_dispatch: {
+        Args: {
+          p_company_id: string
+          p_dn_id: string
+          p_reason?: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
@@ -7492,3 +8424,4 @@ export const Constants = {
     },
   },
 } as const
+
