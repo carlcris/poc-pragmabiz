@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { Plus, Search, Eye, Pencil, Trash2, Power, PowerOff, ArrowLeft } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Power, PowerOff, Package } from "lucide-react";
 import {
   useTransformationTemplates,
   useDeleteTransformationTemplate,
@@ -33,6 +32,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { DataTableSkeletonRows } from "@/components/shared/DataTableSkeletonRows";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { PageToolbar } from "@/components/shared/PageToolbar";
 import type { TransformationTemplateApi } from "@/types/transformation-template";
 
 const TransformationTemplateFormDialog = dynamic(
@@ -51,7 +54,6 @@ const TransformationTemplateDetailDialog = dynamic(
 );
 
 export default function TransformationTemplatesPage() {
-  const router = useRouter();
   const t = useTranslations("transformation");
   const tCommon = useTranslations("common");
   const tForms = useTranslations("forms");
@@ -103,30 +105,19 @@ export default function TransformationTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push("/inventory/transformations")}
-              className="h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-3xl font-bold">{t("templates")}</h1>
-          </div>
-          <p className="ml-10 text-muted-foreground">{t("manageTemplates")}</p>
-        </div>
-        <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("newTemplate")}
-        </Button>
-      </div>
+      <PageHeader
+        title={t("templates")}
+        subtitle={t("manageTemplates")}
+        actions={
+          <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("newTemplate")}
+          </Button>
+        }
+      />
 
-      {/* Search */}
-      <div className="relative">
+      <PageToolbar>
+        <div className="relative w-full sm:flex-1">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder={tCommon("search_")}
@@ -134,38 +125,58 @@ export default function TransformationTemplatesPage() {
           onChange={(e) => setSearchInput(e.target.value)}
           className="pl-10"
         />
-      </div>
+        </div>
+      </PageToolbar>
 
       {/* Templates Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{tCommon("code")}</TableHead>
-              <TableHead>{tCommon("name")}</TableHead>
-              <TableHead>{tCommon("status")}</TableHead>
-              <TableHead>{t("inputMaterials")}</TableHead>
-              <TableHead>{t("outputProducts")}</TableHead>
-              <TableHead>{tCommon("usageCount")}</TableHead>
-              <TableHead>{tCommon("date")}</TableHead>
-              <TableHead className="text-right">{tCommon("actions")}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      {isLoading ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center">
-                  {tCommon("loading")}
-                </TableCell>
+                <TableHead>{tCommon("code")}</TableHead>
+                <TableHead>{tCommon("name")}</TableHead>
+                <TableHead>{tCommon("status")}</TableHead>
+                <TableHead>{t("inputMaterials")}</TableHead>
+                <TableHead>{t("outputProducts")}</TableHead>
+                <TableHead>{tCommon("usageCount")}</TableHead>
+                <TableHead>{tCommon("date")}</TableHead>
+                <TableHead className="text-right">{tCommon("actions")}</TableHead>
               </TableRow>
-            ) : templatesData?.data.length === 0 ? (
+            </TableHeader>
+            <TableBody>
+              <DataTableSkeletonRows
+                columnWidths={["w-20", "w-28", "w-20", "w-12", "w-12", "w-16", "w-24", "w-8"]}
+                badgeColumns={[2, 5]}
+                rightAlignedColumns={[7]}
+                actionColumnIndex={7}
+              />
+            </TableBody>
+          </Table>
+        </div>
+      ) : !templatesData?.data.length ? (
+        <EmptyStatePanel
+          icon={Package}
+          title={t("noTemplatesTitle")}
+          description={t("noTemplatesDescription")}
+        />
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center">
-                  {tForms("noDataFound")}
-                </TableCell>
+                <TableHead>{tCommon("code")}</TableHead>
+                <TableHead>{tCommon("name")}</TableHead>
+                <TableHead>{tCommon("status")}</TableHead>
+                <TableHead>{t("inputMaterials")}</TableHead>
+                <TableHead>{t("outputProducts")}</TableHead>
+                <TableHead>{tCommon("usageCount")}</TableHead>
+                <TableHead>{tCommon("date")}</TableHead>
+                <TableHead className="text-right">{tCommon("actions")}</TableHead>
               </TableRow>
-            ) : (
-              templatesData?.data.map((template) => (
+            </TableHeader>
+            <TableBody>
+              {templatesData.data.map((template) => (
                 <TableRow
                   key={template.id}
                   className="cursor-pointer"
@@ -228,11 +239,11 @@ export default function TransformationTemplatesPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Pagination */}
       {templatesData && templatesData.total > limit && (

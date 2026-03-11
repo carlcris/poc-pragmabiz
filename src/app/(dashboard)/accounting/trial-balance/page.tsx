@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { Download, Printer, Search, CheckCircle2, AlertTriangle } from "lucide-react";
 import type { TrialBalance } from "@/types/accounting";
 
@@ -143,28 +144,27 @@ export default function TrialBalancePage() {
 
           {/* Summary Cards */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">{t("totalDebits")}</div>
-              <div className="text-2xl font-bold text-blue-600">
-                {formatCurrency(trialBalance.totalDebits)}
-              </div>
-            </div>
-            <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">{t("totalCredits")}</div>
-              <div className="text-2xl font-bold text-purple-600">
-                {formatCurrency(trialBalance.totalCredits)}
-              </div>
-            </div>
-            <div className="rounded-lg border p-4">
-              <div className="text-sm text-muted-foreground">{t("difference")}</div>
-              <div
-                className={`text-2xl font-bold ${
-                  trialBalance.isBalanced ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {formatCurrency(Math.abs(trialBalance.totalDebits - trialBalance.totalCredits))}
-              </div>
-            </div>
+            <MetricCard
+              title={t("totalDebits")}
+              icon={Download}
+              iconClassName="h-4 w-4 text-blue-600"
+              value={formatCurrency(trialBalance.totalDebits)}
+              valueClassName="text-2xl font-bold text-blue-600"
+            />
+            <MetricCard
+              title={t("totalCredits")}
+              icon={Download}
+              iconClassName="h-4 w-4 text-purple-600"
+              value={formatCurrency(trialBalance.totalCredits)}
+              valueClassName="text-2xl font-bold text-purple-600"
+            />
+            <MetricCard
+              title={t("difference")}
+              icon={Download}
+              iconClassName={`h-4 w-4 ${trialBalance.isBalanced ? "text-green-600" : "text-red-600"}`}
+              value={formatCurrency(Math.abs(trialBalance.totalDebits - trialBalance.totalCredits))}
+              valueClassName={`text-2xl font-bold ${trialBalance.isBalanced ? "text-green-600" : "text-red-600"}`}
+            />
           </div>
 
           {/* Trial Balance Table */}

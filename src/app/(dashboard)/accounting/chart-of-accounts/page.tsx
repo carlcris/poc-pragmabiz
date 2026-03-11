@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Archive } from "lucide-react";
+import { MetricCard } from "@/components/shared/MetricCard";
 import type { Account, AccountType } from "@/types/accounting";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 
@@ -163,28 +164,22 @@ export default function ChartOfAccountsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("totalAccounts")}</div>
-          <div className="text-2xl font-bold">{totalItems}</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("assets")}</div>
-          <div className="text-2xl font-bold">
-            {accounts.filter((a) => a.accountType === "asset").length}
-          </div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("liabilities")}</div>
-          <div className="text-2xl font-bold">
-            {accounts.filter((a) => a.accountType === "liability").length}
-          </div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("revenue")}</div>
-          <div className="text-2xl font-bold">
-            {accounts.filter((a) => a.accountType === "revenue").length}
-          </div>
-        </div>
+        <MetricCard title={t("totalAccounts")} icon={Archive} value={String(totalItems)} />
+        <MetricCard
+          title={t("assets")}
+          icon={Archive}
+          value={String(accounts.filter((a) => a.accountType === "asset").length)}
+        />
+        <MetricCard
+          title={t("liabilities")}
+          icon={Archive}
+          value={String(accounts.filter((a) => a.accountType === "liability").length)}
+        />
+        <MetricCard
+          title={t("revenue")}
+          icon={Archive}
+          value={String(accounts.filter((a) => a.accountType === "revenue").length)}
+        />
       </div>
 
       {/* Table */}

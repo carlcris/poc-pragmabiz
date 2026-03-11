@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { useEmployees } from "@/hooks/useEmployees";
 import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog";
 import { TerritoryManagementDialog } from "@/components/employees/territory-management-dialog";
@@ -88,50 +89,32 @@ export default function EmployeesPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("totalEmployees")}</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{employees.length}</div>
-            <p className="text-xs text-muted-foreground">
-              {t("activeEmployees", { count: String(employees.filter((e) => e.isActive).length) })}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("avgCommissionRate")}</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {employees.length > 0
-                ? (
-                    employees.reduce((sum, e) => sum + Number(e.commissionRate), 0) /
-                    employees.length
-                  ).toFixed(2)
-                : "0.00"}
-              %
-            </div>
-            <p className="text-xs text-muted-foreground">{t("avgCommissionRateDescription")}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("territoriesCovered")}</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {new Set(employees.flatMap((e) => e.territories || [])).size}
-            </div>
-            <p className="text-xs text-muted-foreground">{t("territoriesCoveredDescription")}</p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title={t("totalEmployees")}
+          icon={Users}
+          value={String(employees.length)}
+          caption={t("activeEmployees", { count: String(employees.filter((e) => e.isActive).length) })}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title={t("avgCommissionRate")}
+          icon={DollarSign}
+          value={`${employees.length > 0
+            ? (
+                employees.reduce((sum, e) => sum + Number(e.commissionRate), 0) /
+                employees.length
+              ).toFixed(2)
+            : "0.00"}%`}
+          caption={t("avgCommissionRateDescription")}
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title={t("territoriesCovered")}
+          icon={MapPin}
+          value={String(new Set(employees.flatMap((e) => e.territories || [])).size)}
+          caption={t("territoriesCoveredDescription")}
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Employees Table */}

@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Eye, FileText } from "lucide-react";
+import { MetricCard } from "@/components/shared/MetricCard";
 import type {
   JournalEntryWithLines,
   JournalEntryStatus,
@@ -194,28 +195,26 @@ export default function JournalsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("totalEntries")}</div>
-          <div className="text-2xl font-bold">{totalItems}</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("posted")}</div>
-          <div className="text-2xl font-bold text-green-600">
-            {journals.filter((j) => j.status === "posted").length}
-          </div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("draft")}</div>
-          <div className="text-2xl font-bold text-yellow-600">
-            {journals.filter((j) => j.status === "draft").length}
-          </div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">{t("totalDebits")}</div>
-          <div className="text-2xl font-bold">
-            {formatCurrency(journals.reduce((sum, j) => sum + Number(j.totalDebit), 0))}
-          </div>
-        </div>
+        <MetricCard title={t("totalEntries")} icon={FileText} value={String(totalItems)} />
+        <MetricCard
+          title={t("posted")}
+          icon={FileText}
+          iconClassName="h-4 w-4 text-green-600"
+          value={String(journals.filter((j) => j.status === "posted").length)}
+          valueClassName="text-2xl font-bold text-green-600"
+        />
+        <MetricCard
+          title={t("draft")}
+          icon={FileText}
+          iconClassName="h-4 w-4 text-yellow-600"
+          value={String(journals.filter((j) => j.status === "draft").length)}
+          valueClassName="text-2xl font-bold text-yellow-600"
+        />
+        <MetricCard
+          title={t("totalDebits")}
+          icon={FileText}
+          value={formatCurrency(journals.reduce((sum, j) => sum + Number(j.totalDebit), 0))}
+        />
       </div>
 
       {/* Table */}

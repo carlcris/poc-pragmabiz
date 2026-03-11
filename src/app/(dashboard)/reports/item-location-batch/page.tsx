@@ -6,11 +6,11 @@ import { Boxes, Layers, MapPin, Package, RefreshCw } from "lucide-react";
 import { useItemLocationBatchReport } from "@/hooks/useItemLocationBatchReport";
 import { useItems } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -215,13 +215,91 @@ export default function ItemLocationBatchReportPage() {
         </CardContent>
       </Card>
 
-      {reportQuery.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
-      ) : reportQuery.isError || !reportQuery.data ? (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          title={t("rows")}
+          icon={Layers}
+          iconClassName="h-4 w-4 text-blue-600"
+          value={reportQuery.data ? formatNumber(reportQuery.data.summary.totalRows) : undefined}
+          caption={
+            reportQuery.data
+              ? t("showingRows", {
+                  count: formatNumber(reportQuery.data.summary.rowCount),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("qtyOnHand")}
+          icon={Package}
+          iconClassName="h-4 w-4 text-green-600"
+          value={
+            reportQuery.data
+              ? formatNumber(reportQuery.data.summary.totalQtyOnHand, 2)
+              : undefined
+          }
+          caption={t("currentPageTotal")}
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("reserved")}
+          icon={Boxes}
+          iconClassName="h-4 w-4 text-amber-600"
+          value={
+            reportQuery.data
+              ? formatNumber(reportQuery.data.summary.totalQtyReserved, 2)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("rowsWithReservedQty", {
+                  count: formatNumber(reportQuery.data.summary.rowsWithReserved),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("available")}
+          icon={Package}
+          iconClassName="h-4 w-4 text-emerald-600"
+          value={
+            reportQuery.data
+              ? formatNumber(reportQuery.data.summary.totalQtyAvailable, 2)
+              : undefined
+          }
+          caption={t("currentPageTotal")}
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("dimensions")}
+          icon={MapPin}
+          iconClassName="h-4 w-4 text-purple-600"
+          value={
+            reportQuery.data
+              ? t("dimensionsDesc", {
+                  items: formatNumber(reportQuery.data.summary.uniqueItems),
+                  locations: formatNumber(reportQuery.data.summary.uniqueLocations),
+                })
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("batchesPage", {
+                  count: formatNumber(reportQuery.data.summary.uniqueBatches),
+                })
+              : undefined
+          }
+          valueClassName="text-sm font-semibold"
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+      </div>
+
+      {reportQuery.isError || !reportQuery.data ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             {t("loadError")}
@@ -229,70 +307,6 @@ export default function ItemLocationBatchReportPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("rows")}</CardTitle>
-                <Layers className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalRows)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {t("showingRows", { count: formatNumber(reportQuery.data.summary.rowCount) })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("qtyOnHand")}</CardTitle>
-                <Package className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalQtyOnHand, 2)}</div>
-                <p className="text-xs text-muted-foreground">{t("currentPageTotal")}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("reserved")}</CardTitle>
-                <Boxes className="h-4 w-4 text-amber-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalQtyReserved, 2)}</div>
-                <p className="text-xs text-muted-foreground">
-                  {t("rowsWithReservedQty", { count: formatNumber(reportQuery.data.summary.rowsWithReserved) })}
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("available")}</CardTitle>
-                <Package className="h-4 w-4 text-emerald-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalQtyAvailable, 2)}</div>
-                <p className="text-xs text-muted-foreground">{t("currentPageTotal")}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("dimensions")}</CardTitle>
-                <MapPin className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm font-semibold">
-                  {t("dimensionsDesc", {
-                    items: formatNumber(reportQuery.data.summary.uniqueItems),
-                    locations: formatNumber(reportQuery.data.summary.uniqueLocations),
-                  })}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {t("batchesPage", { count: formatNumber(reportQuery.data.summary.uniqueBatches) })}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
           <Card>
             <CardHeader>
               <CardTitle>{t("locationBatchStockRows")}</CardTitle>

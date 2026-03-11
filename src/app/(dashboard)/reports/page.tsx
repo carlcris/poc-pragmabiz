@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -263,38 +264,26 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("totalReports")}</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalReports}</div>
-            <p className="text-xs text-muted-foreground">
-              {t("totalReportsDescription", { count: reportCategories.length })}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("availableNow")}</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{implementedReports}</div>
-            <p className="text-xs text-muted-foreground">{t("availableNowDescription")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("comingSoon")}</CardTitle>
-            <Sparkles className="h-4 w-4 text-orange-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{comingSoonReports}</div>
-            <p className="text-xs text-muted-foreground">{t("comingSoonDescription")}</p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title={t("totalReports")}
+          icon={FileText}
+          value={String(totalReports)}
+          caption={t("totalReportsDescription", { count: reportCategories.length })}
+        />
+        <MetricCard
+          title={t("availableNow")}
+          icon={CheckCircle2}
+          iconClassName="h-4 w-4 text-green-600"
+          value={String(implementedReports)}
+          caption={t("availableNowDescription")}
+        />
+        <MetricCard
+          title={t("comingSoon")}
+          icon={Sparkles}
+          iconClassName="h-4 w-4 text-orange-600"
+          value={String(comingSoonReports)}
+          caption={t("comingSoonDescription")}
+        />
       </div>
 
       <Card className="p-4">

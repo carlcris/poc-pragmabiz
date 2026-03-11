@@ -14,9 +14,9 @@ import {
 import { useTransformationEfficiencyReport } from "@/hooks/useTransformationEfficiencyReport";
 import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -101,23 +101,128 @@ export default function TransformationEfficiencyReportPage() {
         </CardContent>
       </Card>
 
-      {reportQuery.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}</div>
-      ) : reportQuery.isError || !reportQuery.data ? (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          title={t("orders")}
+          icon={Factory}
+          iconClassName="h-4 w-4 text-blue-600"
+          value={reportQuery.data ? formatNumber(reportQuery.data.summary.totalOrders) : undefined}
+          caption={
+            reportQuery.data
+              ? t("completionRate", {
+                  value: formatPercent(reportQuery.data.summary.completionRatePct),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("yield")}
+          icon={TrendingUp}
+          iconClassName="h-4 w-4 text-green-600"
+          value={reportQuery.data ? formatPercent(reportQuery.data.summary.yieldPct) : undefined}
+          caption={
+            reportQuery.data
+              ? t("outputQty", {
+                  value: formatNumber(reportQuery.data.summary.totalOutputProducedQty, 2),
+                })
+              : undefined
+          }
+          valueClassName="text-2xl font-bold text-green-700"
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("wasteRate")}
+          icon={TrendingDown}
+          iconClassName="h-4 w-4 text-amber-600"
+          value={reportQuery.data ? formatPercent(reportQuery.data.summary.wasteRatePct) : undefined}
+          caption={
+            reportQuery.data
+              ? t("wasteQty", {
+                  value: formatNumber(reportQuery.data.summary.totalWastedQty, 2),
+                })
+              : undefined
+          }
+          valueClassName="text-2xl font-bold text-amber-700"
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("avgCycleTime")}
+          icon={Clock}
+          iconClassName="h-4 w-4 text-purple-600"
+          value={
+            reportQuery.data
+              ? formatDuration(reportQuery.data.summary.averageCycleSeconds)
+              : undefined
+          }
+          caption={t("executionToCompletion")}
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("planAdherence")}
+          icon={Gauge}
+          iconClassName="h-4 w-4 text-indigo-600"
+          value={
+            reportQuery.data
+              ? formatPercent(reportQuery.data.summary.planAdherencePct)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("actualVsPlanned", {
+                  actual: formatNumber(reportQuery.data.summary.totalActualQty, 2),
+                  planned: formatNumber(reportQuery.data.summary.totalPlannedQty, 2),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("costVariance")}
+          icon={TrendingDown}
+          iconClassName="h-4 w-4 text-rose-600"
+          value={
+            reportQuery.data
+              ? formatCurrency(reportQuery.data.summary.totalCostVariance)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("inputOutputCost", {
+                  input: formatCurrency(reportQuery.data.summary.totalInputCost),
+                  output: formatCurrency(reportQuery.data.summary.totalOutputCost),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("templates")}
+          icon={PackageCheck}
+          iconClassName="h-4 w-4 text-cyan-600"
+          value={reportQuery.data ? formatNumber(reportQuery.data.summary.templateCount) : undefined}
+          caption={t("inSelectedPeriod")}
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("warehouses")}
+          icon={Warehouse}
+          iconClassName="h-4 w-4 text-emerald-600"
+          value={reportQuery.data ? formatNumber(reportQuery.data.summary.warehouseCount) : undefined}
+          caption={t("participatingWarehouses")}
+          isLoading={reportQuery.isLoading}
+        />
+      </div>
+
+      {reportQuery.isError || !reportQuery.data ? (
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{t("loadError")}</CardContent></Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("orders")}</CardTitle><Factory className="h-4 w-4 text-blue-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalOrders)}</div><p className="text-xs text-muted-foreground">{t("completionRate", { value: formatPercent(reportQuery.data.summary.completionRatePct) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("yield")}</CardTitle><TrendingUp className="h-4 w-4 text-green-600" /></CardHeader><CardContent><div className="text-2xl font-bold text-green-700">{formatPercent(reportQuery.data.summary.yieldPct)}</div><p className="text-xs text-muted-foreground">{t("outputQty", { value: formatNumber(reportQuery.data.summary.totalOutputProducedQty, 2) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("wasteRate")}</CardTitle><TrendingDown className="h-4 w-4 text-amber-600" /></CardHeader><CardContent><div className="text-2xl font-bold text-amber-700">{formatPercent(reportQuery.data.summary.wasteRatePct)}</div><p className="text-xs text-muted-foreground">{t("wasteQty", { value: formatNumber(reportQuery.data.summary.totalWastedQty, 2) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("avgCycleTime")}</CardTitle><Clock className="h-4 w-4 text-purple-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatDuration(reportQuery.data.summary.averageCycleSeconds)}</div><p className="text-xs text-muted-foreground">{t("executionToCompletion")}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("planAdherence")}</CardTitle><Gauge className="h-4 w-4 text-indigo-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatPercent(reportQuery.data.summary.planAdherencePct)}</div><p className="text-xs text-muted-foreground">{t("actualVsPlanned", { actual: formatNumber(reportQuery.data.summary.totalActualQty, 2), planned: formatNumber(reportQuery.data.summary.totalPlannedQty, 2) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("costVariance")}</CardTitle><TrendingDown className="h-4 w-4 text-rose-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(reportQuery.data.summary.totalCostVariance)}</div><p className="text-xs text-muted-foreground">{t("inputOutputCost", { input: formatCurrency(reportQuery.data.summary.totalInputCost), output: formatCurrency(reportQuery.data.summary.totalOutputCost) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("templates")}</CardTitle><PackageCheck className="h-4 w-4 text-cyan-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.templateCount)}</div><p className="text-xs text-muted-foreground">{t("inSelectedPeriod")}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("warehouses")}</CardTitle><Warehouse className="h-4 w-4 text-emerald-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.warehouseCount)}</div><p className="text-xs text-muted-foreground">{t("participatingWarehouses")}</p></CardContent></Card>
-          </div>
-
           <div className="grid gap-6 xl:grid-cols-3">
             <Card className="xl:col-span-2">
               <CardHeader><CardTitle>{groupBy === "template" ? t("templatePerformance") : t("warehousePerformance")}</CardTitle></CardHeader>

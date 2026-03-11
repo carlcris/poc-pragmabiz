@@ -3,15 +3,15 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useAuthStore } from "@/stores/authStore";
 import { useCreateTransformationOrder } from "@/hooks/useTransformationOrders";
 import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -48,12 +48,12 @@ export default function NewTransformationOrderPage() {
 
   const createOrder = useCreateTransformationOrder();
 
-  const { data: templatesData } = useTransformationTemplates({
+  const { data: templatesData, isLoading: templatesLoading } = useTransformationTemplates({
     isActive: true,
     limit: 50,
   });
 
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
+  const { data: warehousesData, isLoading: warehousesLoading } = useWarehouses({ limit: 50 });
 
   const [values, setValues] = useState<FormValues>({
     templateId: "",
@@ -121,17 +121,7 @@ export default function NewTransformationOrderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/inventory/transformations">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">{t("newTransformation")}</h1>
-          <p className="text-muted-foreground">{t("createNewOrder")}</p>
-        </div>
-      </div>
+      <PageHeader title={t("newTransformation")} subtitle={t("createNewOrder")} />
 
       <Card>
         <CardHeader>
@@ -141,35 +131,43 @@ export default function NewTransformationOrderPage() {
           <form onSubmit={onSubmit} className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium">{t("transformationTemplate")} *</label>
-              <Select value={values.templateId} onValueChange={(value) => onFieldChange("templateId", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectTemplate")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {templatesData?.data.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.template_code} - {template.template_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {templatesLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select value={values.templateId} onValueChange={(value) => onFieldChange("templateId", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectTemplate")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templatesData?.data.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>
+                        {template.template_code} - {template.template_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {errors.templateId && <p className="text-sm text-red-500">{errors.templateId}</p>}
             </div>
 
             <div className="space-y-2">
               <label className="text-sm font-medium">{tCommon("warehouse")} *</label>
-              <Select value={values.warehouseId} onValueChange={(value) => onFieldChange("warehouseId", value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("selectWarehouse")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {warehousesData?.data.map((warehouse) => (
-                    <SelectItem key={warehouse.id} value={warehouse.id}>
-                      {warehouse.code} - {warehouse.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {warehousesLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select value={values.warehouseId} onValueChange={(value) => onFieldChange("warehouseId", value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectWarehouse")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehousesData?.data.map((warehouse) => (
+                      <SelectItem key={warehouse.id} value={warehouse.id}>
+                        {warehouse.code} - {warehouse.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {errors.warehouseId && <p className="text-sm text-red-500">{errors.warehouseId}</p>}
             </div>
 

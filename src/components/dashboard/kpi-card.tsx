@@ -26,30 +26,21 @@ export function KPICard({
   trend,
   isLoading = false,
 }: KPICardProps) {
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-4" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="mb-2 h-8 w-32" />
-          <Skeleton className="h-3 w-40" />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         <Icon className={cn("h-4 w-4", iconColor)} />
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+      <CardContent className="flex min-h-[72px] flex-col justify-between gap-2">
+        <div className="text-2xl font-bold">
+          {isLoading ? <Skeleton className="h-8 w-32" /> : value}
+        </div>
+        {description ? (
+          <div className="min-h-[16px]">
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        ) : null}
         {trend && (
           <div className="mt-2 flex items-center gap-1">
             <span
@@ -58,8 +49,7 @@ export function KPICard({
                 trend.isPositive !== false ? "text-green-600" : "text-red-600"
               )}
             >
-              {trend.value > 0 ? "+" : ""}
-              {trend.value}%
+              {isLoading ? <Skeleton className="h-4 w-12" /> : `${trend.value > 0 ? "+" : ""}${trend.value}%`}
             </span>
             <span className="text-xs text-muted-foreground">{trend.label}</span>
           </div>

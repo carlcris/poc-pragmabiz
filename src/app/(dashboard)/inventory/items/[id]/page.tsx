@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
@@ -75,18 +76,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">
-            {[1, 2, 3, 4].map((card) => (
-              <Card key={card}>
-                <CardHeader className="space-y-2 pb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-4 rounded-full" />
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Skeleton className="h-8 w-24" />
-                  <Skeleton className="h-4 w-20" />
-                </CardContent>
-              </Card>
-            ))}
+            <MetricCard title={t("availableQtyLabel")} icon={Package} isLoading />
+            <MetricCard title={t("reservedQtyLabel")} icon={Lock} isLoading />
+            <MetricCard title={t("onHandLabel")} icon={Warehouse} isLoading />
+            <MetricCard title={t("inTransitLabel")} icon={Truck} isLoading />
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -217,45 +210,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("availableQtyLabel")}</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatQuantity(item.available)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("reservedQtyLabel")}</CardTitle>
-            <Lock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatQuantity(item.allocated)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("onHandLabel")}</CardTitle>
-            <Warehouse className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatQuantity(item.onHand)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t("inTransitLabel")}</CardTitle>
-            <Truck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatQuantity(item.inTransit)}</div>
-          </CardContent>
-        </Card>
+        <MetricCard title={t("availableQtyLabel")} icon={Package} value={formatQuantity(item.available)} />
+        <MetricCard title={t("reservedQtyLabel")} icon={Lock} value={formatQuantity(item.allocated)} />
+        <MetricCard title={t("onHandLabel")} icon={Warehouse} value={formatQuantity(item.onHand)} />
+        <MetricCard title={t("inTransitLabel")} icon={Truck} value={formatQuantity(item.inTransit)} />
       </div>
 
       {/* Tabs */}

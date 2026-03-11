@@ -142,6 +142,25 @@ export default function StockTransactionsPage() {
     return transaction.fromLocationCode || "-";
   };
 
+  const formatWarehouseCell = (transaction: (typeof transactions)[number]) => {
+    const warehouseLabel = transaction.warehouseCode || "-";
+    const locationLabel = formatLocationLabel(transaction);
+
+    if (transaction.transactionType === "transfer" && transaction.toWarehouseCode) {
+      return {
+        warehouse: warehouseLabel,
+        location: locationLabel,
+        transfer: `${transaction.toWarehouseCode} / ${transaction.toLocationCode || "-"}`,
+      };
+    }
+
+    return {
+      warehouse: warehouseLabel,
+      location: locationLabel,
+      transfer: null,
+    };
+  };
+
   const handleCreateTransaction = () => {
     setDialogOpen(true);
   };
@@ -203,10 +222,8 @@ export default function StockTransactionsPage() {
                   <TableHead>{t("type")}</TableHead>
                   <TableHead>{t("item")}</TableHead>
                   <TableHead>{t("warehouse")}</TableHead>
-                  <TableHead>{t("location")}</TableHead>
                   <TableHead className="text-right">{t("quantity")}</TableHead>
                   <TableHead>{t("reference")}</TableHead>
-                  <TableHead>{t("reason")}</TableHead>
                   <TableHead>{t("createdBy")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -226,16 +243,10 @@ export default function StockTransactionsPage() {
                       <Skeleton className="h-4 w-36" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                    <TableCell>
                       <Skeleton className="h-4 w-28" />
                     </TableCell>
                     <TableCell className="text-right">
                       <Skeleton className="ml-auto h-4 w-16" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-20" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-32" />
@@ -268,81 +279,83 @@ export default function StockTransactionsPage() {
                     <TableHead>{t("type")}</TableHead>
                     <TableHead>{t("item")}</TableHead>
                     <TableHead>{t("warehouse")}</TableHead>
-                    <TableHead>{t("location")}</TableHead>
                     <TableHead className="text-right">{t("quantity")}</TableHead>
                     <TableHead>{t("reference")}</TableHead>
-                    <TableHead>{t("reason")}</TableHead>
                     <TableHead>{t("createdBy")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow
-                      key={transaction.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        setSelectedTransactionId(transaction.transactionId || transaction.id);
-                        setDetailDialogOpen(true);
-                      }}
-                    >
-                      <TableCell className="font-medium">
-                        {formatDate(transaction.transactionDate)}
-                      </TableCell>
-                      <TableCell>{getTransactionTypeBadge(transaction.transactionType)}</TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="font-medium">{transaction.itemCode}</div>
-                          <div className="text-muted-foreground">{transaction.itemName}</div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div>{transaction.warehouseCode}</div>
-                          {transaction.transactionType === "transfer" &&
-                            transaction.toWarehouseCode && (
-                              <div className="flex items-center gap-1 text-muted-foreground">
+                  {transactions.map((transaction) => {
+                    const warehouseCell = formatWarehouseCell(transaction);
+
+                    return (
+                      <TableRow
+                        key={transaction.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          setSelectedTransactionId(transaction.transactionId || transaction.id);
+                          setDetailDialogOpen(true);
+                        }}
+                      >
+                        <TableCell className="font-medium">
+                          {formatDate(transaction.transactionDate)}
+                        </TableCell>
+                        <TableCell>{getTransactionTypeBadge(transaction.transactionType)}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">{transaction.itemCode}</div>
+                            <div className="text-muted-foreground">{transaction.itemName}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="font-medium">{warehouseCell.warehouse}</div>
+                            <div className="text-muted-foreground">{warehouseCell.location}</div>
+                            {warehouseCell.transfer ? (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <ArrowRightLeft className="h-3 w-3" />
-                                {transaction.toWarehouseCode}
+                                {warehouseCell.transfer}
                               </div>
-                            )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{formatLocationLabel(transaction)}</div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        <span
-                          className={
-                            transaction.transactionType === "in"
-                              ? "text-green-600"
-                              : transaction.transactionType === "out"
-                                ? "text-red-600"
-                                : transaction.quantity < 0
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          <span
+                            className={
+                              transaction.transactionType === "in"
+                                ? "text-green-600"
+                                : transaction.transactionType === "out"
                                   ? "text-red-600"
-                                  : "text-green-600"
-                          }
-                        >
-                          {transaction.transactionType === "in"
-                            ? "+"
-                            : transaction.transactionType === "out"
-                              ? "-"
-                              : ""}
-                          {formatQuantity(Math.abs(transaction.quantity))} {transaction.uom}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{transaction.referenceNumber || "-"}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[200px] truncate text-sm" title={transaction.reason}>
-                          {transaction.reason}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{transaction.createdByName}</div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                                  : transaction.quantity < 0
+                                    ? "text-red-600"
+                                    : "text-green-600"
+                            }
+                          >
+                            {transaction.transactionType === "in"
+                              ? "+"
+                              : transaction.transactionType === "out"
+                                ? "-"
+                                : ""}
+                            {formatQuantity(Math.abs(transaction.quantity))} {transaction.uom}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[260px] text-sm">
+                            <div className="font-medium">{transaction.referenceNumber || "-"}</div>
+                            <div
+                              className="truncate text-muted-foreground"
+                              title={transaction.reason || "-"}
+                            >
+                              {transaction.reason || "-"}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{transaction.createdByName}</div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>

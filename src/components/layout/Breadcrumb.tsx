@@ -16,12 +16,21 @@ export function Breadcrumb() {
 
   const lastSegment = pathSegments[pathSegments.length - 1];
   const parentSegment = pathSegments[pathSegments.length - 2];
+  const parentPath = `/${pathSegments.slice(0, -1).join("/")}`;
   const isDeliveryNoteDetail = parentSegment === "delivery-notes" && pathSegments.length >= 3;
   const deliveryNoteId = isDeliveryNoteDetail ? lastSegment : "";
   const isItemCreate = pathname === "/inventory/items/create";
   const isItemDetail = parentSegment === "items" && pathSegments.length >= 3 && lastSegment !== "edit";
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
   const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
+  const shouldShowParentCrumb =
+    pathSegments.length >= 3 &&
+    !isDeliveryNoteDetail &&
+    !isItemCreate &&
+    !isItemDetail &&
+    !isItemEdit &&
+    !!parentSegment &&
+    t.has(parentSegment);
 
   const { data: deliveryNote } = useQuery({
     queryKey: [DELIVERY_NOTES_QUERY_KEY, deliveryNoteId],
@@ -116,8 +125,24 @@ export function Breadcrumb() {
       >
         {t("Home")}
       </Link>
-      <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-      <span className="font-medium text-foreground">{currentPageLabel}</span>
+      {shouldShowParentCrumb ? (
+        <>
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <Link
+            href={parentPath}
+            className="flex items-center hover:text-foreground transition-colors font-medium"
+          >
+            {t(parentSegment)}
+          </Link>
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="font-medium text-foreground">{currentPageLabel}</span>
+        </>
+      ) : (
+        <>
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="font-medium text-foreground">{currentPageLabel}</span>
+        </>
+      )}
     </nav>
   );
 }

@@ -128,6 +128,8 @@ export type TranslationKeys = {
     notAvailable: string;
     dash: string;
     templateRequired: string;
+    noTemplatesTitle: string;
+    noTemplatesDescription: string;
     warehouseRequired: string;
     orderDateRequired: string;
     plannedQuantityGreaterThanZero: string;
@@ -2308,6 +2310,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       notAvailable: "N/A",
       dash: "-",
       templateRequired: "Template is required",
+      noTemplatesTitle: "No transformation templates yet",
+      noTemplatesDescription:
+        "Create a template to define input materials and output products for future transformation orders.",
       warehouseRequired: "Warehouse is required",
       orderDateRequired: "Order date is required",
       plannedQuantityGreaterThanZero: "Planned quantity must be greater than 0",
@@ -2369,6 +2374,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "delivery-notes": "Delivery Notes",
       "pick-lists": "Pick Lists",
       transformations: "Stock Transformations",
+      templates: "Templates",
       reorder: "Reorder Management",
       purchasing: "Purchasing",
       overview: "Overview",
@@ -6622,6 +6628,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       notAvailable: "无",
       dash: "-",
       templateRequired: "模板为必填项",
+      noTemplatesTitle: "还没有转换模板",
+      noTemplatesDescription: "创建模板以定义投入物料和产出产品，供后续库存转换单使用。",
       warehouseRequired: "仓库为必填项",
       orderDateRequired: "订单日期为必填项",
       plannedQuantityGreaterThanZero: "计划数量必须大于 0",
@@ -6683,6 +6691,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "delivery-notes": "送货单",
       "pick-lists": "拣货单",
       transformations: "库存转换",
+      templates: "模板",
       reorder: "补货管理",
       purchasing: "采购",
       overview: "概览",

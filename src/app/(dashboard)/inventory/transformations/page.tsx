@@ -40,7 +40,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { DataTableSkeletonRows } from "@/components/shared/DataTableSkeletonRows";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { PageToolbar } from "@/components/shared/PageToolbar";
 import type {
   TransformationOrderApi,
   TransformationOrderStatus,
@@ -101,13 +104,11 @@ export default function TransformationOrdersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("transformations")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("manageMaterialTransformations")}</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
+      <PageHeader
+        title={t("transformations")}
+        subtitle={t("manageMaterialTransformations")}
+        actions={
+          <>
           <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/inventory/transformations/templates">
               {t("manageTemplates")}
@@ -119,11 +120,11 @@ export default function TransformationOrdersPage() {
               {t("newTransformation")}
             </Link>
           </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+      <PageToolbar>
         <div className="relative w-full sm:flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -147,7 +148,7 @@ export default function TransformationOrdersPage() {
             </SelectContent>
           </Select>
         </ClientOnly>
-      </div>
+      </PageToolbar>
 
       {/* Orders Table */}
       {isLoading ? (
@@ -167,40 +168,12 @@ export default function TransformationOrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...Array(8)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-16" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="ml-auto h-4 w-20" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="ml-auto h-4 w-20" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="h-8 w-8" />
-                      <Skeleton className="h-8 w-8" />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              <DataTableSkeletonRows
+                columnWidths={["w-24", "w-24", "w-20", "w-24", "w-24", "w-16", "w-20", "w-20", "w-8"]}
+                badgeColumns={[2]}
+                rightAlignedColumns={[6, 7, 8]}
+                actionColumnIndex={8}
+              />
             </TableBody>
           </Table>
         </div>

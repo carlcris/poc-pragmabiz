@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { MetricCard } from "@/components/shared/MetricCard";
 
 export default function StockLedgerPage() {
   const [selectedItemId, setSelectedItemId] = useState<string>("");
@@ -215,55 +216,42 @@ export default function StockLedgerPage() {
       </Card>
 
       {/* Summary Cards */}
-      {selectedItemId && selectedWarehouseId && !isLoading && data && (
+      {selectedItemId && selectedWarehouseId && (
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Opening Balance</CardTitle>
-              <Package className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{openingBalance.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">{selectedItem?.uom}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total IN</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {totalIn > 0 ? `+${totalIn.toFixed(2)}` : totalIn.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground">Stock received</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total OUT</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {totalOut > 0 ? `-${totalOut.toFixed(2)}` : totalOut.toFixed(2)}
-              </div>
-              <p className="text-xs text-muted-foreground">Stock issued</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Closing Balance</CardTitle>
-              <ArrowRight className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{closingBalance.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">Current stock</p>
-            </CardContent>
-          </Card>
+          <MetricCard
+            title="Opening Balance"
+            icon={Package}
+            iconClassName="h-4 w-4 text-blue-600"
+            value={data ? openingBalance.toFixed(2) : undefined}
+            caption={selectedItem?.uom}
+            isLoading={isLoading}
+          />
+          <MetricCard
+            title="Total IN"
+            icon={TrendingUp}
+            iconClassName="h-4 w-4 text-green-600"
+            value={data ? (totalIn > 0 ? `+${totalIn.toFixed(2)}` : totalIn.toFixed(2)) : undefined}
+            caption="Stock received"
+            valueClassName="text-2xl font-bold text-green-600"
+            isLoading={isLoading}
+          />
+          <MetricCard
+            title="Total OUT"
+            icon={TrendingDown}
+            iconClassName="h-4 w-4 text-red-600"
+            value={data ? (totalOut > 0 ? `-${totalOut.toFixed(2)}` : totalOut.toFixed(2)) : undefined}
+            caption="Stock issued"
+            valueClassName="text-2xl font-bold text-red-600"
+            isLoading={isLoading}
+          />
+          <MetricCard
+            title="Closing Balance"
+            icon={ArrowRight}
+            iconClassName="h-4 w-4 text-purple-600"
+            value={data ? closingBalance.toFixed(2) : undefined}
+            caption="Current stock"
+            isLoading={isLoading}
+          />
         </div>
       )}
 

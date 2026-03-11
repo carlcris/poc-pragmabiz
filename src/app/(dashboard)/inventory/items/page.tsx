@@ -27,7 +27,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -44,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
@@ -332,74 +332,54 @@ function ItemsPageContent() {
 
       {/* Stats Cards */}
       <div className="grid gap-2 grid-cols-2 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {isInitialLoading || isStatsPending ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="mb-2 h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </CardContent>
-              </Card>
-            ))}
-          </>
-        ) : (
-          stats.map((stat) => {
-            const Icon = stat.icon;
-            const isFilterCard = !!stat.filterValue;
-            const isActiveFilter = isFilterCard && statusFilter === stat.filterValue;
-            return (
-              <Card
-                key={stat.title}
-                role={isFilterCard ? "button" : undefined}
-                tabIndex={isFilterCard ? 0 : undefined}
-                onClick={
-                  isFilterCard
-                    ? () => {
-                        const nextFilter =
-                          statusFilter === stat.filterValue ? "all" : stat.filterValue;
-                        setStatusFilter(nextFilter);
-                        setPage(1);
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          const isFilterCard = !!stat.filterValue;
+          const isActiveFilter = isFilterCard && statusFilter === stat.filterValue;
+          const handleToggleFilter = () => {
+            if (!isFilterCard) return;
+            const nextFilter = statusFilter === stat.filterValue ? "all" : stat.filterValue;
+            setStatusFilter(nextFilter);
+            setPage(1);
+          };
+
+          return (
+            <div
+              key={stat.title}
+              role={isFilterCard ? "button" : undefined}
+              tabIndex={isFilterCard ? 0 : undefined}
+              onClick={isFilterCard ? handleToggleFilter : undefined}
+              onKeyDown={
+                isFilterCard
+                  ? (event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleToggleFilter();
                       }
-                    : undefined
-                }
-                onKeyDown={
-                  isFilterCard
-                    ? (event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          const nextFilter =
-                            statusFilter === stat.filterValue ? "all" : stat.filterValue;
-                          setStatusFilter(nextFilter);
-                          setPage(1);
-                        }
-                      }
-                    : undefined
-                }
-                className={
-                  isFilterCard
-                    ? `cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md ${
-                        isActiveFilter ? "ring-2 ring-primary/40" : ""
-                      }`
-                    : undefined
-                }
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
-                  <CardTitle className="text-xs md:text-sm font-medium">{stat.title}</CardTitle>
-                  <Icon className={`h-3 w-3 md:h-4 md:w-4 ${stat.iconColor}`} />
-                </CardHeader>
-                <CardContent className="pb-3 md:pb-6">
-                  <div className="text-lg md:text-2xl font-bold">{stat.value}</div>
-                  <p className="text-[10px] md:text-xs text-muted-foreground">{stat.description}</p>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
+                    }
+                  : undefined
+              }
+              className={
+                isFilterCard
+                  ? `rounded-lg transition hover:-translate-y-0.5 hover:shadow-md ${
+                      isActiveFilter ? "ring-2 ring-primary/40" : ""
+                    }`
+                  : undefined
+              }
+            >
+              <MetricCard
+                title={stat.title}
+                icon={Icon}
+                iconClassName={`h-3 w-3 md:h-4 md:w-4 ${stat.iconColor}`}
+                value={String(stat.value)}
+                caption={stat.description}
+                isLoading={isInitialLoading || isStatsPending}
+                skeletonCaption={false}
+                valueClassName="text-lg md:text-2xl font-bold"
+              />
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 md:min-h-0 md:flex-1">

@@ -18,6 +18,7 @@ import {
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouse } from "@/hooks/useWarehouses";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -439,31 +440,25 @@ export default function DeliveryNoteDetailPage() {
 
       <div className="space-y-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center gap-2">
-              <Package2 className="h-4 w-4 text-blue-600" />
-              <span className="text-xs font-medium text-muted-foreground">{t("totalItems")}</span>
-            </div>
-            <div className="mt-2 text-2xl font-bold">{items.length}</div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center gap-2">
-              <Package2 className="h-4 w-4 text-green-600" />
-              <span className="text-xs font-medium text-muted-foreground">{t("totalAllocated")}</span>
-            </div>
-            <div className="mt-2 text-2xl font-bold">
-              {items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2)}
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-orange-600" />
-              <span className="text-xs font-medium text-muted-foreground">{t("totalShort")}</span>
-            </div>
-            <div className="mt-2 text-2xl font-bold text-orange-600">
-              {items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2)}
-            </div>
-          </div>
+          <MetricCard
+            title={t("totalItems")}
+            icon={Package2}
+            iconClassName="h-4 w-4 text-blue-600"
+            value={String(items.length)}
+          />
+          <MetricCard
+            title={t("totalAllocated")}
+            icon={Package2}
+            iconClassName="h-4 w-4 text-green-600"
+            value={items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2)}
+          />
+          <MetricCard
+            title={t("totalShort")}
+            icon={TrendingDown}
+            iconClassName="h-4 w-4 text-orange-600"
+            value={items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2)}
+            valueClassName="text-2xl font-bold text-orange-600"
+          />
         </div>
 
         <div className="rounded-lg border bg-card">

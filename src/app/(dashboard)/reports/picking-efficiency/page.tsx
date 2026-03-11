@@ -6,9 +6,9 @@ import { CheckCircle2, Clock, Gauge, PackageCheck, TrendingDown, Users, Warehous
 import { usePickingEfficiencyReport } from "@/hooks/usePickingEfficiencyReport";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useUsers } from "@/hooks/useUsers";
+import { MetricCard } from "@/components/shared/MetricCard";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -133,13 +133,130 @@ export default function PickingEfficiencyReportPage() {
         </CardContent>
       </Card>
 
-      {reportQuery.isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full" />
-          ))}
-        </div>
-      ) : reportQuery.isError || !reportQuery.data ? (
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          title={t("pickLinesPerHour")}
+          icon={Gauge}
+          iconClassName="h-4 w-4 text-blue-600"
+          value={
+            reportQuery.data
+              ? formatNumber(reportQuery.data.summary.pickLinesPerHour, 1)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("linesInActiveHours", {
+                  lines: formatNumber(reportQuery.data.summary.totalLines),
+                  hours: formatNumber(reportQuery.data.summary.activePickHours, 1),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("pickAccuracy")}
+          icon={CheckCircle2}
+          iconClassName="h-4 w-4 text-green-600"
+          value={
+            reportQuery.data
+              ? formatPercent(reportQuery.data.summary.pickAccuracyPct)
+              : undefined
+          }
+          caption={t("shortPickProxy")}
+          valueClassName="text-2xl font-bold text-green-700"
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("avgPickTime")}
+          icon={Clock}
+          iconClassName="h-4 w-4 text-purple-600"
+          value={
+            reportQuery.data
+              ? formatDuration(reportQuery.data.summary.averagePickSeconds)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("completedPickLists", {
+                  count: formatNumber(reportQuery.data.summary.totalPickLists),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("shortPickRate")}
+          icon={TrendingDown}
+          iconClassName="h-4 w-4 text-amber-600"
+          value={
+            reportQuery.data
+              ? formatPercent(reportQuery.data.summary.shortPickRatePct)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("shortLines", {
+                  count: formatNumber(reportQuery.data.summary.totalShortLines),
+                })
+              : undefined
+          }
+          valueClassName="text-2xl font-bold text-amber-700"
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("quantityFillRate")}
+          icon={PackageCheck}
+          iconClassName="h-4 w-4 text-indigo-600"
+          value={
+            reportQuery.data
+              ? formatPercent(reportQuery.data.summary.quantityFillRatePct)
+              : undefined
+          }
+          caption={
+            reportQuery.data
+              ? t("quantityFillRateDesc", {
+                  picked: formatNumber(reportQuery.data.summary.totalPickedQty, 2),
+                  allocated: formatNumber(reportQuery.data.summary.totalAllocatedQty, 2),
+                })
+              : undefined
+          }
+          isLoading={reportQuery.isLoading}
+          skeletonCaption
+        />
+        <MetricCard
+          title={t("pickers")}
+          icon={Users}
+          iconClassName="h-4 w-4 text-sky-600"
+          value={reportQuery.data ? formatNumber(reportQuery.data.summary.pickerCount) : undefined}
+          caption={t("observedInPeriod")}
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("warehouses")}
+          icon={Warehouse}
+          iconClassName="h-4 w-4 text-emerald-600"
+          value={reportQuery.data ? formatNumber(reportQuery.data.summary.warehouseCount) : undefined}
+          caption={t("fulfillingWarehouses")}
+          isLoading={reportQuery.isLoading}
+        />
+        <MetricCard
+          title={t("shortQty")}
+          icon={TrendingDown}
+          iconClassName="h-4 w-4 text-rose-600"
+          value={
+            reportQuery.data
+              ? formatNumber(reportQuery.data.summary.totalShortQty, 2)
+              : undefined
+          }
+          caption={t("totalQuantityShortPicked")}
+          isLoading={reportQuery.isLoading}
+        />
+      </div>
+
+      {reportQuery.isError || !reportQuery.data ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             {t("loadError")}
@@ -147,17 +264,6 @@ export default function PickingEfficiencyReportPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("pickLinesPerHour")}</CardTitle><Gauge className="h-4 w-4 text-blue-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.pickLinesPerHour, 1)}</div><p className="text-xs text-muted-foreground">{t("linesInActiveHours", { lines: formatNumber(reportQuery.data.summary.totalLines), hours: formatNumber(reportQuery.data.summary.activePickHours, 1) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("pickAccuracy")}</CardTitle><CheckCircle2 className="h-4 w-4 text-green-600" /></CardHeader><CardContent><div className="text-2xl font-bold text-green-700">{formatPercent(reportQuery.data.summary.pickAccuracyPct)}</div><p className="text-xs text-muted-foreground">{t("shortPickProxy")}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("avgPickTime")}</CardTitle><Clock className="h-4 w-4 text-purple-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatDuration(reportQuery.data.summary.averagePickSeconds)}</div><p className="text-xs text-muted-foreground">{t("completedPickLists", { count: formatNumber(reportQuery.data.summary.totalPickLists) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("shortPickRate")}</CardTitle><TrendingDown className="h-4 w-4 text-amber-600" /></CardHeader><CardContent><div className="text-2xl font-bold text-amber-700">{formatPercent(reportQuery.data.summary.shortPickRatePct)}</div><p className="text-xs text-muted-foreground">{t("shortLines", { count: formatNumber(reportQuery.data.summary.totalShortLines) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("quantityFillRate")}</CardTitle><PackageCheck className="h-4 w-4 text-indigo-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatPercent(reportQuery.data.summary.quantityFillRatePct)}</div><p className="text-xs text-muted-foreground">{t("quantityFillRateDesc", { picked: formatNumber(reportQuery.data.summary.totalPickedQty, 2), allocated: formatNumber(reportQuery.data.summary.totalAllocatedQty, 2) })}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("pickers")}</CardTitle><Users className="h-4 w-4 text-sky-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.pickerCount)}</div><p className="text-xs text-muted-foreground">{t("observedInPeriod")}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("warehouses")}</CardTitle><Warehouse className="h-4 w-4 text-emerald-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.warehouseCount)}</div><p className="text-xs text-muted-foreground">{t("fulfillingWarehouses")}</p></CardContent></Card>
-            <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">{t("shortQty")}</CardTitle><TrendingDown className="h-4 w-4 text-rose-600" /></CardHeader><CardContent><div className="text-2xl font-bold">{formatNumber(reportQuery.data.summary.totalShortQty, 2)}</div><p className="text-xs text-muted-foreground">{t("totalQuantityShortPicked")}</p></CardContent></Card>
-          </div>
-
           <div className="grid gap-6 xl:grid-cols-3">
             <Card className="xl:col-span-2">
               <CardHeader>

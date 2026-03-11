@@ -2,10 +2,10 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "next-intl";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useCommissionSummary } from "@/hooks/useCommission";
 import { useCurrency } from "@/hooks/useCurrency";
 import { DollarSign, TrendingUp, Users, CheckCircle, Clock, Percent } from "lucide-react";
+import { MetricCard } from "@/components/shared/MetricCard";
 
 interface CommissionSummaryProps {
   dateRange?: {
@@ -77,45 +77,21 @@ export function CommissionSummary({ dateRange, employeeId }: CommissionSummaryPr
     },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-8 w-8 rounded-full" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="mb-2 h-8 w-24" />
-              <Skeleton className="h-3 w-40" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                <div
-                  className={`h-8 w-8 rounded-full ${stat.bgColor} flex items-center justify-center`}
-                >
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              key={stat.title}
+              title={stat.title}
+              icon={Icon}
+              value={String(stat.value)}
+              caption={stat.description}
+              isLoading={isLoading}
+              iconClassName={`h-4 w-4 ${stat.color}`}
+            />
           );
         })}
       </div>

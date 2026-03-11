@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MetricCard } from "@/components/shared/MetricCard";
 import {
   Table,
   TableBody,
@@ -191,81 +192,46 @@ export default function ReorderManagementPage() {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {statsLoading ? (
-          <>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Card key={i}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="mb-2 h-8 w-16" />
-                  <Skeleton className="h-3 w-32" />
-                </CardContent>
-              </Card>
-            ))}
-          </>
-        ) : statistics ? (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("itemsOk")}</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statistics.itemsOk}</div>
-                <p className="text-xs text-muted-foreground">{t("adequatelyStocked")}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("lowStock")}</CardTitle>
-                <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statistics.itemsLowStock}</div>
-                <p className="text-xs text-muted-foreground">{t("belowReorderPoint")}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("critical")}</CardTitle>
-                <XCircle className="h-4 w-4 text-red-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statistics.itemsCritical}</div>
-                <p className="text-xs text-muted-foreground">{t("belowMinimumLevel")}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("pendingOrders")}</CardTitle>
-                <ShoppingCart className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statistics.pendingSuggestions}</div>
-                <p className="text-xs text-muted-foreground">{t("awaitingApproval")}</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{t("estimatedCost")}</CardTitle>
-                <TrendingUp className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(statistics.totalEstimatedReorderCost)}
-                </div>
-                <p className="text-xs text-muted-foreground">{t("totalReorderValue")}</p>
-              </CardContent>
-            </Card>
-          </>
-        ) : null}
+        <MetricCard
+          title={t("itemsOk")}
+          icon={CheckCircle}
+          iconClassName="h-4 w-4 text-green-600"
+          value={statistics ? String(statistics.itemsOk) : undefined}
+          caption={t("adequatelyStocked")}
+          isLoading={statsLoading}
+        />
+        <MetricCard
+          title={t("lowStock")}
+          icon={AlertTriangle}
+          iconClassName="h-4 w-4 text-yellow-600"
+          value={statistics ? String(statistics.itemsLowStock) : undefined}
+          caption={t("belowReorderPoint")}
+          isLoading={statsLoading}
+        />
+        <MetricCard
+          title={t("critical")}
+          icon={XCircle}
+          iconClassName="h-4 w-4 text-red-600"
+          value={statistics ? String(statistics.itemsCritical) : undefined}
+          caption={t("belowMinimumLevel")}
+          isLoading={statsLoading}
+        />
+        <MetricCard
+          title={t("pendingOrders")}
+          icon={ShoppingCart}
+          iconClassName="h-4 w-4 text-blue-600"
+          value={statistics ? String(statistics.pendingSuggestions) : undefined}
+          caption={t("awaitingApproval")}
+          isLoading={statsLoading}
+        />
+        <MetricCard
+          title={t("estimatedCost")}
+          icon={TrendingUp}
+          iconClassName="h-4 w-4 text-purple-600"
+          value={statistics ? formatCurrency(statistics.totalEstimatedReorderCost) : undefined}
+          caption={t("totalReorderValue")}
+          isLoading={statsLoading}
+        />
       </div>
 
       {/* Tabs for Suggestions and Alerts */}

@@ -45,6 +45,16 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 - Verify table/column names in `supabase/migrations/` before writing Supabase queries.
 - The shared `apiClient` returns parsed JSON; avoid double-unwrapping response data.
 
+## Database Code Generation Rules
+- Auto-generated document codes must be generated at the database level, not in application code.
+- Use the shared database generator function plus `BEFORE INSERT` trigger pattern for any new code-bearing table.
+- The shared generator must accept a `code_prefix` and produce a fixed-width numeric suffix.
+- Standard numeric suffix width is `9` digits.
+- Standard format is `<code_prefix><zero-padded-sequence>`, for example `ST-000000001`.
+- Scope generated sequences by company unless there is a documented exception.
+- Application inserts must omit the generated code column so the trigger remains the single source of truth.
+- Do not backfill or rewrite historical codes unless explicitly required by the task.
+
 ## Agent-Specific Instructions
 Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touching APIs, hooks, or data types.
 
@@ -63,3 +73,28 @@ Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touch
 - Enable compressed API responses (GZIP/Brotli where available).
 - Limit request rate and batch backend requests when possible.
 - Key pattern: cursor-based server-side pagination + virtual scrolling + lazy loading = smooth, scalable UI.
+
+## Page Consistency Rules
+- Dashboard pages must render a stable page shell first: breadcrumb, page header, toolbar/filter row, then content region.
+- Use the inventory transformations list page as the visual baseline for page-level composition and responsive behavior.
+- Page headers must place title and subtitle on the left and actions on the right on desktop.
+- On narrower widths, header actions must wrap below the subtitle instead of compressing or overlapping content.
+- Preferred header layout pattern:
+  - `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`
+  - actions row: `flex flex-col gap-2 sm:flex-row sm:gap-2`
+- Toolbar and filter rows must render before async data resolves and keep a stable layout during loading.
+- Never replace a normal dashboard page with a blank screen or full-page spinner during data fetch.
+- Render all static page structure first, then show skeleton loaders only for dynamic regions.
+- Skeleton loaders must match the final layout footprint closely to avoid layout shift.
+- Empty, loading, error, and loaded states must reuse the same page shell and content container footprint.
+- Empty states should appear inside the content region, not replace the page header or filters.
+- Prefer shared empty-state components, e.g. `src/components/shared/EmptyStatePanel.tsx`.
+- Avoid flicker on reload:
+  - do not render raw IDs or temporary fallback text where user-facing names should appear
+  - do not unmount the whole page body while refetching
+  - keep tabs, cards, tables, and panel regions height-stable where practical
+- For detail, edit, and create pages, render section shells, titles, tabs, and action areas first; only field values or data-driven panels should skeleton.
+- Widgets and metric cards must render their static shell on first paint.
+- Do not block widget borders, titles, icons, or layout behind a page-level loading return when the shell can render immediately.
+- Skeleton only widget dynamic content such as values, captions, deltas, and status pills.
+- Prefer shared metric/widget components so first-paint and loading behavior stay consistent across pages.
