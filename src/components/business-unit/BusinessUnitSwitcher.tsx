@@ -197,10 +197,7 @@ export const BusinessUnitSwitcher = ({
     filteredCompanyGroups[0] ??
     null;
   const selectedCompanyBusinessUnits = selectedCompany?.businessUnits ?? [];
-  const displayLabel =
-    selectedCompany?.name && displayBusinessUnitName
-      ? `${selectedCompany.name} / ${displayBusinessUnitName}`
-      : displayBusinessUnitName;
+  const displayLabel = displayBusinessUnitName;
 
   const handleSelect = (businessUnit: BusinessUnitWithAccess) => {
     if (businessUnit.id === currentBusinessUnit?.id) {
