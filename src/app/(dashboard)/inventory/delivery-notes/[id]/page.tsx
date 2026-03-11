@@ -18,6 +18,7 @@ import {
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouse } from "@/hooks/useWarehouses";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -62,6 +63,7 @@ export default function DeliveryNoteDetailPage() {
   const locale = useLocale();
   const t = useTranslations("deliveryNoteDetailPage");
   const id = params.id as string;
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
 
   const { data: dn, isLoading, error } = useDeliveryNote(id);
   const { data: allocatableItemsData, isLoading: isAllocatableItemsLoading } =
@@ -198,6 +200,11 @@ export default function DeliveryNoteDetailPage() {
       .filter(Boolean)
       .join(" - ") || t("unknownDestinationWarehouse");
 
+  const canConfirmReceive =
+    !!dn &&
+    dn.status === "dispatched" &&
+    (!currentBusinessUnit?.id || destinationWarehouseData?.data?.businessUnitId !== currentBusinessUnit.id);
+
   const statusLabel = (status: string) => {
     switch (status) {
       case "draft":
@@ -258,6 +265,7 @@ export default function DeliveryNoteDetailPage() {
     ["confirmed", "dispatched"].includes(dn.status) &&
     !activePickList &&
     hasPendingPickableLines;
+  const showItemActions = dn?.status === "dispatched";
 
   const pageActions = dn ? (
     <>
@@ -308,7 +316,7 @@ export default function DeliveryNoteDetailPage() {
   };
 
   const submitReceive = async () => {
-    if (!dn) return;
+    if (!dn || !canConfirmReceive) return;
 
     const payload = {
       notes: receiveNotes.trim() || undefined,
@@ -506,7 +514,7 @@ export default function DeliveryNoteDetailPage() {
                   <TableHead className="text-right font-semibold">{t("short")}</TableHead>
                   <TableHead className="text-right font-semibold">{t("dispatchedQty")}</TableHead>
                   <TableHead className="font-semibold">{t("lineState")}</TableHead>
-                  {dn?.status === "dispatched" && <TableHead className="text-right font-semibold">{t("actions")}</TableHead>}
+                  {showItemActions && <TableHead className="text-right font-semibold">{t("actions")}</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -531,7 +539,7 @@ export default function DeliveryNoteDetailPage() {
                         <TableCell className="text-right"><Skeleton className="ml-auto h-6 w-16" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-14" /></TableCell>
                         <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                        {dn?.status === "dispatched" && <TableCell className="text-right"><Skeleton className="ml-auto h-8 w-24" /></TableCell>}
+                        {showItemActions && <TableCell className="text-right"><Skeleton className="ml-auto h-8 w-24" /></TableCell>}
                       </TableRow>
                     ))
                   : items.map((item) => {
@@ -578,7 +586,7 @@ export default function DeliveryNoteDetailPage() {
                       <TableCell>
                         <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">{lineStateLabel(item)}</span>
                       </TableCell>
-                      {dn.status === "dispatched" && (
+                      {showItemActions && (
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button
@@ -705,9 +713,11 @@ export default function DeliveryNoteDetailPage() {
                   </div>
                 ))}
             </div>
-            <Button onClick={submitReceive} disabled={receiveMutation.isPending} className="w-full sm:w-auto">
-              {receiveMutation.isPending ? t("receiving") : t("confirmReceive")}
-            </Button>
+            {canConfirmReceive ? (
+              <Button onClick={submitReceive} disabled={receiveMutation.isPending} className="w-full sm:w-auto">
+                {receiveMutation.isPending ? t("receiving") : t("confirmReceive")}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       )}
