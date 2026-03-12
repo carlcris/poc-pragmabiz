@@ -13,6 +13,7 @@ import {
   CheckCircle,
   XCircle,
   Package,
+  Eye,
 } from "lucide-react";
 import {
   usePickLists,
@@ -47,6 +48,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toProperCase } from "@/lib/string";
 
 const getStatusBadge = (status: string, label: string) => {
@@ -205,14 +207,8 @@ export default function PickListsPage() {
   };
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
-      {/* Header Section */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
       {/* Search and Filter Section */}
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -352,6 +348,7 @@ export default function PickListsPage() {
                     >
                       <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={() => setDetailId(row.id)}>
+                          <Eye className="mr-2 h-4 w-4" />
                           {t("viewDetails")}
                         </Button>
                       </div>

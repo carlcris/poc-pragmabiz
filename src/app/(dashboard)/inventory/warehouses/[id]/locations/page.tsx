@@ -1,15 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { Plus, ArrowLeft, Pencil } from "lucide-react";
+import { useParams } from "next/navigation";
+import { Plus, Pencil, AlertCircle, MoreVertical, Ban, CheckCircle2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,7 +56,6 @@ const locationTypes = ["zone", "aisle", "rack", "shelf", "bin", "crate"];
 
 export default function WarehouseLocationsPage() {
   const params = useParams();
-  const router = useRouter();
   const warehouseId = params.id as string;
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -67,6 +75,7 @@ export default function WarehouseLocationsPage() {
   });
 
   const locations = useMemo(() => data?.data || [], [data]);
+  const isPending = isLoading && !data;
 
   const createLocation = useMutation({
     mutationFn: () =>
@@ -188,105 +197,142 @@ export default function WarehouseLocationsPage() {
   return (
     <ProtectedRoute resource={RESOURCES.MANAGE_LOCATIONS}>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Button variant="ghost" onClick={() => router.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
+        <PageHeader
+          title="Warehouse Locations"
+          subtitle="Manage bin and zone setup for this warehouse."
+          actions={
+            <Button
+              onClick={() => {
+                setEditingLocation(null);
+                setFormState({
+                  code: "",
+                  name: "",
+                  locationType: "bin",
+                  isPickable: true,
+                  isStorable: true,
+                  isActive: true,
+                });
+                setDialogOpen(true);
+              }}
+              className="w-full sm:w-auto"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Location
             </Button>
-            <h1 className="text-3xl font-bold tracking-tight">Warehouse Locations</h1>
-            <p className="text-muted-foreground">Manage bin and zone setup for this warehouse.</p>
-          </div>
-          <Button
-            onClick={() => {
-              setEditingLocation(null);
-              setFormState({
-                code: "",
-                name: "",
-                locationType: "bin",
-                isPickable: true,
-                isStorable: true,
-                isActive: true,
-              });
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Location
-          </Button>
-        </div>
+          }
+        />
 
         <Card>
           <CardHeader>
-            <CardTitle>Location List</CardTitle>
-            <CardDescription>Active locations are available for stock movements.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-              </div>
-            ) : error ? (
-              <div className="py-8 text-center text-destructive">
-                Failed to load warehouse locations.
-              </div>
-            ) : locations.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">No locations found.</div>
+            {error ? (
+              <EmptyStatePanel
+                icon={AlertCircle}
+                title="Failed to load warehouse locations"
+                description="Please refresh the page and try again."
+                className="min-h-[240px]"
+              />
+            ) : locations.length === 0 && !isPending ? (
+              <EmptyStatePanel
+                icon={Plus}
+                title="No locations yet"
+                description="Create the first warehouse location to start organizing stock movement and storage."
+                className="min-h-[240px]"
+              />
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Pickable</TableHead>
-                      <TableHead>Storable</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {locations.map((location) => (
-                      <TableRow key={location.id}>
-                        <TableCell className="font-medium">{location.code}</TableCell>
-                        <TableCell>{location.name || "-"}</TableCell>
-                        <TableCell className="capitalize">{location.locationType}</TableCell>
-                        <TableCell>{location.isPickable ? "Yes" : "No"}</TableCell>
-                        <TableCell>{location.isStorable ? "Yes" : "No"}</TableCell>
-                        <TableCell>
-                          <Badge variant={location.isActive ? "outline" : "secondary"}>
-                            {location.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEditLocation(location)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                toggleLocation.mutate({
-                                  id: location.id,
-                                  isActive: !location.isActive,
-                                })
-                              }
-                            >
-                              {location.isActive ? "Disable" : "Enable"}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Pickable</TableHead>
+                    <TableHead>Storable</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isPending
+                    ? Array.from({ length: 8 }, (_, index) => `skeleton-${index}`).map((rowKey) => (
+                        <TableRow key={rowKey}>
+                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-36" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+                          <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Skeleton className="h-8 w-16" />
+                              <Skeleton className="h-8 w-8" />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : locations.map((location) => (
+                        <TableRow key={location.id}>
+                          <TableCell className="font-medium">{location.code}</TableCell>
+                          <TableCell>{location.name || "-"}</TableCell>
+                          <TableCell className="capitalize">{location.locationType}</TableCell>
+                          <TableCell>{location.isPickable ? "Yes" : "No"}</TableCell>
+                          <TableCell>{location.isStorable ? "Yes" : "No"}</TableCell>
+                          <TableCell>
+                            <Badge variant={location.isActive ? "outline" : "secondary"}>
+                              {location.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditLocation(location)}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    aria-label="Actions"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      toggleLocation.mutate({
+                                        id: location.id,
+                                        isActive: !location.isActive,
+                                      })
+                                    }
+                                    className={
+                                      location.isActive
+                                        ? "text-destructive focus:text-destructive"
+                                        : undefined
+                                    }
+                                  >
+                                    {location.isActive ? (
+                                      <Ban className="h-4 w-4" />
+                                    ) : (
+                                      <CheckCircle2 className="h-4 w-4" />
+                                    )}
+                                    <span>{location.isActive ? "Disable" : "Enable"}</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>

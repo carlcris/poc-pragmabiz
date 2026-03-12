@@ -4,10 +4,16 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Plus, Search, Pencil, MapPin, Filter, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, MapPin, Filter, Trash2, MoreVertical } from "lucide-react";
 import { useWarehouses, useDeleteWarehouse } from "@/hooks/useWarehouses";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -173,7 +179,7 @@ export default function WarehousesPage() {
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                      <TableCell className="text-right"><div className="flex justify-end gap-2"><Skeleton className="h-8 w-20" /><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div></TableCell>
+                      <TableCell className="text-right"><div className="flex justify-end gap-2"><Skeleton className="h-8 w-24" /><Skeleton className="h-8 w-20" /><Skeleton className="h-8 w-8" /></div></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -233,25 +239,41 @@ export default function WarehousesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-2">
                           <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
                             <Button variant="ghost" size="sm" asChild>
                               <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
+                                <MapPin className="mr-2 h-4 w-4" />
                                 {t("locations")}
                               </Link>
                             </Button>
                           </ViewGuard>
                           <Button variant="ghost" size="sm" onClick={() => handleEditWarehouse(warehouse)}>
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>{tCommon("edit")}</span>
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteWarehouse(warehouse)}
-                            disabled={deleteWarehouse.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                aria-label={tCommon("actions")}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteWarehouse(warehouse)}
+                                disabled={deleteWarehouse.isPending}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span>{tCommon("delete")}</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>

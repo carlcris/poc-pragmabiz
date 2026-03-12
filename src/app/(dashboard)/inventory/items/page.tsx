@@ -9,6 +9,7 @@ import {
   Search,
   Pencil,
   Trash2,
+  MoreVertical,
   Filter,
   Download,
   Package,
@@ -25,6 +26,12 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -600,25 +607,44 @@ function ItemsPageContent() {
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-right">
                         <div
-                          className="flex justify-end gap-1"
+                          className="flex justify-end gap-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <EditGuard resource={RESOURCES.ITEMS}>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEditItem(item)} aria-label={t("editAriaLabel")}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </EditGuard>
-                          <DeleteGuard resource={RESOURCES.ITEMS}>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleDeleteItem(item)}
-                              disabled={deleteItem.isPending}
-                              aria-label={t("deleteAriaLabel")}
+                              className="h-8 px-2"
+                              onClick={() => handleEditItem(item)}
+                              aria-label={t("editAriaLabel")}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>{tCommon("edit")}</span>
                             </Button>
+                          </EditGuard>
+                          <DeleteGuard resource={RESOURCES.ITEMS}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("moreActions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteItem(item)}
+                                  disabled={deleteItem.isPending}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>{tCommon("delete")}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </DeleteGuard>
                         </div>
                       </TableCell>

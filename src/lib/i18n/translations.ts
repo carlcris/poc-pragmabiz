@@ -1474,6 +1474,7 @@ export type TranslationKeys = {
     exportSuccess: string;
     editAriaLabel: string;
     deleteAriaLabel: string;
+    moreActions: string;
   };
   inventoryItemPage: {
     rawMaterial: string;
@@ -2343,6 +2344,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Item Master": "Item Master",
       "Create Item": "Create Item",
       "Edit Item": "Edit Item",
+      Warehouse: "Warehouse",
+      Location: "Location",
       Warehouses: "Warehouses",
       "Stock Transactions": "Stock Transactions",
       "Stock Adjustments": "Stock Adjustments",
@@ -3731,6 +3734,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       exportSuccess: "Inventory exported to CSV",
       editAriaLabel: "Edit",
       deleteAriaLabel: "Delete",
+      moreActions: "More",
     },
     inventoryItemPage: {
       rawMaterial: "Raw Material",
@@ -6661,6 +6665,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Item Master": "商品主档",
       "Create Item": "创建商品",
       "Edit Item": "编辑商品",
+      Warehouse: "仓库",
+      Location: "库位",
       Warehouses: "仓库",
       "Stock Transactions": "库存交易",
       "Stock Adjustments": "库存调整",
@@ -8037,6 +8043,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       exportSuccess: "库存已导出为 CSV",
       editAriaLabel: "编辑",
       deleteAriaLabel: "删除",
+      moreActions: "更多",
     },
     inventoryItemPage: {
       rawMaterial: "原材料",

@@ -22,6 +22,8 @@ export function Breadcrumb() {
   const isItemCreate = pathname === "/inventory/items/create";
   const isItemDetail = parentSegment === "items" && pathSegments.length >= 3 && lastSegment !== "edit";
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
+  const isWarehouseLocations =
+    lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
   const shouldShowParentCrumb =
     pathSegments.length >= 3 &&
@@ -29,6 +31,7 @@ export function Breadcrumb() {
     !isItemCreate &&
     !isItemDetail &&
     !isItemEdit &&
+    !isWarehouseLocations &&
     !!parentSegment &&
     t.has(parentSegment);
 
@@ -113,6 +116,28 @@ export function Breadcrumb() {
         ) : (
           <span className="font-medium text-foreground">{t("Item Master")}</span>
         )}
+      </nav>
+    );
+  }
+
+  if (isWarehouseLocations) {
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/inventory/warehouses"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Warehouse")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <span className="font-medium text-foreground">{t("Location")}</span>
       </nav>
     );
   }

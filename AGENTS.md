@@ -99,3 +99,10 @@ Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touch
 - Do not block widget borders, titles, icons, or layout behind a page-level loading return when the shell can render immediately.
 - Skeleton only widget dynamic content such as values, captions, deltas, and status pills.
 - Prefer shared metric/widget components so first-paint and loading behavior stay consistent across pages.
+- For list tables with row actions, use a consistent action-column pattern based on `src/app/(dashboard)/inventory/items/page.tsx`.
+- Row actions must not rely on ambiguous icon-only primary controls. Visible row actions like `Edit`, `View`, or `Open` should include a text label when rendered directly in the cell.
+- Destructive actions such as `Delete`, `Void`, or `Cancel` should not appear as always-visible standalone buttons in the row action cell.
+- Place destructive or secondary actions inside a kebab dropdown menu using a vertical icon trigger.
+- The kebab trigger itself should be icon-only and use the conventional vertical menu icon; labels belong inside the dropdown items, not on the trigger.
+- Prefer up to three visible non-destructive actions in a row action cell. Keep only the highest-frequency actions visible and move destructive actions into the kebab menu.
+- If a row needs more than three useful visible actions, keep the most important ones visible and move the rest into the kebab to preserve scanability.

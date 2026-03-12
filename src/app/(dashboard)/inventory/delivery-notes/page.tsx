@@ -10,6 +10,7 @@ import {
   Filter,
   FileText,
   Eye,
+  MoreVertical,
   CheckCircle,
   Clock,
   Package,
@@ -34,6 +35,12 @@ import { useWarehouses } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -393,6 +400,42 @@ export default function DeliveryNotesPage() {
   const actionUomLabel = (item: (typeof actionItems)[number]) => {
     const uomRef = Array.isArray(item.units_of_measure) ? item.units_of_measure[0] : item.units_of_measure;
     return uomRef?.symbol || uomRef?.name || "Unknown unit";
+  };
+
+  const getPrimaryRowAction = (dn: DeliveryNote, linkedPickList: DeliveryNotePickListSummary | null) => {
+    if (dn.status === "draft" && canDispatchDn(dn)) {
+      return {
+        label: t("confirm"),
+        icon: <CheckCircle className="mr-2 h-4 w-4 text-blue-600" />,
+        onClick: () => openActionDialog("confirm", dn.id),
+      };
+    }
+
+    if (dn.status === "confirmed" && !linkedPickList && canDispatchDn(dn)) {
+      return {
+        label: t("queuePicking"),
+        icon: <Package className="mr-2 h-4 w-4 text-amber-600" />,
+        onClick: () => openActionDialog("queue_picking", dn.id),
+      };
+    }
+
+    if (dn.status === "dispatch_ready" && canDispatchDn(dn)) {
+      return {
+        label: t("dispatch"),
+        icon: <Truck className="mr-2 h-4 w-4 text-indigo-600" />,
+        onClick: () => openActionDialog("dispatch", dn.id),
+      };
+    }
+
+    if (dn.status === "dispatched" && canReceiveDn(dn)) {
+      return {
+        label: t("receive"),
+        icon: <ClipboardCheck className="mr-2 h-4 w-4 text-emerald-600" />,
+        onClick: () => openActionDialog("receive", dn.id),
+      };
+    }
+
+    return null;
   };
 
   const selectableRequests = useMemo(() => {
@@ -823,7 +866,10 @@ export default function DeliveryNotesPage() {
                     <Skeleton className="h-4 w-20" />
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="h-8 w-24" />
                       <Skeleton className="h-8 w-8" />
                     </div>
                   </TableCell>
@@ -859,6 +905,14 @@ export default function DeliveryNotesPage() {
               {deliveryNotes.map((dn) => {
                 const linkedPickList = resolveActivePickList(dn);
                 const detailsHref = `/inventory/delivery-notes/${dn.id}`;
+                const primaryAction = getPrimaryRowAction(dn, linkedPickList);
+                const canVoidDn = [
+                  "draft",
+                  "confirmed",
+                  "queued_for_picking",
+                  "picking_in_progress",
+                  "dispatch_ready",
+                ].includes(dn.status);
 
                 return (
                   <TableRow
@@ -895,15 +949,16 @@ export default function DeliveryNotesPage() {
                       )}
                     </TableCell>
                     <TableCell>{getStatusBadge(dn.status, statusLabel(dn.status))}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => router.push(detailsHref)}
-                          title={t("view")}
+                          aria-label={t("view")}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="mr-2 h-4 w-4" />
+                          {t("view")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -912,66 +967,45 @@ export default function DeliveryNotesPage() {
                             void handlePrintDeliveryNote(dn);
                           }}
                           disabled={printingDnId === dn.id}
-                          title={printingDnId === dn.id ? t("generatingPdf") : t("printPdf")}
+                          aria-label={printingDnId === dn.id ? t("generatingPdf") : t("printPdf")}
                         >
-                          <FileText className="h-4 w-4" />
+                          <FileText className="mr-2 h-4 w-4" />
+                          {t("printPdf")}
                         </Button>
-                        {dn.status === "draft" && canDispatchDn(dn) && (
+                        {primaryAction ? (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => openActionDialog("confirm", dn.id)}
-                            title={t("confirm")}
+                            onClick={primaryAction.onClick}
+                            aria-label={primaryAction.label}
                           >
-                            <CheckCircle className="h-4 w-4 text-blue-600" />
+                            {primaryAction.icon}
+                            {primaryAction.label}
                           </Button>
-                        )}
-                        {dn.status === "confirmed" && !linkedPickList && canDispatchDn(dn) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openActionDialog("queue_picking", dn.id)}
-                            title={t("queuePicking")}
-                          >
-                            <Package className="h-4 w-4 text-amber-600" />
-                          </Button>
-                        )}
-                        {dn.status === "dispatch_ready" && canDispatchDn(dn) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openActionDialog("dispatch", dn.id)}
-                            title={t("dispatch")}
-                          >
-                            <Truck className="h-4 w-4 text-indigo-600" />
-                          </Button>
-                        )}
-                        {dn.status === "dispatched" && canReceiveDn(dn) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openActionDialog("receive", dn.id)}
-                            title={t("receive")}
-                          >
-                            <ClipboardCheck className="h-4 w-4 text-emerald-600" />
-                          </Button>
-                        )}
-                        {[
-                          "draft",
-                          "confirmed",
-                          "queued_for_picking",
-                          "picking_in_progress",
-                          "dispatch_ready",
-                        ].includes(dn.status) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openActionDialog("void", dn.id)}
-                            title={t("void")}
-                          >
-                            <XCircle className="h-4 w-4 text-red-600" />
-                          </Button>
-                        )}
+                        ) : null}
+                        {canVoidDn ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                aria-label={t("actions")}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => openActionDialog("void", dn.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <XCircle className="h-4 w-4" />
+                                <span>{t("void")}</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>

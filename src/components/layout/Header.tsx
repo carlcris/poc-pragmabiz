@@ -1,28 +1,13 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { Menu } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { Breadcrumb } from "@/components/layout/Breadcrumb";
-import { ClientOnly } from "@/components/shared/ClientOnly";
-import { Skeleton } from "@/components/ui/skeleton";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { CurrencySwitcher } from "@/components/shared/CurrencySwitcher";
+import { NotificationsMenu } from "@/components/notifications/NotificationsMenu";
 import { Button } from "@/components/ui/button";
-
-const LanguageSwitcher = dynamic(
-  () => import("@/components/shared/LanguageSwitcher").then((mod) => mod.LanguageSwitcher),
-  { ssr: false, loading: () => <Skeleton className="h-8 w-24" /> }
-);
-
-const CurrencySwitcher = dynamic(
-  () => import("@/components/shared/CurrencySwitcher").then((mod) => mod.CurrencySwitcher),
-  { ssr: false, loading: () => <Skeleton className="h-8 w-20" /> }
-);
-
-const NotificationsMenu = dynamic(
-  () => import("@/components/notifications/NotificationsMenu").then((mod) => mod.NotificationsMenu),
-  { ssr: false, loading: () => <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" /> }
-);
 
 export function Header() {
   const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
@@ -50,9 +35,7 @@ export function Header() {
             <LanguageSwitcher />
             <CurrencySwitcher />
           </div>
-          <ClientOnly fallback={<Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />}>
-            <NotificationsMenu />
-          </ClientOnly>
+          <NotificationsMenu />
           <UserMenu />
         </div>
       </div>
