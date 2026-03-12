@@ -78,6 +78,8 @@ function ItemsPageContent() {
   const { formatCurrency } = useCurrency();
   const deleteItem = useDeleteItem();
   const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
   // Fetch warehouses to resolve the current BU's default warehouse scope.
   const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
   const warehouses = useMemo(
@@ -88,8 +90,10 @@ function ItemsPageContent() {
     if (!currentBusinessUnit?.id) return undefined;
     return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id;
   }, [currentBusinessUnit?.id, warehouses]);
+  const isBusinessUnitScopeReady = hasBusinessUnitHydrated && !isBusinessUnitLoading;
   const isWarehouseScopeReady =
-    !currentBusinessUnit?.id || !!currentBusinessUnitWarehouseId || !isWarehousesLoading;
+    !currentBusinessUnit?.id || (!!currentBusinessUnitWarehouseId && !isWarehousesLoading);
+  const areItemQueriesEnabled = isBusinessUnitScopeReady && isWarehouseScopeReady;
 
   const itemsQueryParams = useMemo<{
     search: string;
@@ -124,7 +128,7 @@ function ItemsPageContent() {
 
   const { data, isLoading, isFetching, error } = useItems({
     ...itemsQueryParams,
-    enabled: isWarehouseScopeReady,
+    enabled: areItemQueriesEnabled,
   });
   const {
     data: statsData,
@@ -139,7 +143,7 @@ function ItemsPageContent() {
         ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
         : "all",
     includeStock: true,
-    enabled: isWarehouseScopeReady,
+    enabled: areItemQueriesEnabled,
   });
 
   useEffect(() => {
@@ -156,7 +160,7 @@ function ItemsPageContent() {
   const categories = categoriesData?.data || [];
 
 
-  const isInitialLoading = isLoading || !isWarehouseScopeReady;
+  const isInitialLoading = isLoading || !areItemQueriesEnabled;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
   const statistics = statsData?.statistics;
