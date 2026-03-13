@@ -56,6 +56,26 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 - Application inserts must omit the generated code column so the trigger remains the single source of truth.
 - Do not backfill or rewrite historical codes unless explicitly required by the task.
 
+
+## Insert-Only Fields
+
+Fields that are assigned only at creation time must not be passed again through update paths.
+
+- Omit insert-only fields from update RPCs/services entirely; do not pass them back "unchanged".
+- Treat the following as insert-only unless a documented exception exists:
+  - identity-defining foreign keys
+  - control numbers and transmittal numbers
+  - immutable ownership/reference columns
+  - creation-time linkage fields
+- Keep insert and update payload contracts separate. Do not reuse insert payloads for updates.
+- If an existing row is missing an insert-only value due to legacy data, backfill it intentionally in a targeted repair path rather than folding it into routine updates.
+
+Reason:
+
+- Update paths often operate on partial or stale state.
+- Re-sending insert-only fields can null out or overwrite references when the current value is not tracked correctly.
+- This is a data-integrity rule, not just a style preference.
+
 ## Agent-Specific Instructions
 Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touching APIs, hooks, or data types.
 

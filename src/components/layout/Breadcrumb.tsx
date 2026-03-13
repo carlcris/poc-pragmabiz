@@ -11,6 +11,7 @@ import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
 
 export function Breadcrumb() {
   const t = useTranslations("navigation");
+  const tReports = useTranslations("reportsPage");
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
 
@@ -25,6 +26,14 @@ export function Breadcrumb() {
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
+  const reportLabelMap: Record<string, string> = {
+    stock: tReports("stockReportsName"),
+    "stock-aging": tReports("stockAgingName"),
+    shipments: tReports("shipmentsReportName"),
+    "item-location-batch": tReports("itemLocationBatchName"),
+    "picking-efficiency": tReports("pickingEfficiencyName"),
+    "transformation-efficiency": tReports("transformationEfficiencyName"),
+  };
   const shouldShowParentCrumb =
     pathSegments.length >= 3 &&
     !isDeliveryNoteDetail &&
@@ -34,6 +43,7 @@ export function Breadcrumb() {
     !isWarehouseLocations &&
     !!parentSegment &&
     t.has(parentSegment);
+  const isReportChildPage = parentSegment === "reports" && pathSegments.length >= 2;
 
   const { data: deliveryNote } = useQuery({
     queryKey: [DELIVERY_NOTES_QUERY_KEY, deliveryNoteId],
@@ -53,10 +63,12 @@ export function Breadcrumb() {
       ? t("Stock Requisition Details")
       : parentSegment === "load-lists"
         ? t("Load List Details")
-        : parentSegment === "grns"
-          ? t("GRN Details")
-          : parentSegment === "delivery-notes"
-            ? t("Delivery Note Details")
+      : parentSegment === "grns"
+        ? t("GRN Details")
+      : parentSegment === "delivery-notes"
+        ? t("Delivery Note Details")
+        : parentSegment === "reports" && reportLabelMap[lastSegment]
+          ? reportLabelMap[lastSegment]
           : t.has(lastSegment)
             ? t(lastSegment)
             : lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
@@ -150,7 +162,19 @@ export function Breadcrumb() {
       >
         {t("Home")}
       </Link>
-      {shouldShowParentCrumb ? (
+      {isReportChildPage ? (
+        <>
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <Link
+            href="/reports"
+            className="flex items-center hover:text-foreground transition-colors font-medium"
+          >
+            {tReports("title")}
+          </Link>
+          <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+          <span className="font-medium text-foreground">{currentPageLabel}</span>
+        </>
+      ) : shouldShowParentCrumb ? (
         <>
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
           <Link

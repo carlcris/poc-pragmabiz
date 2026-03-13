@@ -32,12 +32,12 @@ export const MetricCard = ({
       <div className={valueClassName}>
         {isLoading ? <Skeleton className="h-8 w-24" /> : value ?? "-"}
       </div>
-      {caption ? (
+      {caption || skeletonCaption ? (
         <div className="min-h-[16px]">
           {isLoading && skeletonCaption ? (
             <Skeleton className="h-4 w-20" />
           ) : (
-            <p className="text-xs text-muted-foreground">{caption}</p>
+            <p className="text-xs text-muted-foreground">{caption ?? ""}</p>
           )}
         </div>
       ) : null}

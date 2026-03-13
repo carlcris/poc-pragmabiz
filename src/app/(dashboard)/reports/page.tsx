@@ -92,8 +92,9 @@ export default function ReportsPage() {
             id: "stock-aging",
             name: t("stockAgingName"),
             description: t("stockAgingDescription"),
-            status: "coming-soon",
+            status: "implemented",
             businessValue: t("stockAgingValue"),
+            path: "/reports/stock-aging",
             icon: Clock,
           },
           {
@@ -176,6 +177,15 @@ export default function ReportsPage() {
         description: t("purchasingDescription"),
         icon: ShoppingCart,
         reports: [
+          {
+            id: "shipments-report",
+            name: t("shipmentsReportName"),
+            description: t("shipmentsReportDescription"),
+            status: "implemented",
+            businessValue: t("shipmentsReportValue"),
+            path: "/reports/shipments",
+            icon: Truck,
+          },
           { id: "supplier-scorecard", name: t("supplierScorecardName"), description: t("supplierScorecardDescription"), status: "coming-soon", businessValue: t("supplierScorecardValue"), icon: CheckCircle2 },
           { id: "po-variance", name: t("poVarianceName"), description: t("poVarianceDescription"), status: "coming-soon", businessValue: t("poVarianceValue"), icon: BarChart3 },
           { id: "supplier-spend", name: t("supplierSpendName"), description: t("supplierSpendDescription"), status: "coming-soon", businessValue: t("supplierSpendValue"), icon: DollarSign },
