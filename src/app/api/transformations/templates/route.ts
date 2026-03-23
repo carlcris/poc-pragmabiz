@@ -5,6 +5,15 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { CreateTransformationTemplateRequest } from "@/types/transformation-template";
 
+const generateDesignerTemplateCode = () => {
+  const timestamp = Date.now().toString().slice(-8);
+  const random = Math.floor(Math.random() * 900 + 100).toString();
+  return `DST-${timestamp}${random}`;
+};
+
+const getDbErrorMessage = (message: string, details?: string | null, hint?: string | null) =>
+  [message, details, hint].filter(Boolean).join(" ");
+
 // GET /api/transformations/templates - List transformation templates
 export async function GET(request: NextRequest) {
   try {
@@ -53,6 +62,11 @@ export async function GET(request: NextRequest) {
         template_name,
         description,
         image_url,
+        template_kind,
+        sheet_width,
+        sheet_height,
+        sheet_unit,
+        layout_json,
         is_active,
         usage_count,
         created_by,
@@ -205,12 +219,69 @@ export async function POST(request: NextRequest) {
 
     const data = validationResult.data;
 
+    const resolvedInputs =
+      data.templateKind === "sheet_layout" && data.layout?.sourceItem
+        ? [
+            {
+              itemId: data.layout.sourceItem.itemId,
+              quantity: 1,
+              uomId: data.layout.sourceItem.uomId,
+              sequence: 1,
+              notes: "Parent sheet",
+            },
+          ]
+        : data.inputs || [];
+
+    const resolvedOutputs =
+      data.templateKind === "sheet_layout"
+        ? Object.values(
+            (data.layout?.sections || []).reduce<
+              Record<
+                string,
+                {
+                  itemId: string;
+                  quantity: number;
+                  uomId: string;
+                  sequence: number;
+                  isScrap: boolean;
+                  notes?: string;
+                }
+              >
+            >((accumulator, section) => {
+              if (section.type !== "piece" || !section.mappedItem) return accumulator;
+
+              const existing = accumulator[section.mappedItem.itemId];
+              if (existing) {
+                existing.quantity += 1;
+                return accumulator;
+              }
+
+              accumulator[section.mappedItem.itemId] = {
+                itemId: section.mappedItem.itemId,
+                quantity: 1,
+                uomId: section.mappedItem.uomId,
+                sequence: section.order,
+                isScrap: false,
+                notes: "Mapped sheet layout piece",
+              };
+              return accumulator;
+            }, {})
+          ).sort((a, b) => a.sequence - b.sequence)
+        : data.outputs || [];
+
+    const templateCode =
+      data.templateCode || (data.templateKind === "sheet_layout" ? generateDesignerTemplateCode() : "");
+
+    if (!templateCode) {
+      return NextResponse.json({ error: "Template code is required" }, { status: 400 });
+    }
+
     // Check if template code already exists
     const { data: existingTemplate } = await supabase
       .from("transformation_templates")
       .select("id")
       .eq("company_id", userData.company_id)
-      .eq("template_code", data.templateCode)
+      .eq("template_code", templateCode)
       .is("deleted_at", null)
       .single();
 
@@ -219,30 +290,85 @@ export async function POST(request: NextRequest) {
     }
 
     // Create template header
-    const { data: template, error: templateError } = await supabase
-      .from("transformation_templates")
-      .insert({
-        company_id: userData.company_id,
-        business_unit_id: currentBusinessUnitId,
-        template_code: data.templateCode,
-        template_name: data.templateName,
-        description: data.description,
-        image_url: data.imageUrl || null,
-        is_active: true,
-        usage_count: 0,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single();
+    const insertPayload = {
+      company_id: userData.company_id,
+      business_unit_id: currentBusinessUnitId,
+      template_code: templateCode,
+      template_name: data.templateName,
+      description: data.description,
+      image_url: data.imageUrl || null,
+      template_kind: data.templateKind,
+      sheet_width: data.sheetWidth ?? null,
+      sheet_height: data.sheetHeight ?? null,
+      sheet_unit: data.sheetUnit ?? null,
+      layout_json: data.layout ?? null,
+      is_active: true,
+      usage_count: 0,
+      created_by: user.id,
+      updated_by: user.id,
+    };
 
-    if (templateError || !template) {
-      return NextResponse.json({ error: "Failed to create template" }, { status: 500 });
+    const { data: insertedTemplate, error: templateError } = await supabase
+      .from("transformation_templates")
+      .insert(insertPayload)
+      .select("id")
+      .maybeSingle();
+
+    if (templateError) {
+      const errorMessage = getDbErrorMessage(
+        templateError.message,
+        templateError.details,
+        templateError.hint
+      );
+      const status = templateError.code?.startsWith("23") ? 400 : 500;
+      return NextResponse.json(
+        { error: errorMessage || "Failed to create template" },
+        { status }
+      );
+    }
+
+    const templateId = insertedTemplate?.id;
+
+    if (!templateId) {
+      const { data: fallbackTemplate, error: fallbackError } = await supabase
+        .from("transformation_templates")
+        .select("id")
+        .eq("company_id", userData.company_id)
+        .eq("business_unit_id", currentBusinessUnitId)
+        .eq("template_code", templateCode)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fallbackError || !fallbackTemplate?.id) {
+        const errorMessage = fallbackError
+          ? getDbErrorMessage(fallbackError.message, fallbackError.details, fallbackError.hint)
+          : "Template was inserted but could not be reloaded";
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
+      }
+
+      const resolvedTemplateId = fallbackTemplate.id;
+      const { data: reloadedTemplate } = await supabase
+        .from("transformation_templates")
+        .select(
+          `
+          *,
+          inputs:transformation_template_inputs(*),
+          outputs:transformation_template_outputs(*)
+        `
+        )
+        .eq("id", resolvedTemplateId)
+        .single();
+
+      return NextResponse.json({
+        data: reloadedTemplate ?? { ...insertPayload, id: resolvedTemplateId },
+      });
     }
 
     // Create template inputs
-    const inputsData = data.inputs.map((input, index) => ({
-      template_id: template.id,
+    const inputsData = resolvedInputs.map((input, index) => ({
+      template_id: templateId,
       item_id: input.itemId,
       quantity: input.quantity,
       uom_id: input.uomId,
@@ -252,20 +378,23 @@ export async function POST(request: NextRequest) {
       updated_by: user.id,
     }));
 
-    const { error: inputsError } = await supabase
-      .from("transformation_template_inputs")
-      .insert(inputsData);
+    const { error: inputsError } = inputsData.length
+      ? await supabase.from("transformation_template_inputs").insert(inputsData)
+      : { error: null };
 
     if (inputsError) {
       // Rollback: delete template
-      await supabase.from("transformation_templates").delete().eq("id", template.id);
+      await supabase.from("transformation_templates").delete().eq("id", templateId);
 
-      return NextResponse.json({ error: "Failed to create template inputs" }, { status: 500 });
+      return NextResponse.json(
+        { error: getDbErrorMessage(inputsError.message, inputsError.details, inputsError.hint) },
+        { status: 500 }
+      );
     }
 
     // Create template outputs
-    const outputsData = data.outputs.map((output, index) => ({
-      template_id: template.id,
+    const outputsData = resolvedOutputs.map((output, index) => ({
+      template_id: templateId,
       item_id: output.itemId,
       quantity: output.quantity,
       uom_id: output.uomId,
@@ -276,16 +405,19 @@ export async function POST(request: NextRequest) {
       updated_by: user.id,
     }));
 
-    const { error: outputsError } = await supabase
-      .from("transformation_template_outputs")
-      .insert(outputsData);
+    const { error: outputsError } = outputsData.length
+      ? await supabase.from("transformation_template_outputs").insert(outputsData)
+      : { error: null };
 
     if (outputsError) {
       // Rollback: delete template and inputs
-      await supabase.from("transformation_template_inputs").delete().eq("template_id", template.id);
-      await supabase.from("transformation_templates").delete().eq("id", template.id);
+      await supabase.from("transformation_template_inputs").delete().eq("template_id", templateId);
+      await supabase.from("transformation_templates").delete().eq("id", templateId);
 
-      return NextResponse.json({ error: "Failed to create template outputs" }, { status: 500 });
+      return NextResponse.json(
+        { error: getDbErrorMessage(outputsError.message, outputsError.details, outputsError.hint) },
+        { status: 500 }
+      );
     }
 
     // Fetch complete template with inputs/outputs
@@ -298,7 +430,7 @@ export async function POST(request: NextRequest) {
         outputs:transformation_template_outputs(*)
       `
       )
-      .eq("id", template.id)
+      .eq("id", templateId)
       .single();
 
     return NextResponse.json({ data: completeTemplate }, { status: 201 });

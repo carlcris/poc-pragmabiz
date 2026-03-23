@@ -28,6 +28,52 @@ const sequenceSchema = z.preprocess((value) => {
   return value;
 }, z.number().int().min(1));
 
+const dimensionSchema = z.preprocess(
+  (value) => {
+    if (typeof value === "string" && value.trim() !== "") {
+      return Number(value);
+    }
+    return value;
+  },
+  z.number().min(0.0001, "Value must be greater than 0")
+);
+
+const sheetLayoutSectionSchema = z.object({
+  id: z.string().min(1),
+  x: z.number().min(0),
+  y: z.number().min(0),
+  width: z.number().min(0.0001),
+  height: z.number().min(0.0001),
+  label: z.string().min(1),
+  order: z.number().int().min(1),
+  type: z.enum(["piece", "leftover"]),
+  mappedItem: z
+    .object({
+      itemId: uuidSchema,
+      itemCode: z.string().min(1),
+      itemName: z.string().min(1),
+      uomId: uuidSchema,
+      uomCode: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+
+const sheetLayoutSchema = z.object({
+  version: z.number().int().min(1).default(1),
+  sourceItem: z
+    .object({
+      itemId: uuidSchema,
+      itemCode: z.string().min(1),
+      itemName: z.string().min(1),
+      uomId: uuidSchema,
+      uomCode: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
+  sections: z.array(sheetLayoutSectionSchema).min(1, "At least one layout section is required"),
+});
+
 export const templateInputItemSchema = z.object({
   itemId: uuidSchema,
   quantity: numberSchema,
@@ -60,18 +106,67 @@ export const createTransformationTemplateSchema = z
     templateCode: z
       .string()
       .min(1, "Template code is required")
-      .max(50, "Template code must be 50 characters or less"),
+      .max(50, "Template code must be 50 characters or less")
+      .optional(),
     templateName: z
       .string()
       .min(1, "Template name is required")
       .max(200, "Template name must be 200 characters or less"),
+    templateKind: z.enum(["recipe", "sheet_layout"]).default("recipe"),
     description: z.string().max(1000).optional(),
     imageUrl: z.string().url("Image URL must be a valid URL").optional(),
-    inputs: z.array(templateInputItemSchema).min(1, "At least one input item is required"),
-    outputs: z.array(templateOutputItemSchema).min(1, "At least one output item is required"),
+    sheetWidth: dimensionSchema.optional(),
+    sheetHeight: dimensionSchema.optional(),
+    sheetUnit: z.enum(["in", "cm", "mm"]).optional(),
+    layout: sheetLayoutSchema.optional(),
+    inputs: z.array(templateInputItemSchema).default([]),
+    outputs: z.array(templateOutputItemSchema).default([]),
   })
   .refine(
     (data) => {
+      if (data.templateKind === "recipe") {
+        return Boolean(data.templateCode);
+      }
+      return true;
+    },
+    {
+      message: "Template code is required",
+      path: ["templateCode"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.templateKind !== "recipe") return true;
+      return data.inputs.length > 0;
+    },
+    {
+      message: "At least one input item is required",
+      path: ["inputs"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.templateKind !== "recipe") return true;
+      return data.outputs.length > 0;
+    },
+    {
+      message: "At least one output item is required",
+      path: ["outputs"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.templateKind !== "sheet_layout") return true;
+      return Boolean(data.sheetWidth && data.sheetHeight && data.sheetUnit && data.layout);
+    },
+    {
+      message: "Sheet size, unit, and layout are required for designer templates",
+      path: ["layout"],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.templateKind !== "recipe") return true;
       // Validation: No circular references (same item as input and output)
       const inputItemIds = new Set(data.inputs.map((i) => i.itemId));
       const outputItemIds = new Set(data.outputs.map((o) => o.itemId));
@@ -88,6 +183,7 @@ export const createTransformationTemplateSchema = z
   )
   .refine(
     (data) => {
+      if (data.templateKind !== "recipe") return true;
       // Validation: No duplicate items in inputs
       const inputItemIds = data.inputs.map((i) => i.itemId);
       const uniqueInputs = new Set(inputItemIds);
@@ -100,6 +196,7 @@ export const createTransformationTemplateSchema = z
   )
   .refine(
     (data) => {
+      if (data.templateKind !== "recipe") return true;
       // Validation: No duplicate items in outputs
       const outputItemIds = data.outputs.map((o) => o.itemId);
       const uniqueOutputs = new Set(outputItemIds);
@@ -125,6 +222,10 @@ export const updateTransformationTemplateSchema = z.object({
     .optional(),
   description: z.string().max(1000).optional(),
   imageUrl: z.string().url("Image URL must be a valid URL").optional(),
+  sheetWidth: dimensionSchema.optional(),
+  sheetHeight: dimensionSchema.optional(),
+  sheetUnit: z.enum(["in", "cm", "mm"]).optional(),
+  layout: sheetLayoutSchema.optional(),
   inputs: z.array(templateInputItemSchema).min(1, "At least one input item is required").optional(),
   outputs: z.array(templateOutputItemSchema).min(1, "At least one output item is required").optional(),
   isActive: z.boolean().optional(),

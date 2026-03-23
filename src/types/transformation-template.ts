@@ -3,6 +3,44 @@
 // Purpose: Type definitions for transformation templates (reusable recipes)
 // ============================================================================
 
+export type SheetLayoutUnit = "in" | "cm" | "mm";
+
+export type SheetLayoutSectionType = "piece" | "leftover";
+
+export type SheetLayoutMappedItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  uomId: string;
+  uomCode?: string;
+};
+
+export type SheetLayoutSourceItem = {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  uomId: string;
+  uomCode?: string;
+};
+
+export interface SheetLayoutSection {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label: string;
+  order: number;
+  type: SheetLayoutSectionType;
+  mappedItem?: SheetLayoutMappedItem | null;
+}
+
+export interface SheetLayoutData {
+  version: number;
+  sourceItem?: SheetLayoutSourceItem | null;
+  sections: SheetLayoutSection[];
+}
+
 export interface TransformationTemplateInput {
   id: string;
   templateId: string;
@@ -41,10 +79,15 @@ export interface TransformationTemplateOutput {
 export interface TransformationTemplate {
   id: string;
   companyId: string;
+  templateKind: "recipe" | "sheet_layout";
   templateCode: string;
   templateName: string;
   description?: string;
   imageUrl?: string;
+  sheetWidth?: number;
+  sheetHeight?: number;
+  sheetUnit?: SheetLayoutUnit;
+  layout?: SheetLayoutData | null;
   isActive: boolean;
   usageCount: number;
   createdAt: string;
@@ -97,10 +140,15 @@ export type TransformationTemplateOutputApi = {
 export type TransformationTemplateApi = {
   id: string;
   company_id?: string;
+  template_kind?: "recipe" | "sheet_layout";
   template_code: string;
   template_name: string;
   description?: string | null;
   image_url?: string | null;
+  sheet_width?: number | null;
+  sheet_height?: number | null;
+  sheet_unit?: SheetLayoutUnit | null;
+  layout_json?: SheetLayoutData | null;
   is_active: boolean;
   usage_count: number;
   created_by?: string | null;
@@ -118,18 +166,23 @@ export type TransformationTemplateApi = {
 
 export interface CreateTransformationTemplateRequest {
   companyId: string;
-  templateCode: string;
+  templateCode?: string;
   templateName: string;
+  templateKind?: "recipe" | "sheet_layout";
   description?: string;
   imageUrl?: string;
-  inputs: {
+  sheetWidth?: number;
+  sheetHeight?: number;
+  sheetUnit?: SheetLayoutUnit;
+  layout?: SheetLayoutData;
+  inputs?: {
     itemId: string;
     quantity: number;
     uomId: string;
     sequence?: number;
     notes?: string;
   }[];
-  outputs: {
+  outputs?: {
     itemId: string;
     quantity: number;
     uomId: string;
@@ -143,6 +196,10 @@ export interface UpdateTransformationTemplateRequest {
   templateName?: string;
   description?: string;
   imageUrl?: string;
+  sheetWidth?: number;
+  sheetHeight?: number;
+  sheetUnit?: SheetLayoutUnit;
+  layout?: SheetLayoutData;
   inputs?: {
     itemId: string;
     quantity: number;

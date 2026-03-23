@@ -7012,6 +7012,11 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          layout_json: Json | null
+          sheet_height: number | null
+          sheet_unit: string | null
+          sheet_width: number | null
+          template_kind: string
           template_code: string
           template_name: string
           updated_at: string
@@ -7028,6 +7033,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          layout_json?: Json | null
+          sheet_height?: number | null
+          sheet_unit?: string | null
+          sheet_width?: number | null
+          template_kind?: string
           template_code: string
           template_name: string
           updated_at?: string
@@ -7044,6 +7054,11 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_active?: boolean
+          layout_json?: Json | null
+          sheet_height?: number | null
+          sheet_unit?: string | null
+          sheet_width?: number | null
+          template_kind?: string
           template_code?: string
           template_name?: string
           updated_at?: string
@@ -8424,4 +8439,3 @@ export const Constants = {
     },
   },
 } as const
-

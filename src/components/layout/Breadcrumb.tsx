@@ -25,6 +25,8 @@ export function Breadcrumb() {
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
+  const isTransformationTemplateDesigner =
+    pathname === "/inventory/transformations/templates/design";
   const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
   const reportLabelMap: Record<string, string> = {
     stock: tReports("stockReportsName"),
@@ -67,6 +69,8 @@ export function Breadcrumb() {
         ? t("GRN Details")
       : parentSegment === "delivery-notes"
         ? t("Delivery Note Details")
+        : isTransformationTemplateDesigner
+          ? "Designer"
         : parentSegment === "reports" && reportLabelMap[lastSegment]
           ? reportLabelMap[lastSegment]
           : t.has(lastSegment)

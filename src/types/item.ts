@@ -1,5 +1,12 @@
 export type ItemType = "raw_material" | "finished_good" | "asset" | "service";
 
+export type ItemDimensions = {
+  width?: number;
+  height?: number;
+  unit?: string;
+  length?: number;
+};
+
 export interface Item {
   id: string;
   companyId: string;
@@ -9,6 +16,7 @@ export interface Item {
   name: string;
   chineseName?: string;
   description: string;
+  dimensions?: ItemDimensions | null;
   itemType: ItemType;
   uom: string;
   uomId: string;

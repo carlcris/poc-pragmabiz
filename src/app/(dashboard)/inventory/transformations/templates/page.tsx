@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Plus, Search, Eye, Pencil, Trash2, Power, PowerOff, Package } from "lucide-react";
 import {
@@ -52,8 +53,8 @@ const TransformationTemplateDetailDialog = dynamic(
     ),
   { ssr: false }
 );
-
 export default function TransformationTemplatesPage() {
+  const router = useRouter();
   const t = useTranslations("transformation");
   const tCommon = useTranslations("common");
   const tForms = useTranslations("forms");
@@ -109,10 +110,20 @@ export default function TransformationTemplatesPage() {
         title={t("templates")}
         subtitle={t("manageTemplates")}
         actions={
-          <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("newTemplate")}
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/inventory/transformations/templates/design")}
+              className="w-full sm:w-auto"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Design New Template
+            </Button>
+            <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" />
+              {t("newTemplate")}
+            </Button>
+          </div>
         }
       />
 
@@ -183,7 +194,14 @@ export default function TransformationTemplatesPage() {
                   onClick={() => setViewTemplate(template)}
                 >
                   <TableCell className="font-medium">{template.template_code}</TableCell>
-                  <TableCell>{template.template_name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span>{template.template_name}</span>
+                      {template.template_kind === "sheet_layout" && (
+                        <Badge variant="outline">Sheet Layout</Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge className={template.is_active ? "bg-green-500" : "bg-gray-500"}>
                       {template.is_active ? tCommon("active") : tCommon("inactive")}
@@ -209,13 +227,15 @@ export default function TransformationTemplatesPage() {
                       </Button>
                       {template.usage_count === 0 && (
                         <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedTemplate(template)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          {template.template_kind !== "sheet_layout" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedTemplate(template)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"

@@ -78,6 +78,7 @@ type DbItem = {
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
+  dimensions: Item["dimensions"] | null;
   item_type: string;
   uom_id: string;
   cost_price: number | string | null;
@@ -175,6 +176,7 @@ const transformDbItem = (dbItem: ItemRow): Item => {
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
+    dimensions: dbItem.dimensions || null,
     itemType: dbItem.item_type as Item["itemType"],
     uom: uom?.code || "",
     uomId: dbItem.uom_id,

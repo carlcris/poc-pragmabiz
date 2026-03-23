@@ -14,6 +14,7 @@ type DbItem = {
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
+  dimensions: Item["dimensions"] | null;
   category_id: string | null;
   item_type: string;
   uom_id: string;
@@ -84,6 +85,7 @@ function transformDbItem(dbItem: ItemRow): Item {
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
+    dimensions: dbItem.dimensions || null,
     itemType: dbItem.item_type as Item["itemType"],
     uom: dbItem.unit_of_measure?.code || "",
     uomId: dbItem.uom_id,
