@@ -871,7 +871,7 @@ await supabase.from("stock_transactions").insert({
    - ✅ Output inventory produced correctly
 
 3. **Server Logs Verification**
-   - ✅ JWT contains `current_business_unit_id: 00000000-0000-0000-0000-000000000100`
+   - ✅ JWT contains `current_business_unit_id: d69c52d5-6755-4e28-87e3-24c680a5897b`
    - ✅ Server-with-BU client logs show proper context extraction
    - ✅ No RLS-related errors in server output
 

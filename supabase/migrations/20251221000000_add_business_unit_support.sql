@@ -132,13 +132,13 @@ DECLARE
   v_company_id UUID;
 BEGIN
   -- Check if demo company exists
-  SELECT id INTO v_company_id FROM companies WHERE id = '00000000-0000-0000-0000-000000000001';
+  SELECT id INTO v_company_id FROM companies WHERE id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
 
   IF v_company_id IS NOT NULL THEN
     -- Insert default business unit
     INSERT INTO business_units (id, company_id, code, name, type, is_active, created_at, updated_at)
     VALUES (
-      '00000000-0000-0000-0000-000000000100',
+      'd69c52d5-6755-4e28-87e3-24c680a5897b',
       v_company_id,
       'MAIN',
       'Main Office',
@@ -161,7 +161,7 @@ END $$;
 
 DO $$
 DECLARE
-  default_bu_id UUID := '00000000-0000-0000-0000-000000000100';
+  default_bu_id UUID := 'd69c52d5-6755-4e28-87e3-24c680a5897b';
   updated_count INTEGER;
 BEGIN
   RAISE NOTICE '========================================';
@@ -262,7 +262,7 @@ END $$;
 INSERT INTO user_business_unit_access (user_id, business_unit_id, role, is_default, granted_at)
 SELECT
   u.id,
-  '00000000-0000-0000-0000-000000000100', -- Default BU ID
+  'd69c52d5-6755-4e28-87e3-24c680a5897b', -- Default BU ID
   'admin', -- Grant admin role to existing users
   true, -- Set as default
   now()
@@ -270,7 +270,7 @@ FROM users u
 WHERE NOT EXISTS (
   SELECT 1 FROM user_business_unit_access
   WHERE user_id = u.id
-  AND business_unit_id = '00000000-0000-0000-0000-000000000100'
+  AND business_unit_id = 'd69c52d5-6755-4e28-87e3-24c680a5897b'
 );
 
 -- ============================================================================

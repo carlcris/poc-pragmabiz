@@ -29,41 +29,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch user details from our users table
-    const { data: userData } = await supabase
+    const { data: userData, error: userError } = await supabase
       .from("users")
       .select("id, username, email, first_name, last_name, company_id")
       .eq("id", data.user.id)
       .maybeSingle();
 
-    // If user doesn't exist in users table, create it
-    let userRecord = userData;
-    if (!userData) {
-      const firstName = data.user.user_metadata?.first_name || "";
-      const lastName = data.user.user_metadata?.last_name || "";
+    if (userError) {
+      return NextResponse.json({ message: "Failed to load user profile" }, { status: 500 });
+    }
 
-      const { data: newUser, error: createError } = await supabase
-        .from("users")
-        .insert({
-          id: data.user.id,
-          company_id: "00000000-0000-0000-0000-000000000001", // Demo company
-          username: email.split("@")[0],
-          email: email,
-          first_name: firstName,
-          last_name: lastName,
-          is_active: true,
-        })
-        .select("id, username, email, first_name, last_name, company_id")
-        .single();
-
-      if (!createError) {
-        userRecord = newUser;
-      } else {
-      }
+    if (!userData?.company_id) {
+      await supabase.auth.signOut();
+      return NextResponse.json(
+        {
+          message:
+            "Your account is not provisioned in the application users table. Contact your administrator.",
+        },
+        { status: 403 }
+      );
     }
 
     // Return user and session data
-    const firstName = userRecord?.first_name || "";
-    const lastName = userRecord?.last_name || "";
+    const firstName = userData.first_name || "";
+    const lastName = userData.last_name || "";
     const fullName = [firstName, lastName].filter(Boolean).join(" ");
 
     const jsonResponse = NextResponse.json({
@@ -72,8 +61,8 @@ export async function POST(request: NextRequest) {
         email: data.user.email,
         name: fullName || data.user.email || email,
         role: data.user.user_metadata?.role || "user",
-        companyId: userRecord?.company_id || "00000000-0000-0000-0000-000000000001",
-        username: userRecord?.username || email.split("@")[0],
+        companyId: userData.company_id,
+        username: userData.username || email.split("@")[0],
         firstName,
         lastName,
       },

@@ -95,7 +95,7 @@ SELECT
   'primary',
   true
 FROM companies
-WHERE id = '00000000-0000-0000-0000-000000000001'; -- Demo company
+WHERE id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'; -- Demo company
 
 -- Store the default BU ID
 DO $$
@@ -105,7 +105,7 @@ BEGIN
   SELECT id INTO default_bu_id
   FROM business_units
   WHERE code = 'MAIN'
-  AND company_id = '00000000-0000-0000-0000-000000000001';
+  AND company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
 
   -- Backfill all operational tables
   UPDATE sales_quotations SET business_unit_id = default_bu_id WHERE business_unit_id IS NULL;

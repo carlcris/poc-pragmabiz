@@ -9,7 +9,7 @@ BEGIN
   SELECT id INTO v_super_admin_role_id
   FROM roles
   WHERE name = 'Super Admin'
-    AND company_id = '00000000-0000-0000-0000-000000000001'
+    AND company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
   LIMIT 1;
 
   -- Add missing resources and assign to Super Admin

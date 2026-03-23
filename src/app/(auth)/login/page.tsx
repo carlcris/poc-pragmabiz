@@ -63,6 +63,8 @@ export default function LoginPage() {
   const { login, isLoading, error, setLoading } = useAuthStore();
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isBusy = isLoading || isSubmitting;
 
   // Set loading to false when login page mounts
   useEffect(() => {
@@ -79,6 +81,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
+      setIsSubmitting(true);
       setLoginError(null);
       await login(data);
 
@@ -127,6 +130,7 @@ export default function LoginPage() {
       router.push("/403");
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Login failed");
+      setIsSubmitting(false);
     }
   };
 
@@ -255,7 +259,7 @@ export default function LoginPage() {
                           type="email"
                           placeholder="Enter a valid email address"
                           {...field}
-                          disabled={isLoading}
+                          disabled={isBusy}
                           className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white px-4 text-base text-gray-800 placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus-visible:ring-2 focus-visible:ring-purple-500/20"
                         />
                       </FormControl>
@@ -275,7 +279,7 @@ export default function LoginPage() {
                           type="password"
                           placeholder="••••••••••••"
                           {...field}
-                          disabled={isLoading}
+                          disabled={isBusy}
                           className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white px-4 text-base text-gray-800 placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus-visible:ring-2 focus-visible:ring-purple-500/20"
                         />
                       </FormControl>
@@ -290,6 +294,7 @@ export default function LoginPage() {
                       type="checkbox"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
+                      disabled={isBusy}
                       className="h-4 w-4 cursor-pointer rounded border-2 border-gray-300 text-purple-600 transition-all focus:ring-2 focus:ring-purple-500 focus:ring-offset-0"
                     />
                     <span className="text-sm font-medium text-gray-600 group-hover:text-gray-800">Remember me</span>
@@ -311,10 +316,10 @@ export default function LoginPage() {
 
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isBusy}
                   className="h-12 w-full rounded-lg bg-gradient-to-r from-purple-600 to-violet-600 text-base font-semibold text-white shadow-lg shadow-purple-500/30 transition-all hover:from-purple-700 hover:to-violet-700 hover:shadow-xl hover:shadow-purple-500/40"
                 >
-                  {isLoading ? (
+                  {isBusy ? (
                     <span className="flex items-center gap-2">
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                       Signing in...
