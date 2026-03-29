@@ -612,6 +612,346 @@ export type TranslationKeys = {
     roleUpdatedSuccess: string;
     roleUpdateError: string;
   };
+  adminSettings: {
+    layout: {
+      backToSettings: string;
+    };
+    index: {
+      title: string;
+      subtitle: string;
+      companyTitle: string;
+      companyDescription: string;
+      businessUnitTitle: string;
+      businessUnitDescription: string;
+      financialTitle: string;
+      financialDescription: string;
+      inventoryTitle: string;
+      inventoryDescription: string;
+      posTitle: string;
+      posDescription: string;
+      workflowTitle: string;
+      workflowDescription: string;
+      integrationTitle: string;
+      integrationDescription: string;
+      securityTitle: string;
+      securityDescription: string;
+    };
+    pages: {
+      errorTitle: string;
+      yourBusinessUnit: string;
+      noBusinessUnitSelectedTitle: string;
+      noBusinessUnitSelectedDescription: string;
+      companyTitle: string;
+      companyDescription: string;
+      companyLoadError: string;
+      businessUnitTitle: string;
+      businessUnitDescription: string;
+      businessUnitLoadError: string;
+      financialTitle: string;
+      financialDescription: string;
+      financialLoadError: string;
+      inventoryTitle: string;
+      inventoryDescription: string;
+      inventoryLoadError: string;
+      posTitle: string;
+      posDescription: string;
+      posLoadError: string;
+      workflowTitle: string;
+      workflowDescription: string;
+      workflowLoadError: string;
+      integrationTitle: string;
+      integrationDescription: string;
+      integrationLoadError: string;
+      securityTitle: string;
+      securityDescription: string;
+      securityLoadError: string;
+    };
+    common: {
+      saveChanges: string;
+    };
+    companyForm: {
+      saveSuccess: string;
+      saveError: string;
+      basicInformationTitle: string;
+      basicInformationDescription: string;
+      companyCode: string;
+      companyCodePlaceholder: string;
+      companyName: string;
+      companyNamePlaceholder: string;
+      legalName: string;
+      legalNamePlaceholder: string;
+      taxId: string;
+      taxIdPlaceholder: string;
+      contactInformationTitle: string;
+      contactInformationDescription: string;
+      email: string;
+      emailPlaceholder: string;
+      phone: string;
+      phonePlaceholder: string;
+      addressTitle: string;
+      addressDescription: string;
+      addressLine1: string;
+      addressLine1Placeholder: string;
+      addressLine2: string;
+      addressLine2Placeholder: string;
+      city: string;
+      cityPlaceholder: string;
+      state: string;
+      statePlaceholder: string;
+      postalCode: string;
+      postalCodePlaceholder: string;
+      country: string;
+      countryPlaceholder: string;
+      preferencesTitle: string;
+      preferencesDescription: string;
+      currencyCode: string;
+      currencyCodePlaceholder: string;
+      activeStatus: string;
+      activeStatusDescription: string;
+    };
+    businessUnitForm: {
+      saveSuccess: string;
+      saveError: string;
+      monday: string;
+      tuesday: string;
+      wednesday: string;
+      thursday: string;
+      friday: string;
+      saturday: string;
+      sunday: string;
+      identityTitle: string;
+      identityDescription: string;
+      displayName: string;
+      displayNamePlaceholder: string;
+      displayNameDescription: string;
+      shortCode: string;
+      shortCodePlaceholder: string;
+      shortCodeDescription: string;
+      localContactTitle: string;
+      localContactDescription: string;
+      localEmail: string;
+      localEmailPlaceholder: string;
+      localPhone: string;
+      localPhonePlaceholder: string;
+      managerName: string;
+      managerNamePlaceholder: string;
+      physicalLocationTitle: string;
+      physicalLocationDescription: string;
+      addressLine1: string;
+      addressLine1Placeholder: string;
+      addressLine2: string;
+      addressLine2Placeholder: string;
+      city: string;
+      cityPlaceholder: string;
+      state: string;
+      statePlaceholder: string;
+      postalCode: string;
+      postalCodePlaceholder: string;
+      country: string;
+      countryPlaceholder: string;
+      operatingHoursTitle: string;
+      operatingHoursDescription: string;
+      openingTime: string;
+      closingTime: string;
+      daysOpen: string;
+      timezone: string;
+      timezonePlaceholder: string;
+      timezoneDescription: string;
+      receiptCustomizationTitle: string;
+      receiptCustomizationDescription: string;
+      receiptHeader: string;
+      receiptHeaderPlaceholder: string;
+      receiptHeaderDescription: string;
+      receiptFooter: string;
+      receiptFooterPlaceholder: string;
+      receiptFooterDescription: string;
+    };
+    financialForm: {
+      saveSuccess: string;
+      saveError: string;
+      taxSettingsTitle: string;
+      taxSettingsDescription: string;
+      defaultTaxRate: string;
+      defaultTaxRateDescription: string;
+      autoCalculateTax: string;
+      autoCalculateTaxDescription: string;
+      paymentTermsTitle: string;
+      paymentTermsDescription: string;
+      defaultPaymentTerms: string;
+      defaultPaymentTermsDescription: string;
+      fiscalYearStart: string;
+      fiscalYearStartPlaceholder: string;
+      fiscalYearStartDescription: string;
+      invoiceSettingsTitle: string;
+      invoiceSettingsDescription: string;
+      invoicePrefix: string;
+      invoicePrefixPlaceholder: string;
+      invoiceStartNumber: string;
+      quoteSettingsTitle: string;
+      quoteSettingsDescription: string;
+      quotePrefix: string;
+      quotePrefixPlaceholder: string;
+      quoteStartNumber: string;
+      creditNoteSettingsTitle: string;
+      creditNoteSettingsDescription: string;
+      creditNotePrefix: string;
+      creditNotePrefixPlaceholder: string;
+    };
+    inventoryForm: {
+      saveSuccess: string;
+      saveError: string;
+      unitSettingsTitle: string;
+      unitSettingsDescription: string;
+      defaultUnitOfMeasure: string;
+      defaultUnitOfMeasurePlaceholder: string;
+      defaultUnitOfMeasureDescription: string;
+      stockThresholdTitle: string;
+      stockThresholdDescription: string;
+      lowStockThreshold: string;
+      lowStockThresholdDescription: string;
+      criticalStockThreshold: string;
+      criticalStockThresholdDescription: string;
+      valuationTitle: string;
+      valuationDescription: string;
+      valuationMethod: string;
+      valuationMethodPlaceholder: string;
+      valuationMethodDescription: string;
+      allocationTitle: string;
+      allocationDescription: string;
+      autoAllocation: string;
+      autoAllocationDescription: string;
+      allowNegativeStock: string;
+      allowNegativeStockDescription: string;
+      trackingTitle: string;
+      trackingDescription: string;
+      trackLotNumbers: string;
+      trackLotNumbersDescription: string;
+      trackSerialNumbers: string;
+      trackSerialNumbersDescription: string;
+      barcodeFormat: string;
+      barcodeFormatPlaceholder: string;
+      barcodeFormatDescription: string;
+    };
+    posForm: {
+      saveSuccess: string;
+      saveError: string;
+      receiptSettingsTitle: string;
+      receiptSettingsDescription: string;
+      receiptHeader: string;
+      receiptHeaderPlaceholder: string;
+      receiptHeaderDescription: string;
+      receiptFooter: string;
+      receiptFooterPlaceholder: string;
+      receiptFooterDescription: string;
+      showLogoOnReceipt: string;
+      showLogoOnReceiptDescription: string;
+      autoPrintReceipt: string;
+      autoPrintReceiptDescription: string;
+      discountSettingsTitle: string;
+      discountSettingsDescription: string;
+      allowDiscounts: string;
+      allowDiscountsDescription: string;
+      maximumDiscount: string;
+      maximumDiscountDescription: string;
+      managerApprovalThreshold: string;
+      managerApprovalThresholdDescription: string;
+      paymentSettingsTitle: string;
+      paymentSettingsDescription: string;
+      cashDrawerEnabled: string;
+      cashDrawerEnabledDescription: string;
+      defaultPaymentMethod: string;
+      defaultPaymentMethodPlaceholder: string;
+      defaultPaymentMethodDescription: string;
+    };
+    integrationForm: {
+      saveSuccess: string;
+      saveError: string;
+      apiSettingsTitle: string;
+      apiSettingsDescription: string;
+      enableApi: string;
+      enableApiDescription: string;
+      webhookSettingsTitle: string;
+      webhookSettingsDescription: string;
+      webhookUrl: string;
+      webhookUrlPlaceholder: string;
+      webhookUrlDescription: string;
+      webhookSecret: string;
+      webhookSecretPlaceholder: string;
+      webhookSecretDescription: string;
+      accountingIntegrationTitle: string;
+      accountingIntegrationDescription: string;
+      accountingSoftware: string;
+      accountingSoftwarePlaceholder: string;
+      accountingSoftwareDescription: string;
+      enableSync: string;
+      enableSyncDescription: string;
+      ecommerceIntegrationTitle: string;
+      ecommerceIntegrationDescription: string;
+      ecommercePlatform: string;
+      ecommercePlatformPlaceholder: string;
+      ecommercePlatformDescription: string;
+    };
+    securityForm: {
+      saveSuccess: string;
+      saveError: string;
+      sessionSettingsTitle: string;
+      sessionSettingsDescription: string;
+      sessionTimeout: string;
+      sessionTimeoutDescription: string;
+      passwordPolicyTitle: string;
+      passwordPolicyDescription: string;
+      minimumPasswordLength: string;
+      minimumPasswordLengthDescription: string;
+      requireUppercase: string;
+      requireUppercaseDescription: string;
+      requireLowercase: string;
+      requireLowercaseDescription: string;
+      requireNumbers: string;
+      requireNumbersDescription: string;
+      requireSpecialCharacters: string;
+      requireSpecialCharactersDescription: string;
+      authenticationSettingsTitle: string;
+      authenticationSettingsDescription: string;
+      requireMfa: string;
+      requireMfaDescription: string;
+      loginSecurityTitle: string;
+      loginSecurityDescription: string;
+      maxLoginAttempts: string;
+      maxLoginAttemptsDescription: string;
+      lockoutDuration: string;
+      lockoutDurationDescription: string;
+      passwordExpiryTitle: string;
+      passwordExpiryDescription: string;
+      passwordExpiryDays: string;
+      passwordExpiryDaysDescription: string;
+    };
+    workflowForm: {
+      saveSuccess: string;
+      saveError: string;
+      purchaseOrderApprovalTitle: string;
+      purchaseOrderApprovalDescription: string;
+      requireApproval: string;
+      purchaseOrderRequireApprovalDescription: string;
+      approvalThreshold: string;
+      purchaseOrderApprovalThresholdDescription: string;
+      autoApproveBelow: string;
+      autoApproveBelowDescription: string;
+      stockRequestApprovalTitle: string;
+      stockRequestApprovalDescription: string;
+      stockRequestRequireApprovalDescription: string;
+      stockRequestApprovalThresholdDescription: string;
+      deliveryNoteApprovalTitle: string;
+      deliveryNoteApprovalDescription: string;
+      deliveryNoteRequireApprovalDescription: string;
+      notificationSettingsTitle: string;
+      notificationSettingsDescription: string;
+      sendEmailNotifications: string;
+      sendEmailNotificationsDescription: string;
+      notificationEmail: string;
+      notificationEmailPlaceholder: string;
+      notificationEmailDescription: string;
+    };
+  };
   salesPage: {
     title: string;
     subtitle: string;
@@ -2368,6 +2708,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       Admin: "Admin",
       Users: "Users",
       Roles: "Roles",
+      Settings: "Settings",
       "Company Settings": "Company Settings",
       "Business Units": "Business Units",
       dashboard: "Dashboard",
@@ -2392,7 +2733,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       admin: "Admin",
       users: "Users",
       roles: "Roles",
-      settings: "Company Settings",
+      settings: "Settings",
       "business-units": "Business Units",
       "Delivery Note": "Delivery Note",
       "Delivery Note Details": "Delivery Note Details",
@@ -2862,6 +3203,354 @@ export const translations: Record<Locale, TranslationKeys> = {
       roleNameRequired: "Role name is required",
       roleUpdatedSuccess: "Role \"{name}\" updated successfully",
       roleUpdateError: "Failed to update role",
+    },
+    adminSettings: {
+      layout: {
+        backToSettings: "Back to Settings",
+      },
+      index: {
+        title: "Settings",
+        subtitle: "Configure system-wide settings and preferences",
+        companyTitle: "Company Information",
+        companyDescription: "Corporate-level company details (company admins only)",
+        businessUnitTitle: "Business Unit Settings",
+        businessUnitDescription: "Configure settings specific to your business unit",
+        financialTitle: "Financial Settings",
+        financialDescription: "Configure tax rates, payment terms, and invoice settings",
+        inventoryTitle: "Inventory Settings",
+        inventoryDescription: "Set stock thresholds, valuation methods, and unit preferences",
+        posTitle: "POS Settings",
+        posDescription: "Configure point of sale, receipts, and payment options",
+        workflowTitle: "Workflow Settings",
+        workflowDescription: "Manage approval workflows and automation rules",
+        integrationTitle: "Integration Settings",
+        integrationDescription: "Configure API keys, webhooks, and third-party integrations",
+        securityTitle: "Security & Access",
+        securityDescription: "Set password policies, session timeouts, and security options",
+      },
+      pages: {
+        errorTitle: "Error",
+        yourBusinessUnit: "your business unit",
+        noBusinessUnitSelectedTitle: "No Business Unit Selected",
+        noBusinessUnitSelectedDescription:
+          "Please select a business unit to configure its settings.",
+        companyTitle: "Company Information",
+        companyDescription: "Manage your company details and contact information",
+        companyLoadError: "Failed to load company settings",
+        businessUnitTitle: "Business Unit Settings",
+        businessUnitDescription: "Configure settings specific to {name}",
+        businessUnitLoadError: "Failed to load business unit settings",
+        financialTitle: "Financial Settings",
+        financialDescription: "Configure tax rates, payment terms, and invoice settings",
+        financialLoadError: "Failed to load financial settings",
+        inventoryTitle: "Inventory Settings",
+        inventoryDescription: "Configure stock thresholds, valuation methods, and tracking options",
+        inventoryLoadError: "Failed to load inventory settings",
+        posTitle: "POS Settings",
+        posDescription: "Configure point of sale, receipts, and payment options",
+        posLoadError: "Failed to load POS settings",
+        workflowTitle: "Workflow Settings",
+        workflowDescription: "Configure approval workflows and automation rules",
+        workflowLoadError: "Failed to load workflow settings",
+        integrationTitle: "Integration Settings",
+        integrationDescription: "Configure API keys, webhooks, and third-party integrations",
+        integrationLoadError: "Failed to load integration settings",
+        securityTitle: "Security & Access",
+        securityDescription: "Configure password policies, session timeouts, and security options",
+        securityLoadError: "Failed to load security settings",
+      },
+      common: {
+        saveChanges: "Save Changes",
+      },
+      companyForm: {
+        saveSuccess: "Company settings updated successfully",
+        saveError: "Failed to update company settings",
+        basicInformationTitle: "Basic Information",
+        basicInformationDescription: "Core company details and identification",
+        companyCode: "Company Code *",
+        companyCodePlaceholder: "ABC123",
+        companyName: "Company Name *",
+        companyNamePlaceholder: "My Company Ltd.",
+        legalName: "Legal Name",
+        legalNamePlaceholder: "My Company Limited",
+        taxId: "Tax ID",
+        taxIdPlaceholder: "123-45-6789",
+        contactInformationTitle: "Contact Information",
+        contactInformationDescription: "Primary contact details for the company",
+        email: "Email",
+        emailPlaceholder: "contact@company.com",
+        phone: "Phone",
+        phonePlaceholder: "+1 (234) 567-8900",
+        addressTitle: "Address",
+        addressDescription: "Company physical address",
+        addressLine1: "Address Line 1",
+        addressLine1Placeholder: "123 Main Street",
+        addressLine2: "Address Line 2",
+        addressLine2Placeholder: "Suite 100",
+        city: "City",
+        cityPlaceholder: "New York",
+        state: "State",
+        statePlaceholder: "NY",
+        postalCode: "Postal Code",
+        postalCodePlaceholder: "10001",
+        country: "Country",
+        countryPlaceholder: "USA",
+        preferencesTitle: "Preferences",
+        preferencesDescription: "Company-wide preferences and settings",
+        currencyCode: "Currency Code",
+        currencyCodePlaceholder: "USD",
+        activeStatus: "Active Status",
+        activeStatusDescription: "Enable or disable the company",
+      },
+      businessUnitForm: {
+        saveSuccess: "Business unit settings updated successfully",
+        saveError: "Failed to update business unit settings",
+        monday: "Monday",
+        tuesday: "Tuesday",
+        wednesday: "Wednesday",
+        thursday: "Thursday",
+        friday: "Friday",
+        saturday: "Saturday",
+        sunday: "Sunday",
+        identityTitle: "Business Unit Identity",
+        identityDescription: "Customize how this business unit appears in the system",
+        displayName: "Display Name",
+        displayNamePlaceholder: "NYC Downtown Store",
+        displayNameDescription: "Overrides BU name in the UI",
+        shortCode: "Short Code",
+        shortCodePlaceholder: "NYC-DT",
+        shortCodeDescription: "For receipts and internal use",
+        localContactTitle: "Local Contact Information",
+        localContactDescription: "Contact details specific to this business unit",
+        localEmail: "Local Email",
+        localEmailPlaceholder: "nyc.downtown@company.com",
+        localPhone: "Local Phone",
+        localPhonePlaceholder: "+1 (555) 123-4567",
+        managerName: "Manager Name",
+        managerNamePlaceholder: "John Smith",
+        physicalLocationTitle: "Physical Location",
+        physicalLocationDescription: "Business unit's physical address",
+        addressLine1: "Address Line 1",
+        addressLine1Placeholder: "456 Broadway",
+        addressLine2: "Address Line 2",
+        addressLine2Placeholder: "Floor 2",
+        city: "City",
+        cityPlaceholder: "New York",
+        state: "State",
+        statePlaceholder: "NY",
+        postalCode: "Postal Code",
+        postalCodePlaceholder: "10013",
+        country: "Country",
+        countryPlaceholder: "USA",
+        operatingHoursTitle: "Operating Hours",
+        operatingHoursDescription: "Set business hours for this location",
+        openingTime: "Opening Time",
+        closingTime: "Closing Time",
+        daysOpen: "Days Open",
+        timezone: "Timezone",
+        timezonePlaceholder: "America/New_York",
+        timezoneDescription: "Defaults to company timezone if not set",
+        receiptCustomizationTitle: "Receipt Customization",
+        receiptCustomizationDescription: "Customize receipts for this business unit",
+        receiptHeader: "Receipt Header",
+        receiptHeaderPlaceholder:
+          "NYC Downtown Store\n456 Broadway, Floor 2\nNew York, NY 10013",
+        receiptHeaderDescription: "Text to appear at the top of receipts",
+        receiptFooter: "Receipt Footer",
+        receiptFooterPlaceholder: "Thank you for shopping with us!",
+        receiptFooterDescription: "Text to appear at the bottom of receipts",
+      },
+      financialForm: {
+        saveSuccess: "Financial settings updated successfully",
+        saveError: "Failed to update financial settings",
+        taxSettingsTitle: "Tax Settings",
+        taxSettingsDescription: "Configure default tax rates and calculations",
+        defaultTaxRate: "Default Tax Rate (%)",
+        defaultTaxRateDescription: "Applied to invoices by default",
+        autoCalculateTax: "Auto Calculate Tax",
+        autoCalculateTaxDescription: "Automatically calculate tax on transactions",
+        paymentTermsTitle: "Payment Terms & Fiscal Year",
+        paymentTermsDescription: "Configure payment defaults and fiscal year settings",
+        defaultPaymentTerms: "Default Payment Terms (Days)",
+        defaultPaymentTermsDescription: "Net payment due in days",
+        fiscalYearStart: "Fiscal Year Start (MM-DD)",
+        fiscalYearStartPlaceholder: "01-01",
+        fiscalYearStartDescription: "Format: MM-DD (e.g., 04-01 for April 1st)",
+        invoiceSettingsTitle: "Invoice Settings",
+        invoiceSettingsDescription: "Configure invoice numbering and prefixes",
+        invoicePrefix: "Invoice Prefix",
+        invoicePrefixPlaceholder: "INV-",
+        invoiceStartNumber: "Invoice Start Number",
+        quoteSettingsTitle: "Quote Settings",
+        quoteSettingsDescription: "Configure quote numbering and prefixes",
+        quotePrefix: "Quote Prefix",
+        quotePrefixPlaceholder: "QT-",
+        quoteStartNumber: "Quote Start Number",
+        creditNoteSettingsTitle: "Credit Note Settings",
+        creditNoteSettingsDescription: "Configure credit note numbering prefix",
+        creditNotePrefix: "Credit Note Prefix",
+        creditNotePrefixPlaceholder: "CN-",
+      },
+      inventoryForm: {
+        saveSuccess: "Inventory settings updated successfully",
+        saveError: "Failed to update inventory settings",
+        unitSettingsTitle: "Unit Settings",
+        unitSettingsDescription: "Configure default units of measure",
+        defaultUnitOfMeasure: "Default Unit of Measure",
+        defaultUnitOfMeasurePlaceholder: "pcs",
+        defaultUnitOfMeasureDescription: "Default UOM for new items",
+        stockThresholdTitle: "Stock Threshold Settings",
+        stockThresholdDescription: "Configure low stock and critical stock alerts",
+        lowStockThreshold: "Low Stock Threshold",
+        lowStockThresholdDescription: "Trigger warning at this level",
+        criticalStockThreshold: "Critical Stock Threshold",
+        criticalStockThresholdDescription: "Trigger critical alert at this level",
+        valuationTitle: "Valuation Settings",
+        valuationDescription: "Configure inventory valuation method",
+        valuationMethod: "Valuation Method",
+        valuationMethodPlaceholder: "Select valuation method",
+        valuationMethodDescription: "Method used to value inventory",
+        allocationTitle: "Allocation & Stock Settings",
+        allocationDescription: "Configure allocation and stock control options",
+        autoAllocation: "Auto Allocation",
+        autoAllocationDescription: "Automatically allocate stock for orders",
+        allowNegativeStock: "Allow Negative Stock",
+        allowNegativeStockDescription: "Allow stock levels to go negative",
+        trackingTitle: "Tracking Settings",
+        trackingDescription: "Configure lot numbers, serial numbers, and barcodes",
+        trackLotNumbers: "Track Lot Numbers",
+        trackLotNumbersDescription: "Enable lot number tracking for items",
+        trackSerialNumbers: "Track Serial Numbers",
+        trackSerialNumbersDescription: "Enable serial number tracking for items",
+        barcodeFormat: "Barcode Format",
+        barcodeFormatPlaceholder: "EAN-13, UPC, etc.",
+        barcodeFormatDescription: "Preferred barcode format",
+      },
+      posForm: {
+        saveSuccess: "POS settings updated successfully",
+        saveError: "Failed to update POS settings",
+        receiptSettingsTitle: "Receipt Settings",
+        receiptSettingsDescription: "Configure receipt header, footer, and printing options",
+        receiptHeader: "Receipt Header",
+        receiptHeaderPlaceholder: "Company Name\n123 Main St\nCity, State ZIP",
+        receiptHeaderDescription: "Text to appear at the top of receipts",
+        receiptFooter: "Receipt Footer",
+        receiptFooterPlaceholder: "Thank you for your business!",
+        receiptFooterDescription: "Text to appear at the bottom of receipts",
+        showLogoOnReceipt: "Show Logo on Receipt",
+        showLogoOnReceiptDescription: "Display company logo on printed receipts",
+        autoPrintReceipt: "Auto Print Receipt",
+        autoPrintReceiptDescription: "Automatically print receipt after sale",
+        discountSettingsTitle: "Discount Settings",
+        discountSettingsDescription: "Configure discount options and limits",
+        allowDiscounts: "Allow Discounts",
+        allowDiscountsDescription: "Enable discount functionality in POS",
+        maximumDiscount: "Maximum Discount (%)",
+        maximumDiscountDescription: "Maximum discount percentage allowed",
+        managerApprovalThreshold: "Manager Approval Threshold",
+        managerApprovalThresholdDescription:
+          "Require manager approval for discounts above this amount",
+        paymentSettingsTitle: "Payment Settings",
+        paymentSettingsDescription: "Configure payment and cash drawer options",
+        cashDrawerEnabled: "Cash Drawer Enabled",
+        cashDrawerEnabledDescription: "Enable cash drawer functionality",
+        defaultPaymentMethod: "Default Payment Method",
+        defaultPaymentMethodPlaceholder: "cash",
+        defaultPaymentMethodDescription: "Default payment method for POS transactions",
+      },
+      integrationForm: {
+        saveSuccess: "Integration settings updated successfully",
+        saveError: "Failed to update integration settings",
+        apiSettingsTitle: "API Settings",
+        apiSettingsDescription: "Configure API access for external integrations",
+        enableApi: "Enable API",
+        enableApiDescription: "Allow external systems to access the API",
+        webhookSettingsTitle: "Webhook Settings",
+        webhookSettingsDescription: "Configure webhooks for real-time event notifications",
+        webhookUrl: "Webhook URL",
+        webhookUrlPlaceholder: "https://example.com/webhook",
+        webhookUrlDescription: "URL to receive webhook notifications",
+        webhookSecret: "Webhook Secret",
+        webhookSecretPlaceholder: "Enter webhook secret",
+        webhookSecretDescription: "Secret key for webhook signature verification",
+        accountingIntegrationTitle: "Accounting Integration",
+        accountingIntegrationDescription: "Connect with accounting software",
+        accountingSoftware: "Accounting Software",
+        accountingSoftwarePlaceholder: "Select accounting software",
+        accountingSoftwareDescription: "Select your accounting software integration",
+        enableSync: "Enable Sync",
+        enableSyncDescription: "Automatically sync data with accounting software",
+        ecommerceIntegrationTitle: "E-commerce Integration",
+        ecommerceIntegrationDescription: "Connect with e-commerce platforms",
+        ecommercePlatform: "E-commerce Platform",
+        ecommercePlatformPlaceholder: "Shopify, WooCommerce, etc.",
+        ecommercePlatformDescription: "Name of your e-commerce platform",
+      },
+      securityForm: {
+        saveSuccess: "Security settings updated successfully",
+        saveError: "Failed to update security settings",
+        sessionSettingsTitle: "Session Settings",
+        sessionSettingsDescription: "Configure user session timeout",
+        sessionTimeout: "Session Timeout (Minutes)",
+        sessionTimeoutDescription: "User will be logged out after this period of inactivity",
+        passwordPolicyTitle: "Password Policy",
+        passwordPolicyDescription: "Configure password requirements and complexity",
+        minimumPasswordLength: "Minimum Password Length",
+        minimumPasswordLengthDescription: "Minimum number of characters required",
+        requireUppercase: "Require Uppercase",
+        requireUppercaseDescription: "Password must contain uppercase letters",
+        requireLowercase: "Require Lowercase",
+        requireLowercaseDescription: "Password must contain lowercase letters",
+        requireNumbers: "Require Numbers",
+        requireNumbersDescription: "Password must contain numbers",
+        requireSpecialCharacters: "Require Special Characters",
+        requireSpecialCharactersDescription: "Password must contain special characters",
+        authenticationSettingsTitle: "Authentication Settings",
+        authenticationSettingsDescription: "Configure MFA and authentication options",
+        requireMfa: "Require Multi-Factor Authentication",
+        requireMfaDescription: "Enforce MFA for all users",
+        loginSecurityTitle: "Login Security",
+        loginSecurityDescription: "Configure login attempt limits and lockout settings",
+        maxLoginAttempts: "Max Login Attempts",
+        maxLoginAttemptsDescription: "Maximum failed login attempts before lockout",
+        lockoutDuration: "Lockout Duration (Minutes)",
+        lockoutDurationDescription: "Duration of account lockout after failed attempts",
+        passwordExpiryTitle: "Password Expiry",
+        passwordExpiryDescription: "Configure password expiration settings",
+        passwordExpiryDays: "Password Expiry (Days)",
+        passwordExpiryDaysDescription: "Number of days before password expires (0 = never)",
+      },
+      workflowForm: {
+        saveSuccess: "Workflow settings updated successfully",
+        saveError: "Failed to update workflow settings",
+        purchaseOrderApprovalTitle: "Purchase Order Approval",
+        purchaseOrderApprovalDescription: "Configure approval workflows for purchase orders",
+        requireApproval: "Require Approval",
+        purchaseOrderRequireApprovalDescription:
+          "Purchase orders require approval before processing",
+        approvalThreshold: "Approval Threshold",
+        purchaseOrderApprovalThresholdDescription:
+          "Require approval for PO above this amount",
+        autoApproveBelow: "Auto-Approve Below",
+        autoApproveBelowDescription: "Automatically approve PO below this amount",
+        stockRequestApprovalTitle: "Stock Request Approval",
+        stockRequestApprovalDescription: "Configure approval workflows for stock requests",
+        stockRequestRequireApprovalDescription:
+          "Stock requests require approval before processing",
+        stockRequestApprovalThresholdDescription:
+          "Require approval for stock requests above this value",
+        deliveryNoteApprovalTitle: "Delivery Note Approval",
+        deliveryNoteApprovalDescription: "Configure approval workflows for delivery notes",
+        deliveryNoteRequireApprovalDescription:
+          "Delivery notes require approval before processing",
+        notificationSettingsTitle: "Notification Settings",
+        notificationSettingsDescription: "Configure email notifications for workflows",
+        sendEmailNotifications: "Send Email Notifications",
+        sendEmailNotificationsDescription: "Send email notifications for workflow events",
+        notificationEmail: "Notification Email",
+        notificationEmailPlaceholder: "notifications@company.com",
+        notificationEmailDescription: "Email address to receive workflow notifications",
+      },
     },
     salesPage: {
       title: "Sales Management",
@@ -6803,6 +7492,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       Admin: "管理",
       Users: "用户",
       Roles: "角色",
+      Settings: "设置",
       "Company Settings": "公司设置",
       "Business Units": "业务单元",
       dashboard: "仪表板",
@@ -6827,7 +7517,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       admin: "管理",
       users: "用户",
       roles: "角色",
-      settings: "公司设置",
+      settings: "设置",
       "business-units": "业务单元",
       "Delivery Note": "送货单",
       "Delivery Note Details": "送货单详情",
@@ -7294,6 +7984,346 @@ export const translations: Record<Locale, TranslationKeys> = {
       roleNameRequired: "角色名称为必填项",
       roleUpdatedSuccess: "角色“{name}”更新成功",
       roleUpdateError: "更新角色失败",
+    },
+    adminSettings: {
+      layout: {
+        backToSettings: "返回设置",
+      },
+      index: {
+        title: "设置",
+        subtitle: "配置系统级设置和偏好",
+        companyTitle: "公司信息",
+        companyDescription: "公司级详细信息（仅限公司管理员）",
+        businessUnitTitle: "业务单元设置",
+        businessUnitDescription: "配置当前业务单元的专属设置",
+        financialTitle: "财务设置",
+        financialDescription: "配置税率、付款条款和发票设置",
+        inventoryTitle: "库存设置",
+        inventoryDescription: "设置库存阈值、计价方法和单位偏好",
+        posTitle: "POS 设置",
+        posDescription: "配置销售点、收据和支付选项",
+        workflowTitle: "工作流设置",
+        workflowDescription: "管理审批工作流和自动化规则",
+        integrationTitle: "集成设置",
+        integrationDescription: "配置 API 密钥、Webhook 和第三方集成",
+        securityTitle: "安全与访问",
+        securityDescription: "设置密码策略、会话超时和安全选项",
+      },
+      pages: {
+        errorTitle: "错误",
+        yourBusinessUnit: "你的业务单元",
+        noBusinessUnitSelectedTitle: "未选择业务单元",
+        noBusinessUnitSelectedDescription: "请选择一个业务单元以配置其设置。",
+        companyTitle: "公司信息",
+        companyDescription: "管理公司的详细信息和联系信息",
+        companyLoadError: "加载公司设置失败",
+        businessUnitTitle: "业务单元设置",
+        businessUnitDescription: "配置 {name} 的专属设置",
+        businessUnitLoadError: "加载业务单元设置失败",
+        financialTitle: "财务设置",
+        financialDescription: "配置税率、付款条款和发票设置",
+        financialLoadError: "加载财务设置失败",
+        inventoryTitle: "库存设置",
+        inventoryDescription: "配置库存阈值、计价方法和跟踪选项",
+        inventoryLoadError: "加载库存设置失败",
+        posTitle: "POS 设置",
+        posDescription: "配置销售点、收据和支付选项",
+        posLoadError: "加载 POS 设置失败",
+        workflowTitle: "工作流设置",
+        workflowDescription: "配置审批工作流和自动化规则",
+        workflowLoadError: "加载工作流设置失败",
+        integrationTitle: "集成设置",
+        integrationDescription: "配置 API 密钥、Webhook 和第三方集成",
+        integrationLoadError: "加载集成设置失败",
+        securityTitle: "安全与访问",
+        securityDescription: "配置密码策略、会话超时和安全选项",
+        securityLoadError: "加载安全设置失败",
+      },
+      common: {
+        saveChanges: "保存更改",
+      },
+      companyForm: {
+        saveSuccess: "公司设置更新成功",
+        saveError: "更新公司设置失败",
+        basicInformationTitle: "基本信息",
+        basicInformationDescription: "核心公司详情与标识信息",
+        companyCode: "公司代码 *",
+        companyCodePlaceholder: "ABC123",
+        companyName: "公司名称 *",
+        companyNamePlaceholder: "我的公司有限公司",
+        legalName: "法定名称",
+        legalNamePlaceholder: "我的公司有限责任公司",
+        taxId: "税号",
+        taxIdPlaceholder: "123-45-6789",
+        contactInformationTitle: "联系信息",
+        contactInformationDescription: "公司的主要联系信息",
+        email: "电子邮箱",
+        emailPlaceholder: "contact@company.com",
+        phone: "电话",
+        phonePlaceholder: "+1 (234) 567-8900",
+        addressTitle: "地址",
+        addressDescription: "公司实际地址",
+        addressLine1: "地址行 1",
+        addressLine1Placeholder: "主街 123 号",
+        addressLine2: "地址行 2",
+        addressLine2Placeholder: "100 室",
+        city: "城市",
+        cityPlaceholder: "纽约",
+        state: "州/省",
+        statePlaceholder: "NY",
+        postalCode: "邮政编码",
+        postalCodePlaceholder: "10001",
+        country: "国家",
+        countryPlaceholder: "美国",
+        preferencesTitle: "偏好设置",
+        preferencesDescription: "公司范围的偏好和设置",
+        currencyCode: "货币代码",
+        currencyCodePlaceholder: "USD",
+        activeStatus: "启用状态",
+        activeStatusDescription: "启用或停用公司",
+      },
+      businessUnitForm: {
+        saveSuccess: "业务单元设置更新成功",
+        saveError: "更新业务单元设置失败",
+        monday: "星期一",
+        tuesday: "星期二",
+        wednesday: "星期三",
+        thursday: "星期四",
+        friday: "星期五",
+        saturday: "星期六",
+        sunday: "星期日",
+        identityTitle: "业务单元标识",
+        identityDescription: "自定义该业务单元在系统中的显示方式",
+        displayName: "显示名称",
+        displayNamePlaceholder: "纽约市中心门店",
+        displayNameDescription: "覆盖界面中的业务单元名称",
+        shortCode: "简称代码",
+        shortCodePlaceholder: "NYC-DT",
+        shortCodeDescription: "用于收据和内部用途",
+        localContactTitle: "本地联系信息",
+        localContactDescription: "该业务单元专属的联系资料",
+        localEmail: "本地邮箱",
+        localEmailPlaceholder: "nyc.downtown@company.com",
+        localPhone: "本地电话",
+        localPhonePlaceholder: "+1 (555) 123-4567",
+        managerName: "负责人姓名",
+        managerNamePlaceholder: "John Smith",
+        physicalLocationTitle: "实际位置",
+        physicalLocationDescription: "业务单元的实际地址",
+        addressLine1: "地址行 1",
+        addressLine1Placeholder: "456 Broadway",
+        addressLine2: "地址行 2",
+        addressLine2Placeholder: "2 楼",
+        city: "城市",
+        cityPlaceholder: "New York",
+        state: "州/省",
+        statePlaceholder: "NY",
+        postalCode: "邮政编码",
+        postalCodePlaceholder: "10013",
+        country: "国家",
+        countryPlaceholder: "USA",
+        operatingHoursTitle: "营业时间",
+        operatingHoursDescription: "设置该地点的营业时段",
+        openingTime: "开始营业时间",
+        closingTime: "结束营业时间",
+        daysOpen: "营业日",
+        timezone: "时区",
+        timezonePlaceholder: "America/New_York",
+        timezoneDescription: "未设置时默认使用公司时区",
+        receiptCustomizationTitle: "收据自定义",
+        receiptCustomizationDescription: "自定义该业务单元的收据内容",
+        receiptHeader: "收据抬头",
+        receiptHeaderPlaceholder: "纽约市中心门店\n456 Broadway, Floor 2\nNew York, NY 10013",
+        receiptHeaderDescription: "显示在收据顶部的文本",
+        receiptFooter: "收据页脚",
+        receiptFooterPlaceholder: "感谢您的惠顾！",
+        receiptFooterDescription: "显示在收据底部的文本",
+      },
+      financialForm: {
+        saveSuccess: "财务设置更新成功",
+        saveError: "更新财务设置失败",
+        taxSettingsTitle: "税务设置",
+        taxSettingsDescription: "配置默认税率和计算方式",
+        defaultTaxRate: "默认税率 (%)",
+        defaultTaxRateDescription: "默认应用于发票",
+        autoCalculateTax: "自动计算税费",
+        autoCalculateTaxDescription: "自动为交易计算税费",
+        paymentTermsTitle: "付款条款与财年",
+        paymentTermsDescription: "配置默认付款条件和财年设置",
+        defaultPaymentTerms: "默认付款条款（天）",
+        defaultPaymentTermsDescription: "净付款到期天数",
+        fiscalYearStart: "财年开始（MM-DD）",
+        fiscalYearStartPlaceholder: "01-01",
+        fiscalYearStartDescription: "格式：MM-DD（例如 04-01 表示 4 月 1 日）",
+        invoiceSettingsTitle: "发票设置",
+        invoiceSettingsDescription: "配置发票编号和前缀",
+        invoicePrefix: "发票前缀",
+        invoicePrefixPlaceholder: "INV-",
+        invoiceStartNumber: "发票起始编号",
+        quoteSettingsTitle: "报价单设置",
+        quoteSettingsDescription: "配置报价单编号和前缀",
+        quotePrefix: "报价单前缀",
+        quotePrefixPlaceholder: "QT-",
+        quoteStartNumber: "报价单起始编号",
+        creditNoteSettingsTitle: "贷项通知单设置",
+        creditNoteSettingsDescription: "配置贷项通知单前缀",
+        creditNotePrefix: "贷项通知单前缀",
+        creditNotePrefixPlaceholder: "CN-",
+      },
+      inventoryForm: {
+        saveSuccess: "库存设置更新成功",
+        saveError: "更新库存设置失败",
+        unitSettingsTitle: "单位设置",
+        unitSettingsDescription: "配置默认计量单位",
+        defaultUnitOfMeasure: "默认计量单位",
+        defaultUnitOfMeasurePlaceholder: "pcs",
+        defaultUnitOfMeasureDescription: "新建商品的默认计量单位",
+        stockThresholdTitle: "库存阈值设置",
+        stockThresholdDescription: "配置低库存和紧急库存提醒",
+        lowStockThreshold: "低库存阈值",
+        lowStockThresholdDescription: "达到该数量时触发警告",
+        criticalStockThreshold: "紧急库存阈值",
+        criticalStockThresholdDescription: "达到该数量时触发严重警报",
+        valuationTitle: "计价设置",
+        valuationDescription: "配置库存计价方法",
+        valuationMethod: "计价方法",
+        valuationMethodPlaceholder: "选择计价方法",
+        valuationMethodDescription: "用于库存计价的方法",
+        allocationTitle: "分配与库存控制设置",
+        allocationDescription: "配置分配和库存控制选项",
+        autoAllocation: "自动分配",
+        autoAllocationDescription: "自动为订单分配库存",
+        allowNegativeStock: "允许负库存",
+        allowNegativeStockDescription: "允许库存数量变为负数",
+        trackingTitle: "跟踪设置",
+        trackingDescription: "配置批号、序列号和条码",
+        trackLotNumbers: "跟踪批号",
+        trackLotNumbersDescription: "为商品启用批号跟踪",
+        trackSerialNumbers: "跟踪序列号",
+        trackSerialNumbersDescription: "为商品启用序列号跟踪",
+        barcodeFormat: "条码格式",
+        barcodeFormatPlaceholder: "EAN-13、UPC 等",
+        barcodeFormatDescription: "首选条码格式",
+      },
+      posForm: {
+        saveSuccess: "POS 设置更新成功",
+        saveError: "更新 POS 设置失败",
+        receiptSettingsTitle: "收据设置",
+        receiptSettingsDescription: "配置收据抬头、页脚和打印选项",
+        receiptHeader: "收据抬头",
+        receiptHeaderPlaceholder: "公司名称\n123 Main St\nCity, State ZIP",
+        receiptHeaderDescription: "显示在收据顶部的文本",
+        receiptFooter: "收据页脚",
+        receiptFooterPlaceholder: "感谢您的惠顾！",
+        receiptFooterDescription: "显示在收据底部的文本",
+        showLogoOnReceipt: "收据显示 Logo",
+        showLogoOnReceiptDescription: "在打印收据上显示公司 Logo",
+        autoPrintReceipt: "自动打印收据",
+        autoPrintReceiptDescription: "完成销售后自动打印收据",
+        discountSettingsTitle: "折扣设置",
+        discountSettingsDescription: "配置折扣选项和限制",
+        allowDiscounts: "允许折扣",
+        allowDiscountsDescription: "在 POS 中启用折扣功能",
+        maximumDiscount: "最大折扣 (%)",
+        maximumDiscountDescription: "允许的最大折扣百分比",
+        managerApprovalThreshold: "经理审批阈值",
+        managerApprovalThresholdDescription: "超过该金额的折扣需要经理审批",
+        paymentSettingsTitle: "支付设置",
+        paymentSettingsDescription: "配置支付和钱箱选项",
+        cashDrawerEnabled: "启用钱箱",
+        cashDrawerEnabledDescription: "启用钱箱功能",
+        defaultPaymentMethod: "默认支付方式",
+        defaultPaymentMethodPlaceholder: "cash",
+        defaultPaymentMethodDescription: "POS 交易的默认支付方式",
+      },
+      integrationForm: {
+        saveSuccess: "集成设置更新成功",
+        saveError: "更新集成设置失败",
+        apiSettingsTitle: "API 设置",
+        apiSettingsDescription: "配置外部集成的 API 访问",
+        enableApi: "启用 API",
+        enableApiDescription: "允许外部系统访问 API",
+        webhookSettingsTitle: "Webhook 设置",
+        webhookSettingsDescription: "配置实时事件通知的 Webhook",
+        webhookUrl: "Webhook URL",
+        webhookUrlPlaceholder: "https://example.com/webhook",
+        webhookUrlDescription: "接收 Webhook 通知的地址",
+        webhookSecret: "Webhook 密钥",
+        webhookSecretPlaceholder: "输入 Webhook 密钥",
+        webhookSecretDescription: "用于校验 Webhook 签名的密钥",
+        accountingIntegrationTitle: "会计集成",
+        accountingIntegrationDescription: "连接会计软件",
+        accountingSoftware: "会计软件",
+        accountingSoftwarePlaceholder: "选择会计软件",
+        accountingSoftwareDescription: "选择你的会计软件集成",
+        enableSync: "启用同步",
+        enableSyncDescription: "自动与会计软件同步数据",
+        ecommerceIntegrationTitle: "电商集成",
+        ecommerceIntegrationDescription: "连接电商平台",
+        ecommercePlatform: "电商平台",
+        ecommercePlatformPlaceholder: "Shopify、WooCommerce 等",
+        ecommercePlatformDescription: "你的电商平台名称",
+      },
+      securityForm: {
+        saveSuccess: "安全设置更新成功",
+        saveError: "更新安全设置失败",
+        sessionSettingsTitle: "会话设置",
+        sessionSettingsDescription: "配置用户会话超时",
+        sessionTimeout: "会话超时（分钟）",
+        sessionTimeoutDescription: "在此时间未操作后，用户将被自动登出",
+        passwordPolicyTitle: "密码策略",
+        passwordPolicyDescription: "配置密码要求和复杂度",
+        minimumPasswordLength: "最小密码长度",
+        minimumPasswordLengthDescription: "要求的最少字符数",
+        requireUppercase: "要求大写字母",
+        requireUppercaseDescription: "密码必须包含大写字母",
+        requireLowercase: "要求小写字母",
+        requireLowercaseDescription: "密码必须包含小写字母",
+        requireNumbers: "要求数字",
+        requireNumbersDescription: "密码必须包含数字",
+        requireSpecialCharacters: "要求特殊字符",
+        requireSpecialCharactersDescription: "密码必须包含特殊字符",
+        authenticationSettingsTitle: "认证设置",
+        authenticationSettingsDescription: "配置 MFA 和认证选项",
+        requireMfa: "要求多因素认证",
+        requireMfaDescription: "对所有用户强制启用 MFA",
+        loginSecurityTitle: "登录安全",
+        loginSecurityDescription: "配置登录失败次数限制和锁定设置",
+        maxLoginAttempts: "最大登录尝试次数",
+        maxLoginAttemptsDescription: "锁定前允许的最大失败次数",
+        lockoutDuration: "锁定时长（分钟）",
+        lockoutDurationDescription: "失败尝试后账户被锁定的时长",
+        passwordExpiryTitle: "密码过期",
+        passwordExpiryDescription: "配置密码过期设置",
+        passwordExpiryDays: "密码有效期（天）",
+        passwordExpiryDaysDescription: "密码过期前的天数（0 表示永不过期）",
+      },
+      workflowForm: {
+        saveSuccess: "工作流设置更新成功",
+        saveError: "更新工作流设置失败",
+        purchaseOrderApprovalTitle: "采购订单审批",
+        purchaseOrderApprovalDescription: "配置采购订单的审批流程",
+        requireApproval: "需要审批",
+        purchaseOrderRequireApprovalDescription: "采购订单在处理前需要审批",
+        approvalThreshold: "审批阈值",
+        purchaseOrderApprovalThresholdDescription: "超过该金额的采购订单需要审批",
+        autoApproveBelow: "低于此值自动批准",
+        autoApproveBelowDescription: "低于该金额的采购订单自动批准",
+        stockRequestApprovalTitle: "库存申请审批",
+        stockRequestApprovalDescription: "配置库存申请的审批流程",
+        stockRequestRequireApprovalDescription: "库存申请在处理前需要审批",
+        stockRequestApprovalThresholdDescription: "超过该数值的库存申请需要审批",
+        deliveryNoteApprovalTitle: "送货单审批",
+        deliveryNoteApprovalDescription: "配置送货单的审批流程",
+        deliveryNoteRequireApprovalDescription: "送货单在处理前需要审批",
+        notificationSettingsTitle: "通知设置",
+        notificationSettingsDescription: "配置工作流邮件通知",
+        sendEmailNotifications: "发送邮件通知",
+        sendEmailNotificationsDescription: "为工作流事件发送邮件通知",
+        notificationEmail: "通知邮箱",
+        notificationEmailPlaceholder: "notifications@company.com",
+        notificationEmailDescription: "接收工作流通知的邮箱地址",
+      },
     },
     salesPage: {
       title: "销售管理",

@@ -12,6 +12,8 @@ import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
 export function Breadcrumb() {
   const t = useTranslations("navigation");
   const tReports = useTranslations("reportsPage");
+  const tAdminSettingsIndex = useTranslations("adminSettings.index");
+  const tAdminSettingsPages = useTranslations("adminSettings.pages");
   const pathname = usePathname();
   const pathSegments = pathname.split("/").filter(Boolean);
 
@@ -27,7 +29,20 @@ export function Breadcrumb() {
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =
     pathname === "/inventory/transformations/templates/design";
+  const isAdminSettingsPage =
+    pathSegments[0] === "admin" && pathSegments[1] === "settings" && pathSegments.length >= 2;
   const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
+  const adminSettingsLabelMap: Record<string, string> = {
+    settings: tAdminSettingsIndex("title"),
+    company: tAdminSettingsPages("companyTitle"),
+    "business-unit": tAdminSettingsPages("businessUnitTitle"),
+    financial: tAdminSettingsPages("financialTitle"),
+    inventory: tAdminSettingsPages("inventoryTitle"),
+    pos: tAdminSettingsPages("posTitle"),
+    workflow: tAdminSettingsPages("workflowTitle"),
+    integration: tAdminSettingsPages("integrationTitle"),
+    security: tAdminSettingsPages("securityTitle"),
+  };
   const reportLabelMap: Record<string, string> = {
     stock: tReports("stockReportsName"),
     "stock-aging": tReports("stockAgingName"),
@@ -44,7 +59,7 @@ export function Breadcrumb() {
     !isItemEdit &&
     !isWarehouseLocations &&
     !!parentSegment &&
-    t.has(parentSegment);
+    (isAdminSettingsPage ? parentSegment in adminSettingsLabelMap : t.has(parentSegment));
   const isReportChildPage = parentSegment === "reports" && pathSegments.length >= 2;
 
   const { data: deliveryNote } = useQuery({
@@ -71,6 +86,8 @@ export function Breadcrumb() {
         ? t("Delivery Note Details")
         : isTransformationTemplateDesigner
           ? "Designer"
+        : isAdminSettingsPage && adminSettingsLabelMap[lastSegment]
+          ? adminSettingsLabelMap[lastSegment]
         : parentSegment === "reports" && reportLabelMap[lastSegment]
           ? reportLabelMap[lastSegment]
           : t.has(lastSegment)
@@ -185,7 +202,7 @@ export function Breadcrumb() {
             href={parentPath}
             className="flex items-center hover:text-foreground transition-colors font-medium"
           >
-            {t(parentSegment)}
+            {isAdminSettingsPage ? adminSettingsLabelMap[parentSegment] : t(parentSegment)}
           </Link>
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
           <span className="font-medium text-foreground">{currentPageLabel}</span>

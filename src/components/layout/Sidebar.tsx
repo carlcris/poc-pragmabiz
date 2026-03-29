@@ -192,16 +192,10 @@ const menuItems = [
       { title: "Users", href: "/admin/users", resource: RESOURCES.USERS as Resource, icon: Users },
       { title: "Roles", href: "/admin/roles", resource: RESOURCES.ROLES as Resource, icon: Shield },
       {
-        title: "Company Settings",
+        title: "Settings",
         href: "/admin/settings",
         resource: RESOURCES.COMPANY_SETTINGS as Resource,
         icon: Settings,
-      },
-      {
-        title: "Business Units",
-        href: "/admin/business-units",
-        resource: RESOURCES.BUSINESS_UNITS as Resource,
-        icon: Building2,
       },
     ],
   },
@@ -245,7 +239,7 @@ export function Sidebar({
     <aside
       className={cn(
         "flex w-full flex-col border-b border-gray-800 transition-all duration-300",
-        "md:min-h-screen md:border-b-0 md:border-r",
+        "md:fixed md:inset-y-0 md:left-0 md:z-30 md:h-screen md:min-h-screen md:shrink-0 md:border-b-0 md:border-r",
         sidebarOpen ? "md:w-64" : "md:w-20"
       )}
       style={{ backgroundColor: "#240032" }}
@@ -282,7 +276,7 @@ export function Sidebar({
 
       <div
         className={cn(
-          "overflow-hidden transition-[max-height,opacity] duration-200 md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-visible",
+          "overflow-hidden transition-[max-height,opacity] duration-200 md:flex md:min-h-0 md:flex-1 md:flex-col md:overflow-hidden",
           isMobileOpen ? "max-h-[calc(100vh-6.5rem)] opacity-100" : "max-h-0 opacity-0",
           "md:max-h-none md:opacity-100"
         )}
@@ -293,7 +287,7 @@ export function Sidebar({
         </div>
 
         <nav
-          className="scrollbar-hide flex-1 space-y-1 overflow-y-auto px-3 pb-6 md:min-h-0"
+          className="scrollbar-hide flex-1 space-y-1 overflow-y-auto overscroll-contain px-3 pb-6 md:min-h-0"
           suppressHydrationWarning
         >
           {!shouldShowMenu ? (

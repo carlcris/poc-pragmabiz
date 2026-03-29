@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { Bell, CheckCircle2 } from "lucide-react";
@@ -15,13 +15,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMarkNotificationRead, useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/types/notifications";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function NotificationsMenu() {
   const t = useTranslations("notificationsPage");
   const locale = useLocale();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { data } = useNotifications({ unreadOnly: false, limit: 8, offset: 0, enabled: true });
   const markRead = useMarkNotificationRead();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const notifications = data?.data || [];
   const unreadCount = notifications.filter((item) => !item.is_read).length;
@@ -30,6 +36,10 @@ export function NotificationsMenu() {
     if (notification.is_read || markRead.isPending) return;
     await markRead.mutateAsync(notification.id);
   };
+
+  if (!mounted) {
+    return <Skeleton className="h-10 w-10 rounded-full" />;
+  }
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>

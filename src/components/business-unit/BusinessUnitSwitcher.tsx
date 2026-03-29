@@ -60,8 +60,13 @@ export const BusinessUnitSwitcher = ({
   const isInitializing = !hasHydrated || (isLoading && !currentBusinessUnit);
   const effectiveBusinessUnits =
     availableBusinessUnits.length > 0 ? availableBusinessUnits : fallbackBusinessUnits;
+  const resolvedCurrentBusinessUnit =
+    currentBusinessUnit
+      ? effectiveBusinessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ??
+        currentBusinessUnit
+      : null;
   const displayBusinessUnitName =
-    currentBusinessUnit?.name ||
+    resolvedCurrentBusinessUnit?.name ||
     initialBusinessUnitName ||
     null;
 
@@ -172,7 +177,8 @@ export const BusinessUnitSwitcher = ({
       return;
     }
 
-    const currentCompanyId = currentBusinessUnit?.company?.id ?? currentBusinessUnit?.company_id;
+    const currentCompanyId =
+      resolvedCurrentBusinessUnit?.company?.id ?? resolvedCurrentBusinessUnit?.company_id;
 
     if (
       currentCompanyId &&
@@ -190,7 +196,7 @@ export const BusinessUnitSwitcher = ({
     }
 
     setSelectedCompanyId(filteredCompanyGroups[0].id);
-  }, [currentBusinessUnit, filteredCompanyGroups, selectedCompanyId]);
+  }, [resolvedCurrentBusinessUnit, filteredCompanyGroups, selectedCompanyId]);
 
   const selectedCompany =
     filteredCompanyGroups.find((company) => company.id === selectedCompanyId) ??
@@ -200,7 +206,7 @@ export const BusinessUnitSwitcher = ({
   const displayLabel = displayBusinessUnitName;
 
   const handleSelect = (businessUnit: BusinessUnitWithAccess) => {
-    if (businessUnit.id === currentBusinessUnit?.id) {
+    if (businessUnit.id === resolvedCurrentBusinessUnit?.id) {
       setOpen(false);
       return;
     }
@@ -307,13 +313,13 @@ export const BusinessUnitSwitcher = ({
           className={cn(
             "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors",
             "hover:bg-muted/50 disabled:opacity-60",
-            currentBusinessUnit?.id === businessUnit.id && "bg-primary/5"
+            resolvedCurrentBusinessUnit?.id === businessUnit.id && "bg-primary/5"
           )}
         >
           <Check
             className={cn(
               "h-4 w-4 shrink-0",
-              currentBusinessUnit?.id === businessUnit.id
+              resolvedCurrentBusinessUnit?.id === businessUnit.id
                 ? "opacity-100 text-primary"
                 : "opacity-0"
             )}
@@ -331,7 +337,7 @@ export const BusinessUnitSwitcher = ({
               {businessUnit.code} • {toProperCase(businessUnit.type)}
             </div>
           </div>
-          {isPending && currentBusinessUnit?.id === businessUnit.id ? (
+          {isPending && resolvedCurrentBusinessUnit?.id === businessUnit.id ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
           ) : null}
         </button>

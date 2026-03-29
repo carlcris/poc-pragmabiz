@@ -201,7 +201,7 @@ export type Database = {
           name: string
           phone: string | null
           postal_code: string | null
-          settings: Json | null
+          custom_fields: Json | null
           state: string | null
           tax_id: string | null
           updated_at: string
@@ -222,7 +222,7 @@ export type Database = {
           name: string
           phone?: string | null
           postal_code?: string | null
-          settings?: Json | null
+          custom_fields?: Json | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -243,7 +243,7 @@ export type Database = {
           name?: string
           phone?: string | null
           postal_code?: string | null
-          settings?: Json | null
+          custom_fields?: Json | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -8424,4 +8424,3 @@ export const Constants = {
     },
   },
 } as const
-

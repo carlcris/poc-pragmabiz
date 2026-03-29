@@ -1735,3 +1735,36 @@ VALUES
 ('1e10e2dd-655e-41e0-a508-edfd660a9bcf','ST',0,'2026-03-11 07:46:34.934152+00','2026-03-11 07:46:34.934152+00'),
 ('1e10e2dd-655e-41e0-a508-edfd660a9bcf','STX',0,'2026-03-11 07:46:34.934152+00','2026-03-11 07:46:34.934152+00'),
 ('1e10e2dd-655e-41e0-a508-edfd660a9bcf','TRN',0,'2026-03-11 07:46:34.934152+00','2026-03-11 07:46:34.934152+00');
+
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','c313f071-c097-4a8a-9f08-b1e759dcaf12','authenticated','authenticated','lato_rosie@yahoo.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "c313f071-c097-4a8a-9f08-b1e759dcaf12", "email": "lato_rosie@yahoo.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+
+INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
+VALUES
+('c313f071-c097-4a8a-9f08-b1e759dcaf12','1e10e2dd-655e-41e0-a508-edfd660a9bcf','Rosie','lato_rosie@yahoo.com','Rosie','Lato',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2026-03-23 03:04:23.690267',NULL,'c830f462-6973-42cd-8125-898376fbc291');
+
+INSERT INTO "public"."employees"("id","company_id","employee_code","first_name","last_name","email","phone","role","department","hire_date","termination_date","employment_status","commission_rate","address_line1","address_line2","city","region_state","country","postal_code","emergency_contact_name","emergency_contact_phone","is_active","created_at","created_by","updated_at","updated_by","deleted_at","version","custom_fields","user_id","business_unit_id")
+VALUES
+('82613e97-f513-44ae-ace2-0a8377725c92','1e10e2dd-655e-41e0-a508-edfd660a9bcf','EMP-015','Rosie','Lato','lato_rosie@yahoo.com','+63-917-5678901','sales_agent','Sales','2024-03-01',NULL,'active',5,NULL,NULL,'Tagum City','Davao Region','Philippines',NULL,NULL,NULL,TRUE,'2026-03-26 22:36:38.663213','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-03-26 22:36:38.663213','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL,1,NULL,'c313f071-c097-4a8a-9f08-b1e759dcaf12','d69c52d5-6755-4e28-87e3-24c680a5897b');
+
+UPDATE public.employees set user_id = 'c313f071-c097-4a8a-9f08-b1e759dcaf12' where id = '82613e97-f513-44ae-ace2-0a8377725c92';
+
+INSERT INTO "public"."user_business_unit_access"("user_id","business_unit_id","role","is_default","granted_at","granted_by","is_current")
+VALUES
+('c313f071-c097-4a8a-9f08-b1e759dcaf12','bbce384d-dd71-441c-a5e3-2b5e5d1543ce','admin',TRUE,'2026-03-26 22:36:38.663213+00',NULL,TRUE),
+('c313f071-c097-4a8a-9f08-b1e759dcaf12','d5d09f49-c3d7-4f24-aca9-57bea45e0a54','admin',FALSE,'2026-03-26 22:36:38.663213+00',NULL,FALSE),
+('c313f071-c097-4a8a-9f08-b1e759dcaf12','d69c52d5-6755-4e28-87e3-24c680a5897b','admin',FALSE,'2026-03-26 22:36:38.663213+00',NULL,FALSE);
+
+
+DO $$
+DECLARE
+	role_id uuid;
+BEGIN
+SELECT id INTO role_id FROM roles where name = 'Super Admin'; 
+INSERT INTO "public"."user_roles"("id","user_id","role_id","business_unit_id","created_at","created_by","updated_at","updated_by","deleted_at")
+VALUES
+('16bd8b58-45b7-4a2b-97ad-558e774fe7a0','c313f071-c097-4a8a-9f08-b1e759dcaf12',role_id,'d5d09f49-c3d7-4f24-aca9-57bea45e0a54','2026-03-29 05:44:03.505898+00','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-03-29 05:44:03.505898+00','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL),
+('47465692-a8e5-4b16-a944-22c74817b390','c313f071-c097-4a8a-9f08-b1e759dcaf12',role_id,'bbce384d-dd71-441c-a5e3-2b5e5d1543ce','2026-03-29 05:43:57.393398+00','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-03-29 05:43:57.393398+00','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL),
+('af761765-792f-4f91-b2ea-d456e328b135','c313f071-c097-4a8a-9f08-b1e759dcaf12',role_id,'d69c52d5-6755-4e28-87e3-24c680a5897b','2026-03-29 05:43:51.878104+00','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-03-29 05:43:51.878104+00','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL);
+END $$;

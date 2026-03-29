@@ -201,7 +201,7 @@ export type Database = {
           name: string
           phone: string | null
           postal_code: string | null
-          settings: Json | null
+          custom_fields: Json | null
           state: string | null
           tax_id: string | null
           updated_at: string
@@ -222,7 +222,7 @@ export type Database = {
           name: string
           phone?: string | null
           postal_code?: string | null
-          settings?: Json | null
+          custom_fields?: Json | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -243,7 +243,7 @@ export type Database = {
           name?: string
           phone?: string | null
           postal_code?: string | null
-          settings?: Json | null
+          custom_fields?: Json | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -5123,6 +5123,60 @@ export type Database = {
           },
         ]
       }
+      settings: {
+        Row: {
+          business_unit_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          group_key: string
+          id: string
+          setting_key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          business_unit_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          group_key: string
+          id?: string
+          setting_key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          business_unit_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          group_key?: string
+          id?: string
+          setting_key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settings_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_adjustment_items: {
         Row: {
           adjusted_qty: number
@@ -7016,8 +7070,8 @@ export type Database = {
           sheet_height: number | null
           sheet_unit: string | null
           sheet_width: number | null
-          template_kind: string
           template_code: string
+          template_kind: string
           template_name: string
           updated_at: string
           updated_by: string
@@ -7037,8 +7091,8 @@ export type Database = {
           sheet_height?: number | null
           sheet_unit?: string | null
           sheet_width?: number | null
-          template_kind?: string
           template_code: string
+          template_kind?: string
           template_name: string
           updated_at?: string
           updated_by: string
@@ -7058,8 +7112,8 @@ export type Database = {
           sheet_height?: number | null
           sheet_unit?: string | null
           sheet_width?: number | null
-          template_kind?: string
           template_code?: string
+          template_kind?: string
           template_name?: string
           updated_at?: string
           updated_by?: string
@@ -8060,11 +8114,6 @@ export type Database = {
           total_count: number
         }[]
       }
-      get_next_journal_code: { Args: { p_company_id: string }; Returns: string }
-      get_next_stock_request_code: {
-        Args: { p_company_id: string }
-        Returns: string
-      }
       get_user_business_units: {
         Args: never
         Returns: {
@@ -8241,7 +8290,12 @@ export type Database = {
           id: string
           image_url: string | null
           is_active: boolean
+          layout_json: Json | null
+          sheet_height: number | null
+          sheet_unit: string | null
+          sheet_width: number | null
           template_code: string
+          template_kind: string
           template_name: string
           updated_at: string
           updated_by: string

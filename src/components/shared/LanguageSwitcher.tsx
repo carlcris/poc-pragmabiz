@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -11,10 +12,16 @@ import { useLocale } from "next-intl";
 import { Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { languageNames, localeCookieName, locales, type Locale } from "@/lib/i18n";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function LanguageSwitcher() {
   const locale = useLocale() as Locale;
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLanguageChange = (newLocale: string) => {
     localStorage.setItem("preferredLanguage", newLocale);
@@ -22,6 +29,15 @@ export function LanguageSwitcher() {
     document.documentElement.lang = newLocale;
     router.refresh();
   };
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-2">
+        <Globe className="h-4 w-4 text-muted-foreground" />
+        <Skeleton className="h-10 w-[140px]" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">

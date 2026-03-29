@@ -32,8 +32,11 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
       setAvailableBusinessUnits(businessUnits);
 
       // Check if current BU is valid for this user
-      const isCurrentBUValid =
-        currentBusinessUnit && businessUnits.some((bu) => bu.id === currentBusinessUnit.id);
+      const matchingCurrentBusinessUnit =
+        currentBusinessUnit
+          ? businessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ?? null
+          : null;
+      const isCurrentBUValid = matchingCurrentBusinessUnit !== null;
 
       // Auto-select default BU if none is selected OR if current BU is invalid
       if (!currentBusinessUnit || !isCurrentBUValid) {
@@ -55,6 +58,9 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
         setContext(targetBU.id);
       } else {
         // Current BU is valid, just mark as initialized
+        if (matchingCurrentBusinessUnit) {
+          setCurrentBusinessUnit(matchingCurrentBusinessUnit);
+        }
         hasInitialized.current = true;
       }
     }
