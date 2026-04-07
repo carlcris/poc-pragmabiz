@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import {
+  LoadListLineValidationError,
+  resolveLoadListLineUnitOptions,
+} from "./line-item-unit-options";
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
@@ -251,6 +255,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
+    let resolvedLineItems;
+    try {
+      resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
+    } catch (error) {
+      if (error instanceof LoadListLineValidationError) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
+
     const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
@@ -286,10 +300,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Create line items
-    const itemsToInsert = body.items.map(
-      (item: { itemId: string; loadListQty: number; unitPrice: number; notes?: string }) => ({
+    const itemsToInsert = resolvedLineItems.map(
+      (item: {
+        itemId: string;
+        item_unit_option_id: string;
+        uom_id: string;
+        qty_per_unit: number;
+        loadListQty: number;
+        unitPrice: number;
+        notes?: string;
+      }) => ({
         load_list_id: ll.id,
         item_id: item.itemId,
+        item_unit_option_id: item.item_unit_option_id,
+        uom_id: item.uom_id,
         load_list_qty: item.loadListQty,
         unit_price: item.unitPrice,
         received_qty: 0,

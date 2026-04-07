@@ -7,12 +7,30 @@ export type ItemDimensions = {
   length?: number;
 };
 
+export type ItemUnitOption = {
+  id: string;
+  itemId: string;
+  uomId: string;
+  uomCode: string;
+  uomName: string;
+  uomSymbol?: string;
+  optionLabel?: string;
+  displayLabel: string;
+  qtyPerUnit: number;
+  barcode: string;
+  isBase: boolean;
+  isDefault: boolean;
+  isActive: boolean;
+  sortOrder: number;
+};
+
 export interface Item {
   id: string;
   companyId: string;
   code: string;
-  sku?: string;
-  skuQrImage?: string;
+  primaryBarcode?: string;
+  primaryBarcodeUnitOptionId?: string;
+  unitOptions?: ItemUnitOption[];
   name: string;
   chineseName?: string;
   description: string;
@@ -40,7 +58,6 @@ export interface Item {
 export interface CreateItemRequest {
   companyId: string;
   code: string;
-  sku?: string;
   name: string;
   chineseName?: string;
   description: string;

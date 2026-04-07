@@ -74,10 +74,6 @@ export function useUpdatePickListItems() {
       pickListsApi.updateItems(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
-      toast.success("Pick list items updated");
-    },
-    onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, "Failed to update pick list items"));
     },
   });
 }

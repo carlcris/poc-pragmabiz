@@ -77,6 +77,7 @@ import type {
 } from "@/types/delivery-note";
 import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 const getStatusBadge = (status: string, label: string) => {
   const baseClass = "text-xs font-medium";
@@ -132,6 +133,7 @@ type DraftLine = {
   srItemId: string;
   itemId: string;
   uomId: string;
+  uomLabel: string;
   itemName: string;
   requestedQty: number;
   allocatableQty: number;
@@ -398,7 +400,24 @@ export default function DeliveryNotesPage() {
   };
 
   const actionUomLabel = (item: (typeof actionItems)[number]) => {
+    const directUnitOptionRef = Array.isArray(item.item_unit_options)
+      ? item.item_unit_options[0]
+      : item.item_unit_options;
+    const stockRequestItemRef = Array.isArray(item.stock_request_items)
+      ? item.stock_request_items[0]
+      : item.stock_request_items;
+    const unitOptionRef = stockRequestItemRef
+      ? Array.isArray(stockRequestItemRef.item_unit_options)
+        ? stockRequestItemRef.item_unit_options[0]
+        : stockRequestItemRef.item_unit_options
+      : null;
     const uomRef = Array.isArray(item.units_of_measure) ? item.units_of_measure[0] : item.units_of_measure;
+    if (directUnitOptionRef) {
+      return transformItemUnitOptionRow(directUnitOptionRef as unknown as DbItemUnitOptionRow, uomRef?.code || "").displayLabel;
+    }
+    if (unitOptionRef) {
+      return transformItemUnitOptionRow(unitOptionRef as unknown as DbItemUnitOptionRow, uomRef?.code || "").displayLabel;
+    }
     return uomRef?.symbol || uomRef?.name || "Unknown unit";
   };
 
@@ -520,6 +539,11 @@ export default function DeliveryNotesPage() {
               srItemId: item.id,
               itemId: item.item_id,
               uomId: item.uom_id,
+              uomLabel:
+                item.item_unit_option?.displayLabel ||
+                item.units_of_measure?.code ||
+                item.units_of_measure?.symbol ||
+                "",
               itemName: item.items?.item_name || item.items?.item_code || item.item_id,
               requestedQty,
               allocatableQty,
@@ -1120,6 +1144,7 @@ export default function DeliveryNotesPage() {
                       <TableHead className="w-12">{t("use")}</TableHead>
                       <TableHead>{t("sr")}</TableHead>
                       <TableHead>{t("item")}</TableHead>
+                      <TableHead>{t("unit")}</TableHead>
                       <TableHead className="text-right">{t("requested")}</TableHead>
                       <TableHead className="text-right">{t("allocatable")}</TableHead>
                       <TableHead className="text-right">{t("allocated")}</TableHead>
@@ -1165,6 +1190,9 @@ export default function DeliveryNotesPage() {
                               {t("insufficientInventory")}
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {line.uomLabel || t("noValue")}
                         </TableCell>
                         <TableCell className="text-right">{line.requestedQty.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-medium">{line.allocatableQty.toFixed(2)}</TableCell>

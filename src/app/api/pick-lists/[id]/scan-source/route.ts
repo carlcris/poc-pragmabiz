@@ -113,12 +113,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
         item_id,
         allocated_qty,
         picked_qty,
+        item_unit_options!pick_list_items_item_unit_option_id_fkey(
+          id,
+          barcode
+        ),
         delivery_note_items!pick_list_items_dn_item_id_fkey(
           id,
           suggested_pick_location_id,
           suggested_pick_batch_code,
           suggested_pick_batch_received_at,
-          items!delivery_note_items_item_id_fkey(item_code, item_name, sku)
+          items!delivery_note_items_item_id_fkey(item_code, item_name)
         )
       `
       )
@@ -135,6 +139,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const matchable = (pickItems || []).map((row) => {
       const dnLine = Array.isArray(row.delivery_note_items) ? row.delivery_note_items[0] : row.delivery_note_items;
+      const itemUnitOption = Array.isArray(row.item_unit_options) ? row.item_unit_options[0] : row.item_unit_options;
       const remainingQty = Math.max(0, toNumber(row.allocated_qty) - toNumber(row.picked_qty));
       const isSuggestedMatch =
         (!dnLine?.suggested_pick_location_id || dnLine.suggested_pick_location_id === sourceRow.location_id) &&
@@ -152,9 +157,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         suggestedPickBatchCode: dnLine?.suggested_pick_batch_code || null,
         item: dnLine?.items
           ? {
-              itemCode: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_code || null,
-              itemName: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_name || null,
-              sku: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.sku || null,
+            itemCode: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_code || null,
+            itemName: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_name || null,
+              barcode: itemUnitOption?.barcode || null,
             }
           : null,
       };

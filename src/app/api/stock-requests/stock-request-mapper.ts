@@ -1,4 +1,9 @@
 import type { StockRequest, StockRequestPriority, StockRequestStatus } from "@/types/stock-request";
+import {
+  buildItemUnitOptionDisplayLabel,
+  transformItemUnitOptionRow,
+  type DbItemUnitOptionRow,
+} from "@/lib/items/itemUnitOptions";
 
 type StockRequestLocation = {
   id: string;
@@ -20,6 +25,7 @@ type StockRequestItem = {
   item_id: string;
   requested_qty: number;
   picked_qty: number;
+  item_unit_option_id?: string | null;
   uom_id: string;
   notes?: string | null;
   created_at: string;
@@ -28,11 +34,45 @@ type StockRequestItem = {
     id?: string;
     item_code: string;
     item_name: string;
-  } | { id?: string; item_code: string; item_name: string }[] | null;
+    uom_id?: string;
+    base_unit?: {
+      id?: string;
+      code: string;
+      name?: string;
+      symbol?: string | null;
+    } | {
+      id?: string;
+      code: string;
+      name?: string;
+      symbol?: string | null;
+    }[] | null;
+  } | {
+    id?: string;
+    item_code: string;
+    item_name: string;
+    uom_id?: string;
+    base_unit?: {
+      id?: string;
+      code: string;
+      name?: string;
+      symbol?: string | null;
+    } | {
+      id?: string;
+      code: string;
+      name?: string;
+      symbol?: string | null;
+    }[] | null;
+  }[] | null;
   units_of_measure?: {
+    id?: string;
     code: string;
     symbol: string;
-  } | { code: string; symbol: string }[] | null;
+  } | { id?: string; code: string; symbol: string }[] | null;
+  item_unit_options?: (DbItemUnitOptionRow & {
+    units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
+  }) | (DbItemUnitOptionRow & {
+    units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
+  })[] | null;
 };
 
 type DeliveryNoteSummary = {
@@ -166,9 +206,25 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
     stock_request_items: stock_request_items?.map((item) => {
       const { ...restItem } = item;
       const itemDetails = Array.isArray(item.items) ? item.items[0] ?? null : item.items ?? null;
+      const baseUnitDetails = itemDetails
+        ? Array.isArray(itemDetails.base_unit)
+          ? itemDetails.base_unit[0] ?? null
+          : itemDetails.base_unit ?? null
+        : null;
       const uomDetails = Array.isArray(item.units_of_measure)
         ? item.units_of_measure[0] ?? null
         : item.units_of_measure ?? null;
+      const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
+        ? item.item_unit_options[0] ?? null
+        : item.item_unit_options ?? null;
+      const baseUomCode = baseUnitDetails?.code || uomDetails?.code || "";
+      const mappedItemUnitOption = itemUnitOptionDetails
+        ? transformItemUnitOptionRow(itemUnitOptionDetails, baseUomCode)
+        : undefined;
+      const fallbackDisplayLabel =
+        uomDetails?.code && baseUomCode
+          ? buildItemUnitOptionDisplayLabel(uomDetails.code, 1, baseUomCode)
+          : uomDetails?.code || undefined;
 
       return {
         ...restItem,
@@ -186,6 +242,25 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
               symbol: uomDetails.symbol,
             }
           : undefined,
+        item_unit_option: mappedItemUnitOption
+          ? mappedItemUnitOption
+          : fallbackDisplayLabel
+            ? {
+                id: item.item_unit_option_id || "",
+                itemId: item.item_id,
+                uomId: item.uom_id,
+                uomCode: uomDetails?.code || "",
+                uomName: uomDetails?.code || "",
+                uomSymbol: uomDetails?.symbol || undefined,
+                displayLabel: fallbackDisplayLabel,
+                qtyPerUnit: 1,
+                barcode: "",
+                isBase: true,
+                isDefault: true,
+                isActive: true,
+                sortOrder: 0,
+              }
+            : undefined,
       };
     }),
   };

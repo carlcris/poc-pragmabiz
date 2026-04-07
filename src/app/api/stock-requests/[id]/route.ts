@@ -3,6 +3,10 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "../stock-request-mapper";
+import {
+  resolveStockRequestLineUnitOptions,
+  StockRequestLineValidationError,
+} from "../line-item-unit-options";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StockRequest, UpdateStockRequestPayload } from "@/types/stock-request";
 
@@ -120,8 +124,37 @@ export async function GET(request: NextRequest, context: RouteContext) {
         ),
         stock_request_items(
           *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
+          items(
+            id,
+            item_code,
+            item_name,
+            uom_id,
+            base_unit:units_of_measure!items_uom_id_fkey(
+              id,
+              code,
+              name,
+              symbol
+            )
+          ),
+          units_of_measure(id, code, symbol),
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(
+              id,
+              code,
+              name,
+              symbol
+            )
+          )
         ),
         delivery_note_sources(
           created_at,
@@ -284,15 +317,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     // Update items if provided
     if (body.items && Array.isArray(body.items)) {
+      const resolvedLineItems = await resolveStockRequestLineUnitOptions(
+        supabase,
+        companyId,
+        body.items
+      );
+
       // Delete existing items
       await supabase.from("stock_request_items").delete().eq("stock_request_id", id);
 
       // Insert new items
-      const requestItems = body.items.map((item: StockRequestItemInput) => ({
+      const requestItems = resolvedLineItems.map((item: StockRequestItemInput & { item_unit_option_id: string }) => ({
         stock_request_id: id,
         item_id: item.item_id,
         requested_qty: item.requested_qty,
         picked_qty: 0,
+        item_unit_option_id: item.item_unit_option_id,
         uom_id: item.uom_id,
         notes: item.notes || null,
       }));
@@ -337,8 +377,37 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         ),
         stock_request_items(
           *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
+          items(
+            id,
+            item_code,
+            item_name,
+            uom_id,
+            base_unit:units_of_measure!items_uom_id_fkey(
+              id,
+              code,
+              name,
+              symbol
+            )
+          ),
+          units_of_measure(id, code, symbol),
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(
+              id,
+              code,
+              name,
+              symbol
+            )
+          )
         ),
         delivery_note_sources(
           created_at,
@@ -366,6 +435,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json(mapStockRequest(hydratedUpdated));
   } catch (error) {
+    if (error instanceof StockRequestLineValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Error in stock-request PATCH:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

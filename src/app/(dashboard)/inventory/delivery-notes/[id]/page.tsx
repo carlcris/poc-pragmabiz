@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toProperCase } from "@/lib/string";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "--";
@@ -187,6 +188,9 @@ export default function DeliveryNoteDetailPage() {
   type EmbeddedItemRef = { item_name?: string | null; item_code?: string | null };
   type EmbeddedUomRef = { code?: string | null; symbol?: string | null; name?: string | null };
   type EmbeddedStockRequestRef = { request_code?: string | null };
+  type EmbeddedStockRequestItemRef = {
+    item_unit_options?: DbItemUnitOptionRow | DbItemUnitOptionRow[] | null;
+  };
 
   const one = <T,>(value: T | T[] | null | undefined): T | null =>
     Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -236,9 +240,22 @@ export default function DeliveryNoteDetailPage() {
 
   const uomLabel = (item: (typeof items)[number]) => {
     const row = item as typeof item & {
+      item_unit_options?: DbItemUnitOptionRow | DbItemUnitOptionRow[] | null;
       units_of_measure?: EmbeddedUomRef | EmbeddedUomRef[] | null;
+      stock_request_items?: EmbeddedStockRequestItemRef | EmbeddedStockRequestItemRef[] | null;
     };
+    const directUnitOptionRef = one(row.item_unit_options);
+    const requestItemRef = one(row.stock_request_items);
+    const unitOptionRef = requestItemRef
+      ? one(requestItemRef.item_unit_options)
+      : null;
     const ref = one(row.units_of_measure);
+    if (directUnitOptionRef) {
+      return transformItemUnitOptionRow(directUnitOptionRef, ref?.code || "").displayLabel;
+    }
+    if (unitOptionRef) {
+      return transformItemUnitOptionRow(unitOptionRef, ref?.code || "").displayLabel;
+    }
     return ref?.code || ref?.symbol || ref?.name || t("unknownUnit");
   };
 

@@ -183,16 +183,16 @@ export async function GET(request: NextRequest) {
     if (type === "items") {
       let query = supabase
         .from("items")
-        .select("id, item_code, item_name, sku, is_active")
+        .select("id, item_code, item_name, is_active")
         .eq("company_id", companyId)
         .is("deleted_at", null)
         .order("item_name", { ascending: true })
         .limit(limit);
       if (!includeInactive) query = query.eq("is_active", true);
-      if (search) query = query.or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%,sku.ilike.%${search}%`);
+      if (search) query = query.or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%`);
       const { data, error } = await query;
       if (error) return NextResponse.json({ error: "Failed to fetch items", details: error.message }, { status: 500 });
-      return NextResponse.json({ data: (data || []).map((row) => ({ id: row.id, code: row.item_code, name: row.item_name, sku: row.sku, isActive: row.is_active ?? true })) });
+      return NextResponse.json({ data: (data || []).map((row) => ({ id: row.id, code: row.item_code, name: row.item_name, isActive: row.is_active ?? true })) });
     }
 
     if (type === "customers") {

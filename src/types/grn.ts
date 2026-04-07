@@ -1,3 +1,5 @@
+import type { ItemUnitOption } from "@/types/item";
+
 export type GRNStatus =
   | "draft"
   | "receiving"
@@ -20,12 +22,16 @@ export type GRNItem = {
   id: string;
   grnId: string;
   itemId: string;
+  loadListItemId?: string | null;
+  itemUnitOptionId?: string | null;
+  itemUnitOption?: ItemUnitOption | null;
   item?: {
     id: string;
     code: string;
     name: string;
   };
   loadListQty: number;
+  expectedBaseQty?: number;
   receivedQty: number;
   damagedQty: number;
   numBoxes: number;
@@ -160,6 +166,7 @@ export type CreateGRNRequest = {
   deliveryDate: string;
   notes?: string;
   items: {
+    loadListItemId: string;
     itemId: string;
     loadListQty: number;
     receivedQty?: number;

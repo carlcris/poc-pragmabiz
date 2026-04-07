@@ -1,3 +1,5 @@
+import type { ItemUnitOption } from "@/types/item";
+
 export type StockRequestStatus =
   | "draft"
   | "submitted"
@@ -23,6 +25,7 @@ export interface StockRequestItem {
   item_id: string;
   requested_qty: number;
   received_qty?: number;
+  item_unit_option_id?: string | null;
   uom_id: string;
   notes?: string | null;
   dispatch_qty?: number;
@@ -39,6 +42,7 @@ export interface StockRequestItem {
     code: string;
     symbol: string;
   };
+  item_unit_option?: ItemUnitOption;
 }
 
 export interface StockRequest {
@@ -123,7 +127,8 @@ export interface CreateStockRequestPayload {
   items: Array<{
     item_id: string;
     requested_qty: number;
-    uom_id: string;
+    item_unit_option_id?: string;
+    uom_id?: string;
     notes?: string;
   }>;
 }

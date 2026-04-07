@@ -31,7 +31,6 @@ type StockAgingRowSource = {
         id: string;
         item_code: string | null;
         item_name: string | null;
-        sku: string | null;
         category_id: string | null;
         cost_price: number | string | null;
         purchase_price: number | string | null;
@@ -48,7 +47,6 @@ type StockAgingRowSource = {
         id: string;
         item_code: string | null;
         item_name: string | null;
-        sku: string | null;
         category_id: string | null;
         cost_price: number | string | null;
         purchase_price: number | string | null;
@@ -177,7 +175,6 @@ export async function GET(request: NextRequest) {
           id,
           item_code,
           item_name,
-          sku,
           category_id,
           cost_price,
           purchase_price,
@@ -275,7 +272,6 @@ export async function GET(request: NextRequest) {
           itemId: row.item_id,
           itemCode: item?.item_code || null,
           itemName: item?.item_name || null,
-          itemSku: item?.sku || null,
           category,
           warehouseId: row.warehouse_id,
           warehouseCode: warehouse?.warehouse_code || null,
@@ -302,7 +298,6 @@ export async function GET(request: NextRequest) {
         const haystack = [
           row.itemCode,
           row.itemName,
-          row.itemSku,
           row.batchCode,
           row.batchLocationSku,
         ]

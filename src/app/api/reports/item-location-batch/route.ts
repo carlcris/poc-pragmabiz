@@ -26,8 +26,8 @@ type ItemLocationBatchRow = {
         received_at: string;
       }[]
     | null;
-  item?: { id: string; item_code: string | null; item_name: string | null; sku: string | null }
-    | { id: string; item_code: string | null; item_name: string | null; sku: string | null }[]
+  item?: { id: string; item_code: string | null; item_name: string | null }
+    | { id: string; item_code: string | null; item_name: string | null }[]
     | null;
   warehouse?:
     | { id: string; warehouse_code: string | null; warehouse_name: string | null }
@@ -109,8 +109,7 @@ export async function GET(request: NextRequest) {
         item:items!item_location_batch_item_id_fkey(
           id,
           item_code,
-          item_name,
-          sku
+          item_name
         ),
         warehouse:warehouses!item_location_batch_warehouse_id_fkey(
           id,
@@ -143,7 +142,6 @@ export async function GET(request: NextRequest) {
           `item_batch.batch_code.ilike.%${search}%`,
           `item.item_code.ilike.%${search}%`,
           `item.item_name.ilike.%${search}%`,
-          `item.sku.ilike.%${search}%`,
           `location.code.ilike.%${search}%`,
           `location.name.ilike.%${search}%`,
         ].join(",")
@@ -184,7 +182,6 @@ export async function GET(request: NextRequest) {
         itemId: row.item_id,
         itemCode: item?.item_code || null,
         itemName: item?.item_name || null,
-        itemSku: item?.sku || null,
         warehouseId: row.warehouse_id,
         warehouseCode: warehouse?.warehouse_code || null,
         warehouseName: warehouse?.warehouse_name || null,
@@ -239,4 +236,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

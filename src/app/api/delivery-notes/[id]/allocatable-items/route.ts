@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { fetchDeliveryNoteHeader, getAuthContext, toNumber } from "../../_lib";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -41,12 +42,31 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         id,
         stock_request_id,
         item_id,
+        item_unit_option_id,
         uom_id,
         requested_qty,
         received_qty,
         dispatch_qty,
         items(item_code, item_name),
-        units_of_measure(symbol, name),
+        units_of_measure(code, symbol, name),
+        item_unit_options(
+          id,
+          item_id,
+          uom_id,
+          option_label,
+          qty_per_unit,
+          barcode,
+          is_base,
+          is_default,
+          is_active,
+          sort_order,
+          units_of_measure(
+            id,
+            code,
+            name,
+            symbol
+          )
+        ),
         stock_requests!inner(
           id,
           request_code,
@@ -107,6 +127,9 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         const request = Array.isArray(row.stock_requests) ? row.stock_requests[0] : row.stock_requests;
         const item = Array.isArray(row.items) ? row.items[0] : row.items;
         const uom = Array.isArray(row.units_of_measure) ? row.units_of_measure[0] : row.units_of_measure;
+        const unitOption = Array.isArray(row.item_unit_options)
+          ? row.item_unit_options[0]
+          : row.item_unit_options;
         const allocatedInOtherDns = allocatedByItem.get(row.id as string) || 0;
         const allocatableQty = Math.max(
           0,
@@ -120,8 +143,16 @@ export async function GET(_request: NextRequest, context: RouteContext) {
           itemId: row.item_id,
           itemCode: item?.item_code || null,
           itemName: item?.item_name || null,
+          itemUnitOptionId: row.item_unit_option_id || null,
           uomId: row.uom_id,
-          uomLabel: uom?.symbol || uom?.name || null,
+          uomLabel:
+            (unitOption
+              ? transformItemUnitOptionRow(unitOption as DbItemUnitOptionRow, uom?.code || "").displayLabel
+              : null) ||
+            uom?.code ||
+            uom?.symbol ||
+            uom?.name ||
+            null,
           requestedQty: toNumber(row.requested_qty),
           receivedQty: toNumber(row.received_qty),
           allocatedInOtherDns,

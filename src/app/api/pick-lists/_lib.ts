@@ -40,6 +40,24 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
       delivery_note_item_picks(*),
       pick_list_items(
         *,
+        item_unit_options!pick_list_items_item_unit_option_id_fkey(
+          id,
+          item_id,
+          uom_id,
+          option_label,
+          qty_per_unit,
+          barcode,
+          is_base,
+          is_default,
+          is_active,
+          sort_order,
+          units_of_measure(
+            id,
+            code,
+            name,
+            symbol
+          )
+        ),
         delivery_note_items!pick_list_items_dn_item_id_fkey(
           id,
           suggested_pick_location_id,
@@ -51,8 +69,8 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
             name
           )
         ),
-        items!pick_list_items_item_id_fkey(item_name, item_code, sku),
-        units_of_measure!pick_list_items_uom_id_fkey(symbol, name)
+        items!pick_list_items_item_id_fkey(item_name, item_code),
+        units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
       ),
       pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name))
     `
@@ -159,7 +177,7 @@ export const createPickListForDn = async ({
 
   const { data: dnItems, error: dnItemsError } = await supabase
     .from("delivery_note_items")
-    .select("id, sr_id, sr_item_id, item_id, uom_id, allocated_qty, picked_qty, is_voided")
+    .select("id, sr_id, sr_item_id, item_id, item_unit_option_id, uom_id, allocated_qty, picked_qty, is_voided")
     .eq("company_id", companyId)
     .eq("dn_id", dnId)
     .eq("is_voided", false)
@@ -261,6 +279,7 @@ export const createPickListForDn = async ({
       sr_id: item.sr_id,
       sr_item_id: item.sr_item_id,
       item_id: item.item_id,
+      item_unit_option_id: item.item_unit_option_id || null,
       uom_id: item.uom_id,
       allocated_qty: outstandingQty,
       picked_qty: 0,

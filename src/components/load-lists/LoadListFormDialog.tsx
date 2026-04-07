@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, Trash2, Check, ChevronsUpDown, Package, FileText, Truck, Container, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateLoadList, useLoadList, useUpdateLoadList } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useWarehouses } from "@/hooks/useWarehouses";
-import { useItems } from "@/hooks/useItems";
+import { useItem, useItems } from "@/hooks/useItems";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -63,6 +63,10 @@ type LineItem = {
   itemId: string;
   itemCode?: string;
   itemName?: string;
+  itemUnitOptionId: string;
+  uomId: string;
+  uomLabel?: string;
+  qtyPerUnit: number;
   loadListQty: number;
   unitPrice: number;
   notes?: string;
@@ -77,6 +81,7 @@ type LoadListFormDialogProps = {
 export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFormDialogProps) {
   const t = useTranslations("loadListForm");
   const tValidation = useTranslations("loadListValidation");
+  const locale = useLocale();
   const isEditMode = !!loadList;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateLoadList();
@@ -97,10 +102,25 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [selectedUnitOptionId, setSelectedUnitOptionId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitCost, setUnitCost] = useState("");
   const [activeTab, setActiveTab] = useState("general");
   const [itemOpen, setItemOpen] = useState(false);
+  const { data: selectedItemResponse } = useItem(selectedItemId);
+  const selectedItemDetail = selectedItemResponse?.data;
+  const unitOptions = (selectedItemDetail?.unitOptions || []).filter((option) => option.isActive);
+  const selectedUnitOption =
+    unitOptions.find((option) => option.id === selectedUnitOptionId) ||
+    selectedItemDetail?.unitOptions?.find((option) => option.id === selectedUnitOptionId) ||
+    null;
+  const selectedQtyPerUnit = selectedUnitOption?.qtyPerUnit ?? 1;
+  const selectedUomLabel =
+    selectedUnitOption?.displayLabel ||
+    selectedItemDetail?.uom ||
+    items.find((item) => item.id === selectedItemId)?.uom ||
+    "";
+  const selectedTotalQty = Number(quantity || 0) * selectedQtyPerUnit;
 
   // Default values
   const defaultValues = useMemo<LoadListFormValues>(
@@ -126,7 +146,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
   // Calculate total
   const totalAmount = useMemo(() => {
-    return lineItems.reduce((sum, item) => sum + item.loadListQty * item.unitPrice, 0);
+    return lineItems.reduce(
+      (sum, item) => sum + item.loadListQty * item.qtyPerUnit * item.unitPrice,
+      0
+    );
   }, [lineItems]);
 
   // Reset form when dialog opens/closes or LL changes
@@ -150,6 +173,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
           itemId: item.itemId,
           itemCode: item.item?.code,
           itemName: item.item?.name,
+          itemUnitOptionId: item.itemUnitOptionId || item.itemUnitOption?.id || "",
+          uomId: item.uomId || "",
+          uomLabel: item.itemUnitOption?.displayLabel || item.uomCode || "",
+          qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
           loadListQty: item.loadListQty,
           unitPrice: item.unitPrice,
           notes: item.notes,
@@ -160,14 +187,40 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       form.reset(defaultValues);
       setLineItems([]);
       setSelectedItemId("");
+      setSelectedUnitOptionId("");
       setQuantity("");
       setUnitCost("");
       setActiveTab("general");
     }
   }, [open, resolvedLoadList, form, defaultValues]);
 
+  useEffect(() => {
+    if (!selectedItemDetail) {
+      setSelectedUnitOptionId("");
+      return;
+    }
+
+    const fallbackUnitOption =
+      unitOptions.find((option) => option.isDefault) ||
+      unitOptions.find((option) => option.isBase) ||
+      unitOptions[0];
+
+    if (!fallbackUnitOption) {
+      setSelectedUnitOptionId("");
+      return;
+    }
+
+    setSelectedUnitOptionId((currentValue) => {
+      if (currentValue && unitOptions.some((option) => option.id === currentValue)) {
+        return currentValue;
+      }
+
+      return fallbackUnitOption.id;
+    });
+  }, [selectedItemDetail, unitOptions]);
+
   const handleAddItem = () => {
-    if (!selectedItemId || !quantity || unitCost === "") {
+    if (!selectedItemId || !selectedUnitOptionId || !quantity || unitCost === "") {
       toast.error(t("addItemError"));
       return;
     }
@@ -178,16 +231,26 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       return;
     }
 
+    if (!selectedUnitOption) {
+      toast.error(t("unitNotFound"));
+      return;
+    }
+
     const newItem: LineItem = {
       itemId: selectedItemId,
       itemCode: selectedItem.code,
       itemName: selectedItem.name,
+      itemUnitOptionId: selectedUnitOption.id,
+      uomId: selectedUnitOption.uomId,
+      uomLabel: selectedUomLabel,
+      qtyPerUnit: selectedQtyPerUnit,
       loadListQty: parseFloat(quantity),
       unitPrice: parseFloat(unitCost),
     };
 
     setLineItems([...lineItems, newItem]);
     setSelectedItemId("");
+    setSelectedUnitOptionId("");
     setQuantity("");
     setUnitCost("");
   };
@@ -216,6 +279,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
         notes: values.notes,
         items: lineItems.map((item) => ({
           itemId: item.itemId,
+          itemUnitOptionId: item.itemUnitOptionId,
+          uomId: item.uomId,
           loadListQty: item.loadListQty,
           unitPrice: item.unitPrice,
           notes: item.notes,
@@ -516,9 +581,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900">{t("addItemsTitle")}</h3>
                   </div>
-                  <div className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-5">
-                    <label className="text-xs font-medium mb-1 block">{t("itemLabel")}</label>
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
+                  <div className="min-w-0">
+                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("itemLabel")}</label>
                     <Popover open={itemOpen} onOpenChange={setItemOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -526,18 +591,20 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                           role="combobox"
                           aria-expanded={itemOpen}
                           className={cn(
-                            "w-full justify-between h-9 text-sm",
+                            "w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400",
                             !selectedItemId && "text-muted-foreground"
                           )}
                         >
-                          {selectedItemId
-                            ? (() => {
-                                const selectedItem = items.find((i) => i.id === selectedItemId);
-                                return selectedItem
-                                  ? `${selectedItem.code} - ${selectedItem.name}`
-                                  : t("selectItem");
-                              })()
-                            : t("searchItem")}
+                          <span className="min-w-0 truncate text-left">
+                            {selectedItemId
+                              ? (() => {
+                                  const selectedItem = items.find((i) => i.id === selectedItemId);
+                                  return selectedItem
+                                    ? `${selectedItem.code} - ${selectedItem.name}`
+                                    : t("selectItem");
+                                })()
+                              : t("searchItem")}
+                          </span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -560,6 +627,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                         item.listPrice ??
                                         0;
                                       setSelectedItemId(item.id);
+                                      setSelectedUnitOptionId("");
                                       setUnitCost(Number(cost).toFixed(2));
                                       setItemOpen(false);
                                     }}
@@ -593,19 +661,70 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       </PopoverContent>
                     </Popover>
                   </div>
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium mb-1 block">{t("quantityLabel")}</label>
+                  <div className="min-w-0">
+                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("unitLabel")}</label>
+                    <Select
+                      value={selectedUnitOptionId}
+                      onValueChange={setSelectedUnitOptionId}
+                      disabled={!selectedItemId || unitOptions.length === 0}
+                    >
+                      <SelectTrigger className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                        <SelectValue
+                          placeholder={selectedItemId ? t("selectUnit") : t("selectItemFirst")}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unitOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.displayLabel}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("qtyPerUnitLabel")}</label>
+                    <Input
+                      value={
+                        selectedUomLabel
+                          ? selectedQtyPerUnit.toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })
+                          : ""
+                      }
+                      readOnly
+                      placeholder="--"
+                      className="h-10 text-sm bg-gray-50 border-gray-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("quantityLabel")}</label>
                     <Input
                       type="number"
                       placeholder={t("quantityPlaceholder")}
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
                       step="0.01"
-                      className="h-9 text-sm"
+                      className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     />
                   </div>
-                  <div className="col-span-3">
-                    <label className="text-xs font-medium mb-1 block">{t("unitCostLabel")}</label>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("totalQtyLabel")}</label>
+                    <Input
+                      value={
+                        selectedUomLabel
+                          ? selectedTotalQty.toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })
+                          : ""
+                      }
+                      readOnly
+                      placeholder="--"
+                      className="h-10 text-sm bg-gray-50 border-gray-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("unitCostLabel")}</label>
                     <Input
                       key={`unit-cost-${selectedItemId}`}
                       type="text"
@@ -619,16 +738,16 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                           setUnitCost(next);
                         }
                       }}
-                      className="h-9 text-sm"
+                      className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="flex items-end">
                     <Button
                       type="button"
                       onClick={handleAddItem}
-                      className="w-full h-9 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-md text-sm"
+                      className="w-full h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
                     >
-                      <Plus className="mr-1.5 h-3.5 w-3.5" />
+                      <Plus className="mr-2 h-4 w-4" />
                       {t("addItem")}
                     </Button>
                   </div>
@@ -645,8 +764,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                             <TableRow className="border-b">
                               <TableHead className="font-semibold text-xs h-8">{t("itemCode")}</TableHead>
                               <TableHead className="font-semibold text-xs h-8">{t("itemName")}</TableHead>
+                              <TableHead className="font-semibold text-xs h-8">{t("unitWithQtyPerUnitLabel")}</TableHead>
                               <TableHead className="text-right font-semibold text-xs h-8">{t("qty")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">{t("unitPrice")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs h-8">{t("totalQtyLabel")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs h-8">{t("unitCostLabel")}</TableHead>
                               <TableHead className="text-right font-semibold text-xs h-8">{t("total")}</TableHead>
                               <TableHead className="w-[50px] h-8"></TableHead>
                             </TableRow>
@@ -656,12 +777,29 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                               <TableRow key={index} className="hover:bg-gray-50 transition-colors h-9">
                                 <TableCell className="font-medium text-gray-900 text-xs py-2">{item.itemCode}</TableCell>
                                 <TableCell className="text-gray-700 text-xs py-2">{item.itemName}</TableCell>
+                                <TableCell className="text-gray-700 text-xs py-2">
+                                  <div className="font-medium">
+                                    {item.uomLabel || "--"}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground">
+                                    {t("qtyPerUnitInlineLabel", {
+                                      qty: item.qtyPerUnit.toLocaleString(locale, {
+                                        maximumFractionDigits: 4,
+                                      }),
+                                    })}
+                                  </div>
+                                </TableCell>
                                 <TableCell className="text-right tabular-nums text-xs py-2">{item.loadListQty}</TableCell>
+                                <TableCell className="text-right tabular-nums text-xs py-2">
+                                  {(item.loadListQty * item.qtyPerUnit).toLocaleString(locale, {
+                                    maximumFractionDigits: 4,
+                                  })}
+                                </TableCell>
                                 <TableCell className="text-right tabular-nums text-gray-700 text-xs py-2">
                                   {formatCurrency(item.unitPrice)}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums font-semibold text-purple-600 text-xs py-2">
-                                  {formatCurrency(item.loadListQty * item.unitPrice)}
+                                  {formatCurrency(item.loadListQty * item.qtyPerUnit * item.unitPrice)}
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <Button

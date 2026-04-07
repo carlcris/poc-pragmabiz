@@ -34,8 +34,9 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useItems } from "@/hooks/useItems";
+import { useItem, useItems } from "@/hooks/useItems";
 
 const createLineItemSchema = (
   tValidation: (key: "itemRequired" | "uomRequired" | "requestedQtyMin") => string
@@ -43,6 +44,7 @@ const createLineItemSchema = (
   itemId: z.string().min(1, tValidation("itemRequired")),
   itemCode: z.string().optional(),
   itemName: z.string().optional(),
+  itemUnitOptionId: z.string().min(1, tValidation("uomRequired")),
   uomId: z.string().min(1, tValidation("uomRequired")),
   requestedQty: z.number().min(0.01, tValidation("requestedQtyMin")),
   notes: z.string().optional(),
@@ -52,6 +54,8 @@ type StockRequestLineItemSchema = ReturnType<typeof createLineItemSchema>;
 export type StockRequestLineItemFormValues = z.infer<StockRequestLineItemSchema>;
 export type StockRequestLineItemPayload = StockRequestLineItemFormValues & {
   uomLabel?: string;
+  unitBarcode?: string;
+  qtyPerUnit?: number;
 };
 
 interface StockRequestLineItemDialogProps {
@@ -90,11 +94,16 @@ export function StockRequestLineItemDialog({
       itemId: "",
       itemCode: "",
       itemName: "",
+      itemUnitOptionId: "",
       uomId: "",
       requestedQty: 1,
       notes: "",
     },
   });
+  const selectedItemId = form.watch("itemId");
+  const { data: selectedItemResponse, isLoading: isSelectedItemLoading } = useItem(selectedItemId);
+  const selectedItemDetail = selectedItemResponse?.data;
+  const unitOptions = (selectedItemDetail?.unitOptions || []).filter((option) => option.isActive);
 
   // Reset form when dialog opens/closes or item changes
   useEffect(() => {
@@ -106,6 +115,7 @@ export function StockRequestLineItemDialog({
         itemId: "",
         itemCode: "",
         itemName: "",
+        itemUnitOptionId: "",
         uomId: "",
         requestedQty: 1,
         notes: "",
@@ -146,22 +156,50 @@ export function StockRequestLineItemDialog({
       form.setValue("itemId", selectedItem.id);
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
-      form.setValue("uomId", selectedItem.uomId);
+      form.setValue("itemUnitOptionId", "", { shouldValidate: true });
+      form.setValue("uomId", "", { shouldValidate: true });
     }
   };
 
+  useEffect(() => {
+    if (!selectedItemId || !selectedItemDetail) return;
+
+    const currentUnitOptionId = form.getValues("itemUnitOptionId");
+    const matchingUnitOption = unitOptions.find((option) => option.id === currentUnitOptionId);
+    const fallbackUnitOption =
+      unitOptions.find((option) => option.isDefault) ||
+      unitOptions.find((option) => option.isBase) ||
+      unitOptions[0];
+    const nextUnitOption = matchingUnitOption || fallbackUnitOption;
+
+    if (!nextUnitOption) return;
+
+    if (currentUnitOptionId !== nextUnitOption.id) {
+      form.setValue("itemUnitOptionId", nextUnitOption.id, { shouldValidate: true });
+    }
+    if (form.getValues("uomId") !== nextUnitOption.uomId) {
+      form.setValue("uomId", nextUnitOption.uomId, { shouldValidate: true });
+    }
+  }, [form, selectedItemDetail, selectedItemId, unitOptions]);
+
   const onSubmit = (data: StockRequestLineItemFormValues) => {
-    const selectedItem = items.find((i) => i.id === data.itemId);
-    const uomLabel = selectedItem?.uom || item?.uomLabel || "";
+    const selectedUnitOption =
+      unitOptions.find((option) => option.id === data.itemUnitOptionId) ||
+      selectedItemDetail?.unitOptions?.find((option) => option.id === data.itemUnitOptionId);
+    const uomLabel = selectedUnitOption?.displayLabel || item?.uomLabel || "";
 
     onSave({
       ...data,
       uomLabel,
+      unitBarcode: selectedUnitOption?.barcode,
+      qtyPerUnit: selectedUnitOption?.qtyPerUnit ?? item?.qtyPerUnit ?? 1,
     });
     onOpenChange(false);
   };
 
   const requestedQty = form.watch("requestedQty") || 0;
+  const selectedUnitOptionId = form.watch("itemUnitOptionId");
+  const selectedUnitOption = unitOptions.find((option) => option.id === selectedUnitOptionId) || null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -281,6 +319,55 @@ export function StockRequestLineItemDialog({
 
             <FormField
               control={form.control}
+              name="itemUnitOptionId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("unitLabel")} *</FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      const selectedUnitOption = unitOptions.find((option) => option.id === value);
+                      form.setValue("uomId", selectedUnitOption?.uomId || "", {
+                        shouldValidate: true,
+                      });
+                    }}
+                    value={field.value}
+                    disabled={!selectedItemId || isSelectedItemLoading}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            !selectedItemId
+                              ? t("selectItemFirst")
+                              : isSelectedItemLoading
+                                ? t("loadingUnits")
+                                : t("selectUnit")
+                          }
+                        />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {unitOptions.length > 0 ? (
+                        unitOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.displayLabel}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="__no_units__" disabled>
+                          {t("noUnitsAvailable")}
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="requestedQty"
               render={({ field }) => (
                 <FormItem>
@@ -317,6 +404,18 @@ export function StockRequestLineItemDialog({
                 </FormItem>
               )}
             />
+
+            <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">{t("qtyPerUnitLabel")}:</span>
+                <span className="font-medium">
+                  {(selectedUnitOption?.qtyPerUnit ?? item?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 4,
+                  })}
+                </span>
+              </div>
+            </div>
 
             {/* Summary Display */}
             <div className="rounded-md border-2 border-primary/20 bg-primary/5 p-4">

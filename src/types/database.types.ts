@@ -193,6 +193,7 @@ export type Database = {
           country: string | null
           created_at: string
           currency_code: string | null
+          custom_fields: Json | null
           deleted_at: string | null
           email: string | null
           id: string
@@ -201,7 +202,6 @@ export type Database = {
           name: string
           phone: string | null
           postal_code: string | null
-          custom_fields: Json | null
           state: string | null
           tax_id: string | null
           updated_at: string
@@ -214,6 +214,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           currency_code?: string | null
+          custom_fields?: Json | null
           deleted_at?: string | null
           email?: string | null
           id?: string
@@ -222,7 +223,6 @@ export type Database = {
           name: string
           phone?: string | null
           postal_code?: string | null
-          custom_fields?: Json | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -235,6 +235,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           currency_code?: string | null
+          custom_fields?: Json | null
           deleted_at?: string | null
           email?: string | null
           id?: string
@@ -243,7 +244,6 @@ export type Database = {
           name?: string
           phone?: string | null
           postal_code?: string | null
-          custom_fields?: Json | null
           state?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -698,6 +698,7 @@ export type Database = {
           id: string
           is_voided: boolean
           item_id: string
+          item_unit_option_id: string | null
           last_pick_source_override_at: string | null
           last_pick_source_override_by: string | null
           picked_qty: number
@@ -725,6 +726,7 @@ export type Database = {
           id?: string
           is_voided?: boolean
           item_id: string
+          item_unit_option_id?: string | null
           last_pick_source_override_at?: string | null
           last_pick_source_override_by?: string | null
           picked_qty?: number
@@ -752,6 +754,7 @@ export type Database = {
           id?: string
           is_voided?: boolean
           item_id?: string
+          item_unit_option_id?: string | null
           last_pick_source_override_at?: string | null
           last_pick_source_override_by?: string | null
           picked_qty?: number
@@ -795,6 +798,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
             referencedColumns: ["id"]
           },
           {
@@ -1358,6 +1368,8 @@ export type Database = {
           grn_id: string
           id: string
           item_id: string
+          item_unit_option_id: string | null
+          load_list_item_id: string | null
           load_list_qty: number
           notes: string | null
           num_boxes: number | null
@@ -1371,6 +1383,8 @@ export type Database = {
           grn_id: string
           id?: string
           item_id: string
+          item_unit_option_id?: string | null
+          load_list_item_id?: string | null
           load_list_qty: number
           notes?: string | null
           num_boxes?: number | null
@@ -1384,6 +1398,8 @@ export type Database = {
           grn_id?: string
           id?: string
           item_id?: string
+          item_unit_option_id?: string | null
+          load_list_item_id?: string | null
           load_list_qty?: number
           notes?: string | null
           num_boxes?: number | null
@@ -1403,6 +1419,20 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grn_items_load_list_item_id_fkey"
+            columns: ["load_list_item_id"]
+            isOneToOne: false
+            referencedRelation: "load_list_items"
             referencedColumns: ["id"]
           },
         ]
@@ -2244,6 +2274,102 @@ export type Database = {
           },
         ]
       }
+      item_unit_options: {
+        Row: {
+          barcode: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          is_base: boolean
+          is_default: boolean
+          item_id: string
+          option_label: string | null
+          qty_per_unit: number
+          sort_order: number
+          uom_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          barcode: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          is_base?: boolean
+          is_default?: boolean
+          item_id: string
+          option_label?: string | null
+          qty_per_unit: number
+          sort_order?: number
+          uom_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          barcode?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          is_base?: boolean
+          is_default?: boolean
+          item_id?: string
+          option_label?: string | null
+          qty_per_unit?: number
+          sort_order?: number
+          uom_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_unit_options_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_unit_options_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_unit_options_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_unit_options_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_unit_options_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       item_warehouse: {
         Row: {
           available_stock: number | null
@@ -2378,8 +2504,6 @@ export type Database = {
           item_type: string
           purchase_price: number | null
           sales_price: number | null
-          sku: string | null
-          sku_qr_image: string | null
           track_batch: boolean | null
           track_serial: boolean | null
           uom_id: string
@@ -2410,8 +2534,6 @@ export type Database = {
           item_type: string
           purchase_price?: number | null
           sales_price?: number | null
-          sku?: string | null
-          sku_qr_image?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
           uom_id: string
@@ -2442,8 +2564,6 @@ export type Database = {
           item_type?: string
           purchase_price?: number | null
           sales_price?: number | null
-          sku?: string | null
-          sku_qr_image?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
           uom_id?: string
@@ -2679,6 +2799,7 @@ export type Database = {
           damaged_qty: number
           id: string
           item_id: string
+          item_unit_option_id: string | null
           load_list_id: string
           load_list_qty: number
           notes: string | null
@@ -2686,6 +2807,7 @@ export type Database = {
           shortage_qty: number | null
           total_price: number | null
           unit_price: number
+          uom_id: string
           updated_at: string
         }
         Insert: {
@@ -2693,6 +2815,7 @@ export type Database = {
           damaged_qty?: number
           id?: string
           item_id: string
+          item_unit_option_id?: string | null
           load_list_id: string
           load_list_qty: number
           notes?: string | null
@@ -2700,6 +2823,7 @@ export type Database = {
           shortage_qty?: number | null
           total_price?: number | null
           unit_price?: number
+          uom_id: string
           updated_at?: string
         }
         Update: {
@@ -2707,6 +2831,7 @@ export type Database = {
           damaged_qty?: number
           id?: string
           item_id?: string
+          item_unit_option_id?: string | null
           load_list_id?: string
           load_list_qty?: number
           notes?: string | null
@@ -2714,6 +2839,7 @@ export type Database = {
           shortage_qty?: number | null
           total_price?: number | null
           unit_price?: number
+          uom_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -2725,10 +2851,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "load_list_items_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "load_list_items_load_list_id_fkey"
             columns: ["load_list_id"]
             isOneToOne: false
             referencedRelation: "load_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "load_list_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
             referencedColumns: ["id"]
           },
         ]
@@ -3101,6 +3241,7 @@ export type Database = {
           dn_item_id: string
           id: string
           item_id: string
+          item_unit_option_id: string | null
           pick_list_id: string
           picked_qty: number
           short_qty: number
@@ -3116,6 +3257,7 @@ export type Database = {
           dn_item_id: string
           id?: string
           item_id: string
+          item_unit_option_id?: string | null
           pick_list_id: string
           picked_qty?: number
           short_qty?: number
@@ -3131,6 +3273,7 @@ export type Database = {
           dn_item_id?: string
           id?: string
           item_id?: string
+          item_unit_option_id?: string | null
           pick_list_id?: string
           picked_qty?: number
           short_qty?: number
@@ -3159,6 +3302,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
             referencedColumns: ["id"]
           },
           {
@@ -5427,6 +5577,7 @@ export type Database = {
           dispatch_qty: number | null
           id: string
           item_id: string
+          item_unit_option_id: string | null
           notes: string | null
           picked_qty: number | null
           received_qty: number
@@ -5442,6 +5593,7 @@ export type Database = {
           dispatch_qty?: number | null
           id?: string
           item_id: string
+          item_unit_option_id?: string | null
           notes?: string | null
           picked_qty?: number | null
           received_qty?: number
@@ -5457,6 +5609,7 @@ export type Database = {
           dispatch_qty?: number | null
           id?: string
           item_id?: string
+          item_unit_option_id?: string | null
           notes?: string | null
           picked_qty?: number | null
           received_qty?: number
@@ -5473,6 +5626,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_request_items_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
             referencedColumns: ["id"]
           },
           {
@@ -5684,12 +5844,14 @@ export type Database = {
           fulfilled_qty: number
           id: string
           item_id: string
+          item_unit_option_id: string | null
           notes: string | null
           outstanding_qty: number | null
           requested_qty: number
           sr_id: string
           total_price: number | null
           unit_price: number
+          uom_id: string
           updated_at: string
         }
         Insert: {
@@ -5697,12 +5859,14 @@ export type Database = {
           fulfilled_qty?: number
           id?: string
           item_id: string
+          item_unit_option_id?: string | null
           notes?: string | null
           outstanding_qty?: number | null
           requested_qty: number
           sr_id: string
           total_price?: number | null
           unit_price?: number
+          uom_id: string
           updated_at?: string
         }
         Update: {
@@ -5710,12 +5874,14 @@ export type Database = {
           fulfilled_qty?: number
           id?: string
           item_id?: string
+          item_unit_option_id?: string | null
           notes?: string | null
           outstanding_qty?: number | null
           requested_qty?: number
           sr_id?: string
           total_price?: number | null
           unit_price?: number
+          uom_id?: string
           updated_at?: string
         }
         Relationships: [
@@ -5727,10 +5893,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_requisition_items_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "stock_requisition_items_sr_id_fkey"
             columns: ["sr_id"]
             isOneToOne: false
             referencedRelation: "stock_requisitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_requisition_items_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
             referencedColumns: ["id"]
           },
         ]
@@ -8045,6 +8225,7 @@ export type Database = {
         Returns: string
       }
       generate_item_location_batch_sku: { Args: never; Returns: string }
+      generate_item_unit_option_barcode: { Args: never; Returns: string }
       get_current_business_unit_id: { Args: never; Returns: string }
       get_inventory_batch_reconciliation_mismatches: {
         Args: { p_company_id?: string; p_tolerance?: number }
@@ -8090,7 +8271,6 @@ export type Database = {
           purchase_price: number
           reorder_point: number
           sales_price: number
-          sku: string
           status: string
           total_count: number
           uom_code: string
@@ -8244,6 +8424,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      recalculate_stock_requisition_fulfillment_for_load_list: {
+        Args: { p_company_id: string; p_load_list_id: string }
+        Returns: undefined
+      }
       reserve_delivery_note_inventory: {
         Args: { p_company_id: string; p_dn_id: string; p_user_id: string }
         Returns: undefined
@@ -8253,6 +8437,14 @@ export type Database = {
           p_company_id: string
           p_dn_id: string
           p_line_ids: string[]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      reverse_load_list_arrival: {
+        Args: {
+          p_company_id: string
+          p_load_list_id: string
           p_user_id: string
         }
         Returns: undefined

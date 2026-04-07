@@ -338,7 +338,7 @@ export default function ItemLocationBatchReportPage() {
                         <TableCell className="min-w-[240px]">
                           <div className="font-medium">{row.itemName || row.itemCode || row.itemId}</div>
                           <div className="text-xs text-muted-foreground">
-                            {row.itemCode || t("noValue")} {row.itemSku ? `• ${row.itemSku}` : ""}
+                            {row.itemCode || t("noValue")}
                           </div>
                         </TableCell>
                         <TableCell className="min-w-[220px]">

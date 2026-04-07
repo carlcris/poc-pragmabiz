@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import type { CreateItemRequest, Item } from "@/types/item";
-import QRCode from "qrcode";
+import type { Database } from "@/types/database.types";
+import {
+  getPrimaryItemUnitOption,
+  sortItemUnitOptions,
+  transformItemUnitOptionRow,
+  type DbItemUnitOptionRow,
+} from "@/lib/items/itemUnitOptions";
 
 export interface ItemWithStock {
   id: string;
   code: string;
-  sku?: string;
+  primaryBarcode?: string;
   name: string;
   chineseName?: string;
   category: string;
@@ -39,7 +46,6 @@ type ItemStatus = ItemWithStock["status"];
 type ItemsRpcRow = {
   id: string;
   item_code: string;
-  sku: string | null;
   item_name: string;
   item_name_cn: string | null;
   category_id: string | null;
@@ -73,8 +79,6 @@ type DbItem = {
   id: string;
   company_id: string;
   item_code: string;
-  sku: string | null;
-  sku_qr_image: string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -108,8 +112,6 @@ type ItemRow = DbItem & {
 };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const SKU_REGEX = /^[0-9]{8}$/;
-const MAX_SKU_GENERATION_ATTEMPTS = 25;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
 
@@ -146,33 +148,74 @@ const asStatus = (value: string | null): ItemStatus | null => {
   return null;
 };
 
-const generateSkuCandidate = () => Math.floor(Math.random() * 100000000).toString().padStart(8, "0");
+const fetchItemUnitOptionsByItemId = async (
+  supabase: SupabaseClient<Database>,
+  companyId: string,
+  itemIds: string[]
+) => {
+  const emptyMap = new Map<string, DbItemUnitOptionRow[]>();
+  if (itemIds.length === 0) return emptyMap;
 
-const generateSkuQrDataUrl = async (sku: string) =>
-  QRCode.toDataURL(sku, {
-    errorCorrectionLevel: "M",
-    margin: 1,
-    width: 240,
-    color: {
-      dark: "#111111",
-      light: "#FFFFFF",
-    },
-  });
+  const { data, error } = await supabase
+    .from("item_unit_options")
+    .select(
+      `
+      id,
+      item_id,
+      uom_id,
+      option_label,
+      qty_per_unit,
+      barcode,
+      is_base,
+      is_default,
+      is_active,
+      sort_order,
+      units_of_measure (
+        id,
+        code,
+        name,
+        symbol
+      )
+    `
+    )
+    .eq("company_id", companyId)
+    .in("item_id", itemIds)
+    .is("deleted_at", null);
 
-const transformDbItem = (dbItem: ItemRow): Item => {
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data || []) as DbItemUnitOptionRow[];
+  const rowsByItemId = new Map<string, DbItemUnitOptionRow[]>();
+  for (const row of rows) {
+    const existingRows = rowsByItemId.get(row.item_id) || [];
+    existingRows.push(row);
+    rowsByItemId.set(row.item_id, existingRows);
+  }
+
+  return rowsByItemId;
+};
+
+const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] = []): Item => {
   const category = Array.isArray(dbItem.item_categories)
     ? dbItem.item_categories[0]
     : dbItem.item_categories;
   const uom = Array.isArray(dbItem.units_of_measure)
     ? dbItem.units_of_measure[0]
     : dbItem.units_of_measure;
+  const unitOptions = sortItemUnitOptions(
+    unitOptionRows.map((row) => transformItemUnitOptionRow(row, uom?.code || ""))
+  );
+  const primaryUnitOption = getPrimaryItemUnitOption(unitOptions);
 
   return {
     id: dbItem.id,
     companyId: dbItem.company_id,
     code: dbItem.item_code,
-    sku: dbItem.sku || undefined,
-    skuQrImage: dbItem.sku_qr_image || undefined,
+    primaryBarcode: primaryUnitOption?.barcode,
+    primaryBarcodeUnitOptionId: primaryUnitOption?.id,
+    unitOptions,
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
@@ -239,7 +282,7 @@ export async function GET(request: NextRequest) {
 
       if (search) {
         query = query.or(
-          `item_code.ilike.%${search}%,sku.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
+          `item_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
         );
       }
 
@@ -272,7 +315,15 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const items = (data || []).map((item) => transformDbItem(item as ItemRow));
+      const fetchedItems = (data || []) as ItemRow[];
+      const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(
+        supabase,
+        companyId,
+        fetchedItems.map((item) => item.id)
+      );
+      const items = fetchedItems.map((item) =>
+        transformDbItem(item, unitOptionRowsByItemId.get(item.id) || [])
+      );
       const total = count || 0;
       const totalPages = Math.ceil(total / limit);
 
@@ -351,10 +402,21 @@ export async function GET(request: NextRequest) {
     }
 
     const rows = (rpcRows || []) as ItemsRpcRow[];
+    const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(
+      supabase,
+      companyId,
+      rows.map((row) => row.id)
+    );
     const itemsWithStock: ItemWithStock[] = rows.map((row) => ({
       id: row.id,
       code: row.item_code,
-      sku: row.sku || undefined,
+      primaryBarcode: getPrimaryItemUnitOption(
+        sortItemUnitOptions(
+          (unitOptionRowsByItemId.get(row.id) || []).map((unitOptionRow) =>
+            transformItemUnitOptionRow(unitOptionRow, row.uom_code || "")
+          )
+        )
+      )?.barcode,
       name: row.item_name,
       chineseName: row.item_name_cn || undefined,
       category: row.category_name || "",
@@ -462,75 +524,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (body.sku && !SKU_REGEX.test(body.sku)) {
-      return NextResponse.json(
-        {
-          error: "Invalid SKU format",
-          details: "SKU must be an 8-digit numeric value",
-        },
-        { status: 400 }
-      );
-    }
-
-    const resolveUniqueSku = async (): Promise<string | null> => {
-      if (body.sku) {
-        const { data: existingSku } = await supabase
-          .from("items")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("sku", body.sku)
-          .is("deleted_at", null)
-          .maybeSingle();
-
-        if (existingSku) throw new Error(`duplicate:${body.sku}`);
-        return body.sku;
-      }
-
-      for (let attempt = 0; attempt < MAX_SKU_GENERATION_ATTEMPTS; attempt++) {
-        const candidate = generateSkuCandidate();
-        const { data: existingSku } = await supabase
-          .from("items")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("sku", candidate)
-          .is("deleted_at", null)
-          .maybeSingle();
-
-        if (!existingSku) return candidate;
-      }
-
-      return null;
-    };
-
-    let resolvedSku: string | null;
-    try {
-      resolvedSku = await resolveUniqueSku();
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith("duplicate:")) {
-        const duplicateValue = error.message.replace("duplicate:", "");
-        return NextResponse.json(
-          {
-            error: "SKU already exists",
-            details: `SKU "${duplicateValue}" is already in use`,
-          },
-          { status: 409 }
-        );
-      }
-      throw error;
-    }
-
-    if (!resolvedSku) {
-      return NextResponse.json(
-        {
-          error: "Failed to generate SKU",
-          details: "Unable to generate a unique SKU. Please try again.",
-        },
-        { status: 500 }
-      );
-    }
-
-    const resolvedSkuQrImage = await generateSkuQrDataUrl(resolvedSku);
-
     const { data: uomData } = await supabase
       .from("units_of_measure")
       .select("id")
@@ -586,70 +579,63 @@ export async function POST(request: NextRequest) {
 
     let newItem: ItemRow | null = null;
     let insertError: { message: string; code?: string } | null = null;
-    let skuForInsert = resolvedSku;
-    let skuQrImageForInsert = resolvedSkuQrImage;
-    const maxInsertAttempts = body.sku ? 1 : MAX_SKU_GENERATION_ATTEMPTS;
-
-    for (let attempt = 0; attempt < maxInsertAttempts; attempt++) {
-      const { data, error } = await supabase
-        .from("items")
-        .insert({
-          ...insertPayloadBase,
-          sku: skuForInsert,
-          sku_qr_image: skuQrImageForInsert,
-        })
-        .select(
-          `
-          *,
-          item_categories (
-            id,
-            name,
-            code
-          ),
-          units_of_measure (
-            id,
-            code,
-            name
-          )
+    const { data, error } = await supabase
+      .from("items")
+      .insert(insertPayloadBase)
+      .select(
         `
+        *,
+        item_categories (
+          id,
+          name,
+          code
+        ),
+        units_of_measure (
+          id,
+          code,
+          name
         )
-        .single();
+      `
+      )
+      .single();
 
-      if (!error) {
-        newItem = data as ItemRow;
-        insertError = null;
-        break;
-      }
-
-      insertError = error;
-      const isSkuConflict =
-        error.code === "23505" && error.message.includes("idx_items_company_sku_unique");
-      if (!isSkuConflict || body.sku) break;
-
-      skuForInsert = generateSkuCandidate();
-      skuQrImageForInsert = await generateSkuQrDataUrl(skuForInsert);
-    }
+    newItem = data as ItemRow | null;
+    insertError = error;
 
     if (insertError) {
-      const isSkuConflict =
-        insertError.code === "23505" &&
-        insertError.message.includes("idx_items_company_sku_unique");
-      if (isSkuConflict) {
-        return NextResponse.json(
-          {
-            error: "SKU already exists",
-            details: "Generated SKU collided. Please retry.",
-          },
-          { status: 409 }
-        );
-      }
       return NextResponse.json(
         { error: "Failed to create item", details: insertError.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ data: transformDbItem(newItem as ItemRow) }, { status: 201 });
+    const { error: unitOptionInsertError } = await supabase.from("item_unit_options").insert({
+      company_id: companyId,
+      item_id: (newItem as ItemRow).id,
+      uom_id: uomData.id,
+      qty_per_unit: 1,
+      is_base: true,
+      is_default: true,
+      is_active: true,
+      sort_order: 0,
+      created_by: userId,
+      updated_by: userId,
+    });
+
+    if (unitOptionInsertError) {
+      await supabase.from("items").delete().eq("id", (newItem as ItemRow).id).eq("company_id", companyId);
+      return NextResponse.json(
+        { error: "Failed to create item base barcode", details: unitOptionInsertError.message },
+        { status: 500 }
+      );
+    }
+
+    const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(supabase, companyId, [(newItem as ItemRow).id]);
+
+    return NextResponse.json(
+      { data: transformDbItem(newItem as ItemRow, unitOptionRowsByItemId.get((newItem as ItemRow).id) || []) },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

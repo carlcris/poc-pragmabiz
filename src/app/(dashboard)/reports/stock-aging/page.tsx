@@ -59,7 +59,6 @@ export default function StockAgingReportPage() {
       itemId: string;
       itemName: string;
       itemCode: string | null;
-      itemSku: string | null;
       category: string;
       rows: StockAgingReportRow[];
       subtotalQtyOnHand: number;
@@ -84,7 +83,6 @@ export default function StockAgingReportPage() {
       itemId: row.itemId,
       itemName: row.itemName || row.itemCode || row.itemId,
       itemCode: row.itemCode,
-      itemSku: row.itemSku,
       category: row.category,
       rows: [row],
       subtotalQtyOnHand: row.qtyOnHand,
@@ -450,7 +448,6 @@ export default function StockAgingReportPage() {
                         <div className="font-medium">{group.itemName}</div>
                         <div className="text-xs text-muted-foreground">
                           {group.itemCode || t("noValue")}
-                          {group.itemSku ? ` • ${group.itemSku}` : ""}
                           {group.category ? ` • ${group.category}` : ""}
                         </div>
                       </TableCell>

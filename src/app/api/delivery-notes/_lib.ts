@@ -52,6 +52,7 @@ type DeliveryNoteItemRow = {
   requesting_warehouse_id: string;
   fulfilling_warehouse_id: string;
   item_id: string;
+  item_unit_option_id?: string | null;
   uom_id: string;
   allocated_qty: number | string;
   picked_qty: number | string;
@@ -69,6 +70,7 @@ type DeliveryNoteWithRelations = {
       items?: unknown;
       units_of_measure?: unknown;
       stock_requests?: unknown;
+      stock_request_items?: unknown;
     }
   > | null;
   [key: string]: unknown;
@@ -106,8 +108,46 @@ export const fetchDeliveryNote = async (
       delivery_note_items(
         *,
         items!delivery_note_items_item_id_fkey(item_name, item_code),
-        units_of_measure!delivery_note_items_uom_id_fkey(symbol, name),
-        stock_requests!delivery_note_items_sr_id_fkey(request_code)
+        units_of_measure!delivery_note_items_uom_id_fkey(code, symbol, name),
+        item_unit_options!delivery_note_items_item_unit_option_id_fkey(
+          id,
+          item_id,
+          uom_id,
+          option_label,
+          qty_per_unit,
+          barcode,
+          is_base,
+          is_default,
+          is_active,
+          sort_order,
+          units_of_measure(
+            id,
+            code,
+            name,
+            symbol
+          )
+        ),
+        stock_requests!delivery_note_items_sr_id_fkey(request_code),
+        stock_request_items!delivery_note_items_sr_item_id_fkey(
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(
+              id,
+              code,
+              name,
+              symbol
+            )
+          )
+        )
       ),
       pick_lists(
         id,

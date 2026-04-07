@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { RESOURCES } from "@/constants/resources";
 import {
   ensurePickListActorAuthorized,
@@ -34,6 +35,70 @@ const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
   const parsed = typeof value === "number" ? value : parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatQty = (value: number) =>
+  Number.isInteger(value) ? String(value) : value.toFixed(4).replace(/\.?0+$/, "");
+
+const getPickSourceAvailability = async ({
+  supabase,
+  companyId,
+  itemId,
+  warehouseId,
+  locationId,
+  batchCode,
+  batchReceivedAt,
+}: {
+  supabase: SupabaseClient;
+  companyId: string;
+  itemId: string;
+  warehouseId: string;
+  locationId: string;
+  batchCode: string;
+  batchReceivedAt: string;
+}) => {
+  const { data: itemBatchRow, error: itemBatchError } = await supabase
+    .from("item_batch")
+    .select("id, qty_on_hand")
+    .eq("company_id", companyId)
+    .eq("item_id", itemId)
+    .eq("warehouse_id", warehouseId)
+    .eq("batch_code", batchCode)
+    .eq("received_at", batchReceivedAt)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (itemBatchError) {
+    throw new Error(itemBatchError.message);
+  }
+
+  if (!itemBatchRow) {
+    return null;
+  }
+
+  const { data: locationBatchRow, error: locationBatchError } = await supabase
+    .from("item_location_batch")
+    .select("qty_on_hand")
+    .eq("company_id", companyId)
+    .eq("item_id", itemId)
+    .eq("warehouse_id", warehouseId)
+    .eq("location_id", locationId)
+    .eq("item_batch_id", itemBatchRow.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (locationBatchError) {
+    throw new Error(locationBatchError.message);
+  }
+
+  if (!locationBatchRow) {
+    return null;
+  }
+
+  return {
+    locationBatchQty: toNumber(locationBatchRow.qty_on_hand as number | string),
+    itemBatchQty: toNumber(itemBatchRow.qty_on_hand as number | string),
+  };
 };
 
 // PATCH /api/pick-lists/[id]/items
@@ -172,17 +237,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         id: string;
         item_id: string;
         fulfilling_warehouse_id: string;
+        item_unit_option_id?: string | null;
         allocated_qty: number | string;
         dispatched_qty: number | string;
         suggested_pick_location_id?: string | null;
         suggested_pick_batch_code?: string | null;
         suggested_pick_batch_received_at?: string | null;
+        item_unit_options?:
+          | {
+            qty_per_unit: number | string | null;
+          }
+          | Array<{
+            qty_per_unit: number | string | null;
+          }>
+          | null;
       };
 
       const { data: dnLineRows, error: dnLineError } = await auth.supabase
         .from("delivery_note_items")
         .select(
-          "id, item_id, fulfilling_warehouse_id, allocated_qty, dispatched_qty, suggested_pick_location_id, suggested_pick_batch_code, suggested_pick_batch_received_at"
+          "id, item_id, fulfilling_warehouse_id, item_unit_option_id, allocated_qty, dispatched_qty, suggested_pick_location_id, suggested_pick_batch_code, suggested_pick_batch_received_at, item_unit_options!delivery_note_items_item_unit_option_id_fkey(qty_per_unit)"
         )
         .eq("company_id", auth.companyId)
         .eq("dn_id", header.dn_id);
@@ -263,6 +337,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
         const allocatedQty = toNumber(pickListItem.allocated_qty);
         const currentLinePicked = lineTotals.get(row.deliveryNoteItemId) || 0;
+        const dnLineUnitOption = Array.isArray(dnLine.item_unit_options)
+          ? dnLine.item_unit_options[0]
+          : dnLine.item_unit_options;
+        const qtyPerUnit = Math.max(1, toNumber(dnLineUnitOption?.qty_per_unit));
 
         if (row.pickRowId) {
           const existingRow = pickRowsById.get(row.pickRowId);
@@ -289,6 +367,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           if (nextLinePicked > allocatedQty) {
             return NextResponse.json(
               { error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line` },
+              { status: 400 }
+            );
+          }
+
+          const sourceAvailability = await getPickSourceAvailability({
+            supabase: auth.supabase,
+            companyId: auth.companyId,
+            itemId: dnLine.item_id,
+            warehouseId: dnLine.fulfilling_warehouse_id,
+            locationId: existingRow.picked_location_id,
+            batchCode: existingRow.picked_batch_code,
+            batchReceivedAt: existingRow.picked_batch_received_at,
+          });
+
+          if (!sourceAvailability) {
+            return NextResponse.json(
+              { error: `Picked source batch no longer exists for line ${row.deliveryNoteItemId}` },
+              { status: 400 }
+            );
+          }
+
+          const requiredBaseQty = pickQty * qtyPerUnit;
+          const maxBaseQty = Math.min(
+            sourceAvailability.locationBatchQty,
+            sourceAvailability.itemBatchQty
+          );
+
+          if (requiredBaseQty > maxBaseQty) {
+            return NextResponse.json(
+              {
+                error: `Picked source batch only has ${formatQty(maxBaseQty)} base units available, but ${formatQty(requiredBaseQty)} are required for this pick quantity`,
+              },
               { status: 400 }
             );
           }
@@ -407,6 +517,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             );
           }
 
+          const sourceAvailability = await getPickSourceAvailability({
+            supabase: auth.supabase,
+            companyId: auth.companyId,
+            itemId: dnLine.item_id,
+            warehouseId: dnLine.fulfilling_warehouse_id,
+            locationId: resolvedPickedLocationId,
+            batchCode: resolvedPickedBatchCode,
+            batchReceivedAt: resolvedPickedBatchReceivedAt,
+          });
+
+          if (!sourceAvailability) {
+            return NextResponse.json(
+              { error: `Selected source batch was not found for line ${row.deliveryNoteItemId}` },
+              { status: 400 }
+            );
+          }
+
+          const requiredBaseQty = nextPickedQty * qtyPerUnit;
+          const maxBaseQty = Math.min(
+            sourceAvailability.locationBatchQty,
+            sourceAvailability.itemBatchQty
+          );
+
+          if (requiredBaseQty > maxBaseQty) {
+            return NextResponse.json(
+              {
+                error: `Selected source batch only has ${formatQty(maxBaseQty)} base units available, but ${formatQty(requiredBaseQty)} are required for this pick quantity`,
+              },
+              { status: 400 }
+            );
+          }
+
           const { error: mergeUpdateError } = await auth.supabase
             .from("delivery_note_item_picks")
             .update({
@@ -438,6 +580,38 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           if (nextLinePicked > allocatedQty) {
             return NextResponse.json(
               { error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line` },
+              { status: 400 }
+            );
+          }
+
+          const sourceAvailability = await getPickSourceAvailability({
+            supabase: auth.supabase,
+            companyId: auth.companyId,
+            itemId: dnLine.item_id,
+            warehouseId: dnLine.fulfilling_warehouse_id,
+            locationId: resolvedPickedLocationId,
+            batchCode: resolvedPickedBatchCode,
+            batchReceivedAt: resolvedPickedBatchReceivedAt,
+          });
+
+          if (!sourceAvailability) {
+            return NextResponse.json(
+              { error: `Selected source batch was not found for line ${row.deliveryNoteItemId}` },
+              { status: 400 }
+            );
+          }
+
+          const requiredBaseQty = pickQty * qtyPerUnit;
+          const maxBaseQty = Math.min(
+            sourceAvailability.locationBatchQty,
+            sourceAvailability.itemBatchQty
+          );
+
+          if (requiredBaseQty > maxBaseQty) {
+            return NextResponse.json(
+              {
+                error: `Selected source batch only has ${formatQty(maxBaseQty)} base units available, but ${formatQty(requiredBaseQty)} are required for this pick quantity`,
+              },
               { status: 400 }
             );
           }

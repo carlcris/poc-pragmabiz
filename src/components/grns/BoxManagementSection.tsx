@@ -324,7 +324,12 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
               />
               <p className="mt-1 text-sm text-muted-foreground">
                 {t("qtyPerBox", {
-                  count: selectedItem ? (selectedItem.receivedQty / numBoxes).toFixed(2) : 0,
+                  count: selectedItem
+                    ? (
+                        ((selectedItem.receivedQty || 0) * (selectedItem.itemUnitOption?.qtyPerUnit ?? 1)) /
+                        numBoxes
+                      ).toFixed(2)
+                    : 0,
                 })}
               </p>
             </div>

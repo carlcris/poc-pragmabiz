@@ -206,6 +206,7 @@ export function StockRequestViewDialog({
                     <th className="p-3 text-right">{t("quantity")}</th>
                     <th className="p-3 text-right">{t("deliveredQty")}</th>
                     <th className="p-3 text-left">{t("unit")}</th>
+                    <th className="p-3 text-right">{t("qtyPerUnit")}</th>
                     <th className="p-3 text-left">{t("notes")}</th>
                   </tr>
                 </thead>
@@ -224,8 +225,14 @@ export function StockRequestViewDialog({
                       </td>
                       <td className="p-3">
                         <span className="text-muted-foreground">
-                          {item.units_of_measure?.code || t("noValue")}
+                          {item.item_unit_option?.displayLabel || item.units_of_measure?.code || t("noValue")}
                         </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        {(item.item_unit_option?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 4,
+                        })}
                       </td>
                       <td className="p-3">
                         <span className="text-muted-foreground">{item.notes || t("noValue")}</span>
@@ -234,7 +241,7 @@ export function StockRequestViewDialog({
                   ))}
                   {(!request.stock_request_items || request.stock_request_items.length === 0) && (
                     <tr className="border-t">
-                      <td colSpan={5} className="p-3 text-center text-muted-foreground">
+                      <td colSpan={6} className="p-3 text-center text-muted-foreground">
                         {t("noItems")}
                       </td>
                     </tr>

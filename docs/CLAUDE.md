@@ -178,6 +178,49 @@ Each migration file should include:
 
 **CRITICAL: Always refer to the database schema in migration files when creating APIs that involve database calls.**
 
+### Schema Drift Handling Rule
+
+**CRITICAL: If code expects schema that is not present in the current database, stop and report the mismatch. Do not hide it with temporary fallbacks unless explicitly requested.**
+
+When unapplied migrations or schema drift are discovered:
+
+1. State what the code expects.
+2. State what the current database actually has.
+3. State the exact mismatch causing the failure.
+4. State the required migration or environment action.
+
+Do not add temporary compatibility reads, writes, or query fallbacks just to make the current environment work unless the user explicitly asks for that behavior.
+
+**CRITICAL: Shared hooks should not own UI toasts by default.**
+
+For hooks in `src/hooks/`:
+1. Keep hook responsibilities focused on API calls, cache invalidation, and typed state/error propagation.
+2. Prefer pages/components to own presentation side effects such as toast messages, banners, dialogs, and inline form errors.
+3. If a shared hook must support custom UI behavior, prefer caller-provided callbacks or `mutateAsync` handling over hardcoded toast calls inside the hook.
+4. Avoid hook-level toasts in reusable hooks because they create duplicate notifications and reduce screen-level control.
+
+### Production-Grade Implementation Rule
+
+**CRITICAL: Do not ship temporary fixes as the default implementation.**
+
+When implementing changes:
+
+1. Default to production-grade solutions instead of symptom-level patches.
+2. Do not change code only to make the current issue appear resolved; fix the underlying contract, schema, data flow, or behavior correctly.
+3. Do not add short-term workaround code that is knowingly meant to be cleaned up later unless the user explicitly asks for a temporary measure.
+4. If the correct fix requires a migration, contract update, or broader implementation step, state that clearly and implement the proper path rather than masking it with a shortcut.
+
+### API Error Exposure Rule
+
+**CRITICAL: Do not return raw database, Supabase, or internal exception messages directly to API clients.**
+
+For API routes and server actions:
+
+1. Log the real internal error server-side with enough detail for debugging.
+2. Return a user-friendly, non-sensitive error message to the client.
+3. Do not expose raw backend error strings that may reveal schema details, constraint names, SQL behavior, internal service structure, or other implementation details.
+4. If the client needs more actionable feedback, translate the failure into a safe domain-level message rather than forwarding the raw backend text.
+
 ### Why This Rule Exists
 - Prevents errors from incorrect column names, table names, or relationships
 - Ensures type safety and correct data handling

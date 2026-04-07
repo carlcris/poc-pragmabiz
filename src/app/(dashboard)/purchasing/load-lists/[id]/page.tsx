@@ -54,6 +54,7 @@ export default function LoadListDetailPage() {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [inTransitDialogOpen, setInTransitDialogOpen] = useState(false);
   const [arrivedDialogOpen, setArrivedDialogOpen] = useState(false);
+  const [reverseArrivalDialogOpen, setReverseArrivalDialogOpen] = useState(false);
   const [receivedDialogOpen, setReceivedDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
@@ -228,10 +229,23 @@ export default function LoadListDetailPage() {
             {ll.status === "in_transit" && (
               <Button onClick={() => setArrivedDialogOpen(true)}>{t("markArrived")}</Button>
             )}
+            {ll.status === "arrived" && (
+              <Button
+                variant="outline"
+                onClick={() => setReverseArrivalDialogOpen(true)}
+                disabled={updateStatusMutation.isPending}
+              >
+                {t("reverseToInTransit")}
+              </Button>
+            )}
             {ll.status === "pending_approval" && (
               <Button onClick={() => setReceivedDialogOpen(true)}>{t("markReceived")}</Button>
             )}
-            {ll.status !== "cancelled" && ll.status !== "received" && (
+            {ll.status !== "cancelled" &&
+              ll.status !== "received" &&
+              ll.status !== "arrived" &&
+              ll.status !== "receiving" &&
+              ll.status !== "pending_approval" && (
               <Button
                 variant="destructive"
                 onClick={() => setCancelDialogOpen(true)}
@@ -392,7 +406,9 @@ export default function LoadListDetailPage() {
                     <TableRow>
                       <TableHead>{t("itemCode")}</TableHead>
                       <TableHead>{t("itemName")}</TableHead>
+                      <TableHead>{t("unitWithQtyPerUnitLabel")}</TableHead>
                       <TableHead className="text-right">{t("loadListQty")}</TableHead>
+                      <TableHead className="text-right">{t("totalQtyLabel")}</TableHead>
                       <TableHead className="text-right">{t("receivedQty")}</TableHead>
                       <TableHead className="text-right">{t("damagedQty")}</TableHead>
                       <TableHead className="text-right">{t("shortageQty")}</TableHead>
@@ -406,7 +422,25 @@ export default function LoadListDetailPage() {
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.item?.code}</TableCell>
                           <TableCell>{item.item?.name}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {item.itemUnitOption?.displayLabel || item.uomCode || t("noValue")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {t("qtyPerUnitInlineLabel", {
+                                qty: (item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                                  maximumFractionDigits: 4,
+                                }),
+                              })}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-right">{item.loadListQty}</TableCell>
+                          <TableCell className="text-right">
+                            {(item.loadListQty * (item.itemUnitOption?.qtyPerUnit ?? 1)).toLocaleString(
+                              locale,
+                              { maximumFractionDigits: 4 }
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">
                             <span
                               className={item.receivedQty > 0 ? "text-green-600 font-medium" : ""}
@@ -430,13 +464,15 @@ export default function LoadListDetailPage() {
                             {formatCurrency(item.unitPrice)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(item.totalPrice)}
+                            {formatCurrency(
+                              item.loadListQty * (item.itemUnitOption?.qtyPerUnit ?? 1) * item.unitPrice
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground">
+                        <TableCell colSpan={10} className="text-center text-muted-foreground">
                           {t("noLineItems")}
                         </TableCell>
                       </TableRow>
@@ -528,6 +564,27 @@ export default function LoadListDetailPage() {
               disabled={updateStatusMutation.isPending}
             >
               {updateStatusMutation.isPending ? t("updating") : t("markArrived")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reverse Arrival Dialog */}
+      <AlertDialog open={reverseArrivalDialogOpen} onOpenChange={setReverseArrivalDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("reverseArrivalTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("reverseArrivalDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancelBack")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleStatusChange("in_transit", setReverseArrivalDialogOpen)}
+              disabled={updateStatusMutation.isPending}
+            >
+              {updateStatusMutation.isPending ? t("updating") : t("confirmReverseArrival")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -124,8 +124,15 @@ export function StockRequestFormDialog({
           itemId: item.item_id,
           itemCode: item.items?.item_code || "",
           itemName: item.items?.item_name || "",
+          itemUnitOptionId: item.item_unit_option_id || item.item_unit_option?.id || "",
           uomId: item.uom_id,
-          uomLabel: item.units_of_measure?.code || item.units_of_measure?.symbol || "",
+          uomLabel:
+            item.item_unit_option?.displayLabel ||
+            item.units_of_measure?.code ||
+            item.units_of_measure?.symbol ||
+            "",
+          unitBarcode: item.item_unit_option?.barcode,
+          qtyPerUnit: item.item_unit_option?.qtyPerUnit ?? 1,
           requestedQty: item.requested_qty,
           notes: item.notes || "",
         })) || [];
@@ -353,6 +360,7 @@ export function StockRequestFormDialog({
                               <TableHead className="py-2 text-xs">{t("item")}</TableHead>
                               <TableHead className="py-2 text-right text-xs">{t("qty")}</TableHead>
                               <TableHead className="py-2 text-xs">{t("unit")}</TableHead>
+                              <TableHead className="py-2 text-right text-xs">{t("qtyPerUnit")}</TableHead>
                               <TableHead className="py-2 text-xs">{t("notes")}</TableHead>
                               <TableHead className="w-[80px] py-2 text-xs">{t("actions")}</TableHead>
                             </TableRow>
@@ -368,6 +376,12 @@ export function StockRequestFormDialog({
                                 </TableCell>
                                 <TableCell className="py-2 text-right text-sm">{item.requestedQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                                 <TableCell className="py-2 text-sm">{item.uomLabel || t("noValue")}</TableCell>
+                                <TableCell className="py-2 text-right text-sm">
+                                  {(item.qtyPerUnit ?? 1).toLocaleString(locale, {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 4,
+                                  })}
+                                </TableCell>
                                 <TableCell className="py-2">
                                   <div className="max-w-[150px] truncate text-sm">{item.notes || t("noValue")}</div>
                                 </TableCell>

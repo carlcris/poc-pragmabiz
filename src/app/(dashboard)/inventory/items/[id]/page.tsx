@@ -20,6 +20,7 @@ import {
   Layers,
 } from "lucide-react";
 import { useItem } from "@/hooks/useItems";
+import { useCanEdit } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
+import { ItemBarcodeImage } from "@/components/items/barcode/ItemBarcodeImage";
+import { ItemUnitOptionsCard } from "@/components/items/unit-options/ItemUnitOptionsCard";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard } from "@/components/permissions/PermissionGuard";
@@ -42,6 +45,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
   const unwrappedParams = React.use(params);
   const itemId = unwrappedParams.id;
   const [activeTab, setActiveTab] = useState("overview");
+  const canEditItems = useCanEdit(RESOURCES.ITEMS);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -86,6 +90,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
             <TabsList>
               <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
               <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+              <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
               <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
             </TabsList>
 
@@ -165,6 +170,24 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               <PricesTab itemId={itemId} />
             </TabsContent>
 
+            <TabsContent value="unitOptions" className={tabPanelClassName}>
+              <Card>
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <Skeleton className="h-6 w-40" />
+                    <Skeleton className="mt-2 h-4 w-72" />
+                  </div>
+                  <Skeleton className="h-10 w-40" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  {[1, 2].map((row) => (
+                    <Skeleton key={row} className="h-16 w-full" />
+                  ))}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="locations" className={tabPanelClassName}>
               <LocationsTab itemId={itemId} />
             </TabsContent>
@@ -221,6 +244,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
         <TabsList>
           <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
           <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+          <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
           <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
         </TabsList>
 
@@ -343,32 +367,32 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <QrCode className="h-4 w-4" />
-                    {t("qrCodeLabel")}
+                    {t("barcodeLabel")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {item.skuQrImage ? (
+                  {item.primaryBarcode ? (
                     <div className="space-y-3">
                       <div className="rounded-lg border bg-white p-4">
-                        <div className="relative mx-auto h-[200px] w-[200px]">
-                          <Image
-                            src={item.skuQrImage}
-                            alt={`SKU QR ${item.sku || item.code}`}
-                            fill
-                            className="object-contain"
-                            unoptimized
+                        <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
+                          <ItemBarcodeImage
+                            value={item.primaryBarcode}
+                            alt={`Barcode ${item.primaryBarcode}`}
                           />
                         </div>
                       </div>
+                      <p className="text-center text-sm text-muted-foreground">
+                        {t("primaryBarcodeDescription")}
+                      </p>
                       <p className="text-center text-sm font-mono font-medium bg-muted px-3 py-2 rounded">
-                        {item.sku || item.code}
+                        {item.primaryBarcode}
                       </p>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30" style={{ height: '240px' }}>
                       <div className="text-center text-muted-foreground">
                         <QrCode className="mx-auto mb-2 h-8 w-8" />
-                        <p className="text-sm">{t("noQrCode")}</p>
+                        <p className="text-sm">{t("noBarcode")}</p>
                       </div>
                     </div>
                   )}
@@ -438,6 +462,11 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
         {/* Prices Tab */}
         <TabsContent value="prices" className={tabPanelClassName}>
           <PricesTab itemId={itemId} />
+        </TabsContent>
+
+        {/* Unit Options Tab */}
+        <TabsContent value="unitOptions" className={tabPanelClassName}>
+          <ItemUnitOptionsCard itemId={itemId} baseUomCode={item.uom} editable={canEditItems} />
         </TabsContent>
 
         {/* Locations Tab */}

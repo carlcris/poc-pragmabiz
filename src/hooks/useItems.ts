@@ -5,6 +5,7 @@ import type { ItemWithStock } from "@/app/api/items/route";
 
 const ITEMS_QUERY_KEY = "items";
 const ITEMS_STATS_QUERY_KEY = "items-stats";
+const ITEM_UNIT_OPTIONS_QUERY_KEY = "item-unit-options";
 const LOOKUP_MAX_LIMIT = 50;
 
 const invalidateInventoryQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
@@ -182,6 +183,7 @@ export function useUpdateItem() {
     onSuccess: (_, variables) => {
       invalidateInventoryQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_UNIT_OPTIONS_QUERY_KEY, variables.id] });
     },
   });
 }

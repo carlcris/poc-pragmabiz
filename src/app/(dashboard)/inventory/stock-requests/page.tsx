@@ -355,6 +355,7 @@ export default function StockRequestsPage() {
         items: payload.lineItems.map((item) => ({
           item_id: item.itemId,
           requested_qty: item.requestedQty,
+          item_unit_option_id: item.itemUnitOptionId,
           uom_id: item.uomId,
           notes: item.notes,
         })),

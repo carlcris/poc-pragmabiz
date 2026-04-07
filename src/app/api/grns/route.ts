@@ -299,18 +299,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const requestedLoadListItemIds = Array.from(
+      new Set(
+        (body.items as Array<{ loadListItemId?: string }>).map((item) => item.loadListItemId).filter(Boolean)
+      )
+    ) as string[];
+
+    if (requestedLoadListItemIds.length !== body.items.length) {
+      return NextResponse.json(
+        { error: "Each GRN item must reference a load list item" },
+        { status: 400 }
+      );
+    }
+
+    const { data: loadListItems, error: loadListItemsError } = await supabase
+      .from("load_list_items")
+      .select("id, item_id, item_unit_option_id, load_list_qty")
+      .eq("load_list_id", body.loadListId)
+      .in("id", requestedLoadListItemIds)
+      .is("deleted_at", null);
+
+    if (loadListItemsError) {
+      console.error("Error fetching load list items for GRN:", loadListItemsError);
+      return NextResponse.json({ error: "Failed to validate GRN items" }, { status: 500 });
+    }
+
+    if (!loadListItems || loadListItems.length !== requestedLoadListItemIds.length) {
+      return NextResponse.json(
+        { error: "One or more load list items are invalid for this GRN" },
+        { status: 400 }
+      );
+    }
+
+    const loadListItemsById = new Map(loadListItems.map((item) => [item.id, item]));
+
     // Create GRN items from load list items
     if (body.items && body.items.length > 0) {
-      const itemsToInsert = body.items.map((item: { [key: string]: unknown }) => ({
-        grn_id: grn.id,
-        item_id: item.itemId as string,
-        load_list_qty: item.loadListQty as number,
-        received_qty: (item.receivedQty as number | undefined) || 0,
-        damaged_qty: (item.damagedQty as number | undefined) || 0,
-        num_boxes: (item.numBoxes as number | undefined) || 0,
-        barcodes_printed: false,
-        notes: item.notes as string | undefined,
-      }));
+      const itemsToInsert = body.items.map((item: { [key: string]: unknown }) => {
+        const loadListItemId = item.loadListItemId as string;
+        const sourceLine = loadListItemsById.get(loadListItemId);
+
+        if (!sourceLine) {
+          throw new Error(`Load list item ${loadListItemId} not found`);
+        }
+
+        return {
+          grn_id: grn.id,
+          load_list_item_id: sourceLine.id,
+          item_id: sourceLine.item_id,
+          item_unit_option_id: sourceLine.item_unit_option_id,
+          load_list_qty: sourceLine.load_list_qty,
+          received_qty: (item.receivedQty as number | undefined) || 0,
+          damaged_qty: (item.damagedQty as number | undefined) || 0,
+          num_boxes: (item.numBoxes as number | undefined) || 0,
+          barcodes_printed: false,
+          notes: item.notes as string | undefined,
+        };
+      });
 
       const { error: itemsError } = await supabase.from("grn_items").insert(itemsToInsert);
 

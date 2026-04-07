@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
         id,
         stock_request_id,
         item_id,
+        item_unit_option_id,
         uom_id,
         requested_qty,
         received_qty,
@@ -253,12 +254,14 @@ export async function POST(request: NextRequest) {
 
     const dnItems = body.items.map((line) => {
       const sr = requestMap.get(line.srId)!;
+      const srItem = requestItemMap.get(line.srItemId)!;
       return {
         company_id: auth.companyId,
         dn_id: dn.id,
         sr_id: line.srId,
         sr_item_id: line.srItemId,
         item_id: line.itemId,
+        item_unit_option_id: srItem.item_unit_option_id || null,
         uom_id: line.uomId,
         requesting_warehouse_id: sr.requesting_warehouse_id,
         fulfilling_warehouse_id: sr.fulfilling_warehouse_id,

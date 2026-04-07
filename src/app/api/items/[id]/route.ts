@@ -1,16 +1,21 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Item, UpdateItemRequest } from "@/types/item";
+import type { Database } from "@/types/database.types";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import QRCode from "qrcode";
+import {
+  getPrimaryItemUnitOption,
+  sortItemUnitOptions,
+  transformItemUnitOptionRow,
+  type DbItemUnitOptionRow,
+} from "@/lib/items/itemUnitOptions";
 
 type DbItem = {
   id: string;
   company_id: string;
   item_code: string;
-  sku: string | null;
-  sku_qr_image: string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -63,25 +68,58 @@ const ITEM_DETAIL_SELECT = `
   )
 `;
 
-const generateSkuQrDataUrl = async (sku: string) =>
-  QRCode.toDataURL(sku, {
-    errorCorrectionLevel: "M",
-    margin: 1,
-    width: 240,
-    color: {
-      dark: "#111111",
-      light: "#FFFFFF",
-    },
-  });
+const fetchItemUnitOptions = async (
+  supabase: SupabaseClient<Database>,
+  companyId: string,
+  itemId: string
+) => {
+  const { data, error } = await supabase
+    .from("item_unit_options")
+    .select(
+      `
+      id,
+      item_id,
+      uom_id,
+      option_label,
+      qty_per_unit,
+      barcode,
+      is_base,
+      is_default,
+      is_active,
+      sort_order,
+      units_of_measure (
+        id,
+        code,
+        name,
+        symbol
+      )
+    `
+    )
+    .eq("company_id", companyId)
+    .eq("item_id", itemId)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data || []) as DbItemUnitOptionRow[];
+};
 
 // Transform database item to frontend Item type
-function transformDbItem(dbItem: ItemRow): Item {
+function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] = []): Item {
+  const unitOptions = sortItemUnitOptions(
+    unitOptionRows.map((row) => transformItemUnitOptionRow(row, dbItem.unit_of_measure?.code || ""))
+  );
+  const primaryUnitOption = getPrimaryItemUnitOption(unitOptions);
+
   return {
     id: dbItem.id,
     companyId: dbItem.company_id,
     code: dbItem.item_code,
-    sku: dbItem.sku || undefined,
-    skuQrImage: dbItem.sku_qr_image || undefined,
+    primaryBarcode: primaryUnitOption?.barcode,
+    primaryBarcodeUnitOptionId: primaryUnitOption?.id,
+    unitOptions,
     name: dbItem.item_name,
     chineseName: dbItem.item_name_cn || undefined,
     description: dbItem.description || "",
@@ -140,23 +178,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!fetchedItem) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 });
     }
-    let data = fetchedItem;
-
-    // Backfill QR image for legacy records that have SKU but no stored QR image.
-    if (data.sku && !data.sku_qr_image) {
-      const qrDataUrl = await generateSkuQrDataUrl(data.sku);
-      const { data: patchedItem } = await supabase
-        .from("items")
-        .update({ sku_qr_image: qrDataUrl })
-        .eq("id", id)
-        .eq("company_id", data.company_id)
-        .select(ITEM_DETAIL_SELECT)
-        .maybeSingle();
-
-      if (patchedItem) {
-        data = patchedItem;
-      }
-    }
+    const data = fetchedItem;
+    const unitOptionRows = await fetchItemUnitOptions(supabase, data.company_id, id);
 
     let onHand = 0;
     let allocated = 0;
@@ -205,7 +228,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Transform and return
     const item = {
-      ...transformDbItem(data as ItemRow),
+      ...transformDbItem(data as ItemRow, unitOptionRows),
       onHand,
       allocated,
       available,
@@ -279,6 +302,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.isActive !== undefined) updateData.is_active = body.isActive;
 
     // Get UoM ID if provided
+    let resolvedUomId: string | null = null;
     if (body.uom) {
       const { data: uomData } = await supabase
         .from("units_of_measure")
@@ -294,7 +318,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           { status: 400 }
         );
       }
-      updateData.uom_id = uomData.id;
+      resolvedUomId = uomData.id;
+      updateData.uom_id = resolvedUomId;
     }
 
     // Get Category ID if provided
@@ -360,8 +385,65 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
+    if (resolvedUomId) {
+      const { data: existingBaseUnitOption, error: baseUnitOptionError } = await supabase
+        .from("item_unit_options")
+        .select("id")
+        .eq("company_id", existing.company_id)
+        .eq("item_id", id)
+        .eq("is_base", true)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (baseUnitOptionError) {
+        return NextResponse.json(
+          { error: "Failed to load item base barcode", details: baseUnitOptionError.message },
+          { status: 500 }
+        );
+      }
+
+      if (existingBaseUnitOption) {
+        const { error: baseUpdateError } = await supabase
+          .from("item_unit_options")
+          .update({
+            uom_id: resolvedUomId,
+            updated_by: user.id,
+          })
+          .eq("id", existingBaseUnitOption.id)
+          .eq("company_id", existing.company_id);
+
+        if (baseUpdateError) {
+          return NextResponse.json(
+            { error: "Failed to update item base barcode", details: baseUpdateError.message },
+            { status: 500 }
+          );
+        }
+      } else {
+        const { error: baseInsertError } = await supabase.from("item_unit_options").insert({
+          company_id: existing.company_id,
+          item_id: id,
+          uom_id: resolvedUomId,
+          qty_per_unit: 1,
+          is_base: true,
+          is_default: true,
+          is_active: true,
+          sort_order: 0,
+          created_by: user.id,
+          updated_by: user.id,
+        });
+
+        if (baseInsertError) {
+          return NextResponse.json(
+            { error: "Failed to create item base barcode", details: baseInsertError.message },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
     // Transform and return
-    const item = transformDbItem(updatedItem as ItemRow);
+    const unitOptionRows = await fetchItemUnitOptions(supabase, existing.company_id, id);
+    const item = transformDbItem(updatedItem as ItemRow, unitOptionRows);
     return NextResponse.json({ data: item });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

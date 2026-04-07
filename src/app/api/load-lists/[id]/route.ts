@@ -2,11 +2,73 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import {
+  LoadListLineValidationError,
+  resolveLoadListLineUnitOptions,
+} from "../line-item-unit-options";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 const normalizeOptionalDate = (value: unknown) => {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+type LoadListItemRow = {
+  id: string;
+  item_id: string;
+  item_unit_option_id?: string | null;
+  uom_id?: string | null;
+  load_list_qty: number | string;
+  received_qty: number | string;
+  damaged_qty: number | string;
+  shortage_qty: number | string;
+  unit_price: number | string;
+  total_price: number | string;
+  notes: string | null;
+  item?: {
+    id: string;
+    item_code: string;
+    item_name: string;
+  } | {
+    id: string;
+    item_code: string;
+    item_name: string;
+  }[] | null;
+  units_of_measure?: {
+    id: string;
+    code: string;
+    symbol?: string | null;
+  } | {
+    id: string;
+    code: string;
+    symbol?: string | null;
+  }[] | null;
+  item_unit_options?: (DbItemUnitOptionRow & {
+    units_of_measure?: {
+      id: string;
+      code: string;
+      name: string;
+      symbol: string | null;
+    } | {
+      id: string;
+      code: string;
+      name: string;
+      symbol: string | null;
+    }[] | null;
+  }) | (DbItemUnitOptionRow & {
+    units_of_measure?: {
+      id: string;
+      code: string;
+      name: string;
+      symbol: string | null;
+    } | {
+      id: string;
+      code: string;
+      name: string;
+      symbol: string | null;
+    }[] | null;
+  })[] | null;
 };
 
 // GET /api/load-lists/[id]
@@ -60,6 +122,8 @@ export async function GET(
         items:load_list_items(
           id,
           item_id,
+          item_unit_option_id,
+          uom_id,
           load_list_qty,
           received_qty,
           damaged_qty,
@@ -67,7 +131,21 @@ export async function GET(
           unit_price,
           total_price,
           notes,
-          item:items(id, item_code, item_name)
+          item:items(id, item_code, item_name),
+          units_of_measure(id, code, symbol),
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(id, code, name, symbol)
+          )
         )
       `
       )
@@ -166,27 +244,41 @@ export async function GET(
       receivedDate: ll.received_date,
       approvedDate: ll.approved_date,
       notes: ll.notes,
-      items: ll.items?.map((item: Record<string, unknown>) => {
-        const itemDetails = Array.isArray(item.item)
-          ? (item.item[0] as Record<string, unknown> | undefined)
-          : (item.item as Record<string, unknown> | null);
+      items: (ll.items as LoadListItemRow[] | null)?.map((item) => {
+        const itemDetails = Array.isArray(item.item) ? item.item[0] ?? null : item.item ?? null;
+        const unitDetails = Array.isArray(item.item_unit_options)
+          ? item.item_unit_options[0] ?? null
+          : item.item_unit_options ?? null;
+        const uomDetails = Array.isArray(item.units_of_measure)
+          ? item.units_of_measure[0] ?? null
+          : item.units_of_measure ?? null;
+        const baseUomCode = uomDetails?.code || "";
+        const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
+        const loadListQty = parseFloat(String(item.load_list_qty));
+        const unitPrice = parseFloat(String(item.unit_price));
         return {
           id: item.id,
-          itemId: item.item_id as string,
+          itemId: item.item_id,
+          itemUnitOptionId: item.item_unit_option_id,
+          uomId: item.uom_id || undefined,
+          uomCode: uomDetails?.code || undefined,
+          itemUnitOption: unitDetails
+            ? transformItemUnitOptionRow(unitDetails as DbItemUnitOptionRow, baseUomCode)
+            : null,
           item: itemDetails
             ? {
-                id: itemDetails.id as string,
-                code: itemDetails.item_code as string,
-                name: itemDetails.item_name as string,
+                id: itemDetails.id,
+                code: itemDetails.item_code,
+                name: itemDetails.item_name,
               }
             : null,
-          loadListQty: parseFloat(String(item.load_list_qty)),
+          loadListQty,
           receivedQty: parseFloat(String(item.received_qty)),
           damagedQty: parseFloat(String(item.damaged_qty)),
           shortageQty: parseFloat(String(item.shortage_qty)),
-          unitPrice: parseFloat(String(item.unit_price)),
-          totalPrice: parseFloat(String(item.total_price)),
-          notes: item.notes as string | null,
+          unitPrice,
+          totalPrice: loadListQty * qtyPerUnit * unitPrice,
+          notes: item.notes,
         };
       }),
       createdAt: ll.created_at,
@@ -239,6 +331,10 @@ export async function PUT(
     const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
 
+    if (body.items && body.items.length === 0) {
+      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    }
+
     // Update load list
     const { data: ll, error: updateError } = await supabase
       .from("load_lists")
@@ -269,14 +365,34 @@ export async function PUT(
 
     // Update line items if provided and status is draft
     if (body.items && body.items.length > 0 && existingLL.status === "draft") {
+      let resolvedLineItems;
+      try {
+        resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
+      } catch (error) {
+        if (error instanceof LoadListLineValidationError) {
+          return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        throw error;
+      }
+
       // Delete existing items
       await supabase.from("load_list_items").delete().eq("load_list_id", id);
 
       // Insert new items
-      const itemsToInsert = body.items.map(
-        (item: { itemId: string; loadListQty: number; unitPrice: number; notes?: string }) => ({
+      const itemsToInsert = resolvedLineItems.map(
+        (item: {
+          itemId: string;
+          item_unit_option_id: string;
+          uom_id: string;
+          qty_per_unit: number;
+          loadListQty: number;
+          unitPrice: number;
+          notes?: string;
+        }) => ({
           load_list_id: id,
           item_id: item.itemId,
+          item_unit_option_id: item.item_unit_option_id,
+          uom_id: item.uom_id,
           load_list_qty: item.loadListQty,
           unit_price: item.unitPrice,
           received_qty: 0,

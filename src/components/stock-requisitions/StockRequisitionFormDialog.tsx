@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Check, ChevronsUpDown, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -11,7 +11,7 @@ import {
   useUpdateStockRequisition,
 } from "@/hooks/useStockRequisitions";
 import { useSuppliers } from "@/hooks/useSuppliers";
-import { useItems } from "@/hooks/useItems";
+import { useItem, useItems } from "@/hooks/useItems";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -66,6 +66,10 @@ type LineItem = {
   itemId: string;
   itemCode?: string;
   itemName?: string;
+  itemUnitOptionId: string;
+  uomId: string;
+  uomLabel: string;
+  qtyPerUnit: number;
   requestedQty: number;
   unitPrice: number;
   notes?: string;
@@ -84,6 +88,7 @@ export function StockRequisitionFormDialog({
 }: StockRequisitionFormDialogProps) {
   const t = useTranslations("stockRequisitionForm");
   const tValidation = useTranslations("stockRequisitionValidation");
+  const locale = useLocale();
   const isEditMode = !!stockRequisition;
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateStockRequisition();
@@ -102,11 +107,19 @@ export function StockRequisitionFormDialog({
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [selectedUnitOptionId, setSelectedUnitOptionId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
   const [itemOpen, setItemOpen] = useState(false);
   const [addItemError, setAddItemError] = useState("");
   const [activeTab, setActiveTab] = useState("general");
+  const { data: selectedItemResponse } = useItem(selectedItemId);
+  const selectedItemDetail = selectedItemResponse?.data;
+  const unitOptions = (selectedItemDetail?.unitOptions || []).filter((option) => option.isActive);
+  const selectedUnitOption =
+    unitOptions.find((option) => option.id === selectedUnitOptionId) ||
+    selectedItemDetail?.unitOptions?.find((option) => option.id === selectedUnitOptionId) ||
+    null;
 
   // Default values
   const defaultValues = useMemo<StockRequisitionFormValues>(
@@ -126,8 +139,15 @@ export function StockRequisitionFormDialog({
 
   // Calculate total
   const totalAmount = useMemo(() => {
-    return lineItems.reduce((sum, item) => sum + item.requestedQty * item.unitPrice, 0);
+    return lineItems.reduce(
+      (sum, item) => sum + item.requestedQty * item.qtyPerUnit * item.unitPrice,
+      0
+    );
   }, [lineItems]);
+
+  const derivedTotalQty = selectedUnitOption
+    ? Number(quantity || 0) * selectedUnitOption.qtyPerUnit
+    : 0;
 
   useEffect(() => {
     if (!selectedItemId) return;
@@ -156,6 +176,10 @@ export function StockRequisitionFormDialog({
           itemId: item.itemId,
           itemCode: item.item?.code,
           itemName: item.item?.name,
+          itemUnitOptionId: item.itemUnitOptionId || item.itemUnitOption?.id || "",
+          uomId: item.uomId,
+          uomLabel: item.itemUnitOption?.displayLabel || item.uomCode || "",
+          qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
           requestedQty: item.requestedQty,
           unitPrice: item.unitPrice,
           notes: item.notes,
@@ -165,6 +189,7 @@ export function StockRequisitionFormDialog({
       form.reset(defaultValues);
       setLineItems([]);
       setSelectedItemId("");
+      setSelectedUnitOptionId("");
       setQuantity("");
       setPrice("");
       setAddItemError("");
@@ -172,12 +197,37 @@ export function StockRequisitionFormDialog({
     }
   }, [open, stockRequisition, form, defaultValues]);
 
+  useEffect(() => {
+    if (!selectedItemDetail) {
+      setSelectedUnitOptionId("");
+      return;
+    }
+
+    const fallbackUnitOption =
+      unitOptions.find((option) => option.isDefault) ||
+      unitOptions.find((option) => option.isBase) ||
+      unitOptions[0];
+
+    if (!fallbackUnitOption) {
+      setSelectedUnitOptionId("");
+      return;
+    }
+
+    setSelectedUnitOptionId((currentValue) => {
+      if (currentValue && unitOptions.some((option) => option.id === currentValue)) {
+        return currentValue;
+      }
+
+      return fallbackUnitOption.id;
+    });
+  }, [selectedItemDetail, unitOptions]);
+
   const handleAddItem = () => {
     // Clear any previous errors
     setAddItemError("");
 
     // Validation
-    if (!selectedItemId || !quantity || !price) {
+    if (!selectedItemId || !selectedUnitOptionId || !quantity || !price) {
       setAddItemError(t("addItemMissingFields"));
       return;
     }
@@ -188,16 +238,26 @@ export function StockRequisitionFormDialog({
       return;
     }
 
+    if (!selectedUnitOption) {
+      setAddItemError(t("unitNotFound"));
+      return;
+    }
+
     const newItem: LineItem = {
       itemId: selectedItemId,
       itemCode: selectedItem.code,
       itemName: selectedItem.name,
+      itemUnitOptionId: selectedUnitOption.id,
+      uomId: selectedUnitOption.uomId,
+      uomLabel: selectedUnitOption.displayLabel,
+      qtyPerUnit: selectedUnitOption.qtyPerUnit,
       requestedQty: parseFloat(quantity),
       unitPrice: parseFloat(price),
     };
 
     setLineItems([...lineItems, newItem]);
     setSelectedItemId("");
+    setSelectedUnitOptionId("");
     setQuantity("");
     setPrice("");
     toast.success(t("itemAddedSuccess"));
@@ -221,6 +281,8 @@ export function StockRequisitionFormDialog({
         notes: values.notes,
         items: lineItems.map((item) => ({
           itemId: item.itemId,
+          itemUnitOptionId: item.itemUnitOptionId,
+          uomId: item.uomId,
           requestedQty: item.requestedQty,
           unitPrice: item.unitPrice,
           notes: item.notes,
@@ -392,8 +454,8 @@ export function StockRequisitionFormDialog({
                       </div>
                     </div>
                     <div className="p-5 bg-gradient-to-br from-purple-50/30 to-violet-50/30">
-                      <div className="grid grid-cols-12 gap-3">
-                      <div className="col-span-5">
+                      <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
+                      <div className="min-w-0">
                         <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("itemLabel")}</label>
                         <Popover open={itemOpen} onOpenChange={setItemOpen}>
                           <PopoverTrigger asChild>
@@ -402,20 +464,22 @@ export function StockRequisitionFormDialog({
                               role="combobox"
                               aria-expanded={itemOpen}
                               className={cn(
-                                "w-full justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400",
+                                "w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400",
                                 !selectedItemId && "text-muted-foreground"
                               )}
                             >
-                              {selectedItemId
-                                ? (() => {
-                                    const selectedItem = items.find(
-                                      (item) => item.id === selectedItemId
-                                    );
-                                    return selectedItem
-                                      ? `${selectedItem.code} - ${selectedItem.name}`
-                                      : t("selectItem");
-                                  })()
-                                : t("searchItemPlaceholder")}
+                              <span className="min-w-0 truncate text-left">
+                                {selectedItemId
+                                  ? (() => {
+                                      const selectedItem = items.find(
+                                        (item) => item.id === selectedItemId
+                                      );
+                                      return selectedItem
+                                        ? `${selectedItem.code} - ${selectedItem.name}`
+                                        : t("selectItem");
+                                    })()
+                                  : t("searchItemPlaceholder")}
+                              </span>
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
@@ -438,6 +502,7 @@ export function StockRequisitionFormDialog({
                                             item.standardCost ??
                                             item.listPrice ??
                                             0;
+                                          setSelectedUnitOptionId("");
                                           setPrice(Number(cost).toFixed(2));
                                           setItemOpen(false);
                                           setAddItemError("");
@@ -469,7 +534,48 @@ export function StockRequisitionFormDialog({
                           </PopoverContent>
                         </Popover>
                       </div>
-                        <div className="col-span-2">
+                        <div className="min-w-0">
+                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitLabel")}</label>
+                          <Select
+                            value={selectedUnitOptionId}
+                            onValueChange={(value) => {
+                              setSelectedUnitOptionId(value);
+                              setAddItemError("");
+                            }}
+                            disabled={!selectedItemId || unitOptions.length === 0}
+                          >
+                            <SelectTrigger className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                              <SelectValue
+                                placeholder={
+                                  selectedItemId ? t("selectUnit") : t("selectItemFirst")
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {unitOptions.map((option) => (
+                                <SelectItem key={option.id} value={option.id}>
+                                  {option.displayLabel}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("qtyPerUnitLabel")}</label>
+                          <Input
+                            value={
+                              selectedUnitOption
+                                ? selectedUnitOption.qtyPerUnit.toLocaleString(locale, {
+                                    maximumFractionDigits: 4,
+                                  })
+                                : ""
+                            }
+                            readOnly
+                            placeholder="--"
+                            className="h-10 text-sm bg-gray-50 border-gray-300"
+                          />
+                        </div>
+                        <div>
                           <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("quantityLabel")}</label>
                           <Input
                             type="number"
@@ -483,8 +589,23 @@ export function StockRequisitionFormDialog({
                             className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                           />
                         </div>
-                        <div className="col-span-3">
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitPriceLabel")}</label>
+                        <div className="min-w-0">
+                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("totalQtyLabel")}</label>
+                          <Input
+                            value={
+                              selectedUnitOption
+                                ? derivedTotalQty.toLocaleString(locale, {
+                                    maximumFractionDigits: 4,
+                                  })
+                                : ""
+                            }
+                            readOnly
+                            placeholder="--"
+                            className="h-10 text-sm bg-gray-50 border-gray-300"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitCostLabel")} *</label>
                         <Input
                           key={`unit-price-${selectedItemId}`}
                           type="text"
@@ -502,7 +623,7 @@ export function StockRequisitionFormDialog({
                           className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                         />
                         </div>
-                        <div className="col-span-2 flex items-end">
+                        <div className="flex items-end">
                           <Button
                             type="button"
                             onClick={handleAddItem}
@@ -555,7 +676,9 @@ export function StockRequisitionFormDialog({
                               <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("itemCode")}</TableHead>
                               <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("itemName")}</TableHead>
                               <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("qty")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("unitPrice")}</TableHead>
+                              <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("unitLabel")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("totalQtyLabel")}</TableHead>
+                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("unitCostLabel")}</TableHead>
                               <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("total")}</TableHead>
                               <TableHead className="w-[60px] h-10"></TableHead>
                             </TableRow>
@@ -566,11 +689,17 @@ export function StockRequisitionFormDialog({
                                 <TableCell className="font-semibold text-gray-900 text-sm py-3">{item.itemCode}</TableCell>
                                 <TableCell className="text-gray-700 text-sm py-3">{item.itemName}</TableCell>
                                 <TableCell className="text-right tabular-nums text-sm text-gray-900 py-3 font-medium">{item.requestedQty}</TableCell>
+                                <TableCell className="text-gray-700 text-sm py-3">{item.uomLabel}</TableCell>
+                                <TableCell className="text-right tabular-nums text-sm text-gray-900 py-3 font-medium">
+                                  {(item.requestedQty * item.qtyPerUnit).toLocaleString(locale, {
+                                    maximumFractionDigits: 4,
+                                  })}
+                                </TableCell>
                                 <TableCell className="text-right tabular-nums text-gray-700 text-sm py-3">
                                   {formatCurrency(item.unitPrice)}
                                 </TableCell>
                                 <TableCell className="text-right tabular-nums font-bold text-purple-600 text-sm py-3">
-                                  {formatCurrency(item.requestedQty * item.unitPrice)}
+                                  {formatCurrency(item.requestedQty * item.qtyPerUnit * item.unitPrice)}
                                 </TableCell>
                                 <TableCell className="py-3">
                                   <Button

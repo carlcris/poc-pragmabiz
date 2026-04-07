@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import {
+  resolveStockRequisitionLineUnitOptions,
+  StockRequisitionLineValidationError,
+} from "../line-item-unit-options";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 // GET /api/stock-requisitions/[id]
 export async function GET(
@@ -29,13 +34,29 @@ export async function GET(
           id,
           sr_id,
           item_id,
+          item_unit_option_id,
+          uom_id,
           requested_qty,
           unit_price,
           total_price,
           fulfilled_qty,
           outstanding_qty,
           notes,
-          item:items(id, item_code, item_name, item_name_cn)
+          item:items(id, item_code, item_name, item_name_cn),
+          units_of_measure(id, code, symbol),
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(id, code, name, symbol)
+          )
         )
       `
       )
@@ -54,6 +75,26 @@ export async function GET(
       id: string;
       sr_id: string;
       item_id: string;
+      item_unit_option_id?: string | null;
+      uom_id: string;
+      units_of_measure?: {
+        id: string;
+        code: string;
+        symbol?: string | null;
+      } | null;
+      item_unit_options?: (DbItemUnitOptionRow & {
+        units_of_measure?: {
+          id: string;
+          code: string;
+          name: string;
+          symbol: string | null;
+        } | {
+          id: string;
+          code: string;
+          name: string;
+          symbol: string | null;
+        }[] | null;
+      }) | null;
       item?: {
         id: string;
         item_code: string;
@@ -67,6 +108,42 @@ export async function GET(
       outstanding_qty: number | string;
       notes: string | null;
     };
+
+    const formattedItems = (sr.items as StockRequisitionItemRow[] | null)?.map((item) => {
+      const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
+        ? item.item_unit_options[0] ?? null
+        : item.item_unit_options ?? null;
+      const baseUomCode = item.units_of_measure?.code || "";
+      const qtyPerUnit = Number(itemUnitOptionDetails?.qty_per_unit ?? 1) || 1;
+      const requestedQty = Number(item.requested_qty ?? 0);
+      const unitPrice = Number(item.unit_price ?? 0);
+
+      return {
+        id: item.id,
+        srId: item.sr_id,
+        itemId: item.item_id,
+        itemUnitOptionId: item.item_unit_option_id,
+        uomId: item.uom_id,
+        uomCode: item.units_of_measure?.code || undefined,
+        itemUnitOption: itemUnitOptionDetails
+          ? transformItemUnitOptionRow(itemUnitOptionDetails as DbItemUnitOptionRow, baseUomCode)
+          : null,
+        item: item.item
+          ? {
+              id: item.item.id,
+              code: item.item.item_code,
+              name: item.item.item_name,
+              chineseName: item.item.item_name_cn || undefined,
+            }
+          : null,
+        requestedQty,
+        unitPrice,
+        totalPrice: requestedQty * qtyPerUnit * unitPrice,
+        fulfilledQty: Number(item.fulfilled_qty ?? 0),
+        outstandingQty: Number(item.outstanding_qty ?? 0),
+        notes: item.notes,
+      };
+    }) || [];
 
     const formattedSR = {
       id: sr.id,
@@ -107,26 +184,8 @@ export async function GET(
         : null,
       status: sr.status,
       notes: sr.notes,
-      totalAmount: sr.total_amount ? parseFloat(sr.total_amount) : 0,
-      items: (sr.items as StockRequisitionItemRow[] | null)?.map((item) => ({
-        id: item.id,
-        srId: item.sr_id,
-        itemId: item.item_id,
-        item: item.item
-          ? {
-              id: item.item.id,
-              code: item.item.item_code,
-              name: item.item.item_name,
-              chineseName: item.item.item_name_cn || undefined,
-            }
-          : null,
-        requestedQty: Number(item.requested_qty ?? 0),
-        unitPrice: Number(item.unit_price ?? 0),
-        totalPrice: Number(item.total_price ?? 0),
-        fulfilledQty: Number(item.fulfilled_qty ?? 0),
-        outstandingQty: Number(item.outstanding_qty ?? 0),
-        notes: item.notes,
-      })),
+      totalAmount: formattedItems.reduce((sum, item) => sum + item.totalPrice, 0),
+      items: formattedItems,
       createdAt: sr.created_at,
       createdBy: sr.created_by,
       updatedAt: sr.updated_at,
@@ -175,10 +234,32 @@ export async function PUT(
       );
     }
 
+    if (body.items && body.items.length === 0) {
+      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    }
+
+    let resolvedLineItems = body.items;
+    if (body.items) {
+      try {
+        resolvedLineItems = await resolveStockRequisitionLineUnitOptions(
+          supabase,
+          companyId,
+          body.items
+        );
+      } catch (error) {
+        if (error instanceof StockRequisitionLineValidationError) {
+          return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        throw error;
+      }
+    }
+
     // Calculate total amount
-    const totalAmount = body.items?.reduce(
-      (sum: number, item: { requestedQty: number; unitPrice: number }) =>
-        sum + item.requestedQty * item.unitPrice,
+    const totalAmount = resolvedLineItems?.reduce(
+      (
+        sum: number,
+        item: { requestedQty: number; unitPrice: number; qty_per_unit: number }
+      ) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
       0
     ) || 0;
 
@@ -211,10 +292,19 @@ export async function PUT(
       await supabase.from("stock_requisition_items").delete().eq("sr_id", id);
 
       // Insert new items
-      const itemsToInsert = body.items.map(
-        (item: { itemId: string; requestedQty: number; unitPrice: number; notes?: string }) => ({
+      const itemsToInsert = resolvedLineItems.map(
+        (item: {
+          itemId: string;
+          item_unit_option_id: string;
+          uom_id: string;
+          requestedQty: number;
+          unitPrice: number;
+          notes?: string;
+        }) => ({
           sr_id: id,
           item_id: item.itemId,
+          item_unit_option_id: item.item_unit_option_id,
+          uom_id: item.uom_id,
           requested_qty: item.requestedQty,
           unit_price: item.unitPrice,
           fulfilled_qty: 0,

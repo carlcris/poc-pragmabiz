@@ -14,7 +14,6 @@ type StockAgingReportPDFGroup = {
   itemId: string;
   itemName: string;
   itemCode: string | null;
-  itemSku: string | null;
   category: string;
   rows: StockAgingReportRow[];
   subtotalQtyOnHand: number;
@@ -243,7 +242,6 @@ export const StockAgingReportPDF = ({
               <Text style={styles.groupTitle}>{group.itemName}</Text>
               <Text style={styles.groupSubtitle}>
                 {group.itemCode || noValueLabel}
-                {group.itemSku ? ` • ${group.itemSku}` : ""}
                 {group.category ? ` • ${group.category}` : ""}
               </Text>
             </View>

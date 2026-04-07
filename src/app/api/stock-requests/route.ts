@@ -3,6 +3,10 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { mapStockRequest } from "./stock-request-mapper";
+import {
+  resolveStockRequestLineUnitOptions,
+  StockRequestLineValidationError,
+} from "./line-item-unit-options";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CreateStockRequestPayload } from "@/types/stock-request";
 
@@ -111,8 +115,37 @@ export async function GET(request: NextRequest) {
         ),
         stock_request_items(
           *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
+          items(
+            id,
+            item_code,
+            item_name,
+            uom_id,
+            base_unit:units_of_measure!items_uom_id_fkey(
+              id,
+              code,
+              name,
+              symbol
+            )
+          ),
+          units_of_measure(id, code, symbol),
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(
+              id,
+              code,
+              name,
+              symbol
+            )
+          )
         ),
         delivery_note_sources(
           created_at,
@@ -329,6 +362,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
+    const resolvedLineItems = await resolveStockRequestLineUnitOptions(
+      supabase,
+      companyId,
+      body.items
+    );
+
     // Build requested_by_name from first_name and last_name
     const requestedByName =
       [userProfile?.first_name, userProfile?.last_name].filter(Boolean).join(" ") ||
@@ -364,11 +403,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Create stock request items
-    const requestItems = body.items.map((item: StockRequestItemInput) => ({
+    const requestItems = resolvedLineItems.map((item: StockRequestItemInput & { item_unit_option_id: string }) => ({
       stock_request_id: stockRequest.id,
       item_id: item.item_id,
       requested_qty: item.requested_qty,
       picked_qty: 0,
+      item_unit_option_id: item.item_unit_option_id,
       uom_id: item.uom_id,
       notes: item.notes || null,
     }));
@@ -414,8 +454,37 @@ export async function POST(request: NextRequest) {
         ),
         stock_request_items(
           *,
-          items(item_code, item_name),
-          units_of_measure(code, symbol)
+          items(
+            id,
+            item_code,
+            item_name,
+            uom_id,
+            base_unit:units_of_measure!items_uom_id_fkey(
+              id,
+              code,
+              name,
+              symbol
+            )
+          ),
+          units_of_measure(id, code, symbol),
+          item_unit_options(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(
+              id,
+              code,
+              name,
+              symbol
+            )
+          )
         ),
         delivery_note_sources(
           created_at,
@@ -437,6 +506,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(mapStockRequest(completeRequest as StockRequestDbRecord));
   } catch (error) {
+    if (error instanceof StockRequestLineValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("Error in stock-requests POST:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

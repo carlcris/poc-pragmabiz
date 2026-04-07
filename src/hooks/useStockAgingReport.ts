@@ -24,7 +24,6 @@ export type StockAgingReportRow = {
   itemId: string;
   itemCode: string | null;
   itemName: string | null;
-  itemSku: string | null;
   category: string;
   warehouseId: string;
   warehouseCode: string | null;

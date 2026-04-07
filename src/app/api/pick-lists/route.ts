@@ -37,8 +37,26 @@ export async function GET(request: NextRequest) {
         pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)),
         pick_list_items(
           *,
-          items!pick_list_items_item_id_fkey(item_name, item_code, sku),
-          units_of_measure!pick_list_items_uom_id_fkey(symbol, name)
+          item_unit_options!pick_list_items_item_unit_option_id_fkey(
+            id,
+            item_id,
+            uom_id,
+            option_label,
+            qty_per_unit,
+            barcode,
+            is_base,
+            is_default,
+            is_active,
+            sort_order,
+            units_of_measure(
+              id,
+              code,
+              name,
+              symbol
+            )
+          ),
+          items!pick_list_items_item_id_fkey(item_name, item_code),
+          units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
         )
       `
       )

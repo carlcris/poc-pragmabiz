@@ -18,7 +18,6 @@ export type ItemLocationBatchReportRow = {
   itemId: string;
   itemCode: string | null;
   itemName: string | null;
-  itemSku: string | null;
   warehouseId: string;
   warehouseCode: string | null;
   warehouseName: string | null;
@@ -87,4 +86,3 @@ export function useItemLocationBatchReport(filters: ItemLocationBatchReportFilte
     staleTime: 60_000,
   });
 }
-

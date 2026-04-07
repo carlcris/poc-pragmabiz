@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { usePickList, useUpdatePickListItems, useUpdatePickListStatus } from "@/hooks/usePickLists";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 const SHORT_REASON_OPTIONS = [
   { value: "missing", label: "Missing" },
@@ -52,7 +53,7 @@ const extractScanCandidates = (rawScan: string) => {
 
   try {
     const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-    const keys = ["id", "itemId", "item", "itemCode", "sku", "skuCode", "code", "barcode"];
+    const keys = ["id", "itemId", "item", "itemCode", "code", "barcode"];
     for (const key of keys) {
       const candidate = parsed[key];
       if (typeof candidate === "string" && candidate.trim()) {
@@ -120,8 +121,9 @@ type LineView = {
   id: string;
   dnItemId: string;
   itemId: string;
-  skuCode: string;
+  barcode: string;
   displayName: string;
+  uomLabel: string;
   requiredQty: number;
   pickedQty: number;
   status: string;
@@ -141,7 +143,8 @@ type ScannedItem = {
   scannedBatchCode: string;
   scannedBatchLocationSku: string;
   isMismatch: boolean;
-  skuCode: string;
+  barcode: string;
+  uomLabel: string;
   matchedScanCode: string;
   requiredQty: number;
   pickedQty: number;
@@ -186,6 +189,23 @@ export default function TabletPickingDetailPage() {
           | null
           | undefined
       );
+      const unitOption = one(
+        (item as { item_unit_options?: unknown } | null | undefined)?.item_unit_options as
+          | DbItemUnitOptionRow
+          | DbItemUnitOptionRow[]
+          | null
+          | undefined
+      );
+      const uomRef = one(
+        (item as { units_of_measure?: unknown } | null | undefined)?.units_of_measure as
+          | { code?: string | null; symbol?: string | null; name?: string | null }
+          | { code?: string | null; symbol?: string | null; name?: string | null }[]
+          | null
+          | undefined
+      );
+      const uomLabel = unitOption
+        ? transformItemUnitOptionRow(unitOption, uomRef?.code || "").displayLabel
+        : uomRef?.symbol || uomRef?.name || "Unit";
       let status = "open";
       if (pickedValue > 0 && pickedValue >= allocatedQty) status = "picked_full";
       else if (pickedValue > 0) status = "picked_partial";
@@ -194,8 +214,9 @@ export default function TabletPickingDetailPage() {
         id: item.id,
         dnItemId: item.dn_item_id,
         itemId: item.item_id,
-        skuCode: item.items?.sku || "",
+        barcode: unitOption?.barcode || "",
         displayName: item.items?.item_name || item.items?.item_code || item.item_id,
+        uomLabel,
         requiredQty: allocatedQty,
         pickedQty: pickedValue,
         status,
@@ -214,7 +235,7 @@ export default function TabletPickingDetailPage() {
     }
 
     if (!code.trim()) {
-      toast.error("Please enter or scan a SKU code");
+      toast.error("Please enter or scan a barcode");
       return;
     }
 
@@ -260,7 +281,7 @@ export default function TabletPickingDetailPage() {
               allocatedQty: number;
               pickedQty: number;
               item?: {
-                sku?: string | null;
+                barcode?: string | null;
                 itemName?: string | null;
                 itemCode?: string | null;
               } | null;
@@ -270,32 +291,36 @@ export default function TabletPickingDetailPage() {
         };
 
         if (!response.ok || !payload.data?.line) {
-          toast.error(payload.error || "Failed to resolve scanned batch/location SKU");
-          setScannedCode("");
-          return;
+          if (response.status !== 404 && payload.error !== "Batch location SKU not found") {
+            toast.error(payload.error || "Failed to resolve scanned batch/location SKU");
+            setScannedCode("");
+            return;
+          }
+        } else {
+          const lineMeta = payload.data.line;
+          const matchedLine = lines.find((line) => line.id === lineMeta.pickListItemId) || null;
+          foundItem = {
+            lineId: lineMeta.pickListItemId,
+            dnItemId: lineMeta.deliveryNoteItemId,
+            locationCode: payload.data.source.locationCode || "Scanned Location",
+            scannedLocationCode: payload.data.source.locationCode || "Scanned Location",
+            scannedLocationName: payload.data.source.locationName || undefined,
+            scannedLocationId: payload.data.source.locationId,
+            scannedBatchCode: payload.data.source.batchCode,
+            scannedBatchLocationSku: payload.data.batchLocationSku,
+            isMismatch: !!payload.data.isMismatch,
+            barcode: lineMeta.item?.barcode || matchedLine?.barcode || "",
+            uomLabel: matchedLine?.uomLabel || "Unit",
+            matchedScanCode: scannedBatchLocationSku,
+            requiredQty: Number(lineMeta.remainingQty || 0),
+            pickedQty: 0,
+            shortReasonCode: undefined,
+            status: "open",
+            suggestedPickLocationId: payload.data.source.locationId,
+            suggestedPickBatchCode: payload.data.source.batchCode,
+            suggestedPickBatchReceivedAt: "", // resolved on write via batchLocationSku
+          };
         }
-
-        const lineMeta = payload.data.line;
-        foundItem = {
-          lineId: lineMeta.pickListItemId,
-          dnItemId: lineMeta.deliveryNoteItemId,
-          locationCode: payload.data.source.locationCode || "Scanned Location",
-          scannedLocationCode: payload.data.source.locationCode || "Scanned Location",
-          scannedLocationName: payload.data.source.locationName || undefined,
-          scannedLocationId: payload.data.source.locationId,
-          scannedBatchCode: payload.data.source.batchCode,
-          scannedBatchLocationSku: payload.data.batchLocationSku,
-          isMismatch: !!payload.data.isMismatch,
-          skuCode: lineMeta.item?.sku || "",
-          matchedScanCode: scannedBatchLocationSku,
-          requiredQty: Number(lineMeta.remainingQty || 0),
-          pickedQty: 0,
-          shortReasonCode: undefined,
-          status: "open",
-          suggestedPickLocationId: payload.data.source.locationId,
-          suggestedPickBatchCode: payload.data.source.batchCode,
-          suggestedPickBatchReceivedAt: "", // resolved on write via batchLocationSku
-        };
       } catch {
         toast.error("Failed to resolve scanned batch/location SKU");
         setScannedCode("");
@@ -305,17 +330,17 @@ export default function TabletPickingDetailPage() {
 
     if (!foundItem) {
       const line = lines.find((l) => {
-        if (!l.skuCode) return false;
-        const skuMatch = normalizedCandidates.has(normalizeScanValue(l.skuCode));
-        return skuMatch && !isLineClosedForPicking(l.status);
+        if (!l.barcode) return false;
+        const barcodeMatch = normalizedCandidates.has(normalizeScanValue(l.barcode));
+        return barcodeMatch && !isLineClosedForPicking(l.status);
       });
 
       if (line) {
         const matchedScanCode =
           Array.from(scanCandidates).find((candidate) => {
             const normalized = normalizeScanValue(candidate);
-            return normalized === normalizeScanValue(line.skuCode);
-          }) || line.skuCode;
+            return normalized === normalizeScanValue(line.barcode);
+          }) || line.barcode;
 
         const fallbackLocationCode = line.suggestedPickLocationCode || "Suggested Location";
         foundItem = {
@@ -328,7 +353,8 @@ export default function TabletPickingDetailPage() {
           scannedBatchCode: "",
           scannedBatchLocationSku: rawScanned,
           isMismatch: false,
-          skuCode: line.skuCode,
+          barcode: line.barcode,
+          uomLabel: line.uomLabel,
           matchedScanCode,
           requiredQty: line.requiredQty,
           pickedQty: line.pickedQty,
@@ -343,9 +369,9 @@ export default function TabletPickingDetailPage() {
 
     if (!foundItem) {
       const alreadyPickedLine = lines.find((l) => {
-        if (!l.skuCode) return false;
-        const skuMatch = normalizedCandidates.has(normalizeScanValue(l.skuCode));
-        return skuMatch && isLineClosedForPicking(l.status);
+        if (!l.barcode) return false;
+        const barcodeMatch = normalizedCandidates.has(normalizeScanValue(l.barcode));
+        return barcodeMatch && isLineClosedForPicking(l.status);
       });
       if (alreadyPickedLine) {
         alreadyPicked = true;
@@ -421,8 +447,8 @@ export default function TabletPickingDetailPage() {
       setCurrentItem(null);
       setPickedQty(0);
       setShortReason("");
-    } catch {
-      toast.error("Failed to record pick");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to record pick");
     }
   };
 
@@ -466,11 +492,11 @@ export default function TabletPickingDetailPage() {
     const map = new Map<string, string[]>();
     for (const row of pickList?.delivery_note_item_picks || []) {
       if (row.deleted_at) continue;
-      const sku =
+      const batchLocationSku =
         typeof row.batch_location_sku === "string" ? row.batch_location_sku.trim() : "";
-      if (!sku) continue;
+      if (!batchLocationSku) continue;
       const current = map.get(row.delivery_note_item_id) || [];
-      if (!current.includes(sku)) current.push(sku);
+      if (!current.includes(batchLocationSku)) current.push(batchLocationSku);
       map.set(row.delivery_note_item_id, current);
     }
     return map;
@@ -621,10 +647,10 @@ export default function TabletPickingDetailPage() {
                   )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="sku-scan" className="text-sm">SKU / Barcode</Label>
+                    <Label htmlFor="barcode-scan" className="text-sm">Barcode</Label>
                     <div className="flex gap-2">
                       <Input
-                        id="sku-scan"
+                        id="barcode-scan"
                         placeholder="Scan or enter SKU..."
                         value={scannedCode}
                         onChange={(e) => setScannedCode(e.target.value)}
@@ -731,12 +757,14 @@ export default function TabletPickingDetailPage() {
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">SKU Code</span>
-                      <span className="font-mono font-medium">{currentItem.skuCode}</span>
+                      <span className="text-gray-500">Barcode</span>
+                      <span className="font-mono font-medium">{currentItem.barcode || currentItem.matchedScanCode}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Required</span>
-                      <span className="font-semibold text-blue-600">{currentItem.requiredQty} units</span>
+                      <span className="font-semibold text-blue-600">
+                        {currentItem.requiredQty} {currentItem.uomLabel}
+                      </span>
                     </div>
                   </div>
 
@@ -805,7 +833,7 @@ export default function TabletPickingDetailPage() {
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
                         <div className="text-xs text-gray-500">
-                          Remaining: {Math.max(0, line.requiredQty - line.pickedQty)}
+                          Remaining: {Math.max(0, line.requiredQty - line.pickedQty)} {line.uomLabel}
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-gray-400" />
@@ -836,9 +864,9 @@ export default function TabletPickingDetailPage() {
                         className="flex items-center justify-between p-3 rounded-lg border border-green-200 bg-green-50"
                       >
                         <div className="flex-1">
-                          <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
-                          <div className="text-xs text-green-700">
-                            Picked: {line.pickedQty}
+                        <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
+                        <div className="text-xs text-green-700">
+                            Picked: {line.pickedQty} {line.uomLabel}
                             {skuText ? ` | ${skuText}` : ""}
                           </div>
                         </div>

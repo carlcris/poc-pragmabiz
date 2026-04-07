@@ -278,6 +278,7 @@ export default function StockRequestDetailPage() {
                       <th className="p-3 text-right">Quantity</th>
                       <th className="p-3 text-right">Delivered Qty</th>
                       <th className="p-3 text-left">Unit</th>
+                      <th className="p-3 text-right">Qty/Unit</th>
                       <th className="p-3 text-left">Notes</th>
                     </tr>
                   </thead>
@@ -296,8 +297,14 @@ export default function StockRequestDetailPage() {
                         </td>
                         <td className="p-3">
                           <span className="text-muted-foreground">
-                            {item.units_of_measure?.code || "--"}
+                            {item.item_unit_option?.displayLabel || item.units_of_measure?.code || "--"}
                           </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          {(item.item_unit_option?.qtyPerUnit ?? 1).toLocaleString(undefined, {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 4,
+                          })}
                         </td>
                         <td className="p-3">
                           <span className="text-muted-foreground">{item.notes || "--"}</span>
@@ -306,7 +313,7 @@ export default function StockRequestDetailPage() {
                     ))}
                     {(!request.stock_request_items || request.stock_request_items.length === 0) && (
                       <tr className="border-t">
-                        <td colSpan={5} className="p-3 text-center text-muted-foreground">
+                        <td colSpan={6} className="p-3 text-center text-muted-foreground">
                           No items found.
                         </td>
                       </tr>

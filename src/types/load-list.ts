@@ -1,3 +1,5 @@
+import type { ItemUnitOption } from "@/types/item";
+
 export type LoadListStatus =
   | "draft"
   | "confirmed"
@@ -12,6 +14,10 @@ export type LoadListItem = {
   id: string;
   loadListId: string;
   itemId: string;
+  itemUnitOptionId?: string | null;
+  uomId?: string;
+  uomCode?: string;
+  itemUnitOption?: ItemUnitOption | null;
   item?: {
     id: string;
     code: string;
@@ -104,6 +110,8 @@ export type CreateLoadListRequest = {
   notes?: string;
   items: {
     itemId: string;
+    itemUnitOptionId?: string;
+    uomId?: string;
     loadListQty: number;
     unitPrice: number;
     notes?: string;

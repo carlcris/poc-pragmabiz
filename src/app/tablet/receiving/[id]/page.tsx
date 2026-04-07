@@ -64,6 +64,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
         batchNumber: loadList.batchNumber,
         deliveryDate: loadList.actualArrivalDate || new Date().toISOString().split("T")[0],
         items: loadList.items.map((item) => ({
+          loadListItemId: item.id,
           itemId: item.itemId,
           loadListQty: item.loadListQty,
           receivedQty: 0,
@@ -116,13 +117,23 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
     const currentItem = grn?.items.find((item) => item.id === itemId);
     setEditedItems((prev) => ({
       ...prev,
-      [itemId]: {
-        receivedQty: prev[itemId]?.receivedQty ?? currentItem?.receivedQty ?? 0,
-        damagedQty: prev[itemId]?.damagedQty ?? currentItem?.damagedQty ?? 0,
-        numBoxes: prev[itemId]?.numBoxes ?? currentItem?.numBoxes ?? 0,
-        notes: prev[itemId]?.notes ?? currentItem?.notes ?? "",
-        [field]: value,
-      },
+      [itemId]: (() => {
+        const nextItem = {
+          receivedQty: prev[itemId]?.receivedQty ?? currentItem?.receivedQty ?? 0,
+          damagedQty: prev[itemId]?.damagedQty ?? currentItem?.damagedQty ?? 0,
+          numBoxes: prev[itemId]?.numBoxes ?? currentItem?.numBoxes ?? 0,
+          notes: prev[itemId]?.notes ?? currentItem?.notes ?? "",
+          [field]: value,
+        };
+
+        if (field === "receivedQty") {
+          const qtyPerUnit = Number(currentItem?.itemUnitOption?.qtyPerUnit ?? 1) || 1;
+          nextItem.numBoxes =
+            qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
+        }
+
+        return nextItem;
+      })(),
     }));
   };
 
@@ -405,9 +416,12 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                 const damagedQty = Number(getItemValue(item.id, "damagedQty", item.damagedQty || 0)) || 0;
                 const numBoxes = Number(getItemValue(item.id, "numBoxes", item.numBoxes || 0)) || 0;
                 const itemNotes = String(getItemValue(item.id, "notes", item.notes || ""));
-                const variance = receivedQty - item.loadListQty;
+                const requestedQty = item.loadListQty;
+                const expectedBaseQty = item.expectedBaseQty ?? requestedQty;
+                const rowHasEntry = Boolean(editedItems[item.id]) || receivedQty > 0 || damagedQty > 0;
+                const variance = rowHasEntry ? receivedQty + damagedQty - requestedQty : null;
                 const isChecked = receivedQty > 0;
-                const hasIssues = damagedQty > 0 || variance < 0;
+                const hasIssues = damagedQty > 0 || (variance !== null && variance < 0);
 
                 return (
                   <div
@@ -457,10 +471,30 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                               {item.item?.name || "-"}
                             </p>
                             <p className="text-sm text-gray-600">{item.item?.code || "-"}</p>
+                            <div className="mt-2 space-y-1">
+                              <p className="text-sm font-semibold text-gray-800">
+                                {item.itemUnitOption?.displayLabel || "-"}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Qty/Unit: {(item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(undefined, {
+                                  maximumFractionDigits: 4,
+                                })}
+                              </p>
+                            </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs text-gray-500">Expected</p>
-                            <p className="text-xl font-bold text-gray-900">{item.loadListQty}</p>
+                            <p className="text-xs text-gray-500">Requested Qty</p>
+                            <p className="text-lg font-bold text-gray-900">
+                              {requestedQty.toLocaleString(undefined, {
+                                maximumFractionDigits: 4,
+                              })}
+                            </p>
+                            <p className="mt-2 text-xs text-gray-500">Total Qty</p>
+                            <p className="text-xl font-bold text-gray-900">
+                              {expectedBaseQty.toLocaleString(undefined, {
+                                maximumFractionDigits: 4,
+                              })}
+                            </p>
                           </div>
                         </div>
 
@@ -476,7 +510,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                               ⚠ Issues Found
                             </span>
                           )}
-                          {variance !== 0 && isChecked && (
+                          {variance !== null && variance !== 0 && isChecked && (
                             <span
                               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                                 variance > 0

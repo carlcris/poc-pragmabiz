@@ -44,6 +44,20 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 ## Database & API Notes
 - Verify table/column names in `supabase/migrations/` before writing Supabase queries.
 - The shared `apiClient` returns parsed JSON; avoid double-unwrapping response data.
+- If code expects a schema change that is not present in the current database, stop and report the exact mismatch clearly.
+- Do not add temporary fallbacks or compatibility code to mask unapplied migrations, schema drift, or environment drift unless the user explicitly asks for that behavior.
+- In these cases, explain:
+  - what the code expects
+  - what the current database/environment actually has
+  - the exact mismatch
+  - the required migration or environment action
+- Shared hooks should not own UI toasts by default.
+- Prefer hooks to handle data work only: API calls, cache invalidation, and typed error propagation.
+- Pages/components should own presentation side effects such as toast success/error messages, banners, and dialogs.
+- If a shared hook needs optional UI behavior, expose callbacks or let the caller handle `mutateAsync` results instead of hardcoding toasts in the hook.
+- Do not return raw database, Supabase, or internal exception messages directly to API clients.
+- Log the real server-side error with enough detail for debugging, but return a user-friendly and non-sensitive error message in the API response.
+- Treat raw backend error text as internal-only because exposing it can leak schema details, constraints, implementation internals, or security-sensitive information.
 
 ## Database Code Generation Rules
 - Auto-generated document codes must be generated at the database level, not in application code.
@@ -78,6 +92,13 @@ Reason:
 
 ## Agent-Specific Instructions
 Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touching APIs, hooks, or data types.
+
+## Implementation Quality Rules
+- Do not ship temporary fixes as the default implementation.
+- Default to production-grade solutions, even when addressing a narrow bug.
+- Do not patch code only to make the current symptom disappear; fix the underlying contract, data flow, or schema correctly.
+- Prefer completing the proper end-to-end implementation over adding short-term workarounds that will need cleanup later.
+- If a correct implementation depends on a migration, contract update, or broader refactor, surface that explicitly instead of masking it with fallback behavior.
 
 ## Data Loading & Scalability Rules
 - Never load all records at once.

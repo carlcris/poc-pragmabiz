@@ -30,6 +30,7 @@ import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
 import Link from "next/link";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { ItemBarcodeImage } from "@/components/items/barcode/ItemBarcodeImage";
 
 type EditItemPageProps = {
   params: Promise<{ id: string }>;
@@ -183,6 +184,7 @@ function EditItemContent({ params }: EditItemPageProps) {
 
       {/* Form */}
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        {/* Left Column - Main Form */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
@@ -488,8 +490,8 @@ function EditItemContent({ params }: EditItemPageProps) {
           </CardContent>
         </Card>
 
-        {/* Image Upload Sidebar */}
-        <div>
+        {/* Right Column - Image & Barcode */}
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-semibold">{t("itemImageLabel")}</CardTitle>
@@ -519,32 +521,35 @@ function EditItemContent({ params }: EditItemPageProps) {
             </CardContent>
           </Card>
 
-          <Card className="mt-4">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">{t("qrCodeLabel")}</CardTitle>
+              <CardTitle className="text-base font-semibold">{t("barcodeLabel")}</CardTitle>
               <CardDescription className="text-sm">
-                {t("qrCodeReadonlyDescription")}
+                {t("barcodeGeneratedDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {item.skuQrImage ? (
+              {item.primaryBarcode ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-white p-4">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.skuQrImage}
-                      alt={`SKU QR ${item.sku || item.code}`}
-                      className="mx-auto h-[200px] w-[200px] object-contain"
-                    />
+                    <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
+                      <ItemBarcodeImage
+                        value={item.primaryBarcode}
+                        alt={`Barcode ${item.primaryBarcode}`}
+                      />
+                    </div>
                   </div>
+                  <p className="text-center text-sm text-muted-foreground">
+                    {t("primaryBarcodeDescription")}
+                  </p>
                   <p className="rounded bg-muted px-3 py-2 text-center font-mono text-sm font-medium">
-                    {item.sku || item.code}
+                    {item.primaryBarcode}
                   </p>
                 </div>
               ) : (
                 <div className="flex h-[215px] w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed bg-muted/30">
                   <QrCode className="h-8 w-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">{t("noQrCodeAvailable")}</p>
+                  <p className="text-sm text-muted-foreground">{t("noBarcode")}</p>
                 </div>
               )}
             </CardContent>

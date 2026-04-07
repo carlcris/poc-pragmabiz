@@ -9,6 +9,24 @@ const normalizeOptionalDate = (value: unknown) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const normalizeLoadListItemBaseQty = (item: {
+  load_list_qty?: string | number | null;
+  received_qty?: string | number | null;
+  item_unit_option?: { qty_per_unit?: string | number | null } | { qty_per_unit?: string | number | null }[] | null;
+}) => {
+  const rawUnitOption = Array.isArray(item.item_unit_option)
+    ? item.item_unit_option[0] ?? null
+    : item.item_unit_option ?? null;
+  const qtyPerUnit = Number(rawUnitOption?.qty_per_unit ?? 1) || 1;
+  const loadListQty = Number(item.load_list_qty ?? 0) || 0;
+  const receivedQty = Number(item.received_qty ?? loadListQty) || 0;
+
+  return {
+    loadListBaseQty: loadListQty * qtyPerUnit,
+    receivedBaseQty: receivedQty * qtyPerUnit,
+  };
+};
+
 // PATCH /api/load-lists/[id]/status
 export async function PATCH(
   request: NextRequest,
@@ -58,8 +76,12 @@ export async function PATCH(
         items:load_list_items(
           id,
           item_id,
+          item_unit_option_id,
           load_list_qty,
-          received_qty
+          received_qty,
+          item_unit_option:item_unit_options(
+            qty_per_unit
+          )
         )
       `
       )
@@ -74,6 +96,7 @@ export async function PATCH(
 
     const currentStatus = ll.status;
     const newStatus = body.status;
+    const isArrivalReversal = currentStatus === "arrived" && newStatus === "in_transit";
     const effectiveEstimatedArrivalDate =
       normalizeOptionalDate(body.estimatedArrivalDate) || ll.estimated_arrival_date || null;
 
@@ -92,16 +115,56 @@ export async function PATCH(
       );
     }
 
+    if (
+      newStatus === "cancelled" &&
+      ["arrived", "receiving", "pending_approval", "received"].includes(currentStatus)
+    ) {
+      return NextResponse.json(
+        { error: "Load lists that have arrived or started receiving must be reversed before cancellation" },
+        { status: 400 }
+      );
+    }
+
+    if (newStatus === "in_transit" && currentStatus !== "confirmed" && !isArrivalReversal) {
+      return NextResponse.json(
+        { error: "Only confirmed load lists can be marked in transit" },
+        { status: 400 }
+      );
+    }
+
+    if (isArrivalReversal) {
+      const { error: reversalError } = await supabase.rpc("reverse_load_list_arrival", {
+        p_company_id: companyId,
+        p_load_list_id: ll.id,
+        p_user_id: userId,
+      });
+
+      if (reversalError) {
+        console.error("Error reversing load list arrival:", reversalError);
+        return NextResponse.json(
+          { error: "Failed to reverse load list arrival" },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        id: ll.id,
+        llNumber: ll.ll_number,
+        status: "in_transit",
+        message: "Status updated successfully",
+      });
+    }
+
     // ========================================================================
     // INVENTORY UPDATES - Critical business logic
     // ========================================================================
 
     try {
       // Handle transition TO "in_transit" status
-      if (currentStatus !== "in_transit" && newStatus === "in_transit") {
+      if (currentStatus !== "in_transit" && newStatus === "in_transit" && !isArrivalReversal) {
         // Increment in_transit for each item (no RPC dependency)
         for (const item of ll.items) {
-          const qty = parseFloat(item.load_list_qty || 0);
+          const { loadListBaseQty: qty } = normalizeLoadListItemBaseQty(item);
           if (!qty) continue;
 
           const { data: existingRecord, error: fetchInvError } = await supabase
@@ -150,10 +213,11 @@ export async function PATCH(
         }
       }
 
-      // Handle transition FROM "in_transit" TO "cancelled"
+      // Handle transition FROM any active transit state TO "cancelled"
       if (currentStatus === "in_transit" && newStatus === "cancelled") {
         // Decrement in_transit (rollback)
         for (const item of ll.items) {
+          const { loadListBaseQty } = normalizeLoadListItemBaseQty(item);
           // Ensure item_warehouse record exists
           const { data: existingRecord } = await supabase
             .from("item_warehouse")
@@ -166,7 +230,7 @@ export async function PATCH(
           if (existingRecord) {
             const newInTransit = Math.max(
               0,
-              parseFloat(existingRecord.in_transit) - parseFloat(item.load_list_qty)
+              parseFloat(existingRecord.in_transit) - loadListBaseQty
             );
 
             await supabase
@@ -188,7 +252,8 @@ export async function PATCH(
       if (currentStatus !== "received" && newStatus === "received") {
         // Decrement in_transit and increment on_hand
         for (const item of ll.items) {
-          const receivedQty = parseFloat(item.received_qty || item.load_list_qty);
+          const { loadListBaseQty, receivedBaseQty: receivedQty } =
+            normalizeLoadListItemBaseQty(item);
 
           // Ensure item_warehouse record exists
           const { data: existingRecord } = await supabase
@@ -202,7 +267,7 @@ export async function PATCH(
           if (existingRecord) {
             const newInTransit = Math.max(
               0,
-              parseFloat(existingRecord.in_transit) - receivedQty
+              parseFloat(existingRecord.in_transit) - loadListBaseQty
             );
             const newOnHand = parseFloat(existingRecord.current_stock) + receivedQty;
 
@@ -248,6 +313,9 @@ export async function PATCH(
     if (newStatus === "in_transit") {
       updateData.estimated_arrival_date = effectiveEstimatedArrivalDate;
       updateData.liner_name = body.linerName ?? ll.liner_name ?? null;
+      if (isArrivalReversal) {
+        updateData.actual_arrival_date = null;
+      }
     }
 
     // Set timestamps based on status
@@ -270,7 +338,7 @@ export async function PATCH(
     if (updateError) {
       console.error("Error updating load list status:", updateError);
       return NextResponse.json(
-        { error: updateError.message || "Failed to update status" },
+        { error: "Failed to update status" },
         { status: 500 }
       );
     }
@@ -362,7 +430,9 @@ export async function PATCH(
             // Create GRN items from load list items
             const grnItemsToInsert = ll.items.map((item: Record<string, unknown>) => ({
               grn_id: grn.id,
+              load_list_item_id: item.id as string,
               item_id: item.item_id as string,
+              item_unit_option_id: (item.item_unit_option_id as string | null | undefined) ?? null,
               load_list_qty: item.load_list_qty as number,
               received_qty: 0,
               damaged_qty: 0,

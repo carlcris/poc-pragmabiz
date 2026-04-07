@@ -296,10 +296,12 @@ export default function StockRequisitionDetailPage() {
                     <TableRow>
                       <TableHead>{t("itemCode")}</TableHead>
                       <TableHead>{t("itemName")}</TableHead>
+                      <TableHead>{t("unitWithQtyPerUnitLabel")}</TableHead>
                       <TableHead className="text-right">{t("requestedQty")}</TableHead>
+                      <TableHead className="text-right">{t("totalQtyLabel")}</TableHead>
                       <TableHead className="text-right">{t("fulfilledQty")}</TableHead>
                       <TableHead className="text-right">{t("outstandingQty")}</TableHead>
-                      <TableHead className="text-right">{t("unitPrice")}</TableHead>
+                      <TableHead className="text-right">{t("unitCostLabel")}</TableHead>
                       <TableHead className="text-right">{t("total")}</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -309,7 +311,26 @@ export default function StockRequisitionDetailPage() {
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.item?.code}</TableCell>
                           <TableCell>{item.item?.name}</TableCell>
-                          <TableCell className="text-right">{item.requestedQty}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">
+                              {item.itemUnitOption?.displayLabel || item.uomCode || t("noValue")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {t("qtyPerUnitInlineLabel", {
+                                qty: (item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                                  maximumFractionDigits: 4,
+                                }),
+                              })}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {item.requestedQty}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(item.requestedQty * (item.itemUnitOption?.qtyPerUnit ?? 1)).toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })}
+                          </TableCell>
                           <TableCell className="text-right">
                             <span
                               className={item.fulfilledQty > 0 ? "text-green-600 font-medium" : ""}

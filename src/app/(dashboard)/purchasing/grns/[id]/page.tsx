@@ -157,13 +157,23 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     const currentItem = grn?.items.find((item) => item.id === itemId);
     setEditedItems((prev) => ({
       ...prev,
-      [itemId]: {
-        receivedQty: prev[itemId]?.receivedQty ?? currentItem?.receivedQty ?? 0,
-        damagedQty: prev[itemId]?.damagedQty ?? currentItem?.damagedQty ?? 0,
-        numBoxes: prev[itemId]?.numBoxes ?? currentItem?.numBoxes ?? 0,
-        notes: prev[itemId]?.notes ?? currentItem?.notes ?? "",
-        [field]: value,
-      },
+      [itemId]: (() => {
+        const nextItem = {
+          receivedQty: prev[itemId]?.receivedQty ?? currentItem?.receivedQty ?? 0,
+          damagedQty: prev[itemId]?.damagedQty ?? currentItem?.damagedQty ?? 0,
+          numBoxes: prev[itemId]?.numBoxes ?? currentItem?.numBoxes ?? 0,
+          notes: prev[itemId]?.notes ?? currentItem?.notes ?? "",
+          [field]: value,
+        };
+
+        if (field === "receivedQty") {
+          const qtyPerUnit = Number(currentItem?.itemUnitOption?.qtyPerUnit ?? 1) || 1;
+          nextItem.numBoxes =
+            qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
+        }
+
+        return nextItem;
+      })(),
     }));
   };
 
@@ -496,7 +506,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                     <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
                       <TableHead className="text-xs font-semibold text-gray-700">{t("itemCode")}</TableHead>
                       <TableHead className="text-xs font-semibold text-gray-700">{t("itemName")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("expected")}</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-700">{t("unitWithQtyPerUnitLabel")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("requestedQtyLabel")}</TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("totalQtyLabel")}</TableHead>
                       <TableHead className="text-right text-xs font-semibold text-gray-700">{t("received")}</TableHead>
                       <TableHead className="text-right text-xs font-semibold text-gray-700">{t("damaged")}</TableHead>
                       <TableHead className="text-right text-xs font-semibold text-gray-700">{t("boxes")}</TableHead>
@@ -507,11 +519,16 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                   <TableBody>
                     {grn.items.map((item, index) => {
                       const receivedQty = Number(getItemValue(item, "receivedQty")) || 0;
-                      const variance = receivedQty - item.loadListQty;
+                      const damagedQty = Number(getItemValue(item, "damagedQty")) || 0;
+                      const requestedQty = item.loadListQty;
+                      const expectedBaseQty = item.expectedBaseQty ?? requestedQty;
+                      const rowHasEntry =
+                        Boolean(editedItems[item.id]) || receivedQty > 0 || damagedQty > 0;
+                      const variance = rowHasEntry ? receivedQty + damagedQty - requestedQty : null;
                       const varianceClass =
-                        variance > 0
+                        variance !== null && variance > 0
                           ? "text-emerald-600 bg-emerald-50"
-                          : variance < 0
+                          : variance !== null && variance < 0
                             ? "text-red-600 bg-red-50"
                             : "text-gray-600";
 
@@ -522,7 +539,28 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                         >
                           <TableCell className="text-sm font-semibold text-gray-900">{item.item?.code || t("noValue")}</TableCell>
                           <TableCell className="text-sm text-gray-700">{item.item?.name || t("noValue")}</TableCell>
-                          <TableCell className="text-right text-sm font-medium text-gray-900">{item.loadListQty}</TableCell>
+                          <TableCell>
+                            <div className="font-medium text-gray-900">
+                              {item.itemUnitOption?.displayLabel || t("noValue")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {t("qtyPerUnitInlineLabel", {
+                                qty: (item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                                  maximumFractionDigits: 4,
+                                }),
+                              })}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-medium text-gray-900">
+                            {requestedQty.toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-medium text-gray-900">
+                            {expectedBaseQty.toLocaleString(locale, {
+                              maximumFractionDigits: 4,
+                            })}
+                          </TableCell>
                           <TableCell className="text-right">
                             {isEditable ? (
                               <Input
@@ -551,7 +589,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                               />
                             ) : (
                               <span className="text-sm font-medium text-gray-900">
-                                {getItemValue(item, "damagedQty")}
+                                {damagedQty}
                               </span>
                             )}
                           </TableCell>
@@ -574,8 +612,12 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                           </TableCell>
                           <TableCell className="text-right">
                             <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-bold ${varianceClass}`}>
-                              {variance > 0 ? "+" : ""}
-                              {variance}
+                              {variance === null ? t("noValue") : (
+                                <>
+                                  {variance > 0 ? "+" : ""}
+                                  {variance}
+                                </>
+                              )}
                             </span>
                           </TableCell>
                           <TableCell>

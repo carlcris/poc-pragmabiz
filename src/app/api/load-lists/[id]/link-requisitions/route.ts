@@ -41,7 +41,6 @@ export async function POST(
 
     // Process each link
     const linksToInsert = [];
-    const srItemUpdates = new Map<string, number>(); // Map of sr_item_id -> total fulfilled_qty
 
     for (const link of body.links) {
       if (!link.loadListItemId || !link.srItemId || !link.fulfilledQty) {
@@ -128,15 +127,13 @@ export async function POST(
         fulfilled_qty: newFulfilledQty,
       });
 
-      // Track SR item updates
-      const currentUpdate = srItemUpdates.get(link.srItemId) || 0;
-      srItemUpdates.set(link.srItemId, currentUpdate + newFulfilledQty);
     }
 
     // Insert links
-    const { error: insertError } = await supabase
+    const { data: insertedLinks, error: insertError } = await supabase
       .from("load_list_sr_items")
-      .insert(linksToInsert);
+      .insert(linksToInsert)
+      .select("id");
 
     if (insertError) {
       console.error("Error creating links:", insertError);
@@ -146,60 +143,28 @@ export async function POST(
       );
     }
 
-    // Update fulfilled_qty for each SR item
-    for (const [srItemId, additionalQty] of srItemUpdates.entries()) {
-      const { data: currentSRItem } = await supabase
-        .from("stock_requisition_items")
-        .select("fulfilled_qty, requested_qty, sr_id")
-        .eq("id", srItemId)
-        .single();
-
-      if (currentSRItem) {
-        const newFulfilledQty = parseFloat(currentSRItem.fulfilled_qty) + additionalQty;
-
-        // Update SR item
-        await supabase
-          .from("stock_requisition_items")
-          .update({ fulfilled_qty: newFulfilledQty })
-          .eq("id", srItemId);
-
-        // Check if SR should be updated to partially_fulfilled or fulfilled
-        const { data: allSRItems } = await supabase
-          .from("stock_requisition_items")
-          .select("requested_qty, fulfilled_qty")
-          .eq("sr_id", currentSRItem.sr_id);
-
-        if (allSRItems) {
-          let allFulfilled = true;
-          let anyFulfilled = false;
-
-          for (const item of allSRItems) {
-            const itemRequested = parseFloat(item.requested_qty);
-            const itemFulfilled = parseFloat(item.fulfilled_qty);
-
-            if (itemFulfilled > 0) {
-              anyFulfilled = true;
-            }
-
-            if (itemFulfilled < itemRequested) {
-              allFulfilled = false;
-            }
-          }
-
-          // Update SR status
-          let newSRStatus = "submitted";
-          if (allFulfilled) {
-            newSRStatus = "fulfilled";
-          } else if (anyFulfilled) {
-            newSRStatus = "partially_fulfilled";
-          }
-
-          await supabase
-            .from("stock_requisitions")
-            .update({ status: newSRStatus })
-            .eq("id", currentSRItem.sr_id);
-        }
+    const { error: reconcileError } = await supabase.rpc(
+      "recalculate_stock_requisition_fulfillment_for_load_list",
+      {
+        p_company_id: companyId,
+        p_load_list_id: id,
       }
+    );
+
+    if (reconcileError) {
+      console.error("Error reconciling stock requisition fulfillment:", reconcileError);
+
+      if (insertedLinks && insertedLinks.length > 0) {
+        await supabase
+          .from("load_list_sr_items")
+          .delete()
+          .in("id", insertedLinks.map((link) => link.id));
+      }
+
+      return NextResponse.json(
+        { error: "Failed to reconcile linked stock requisitions" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

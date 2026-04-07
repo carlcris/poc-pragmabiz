@@ -50,6 +50,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { toProperCase } from "@/lib/string";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import type { ItemUnitOption } from "@/types/item";
 
 const getStatusBadge = (status: string, label: string) => {
   const baseClass = "text-xs font-medium";
@@ -110,8 +112,22 @@ const toItemLabel = (item: {
 }, fallback: string) => item.items?.item_name || item.items?.item_code || item.item_id || fallback;
 
 const toUomLabel = (item: {
-  units_of_measure?: { symbol: string | null; name: string | null } | null;
-}, fallback: string) => item.units_of_measure?.symbol || item.units_of_measure?.name || fallback;
+  units_of_measure?: { code?: string | null; symbol: string | null; name: string | null } | null;
+  item_unit_options?: DbItemUnitOptionRow | DbItemUnitOptionRow[] | ItemUnitOption | ItemUnitOption[] | null;
+}, fallback: string) => {
+  const unitOption = Array.isArray(item.item_unit_options)
+    ? item.item_unit_options[0]
+    : item.item_unit_options;
+
+  if (unitOption) {
+    if ("displayLabel" in unitOption) {
+      return unitOption.displayLabel;
+    }
+    return transformItemUnitOptionRow(unitOption, item.units_of_measure?.code || "").displayLabel;
+  }
+
+  return item.units_of_measure?.symbol || item.units_of_measure?.name || fallback;
+};
 
 export default function PickListsPage() {
   const locale = useLocale();

@@ -1,3 +1,5 @@
+import type { ItemUnitOption } from "@/types/item";
+
 export type PickListStatus = "pending" | "in_progress" | "paused" | "cancelled" | "done";
 
 export type PickListItem = {
@@ -8,6 +10,7 @@ export type PickListItem = {
   sr_id: string;
   sr_item_id: string;
   item_id: string;
+  item_unit_option_id?: string | null;
   uom_id: string;
   allocated_qty: number;
   picked_qty: number;
@@ -17,12 +20,12 @@ export type PickListItem = {
   items?: {
     item_name: string | null;
     item_code: string | null;
-    sku: string | null;
   } | null;
   units_of_measure?: {
     symbol: string | null;
     name: string | null;
   } | null;
+  item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
   delivery_note_items?:
     | {
         id: string;

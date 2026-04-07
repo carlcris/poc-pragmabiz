@@ -1,3 +1,5 @@
+import type { ItemUnitOption } from "@/types/item";
+
 export type DeliveryNoteStatus =
   | "draft"
   | "confirmed"
@@ -28,6 +30,7 @@ export type DeliveryNoteItem = {
   requesting_warehouse_id: string;
   fulfilling_warehouse_id: string;
   item_id: string;
+  item_unit_option_id?: string | null;
   uom_id: string;
   allocated_qty: number;
   picked_qty: number;
@@ -55,10 +58,16 @@ export type DeliveryNoteItem = {
     symbol?: string | null;
     name?: string | null;
   }[] | null;
+  item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
   stock_requests?: {
     request_code?: string | null;
   } | {
     request_code?: string | null;
+  }[] | null;
+  stock_request_items?: {
+    item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
+  } | {
+    item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
   }[] | null;
 };
 
@@ -115,6 +124,7 @@ export type CreateDeliveryNotePayload = {
     srId: string;
     srItemId: string;
     itemId: string;
+    itemUnitOptionId?: string;
     uomId: string;
     allocatedQty: number;
   }>;
@@ -168,6 +178,7 @@ export type AddDeliveryNoteItemsPayload = {
     srId: string;
     srItemId: string;
     itemId: string;
+    itemUnitOptionId?: string;
     uomId: string;
     allocatedQty: number;
   }>;
@@ -180,6 +191,7 @@ export type DeliveryNoteAllocatableItem = {
   itemId: string;
   itemCode: string | null;
   itemName: string | null;
+  itemUnitOptionId?: string | null;
   uomId: string;
   uomLabel: string | null;
   requestedQty: number;

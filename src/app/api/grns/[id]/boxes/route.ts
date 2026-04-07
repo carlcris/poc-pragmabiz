@@ -222,7 +222,16 @@ export async function POST(
     // Get GRN item details
     const { data: grnItem, error: itemError } = await supabase
       .from("grn_items")
-      .select("id, item_id, received_qty, num_boxes")
+      .select(`
+        id,
+        item_id,
+        item_unit_option_id,
+        received_qty,
+        num_boxes,
+        item_unit_option:item_unit_options(
+          qty_per_unit
+        )
+      `)
       .eq("id", body.grnItemId)
       .eq("grn_id", id)
       .single();
@@ -239,8 +248,14 @@ export async function POST(
       );
     }
 
+    const unitOption = Array.isArray(grnItem.item_unit_option)
+      ? grnItem.item_unit_option[0] ?? null
+      : grnItem.item_unit_option ?? null;
+    const qtyPerUnit = Number(unitOption?.qty_per_unit ?? 1) || 1;
+    const receivedBaseQty = receivedQty * qtyPerUnit;
+
     // Calculate quantity per box
-    const qtyPerBox = receivedQty / body.numBoxes;
+    const qtyPerBox = receivedBaseQty / body.numBoxes;
     if (!Number.isFinite(qtyPerBox) || qtyPerBox <= 0) {
       return NextResponse.json(
         { error: "Calculated quantity per box must be greater than zero" },

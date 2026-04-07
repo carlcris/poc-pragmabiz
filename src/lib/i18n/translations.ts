@@ -1838,6 +1838,7 @@ export type TranslationKeys = {
     generalTab: string;
     overviewTab: string;
     pricesTab: string;
+    unitOptionsTab: string;
     locationsTab: string;
     basicInformation: string;
     itemCodeLabel: string;
@@ -1880,6 +1881,43 @@ export type TranslationKeys = {
     reorderQtyShortLabel: string;
     baseUomLabel: string;
     noImage: string;
+    barcodeLabel: string;
+    primaryBarcodeDescription: string;
+    barcodeGeneratedDescription: string;
+    noBarcode: string;
+    unitOptionsTitle: string;
+    unitOptionsDescription: string;
+    addUnitOption: string;
+    editUnitOption: string;
+    unitOptionDialogDescription: string;
+    noUnitOptions: string;
+    noUnitOptionsDescription: string;
+    unitLabel: string;
+    qtyPerUnitLabel: string;
+    statusLabel: string;
+    actionsLabel: string;
+    displayLabelLabel: string;
+    displayLabelPlaceholder: string;
+    defaultLabel: string;
+    activeLabel: string;
+    inactiveLabel: string;
+    baseLabel: string;
+    setDefaultAction: string;
+    deactivateAction: string;
+    activateAction: string;
+    deleteAction: string;
+    saveUnitOption: string;
+    defaultUnitOptionDescription: string;
+    activeUnitOptionDescription: string;
+    unitOptionValidationError: string;
+    unitOptionAdded: string;
+    unitOptionUpdated: string;
+    unitOptionDeleted: string;
+    unitOptionActivated: string;
+    unitOptionDeactivated: string;
+    unitOptionDefaultUpdated: string;
+    unitOptionSaveError: string;
+    unitOptionDeleteError: string;
     qrCodeLabel: string;
     noQrCode: string;
     pricingDetailsTitle: string;
@@ -2428,6 +2466,7 @@ export type TranslationKeys = {
     item: string;
     qty: string;
     unit: string;
+    qtyPerUnit: string;
     notes: string;
     actions: string;
     cancel: string;
@@ -2450,6 +2489,12 @@ export type TranslationKeys = {
     editDescription: string;
     createDescription: string;
     itemLabel: string;
+    unitLabel: string;
+    qtyPerUnitLabel: string;
+    selectUnit: string;
+    selectItemFirst: string;
+    loadingUnits: string;
+    noUnitsAvailable: string;
     selectItem: string;
     searchItem: string;
     loadingItems: string;
@@ -2519,6 +2564,7 @@ export type TranslationKeys = {
     quantity: string;
     deliveredQty: string;
     unit: string;
+    qtyPerUnit: string;
     noItems: string;
     fulfillmentSummary: string;
     totalRequested: string;
@@ -4451,6 +4497,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       generalTab: "General",
       overviewTab: "Overview",
       pricesTab: "Prices",
+      unitOptionsTab: "Unit Options",
       locationsTab: "Locations",
       basicInformation: "Basic Information",
       itemCodeLabel: "Item Code *",
@@ -4493,6 +4540,43 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderQtyShortLabel: "Reorder Qty",
       baseUomLabel: "Base UOM",
       noImage: "No image",
+      barcodeLabel: "Barcode",
+      primaryBarcodeDescription: "Base unit barcode generated for this item.",
+      barcodeGeneratedDescription: "The base-unit barcode is generated automatically and cannot be edited here.",
+      noBarcode: "No barcode",
+      unitOptionsTitle: "Unit Options",
+      unitOptionsDescription: "Item-specific units, quantities, and barcodes.",
+      addUnitOption: "Add Unit Option",
+      editUnitOption: "Edit Unit Option",
+      unitOptionDialogDescription: "Configure item-specific quantity and default behavior for this unit option.",
+      noUnitOptions: "No unit options available.",
+      noUnitOptionsDescription: "Add your first unit option to get started.",
+      unitLabel: "Unit",
+      qtyPerUnitLabel: "Qty per Unit",
+      statusLabel: "Status",
+      actionsLabel: "Actions",
+      displayLabelLabel: "Display Label",
+      displayLabelPlaceholder: "Optional label override",
+      defaultLabel: "Default",
+      activeLabel: "Active",
+      inactiveLabel: "Inactive",
+      baseLabel: "Base",
+      setDefaultAction: "Set Default",
+      deactivateAction: "Deactivate",
+      activateAction: "Activate",
+      deleteAction: "Delete",
+      saveUnitOption: "Save Unit Option",
+      defaultUnitOptionDescription: "Use this unit option by default in item-specific flows.",
+      activeUnitOptionDescription: "Inactive options remain hidden from future selection.",
+      unitOptionValidationError: "Select a unit and enter a positive quantity.",
+      unitOptionAdded: "Unit option added.",
+      unitOptionUpdated: "Unit option updated.",
+      unitOptionDeleted: "Unit option deleted.",
+      unitOptionActivated: "Unit option activated.",
+      unitOptionDeactivated: "Unit option deactivated.",
+      unitOptionDefaultUpdated: "Default unit option updated.",
+      unitOptionSaveError: "Failed to save unit option.",
+      unitOptionDeleteError: "Failed to delete unit option.",
       qrCodeLabel: "QR Code",
       noQrCode: "No QR code",
       pricingDetailsTitle: "Pricing Details",
@@ -5562,13 +5646,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItemPlaceholder: "Search item...",
       searchItemByCodeOrName: "Search by code or name...",
       noItemFound: "No item found.",
+      unitLabel: "Unit",
+      selectUnit: "Select unit",
+      selectItemFirst: "Select item first",
+      qtyPerUnitLabel: "Qty/Unit",
+      totalQtyLabel: "Total Qty",
       quantityLabel: "Quantity *",
       quantityPlaceholder: "0",
-      unitPriceLabel: "Unit Price *",
+      unitCostLabel: "Unit Cost",
       unitPricePlaceholder: "0.00",
       addItem: "Add Item",
       addItemMissingFields: "Please select an item and enter quantity and price",
       itemNotFound: "Item not found",
+      unitNotFound: "Unit option not found",
       itemAddedSuccess: "Item added successfully",
       lineItemsRequired: "Please add at least one line item",
       saveError: "Failed to save stock requisition",
@@ -5579,7 +5669,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemCode: "ITEM CODE",
       itemName: "ITEM NAME",
       qty: "QTY",
-      unitPrice: "UNIT PRICE",
       total: "TOTAL",
       noItemsTitle: "No items added yet",
       noItemsDescription:
@@ -5618,10 +5707,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItems: "Line Items",
       itemCode: "Item Code",
       itemName: "Item Name",
+      unitWithQtyPerUnitLabel: "Unit",
+      qtyPerUnitInlineLabel: "Qty/Unit: {qty}",
+      qtyPerUnitLabel: "Qty/Unit",
       requestedQty: "Requested Qty",
+      totalQtyLabel: "Total Qty",
       fulfilledQty: "Fulfilled Qty",
       outstandingQty: "Outstanding Qty",
-      unitPrice: "Unit Price",
+      unitCostLabel: "Unit Cost",
       total: "Total",
       noLineItems: "No line items found",
       sendTitle: "Send Stock Requisition",
@@ -6732,13 +6825,21 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItem: "Search item...",
       searchByCodeOrName: "Search by code or name...",
       noItemFound: "No item found.",
+      unitLabel: "Unit",
+      selectUnit: "Select a unit",
+      selectItemFirst: "Select an item first",
+      unitWithQtyPerUnitLabel: "Unit",
+      qtyPerUnitInlineLabel: "Qty/Unit: {qty}",
+      qtyPerUnitLabel: "Qty/Unit",
       quantityLabel: "Quantity *",
       quantityPlaceholder: "0",
+      totalQtyLabel: "Total Qty",
       unitCostLabel: "Unit Cost *",
       unitCostPlaceholder: "0.00",
       addItem: "Add Item",
       addItemError: "Please select an item and enter quantity and unit cost",
       itemNotFound: "Item not found",
+      unitNotFound: "Unit option not found",
       lineItemsRequired: "Please add at least one line item",
       itemsTitle: "Load List Items",
       noItemsTitle: "No items added yet",
@@ -6803,6 +6904,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       linkStockRequisitions: "Link Stock Requisitions",
       markInTransit: "Mark In Transit",
       markArrived: "Mark Arrived",
+      reverseToInTransit: "Reverse to In Transit",
       markReceived: "Mark Received",
       cancel: "Cancel",
       loadError: "Failed to load load list.",
@@ -6828,11 +6930,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItems: "Line Items",
       itemCode: "Item Code",
       itemName: "Item Name",
+      unitWithQtyPerUnitLabel: "Unit",
+      qtyPerUnitInlineLabel: "Qty/Unit: {qty}",
       loadListQty: "Load List Qty",
+      totalQtyLabel: "Total Qty",
       receivedQty: "Received Qty",
       damagedQty: "Damaged Qty",
       shortageQty: "Shortage Qty",
-      unitPrice: "Unit Price",
+      unitPrice: "Unit Cost",
       total: "Total",
       noLineItems: "No line items found",
       confirmTitle: "Confirm Load List",
@@ -6847,6 +6952,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       updating: "Updating...",
       arrivedTitle: "Mark as Arrived",
       arrivedDescription: "This will mark the load list as arrived at the warehouse. You can then proceed with receiving.",
+      reverseArrivalTitle: "Reverse Arrival",
+      reverseArrivalDescription: "This will move the load list back to in transit and delete the untouched draft GRN that was auto-created on arrival.",
+      confirmReverseArrival: "Reverse to In Transit",
       receivedTitle: "Mark as Received",
       receivedDescription: "This will mark the load list as received and update inventory stock levels. This action cannot be undone.",
       cancelTitle: "Cancel Load List",
@@ -6952,6 +7060,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemsCount: "{count} items",
       itemCode: "Item Code",
       itemName: "Item Name",
+      unitWithQtyPerUnitLabel: "Unit",
+      qtyPerUnitInlineLabel: "Qty/Unit: {qty}",
+      requestedQtyLabel: "Requested Qty",
+      totalQtyLabel: "Total Qty",
       expected: "Expected",
       received: "Received",
       damaged: "Damaged",
@@ -7216,6 +7328,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       item: "Item",
       qty: "Qty",
       unit: "Unit",
+      qtyPerUnit: "Qty/Unit",
       notes: "Notes",
       actions: "Actions",
       cancel: "Cancel",
@@ -7238,6 +7351,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       editDescription: "Update the request item details.",
       createDescription: "Fill in the details for the new request item.",
       itemLabel: "Item",
+      unitLabel: "Unit",
+      qtyPerUnitLabel: "Qty per unit",
+      selectUnit: "Select a unit",
+      selectItemFirst: "Select an item first",
+      loadingUnits: "Loading units...",
+      noUnitsAvailable: "No units available for this item",
       selectItem: "Select an item",
       searchItem: "Search by code or name...",
       loadingItems: "Loading items...",
@@ -7307,6 +7426,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "Quantity",
       deliveredQty: "Delivered Qty",
       unit: "Unit",
+      qtyPerUnit: "Qty/Unit",
       noItems: "No items found.",
       fulfillmentSummary: "Fulfillment Summary",
       totalRequested: "Total Requested",
@@ -9214,6 +9334,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       generalTab: "常规",
       overviewTab: "概览",
       pricesTab: "价格",
+      unitOptionsTab: "单位选项",
       locationsTab: "库位",
       basicInformation: "基础信息",
       itemCodeLabel: "商品编码 *",
@@ -9256,6 +9377,43 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderQtyShortLabel: "补货量",
       baseUomLabel: "基础计量单位",
       noImage: "暂无图片",
+      barcodeLabel: "条码",
+      primaryBarcodeDescription: "此商品的基础单位条码。",
+      barcodeGeneratedDescription: "基础单位条码会自动生成，不能在这里编辑。",
+      noBarcode: "暂无条码",
+      unitOptionsTitle: "单位选项",
+      unitOptionsDescription: "按商品定义的单位、数量和条码。",
+      addUnitOption: "新增单位选项",
+      editUnitOption: "编辑单位选项",
+      unitOptionDialogDescription: "设置此商品单位选项的数量和默认行为。",
+      noUnitOptions: "暂无单位选项。",
+      noUnitOptionsDescription: "添加第一个单位选项以开始使用。",
+      unitLabel: "单位",
+      qtyPerUnitLabel: "每单位数量",
+      statusLabel: "状态",
+      actionsLabel: "操作",
+      displayLabelLabel: "显示标签",
+      displayLabelPlaceholder: "可选的显示名称覆盖",
+      defaultLabel: "默认",
+      activeLabel: "启用",
+      inactiveLabel: "停用",
+      baseLabel: "基础",
+      setDefaultAction: "设为默认",
+      deactivateAction: "停用",
+      activateAction: "启用",
+      deleteAction: "删除",
+      saveUnitOption: "保存单位选项",
+      defaultUnitOptionDescription: "在商品相关流程中默认使用此单位选项。",
+      activeUnitOptionDescription: "停用后，该选项不会出现在后续选择中。",
+      unitOptionValidationError: "请选择单位并输入大于 0 的数量。",
+      unitOptionAdded: "单位选项已新增。",
+      unitOptionUpdated: "单位选项已更新。",
+      unitOptionDeleted: "单位选项已删除。",
+      unitOptionActivated: "单位选项已启用。",
+      unitOptionDeactivated: "单位选项已停用。",
+      unitOptionDefaultUpdated: "默认单位选项已更新。",
+      unitOptionSaveError: "保存单位选项失败。",
+      unitOptionDeleteError: "删除单位选项失败。",
       qrCodeLabel: "二维码",
       noQrCode: "暂无二维码",
       pricingDetailsTitle: "价格详情",
@@ -10318,13 +10476,19 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItemPlaceholder: "搜索商品...",
       searchItemByCodeOrName: "按编码或名称搜索...",
       noItemFound: "未找到商品。",
+      unitLabel: "单位",
+      selectUnit: "选择单位",
+      selectItemFirst: "请先选择商品",
+      qtyPerUnitLabel: "每单位数量",
+      totalQtyLabel: "总数量",
       quantityLabel: "数量 *",
       quantityPlaceholder: "0",
-      unitPriceLabel: "单价 *",
+      unitCostLabel: "单位成本",
       unitPricePlaceholder: "0.00",
       addItem: "添加商品",
       addItemMissingFields: "请选择商品并输入数量和价格",
       itemNotFound: "未找到商品",
+      unitNotFound: "未找到单位选项",
       itemAddedSuccess: "商品添加成功",
       lineItemsRequired: "请至少添加一个行项目",
       saveError: "保存库存请购失败",
@@ -10335,7 +10499,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemCode: "商品编码",
       itemName: "商品名称",
       qty: "数量",
-      unitPrice: "单价",
       total: "合计",
       noItemsTitle: "尚未添加商品",
       noItemsDescription: "先选择商品，输入数量和价格，然后点击“添加商品”",
@@ -10373,10 +10536,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItems: "行项目",
       itemCode: "商品编码",
       itemName: "商品名称",
+      unitWithQtyPerUnitLabel: "单位",
+      qtyPerUnitInlineLabel: "每单位数量：{qty}",
+      qtyPerUnitLabel: "每单位数量",
       requestedQty: "申请数量",
+      totalQtyLabel: "总数量",
       fulfilledQty: "已完成数量",
       outstandingQty: "未完成数量",
-      unitPrice: "单价",
+      unitCostLabel: "单位成本",
       total: "合计",
       noLineItems: "未找到行项目",
       sendTitle: "发送库存请购",
@@ -11442,13 +11609,21 @@ export const translations: Record<Locale, TranslationKeys> = {
       searchItem: "搜索商品...",
       searchByCodeOrName: "按编码或名称搜索...",
       noItemFound: "未找到商品。",
+      unitLabel: "单位",
+      selectUnit: "选择单位",
+      selectItemFirst: "请先选择商品",
+      unitWithQtyPerUnitLabel: "单位",
+      qtyPerUnitInlineLabel: "每单位数量：{qty}",
+      qtyPerUnitLabel: "每单位数量",
       quantityLabel: "数量 *",
       quantityPlaceholder: "0",
+      totalQtyLabel: "总数量",
       unitCostLabel: "单价 *",
       unitCostPlaceholder: "0.00",
       addItem: "添加商品",
       addItemError: "请选择商品并输入数量和单价",
       itemNotFound: "未找到商品",
+      unitNotFound: "未找到单位选项",
       lineItemsRequired: "请至少添加一个行项目",
       itemsTitle: "装载单商品",
       noItemsTitle: "尚未添加商品",
@@ -11513,6 +11688,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       linkStockRequisitions: "关联库存请购",
       markInTransit: "标记为在途",
       markArrived: "标记为已到达",
+      reverseToInTransit: "退回在途",
       markReceived: "标记为已收货",
       cancel: "取消",
       loadError: "加载装载单失败。",
@@ -11538,11 +11714,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItems: "行项目",
       itemCode: "商品编码",
       itemName: "商品名称",
+      unitWithQtyPerUnitLabel: "单位",
+      qtyPerUnitInlineLabel: "每单位数量：{qty}",
       loadListQty: "装载单数量",
+      totalQtyLabel: "总数量",
       receivedQty: "已收货数量",
       damagedQty: "损坏数量",
       shortageQty: "短缺数量",
-      unitPrice: "单价",
+      unitPrice: "单位成本",
       total: "合计",
       noLineItems: "未找到行项目",
       confirmTitle: "确认装载单",
@@ -11557,6 +11736,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       updating: "更新中...",
       arrivedTitle: "标记为已到达",
       arrivedDescription: "这将把装载单标记为已到达仓库，然后可以继续收货。",
+      reverseArrivalTitle: "撤销到达",
+      reverseArrivalDescription: "这会将装载单退回在途，并删除到达时自动创建且未处理的草稿收货单。",
+      confirmReverseArrival: "退回在途",
       receivedTitle: "标记为已收货",
       receivedDescription: "这将把装载单标记为已收货，并更新库存水平。此操作无法撤销。",
       cancelTitle: "取消装载单",
@@ -11661,6 +11843,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemsCount: "{count} 个项目",
       itemCode: "物料编码",
       itemName: "物料名称",
+      unitWithQtyPerUnitLabel: "单位",
+      qtyPerUnitInlineLabel: "每单位数量：{qty}",
+      requestedQtyLabel: "请求数量",
+      totalQtyLabel: "总数量",
       expected: "应收",
       received: "实收",
       damaged: "损坏",
@@ -11920,6 +12106,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       item: "商品",
       qty: "数量",
       unit: "单位",
+      qtyPerUnit: "每单位数量",
       notes: "备注",
       actions: "操作",
       cancel: "取消",
@@ -11942,6 +12129,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       editDescription: "更新申请商品详情。",
       createDescription: "填写新申请商品的详情。",
       itemLabel: "商品",
+      unitLabel: "单位",
+      qtyPerUnitLabel: "每单位数量",
+      selectUnit: "选择单位",
+      selectItemFirst: "请先选择商品",
+      loadingUnits: "加载单位中...",
+      noUnitsAvailable: "此商品没有可用单位",
       selectItem: "选择商品",
       searchItem: "按编码或名称搜索...",
       loadingItems: "加载商品中...",
@@ -12011,6 +12204,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "数量",
       deliveredQty: "已交付数量",
       unit: "单位",
+      qtyPerUnit: "每单位数量",
       noItems: "未找到商品。",
       fulfillmentSummary: "履行汇总",
       totalRequested: "申请总数",
