@@ -40,7 +40,7 @@ const PAGE_RESOURCE_MAP: Record<string, Resource> = {
   "/accounting/ledger": "general_ledger",
   "/accounting/trial-balance": "general_ledger",
   "/reports/sales-analytics": "reports",
-  "/reports/stock": "reports",
+  "/reports": "reports",
   "/reports/commission": "reports",
   "/admin/users": "users",
   "/admin/roles": "roles",

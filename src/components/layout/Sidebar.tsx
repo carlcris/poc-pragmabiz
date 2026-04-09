@@ -24,7 +24,6 @@ import {
   Users,
   Building2,
   PackageCheck,
-  BarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
@@ -180,7 +179,6 @@ const menuItems = [
     children: [
       { title: "Reports Directory", href: "/reports", resource: RESOURCES.REPORTS as Resource, icon: LayoutDashboard },
       //{ title: "Sales Analytics", href: "/reports/sales-analytics", resource: RESOURCES.REPORTS as Resource },
-      { title: "Stock Reports", href: "/reports/stock", resource: RESOURCES.REPORTS as Resource, icon: BarChart },
       //{ title: "Commission Reports", href: "/reports/commission", resource: RESOURCES.REPORTS as Resource },
     ],
   },

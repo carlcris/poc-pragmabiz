@@ -8,6 +8,7 @@ export interface StockMovementFilters {
   warehouseId?: string;
   itemId?: string;
   groupBy?: "item" | "warehouse" | "item-warehouse";
+  enabled?: boolean;
 }
 
 export interface StockMovementData {
@@ -64,16 +65,19 @@ export interface StockMovementResponse {
 }
 
 export function useStockMovement(filters: StockMovementFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<StockMovementResponse>({
-    queryKey: ["stock-movement-report", filters],
+    queryKey: ["stock-movement-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
 
-      if (filters.startDate) params.append("startDate", filters.startDate);
-      if (filters.endDate) params.append("endDate", filters.endDate);
-      if (filters.warehouseId) params.append("warehouseId", filters.warehouseId);
-      if (filters.itemId) params.append("itemId", filters.itemId);
-      if (filters.groupBy) params.append("groupBy", filters.groupBy);
+      if (queryFilters.startDate) params.append("startDate", queryFilters.startDate);
+      if (queryFilters.endDate) params.append("endDate", queryFilters.endDate);
+      if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
+      if (queryFilters.itemId) params.append("itemId", queryFilters.itemId);
+      if (queryFilters.groupBy) params.append("groupBy", queryFilters.groupBy);
 
       const response = await fetch(`${API_BASE_URL}/reports/stock-movement?${params.toString()}`);
 
@@ -92,6 +96,7 @@ export interface StockValuationFilters {
   itemId?: string;
   category?: string;
   groupBy?: "item" | "warehouse" | "category" | "item-warehouse";
+  enabled?: boolean;
 }
 
 export interface StockValuationData {
@@ -134,15 +139,18 @@ export interface StockValuationResponse {
 }
 
 export function useStockValuation(filters: StockValuationFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<StockValuationResponse>({
-    queryKey: ["stock-valuation-report", filters],
+    queryKey: ["stock-valuation-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
 
-      if (filters.warehouseId) params.append("warehouseId", filters.warehouseId);
-      if (filters.itemId) params.append("itemId", filters.itemId);
-      if (filters.category) params.append("category", filters.category);
-      if (filters.groupBy) params.append("groupBy", filters.groupBy);
+      if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
+      if (queryFilters.itemId) params.append("itemId", queryFilters.itemId);
+      if (queryFilters.category) params.append("category", queryFilters.category);
+      if (queryFilters.groupBy) params.append("groupBy", queryFilters.groupBy);
 
       const response = await fetch(`${API_BASE_URL}/reports/stock-valuation?${params.toString()}`);
 

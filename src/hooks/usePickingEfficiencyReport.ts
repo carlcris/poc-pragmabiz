@@ -8,6 +8,7 @@ export type PickingEfficiencyFilters = {
   warehouseId?: string;
   pickerUserId?: string;
   groupBy?: "picker" | "warehouse";
+  enabled?: boolean;
 };
 
 export type PickingEfficiencyGroupRow = {
@@ -79,15 +80,18 @@ export type PickingEfficiencyReportResponse = {
 };
 
 export function usePickingEfficiencyReport(filters: PickingEfficiencyFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<PickingEfficiencyReportResponse>({
-    queryKey: ["picking-efficiency-report", filters],
+    queryKey: ["picking-efficiency-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.startDate) params.append("startDate", filters.startDate);
-      if (filters.endDate) params.append("endDate", filters.endDate);
-      if (filters.warehouseId) params.append("warehouseId", filters.warehouseId);
-      if (filters.pickerUserId) params.append("pickerUserId", filters.pickerUserId);
-      if (filters.groupBy) params.append("groupBy", filters.groupBy);
+      if (queryFilters.startDate) params.append("startDate", queryFilters.startDate);
+      if (queryFilters.endDate) params.append("endDate", queryFilters.endDate);
+      if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
+      if (queryFilters.pickerUserId) params.append("pickerUserId", queryFilters.pickerUserId);
+      if (queryFilters.groupBy) params.append("groupBy", queryFilters.groupBy);
 
       const response = await fetch(`${API_BASE_URL}/reports/picking-efficiency?${params.toString()}`);
       if (!response.ok) {
@@ -98,4 +102,3 @@ export function usePickingEfficiencyReport(filters: PickingEfficiencyFilters) {
     staleTime: 5 * 60 * 1000,
   });
 }
-

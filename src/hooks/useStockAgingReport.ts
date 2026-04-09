@@ -17,6 +17,7 @@ export type StockAgingReportFilters = {
   search?: string;
   category?: string;
   ageBucket?: StockAgingAgeBucket;
+  enabled?: boolean;
 };
 
 export type StockAgingReportRow = {
@@ -74,16 +75,19 @@ export type StockAgingReportResponse = {
 };
 
 export function useStockAgingReport(filters: StockAgingReportFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<StockAgingReportResponse>({
-    queryKey: ["stock-aging-report", filters],
+    queryKey: ["stock-aging-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
 
-      if (filters.page) params.append("page", String(filters.page));
-      if (filters.limit) params.append("limit", String(filters.limit));
-      if (filters.search) params.append("search", filters.search);
-      if (filters.category) params.append("category", filters.category);
-      if (filters.ageBucket) params.append("ageBucket", filters.ageBucket);
+      if (queryFilters.page) params.append("page", String(queryFilters.page));
+      if (queryFilters.limit) params.append("limit", String(queryFilters.limit));
+      if (queryFilters.search) params.append("search", queryFilters.search);
+      if (queryFilters.category) params.append("category", queryFilters.category);
+      if (queryFilters.ageBucket) params.append("ageBucket", queryFilters.ageBucket);
 
       const response = await fetch(`${API_BASE_URL}/reports/stock-aging?${params.toString()}`);
       if (!response.ok) {

@@ -33,7 +33,7 @@ type ShipmentsReportPDFProps = {
 const styles = StyleSheet.create({
   page: {
     padding: 28,
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: "ArialUnicode",
     color: "#111827",
     backgroundColor: "#ffffff",
@@ -43,17 +43,17 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: "ArialUnicode",
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 13,
     color: "#6b7280",
     marginBottom: 6,
   },
   meta: {
-    fontSize: 8,
+    fontSize: 10,
     color: "#6b7280",
   },
   table: {
@@ -65,33 +65,33 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#e5e7eb",
-    minHeight: 28,
+    minHeight: 36,
     alignItems: "center",
   },
   tableHeaderText: {
     color: "#111827",
     fontFamily: "ArialUnicode",
-    fontSize: 8,
+    fontSize: 9,
     paddingHorizontal: 6,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   row: {
     flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: "#e5e7eb",
-    minHeight: 30,
+    minHeight: 38,
     alignItems: "stretch",
   },
   cell: {
     paddingHorizontal: 6,
-    paddingVertical: 5,
+    paddingVertical: 7,
     justifyContent: "center",
   },
   cellText: {
-    fontSize: 8,
+    fontSize: 9,
   },
   cellMuted: {
-    fontSize: 7,
+    fontSize: 8,
     color: "#6b7280",
     marginTop: 2,
   },
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   colValue: { width: "12%" },
   footer: {
     marginTop: 10,
-    fontSize: 8,
+    fontSize: 10,
     color: "#6b7280",
     textAlign: "right",
   },

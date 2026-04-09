@@ -10,6 +10,7 @@ export type ShipmentsReportFilters = {
   search?: string;
   supplierId?: string;
   shipmentStage?: ShipmentStageFilter;
+  enabled?: boolean;
 };
 
 export type ShipmentsReportRow = {
@@ -65,15 +66,18 @@ export type ShipmentsReportResponse = {
 };
 
 export function useShipmentsReport(filters: ShipmentsReportFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<ShipmentsReportResponse>({
-    queryKey: ["shipments-report", filters],
+    queryKey: ["shipments-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.page) params.append("page", String(filters.page));
-      if (filters.limit) params.append("limit", String(filters.limit));
-      if (filters.search) params.append("search", filters.search);
-      if (filters.supplierId) params.append("supplierId", filters.supplierId);
-      if (filters.shipmentStage) params.append("shipmentStage", filters.shipmentStage);
+      if (queryFilters.page) params.append("page", String(queryFilters.page));
+      if (queryFilters.limit) params.append("limit", String(queryFilters.limit));
+      if (queryFilters.search) params.append("search", queryFilters.search);
+      if (queryFilters.supplierId) params.append("supplierId", queryFilters.supplierId);
+      if (queryFilters.shipmentStage) params.append("shipmentStage", queryFilters.shipmentStage);
 
       const response = await fetch(`${API_BASE_URL}/reports/shipments?${params.toString()}`);
       if (!response.ok) {

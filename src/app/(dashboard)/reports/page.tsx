@@ -3,8 +3,10 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { ReportPreviewDialog } from "@/components/reports/ReportPreviewDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -26,6 +28,14 @@ import {
 import Link from "next/link";
 
 type ReportStatus = "implemented" | "coming-soon" | "in-development";
+type SupportedReportPreviewType =
+  | "inventory"
+  | "stock-aging"
+  | "shipments"
+  | "stock"
+  | "item-location-batch"
+  | "picking-efficiency"
+  | "transformation-efficiency";
 
 type Report = {
   id: string;
@@ -34,6 +44,7 @@ type Report = {
   status: ReportStatus;
   businessValue: string;
   path?: string;
+  previewType?: SupportedReportPreviewType;
   icon: LucideIcon;
 };
 
@@ -70,6 +81,7 @@ export default function ReportsPage() {
   const t = useTranslations("reportsPage");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [previewReport, setPreviewReport] = useState<Report | null>(null);
 
   const reportCategories = useMemo<ReportCategory[]>(
     () => [
@@ -85,7 +97,7 @@ export default function ReportsPage() {
             description: t("stockReportsDescription"),
             status: "implemented",
             businessValue: t("stockReportsValue"),
-            path: "/reports/stock",
+            previewType: "stock",
             icon: Package,
           },
           {
@@ -94,15 +106,16 @@ export default function ReportsPage() {
             description: t("stockAgingDescription"),
             status: "implemented",
             businessValue: t("stockAgingValue"),
-            path: "/reports/stock-aging",
+            previewType: "stock-aging",
             icon: Clock,
           },
           {
-            id: "abc-analysis",
-            name: t("abcAnalysisName"),
-            description: t("abcAnalysisDescription"),
-            status: "coming-soon",
-            businessValue: t("abcAnalysisValue"),
+            id: "inventory-report",
+            name: t("inventoryReportName"),
+            description: t("inventoryReportDescription"),
+            status: "implemented",
+            businessValue: t("inventoryReportValue"),
+            previewType: "inventory",
             icon: BarChart3,
           },
           {
@@ -151,7 +164,7 @@ export default function ReportsPage() {
             description: t("itemLocationBatchDescription"),
             status: "implemented",
             businessValue: t("itemLocationBatchValue"),
-            path: "/reports/item-location-batch",
+            previewType: "item-location-batch",
             icon: MapPin,
           },
         ],
@@ -183,7 +196,7 @@ export default function ReportsPage() {
             description: t("shipmentsReportDescription"),
             status: "implemented",
             businessValue: t("shipmentsReportValue"),
-            path: "/reports/shipments",
+            previewType: "shipments",
             icon: Truck,
           },
           { id: "supplier-scorecard", name: t("supplierScorecardName"), description: t("supplierScorecardDescription"), status: "coming-soon", businessValue: t("supplierScorecardValue"), icon: CheckCircle2 },
@@ -199,9 +212,9 @@ export default function ReportsPage() {
         icon: Truck,
         reports: [
           { id: "delivery-performance", name: t("deliveryPerformanceName"), description: t("deliveryPerformanceDescription"), status: "coming-soon", businessValue: t("deliveryPerformanceValue"), icon: Truck },
-          { id: "picking-efficiency", name: t("pickingEfficiencyName"), description: t("pickingEfficiencyDescription"), status: "implemented", businessValue: t("pickingEfficiencyValue"), path: "/reports/picking-efficiency", icon: CheckCircle2 },
+          { id: "picking-efficiency", name: t("pickingEfficiencyName"), description: t("pickingEfficiencyDescription"), status: "implemented", businessValue: t("pickingEfficiencyValue"), previewType: "picking-efficiency", icon: CheckCircle2 },
           { id: "stock-transfer", name: t("stockTransferName"), description: t("stockTransferDescription"), status: "coming-soon", businessValue: t("stockTransferValue"), icon: Truck },
-          { id: "transformation-efficiency", name: t("transformationEfficiencyName"), description: t("transformationEfficiencyDescription"), status: "implemented", businessValue: t("transformationEfficiencyValue"), path: "/reports/transformation-efficiency", icon: Package },
+          { id: "transformation-efficiency", name: t("transformationEfficiencyName"), description: t("transformationEfficiencyDescription"), status: "implemented", businessValue: t("transformationEfficiencyValue"), previewType: "transformation-efficiency", icon: Package },
           { id: "rts-analysis", name: t("rtsAnalysisName"), description: t("rtsAnalysisDescription"), status: "coming-soon", businessValue: t("rtsAnalysisValue"), icon: ShoppingCart },
         ],
       },
@@ -335,10 +348,11 @@ export default function ReportsPage() {
                 {category.reports.map((report) => {
                   const StatusIcon = statusConfig[report.status].icon;
                   const isAvailable = report.status === "implemented";
+                  const usesPreviewDialog = isAvailable && !!report.previewType;
 
                   const reportCard = (
                     <Card
-                      className={`group relative overflow-hidden transition-all hover:shadow-md ${
+                      className={`group relative flex h-full flex-col overflow-hidden transition-all hover:shadow-md ${
                         isAvailable ? "cursor-pointer" : "cursor-default"
                       }`}
                     >
@@ -359,11 +373,25 @@ export default function ReportsPage() {
                           {report.description}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent className="space-y-2">
+                      <CardContent className="mt-auto flex flex-1 flex-col justify-end space-y-2">
                         <p className="text-xs text-muted-foreground">
                           <strong className="text-foreground">{t("valueLabel")}:</strong> {report.businessValue}
                         </p>
-                        {isAvailable && (
+                        {usesPreviewDialog && (
+                          <div className="pt-3">
+                            <Button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setPreviewReport(report);
+                              }}
+                            >
+                              {t("generate")}
+                            </Button>
+                          </div>
+                        )}
+                        {isAvailable && !usesPreviewDialog && (
                           <div className="flex items-center gap-1 pt-2 text-xs font-medium text-primary">
                             <span>{t("openReport")}</span>
                             <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
@@ -373,7 +401,7 @@ export default function ReportsPage() {
                     </Card>
                   );
 
-                  return isAvailable && report.path ? (
+                  return isAvailable && report.path && !usesPreviewDialog ? (
                     <Link key={report.id} href={report.path}>
                       {reportCard}
                     </Link>
@@ -406,6 +434,17 @@ export default function ReportsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ReportPreviewDialog
+        open={!!previewReport}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setPreviewReport(null);
+          }
+        }}
+        reportName={previewReport?.name || ""}
+        reportType={previewReport?.previewType || null}
+      />
     </div>
   );
 }

@@ -13,7 +13,7 @@ export const pageTitles: Record<string, string> = {
   "/purchasing/stock-requisitions": "Stock Requisitions",
   "/purchasing/load-lists": "Load Lists",
   "/purchasing/grns": "Goods Receipt Notes",
-  "/reports/stock": "Stock Reports",
+  "/reports": "Reports Directory",
   "/admin/users": "User Management",
   "/admin/roles": "Role Management",
   "/admin/settings": "Company Settings",

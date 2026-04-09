@@ -46,7 +46,7 @@ type StockAgingReportPDFProps = {
 const styles = StyleSheet.create({
   page: {
     padding: 28,
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: "ArialUnicode",
     color: "#111827",
     backgroundColor: "#ffffff",
@@ -56,17 +56,17 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontFamily: "ArialUnicode",
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 13,
     color: "#6b7280",
     marginBottom: 6,
   },
   meta: {
-    fontSize: 8,
+    fontSize: 10,
     color: "#6b7280",
   },
   filtersBox: {
@@ -108,33 +108,33 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     backgroundColor: "#e5e7eb",
-    minHeight: 28,
+    minHeight: 36,
     alignItems: "center",
   },
   tableHeaderText: {
     color: "#111827",
     fontFamily: "ArialUnicode",
-    fontSize: 8,
+    fontSize: 9,
     paddingHorizontal: 6,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   groupHeader: {
     backgroundColor: "#f9fafb",
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   groupTitle: {
-    fontSize: 9,
+    fontSize: 10,
     fontFamily: "ArialUnicode",
   },
   groupSubtitle: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#4b5563",
     marginTop: 2,
   },
   row: {
     flexDirection: "row",
-    minHeight: 28,
+    minHeight: 36,
     alignItems: "stretch",
   },
   subtotalRow: {
@@ -142,24 +142,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#f9fafb",
     borderBottomWidth: 1,
     borderBottomColor: "#d1d5db",
-    minHeight: 24,
+    minHeight: 30,
     alignItems: "center",
   },
   cell: {
     paddingHorizontal: 6,
-    paddingVertical: 5,
+    paddingVertical: 7,
     justifyContent: "center",
   },
   cellText: {
-    fontSize: 8,
+    fontSize: 9,
   },
   cellMuted: {
-    fontSize: 7,
+    fontSize: 8,
     color: "#6b7280",
     marginTop: 2,
   },
   cellBold: {
-    fontSize: 8,
+    fontSize: 9,
     fontFamily: "ArialUnicode",
   },
   right: {
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   colUpdated: { width: "18%" },
   footer: {
     marginTop: 10,
-    fontSize: 8,
+    fontSize: 10,
     color: "#6b7280",
     textAlign: "right",
   },

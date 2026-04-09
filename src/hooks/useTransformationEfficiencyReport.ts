@@ -9,6 +9,7 @@ export type TransformationEfficiencyFilters = {
   templateId?: string;
   groupBy?: "template" | "warehouse";
   status?: "COMPLETED" | "PREPARING" | "DRAFT" | "CANCELLED" | "ALL";
+  enabled?: boolean;
 };
 
 export type TransformationEfficiencyGroupRow = {
@@ -83,16 +84,19 @@ export type TransformationEfficiencyReportResponse = {
 };
 
 export function useTransformationEfficiencyReport(filters: TransformationEfficiencyFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<TransformationEfficiencyReportResponse>({
-    queryKey: ["transformation-efficiency-report", filters],
+    queryKey: ["transformation-efficiency-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.startDate) params.append("startDate", filters.startDate);
-      if (filters.endDate) params.append("endDate", filters.endDate);
-      if (filters.warehouseId) params.append("warehouseId", filters.warehouseId);
-      if (filters.templateId) params.append("templateId", filters.templateId);
-      if (filters.groupBy) params.append("groupBy", filters.groupBy);
-      if (filters.status) params.append("status", filters.status);
+      if (queryFilters.startDate) params.append("startDate", queryFilters.startDate);
+      if (queryFilters.endDate) params.append("endDate", queryFilters.endDate);
+      if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
+      if (queryFilters.templateId) params.append("templateId", queryFilters.templateId);
+      if (queryFilters.groupBy) params.append("groupBy", queryFilters.groupBy);
+      if (queryFilters.status) params.append("status", queryFilters.status);
 
       const response = await fetch(
         `${API_BASE_URL}/reports/transformation-efficiency?${params.toString()}`
@@ -103,4 +107,3 @@ export function useTransformationEfficiencyReport(filters: TransformationEfficie
     staleTime: 5 * 60 * 1000,
   });
 }
-

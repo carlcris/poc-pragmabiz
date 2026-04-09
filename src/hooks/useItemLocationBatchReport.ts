@@ -11,6 +11,7 @@ export type ItemLocationBatchReportFilters = {
   stockStatus?: "all" | "zero" | "available_only" | "reserved";
   sortBy?: "updated_at" | "qty_on_hand" | "received_at";
   sortOrder?: "asc" | "desc";
+  enabled?: boolean;
 };
 
 export type ItemLocationBatchReportRow = {
@@ -66,18 +67,21 @@ export type ItemLocationBatchReportResponse = {
 };
 
 export function useItemLocationBatchReport(filters: ItemLocationBatchReportFilters) {
+  const { enabled = true, ...queryFilters } = filters;
+
   return useQuery<ItemLocationBatchReportResponse>({
-    queryKey: ["item-location-batch-report", filters],
+    queryKey: ["item-location-batch-report", queryFilters],
+    enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.page) params.append("page", String(filters.page));
-      if (filters.limit) params.append("limit", String(filters.limit));
-      if (filters.warehouseId) params.append("warehouseId", filters.warehouseId);
-      if (filters.itemId) params.append("itemId", filters.itemId);
-      if (filters.search) params.append("search", filters.search);
-      if (filters.stockStatus) params.append("stockStatus", filters.stockStatus);
-      if (filters.sortBy) params.append("sortBy", filters.sortBy);
-      if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+      if (queryFilters.page) params.append("page", String(queryFilters.page));
+      if (queryFilters.limit) params.append("limit", String(queryFilters.limit));
+      if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
+      if (queryFilters.itemId) params.append("itemId", queryFilters.itemId);
+      if (queryFilters.search) params.append("search", queryFilters.search);
+      if (queryFilters.stockStatus) params.append("stockStatus", queryFilters.stockStatus);
+      if (queryFilters.sortBy) params.append("sortBy", queryFilters.sortBy);
+      if (queryFilters.sortOrder) params.append("sortOrder", queryFilters.sortOrder);
 
       const response = await fetch(`${API_BASE_URL}/reports/item-location-batch?${params.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch item location batch report");
