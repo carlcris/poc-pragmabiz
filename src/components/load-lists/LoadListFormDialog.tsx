@@ -95,10 +95,6 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
 
-  const { data: itemsData } = useItems({ limit: 50 });
-  const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
-  const llFormSchema = createLoadListFormSchema((key) => tValidation(key));
-
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
@@ -107,6 +103,23 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const [unitCost, setUnitCost] = useState("");
   const [activeTab, setActiveTab] = useState("general");
   const [itemOpen, setItemOpen] = useState(false);
+  const [itemSearchInput, setItemSearchInput] = useState("");
+  const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
+  const isSearchingItems = debouncedItemSearch.trim().length > 0;
+  const { data: preloadItemsData } = useItems({
+    limit: 5,
+    enabled: open && activeTab === "items" && !isSearchingItems,
+  });
+  const { data: searchedItemsData } = useItems({
+    search: debouncedItemSearch.trim(),
+    limit: 25,
+    enabled: open && activeTab === "items" && isSearchingItems,
+  });
+  const items = useMemo(
+    () => (isSearchingItems ? searchedItemsData?.data || [] : preloadItemsData?.data || []),
+    [isSearchingItems, preloadItemsData?.data, searchedItemsData?.data]
+  );
+  const llFormSchema = createLoadListFormSchema((key) => tValidation(key));
   const { data: selectedItemResponse } = useItem(selectedItemId);
   const selectedItemDetail = selectedItemResponse?.data;
   const unitOptions = (selectedItemDetail?.unitOptions || []).filter((option) => option.isActive);
@@ -121,6 +134,14 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     items.find((item) => item.id === selectedItemId)?.uom ||
     "";
   const selectedTotalQty = Number(quantity || 0) * selectedQtyPerUnit;
+  const selectedItemLabel = selectedItemId
+    ? selectedItemDetail
+      ? `${selectedItemDetail.code} - ${selectedItemDetail.name}`
+      : (() => {
+          const selectedItem = items.find((item) => item.id === selectedItemId);
+          return selectedItem ? `${selectedItem.code} - ${selectedItem.name}` : t("selectItem");
+        })()
+    : t("searchItem");
 
   // Default values
   const defaultValues = useMemo<LoadListFormValues>(
@@ -188,6 +209,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       setLineItems([]);
       setSelectedItemId("");
       setSelectedUnitOptionId("");
+      setItemSearchInput("");
+      setDebouncedItemSearch("");
       setQuantity("");
       setUnitCost("");
       setActiveTab("general");
@@ -218,6 +241,14 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       return fallbackUnitOption.id;
     });
   }, [selectedItemDetail, unitOptions]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedItemSearch(itemSearchInput.trim());
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [itemSearchInput]);
 
   const handleAddItem = () => {
     if (!selectedItemId || !selectedUnitOptionId || !quantity || unitCost === "") {
@@ -251,6 +282,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     setLineItems([...lineItems, newItem]);
     setSelectedItemId("");
     setSelectedUnitOptionId("");
+    setItemSearchInput("");
+    setDebouncedItemSearch("");
     setQuantity("");
     setUnitCost("");
   };
@@ -584,7 +617,16 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                   <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
                   <div className="min-w-0">
                     <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("itemLabel")}</label>
-                    <Popover open={itemOpen} onOpenChange={setItemOpen}>
+                    <Popover
+                      open={itemOpen}
+                      onOpenChange={(nextOpen) => {
+                        setItemOpen(nextOpen);
+                        if (!nextOpen) {
+                          setItemSearchInput("");
+                          setDebouncedItemSearch("");
+                        }
+                      }}
+                    >
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
@@ -595,22 +637,17 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                             !selectedItemId && "text-muted-foreground"
                           )}
                         >
-                          <span className="min-w-0 truncate text-left">
-                            {selectedItemId
-                              ? (() => {
-                                  const selectedItem = items.find((i) => i.id === selectedItemId);
-                                  return selectedItem
-                                    ? `${selectedItem.code} - ${selectedItem.name}`
-                                    : t("selectItem");
-                                })()
-                              : t("searchItem")}
-                          </span>
+                          <span className="min-w-0 truncate text-left">{selectedItemLabel}</span>
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[520px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder={t("searchByCodeOrName")} />
+                        <Command shouldFilter={false}>
+                          <CommandInput
+                            value={itemSearchInput}
+                            onValueChange={setItemSearchInput}
+                            placeholder={t("searchByCodeOrName")}
+                          />
                           <CommandList className="max-h-[260px] overflow-y-auto">
                             <CommandEmpty>{t("noItemFound")}</CommandEmpty>
                             <CommandGroup>
@@ -619,7 +656,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                 .map((item) => (
                                   <CommandItem
                                     key={item.id}
-                                    value={`${item.code} ${item.name}`}
+                                    value={item.id}
                                     onSelect={() => {
                                       const cost =
                                         item.purchasePrice ??
@@ -629,6 +666,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                       setSelectedItemId(item.id);
                                       setSelectedUnitOptionId("");
                                       setUnitCost(Number(cost).toFixed(2));
+                                      setItemSearchInput("");
+                                      setDebouncedItemSearch("");
                                       setItemOpen(false);
                                     }}
                                     className="flex items-start gap-2 py-2"
