@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, FileText, Pencil, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -33,11 +34,20 @@ import {
 import { useCurrency } from "@/hooks/useCurrency";
 import type { StockRequisitionStatus } from "@/types/stock-requisition";
 
+const StockRequisitionFormDialog = dynamic(
+  () =>
+    import("@/components/stock-requisitions/StockRequisitionFormDialog").then(
+      (mod) => mod.StockRequisitionFormDialog
+    ),
+  { ssr: false }
+);
+
 export default function StockRequisitionDetailPage() {
   const t = useTranslations("stockRequisitionDetailPage");
   const locale = useLocale();
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
 
   const { data: sr, isLoading, error } = useStockRequisition(id);
@@ -46,6 +56,26 @@ export default function StockRequisitionDetailPage() {
 
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setEditDialogOpen(searchParams.get("edit") === "true");
+  }, [searchParams]);
+
+  const updateEditSearchParam = (open: boolean) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (open) {
+      nextParams.set("edit", "true");
+    } else {
+      nextParams.delete("edit");
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `?${query}` : `/purchasing/stock-requisitions/${id}`, {
+      scroll: false,
+    });
+  };
 
   const getStatusBadge = (status: StockRequisitionStatus) => {
     switch (status) {
@@ -180,7 +210,7 @@ export default function StockRequisitionDetailPage() {
             </Button>
             {sr.status === "draft" && (
               <>
-                <Button variant="outline" onClick={() => router.push(`?edit=true`)}>
+                <Button variant="outline" onClick={() => updateEditSearchParam(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   {t("edit")}
                 </Button>
@@ -369,6 +399,17 @@ export default function StockRequisitionDetailPage() {
           </Card>
         </>
       )}
+
+      {sr ? (
+        <StockRequisitionFormDialog
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            updateEditSearchParam(open);
+          }}
+          stockRequisition={sr}
+        />
+      ) : null}
 
       {/* Submit Confirmation Dialog */}
       <AlertDialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>

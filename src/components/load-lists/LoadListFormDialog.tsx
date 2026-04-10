@@ -127,6 +127,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     unitOptions.find((option) => option.id === selectedUnitOptionId) ||
     selectedItemDetail?.unitOptions?.find((option) => option.id === selectedUnitOptionId) ||
     null;
+  const selectedItemRecord = selectedItemDetail || items.find((item) => item.id === selectedItemId) || null;
   const selectedQtyPerUnit = selectedUnitOption?.qtyPerUnit ?? 1;
   const selectedUomLabel =
     selectedUnitOption?.displayLabel ||
@@ -256,7 +257,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       return;
     }
 
-    const selectedItem = items.find((i) => i.id === selectedItemId);
+    const selectedItem = selectedItemRecord;
     if (!selectedItem) {
       toast.error(t("itemNotFound"));
       return;
@@ -341,7 +342,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
   useEffect(() => {
     if (!selectedItemId) return;
-    const selectedItem = items.find((item) => item.id === selectedItemId);
+    const selectedItem = selectedItemRecord;
     if (!selectedItem) return;
     const cost =
       selectedItem.purchasePrice ??
@@ -349,7 +350,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       selectedItem.listPrice ??
       0;
     setUnitCost(Number(cost).toFixed(2));
-  }, [items, selectedItemId]);
+  }, [selectedItemId, selectedItemRecord]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

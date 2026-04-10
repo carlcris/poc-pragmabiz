@@ -50,8 +50,9 @@ export function useUpdateLoadList() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateLoadListRequest }) =>
       loadListsApi.updateLoadList(id, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
     },
   });
 }
@@ -73,8 +74,9 @@ export function useUpdateLoadListStatus() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateLoadListStatusRequest }) =>
       loadListsApi.updateLoadListStatus(id, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
     },
   });
 }

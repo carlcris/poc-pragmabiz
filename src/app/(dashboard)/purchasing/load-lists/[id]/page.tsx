@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Package, Pencil, Link as LinkIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -40,11 +41,17 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { LinkStockRequisitionsDialog } from "@/components/load-lists/LinkStockRequisitionsDialog";
 import type { LoadListStatus } from "@/types/load-list";
 
+const LoadListFormDialog = dynamic(
+  () => import("@/components/load-lists/LoadListFormDialog").then((mod) => mod.LoadListFormDialog),
+  { ssr: false }
+);
+
 export default function LoadListDetailPage() {
   const t = useTranslations("loadListDetailPage");
   const locale = useLocale();
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params.id as string;
 
   const { data: ll, isLoading, error } = useLoadList(id);
@@ -60,6 +67,26 @@ export default function LoadListDetailPage() {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [inTransitEstimatedArrivalDate, setInTransitEstimatedArrivalDate] = useState("");
   const [inTransitLinerName, setInTransitLinerName] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setEditDialogOpen(searchParams.get("edit") === "true");
+  }, [searchParams]);
+
+  const updateEditSearchParam = (open: boolean) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    if (open) {
+      nextParams.set("edit", "true");
+    } else {
+      nextParams.delete("edit");
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `?${query}` : `/purchasing/load-lists/${id}`, {
+      scroll: false,
+    });
+  };
 
   useEffect(() => {
     if (!ll || !inTransitDialogOpen) return;
@@ -208,7 +235,7 @@ export default function LoadListDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             {ll.status === "draft" && (
               <>
-                <Button variant="outline" onClick={() => router.push(`?edit=true`)}>
+                <Button variant="outline" onClick={() => updateEditSearchParam(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
                   {t("edit")}
                 </Button>
@@ -484,6 +511,17 @@ export default function LoadListDetailPage() {
           </Card>
         </>
       )}
+
+      {ll ? (
+        <LoadListFormDialog
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            updateEditSearchParam(open);
+          }}
+          loadList={ll}
+        />
+      ) : null}
 
       {/* Confirm Dialog */}
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>

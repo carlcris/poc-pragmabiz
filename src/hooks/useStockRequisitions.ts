@@ -50,8 +50,9 @@ export function useUpdateStockRequisition() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateStockRequisitionRequest }) =>
       stockRequisitionsApi.updateStockRequisition(id, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY, variables.id] });
     },
   });
 }
@@ -73,8 +74,9 @@ export function useUpdateStockRequisitionStatus() {
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: StockRequisitionStatus }) =>
       stockRequisitionsApi.updateStockRequisitionStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY, variables.id] });
     },
   });
 }
