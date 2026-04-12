@@ -13,8 +13,8 @@ type InventoryReportPDFProps = {
   title: string;
   subtitle: string;
   generatedAtLabel: string;
+  warehouseValueLabel: string;
   itemLabel: string;
-  warehouseLabel: string;
   categoryLabel: string;
   qtyOnHandLabel: string;
   qtyReservedLabel: string;
@@ -54,6 +54,23 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 11,
     color: "#6b7280",
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 16,
+    marginTop: 8,
+  },
+  metaLeft: {
+    flex: 1,
+    fontSize: 11,
+    color: "#374151",
+  },
+  metaRight: {
+    flex: 1,
+    fontSize: 11,
+    color: "#6b7280",
+    textAlign: "right",
   },
   table: {
     borderWidth: 1,
@@ -111,11 +128,11 @@ const styles = StyleSheet.create({
   right: {
     textAlign: "right",
   },
-  colItem: { width: "28%" },
-  colWarehouse: { width: "18%" },
-  colCategory: { width: "12%" },
-  colStockSummary: { width: "24%" },
-  colValuation: { width: "18%" },
+  colItem: { width: "22%" },
+  colCategory: { width: "10%" },
+  colQty: { width: "8.5%" },
+  colStatus: { width: "12%" },
+  colValuation: { width: "22%" },
   footer: {
     marginTop: 10,
     fontSize: 11,
@@ -131,8 +148,8 @@ export const InventoryReportPDF = ({
   title,
   subtitle,
   generatedAtLabel,
+  warehouseValueLabel,
   itemLabel,
-  warehouseLabel,
   categoryLabel,
   qtyOnHandLabel,
   qtyReservedLabel,
@@ -151,9 +168,12 @@ export const InventoryReportPDF = ({
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
-        <Text style={styles.meta}>
-          {generatedAtLabel}: {new Date().toLocaleString()}
-        </Text>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLeft}>{warehouseValueLabel}</Text>
+          <Text style={styles.metaRight}>
+            {generatedAtLabel}: {new Date().toLocaleString()}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.table}>
@@ -161,14 +181,23 @@ export const InventoryReportPDF = ({
           <View style={[styles.cell, styles.colItem]}>
             <Text style={styles.tableHeaderText}>{itemLabel}</Text>
           </View>
-          <View style={[styles.cell, styles.colWarehouse]}>
-            <Text style={styles.tableHeaderText}>{warehouseLabel}</Text>
-          </View>
           <View style={[styles.cell, styles.colCategory]}>
             <Text style={styles.tableHeaderText}>{categoryLabel}</Text>
           </View>
-          <View style={[styles.cell, styles.colStockSummary]}>
-            <Text style={styles.tableHeaderText}>Stock Summary</Text>
+          <View style={[styles.cell, styles.colQty]}>
+            <Text style={[styles.tableHeaderText, styles.right]}>{qtyOnHandLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.colQty]}>
+            <Text style={[styles.tableHeaderText, styles.right]}>{qtyReservedLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.colQty]}>
+            <Text style={[styles.tableHeaderText, styles.right]}>{qtyAvailableLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.colQty]}>
+            <Text style={[styles.tableHeaderText, styles.right]}>{qtyInTransitLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.colStatus]}>
+            <Text style={styles.tableHeaderText}>{statusLabel}</Text>
           </View>
           <View style={[styles.cell, styles.colValuation]}>
             <Text style={styles.tableHeaderText}>Valuation</Text>
@@ -184,34 +213,23 @@ export const InventoryReportPDF = ({
                 {row.uom ? ` • ${row.uom}` : ""}
               </Text>
             </View>
-            <View style={[styles.cell, styles.colWarehouse]}>
-              <Text style={styles.cellText}>{row.warehouseCode || noValueLabel}</Text>
-              <Text style={styles.cellMuted}>{row.warehouseName || noValueLabel}</Text>
-            </View>
             <View style={[styles.cell, styles.colCategory]}>
               <Text style={styles.cellText}>{row.category || noValueLabel}</Text>
             </View>
-            <View style={[styles.cell, styles.colStockSummary]}>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>{qtyOnHandLabel}</Text>
-                <Text style={styles.summaryValue}>{formatQty(row.currentStock)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>{qtyAvailableLabel}</Text>
-                <Text style={styles.summaryValue}>{formatQty(row.availableStock)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>{qtyReservedLabel}</Text>
-                <Text style={styles.summaryValue}>{formatQty(row.reservedStock)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>{qtyInTransitLabel}</Text>
-                <Text style={styles.summaryValue}>{formatQty(row.inTransit)}</Text>
-              </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>{statusLabel}</Text>
-                <Text style={styles.summaryValue}>{statusLabels[row.status]}</Text>
-              </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.cellText, styles.right]}>{formatQty(row.currentStock)}</Text>
+            </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.cellText, styles.right]}>{formatQty(row.reservedStock)}</Text>
+            </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.cellText, styles.right]}>{formatQty(row.availableStock)}</Text>
+            </View>
+            <View style={[styles.cell, styles.colQty]}>
+              <Text style={[styles.cellText, styles.right]}>{formatQty(row.inTransit)}</Text>
+            </View>
+            <View style={[styles.cell, styles.colStatus]}>
+              <Text style={styles.cellText}>{statusLabels[row.status]}</Text>
             </View>
             <View style={[styles.cell, styles.colValuation]}>
               <View style={styles.summaryRow}>

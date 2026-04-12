@@ -35,6 +35,7 @@ import { useTransformationEfficiencyReport } from "@/hooks/useTransformationEffi
 import { useTransformationTemplates } from "@/hooks/useTransformationTemplates";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -176,24 +177,35 @@ function InventoryReportPreview({
   const tReports = useTranslations("reportsPage");
   const t = useTranslations("inventoryReportPage");
   const locale = useLocale();
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const { data: categoriesData } = useItemCategories();
-  const warehouses = warehousesData?.data || [];
+  const warehouses = useMemo(
+    () => warehousesData?.data?.filter((warehouse) => warehouse.isActive) || [],
+    [warehousesData?.data]
+  );
   const categories = categoriesData?.data || [];
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [warehouseId, setWarehouseId] = useState("all");
+  const [warehouseId, setWarehouseId] = useState("");
   const [category, setCategory] = useState("all");
   const [stockStatus, setStockStatus] = useState<InventoryStockStatus>("all");
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
     usePdfPreviewState(open);
+  const selectedWarehouse = useMemo(
+    () => warehouses.find((warehouse) => warehouse.id === warehouseId) ?? null,
+    [warehouseId, warehouses]
+  );
+  const selectedWarehouseLabel = selectedWarehouse
+    ? `${selectedWarehouse.code} - ${selectedWarehouse.name}`
+    : t("noValue");
 
   const reportQuery = useInventoryReport({
     enabled: false,
     page: 1,
     limit: 50,
     search: search || undefined,
-    warehouseId: warehouseId === "all" ? undefined : warehouseId,
+    warehouseId,
     category: category === "all" ? undefined : category,
     stockStatus,
     sortBy: "updated_at" satisfies InventoryReportSortBy,
@@ -207,6 +219,14 @@ function InventoryReportPreview({
 
     return () => window.clearTimeout(timeoutId);
   }, [searchInput]);
+
+  useEffect(() => {
+    if (!open || warehouseId || warehouses.length === 0) return;
+
+    const currentContextWarehouse =
+      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit?.id) ?? warehouses[0];
+    setWarehouseId(currentContextWarehouse.id);
+  }, [currentBusinessUnit?.id, open, warehouseId, warehouses]);
 
   useEffect(() => {
     replacePreviewUrl(null);
@@ -227,6 +247,8 @@ function InventoryReportPreview({
     }).format(Number.isFinite(value) ? value : 0);
 
   const handlePreview = async () => {
+    if (!warehouseId) return;
+
     setIsGeneratingPreview(true);
     try {
       const { data } = await reportQuery.refetch();
@@ -242,8 +264,8 @@ function InventoryReportPreview({
           title={t("title")}
           subtitle={t("subtitle")}
           generatedAtLabel={t("generatedAt")}
+          warehouseValueLabel={`${t("warehouse")}: ${selectedWarehouseLabel}`}
           itemLabel={t("item")}
-          warehouseLabel={t("warehouse")}
           categoryLabel={t("category")}
           qtyOnHandLabel={t("qtyOnHand")}
           qtyReservedLabel={t("qtyReserved")}
@@ -295,10 +317,9 @@ function InventoryReportPreview({
           <label className="text-sm font-medium">{t("warehouse")}</label>
           <Select value={warehouseId} onValueChange={setWarehouseId}>
             <SelectTrigger>
-              <SelectValue placeholder={t("allWarehouses")} />
+              <SelectValue placeholder={t("selectWarehouse")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t("allWarehouses")}</SelectItem>
               {warehouses.map((warehouse) => (
                 <SelectItem key={warehouse.id} value={warehouse.id}>
                   {warehouse.code} - {warehouse.name}
@@ -346,7 +367,8 @@ function InventoryReportPreview({
             onClick={handlePreview}
             disabled={
               reportQuery.isFetching ||
-              isGeneratingPreview
+              isGeneratingPreview ||
+              !warehouseId
             }
           >
             {isGeneratingPreview ? (
