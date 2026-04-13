@@ -380,6 +380,7 @@ export async function GET(request: NextRequest) {
           totalAvailableValue: toNumber(statsRow?.total_available_value),
           lowStockCount: toNumber(statsRow?.low_stock_count),
           outOfStockCount: toNumber(statsRow?.out_of_stock_count),
+          totalCount: toNumber(statsRow?.total_count),
         },
       });
     }
@@ -478,6 +479,7 @@ export async function GET(request: NextRequest) {
         totalAvailableValue: toNumber(statsRow?.total_available_value),
         lowStockCount: toNumber(statsRow?.low_stock_count),
         outOfStockCount: toNumber(statsRow?.out_of_stock_count),
+        totalCount: toNumber(statsRow?.total_count),
       },
     });
   } catch {

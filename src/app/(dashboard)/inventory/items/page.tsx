@@ -135,13 +135,7 @@ function ItemsPageContent() {
     isLoading: isStatsLoading,
     error: statsError,
   } = useItemsStats({
-    search,
-    category: categoryFilter !== "all" ? categoryFilter : undefined,
     warehouseId: currentBusinessUnitWarehouseId,
-    status:
-      statusFilter !== "all"
-        ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
-        : "all",
     includeStock: true,
     enabled: areItemQueriesEnabled,
   });
@@ -171,11 +165,12 @@ function ItemsPageContent() {
   const lowStockItems = statistics?.lowStockCount;
   const outOfStockItems = statistics?.outOfStockCount;
   const totalValue = statistics?.totalAvailableValue;
+  const totalItems = statistics?.totalCount;
 
   const stats = [
     {
       title: t("totalItems"),
-      value: pagination?.total || 0,
+      value: hasStatsError ? "—" : (totalItems ?? "—"),
       description: t("totalItemsDescription"),
       icon: Package,
       iconColor: "text-blue-600",

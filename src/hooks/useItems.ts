@@ -43,6 +43,7 @@ export interface ItemsWithStockResponse {
     totalAvailableValue: number;
     lowStockCount: number;
     outOfStockCount: number;
+    totalCount: number;
   };
 }
 
@@ -51,6 +52,7 @@ export interface ItemsStatsResponse {
     totalAvailableValue: number;
     lowStockCount: number;
     outOfStockCount: number;
+    totalCount: number;
   };
 }
 
