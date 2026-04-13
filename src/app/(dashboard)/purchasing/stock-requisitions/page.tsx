@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Search, Pencil, Filter, FileText, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Pencil, Filter, FileText, Trash2, MoreVertical, Send, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
   useStockRequisitions,
   useDeleteStockRequisition,
+  useUpdateStockRequisitionStatus,
 } from "@/hooks/useStockRequisitions";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { StockRequisition, StockRequisitionStatus } from "@/types/stock-requisition";
@@ -67,9 +74,13 @@ export default function StockRequisitionsPage() {
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [srToDelete, setSRToDelete] = useState<StockRequisition | null>(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [srToUpdateStatus, setSRToUpdateStatus] = useState<StockRequisition | null>(null);
+  const [nextStatus, setNextStatus] = useState<"submitted" | "cancelled" | null>(null);
 
   const { formatCurrency } = useCurrency();
   const deleteMutation = useDeleteStockRequisition();
+  const updateStatusMutation = useUpdateStockRequisitionStatus();
 
   const { data, isLoading, error } = useStockRequisitions({
     search,
@@ -157,9 +168,6 @@ export default function StockRequisitionsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const getErrorMessage = (err: unknown, fallback: string) =>
-    err instanceof Error ? err.message : fallback;
-
   const confirmDelete = async () => {
     if (!srToDelete) return;
 
@@ -169,9 +177,34 @@ export default function StockRequisitionsPage() {
       setDeleteDialogOpen(false);
       setSRToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("deleteError")));
+      console.error("Failed to delete stock requisition:", err);
+      toast.error(t("deleteError"));
     }
   };
+
+  const handleStatusAction = (sr: StockRequisition, status: "submitted" | "cancelled") => {
+    setSRToUpdateStatus(sr);
+    setNextStatus(status);
+    setStatusDialogOpen(true);
+  };
+
+  const confirmStatusAction = async () => {
+    if (!srToUpdateStatus || !nextStatus) return;
+
+    try {
+      await updateStatusMutation.mutateAsync({ id: srToUpdateStatus.id, status: nextStatus });
+      toast.success(nextStatus === "submitted" ? t("submitSuccess") : t("cancelSuccess"));
+      setStatusDialogOpen(false);
+      setSRToUpdateStatus(null);
+      setNextStatus(null);
+    } catch (err) {
+      console.error("Failed to update stock requisition status:", err);
+      toast.error(nextStatus === "submitted" ? t("submitError") : t("cancelError"));
+    }
+  };
+
+  const canCancelSR = (sr: StockRequisition) =>
+    sr.status !== "cancelled" && sr.status !== "fulfilled";
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -324,7 +357,11 @@ export default function StockRequisitionsPage() {
                 </TableHeader>
                 <TableBody>
                   {data.data.map((sr) => (
-                    <TableRow key={sr.id}>
+                    <TableRow
+                      key={sr.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewSR(sr)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-blue-600" />
@@ -362,38 +399,82 @@ export default function StockRequisitionsPage() {
                           {formatDate(sr.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewSR(sr)}
-                            className="h-8 w-8 p-0"
-                            aria-label={t("view")}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
                           {sr.status === "draft" && (
                             <>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 onClick={() => handleEditSR(sr)}
-                                className="h-8 w-8 p-0"
-                                aria-label={t("edit")}
+                                className="h-8 px-2"
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>{t("edit")}</span>
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => handleDeleteSR(sr)}
-                                className="h-8 w-8 p-0"
-                                aria-label={t("delete")}
+                                onClick={() => handleStatusAction(sr, "submitted")}
+                                className="h-8 px-2"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Send className="mr-2 h-4 w-4 text-blue-600" />
+                                <span>{t("send")}</span>
                               </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    aria-label={t("actions")}
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {canCancelSR(sr) && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleStatusAction(sr, "cancelled")}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      <span>{t("cancel")}</span>
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteSR(sr)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>{t("delete")}</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </>
+                          )}
+                          {sr.status !== "draft" && canCancelSR(sr) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("actions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleStatusAction(sr, "cancelled")}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  <span>{t("cancel")}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                         </div>
                       </TableCell>
@@ -443,6 +524,39 @@ export default function StockRequisitionsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? t("deleting") : t("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {nextStatus === "submitted" ? t("sendTitle") : t("cancelTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {nextStatus === "submitted" ? t("sendDescription") : t("cancelDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStatusAction}
+              disabled={updateStatusMutation.isPending}
+              className={
+                nextStatus === "cancelled"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+            >
+              {updateStatusMutation.isPending
+                ? nextStatus === "submitted"
+                  ? t("sending")
+                  : t("cancelling")
+                : nextStatus === "submitted"
+                  ? t("send")
+                  : t("cancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -19,6 +19,7 @@ import {
   Clock,
   Package,
   Truck,
+  MoreVertical,
 } from "lucide-react";
 import {
   useStockRequests,
@@ -64,6 +65,12 @@ import {
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { StockRequest, StockRequestStatus, StockRequestPriority } from "@/types/stock-request";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
@@ -643,85 +650,107 @@ export default function StockRequestsPage() {
                                   {request.status === "draft" && (
                                     <>
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
+                                        className="h-8 px-2"
                                         onClick={() => handleEditRequest(request)}
-                                        title={t("edit")}
                                       >
-                                        <Pencil className="h-4 w-4" />
+                                        <Pencil className="mr-2 h-4 w-4" />
+                                        <span>{t("edit")}</span>
                                       </Button>
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => handleDeleteRequest(request)}
-                                        title={t("delete")}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
+                                        className="h-8 px-2"
                                         onClick={() => handleAction("submit", request)}
-                                        title={t("submit")}
                                       >
-                                        <Send className="h-4 w-4 text-blue-600" />
+                                        <Send className="mr-2 h-4 w-4 text-blue-600" />
+                                        <span>{t("submit")}</span>
                                       </Button>
                                     </>
                                   )}
 
                                   {request.status === "submitted" && canFulfillRequest(request) && (
-                                    <>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleAction("approve", request)}
-                                        title={t("approve")}
-                                      >
-                                        <ThumbsUp className="h-4 w-4 text-green-600" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleAction("reject", request)}
-                                        title={t("reject")}
-                                      >
-                                        <ThumbsDown className="h-4 w-4 text-red-600" />
-                                      </Button>
-                                    </>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => handleAction("approve", request)}
+                                    >
+                                      <ThumbsUp className="mr-2 h-4 w-4 text-green-600" />
+                                      <span>{t("approve")}</span>
+                                    </Button>
                                   )}
 
                                   {["picking", "picked"].includes(request.status) &&
                                     canFulfillRequest(request) && (
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
+                                        className="h-8 px-2"
                                         onClick={() => handleAction("dispatch", request)}
-                                        title={t("dispatch")}
                                       >
-                                        <Truck className="h-4 w-4 text-indigo-600" />
+                                        <Truck className="mr-2 h-4 w-4 text-indigo-600" />
+                                        <span>{t("dispatch")}</span>
                                       </Button>
                                     )}
 
                                   {request.status === "dispatched" && canReceiveRequest(request) && (
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
+                                      className="h-8 px-2"
                                       onClick={() => handleAction("receive", request)}
-                                        title={t("receive")}
                                     >
-                                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                                      <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span>{t("receive")}</span>
                                     </Button>
                                   )}
 
-                                  {["draft", "submitted", "approved"].includes(request.status) && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleAction("cancel", request)}
-                                      title={t("cancel")}
-                                    >
-                                      <XCircle className="h-4 w-4 text-red-600" />
-                                    </Button>
+                                  {(request.status === "draft" ||
+                                    (request.status === "submitted" && canFulfillRequest(request)) ||
+                                    ["draft", "submitted", "approved"].includes(request.status)) && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 w-8 p-0"
+                                          aria-label={t("actions")}
+                                        >
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        {request.status === "submitted" && canFulfillRequest(request) && (
+                                          <DropdownMenuItem
+                                            onClick={() => handleAction("reject", request)}
+                                            className="text-destructive focus:text-destructive"
+                                          >
+                                            <ThumbsDown className="h-4 w-4" />
+                                            <span>{t("reject")}</span>
+                                          </DropdownMenuItem>
+                                        )}
+                                        {["draft", "submitted", "approved"].includes(request.status) && (
+                                          <DropdownMenuItem
+                                            onClick={() => handleAction("cancel", request)}
+                                            className="text-destructive focus:text-destructive"
+                                          >
+                                            <XCircle className="h-4 w-4" />
+                                            <span>{t("cancel")}</span>
+                                          </DropdownMenuItem>
+                                        )}
+                                        {request.status === "draft" && (
+                                          <DropdownMenuItem
+                                            onClick={() => handleDeleteRequest(request)}
+                                            className="text-destructive focus:text-destructive"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span>{t("delete")}</span>
+                                          </DropdownMenuItem>
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   )}
                                 </>
                               ) : (

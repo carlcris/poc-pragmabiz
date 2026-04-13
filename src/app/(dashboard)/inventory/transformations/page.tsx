@@ -1,13 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { Plus, Search, Eye, Trash2, Package } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Trash2,
+  Package,
+  MoreVertical,
+  PlayCircle,
+  XCircle,
+  CheckCircle,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useTransformationOrders,
   useDeleteTransformationOrder,
+  TRANSFORMATION_ORDERS_QUERY_KEY,
 } from "@/hooks/useTransformationOrders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +50,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { DataTableSkeletonRows } from "@/components/shared/DataTableSkeletonRows";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
@@ -46,9 +63,13 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { PageToolbar } from "@/components/shared/PageToolbar";
 import type {
   TransformationOrderApi,
+  TransformationOrderInputApi,
+  TransformationOrderOutputApi,
   TransformationOrderStatus,
 } from "@/types/transformation-order";
 import { useCurrency } from "@/hooks/useCurrency";
+import { transformationOrdersApi } from "@/lib/api/transformation-orders";
+import { toast } from "sonner";
 
 const statusColors: Record<TransformationOrderStatus, string> = {
   DRAFT: "bg-gray-500",
@@ -72,8 +93,22 @@ const getStatusLabel = (status: TransformationOrderStatus, tCommon: ReturnType<t
   }
 };
 
+type ExecuteFormData = {
+  inputs: Array<{ id: string; itemName: string; plannedQty: number; actualQty: number }>;
+  outputs: Array<{
+    id: string;
+    itemName: string;
+    plannedQty: number;
+    actualQty: number;
+    wastedQty: number;
+    wasteReason: string;
+    isScrap: boolean;
+  }>;
+};
+
 export default function TransformationOrdersPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { formatCurrency } = useCurrency();
   const t = useTranslations("transformation");
   const tCommon = useTranslations("common");
@@ -82,6 +117,15 @@ export default function TransformationOrdersPage() {
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(1);
   const [deleteOrderId, setDeleteOrderId] = useState<string | null>(null);
+  const [actionDialog, setActionDialog] = useState<{
+    orderId: string | null;
+    action: "prepare" | "cancel" | null;
+  }>({ orderId: null, action: null });
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  const [executeOrder, setExecuteOrder] = useState<TransformationOrderApi | null>(null);
+  const [executeFormData, setExecuteFormData] = useState<ExecuteFormData | null>(null);
+  const [isLoadingExecuteOrder, setIsLoadingExecuteOrder] = useState(false);
 
   const limit = 20;
 
@@ -99,6 +143,96 @@ export default function TransformationOrdersPage() {
     if (deleteOrderId) {
       await deleteOrder.mutateAsync(deleteOrderId);
       setDeleteOrderId(null);
+    }
+  };
+
+  const handleOrderAction = async () => {
+    if (!actionDialog.orderId || !actionDialog.action) return;
+
+    setIsProcessingAction(true);
+    try {
+      if (actionDialog.action === "prepare") {
+        await transformationOrdersApi.prepare(actionDialog.orderId);
+        toast.success(t("orderPrepared"));
+      } else {
+        await transformationOrdersApi.cancel(actionDialog.orderId);
+        toast.success(t("orderCancelled"));
+      }
+
+      await queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t("failedOrderAction");
+      toast.error(errorMessage);
+    } finally {
+      setIsProcessingAction(false);
+      setActionDialog({ orderId: null, action: null });
+    }
+  };
+
+  const handleCompleteClick = async (orderId: string) => {
+    setIsLoadingExecuteOrder(true);
+    try {
+      const response = await transformationOrdersApi.getById(orderId);
+      const order = response.data;
+      const inputs = order.inputs ?? [];
+      const outputs = order.outputs ?? [];
+
+      setExecuteOrder(order);
+      setExecuteFormData({
+        inputs: inputs.map((input: TransformationOrderInputApi) => ({
+          id: input.id,
+          itemName: input.items?.item_name || t("notAvailable"),
+          plannedQty: Number(input.planned_quantity) || 0,
+          actualQty: Number(input.planned_quantity) || 0,
+        })),
+        outputs: outputs.map((output: TransformationOrderOutputApi) => ({
+          id: output.id,
+          itemName: output.items?.item_name || t("notAvailable"),
+          plannedQty: Number(output.planned_quantity) || 0,
+          actualQty: Number(output.planned_quantity) || 0,
+          wastedQty: 0,
+          wasteReason: "",
+          isScrap: output.is_scrap || false,
+        })),
+      });
+      setExecuteDialogOpen(true);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t("failedExecuteTransformation");
+      toast.error(errorMessage);
+    } finally {
+      setIsLoadingExecuteOrder(false);
+    }
+  };
+
+  const handleExecuteSubmit = async () => {
+    if (!executeFormData || !executeOrder) return;
+
+    setIsProcessingAction(true);
+    try {
+      const executeData = {
+        inputs: executeFormData.inputs.map((input) => ({
+          inputLineId: input.id,
+          consumedQuantity: input.actualQty,
+        })),
+        outputs: executeFormData.outputs.map((output) => ({
+          outputLineId: output.id,
+          producedQuantity: output.actualQty,
+          wastedQuantity: output.wastedQty || 0,
+          wasteReason: output.wasteReason || null,
+        })),
+      };
+
+      await transformationOrdersApi.execute(executeOrder.id, executeData);
+      toast.success(t("orderCompleted"));
+      await queryClient.invalidateQueries({ queryKey: [TRANSFORMATION_ORDERS_QUERY_KEY] });
+      setExecuteDialogOpen(false);
+      setExecuteOrder(null);
+      setExecuteFormData(null);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t("failedExecuteTransformation");
+      toast.error(errorMessage);
+    } finally {
+      setIsProcessingAction(false);
     }
   };
 
@@ -222,19 +356,60 @@ export default function TransformationOrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/inventory/transformations/${order.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
                       {order.status === "DRAFT" && (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => setDeleteOrderId(order.id)}
+                          className="h-8 px-2"
+                          onClick={() => setActionDialog({ orderId: order.id, action: "prepare" })}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <PlayCircle className="mr-2 h-4 w-4" />
+                          <span>{t("prepare")}</span>
                         </Button>
+                      )}
+                      {order.status === "PREPARING" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2"
+                          disabled={isLoadingExecuteOrder}
+                          onClick={() => handleCompleteClick(order.id)}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          <span>{t("complete")}</span>
+                        </Button>
+                      )}
+                      {(order.status === "DRAFT" || order.status === "PREPARING") && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              aria-label={tCommon("actions")}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => setActionDialog({ orderId: order.id, action: "cancel" })}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <XCircle className="h-4 w-4" />
+                              <span>{t("cancelOrder")}</span>
+                            </DropdownMenuItem>
+                            {order.status === "DRAFT" && (
+                              <DropdownMenuItem
+                                onClick={() => setDeleteOrderId(order.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span>{tCommon("delete")}</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </div>
                   </TableCell>
@@ -268,6 +443,254 @@ export default function TransformationOrdersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>{tCommon("delete")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!actionDialog.action}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActionDialog({ orderId: null, action: null });
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {actionDialog.action === "prepare" && t("prepareOrder")}
+              {actionDialog.action === "cancel" && t("cancelOrder")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {actionDialog.action === "prepare" && t("prepareConfirmation")}
+              {actionDialog.action === "cancel" && t("cancelConfirmation")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessingAction}>
+              {actionDialog.action === "cancel" ? tCommon("no") : tCommon("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleOrderAction} disabled={isProcessingAction}>
+              {isProcessingAction
+                ? tCommon("loading")
+                : actionDialog.action === "cancel"
+                  ? t("cancelOrder")
+                  : t("prepare")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={executeDialogOpen}
+        onOpenChange={(open) => {
+          setExecuteDialogOpen(open);
+          if (!open) {
+            setExecuteOrder(null);
+            setExecuteFormData(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("executeTransformation")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("enterActualQuantities")}</AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {executeFormData && (
+            <div className="py-4">
+              <div className="space-y-4">
+                {executeFormData.outputs.map((output, index) => {
+                  const difference = output.actualQty - output.plannedQty;
+                  const exceeds = output.actualQty > output.plannedQty;
+                  const totalAccounted = output.actualQty + (output.wastedQty || 0);
+                  const isValidTotal = totalAccounted === output.plannedQty;
+                  const hasVariance = totalAccounted !== output.plannedQty;
+                  const hasWaste = (output.wastedQty || 0) > 0;
+                  const needsWasteReason =
+                    hasWaste && (!output.wasteReason || output.wasteReason.trim() === "");
+
+                  return (
+                    <div key={output.id} className="space-y-4 rounded-lg border p-4">
+                      <div className="flex items-start justify-between border-b pb-3">
+                        <div className="flex-1">
+                          <div className="mb-1 flex items-center gap-2">
+                            <h4 className="text-base font-semibold">{output.itemName}</h4>
+                            {output.isScrap && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("scrap")}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {t("planned")}:{" "}
+                            <span className="font-medium">{output.plannedQty}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 items-start gap-4">
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">
+                              {t("actualProduced")}
+                            </label>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder={String(output.plannedQty)}
+                              value={output.actualQty}
+                              onChange={(event) => {
+                                const value = event.target.value.replace(/[^0-9.]/g, "");
+                                const numValue = parseFloat(value) || 0;
+                                const plannedQty = Number(output.plannedQty) || 0;
+                                const autoWasted = Math.max(0, plannedQty - numValue);
+
+                                setExecuteFormData({
+                                  ...executeFormData,
+                                  outputs: executeFormData.outputs.map((out, outputIndex) =>
+                                    outputIndex === index
+                                      ? { ...out, actualQty: numValue, wastedQty: autoWasted }
+                                      : out
+                                  ),
+                                });
+                              }}
+                              className={`text-base ${exceeds ? "border-red-500" : ""}`}
+                            />
+                          </div>
+                          {difference !== 0 && (
+                            <div className="pt-7">
+                              <div
+                                className={`text-sm font-medium ${difference > 0 ? "text-red-600" : "text-yellow-600"}`}
+                              >
+                                {t("difference")}: {difference > 0 ? "+" : ""}
+                                {difference}
+                              </div>
+                              {exceeds && (
+                                <p className="mt-1 text-xs text-red-600">
+                                  {t("exceedsPlanned")}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 border-t pt-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium">{t("enterWasteDetails")}</p>
+                            <Badge variant="secondary" className="text-xs">
+                              {t("optional")}
+                            </Badge>
+                          </div>
+                          {hasVariance && (
+                            <div
+                              className={`text-xs font-medium ${totalAccounted > output.plannedQty ? "text-red-600" : "text-yellow-600"}`}
+                            >
+                              {totalAccounted > output.plannedQty
+                                ? t("totalExceedsPlanned")
+                                : t("totalLessThanPlanned")}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">
+                              {t("wastedQuantity")}
+                            </label>
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0"
+                              value={output.wastedQty || ""}
+                              onChange={(event) => {
+                                const value = event.target.value.replace(/[^0-9.]/g, "");
+                                const numValue = parseFloat(value) || 0;
+                                const plannedQty = Number(output.plannedQty) || 0;
+                                const newActual = Math.max(0, plannedQty - numValue);
+
+                                setExecuteFormData({
+                                  ...executeFormData,
+                                  outputs: executeFormData.outputs.map((out, outputIndex) =>
+                                    outputIndex === index
+                                      ? { ...out, wastedQty: numValue, actualQty: newActual }
+                                      : out
+                                  ),
+                                });
+                              }}
+                              className={hasVariance ? "border-yellow-500" : ""}
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-2 block text-sm font-medium">
+                              {t("wasteReason")}
+                              {hasWaste && <span className="ml-1 text-red-600">*</span>}
+                            </label>
+                            <Input
+                              type="text"
+                              placeholder={`${t("wasteReason")}...`}
+                              value={output.wasteReason}
+                              onChange={(event) => {
+                                setExecuteFormData({
+                                  ...executeFormData,
+                                  outputs: executeFormData.outputs.map((out, outputIndex) =>
+                                    outputIndex === index
+                                      ? { ...out, wasteReason: event.target.value }
+                                      : out
+                                  ),
+                                });
+                              }}
+                              className={needsWasteReason ? "border-red-500" : ""}
+                            />
+                            {needsWasteReason && (
+                              <p className="mt-1 text-xs text-red-600">
+                                {t("wasteReasonRequired")}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`flex items-center justify-between rounded p-2 text-sm ${
+                            isValidTotal
+                              ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                              : "bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+                          }`}
+                        >
+                          <span className="font-medium">{t("totalAccounted")}:</span>
+                          <span className="font-semibold">
+                            {output.actualQty} + {output.wastedQty || 0} = {totalAccounted} /{" "}
+                            {output.plannedQty}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessingAction}>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleExecuteSubmit}
+              disabled={
+                isProcessingAction ||
+                executeFormData?.outputs.some((output) => {
+                  const totalAccounted = output.actualQty + (output.wastedQty || 0);
+                  const hasWaste = (output.wastedQty || 0) > 0;
+                  const missingReason =
+                    hasWaste && (!output.wasteReason || output.wasteReason.trim() === "");
+
+                  return totalAccounted !== output.plannedQty || missingReason;
+                })
+              }
+            >
+              {isProcessingAction ? `${t("preparing")}...` : t("complete")}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

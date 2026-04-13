@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Search, Eye, Pencil, Trash2, Power, PowerOff, Package } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Power, PowerOff, Package, MoreVertical } from "lucide-react";
 import {
   useTransformationTemplates,
   useDeleteTransformationTemplate,
@@ -32,6 +32,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { DataTableSkeletonRows } from "@/components/shared/DataTableSkeletonRows";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
@@ -222,40 +228,58 @@ export default function TransformationTemplatesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" onClick={() => setViewTemplate(template)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {template.usage_count === 0 && (
-                        <>
-                          {template.template_kind !== "sheet_layout" && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSelectedTemplate(template)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteTemplateId(template.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
+                      {template.usage_count === 0 && template.template_kind !== "sheet_layout" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 px-2"
+                          onClick={() => setSelectedTemplate(template)}
+                        >
+                          <Pencil className="mr-2 h-4 w-4" />
+                          <span>{tCommon("edit")}</span>
+                        </Button>
                       )}
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
+                        className="h-8 px-2"
                         onClick={() => handleToggleActive(template.id, template.is_active)}
                       >
                         {template.is_active ? (
-                          <PowerOff className="h-4 w-4" />
+                          <>
+                            <PowerOff className="mr-2 h-4 w-4" />
+                            <span>{tCommon("deactivate")}</span>
+                          </>
                         ) : (
-                          <Power className="h-4 w-4" />
+                          <>
+                            <Power className="mr-2 h-4 w-4" />
+                            <span>{tCommon("activate")}</span>
+                          </>
                         )}
                       </Button>
+                      {template.usage_count === 0 && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              aria-label={tCommon("actions")}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTemplateId(template.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span>{tCommon("delete")}</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/table";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -55,7 +54,6 @@ export default function StockRequisitionDetailPage() {
   const { formatCurrency } = useCurrency();
 
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -122,16 +120,6 @@ export default function StockRequisitionDetailPage() {
       setSubmitDialogOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("submitError"));
-    }
-  };
-
-  const handleCancel = async () => {
-    try {
-      await updateStatusMutation.mutateAsync({ id, status: "cancelled" });
-      toast.success(t("cancelSuccess"));
-      setCancelDialogOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("cancelError"));
     }
   };
 
@@ -216,15 +204,6 @@ export default function StockRequisitionDetailPage() {
                 </Button>
                 <Button onClick={() => setSubmitDialogOpen(true)}>{t("send")}</Button>
               </>
-            )}
-            {sr.status !== "cancelled" && sr.status !== "fulfilled" && (
-              <Button
-                variant="destructive"
-                onClick={() => setCancelDialogOpen(true)}
-                disabled={updateStatusMutation.isPending}
-              >
-                {t("cancel")}
-              </Button>
             )}
           </div>
         )}
@@ -429,27 +408,6 @@ export default function StockRequisitionDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("cancelDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancelBack")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancel}
-              disabled={updateStatusMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {updateStatusMutation.isPending ? t("cancelling") : t("confirmCancel")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

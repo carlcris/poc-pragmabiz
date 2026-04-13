@@ -241,21 +241,21 @@ export default function WarehousesPage() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <ViewGuard resource={RESOURCES.MANAGE_LOCATIONS}>
-                            <Button variant="ghost" size="sm" asChild>
+                            <Button variant="outline" size="sm" asChild>
                               <Link href={`/inventory/warehouses/${warehouse.id}/locations`}>
                                 <MapPin className="mr-2 h-4 w-4" />
                                 {t("locations")}
                               </Link>
                             </Button>
                           </ViewGuard>
-                          <Button variant="ghost" size="sm" onClick={() => handleEditWarehouse(warehouse)}>
+                          <Button variant="outline" size="sm" onClick={() => handleEditWarehouse(warehouse)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             <span>{tCommon("edit")}</span>
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 w-8 p-0"
                                 aria-label={tCommon("actions")}

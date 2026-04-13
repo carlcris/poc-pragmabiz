@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Search, Shield, Plus, Pencil, Trash2, Key } from "lucide-react";
+import { Search, Shield, Plus, Pencil, Trash2, Key, MoreVertical } from "lucide-react";
 import { useRoles, useDeleteRole } from "@/hooks/useRoles";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -217,24 +223,42 @@ function RoleManagementContent() {
                         </EditGuard>
                         <EditGuard resource={RESOURCES.ROLES}>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
+                            className="h-8 px-2"
                             disabled={role.is_system_role}
                             onClick={() => handleEditClick(role)}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>{tCommon("edit")}</span>
                           </Button>
                         </EditGuard>
-                        <DeleteGuard resource={RESOURCES.ROLES}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={role.is_system_role}
-                            onClick={() => handleDeleteClick(role)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </DeleteGuard>
+                        {!role.is_system_role && (
+                          <DeleteGuard resource={RESOURCES.ROLES}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={tCommon("actions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteClick(role)}
+                                  disabled={deleteRole.isPending}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>{tCommon("delete")}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </DeleteGuard>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

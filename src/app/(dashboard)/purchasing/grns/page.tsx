@@ -2,13 +2,30 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Search, Filter, Package, Trash2, Eye } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Package,
+  Trash2,
+  MoreVertical,
+  Send,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useGRNs, useDeleteGRN } from "@/hooks/useGRNs";
+import { useGRNs, useDeleteGRN, useSubmitGRN, useApproveGRN, useRejectGRN } from "@/hooks/useGRNs";
+import { grnsApi } from "@/lib/api/grns";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -51,8 +68,18 @@ export default function GRNsPage() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [grnToDelete, setGRNToDelete] = useState<GRN | null>(null);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [grnToSubmit, setGRNToSubmit] = useState<GRN | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [grnToApprove, setGRNToApprove] = useState<GRN | null>(null);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [grnToReject, setGRNToReject] = useState<GRN | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const deleteMutation = useDeleteGRN();
+  const submitMutation = useSubmitGRN();
+  const approveMutation = useApproveGRN();
+  const rejectMutation = useRejectGRN();
 
   const { data, isLoading, error } = useGRNs({
     search,
@@ -121,8 +148,21 @@ export default function GRNsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const getErrorMessage = (err: unknown, fallback: string) =>
-    err instanceof Error ? err.message : fallback;
+  const handleSubmitGRN = (grn: GRN) => {
+    setGRNToSubmit(grn);
+    setSubmitDialogOpen(true);
+  };
+
+  const handleApproveGRN = (grn: GRN) => {
+    setGRNToApprove(grn);
+    setApproveDialogOpen(true);
+  };
+
+  const handleRejectGRN = (grn: GRN) => {
+    setGRNToReject(grn);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  };
 
   const confirmDelete = async () => {
     if (!grnToDelete) return;
@@ -133,7 +173,64 @@ export default function GRNsPage() {
       setDeleteDialogOpen(false);
       setGRNToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("deleteError")));
+      console.error("Failed to delete GRN:", err);
+      toast.error(t("deleteError"));
+    }
+  };
+
+  const confirmSubmit = async () => {
+    if (!grnToSubmit) return;
+
+    try {
+      const grn = await grnsApi.getGRN(grnToSubmit.id);
+      const items = Array.isArray(grn.items) ? grn.items : [];
+      const hasReceivedQty = items.length > 0 && items.every((item) => Number(item.receivedQty ?? 0) > 0);
+
+      if (!hasReceivedQty) {
+        toast.error(t("submitMissingReceivedQty"));
+        return;
+      }
+
+      await submitMutation.mutateAsync(grnToSubmit.id);
+      toast.success(t("submitSuccess"));
+      setSubmitDialogOpen(false);
+      setGRNToSubmit(null);
+    } catch {
+      toast.error(t("submitError"));
+    }
+  };
+
+  const confirmApprove = async () => {
+    if (!grnToApprove) return;
+
+    try {
+      await approveMutation.mutateAsync({ id: grnToApprove.id });
+      toast.success(t("approveSuccess"));
+      setApproveDialogOpen(false);
+      setGRNToApprove(null);
+    } catch (err) {
+      console.error("Failed to approve GRN:", err);
+      toast.error(t("approveError"));
+    }
+  };
+
+  const confirmReject = async () => {
+    if (!grnToReject) return;
+
+    if (!rejectReason.trim()) {
+      toast.error(t("rejectReasonRequired"));
+      return;
+    }
+
+    try {
+      await rejectMutation.mutateAsync({ id: grnToReject.id, reason: rejectReason.trim() });
+      toast.success(t("rejectSuccess"));
+      setRejectDialogOpen(false);
+      setGRNToReject(null);
+      setRejectReason("");
+    } catch (err) {
+      console.error("Failed to reject GRN:", err);
+      toast.error(t("rejectError"));
     }
   };
 
@@ -271,7 +368,11 @@ export default function GRNsPage() {
                 </TableHeader>
                 <TableBody>
                   {data.data.map((grn) => (
-                    <TableRow key={grn.id}>
+                    <TableRow
+                      key={grn.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewGRN(grn)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-green-600" />
@@ -347,14 +448,69 @@ export default function GRNsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewGRN(grn)} aria-label={t("view")}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {grn.status === "draft" && (
-                            <Button variant="ghost" size="sm" onClick={() => handleDeleteGRN(grn)} aria-label={t("delete")}>
-                              <Trash2 className="h-4 w-4" />
+                        <div
+                          className="flex items-center justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {(grn.status === "draft" || grn.status === "receiving") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => handleSubmitGRN(grn)}
+                              aria-label={t("submitForApproval")}
+                            >
+                              <Send className="mr-2 h-4 w-4" />
+                              <span>{t("submit")}</span>
                             </Button>
+                          )}
+                          {grn.status === "pending_approval" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => handleApproveGRN(grn)}
+                              aria-label={t("approve")}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              <span>{t("approve")}</span>
+                            </Button>
+                          )}
+                          {(grn.status === "draft" || grn.status === "pending_approval") && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("actions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {grn.status === "pending_approval" && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleRejectGRN(grn)}
+                                    disabled={rejectMutation.isPending}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    <span>{t("reject")}</span>
+                                  </DropdownMenuItem>
+                                )}
+                                {grn.status === "draft" && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteGRN(grn)}
+                                    disabled={deleteMutation.isPending}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>{t("delete")}</span>
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                         </div>
                       </TableCell>
@@ -396,6 +552,79 @@ export default function GRNsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? t("deleting") : t("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("submitTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("submitDescription", { grnNumber: grnToSubmit?.grnNumber ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmSubmit}
+              disabled={submitMutation.isPending}
+            >
+              {submitMutation.isPending ? t("submitting") : t("submit")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("approveTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("approveDescription", { grnNumber: grnToApprove?.grnNumber ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmApprove}
+              disabled={approveMutation.isPending}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {approveMutation.isPending ? t("approving") : t("approve")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("rejectTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("rejectDescription", { grnNumber: grnToReject?.grnNumber ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="grn-reject-reason" className="text-sm font-medium">
+              {t("rejectionReason")}
+            </label>
+            <Textarea
+              id="grn-reject-reason"
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder={t("rejectionReasonPlaceholder")}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmReject}
+              disabled={rejectMutation.isPending || !rejectReason.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {rejectMutation.isPending ? t("rejecting") : t("reject")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

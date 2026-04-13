@@ -63,7 +63,6 @@ export default function LoadListDetailPage() {
   const [arrivedDialogOpen, setArrivedDialogOpen] = useState(false);
   const [reverseArrivalDialogOpen, setReverseArrivalDialogOpen] = useState(false);
   const [receivedDialogOpen, setReceivedDialogOpen] = useState(false);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [inTransitEstimatedArrivalDate, setInTransitEstimatedArrivalDate] = useState("");
   const [inTransitLinerName, setInTransitLinerName] = useState("");
@@ -267,19 +266,6 @@ export default function LoadListDetailPage() {
             )}
             {ll.status === "pending_approval" && (
               <Button onClick={() => setReceivedDialogOpen(true)}>{t("markReceived")}</Button>
-            )}
-            {ll.status !== "cancelled" &&
-              ll.status !== "received" &&
-              ll.status !== "arrived" &&
-              ll.status !== "receiving" &&
-              ll.status !== "pending_approval" && (
-              <Button
-                variant="destructive"
-                onClick={() => setCancelDialogOpen(true)}
-                disabled={updateStatusMutation.isPending}
-              >
-                {t("cancel")}
-              </Button>
             )}
           </div>
         )}
@@ -645,28 +631,6 @@ export default function LoadListDetailPage() {
               className="bg-green-600 hover:bg-green-700"
             >
               {updateStatusMutation.isPending ? t("updating") : t("markReceived")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Cancel Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("cancelDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancelBack")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleStatusChange("cancelled", setCancelDialogOpen)}
-              disabled={updateStatusMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {updateStatusMutation.isPending ? t("cancelling") : t("confirmCancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

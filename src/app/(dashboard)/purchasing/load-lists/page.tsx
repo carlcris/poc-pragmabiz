@@ -3,13 +3,29 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Search, Pencil, Filter, Package, Trash2, Eye } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Pencil,
+  Filter,
+  Package,
+  Trash2,
+  MoreVertical,
+  XCircle,
+  CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useLoadLists, useDeleteLoadList } from "@/hooks/useLoadLists";
+import { useLoadLists, useDeleteLoadList, useUpdateLoadListStatus } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -63,8 +79,13 @@ export default function LoadListsPage() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [llToDelete, setLLToDelete] = useState<LoadList | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [llToCancel, setLLToCancel] = useState<LoadList | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [llToConfirm, setLLToConfirm] = useState<LoadList | null>(null);
 
   const deleteMutation = useDeleteLoadList();
+  const updateStatusMutation = useUpdateLoadListStatus();
 
   const { data, isLoading, error } = useLoadLists({
     search,
@@ -183,8 +204,22 @@ export default function LoadListsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const getErrorMessage = (err: unknown, fallback: string) =>
-    err instanceof Error ? err.message : fallback;
+  const handleCancelLL = (ll: LoadList) => {
+    setLLToCancel(ll);
+    setCancelDialogOpen(true);
+  };
+
+  const handleConfirmLL = (ll: LoadList) => {
+    setLLToConfirm(ll);
+    setConfirmDialogOpen(true);
+  };
+
+  const canCancelLL = (ll: LoadList) =>
+    ll.status !== "cancelled" &&
+    ll.status !== "received" &&
+    ll.status !== "arrived" &&
+    ll.status !== "receiving" &&
+    ll.status !== "pending_approval";
 
   const confirmDelete = async () => {
     if (!llToDelete) return;
@@ -195,7 +230,46 @@ export default function LoadListsPage() {
       setDeleteDialogOpen(false);
       setLLToDelete(null);
     } catch (err) {
-      toast.error(getErrorMessage(err, t("deleteError")));
+      console.error("Failed to delete load list:", err);
+      toast.error(t("deleteError"));
+    }
+  };
+
+  const confirmCancel = async () => {
+    if (!llToCancel) return;
+
+    try {
+      await updateStatusMutation.mutateAsync({
+        id: llToCancel.id,
+        data: {
+          status: "cancelled",
+        },
+      });
+      toast.success(t("cancelSuccess"));
+      setCancelDialogOpen(false);
+      setLLToCancel(null);
+    } catch (err) {
+      console.error("Failed to cancel load list:", err);
+      toast.error(t("cancelError"));
+    }
+  };
+
+  const confirmLoadList = async () => {
+    if (!llToConfirm) return;
+
+    try {
+      await updateStatusMutation.mutateAsync({
+        id: llToConfirm.id,
+        data: {
+          status: "confirmed",
+        },
+      });
+      toast.success(t("confirmSuccess"));
+      setConfirmDialogOpen(false);
+      setLLToConfirm(null);
+    } catch (err) {
+      console.error("Failed to confirm load list:", err);
+      toast.error(t("confirmError"));
     }
   };
 
@@ -378,7 +452,11 @@ export default function LoadListsPage() {
                 </TableHeader>
                 <TableBody>
                   {data.data.map((ll) => (
-                    <TableRow key={ll.id}>
+                    <TableRow
+                      key={ll.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewLL(ll)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Package className="h-4 w-4 text-blue-600" />
@@ -443,20 +521,70 @@ export default function LoadListsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewLL(ll)} aria-label={t("view")}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                        <div
+                          className="flex items-center justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           {(ll.status === "draft" || ll.status === "confirmed") && (
-                            <>
-                              <Button variant="ghost" size="sm" onClick={() => handleEditLL(ll)} aria-label={t("edit")}>
-                                <Pencil className="h-4 w-4" />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleEditLL(ll)}
+                                aria-label={t("edit")}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>{t("edit")}</span>
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDeleteLL(ll)} aria-label={t("delete")}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
                           )}
+                          {ll.status === "draft" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => handleConfirmLL(ll)}
+                              aria-label={t("confirm")}
+                            >
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                              <span>{t("confirm")}</span>
+                            </Button>
+                          )}
+                          {canCancelLL(ll) || ll.status === "draft" || ll.status === "confirmed" ? (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    aria-label={t("actions")}
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {canCancelLL(ll) && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleCancelLL(ll)}
+                                      disabled={updateStatusMutation.isPending}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <XCircle className="h-4 w-4" />
+                                      <span>{t("cancel")}</span>
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(ll.status === "draft" || ll.status === "confirmed") && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteLL(ll)}
+                                    disabled={deleteMutation.isPending}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span>{t("delete")}</span>
+                                  </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -501,6 +629,47 @@ export default function LoadListsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? t("deleting") : t("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cancelDescription", { code: llToCancel?.llNumber ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancelBack")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmCancel}
+              disabled={updateStatusMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updateStatusMutation.isPending ? t("cancelling") : t("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("confirmDescription", { code: llToConfirm?.llNumber ?? "" })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmLoadList}
+              disabled={updateStatusMutation.isPending}
+            >
+              {updateStatusMutation.isPending ? t("confirming") : t("confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

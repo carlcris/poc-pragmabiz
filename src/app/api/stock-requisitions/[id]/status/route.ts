@@ -70,7 +70,7 @@ export async function PATCH(
     if (updateError) {
       console.error("Error updating stock requisition status:", updateError);
       return NextResponse.json(
-        { error: updateError.message || "Failed to update status" },
+        { error: "Failed to update stock requisition status" },
         { status: 500 }
       );
     }

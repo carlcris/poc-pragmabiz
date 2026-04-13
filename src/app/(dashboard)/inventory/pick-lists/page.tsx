@@ -13,7 +13,6 @@ import {
   CheckCircle,
   XCircle,
   Package,
-  Eye,
 } from "lucide-react";
 import {
   usePickLists,
@@ -358,17 +357,7 @@ export default function PickListsPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-sm">{formatDate(row.created_at, locale, t("noValue"))}</TableCell>
-                    <TableCell
-                      className="text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => setDetailId(row.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          {t("viewDetails")}
-                        </Button>
-                      </div>
-                    </TableCell>
+                    <TableCell className="text-right" />
                   </TableRow>
                 );
               })}

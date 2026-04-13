@@ -9,7 +9,6 @@ import {
   Search,
   Filter,
   FileText,
-  Eye,
   MoreVertical,
   CheckCircle,
   Clock,
@@ -976,16 +975,7 @@ export default function DeliveryNotesPage() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => router.push(detailsHref)}
-                          aria-label={t("view")}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          {t("view")}
-                        </Button>
-                        <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={() => {
                             void handlePrintDeliveryNote(dn);
@@ -998,7 +988,7 @@ export default function DeliveryNotesPage() {
                         </Button>
                         {primaryAction ? (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={primaryAction.onClick}
                             aria-label={primaryAction.label}
@@ -1011,7 +1001,7 @@ export default function DeliveryNotesPage() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 w-8 p-0"
                                 aria-label={t("actions")}

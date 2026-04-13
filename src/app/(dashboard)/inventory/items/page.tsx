@@ -616,7 +616,7 @@ function ItemsPageContent() {
                         >
                           <EditGuard resource={RESOURCES.ITEMS}>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               className="h-8 px-2"
                               onClick={() => handleEditItem(item)}
@@ -630,7 +630,7 @@ function ItemsPageContent() {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
                                   className="h-8 w-8 p-0"
                                   aria-label={t("moreActions")}
