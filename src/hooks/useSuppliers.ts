@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { suppliersApi } from "@/lib/api/suppliers";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type {
   SupplierFilters,
   CreateSupplierRequest,
@@ -16,17 +17,19 @@ const normalizeSupplierFilters = (filters?: SupplierFilters): SupplierFilters | 
 };
 
 export function useSuppliers(filters?: SupplierFilters) {
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
   const normalizedFilters = normalizeSupplierFilters(filters);
   return useQuery({
-    queryKey: [SUPPLIERS_QUERY_KEY, normalizedFilters],
+    queryKey: [SUPPLIERS_QUERY_KEY, currentBusinessUnitId ?? null, normalizedFilters],
     queryFn: () => suppliersApi.getSuppliers(normalizedFilters),
     placeholderData: keepPreviousData,
   });
 }
 
 export function useSupplier(id: string) {
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
   return useQuery({
-    queryKey: [SUPPLIERS_QUERY_KEY, id],
+    queryKey: [SUPPLIERS_QUERY_KEY, currentBusinessUnitId ?? null, id],
     queryFn: () => suppliersApi.getSupplier(id),
     enabled: !!id,
   });

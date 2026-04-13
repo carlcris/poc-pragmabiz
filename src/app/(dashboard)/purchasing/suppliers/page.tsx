@@ -150,7 +150,7 @@ export default function SuppliersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-full flex-col gap-4 sm:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
@@ -164,8 +164,8 @@ export default function SuppliersPage() {
         </Button>
       </div>
 
-      <div className="space-y-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative w-full sm:flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -193,79 +193,81 @@ export default function SuppliersPage() {
           </ClientOnly>
         </div>
 
-        {isLoading ? (
-          <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-background">
-                <TableRow>
-                  <TableHead>{t("code")}</TableHead>
-                  <TableHead>{t("supplier")}</TableHead>
-                  <TableHead>{t("contactPerson")}</TableHead>
-                  <TableHead>{t("contactInfo")}</TableHead>
-                  <TableHead>{t("location")}</TableHead>
-                  <TableHead>{t("paymentTerms")}</TableHead>
-                  <TableHead className="text-right">{t("creditLimit")}</TableHead>
-                  <TableHead className="text-right">{t("balance")}</TableHead>
-                  <TableHead>{t("status")}</TableHead>
-                  <TableHead className="text-right">{t("actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[...Array(8)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Skeleton className="h-4 w-16" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-28" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-5 w-20 rounded-full" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-4 w-20" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-4 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Skeleton className="h-8 w-8" />
-                        <Skeleton className="h-8 w-8" />
-                      </div>
-                    </TableCell>
+        <div className="min-h-0 flex-1">
+          {isLoading ? (
+            <div className="h-full overflow-auto overscroll-contain rounded-md border">
+              <Table className="min-w-[1100px]">
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
+                  <TableRow>
+                    <TableHead>{t("code")}</TableHead>
+                    <TableHead>{t("supplier")}</TableHead>
+                    <TableHead>{t("contactPerson")}</TableHead>
+                    <TableHead>{t("contactInfo")}</TableHead>
+                    <TableHead>{t("location")}</TableHead>
+                    <TableHead>{t("paymentTerms")}</TableHead>
+                    <TableHead className="text-right">{t("creditLimit")}</TableHead>
+                    <TableHead className="text-right">{t("balance")}</TableHead>
+                    <TableHead>{t("status")}</TableHead>
+                    <TableHead className="text-right">{t("actions")}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
-        ) : suppliers.length === 0 ? (
-          <EmptyStatePanel
-            icon={Package}
-            title={t("emptyTitle")}
-            description={t("emptyDescription")}
-          />
-        ) : (
-          <>
-            <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-              <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background">
+                </TableHeader>
+                <TableBody>
+                  {[...Array(8)].map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-20 rounded-full" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-20" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-8" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : error ? (
+            <div className="flex h-full items-center justify-center text-center text-destructive">
+              {t("loadError")}
+            </div>
+          ) : suppliers.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <EmptyStatePanel
+                icon={Package}
+                title={t("emptyTitle")}
+                description={t("emptyDescription")}
+              />
+            </div>
+          ) : (
+            <div className="h-full overflow-auto overscroll-contain rounded-md border">
+              <Table className="min-w-[1100px]">
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
                     <TableHead>{t("code")}</TableHead>
                     <TableHead>{t("supplier")}</TableHead>
@@ -352,20 +354,20 @@ export default function SuppliersPage() {
                 </TableBody>
               </Table>
             </div>
+          )}
+        </div>
 
-            {pagination && pagination.total > 0 && (
-              <div className="mt-4">
-                <DataTablePagination
-                  currentPage={page}
-                  totalPages={pagination.totalPages}
-                  pageSize={pageSize}
-                  totalItems={pagination.total}
-                  onPageChange={setPage}
-                  onPageSizeChange={setPageSize}
-                />
-              </div>
-            )}
-          </>
+        {!isLoading && suppliers.length > 0 && pagination && pagination.total > 0 && (
+          <div className="mt-4">
+            <DataTablePagination
+              currentPage={page}
+              totalPages={pagination.totalPages}
+              pageSize={pageSize}
+              totalItems={pagination.total}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
         )}
       </div>
 
