@@ -64,7 +64,7 @@ export const PickingEfficiencyReportPDF = ({
   pageSummary,
   rows,
 }: PickingEfficiencyReportPDFProps) => (
-  <Document>
+  <Document title={title}>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>

@@ -163,7 +163,7 @@ export const InventoryReportPDF = ({
   statusLabels,
   rows,
 }: InventoryReportPDFProps) => (
-  <Document>
+  <Document title={title}>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>

@@ -141,7 +141,7 @@ export const ShipmentsReportPDF = ({
   pageSummary,
   rows,
 }: ShipmentsReportPDFProps) => (
-  <Document>
+  <Document title={title}>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>

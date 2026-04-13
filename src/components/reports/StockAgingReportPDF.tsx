@@ -198,7 +198,7 @@ export const StockAgingReportPDF = ({
   totalPages,
   totalRows,
 }: StockAgingReportPDFProps) => (
-  <Document>
+  <Document title={title}>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>

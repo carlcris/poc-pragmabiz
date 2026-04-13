@@ -124,7 +124,7 @@ export const StockMovementReportPDF = ({
   pageSummary,
   rows,
 }: StockMovementReportPDFProps) => (
-  <Document>
+  <Document title={title}>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
@@ -234,7 +234,7 @@ export const StockValuationReportPDF = ({
   pageSummary,
   rows,
 }: StockValuationReportPDFProps) => (
-  <Document>
+  <Document title={title}>
     <Page size="A4" orientation="landscape" style={styles.page}>
       <View style={styles.header}>
         <Text style={styles.title}>{title}</Text>
