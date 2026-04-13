@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
+import { ItemLedgerTab } from "@/components/items/ledger/ItemLedgerTab";
 import { ItemBarcodeImage } from "@/components/items/barcode/ItemBarcodeImage";
 import { ItemUnitOptionsCard } from "@/components/items/unit-options/ItemUnitOptionsCard";
 import { MetricCard } from "@/components/shared/MetricCard";
@@ -91,6 +92,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
               <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
               <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
+              <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
               <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
             </TabsList>
 
@@ -188,6 +190,23 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               </Card>
             </TabsContent>
 
+            <TabsContent value="ledger" className={tabPanelClassName}>
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-4 w-72" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-4">
+                    {[1, 2, 3, 4].map((filter) => (
+                      <Skeleton key={filter} className="h-10 w-full" />
+                    ))}
+                  </div>
+                  <Skeleton className="h-40 w-full" />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="locations" className={tabPanelClassName}>
               <LocationsTab itemId={itemId} />
             </TabsContent>
@@ -245,6 +264,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
           <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
           <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
+          <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
           <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
         </TabsList>
 
@@ -467,6 +487,11 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
         {/* Unit Options Tab */}
         <TabsContent value="unitOptions" className={tabPanelClassName}>
           <ItemUnitOptionsCard itemId={itemId} baseUomCode={item.uom} editable={canEditItems} />
+        </TabsContent>
+
+        {/* Ledger Tab */}
+        <TabsContent value="ledger" className={tabPanelClassName}>
+          <ItemLedgerTab itemId={itemId} itemUom={item.uom} />
         </TabsContent>
 
         {/* Locations Tab */}

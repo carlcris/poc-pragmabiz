@@ -1839,6 +1839,7 @@ export type TranslationKeys = {
     overviewTab: string;
     pricesTab: string;
     unitOptionsTab: string;
+    ledgerTab: string;
     locationsTab: string;
     basicInformation: string;
     itemCodeLabel: string;
@@ -4499,6 +4500,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       overviewTab: "Overview",
       pricesTab: "Prices",
       unitOptionsTab: "Unit Options",
+      ledgerTab: "Ledger",
       locationsTab: "Locations",
       basicInformation: "Basic Information",
       itemCodeLabel: "Item Code *",
@@ -9408,6 +9410,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       overviewTab: "概览",
       pricesTab: "价格",
       unitOptionsTab: "单位选项",
+      ledgerTab: "库存台账",
       locationsTab: "库位",
       basicInformation: "基础信息",
       itemCodeLabel: "商品编码 *",
