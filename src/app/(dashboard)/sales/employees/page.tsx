@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { StatusText } from "@/components/shared/StatusText";
 import { useEmployees } from "@/hooks/useEmployees";
 import { EmployeeFormDialog } from "@/components/employees/employee-form-dialog";
 import { TerritoryManagementDialog } from "@/components/employees/territory-management-dialog";
@@ -187,9 +188,9 @@ export default function EmployeesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={employee.isActive ? "default" : "secondary"}>
+                        <StatusText tone={employee.isActive ? "green" : "muted"}>
                           {employee.isActive ? tCommon("active") : tCommon("inactive")}
-                        </Badge>
+                        </StatusText>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

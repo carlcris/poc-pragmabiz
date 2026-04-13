@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,9 +112,9 @@ export default function POSTransactionsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "completed") return <Badge className="bg-green-100 text-green-800">{t("completedStatus")}</Badge>;
-    if (status === "voided") return <Badge variant="secondary">{t("voidedStatus")}</Badge>;
-    return <Badge>{status}</Badge>;
+    if (status === "completed") return <StatusText tone="green">{t("completedStatus")}</StatusText>;
+    if (status === "voided") return <StatusText>{t("voidedStatus")}</StatusText>;
+    return <StatusText>{status}</StatusText>;
   };
 
   return (

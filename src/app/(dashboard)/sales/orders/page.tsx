@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -131,39 +132,19 @@ export default function SalesOrdersPage() {
   const getStatusBadge = (status: SalesOrderStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "confirmed":
-        return (
-          <Badge variant="default" className="bg-blue-600">
-            {t("confirmed")}
-          </Badge>
-        );
+        return <StatusText tone="blue">{t("confirmed")}</StatusText>;
       case "in_progress":
-        return (
-          <Badge variant="default" className="bg-yellow-600">
-            {t("inProgress")}
-          </Badge>
-        );
+        return <StatusText tone="yellow">{t("inProgress")}</StatusText>;
       case "shipped":
-        return (
-          <Badge variant="default" className="bg-purple-600">
-            {t("shipped")}
-          </Badge>
-        );
+        return <StatusText tone="purple">{t("shipped")}</StatusText>;
       case "delivered":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            {t("delivered")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("delivered")}</StatusText>;
       case "invoiced":
-        return (
-          <Badge variant="default" className="bg-indigo-600">
-            {t("invoiced")}
-          </Badge>
-        );
+        return <StatusText tone="indigo">{t("invoiced")}</StatusText>;
       case "cancelled":
-        return <Badge variant="destructive">{t("cancelled")}</Badge>;
+        return <StatusText tone="red">{t("cancelled")}</StatusText>;
     }
   };
 

@@ -237,9 +237,15 @@ export const ItemUnitOptionsCard = ({
                       </TableCell>
                       <TableCell className="font-mono text-xs">{unitOption.barcode}</TableCell>
                       <TableCell>
-                        <Badge variant={unitOption.isActive ? "outline" : "secondary"}>
+                        <span
+                          className={
+                            unitOption.isActive
+                              ? "text-sm font-medium text-green-700 dark:text-green-400"
+                              : "text-sm font-medium text-muted-foreground"
+                          }
+                        >
                           {unitOption.isActive ? t("activeLabel") : t("inactiveLabel")}
-                        </Badge>
+                        </span>
                       </TableCell>
                       {editable ? (
                         <TableCell className="text-right">

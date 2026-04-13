@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Eye, FileText } from "lucide-react";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { StatusText } from "@/components/shared/StatusText";
 import type {
   JournalEntryWithLines,
   JournalEntryStatus,
@@ -93,16 +94,16 @@ export default function JournalsPage() {
   }, [searchTerm, statusFilter, sourceModuleFilter]);
 
   const getStatusBadge = (status: JournalEntryStatus) => {
-    const colors: Record<JournalEntryStatus, string> = {
-      draft: "bg-yellow-100 text-yellow-800",
-      posted: "bg-green-100 text-green-800",
-      cancelled: "bg-red-100 text-red-800",
+    const tones: Record<JournalEntryStatus, "yellow" | "green" | "red"> = {
+      draft: "yellow",
+      posted: "green",
+      cancelled: "red",
     };
 
     return (
-      <Badge className={colors[status]} variant="secondary">
+      <StatusText tone={tones[status]}>
         {(status === "posted" ? t("posted") : status === "draft" ? t("draft") : tCommon("cancelled")).toUpperCase()}
-      </Badge>
+      </StatusText>
     );
   };
 

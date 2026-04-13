@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientOnly } from "@/components/shared/ClientOnly";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -71,13 +72,6 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { toast } from "sonner";
 
-const statusColors: Record<TransformationOrderStatus, string> = {
-  DRAFT: "bg-gray-500",
-  PREPARING: "bg-blue-500",
-  COMPLETED: "bg-green-500",
-  CANCELLED: "bg-red-500",
-};
-
 const getStatusLabel = (status: TransformationOrderStatus, tCommon: ReturnType<typeof useTranslations>) => {
   switch (status) {
     case "DRAFT":
@@ -90,6 +84,20 @@ const getStatusLabel = (status: TransformationOrderStatus, tCommon: ReturnType<t
       return tCommon("cancelled");
     default:
       return status;
+  }
+};
+
+const getStatusTone = (status: TransformationOrderStatus) => {
+  switch (status) {
+    case "PREPARING":
+      return "blue";
+    case "COMPLETED":
+      return "green";
+    case "CANCELLED":
+      return "red";
+    case "DRAFT":
+    default:
+      return "muted";
   }
 };
 
@@ -343,7 +351,9 @@ export default function TransformationOrdersPage() {
                   <TableCell className="font-medium">{order.order_code}</TableCell>
                   <TableCell>{order.template?.template_code || t("notAvailable")}</TableCell>
                   <TableCell>
-                    <Badge className={statusColors[order.status]}>{getStatusLabel(order.status, tCommon)}</Badge>
+                    <StatusText tone={getStatusTone(order.status)}>
+                      {getStatusLabel(order.status, tCommon)}
+                    </StatusText>
                   </TableCell>
                   <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
                   <TableCell>{order.source_warehouse?.warehouse_name || t("notAvailable")}</TableCell>

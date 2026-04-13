@@ -8,6 +8,7 @@ import { useTransformationOrder } from "@/hooks/useTransformationOrders";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -27,13 +28,6 @@ import type {
   TransformationOrderOutputApi,
   TransformationOrderStatus,
 } from "@/types/transformation-order";
-
-const statusColors: Record<string, string> = {
-  DRAFT: "bg-gray-500",
-  PREPARING: "bg-blue-500",
-  COMPLETED: "bg-green-500",
-  CANCELLED: "bg-red-500",
-};
 
 const getStatusLabel = (status: TransformationOrderStatus, tCommon: ReturnType<typeof useTranslations>) => {
   switch (status) {
@@ -209,9 +203,19 @@ function TransformationOrderContent({ id }: { id: string }) {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {tCommon("status")}
               </p>
-              <Badge className={`${statusColors[order.status]} px-3 py-1 text-sm`}>
+              <StatusText
+                tone={
+                  order.status === "COMPLETED"
+                    ? "green"
+                    : order.status === "PREPARING"
+                      ? "blue"
+                      : order.status === "CANCELLED"
+                        ? "red"
+                        : "muted"
+                }
+              >
                 {getStatusLabel(order.status, tCommon)}
-              </Badge>
+              </StatusText>
             </div>
             <div className="space-y-1">
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

@@ -4,13 +4,19 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { z } from "zod";
 import type { StockRequest } from "@/types/stock-request";
 import type { StockRequestLineItemPayload } from "@/components/stock-requests/StockRequestLineItemDialog";
 import { StockRequestLineItemDialog } from "@/components/stock-requests/StockRequestLineItemDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,6 +81,7 @@ export function StockRequestFormDialog({
   const t = useTranslations("stockRequestForm");
   const tPage = useTranslations("stockRequestsPage");
   const tValidation = useTranslations("stockRequestValidation");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [lineItems, setLineItems] = useState<StockRequestLineItemPayload[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -387,12 +394,38 @@ export function StockRequestFormDialog({
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <div className="flex items-center gap-1">
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleEditItem(index)} className="h-7 w-7 p-0">
-                                      <Pencil className="h-3 w-3" />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleEditItem(index)}
+                                      className="h-7 px-2"
+                                    >
+                                      <Pencil className="mr-1 h-3 w-3" />
+                                      <span>{tCommon("edit")}</span>
                                     </Button>
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => handleDeleteItem(index)} className="h-7 w-7 p-0">
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 w-7 p-0"
+                                          aria-label={t("actions")}
+                                        >
+                                          <MoreVertical className="h-3 w-3" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          onClick={() => handleDeleteItem(index)}
+                                          className="text-destructive focus:text-destructive"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          <span>{tCommon("delete")}</span>
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                 </TableCell>
                               </TableRow>

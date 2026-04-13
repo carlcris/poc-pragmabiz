@@ -19,6 +19,7 @@ import {
 import { useGRN, useUpdateGRN, useSubmitGRN, useApproveGRN, useRejectGRN } from "@/hooks/useGRNs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,40 +113,19 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const getStatusBadge = (status: GRNStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "receiving":
-        return (
-          <Badge
-            variant="outline"
-            className="border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-400"
-          >
-            {t("receiving")}
-          </Badge>
-        );
+        return <StatusText tone="amber">{t("receiving")}</StatusText>;
       case "pending_approval":
-        return (
-          <Badge
-            variant="outline"
-            className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
-          >
-            {t("pendingApproval")}
-          </Badge>
-        );
+        return <StatusText tone="yellow">{t("pendingApproval")}</StatusText>;
       case "approved":
-        return (
-          <Badge
-            variant="outline"
-            className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-          >
-            {t("approved")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("approved")}</StatusText>;
       case "rejected":
-        return <Badge variant="destructive">{t("rejected")}</Badge>;
+        return <StatusText tone="red">{t("rejected")}</StatusText>;
       case "cancelled":
-        return <Badge variant="destructive">{t("cancelled")}</Badge>;
+        return <StatusText tone="red">{t("cancelled")}</StatusText>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusText>{status}</StatusText>;
     }
   };
 

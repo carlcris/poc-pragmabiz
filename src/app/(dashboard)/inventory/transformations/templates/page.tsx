@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Table,
   TableBody,
@@ -209,9 +210,9 @@ export default function TransformationTemplatesPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={template.is_active ? "bg-green-500" : "bg-gray-500"}>
+                    <StatusText tone={template.is_active ? "green" : "muted"}>
                       {template.is_active ? tCommon("active") : tCommon("inactive")}
-                    </Badge>
+                    </StatusText>
                   </TableCell>
                   <TableCell>{template.inputs?.length || 0}</TableCell>
                   <TableCell>{template.outputs?.length || 0}</TableCell>

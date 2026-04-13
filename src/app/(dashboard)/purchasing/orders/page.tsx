@@ -27,7 +27,7 @@ import {
 } from "@/hooks/usePurchaseOrders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -136,41 +136,21 @@ export default function PurchaseOrdersPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "submitted":
-        return (
-          <Badge variant="default" className="bg-blue-600">
-            {t("submitted")}
-          </Badge>
-        );
+        return <StatusText tone="blue">{t("submitted")}</StatusText>;
       case "approved":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            {t("approved")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("approved")}</StatusText>;
       case "in_transit":
-        return (
-          <Badge variant="default" className="bg-purple-600">
-            {t("inTransit")}
-          </Badge>
-        );
+        return <StatusText tone="purple">{t("inTransit")}</StatusText>;
       case "partially_received":
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            {t("partiallyReceived")}
-          </Badge>
-        );
+        return <StatusText tone="yellow">{t("partiallyReceived")}</StatusText>;
       case "received":
-        return (
-          <Badge variant="default" className="bg-green-700">
-            {t("received")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("received")}</StatusText>;
       case "cancelled":
-        return <Badge variant="destructive">{t("cancelled")}</Badge>;
+        return <StatusText tone="red">{t("cancelled")}</StatusText>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusText>{status}</StatusText>;
     }
   };
 

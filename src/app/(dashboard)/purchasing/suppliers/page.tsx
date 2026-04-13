@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientOnly } from "@/components/shared/ClientOnly";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -83,20 +84,13 @@ export default function SuppliersPage() {
   const getStatusBadge = (status: Supplier["status"]) => {
     switch (status) {
       case "active":
-        return (
-          <Badge
-            variant="outline"
-            className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-          >
-            {t("statusActive")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("statusActive")}</StatusText>;
       case "inactive":
-        return <Badge variant="secondary">{t("statusInactive")}</Badge>;
+        return <StatusText tone="muted">{t("statusInactive")}</StatusText>;
       case "blacklisted":
-        return <Badge variant="destructive">{t("statusBlacklisted")}</Badge>;
+        return <StatusText tone="red">{t("statusBlacklisted")}</StatusText>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusText>{status}</StatusText>;
     }
   };
 

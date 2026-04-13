@@ -20,6 +20,7 @@ import { useQuotations, useConvertToOrder, useChangeQuotationStatus } from "@/ho
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -124,33 +125,17 @@ export default function QuotationsPage() {
   const getStatusBadge = (status: QuotationStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "sent":
-        return (
-          <Badge variant="default" className="bg-blue-600">
-            {t("sent")}
-          </Badge>
-        );
+        return <StatusText tone="blue">{t("sent")}</StatusText>;
       case "accepted":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            {t("accepted")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("accepted")}</StatusText>;
       case "rejected":
-        return <Badge variant="destructive">{t("rejected")}</Badge>;
+        return <StatusText tone="red">{t("rejected")}</StatusText>;
       case "expired":
-        return (
-          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-            {t("expired")}
-          </Badge>
-        );
+        return <StatusText tone="orange">{t("expired")}</StatusText>;
       case "ordered":
-        return (
-          <Badge variant="default" className="bg-purple-600">
-            {t("ordered")}
-          </Badge>
-        );
+        return <StatusText tone="purple">{t("ordered")}</StatusText>;
     }
   };
 

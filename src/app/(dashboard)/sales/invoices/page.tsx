@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -122,17 +123,17 @@ export default function InvoicesPage() {
   const getStatusBadge = (status: InvoiceStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "sent":
-        return <Badge className="bg-blue-600">{t("sent")}</Badge>;
+        return <StatusText tone="blue">{t("sent")}</StatusText>;
       case "paid":
-        return <Badge className="bg-green-600">{t("paidStatus")}</Badge>;
+        return <StatusText tone="green">{t("paidStatus")}</StatusText>;
       case "partially_paid":
-        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">{t("partiallyPaid")}</Badge>;
+        return <StatusText tone="yellow">{t("partiallyPaid")}</StatusText>;
       case "overdue":
-        return <Badge variant="destructive">{t("overdueStatus")}</Badge>;
+        return <StatusText tone="red">{t("overdueStatus")}</StatusText>;
       case "cancelled":
-        return <Badge variant="secondary">{t("cancelledStatus")}</Badge>;
+        return <StatusText tone="muted">{t("cancelledStatus")}</StatusText>;
     }
   };
 

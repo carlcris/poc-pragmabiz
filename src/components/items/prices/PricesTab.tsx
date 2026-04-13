@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -184,16 +183,15 @@ export const PricesTab = ({ itemId, readOnly = false }: PricesTabProps) => {
                         <TableCell className="text-sm">{formatDate(price.effectiveFrom)}</TableCell>
                         <TableCell className="text-sm">{formatDate(price.effectiveTo)}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={price.isActive ? "outline" : "secondary"}
+                          <span
                             className={
                               price.isActive
-                                ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-                                : ""
+                                ? "text-sm font-medium text-green-700 dark:text-green-400"
+                                : "text-sm font-medium text-muted-foreground"
                             }
                           >
                             {price.isActive ? t("active") : t("inactive")}
-                          </Badge>
+                          </span>
                         </TableCell>
                         {!readOnly && (
                           <TableCell className="text-right">

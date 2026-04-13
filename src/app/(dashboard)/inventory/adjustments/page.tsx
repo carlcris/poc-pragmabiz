@@ -14,6 +14,7 @@ import {
   Clock,
   XCircle,
   Calculator,
+  MoreVertical,
 } from "lucide-react";
 import {
   useStockAdjustments,
@@ -24,9 +25,16 @@ import {
 } from "@/hooks/useStockAdjustments";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -126,21 +134,15 @@ export default function StockAdjustmentsPage() {
   const getStatusBadge = (status: StockAdjustmentStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "pending":
-        return (
-          <Badge variant="default" className="bg-yellow-600">{t("pending")}</Badge>
-        );
+        return <StatusText tone="yellow">{t("pending")}</StatusText>;
       case "approved":
-        return (
-          <Badge variant="default" className="bg-blue-600">{t("approved")}</Badge>
-        );
+        return <StatusText tone="blue">{t("approved")}</StatusText>;
       case "posted":
-        return (
-          <Badge variant="default" className="bg-green-600">{t("posted")}</Badge>
-        );
+        return <StatusText tone="green">{t("posted")}</StatusText>;
       case "rejected":
-        return <Badge variant="destructive">{t("rejected")}</Badge>;
+        return <StatusText tone="red">{t("rejected")}</StatusText>;
     }
   };
 
@@ -475,28 +477,44 @@ export default function StockAdjustmentsPage() {
                             {adjustment.status === "draft" && (
                               <>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
+                                  className="h-8 px-2"
                                   onClick={() => handleEditAdjustment(adjustment)}
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="mr-2 h-4 w-4" />
+                                  <span>{tCommon("edit")}</span>
                                 </Button>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteAdjustment(adjustment)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="default"
-                                  size="sm"
+                                  className="h-8 px-2"
                                   onClick={() => handlePostAdjustment(adjustment)}
-                                  className="bg-green-600 hover:bg-green-700"
                                 >
-                                  <CheckCircle className="mr-1 h-4 w-4" />
-                                  {t("post")}
+                                  <CheckCircle className="mr-2 h-4 w-4" />
+                                  <span>{t("post")}</span>
                                 </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      aria-label={t("actions")}
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteAdjustment(adjustment)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span>{tCommon("delete")}</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </>
                             )}
                             {adjustment.status === "posted" && adjustment.stockTransactionCode && (

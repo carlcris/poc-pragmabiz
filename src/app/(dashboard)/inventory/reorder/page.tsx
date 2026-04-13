@@ -30,6 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Table,
   TableBody,
@@ -158,13 +159,13 @@ export default function ReorderManagementPage() {
 
   const getStatusBadge = (status: ReorderSuggestion["status"]) => {
     const variants = {
-      pending: { variant: "outline" as const, label: t("pending") },
-      approved: { variant: "default" as const, label: t("approved") },
-      rejected: { variant: "destructive" as const, label: t("rejected") },
-      ordered: { variant: "secondary" as const, label: t("ordered") },
+      pending: { tone: "muted" as const, label: t("pending") },
+      approved: { tone: "green" as const, label: t("approved") },
+      rejected: { tone: "red" as const, label: t("rejected") },
+      ordered: { tone: "blue" as const, label: t("ordered") },
     };
     const config = variants[status];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <StatusText tone={config.tone}>{config.label}</StatusText>;
   };
 
   const getSeverityBadge = (severity: ReorderAlert["severity"]) => {

@@ -27,9 +27,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientOnly } from "@/components/shared/ClientOnly";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -123,65 +123,23 @@ export default function LoadListsPage() {
   const getStatusBadge = (status: LoadListStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "confirmed":
-        return (
-          <Badge
-            variant="outline"
-            className="border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
-          >
-            {t("confirmed")}
-          </Badge>
-        );
+        return <StatusText tone="blue">{t("confirmed")}</StatusText>;
       case "in_transit":
-        return (
-          <Badge
-            variant="outline"
-            className="border-purple-600 text-purple-700 dark:border-purple-400 dark:text-purple-400"
-          >
-            {t("inTransit")}
-          </Badge>
-        );
+        return <StatusText tone="purple">{t("inTransit")}</StatusText>;
       case "arrived":
-        return (
-          <Badge
-            variant="outline"
-            className="border-indigo-600 text-indigo-700 dark:border-indigo-400 dark:text-indigo-400"
-          >
-            {t("arrived")}
-          </Badge>
-        );
+        return <StatusText tone="indigo">{t("arrived")}</StatusText>;
       case "receiving":
-        return (
-          <Badge
-            variant="outline"
-            className="border-amber-600 text-amber-700 dark:border-amber-400 dark:text-amber-400"
-          >
-            {t("receiving")}
-          </Badge>
-        );
+        return <StatusText tone="amber">{t("receiving")}</StatusText>;
       case "pending_approval":
-        return (
-          <Badge
-            variant="outline"
-            className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
-          >
-            {t("pendingApproval")}
-          </Badge>
-        );
+        return <StatusText tone="yellow">{t("pendingApproval")}</StatusText>;
       case "received":
-        return (
-          <Badge
-            variant="outline"
-            className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-          >
-            {t("received")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("received")}</StatusText>;
       case "cancelled":
-        return <Badge variant="destructive">{t("cancelled")}</Badge>;
+        return <StatusText tone="red">{t("cancelled")}</StatusText>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusText>{status}</StatusText>;
     }
   };
 

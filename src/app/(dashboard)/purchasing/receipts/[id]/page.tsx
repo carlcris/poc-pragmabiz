@@ -3,9 +3,9 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useParams, useRouter } from "next/navigation";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { StatusText } from "@/components/shared/StatusText";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -258,7 +258,6 @@ export default function GoodsReceiptDetailPage() {
 
   const statusKey = receipt.status as keyof typeof statusConfig;
   const status = statusConfig[statusKey] ?? statusConfig.pending;
-  const StatusIcon = status.icon;
 
   const totalOrderedQty = receipt.items.reduce((sum, item) => sum + item.orderedQty, 0);
   const totalReceivedQty = receipt.items.reduce((sum, item) => sum + item.receivedQty, 0);
@@ -301,10 +300,11 @@ export default function GoodsReceiptDetailPage() {
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{t("status")}</p>
-                <Badge variant={status.variant} className="gap-1">
-                  <StatusIcon className={`h-3 w-3 ${status.color}`} />
+                <StatusText
+                  tone={status.color.includes("green") ? "green" : status.color.includes("yellow") ? "yellow" : "muted"}
+                >
                   {status.label}
-                </Badge>
+                </StatusText>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{t("purchaseOrder")}</p>
@@ -402,7 +402,6 @@ export default function GoodsReceiptDetailPage() {
               <TableBody>
                 {receipt.items.map((item) => {
                   const itemStatus = statusConfig[item.status as keyof typeof statusConfig] ?? statusConfig.pending;
-                  const ItemStatusIcon = itemStatus.icon;
                   return (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.productCode}</TableCell>
@@ -413,10 +412,17 @@ export default function GoodsReceiptDetailPage() {
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(item.totalPrice)}</TableCell>
                       <TableCell>
-                        <Badge variant={itemStatus.variant} className="gap-1">
-                          <ItemStatusIcon className={`h-3 w-3 ${itemStatus.color}`} />
+                        <StatusText
+                          tone={
+                            itemStatus.color.includes("green")
+                              ? "green"
+                              : itemStatus.color.includes("yellow")
+                                ? "yellow"
+                                : "muted"
+                          }
+                        >
                           {itemStatus.label}
-                        </Badge>
+                        </StatusText>
                       </TableCell>
                     </TableRow>
                   );

@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -33,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { StatusText } from "@/components/shared/StatusText";
 import { ViewGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
 import type { Warehouse } from "@/types/warehouse";
@@ -227,16 +227,9 @@ export default function WarehousesPage() {
                         <div className="text-xs text-muted-foreground">{warehouse.email}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={warehouse.isActive ? "outline" : "secondary"}
-                          className={
-                            warehouse.isActive
-                              ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-                              : ""
-                          }
-                        >
+                        <StatusText tone={warehouse.isActive ? "green" : "muted"}>
                           {warehouse.isActive ? tCommon("active") : tCommon("inactive")}
-                        </Badge>
+                        </StatusText>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

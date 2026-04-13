@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit, Archive } from "lucide-react";
 import { MetricCard } from "@/components/shared/MetricCard";
+import { StatusText } from "@/components/shared/StatusText";
 import type { Account, AccountType } from "@/types/accounting";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 
@@ -222,9 +223,9 @@ export default function ChartOfAccountsPage() {
                   <TableCell>{account.level}</TableCell>
                   <TableCell>
                     {account.isActive ? (
-                      <Badge variant="default">{t("active")}</Badge>
+                      <StatusText tone="green">{t("active")}</StatusText>
                     ) : (
-                      <Badge variant="secondary">{t("inactive")}</Badge>
+                      <StatusText>{t("inactive")}</StatusText>
                     )}
                   </TableCell>
                   <TableCell>

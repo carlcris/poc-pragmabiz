@@ -7,7 +7,6 @@ import { useUsers, useToggleUserStatus } from "@/hooks/useUsers";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -20,6 +19,7 @@ import {
 import { UserRolesDialog } from "@/components/admin/UserRolesDialog";
 import { UserPermissionsDialog } from "@/components/admin/UserPermissionsDialog";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { StatusText } from "@/components/shared/StatusText";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
 
@@ -197,16 +197,9 @@ function UserManagementContent() {
                     </TableCell>
                     <TableCell>{user.username}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={user.is_active ? "outline" : "secondary"}
-                        className={
-                          user.is_active
-                            ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-                            : ""
-                        }
-                      >
+                      <StatusText tone={user.is_active ? "green" : "muted"}>
                         {user.is_active ? t("active") : t("inactive")}
-                      </Badge>
+                      </StatusText>
                     </TableCell>
                     <TableCell>{new Date(user.created_at).toLocaleDateString(locale)}</TableCell>
                     <TableCell className="text-right">

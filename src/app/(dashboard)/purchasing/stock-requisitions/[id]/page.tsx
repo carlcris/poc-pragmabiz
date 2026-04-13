@@ -8,7 +8,7 @@ import { ArrowLeft, FileText, Pencil, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Table,
   TableBody,
@@ -78,38 +78,17 @@ export default function StockRequisitionDetailPage() {
   const getStatusBadge = (status: StockRequisitionStatus) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "submitted":
-        return (
-          <Badge
-            variant="outline"
-            className="border-blue-600 text-blue-700 dark:border-blue-400 dark:text-blue-400"
-          >
-            {t("submitted")}
-          </Badge>
-        );
+        return <StatusText tone="blue">{t("submitted")}</StatusText>;
       case "partially_fulfilled":
-        return (
-          <Badge
-            variant="outline"
-            className="border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-400"
-          >
-            {t("partiallyFulfilled")}
-          </Badge>
-        );
+        return <StatusText tone="yellow">{t("partiallyFulfilled")}</StatusText>;
       case "fulfilled":
-        return (
-          <Badge
-            variant="outline"
-            className="border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-          >
-            {t("fulfilled")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("fulfilled")}</StatusText>;
       case "cancelled":
-        return <Badge variant="destructive">{t("cancelled")}</Badge>;
+        return <StatusText tone="red">{t("cancelled")}</StatusText>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusText>{status}</StatusText>;
     }
   };
 

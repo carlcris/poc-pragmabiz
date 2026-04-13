@@ -7,9 +7,9 @@ import { toast } from "sonner";
 import { usePurchaseReceipts, useDeletePurchaseReceipt } from "@/hooks/usePurchaseReceipts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientOnly } from "@/components/shared/ClientOnly";
+import { StatusText } from "@/components/shared/StatusText";
 import {
   Select,
   SelectContent,
@@ -80,17 +80,13 @@ export default function PurchaseReceiptsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return <StatusText tone="muted">{t("draft")}</StatusText>;
       case "received":
-        return (
-          <Badge variant="default" className="bg-green-600">
-            {t("received")}
-          </Badge>
-        );
+        return <StatusText tone="green">{t("received")}</StatusText>;
       case "cancelled":
-        return <Badge variant="destructive">{t("cancelled")}</Badge>;
+        return <StatusText tone="red">{t("cancelled")}</StatusText>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <StatusText>{status}</StatusText>;
     }
   };
 

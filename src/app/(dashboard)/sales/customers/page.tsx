@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
+import { StatusText } from "@/components/shared/StatusText";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { CreateGuard, EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { RESOURCES } from "@/constants/resources";
@@ -314,16 +315,9 @@ function CustomersPageContent() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={customer.isActive ? "outline" : "secondary"}
-                          className={
-                            customer.isActive
-                              ? "border-green-600 text-green-700 dark:border-green-400 dark:text-green-400"
-                              : ""
-                          }
-                        >
+                        <StatusText tone={customer.isActive ? "green" : "muted"}>
                           {customer.isActive ? tCommon("active") : tCommon("inactive")}
-                        </Badge>
+                        </StatusText>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">

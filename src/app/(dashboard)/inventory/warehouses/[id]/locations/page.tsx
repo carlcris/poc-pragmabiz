@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api";
 import { toast } from "sonner";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { StatusText } from "@/components/shared/StatusText";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -279,9 +279,9 @@ export default function WarehouseLocationsPage() {
                           <TableCell>{location.isPickable ? "Yes" : "No"}</TableCell>
                           <TableCell>{location.isStorable ? "Yes" : "No"}</TableCell>
                           <TableCell>
-                            <Badge variant={location.isActive ? "outline" : "secondary"}>
+                            <StatusText tone={location.isActive ? "green" : "muted"}>
                               {location.isActive ? "Active" : "Inactive"}
-                            </Badge>
+                            </StatusText>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
