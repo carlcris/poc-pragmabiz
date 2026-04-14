@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Plus, Search, Pencil, Filter, Package, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Filter, Package, Trash2, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { useSuppliers, useDeleteSupplier } from "@/hooks/useSuppliers";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -48,7 +55,9 @@ const SupplierFormDialog = dynamic(
 );
 
 export default function SuppliersPage() {
+  const router = useRouter();
   const t = useTranslations("suppliersPage");
+  const tCommon = useTranslations("common");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -115,6 +124,10 @@ export default function SuppliersPage() {
   const handleEditSupplier = (supplier: Supplier) => {
     setSelectedSupplier(supplier);
     setDialogOpen(true);
+  };
+
+  const handleViewSupplier = (supplier: Supplier) => {
+    router.push(`/purchasing/suppliers/${supplier.id}`);
   };
 
   const handleStatusFilterChange = (value: string) => {
@@ -277,7 +290,11 @@ export default function SuppliersPage() {
                 </TableHeader>
                 <TableBody>
                   {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
+                    <TableRow
+                      key={supplier.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewSupplier(supplier)}
+                    >
                       <TableCell className="font-medium">{supplier.code}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -324,23 +341,41 @@ export default function SuppliersPage() {
                       </TableCell>
                       <TableCell>{getStatusBadge(supplier.status)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div
+                          className="flex items-center justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEditSupplier(supplier)}
                             aria-label={t("editSupplier")}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>{tCommon("edit")}</span>
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteSupplier(supplier)}
-                            aria-label={t("deleteSupplier")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                aria-label={tCommon("actions")}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteSupplier(supplier)}
+                                disabled={deleteMutation.isPending}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span>{tCommon("delete")}</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>

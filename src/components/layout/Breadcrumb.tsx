@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { itemsApi } from "@/lib/api/items";
+import { suppliersApi } from "@/lib/api/suppliers";
 import { DELIVERY_NOTES_QUERY_KEY } from "@/hooks/useDeliveryNotes";
 
 export function Breadcrumb() {
@@ -25,6 +26,8 @@ export function Breadcrumb() {
   const isItemCreate = pathname === "/inventory/items/create";
   const isItemDetail = parentSegment === "items" && pathSegments.length >= 3 && lastSegment !== "edit";
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
+  const isSupplierDetail =
+    pathSegments[0] === "purchasing" && parentSegment === "suppliers" && pathSegments.length >= 3;
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =
@@ -32,6 +35,7 @@ export function Breadcrumb() {
   const isAdminSettingsPage =
     pathSegments[0] === "admin" && pathSegments[1] === "settings" && pathSegments.length >= 2;
   const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
+  const supplierId = isSupplierDetail ? lastSegment : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
     company: tAdminSettingsPages("companyTitle"),
@@ -57,6 +61,7 @@ export function Breadcrumb() {
     !isItemCreate &&
     !isItemDetail &&
     !isItemEdit &&
+    !isSupplierDetail &&
     !isWarehouseLocations &&
     !!parentSegment &&
     (isAdminSettingsPage ? parentSegment in adminSettingsLabelMap : t.has(parentSegment));
@@ -72,6 +77,12 @@ export function Breadcrumb() {
     queryKey: ["items", itemId],
     queryFn: () => itemsApi.getItem(itemId),
     enabled: !!itemId,
+  });
+
+  const { data: supplier, isLoading: isSupplierLoading } = useQuery({
+    queryKey: ["suppliers", supplierId],
+    queryFn: () => suppliersApi.getSupplier(supplierId),
+    enabled: !!supplierId,
   });
 
   // Handle detail pages that use dynamic ids in the URL.
@@ -148,6 +159,39 @@ export function Breadcrumb() {
           />
         ) : (
           <span className="font-medium text-foreground">{t("Item Master")}</span>
+        )}
+      </nav>
+    );
+  }
+
+  if (isSupplierDetail) {
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/purchasing/suppliers"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Suppliers")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        {supplier ? (
+          <span className="font-medium text-foreground">
+            {supplier.name || supplier.code}
+          </span>
+        ) : isSupplierLoading ? (
+          <span
+            aria-label="Loading"
+            className="h-4 w-40 animate-pulse rounded bg-muted"
+          />
+        ) : (
+          <span className="font-medium text-foreground">{t("Suppliers")}</span>
         )}
       </nav>
     );

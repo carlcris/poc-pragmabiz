@@ -16,9 +16,7 @@ import {
   AlertTriangle,
   AlertCircle,
   TrendingUp,
-  Image as ImageIcon,
 } from "lucide-react";
-import Image from "next/image";
 import { useDeleteItem, useItems, useItemsStats } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
@@ -53,6 +51,7 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
+import { ItemImage } from "@/components/items/ItemImage";
 import { RESOURCES } from "@/constants/resources";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Item } from "@/types/item";
@@ -552,21 +551,14 @@ function ItemsPageContent() {
                       onClick={() => handleViewItem(item.id)}
                     >
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        {item.imageUrl ? (
-                          <div className="relative h-12 w-12 overflow-hidden rounded border bg-muted">
-                            <Image
-                              src={item.imageUrl}
-                              alt={item.name}
-                              fill
-                              className="object-cover"
-                              unoptimized
-                            />
-                          </div>
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded border bg-muted">
-                            <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                        )}
+                        <div className="relative h-12 w-12 overflow-hidden rounded border bg-muted">
+                          <ItemImage
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
                       <TableCell className="text-primary">

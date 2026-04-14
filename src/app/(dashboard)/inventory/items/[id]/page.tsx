@@ -2,7 +2,6 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import {
@@ -30,6 +29,7 @@ import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { ItemLedgerTab } from "@/components/items/ledger/ItemLedgerTab";
 import { ItemBarcodeImage } from "@/components/items/barcode/ItemBarcodeImage";
+import { ItemImage } from "@/components/items/ItemImage";
 import { ItemUnitOptionsCard } from "@/components/items/unit-options/ItemUnitOptionsCard";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
@@ -362,24 +362,14 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {item.imageUrl ? (
-                    <div className="relative h-[240px] w-full overflow-hidden rounded-lg border bg-white">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.name}
-                        fill
-                        className="object-contain p-3"
-                        unoptimized
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30" style={{ height: '240px' }}>
-                      <div className="text-center text-muted-foreground">
-                        <ImageIcon className="mx-auto mb-2 h-8 w-8" />
-                        <p className="text-sm">{t("noImage")}</p>
-                      </div>
-                    </div>
-                  )}
+                  <div className="relative h-[240px] w-full overflow-hidden rounded-lg border bg-white">
+                    <ItemImage
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="object-contain p-3"
+                      sizes="(min-width: 1024px) 320px, 100vw"
+                    />
+                  </div>
                 </CardContent>
               </Card>
 

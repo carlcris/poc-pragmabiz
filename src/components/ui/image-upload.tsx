@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
+import { ItemImage } from "@/components/items/ItemImage";
 
 interface ImageUploadProps {
   value?: string;
@@ -114,7 +114,7 @@ export function ImageUpload({ value, onChange, disabled, itemId, className }: Im
 
       {preview ? (
         <div className="relative flex h-[215px] w-full max-w-[250px] flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border bg-muted">
-          <Image src={preview} alt="Item image" fill className="object-contain p-2" unoptimized />
+          <ItemImage src={preview} alt="Item image" className="object-contain p-2" />
           {!disabled && (
             <Button
               type="button"
@@ -137,7 +137,7 @@ export function ImageUpload({ value, onChange, disabled, itemId, className }: Im
         <Button
           type="button"
           variant="outline"
-          className="flex h-[215px] w-full max-w-[250px] flex-col items-center justify-center gap-2 border-dashed"
+          className="relative flex h-[215px] w-full max-w-[250px] flex-col items-center justify-end gap-2 overflow-hidden border-dashed p-4"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || isUploading}
         >
@@ -148,8 +148,8 @@ export function ImageUpload({ value, onChange, disabled, itemId, className }: Im
             </>
           ) : (
             <>
-              <ImageIcon className="h-8 w-8 text-muted-foreground" />
-              <div className="text-center text-sm">
+              <ItemImage alt="No image available" className="object-contain p-2" />
+              <div className="relative z-10 rounded bg-background/80 px-3 py-2 text-center text-sm backdrop-blur-sm">
                 <span className="text-primary">Click to upload</span>
                 <p className="mt-1 text-xs text-muted-foreground">
                   PNG, JPG, WebP or GIF (max 5MB)
