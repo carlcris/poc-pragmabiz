@@ -7,7 +7,7 @@
  * When switching business units:
  * 1. Call API to validate access (calls update_current_business_unit DB function)
  * 2. Update Zustand store with new BU
- * 3. Refresh Supabase session to get new JWT with updated current_business_unit_id claim
+ * 3. Sync the refreshed session returned by the API
  * 4. Invalidate all queries to refetch data with new BU context from JWT
  */
 
@@ -27,11 +27,8 @@ type SetContextResponse = {
   message: string;
   business_unit_id: string;
   business_unit: BusinessUnitWithAccess;
-  requires_refresh: boolean; // Flag indicating session refresh is needed
-};
-
-type SetSessionPayload = {
-  accessToken: string;
+  requires_refresh: boolean;
+  token: string;
   refreshToken: string;
 };
 
@@ -65,7 +62,7 @@ export function useBusinessUnits() {
  * JWT-BASED APPROACH:
  * 1. Validates access via API (calls update_current_business_unit DB function)
  * 2. Updates Zustand store
- * 3. Refreshes Supabase session to get new JWT with current_business_unit_id claim
+ * 3. Syncs the refreshed Supabase session returned by the API
  * 4. Invalidates queries to refetch with new BU context (optional - can be silenced for initial load)
  */
 export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
@@ -80,21 +77,18 @@ export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
         business_unit_id: businessUnitId,
       });
 
-      // Step 2: If API requires session refresh, do it now
-      if (response.requires_refresh) {
-        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      // Step 2: The route already refreshed the server cookie session.
+      // Sync the browser Supabase client/auth store to the same token without rotating it again.
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: response.token,
+        refresh_token: response.refreshToken,
+      });
 
-        if (refreshError || !refreshed.session) {
-          throw new Error("Failed to refresh authentication session");
-        }
-
-        await apiClient.post("/api/auth/set-session", {
-          accessToken: refreshed.session.access_token,
-          refreshToken: refreshed.session.refresh_token,
-        } satisfies SetSessionPayload);
-
-        useAuthStore.getState().setToken(refreshed.session.access_token);
+      if (sessionError) {
+        throw new Error("Failed to sync authentication session");
       }
+
+      useAuthStore.getState().setToken(response.token);
 
       return response;
     },

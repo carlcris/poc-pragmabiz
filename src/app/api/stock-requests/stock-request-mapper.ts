@@ -19,6 +19,16 @@ type StockRequestUser = {
   last_name?: string | null;
 };
 
+const mapStockRequestUser = (user: StockRequestUser | null) => {
+  if (!user) return undefined;
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ");
+
+  return {
+    ...user,
+    full_name: fullName || null,
+  };
+};
+
 type StockRequestItem = {
   id: string;
   stock_request_id: string;
@@ -201,8 +211,12 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
         }
       : null,
     fulfilling_delivery_notes: fulfillingDeliveryNotes,
-    requested_by_user: requestedByUser ?? undefined,
-    received_by_user: receivedByUser ?? undefined,
+    requested_by_name:
+      [requestedByUser?.first_name, requestedByUser?.last_name].filter(Boolean).join(" ") ||
+      rest.requested_by_name ||
+      null,
+    requested_by_user: mapStockRequestUser(requestedByUser),
+    received_by_user: mapStockRequestUser(receivedByUser),
     stock_request_items: stock_request_items?.map((item) => {
       const { ...restItem } = item;
       const itemDetails = Array.isArray(item.items) ? item.items[0] ?? null : item.items ?? null;

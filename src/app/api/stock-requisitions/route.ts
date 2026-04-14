@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         supplier:suppliers(id, supplier_name, supplier_code),
         business_unit:business_units(id, name, code),
         requested_by_user:users!stock_requisitions_requested_by_fkey(id, email, first_name, last_name),
+        created_by_user:users!stock_requisitions_created_by_fkey(id, email, first_name, last_name),
         items:stock_requisition_items(
           id,
           sr_id,
@@ -219,6 +220,15 @@ export async function GET(request: NextRequest) {
         notes: sr.notes,
         totalAmount: formattedItems.reduce((sum, item) => sum + item.totalPrice, 0),
         items: formattedItems,
+        createdBy: sr.created_by,
+        createdByUser: sr.created_by_user
+          ? {
+              id: sr.created_by_user.id,
+              email: sr.created_by_user.email,
+              firstName: sr.created_by_user.first_name,
+              lastName: sr.created_by_user.last_name,
+            }
+          : null,
         createdAt: sr.created_at,
         updatedAt: sr.updated_at,
       };

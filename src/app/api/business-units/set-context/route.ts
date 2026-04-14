@@ -6,8 +6,8 @@
  * NEW JWT-BASED APPROACH:
  * - Calls update_current_business_unit() database function to validate access
  * - Function returns success flag and business unit details
- * - Client must call supabase.auth.refreshSession() to get new JWT with updated claim
- * - New JWT will contain current_business_unit_id in claims
+ * - Route refreshes the Supabase session immediately after the RPC
+ * - Returned session tokens contain current_business_unit_id in claims
  * - RLS policies read from JWT via get_current_business_unit_id()
  *
  * This solves the connection pooling issue where session-level config
@@ -15,7 +15,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
 type SetContextRequest = {
   business_unit_id: string;
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     // Note: No permission check - all authenticated users can switch their BU context
 
-    const supabase = await createClient();
+    const { supabase, response } = createRouteHandlerClient(request);
 
     // Get current user
     const {
@@ -66,15 +66,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Return success with BU details and refresh requirement
-    // Client MUST call supabase.auth.refreshSession() to get new JWT with updated claim
-    return NextResponse.json({
+    // Refresh the server-side session immediately so the response sets cookies
+    // with a JWT that contains the updated current_business_unit_id claim.
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+    if (refreshError || !refreshed.session) {
+      return NextResponse.json(
+        { error: "Failed to refresh business unit context" },
+        { status: 500 }
+      );
+    }
+
+    const jsonResponse = NextResponse.json({
       success: data.success,
       message: data.message,
       business_unit_id: data.business_unit.id,
       business_unit: data.business_unit,
-      requires_refresh: data.requires_refresh, // Signal client to refresh session
+      requires_refresh: false,
+      token: refreshed.session.access_token,
+      refreshToken: refreshed.session.refresh_token,
     });
+
+    response.cookies.getAll().forEach((cookie) => {
+      jsonResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+
+    return jsonResponse;
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
