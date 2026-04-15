@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowLeft, FileText, Pencil, Download } from "lucide-react";
+import { Download, FileText, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusText } from "@/components/shared/StatusText";
 import {
   Table,
@@ -92,6 +93,8 @@ export default function StockRequisitionDetailPage() {
     }
   };
 
+  const getLabel = (key: string) => t(key).replace(/:$/, "");
+
   const handleSubmit = async () => {
     try {
       await updateStatusMutation.mutateAsync({ id, status: "submitted" });
@@ -158,19 +161,18 @@ export default function StockRequisitionDetailPage() {
   };
 
   return (
-    <div className="container mx-auto space-y-6 p-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{t("title")}</h1>
-            <p className="text-muted-foreground">{sr?.srNumber || id}</p>
-          </div>
+    <div className="flex h-full flex-col gap-4 sm:gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t("title")}</h1>
+          {isLoading && !sr ? (
+            <Skeleton className="mt-1 h-4 w-40" />
+          ) : (
+            <p className="text-xs text-muted-foreground sm:text-sm">{sr?.srNumber || id}</p>
+          )}
         </div>
         {sr && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Button variant="outline" onClick={handleDownloadPDF}>
               <Download className="mr-2 h-4 w-4" />
               {t("downloadPdf")}
@@ -190,8 +192,56 @@ export default function StockRequisitionDetailPage() {
 
       {isLoading ? (
         <div className="space-y-4">
-          <div className="h-24 animate-pulse rounded bg-muted" />
-          <div className="h-64 animate-pulse rounded bg-muted" />
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 sm:grid-cols-2">
+                {[1, 2].map((column) => (
+                  <div key={column} className="space-y-4">
+                    {[1, 2, 3, 4].map((row) => (
+                      <div key={row} className="space-y-2">
+                        <Skeleton className="h-3 w-28" />
+                        <Skeleton className="h-5 w-52" />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((column) => (
+                        <TableHead key={column}>
+                          <Skeleton className="h-4 w-20" />
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[1, 2, 3].map((row) => (
+                      <TableRow key={row}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((column) => (
+                          <TableCell key={column}>
+                            <Skeleton className="h-5 w-full" />
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : error ? (
         <Card>
@@ -216,14 +266,14 @@ export default function StockRequisitionDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6 text-sm">
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <div className="space-y-3">
                   <div>
-                    <span className="text-muted-foreground">{t("status")}</span>
+                    <span className="text-muted-foreground">{getLabel("status")}</span>
                     <div className="mt-1">{getStatusBadge(sr.status)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("supplier")}</span>
+                    <span className="text-muted-foreground">{getLabel("supplier")}</span>
                     <div className="font-medium">
                       {sr.supplier?.name} ({sr.supplier?.code})
                     </div>
@@ -234,13 +284,13 @@ export default function StockRequisitionDetailPage() {
                     )}
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("businessUnit")}</span>
+                    <span className="text-muted-foreground">{getLabel("businessUnit")}</span>
                     <div className="font-medium">
                       {sr.businessUnit?.name || t("noValue")} ({sr.businessUnit?.code || t("noValue")})
                     </div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("createdBy")}</span>
+                    <span className="text-muted-foreground">{getLabel("createdBy")}</span>
                     <div className="font-medium">{formatUser(sr.createdByUser)}</div>
                     <div className="text-xs text-muted-foreground">{formatDate(sr.createdAt)}</div>
                   </div>
@@ -248,22 +298,22 @@ export default function StockRequisitionDetailPage() {
 
                 <div className="space-y-3">
                   <div>
-                    <span className="text-muted-foreground">{t("requisitionDate")}</span>
+                    <span className="text-muted-foreground">{getLabel("requisitionDate")}</span>
                     <div className="font-medium">{formatDate(sr.requisitionDate)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("requiredByDate")}</span>
+                    <span className="text-muted-foreground">{getLabel("requiredByDate")}</span>
                     <div className="font-medium">{formatDate(sr.requiredByDate)}</div>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">{t("totalAmount")}</span>
+                    <span className="text-muted-foreground">{getLabel("totalAmount")}</span>
                     <div className="text-lg font-bold text-primary">
                       {formatCurrency(sr.totalAmount)}
                     </div>
                   </div>
                   {sr.notes && (
                     <div>
-                      <span className="text-muted-foreground">{t("notes")}</span>
+                      <span className="text-muted-foreground">{getLabel("notes")}</span>
                       <div className="font-medium">{sr.notes}</div>
                     </div>
                   )}
@@ -345,7 +395,7 @@ export default function StockRequisitionDetailPage() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center text-muted-foreground">
                           {t("noLineItems")}
                         </TableCell>
                       </TableRow>
