@@ -49,7 +49,11 @@ export function KPICard({
                 trend.isPositive !== false ? "text-green-600" : "text-red-600"
               )}
             >
-              {isLoading ? <Skeleton className="h-4 w-12" /> : `${trend.value > 0 ? "+" : ""}${trend.value}%`}
+              {isLoading ? (
+                <Skeleton className="h-4 w-12" />
+              ) : (
+                `${trend.value > 0 ? "+" : ""}${trend.value}%`
+              )}
             </span>
             <span className="text-xs text-muted-foreground">{trend.label}</span>
           </div>

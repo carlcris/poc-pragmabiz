@@ -38,7 +38,9 @@ export const resolveStockRequisitionLineUnitOptions = async (
   if (items.length === 0) return [];
 
   const explicitOptionIds = Array.from(
-    new Set(items.map((item) => item.itemUnitOptionId).filter((value): value is string => Boolean(value)))
+    new Set(
+      items.map((item) => item.itemUnitOptionId).filter((value): value is string => Boolean(value))
+    )
   );
   const fallbackPairs = Array.from(
     new Set(
@@ -70,7 +72,9 @@ export const resolveStockRequisitionLineUnitOptions = async (
 
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select("id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at")
+      .select(
+        "id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at"
+      )
       .eq("company_id", companyId)
       .in("item_id", itemIds)
       .in("uom_id", uomIds)
@@ -104,10 +108,14 @@ export const resolveStockRequisitionLineUnitOptions = async (
         throw new StockRequisitionLineValidationError("Selected unit option is inactive");
       }
       if (option.item_id !== item.itemId) {
-        throw new StockRequisitionLineValidationError("Selected unit option does not belong to the item");
+        throw new StockRequisitionLineValidationError(
+          "Selected unit option does not belong to the item"
+        );
       }
       if (item.uomId && item.uomId !== option.uom_id) {
-        throw new StockRequisitionLineValidationError("Selected unit option does not match the unit");
+        throw new StockRequisitionLineValidationError(
+          "Selected unit option does not match the unit"
+        );
       }
 
       return {
@@ -124,7 +132,9 @@ export const resolveStockRequisitionLineUnitOptions = async (
 
     const fallbackOption = fallbackOptionMap.get(buildOptionMapKey(item.itemId, item.uomId));
     if (!fallbackOption) {
-      throw new StockRequisitionLineValidationError("No active item unit option matches the selected item and unit");
+      throw new StockRequisitionLineValidationError(
+        "No active item unit option matches the selected item and unit"
+      );
     }
 
     return {

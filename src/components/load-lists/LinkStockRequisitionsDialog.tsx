@@ -6,12 +6,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, Link as LinkIcon, Package, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -71,19 +66,21 @@ export function LinkStockRequisitionsDialog({
     limit: 50,
   });
 
-  const availableSRs = srsData?.data?.filter(
-    (sr) => sr.status === "submitted" || sr.status === "partially_fulfilled"
-  ) || [];
+  const availableSRs =
+    srsData?.data?.filter(
+      (sr) => sr.status === "submitted" || sr.status === "partially_fulfilled"
+    ) || [];
 
   // Get all SR items from available SRs that have outstanding qty
-  const availableSRItems = availableSRs.flatMap((sr) =>
-    sr.items
-      ?.filter((item) => item.outstandingQty > 0)
-      .map((item) => ({
-        ...item,
-        srNumber: sr.srNumber,
-        srId: sr.id,
-      })) || []
+  const availableSRItems = availableSRs.flatMap(
+    (sr) =>
+      sr.items
+        ?.filter((item) => item.outstandingQty > 0)
+        .map((item) => ({
+          ...item,
+          srNumber: sr.srNumber,
+          srId: sr.id,
+        })) || []
   );
 
   // Get selected LL item details
@@ -182,16 +179,16 @@ export function LinkStockRequisitionsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-0 gap-0">
+      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 p-0">
         {/* Modern Header */}
-        <div className="px-6 pt-6 pb-5 border-b border-gray-200 bg-white flex-shrink-0">
+        <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 pb-5 pt-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-600 to-violet-600 shadow-lg">
                 <LinkIcon className="h-7 w-7 text-white" />
               </div>
               <div>
-                <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
+                <DialogTitle className="mb-1 text-2xl font-bold text-gray-900">
                   {t("title")}
                 </DialogTitle>
                 <DialogDescription className="text-sm text-gray-500">
@@ -203,11 +200,11 @@ export function LinkStockRequisitionsDialog({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 bg-gray-50">
-          <div className="max-w-5xl mx-auto space-y-5">
+        <div className="flex-1 overflow-y-auto bg-gray-50 px-6 py-5">
+          <div className="mx-auto max-w-5xl space-y-5">
             {/* Outstanding Requisitions Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <div className="flex items-center justify-between mb-4">
+            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100">
                     <Package className="h-4 w-4 text-blue-600" />
@@ -219,7 +216,7 @@ export function LinkStockRequisitionsDialog({
                     {t("itemsAvailable", { count: availableSRItems.length })}
                   </Badge>
                 ) : availableSRs.length > 0 ? (
-                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
+                  <Badge variant="outline" className="border-amber-300 text-xs text-amber-700">
                     {t("noOutstandingItems")}
                   </Badge>
                 ) : null}
@@ -227,7 +224,7 @@ export function LinkStockRequisitionsDialog({
 
               {/* Show available SRs and their items */}
               {availableSRs.length > 0 ? (
-                <div className="space-y-2 max-h-[350px] overflow-y-auto">
+                <div className="max-h-[350px] space-y-2 overflow-y-auto">
                   {availableSRs.map((sr) => {
                     const srItems = sr.items?.filter((item) => item.outstandingQty > 0) || [];
                     return (
@@ -235,31 +232,31 @@ export function LinkStockRequisitionsDialog({
                         key={sr.id}
                         className="rounded-lg border border-gray-200 bg-gray-50/50 p-3 text-xs"
                       >
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="mb-2 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Package className="h-3.5 w-3.5 text-purple-600" />
                             <span className="font-semibold text-gray-900">{sr.srNumber}</span>
                           </div>
-                          <Badge variant="secondary" className="text-[10px] h-5">
+                          <Badge variant="secondary" className="h-5 text-[10px]">
                             {t("srItemsCount", { count: srItems.length })}
                           </Badge>
                         </div>
                         {srItems.length > 0 ? (
-                          <div className="space-y-1 ml-5">
+                          <div className="ml-5 space-y-1">
                             {srItems.map((item) => (
                               <div
                                 key={item.id}
-                                className="flex items-center justify-between text-gray-700 py-1"
+                                className="flex items-center justify-between py-1 text-gray-700"
                               >
                                 <span className="truncate">{item.item?.name}</span>
-                                <span className="font-medium text-emerald-600 ml-2 flex-shrink-0">
+                                <span className="ml-2 flex-shrink-0 font-medium text-emerald-600">
                                   {t("outstandingPrefix", { qty: item.outstandingQty })}
                                 </span>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-gray-500 ml-5 italic">
+                          <p className="ml-5 italic text-gray-500">
                             {t("noOutstandingDescription")}
                           </p>
                         )}
@@ -268,19 +265,21 @@ export function LinkStockRequisitionsDialog({
                   })}
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500 text-sm">
+                <div className="py-8 text-center text-sm text-gray-500">
                   <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
                     <Package className="h-6 w-6 text-gray-400" />
                   </div>
                   <p>{t("noRequisitions")}</p>
-                  <p className="text-xs mt-1">{t("noRequisitionsSupplier", { supplier: loadList.supplier?.name ?? "" })}</p>
+                  <p className="mt-1 text-xs">
+                    {t("noRequisitionsSupplier", { supplier: loadList.supplier?.name ?? "" })}
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Add Link Form */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-5 py-3.5 bg-gradient-to-r from-purple-50 to-violet-50 border-b border-purple-100">
+            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 px-5 py-3.5">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-purple-600">
                     <Plus className="h-4 w-4 text-white" />
@@ -288,10 +287,10 @@ export function LinkStockRequisitionsDialog({
                   <h3 className="text-sm font-semibold text-gray-900">{t("addLink")}</h3>
                 </div>
               </div>
-              <div className="p-5 bg-gradient-to-br from-purple-50/30 to-violet-50/30">
+              <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
                 <div className="grid grid-cols-12 gap-3">
                   <div className="col-span-4">
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
                       {t("loadListItem")}
                     </label>
                     <Select
@@ -301,7 +300,7 @@ export function LinkStockRequisitionsDialog({
                         setAddLinkError("");
                       }}
                     >
-                      <SelectTrigger className="h-10 bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                      <SelectTrigger className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500">
                         <SelectValue placeholder={t("selectLoadListItem")} />
                       </SelectTrigger>
                       <SelectContent>
@@ -315,7 +314,7 @@ export function LinkStockRequisitionsDialog({
                   </div>
 
                   <div className="col-span-4">
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
                       {t("srItem")}
                     </label>
                     <Select
@@ -326,13 +325,14 @@ export function LinkStockRequisitionsDialog({
                       }}
                       disabled={availableSRItems.length === 0}
                     >
-                      <SelectTrigger className="h-10 bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                      <SelectTrigger className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500">
                         <SelectValue placeholder={t("selectSrItem")} />
                       </SelectTrigger>
                       <SelectContent>
                         {availableSRItems.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
-                            {item.srNumber} - {item.item?.name} ({t("outstandingPrefix", { qty: item.outstandingQty })})
+                            {item.srNumber} - {item.item?.name} (
+                            {t("outstandingPrefix", { qty: item.outstandingQty })})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -340,7 +340,7 @@ export function LinkStockRequisitionsDialog({
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-700">
                       {t("quantityLabel")}
                     </label>
                     <Input
@@ -354,10 +354,13 @@ export function LinkStockRequisitionsDialog({
                       step="0.01"
                       max={
                         selectedSRItem
-                          ? Math.min(selectedSRItem.outstandingQty, selectedLLItem?.loadListQty || 0)
+                          ? Math.min(
+                              selectedSRItem.outstandingQty,
+                              selectedLLItem?.loadListQty || 0
+                            )
                           : undefined
                       }
-                      className="h-10 bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                      className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500"
                     />
                   </div>
 
@@ -365,7 +368,7 @@ export function LinkStockRequisitionsDialog({
                     <Button
                       type="button"
                       onClick={handleAddLink}
-                      className="w-full h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
+                      className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       {t("addLink")}
@@ -375,9 +378,9 @@ export function LinkStockRequisitionsDialog({
 
                 {/* Inline Error Message */}
                 {addLinkError && (
-                  <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3">
+                  <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
                     <svg
-                      className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5"
+                      className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -387,7 +390,7 @@ export function LinkStockRequisitionsDialog({
                         clipRule="evenodd"
                       />
                     </svg>
-                    <p className="text-sm text-red-800 font-medium">{addLinkError}</p>
+                    <p className="text-sm font-medium text-red-800">{addLinkError}</p>
                   </div>
                 )}
               </div>
@@ -395,8 +398,8 @@ export function LinkStockRequisitionsDialog({
 
             {/* Links Table */}
             {links.length > 0 ? (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-5 py-3.5 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100">
@@ -412,17 +415,23 @@ export function LinkStockRequisitionsDialog({
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-gray-50 border-b border-gray-200 hover:bg-gray-50">
-                        <TableHead className="font-semibold text-xs text-gray-700">{t("llItem")}</TableHead>
-                        <TableHead className="font-semibold text-xs text-gray-700">{t("srReference")}</TableHead>
-                        <TableHead className="font-semibold text-xs text-gray-700">{t("srItem")}</TableHead>
-                        <TableHead className="text-right font-semibold text-xs text-gray-700">
+                      <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="text-xs font-semibold text-gray-700">
+                          {t("llItem")}
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-700">
+                          {t("srReference")}
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-700">
+                          {t("srItem")}
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-700">
                           {t("requested")}
                         </TableHead>
-                        <TableHead className="text-right font-semibold text-xs text-gray-700">
+                        <TableHead className="text-right text-xs font-semibold text-gray-700">
                           {t("outstanding")}
                         </TableHead>
-                        <TableHead className="text-right font-semibold text-xs text-gray-700">
+                        <TableHead className="text-right text-xs font-semibold text-gray-700">
                           {t("linkedQty")}
                         </TableHead>
                         <TableHead className="w-[60px]"></TableHead>
@@ -434,9 +443,9 @@ export function LinkStockRequisitionsDialog({
                           key={index}
                           className={`border-b border-gray-100 ${
                             index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                          } hover:bg-purple-50/50 transition-colors`}
+                          } transition-colors hover:bg-purple-50/50`}
                         >
-                          <TableCell className="font-semibold text-sm text-gray-900">
+                          <TableCell className="text-sm font-semibold text-gray-900">
                             {link.loadListItemName}
                           </TableCell>
                           <TableCell className="text-sm text-gray-700">{link.srNumber}</TableCell>
@@ -458,7 +467,7 @@ export function LinkStockRequisitionsDialog({
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoveLink(index)}
-                              className="hover:bg-red-50 hover:text-red-600 h-8 w-8 p-0 rounded-lg"
+                              className="h-8 w-8 rounded-lg p-0 hover:bg-red-50 hover:text-red-600"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -470,13 +479,15 @@ export function LinkStockRequisitionsDialog({
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-12">
+              <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-12 shadow-sm">
                 <div className="text-center">
                   <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-violet-100">
                     <LinkIcon className="h-8 w-8 text-purple-600" />
                   </div>
-                  <h3 className="mb-2 text-base font-semibold text-gray-900">{t("noLinksTitle")}</h3>
-                  <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                  <h3 className="mb-2 text-base font-semibold text-gray-900">
+                    {t("noLinksTitle")}
+                  </h3>
+                  <p className="mx-auto max-w-sm text-sm text-gray-500">
                     {t("noLinksDescription")}
                   </p>
                 </div>
@@ -487,7 +498,7 @@ export function LinkStockRequisitionsDialog({
 
         {/* Fixed Footer */}
         <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="mx-auto flex max-w-5xl items-center justify-between">
             <div className="text-sm text-gray-500">
               {links.length > 0 && (
                 <span>
@@ -500,7 +511,7 @@ export function LinkStockRequisitionsDialog({
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="min-w-[100px] h-10 text-sm border-gray-300 hover:bg-gray-50"
+                className="h-10 min-w-[100px] border-gray-300 text-sm hover:bg-gray-50"
               >
                 {t("cancel")}
               </Button>
@@ -508,7 +519,7 @@ export function LinkStockRequisitionsDialog({
                 type="button"
                 onClick={handleSubmit}
                 disabled={linkMutation.isPending || links.length === 0}
-                className="min-w-[140px] h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
+                className="h-10 min-w-[140px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
               >
                 {linkMutation.isPending ? (
                   <span className="flex items-center gap-2">

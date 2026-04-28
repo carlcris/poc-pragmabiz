@@ -93,7 +93,9 @@ export function usePickingEfficiencyReport(filters: PickingEfficiencyFilters) {
       if (queryFilters.pickerUserId) params.append("pickerUserId", queryFilters.pickerUserId);
       if (queryFilters.groupBy) params.append("groupBy", queryFilters.groupBy);
 
-      const response = await fetch(`${API_BASE_URL}/reports/picking-efficiency?${params.toString()}`);
+      const response = await fetch(
+        `${API_BASE_URL}/reports/picking-efficiency?${params.toString()}`
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch picking efficiency report");
       }

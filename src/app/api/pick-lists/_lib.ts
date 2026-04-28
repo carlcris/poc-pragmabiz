@@ -118,7 +118,11 @@ export const mapPickListRecord = <T extends Record<string, unknown>>(record: T) 
   };
 };
 
-export const fetchPickListHeader = async (supabase: SupabaseClient, companyId: string, id: string) => {
+export const fetchPickListHeader = async (
+  supabase: SupabaseClient,
+  companyId: string,
+  id: string
+) => {
   const { data } = await supabase
     .from("pick_lists")
     .select("*")
@@ -177,7 +181,9 @@ export const createPickListForDn = async ({
 
   const { data: dnItems, error: dnItemsError } = await supabase
     .from("delivery_note_items")
-    .select("id, sr_id, sr_item_id, item_id, item_unit_option_id, uom_id, allocated_qty, picked_qty, is_voided")
+    .select(
+      "id, sr_id, sr_item_id, item_id, item_unit_option_id, uom_id, allocated_qty, picked_qty, is_voided"
+    )
     .eq("company_id", companyId)
     .eq("dn_id", dnId)
     .eq("is_voided", false)

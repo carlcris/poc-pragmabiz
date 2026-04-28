@@ -27,7 +27,17 @@ interface AnalyticsFiltersProps {
   onReset: () => void;
 }
 
-export function AnalyticsFilters({ dateRange, onDateRangeChange, employeeId, onEmployeeChange, city, onCityChange, regionState, onRegionChange, onReset }: AnalyticsFiltersProps) {
+export function AnalyticsFilters({
+  dateRange,
+  onDateRangeChange,
+  employeeId,
+  onEmployeeChange,
+  city,
+  onCityChange,
+  regionState,
+  onRegionChange,
+  onReset,
+}: AnalyticsFiltersProps) {
   const t = useTranslations("analyticsFilters");
   const { data: employeesData } = useEmployees({ limit: 100 });
   const employees = employeesData?.data || [];
@@ -43,30 +53,48 @@ export function AnalyticsFilters({ dateRange, onDateRangeChange, employeeId, onE
         <div>
           <label className="mb-2 block text-sm font-medium">{t("salesAgent")}</label>
           <Select value={employeeId || "all"} onValueChange={onEmployeeChange}>
-            <SelectTrigger><SelectValue placeholder={t("allAgents")} /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder={t("allAgents")} />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("allAgents")}</SelectItem>
-              {salesAgents.map((emp) => <SelectItem key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</SelectItem>)}
+              {salesAgents.map((emp) => (
+                <SelectItem key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium">{t("city")}</label>
           <Select value={city || "all"} onValueChange={onCityChange}>
-            <SelectTrigger><SelectValue placeholder={t("allCities")} /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder={t("allCities")} />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("allCities")}</SelectItem>
-              {MINDANAO_CITIES.map((cityName) => <SelectItem key={cityName} value={cityName}>{cityName}</SelectItem>)}
+              {MINDANAO_CITIES.map((cityName) => (
+                <SelectItem key={cityName} value={cityName}>
+                  {cityName}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div>
           <label className="mb-2 block text-sm font-medium">{t("region")}</label>
           <Select value={regionState || "all"} onValueChange={onRegionChange}>
-            <SelectTrigger><SelectValue placeholder={t("allRegions")} /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder={t("allRegions")} />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("allRegions")}</SelectItem>
-              {MINDANAO_REGIONS.map((region) => <SelectItem key={region} value={region}>{region}</SelectItem>)}
+              {MINDANAO_REGIONS.map((region) => (
+                <SelectItem key={region} value={region}>
+                  {region}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

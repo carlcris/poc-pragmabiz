@@ -68,9 +68,7 @@ export default function NotificationsPage() {
         </div>
       ) : notifications.length === 0 ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            {t("empty")}
-          </CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">{t("empty")}</CardContent>
         </Card>
       ) : (
         <div className="space-y-3">

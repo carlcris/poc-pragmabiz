@@ -14,10 +14,7 @@ export default function POSSettingsPage() {
   const { data: settings, isLoading, error } = useSettings("pos");
 
   return (
-    <SettingsPageLayout
-      title={t("posTitle")}
-      description={t("posDescription")}
-    >
+    <SettingsPageLayout title={t("posTitle")} description={t("posDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -4,10 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // PUT /api/damaged-items/[id] - Update damaged item
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
     const { id } = await params;
@@ -65,10 +62,7 @@ export async function PUT(
 
     if (updateError) {
       console.error("Error updating damaged item:", updateError);
-      return NextResponse.json(
-        { error: "Failed to update damaged item" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to update damaged item" }, { status: 500 });
     }
 
     // Format response
@@ -155,10 +149,7 @@ export async function DELETE(
 
     if (deleteError) {
       console.error("Error deleting damaged item:", deleteError);
-      return NextResponse.json(
-        { error: "Failed to delete damaged item" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to delete damaged item" }, { status: 500 });
     }
 
     return NextResponse.json({ id, message: "Damaged item deleted successfully" });

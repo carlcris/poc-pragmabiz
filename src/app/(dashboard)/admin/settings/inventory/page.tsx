@@ -14,10 +14,7 @@ export default function InventorySettingsPage() {
   const { data: settings, isLoading, error } = useSettings("inventory");
 
   return (
-    <SettingsPageLayout
-      title={t("inventoryTitle")}
-      description={t("inventoryDescription")}
-    >
+    <SettingsPageLayout title={t("inventoryTitle")} description={t("inventoryDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

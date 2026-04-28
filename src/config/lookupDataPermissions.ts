@@ -175,11 +175,7 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
    * Stock Requests
    * Requesting/fulfilling teams need items and warehouses for transfer requests
    */
-  [RESOURCES.STOCK_REQUESTS]: [
-    RESOURCES.ITEMS,
-    RESOURCES.WAREHOUSES,
-    RESOURCES.ITEM_CATEGORIES,
-  ],
+  [RESOURCES.STOCK_REQUESTS]: [RESOURCES.ITEMS, RESOURCES.WAREHOUSES, RESOURCES.ITEM_CATEGORIES],
 
   /**
    * Stock Adjustments

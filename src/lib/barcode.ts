@@ -149,7 +149,10 @@ export async function generateBarcodeLabelsPDF(
 
     // Quantity - prominent
     const itemNameLineHeight = 3.2;
-    textY += Math.max(5, itemNameLines.length * itemNameLineHeight + 1 + rightColumnExtraLinesHeight);
+    textY += Math.max(
+      5,
+      itemNameLines.length * itemNameLineHeight + 1 + rightColumnExtraLinesHeight
+    );
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "bold");
     pdf.text(`Qty: ${box.qtyPerBox}`, textX, textY);

@@ -303,9 +303,11 @@ export async function GET(request: NextRequest) {
       query = query.or(searchClauses.join(","));
     }
 
-    const { data: transactionItems, error: txError, count } = await query
-      .order("id", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const {
+      data: transactionItems,
+      error: txError,
+      count,
+    } = await query.order("id", { ascending: false }).range(offset, offset + limit - 1);
 
     if (txError) {
       return NextResponse.json(
@@ -478,10 +480,7 @@ export async function POST(request: NextRequest) {
     }
 
     const itemIds = body.items.map((item) => item.itemId);
-    const { data: itemUoms } = await supabase
-      .from("items")
-      .select("id, uom_id")
-      .in("id", itemIds);
+    const { data: itemUoms } = await supabase.from("items").select("id, uom_id").in("id", itemIds);
     const itemUomMap = new Map(
       (itemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
         row.id,
@@ -523,7 +522,10 @@ export async function POST(request: NextRequest) {
 
       if (!item.uomId) {
         await supabase.from("stock_transactions").delete().eq("id", transaction.id);
-        return NextResponse.json({ error: "Item UOM not found for stock transaction" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Item UOM not found for stock transaction" },
+          { status: 400 }
+        );
       }
 
       // Calculate actual quantity change based on transaction type

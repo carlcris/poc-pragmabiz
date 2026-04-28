@@ -80,10 +80,18 @@ export function AsyncSearchCombobox<T>({
     }
 
     return [selectedOption, ...options];
-  }, [getOptionLabel, getOptionSearchValue, getOptionValue, normalizedSearch, options, selectedOption]);
+  }, [
+    getOptionLabel,
+    getOptionSearchValue,
+    getOptionValue,
+    normalizedSearch,
+    options,
+    selectedOption,
+  ]);
 
   const selected = useMemo(
-    () => mergedOptions.find((option) => getOptionValue(option) === value) ?? selectedOption ?? null,
+    () =>
+      mergedOptions.find((option) => getOptionValue(option) === value) ?? selectedOption ?? null,
     [getOptionValue, mergedOptions, selectedOption, value]
   );
 
@@ -103,7 +111,11 @@ export function AsyncSearchCombobox<T>({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className={cn("w-full justify-between", !value && "text-muted-foreground", buttonClassName)}
+          className={cn(
+            "w-full justify-between",
+            !value && "text-muted-foreground",
+            buttonClassName
+          )}
         >
           <span className="min-w-0 flex-1 truncate text-left">
             {selected ? getOptionLabel(selected) : placeholder}
@@ -113,7 +125,7 @@ export function AsyncSearchCombobox<T>({
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] max-h-[var(--radix-popover-content-available-height)] overflow-hidden p-0",
+          "max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] overflow-hidden p-0",
           popoverClassName
         )}
         align="start"
@@ -143,17 +155,20 @@ export function AsyncSearchCombobox<T>({
                       key={optionValue}
                       value={getOptionSearchValue?.(option) ?? optionLabel}
                       className={cn("w-full", renderOption && "items-stretch")}
-                    onSelect={() => {
-                      onValueChange(optionValue);
-                      setOpen(false);
-                    }}
-                  >
+                      onSelect={() => {
+                        onValueChange(optionValue);
+                        setOpen(false);
+                      }}
+                    >
                       {renderOption ? (
                         renderOption(option, selectedState)
                       ) : (
                         <>
                           <Check
-                            className={cn("mr-2 h-4 w-4", selectedState ? "opacity-100" : "opacity-0")}
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedState ? "opacity-100" : "opacity-0"
+                            )}
                           />
                           {optionLabel}
                         </>

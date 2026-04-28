@@ -272,9 +272,7 @@ function CustomersPageContent() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : customers.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (

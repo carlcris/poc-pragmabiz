@@ -102,7 +102,8 @@ export const StockMovementsList = ({ movements, isLoading, locale }: StockMoveme
                     <p className="truncate text-sm font-medium">{movement.item_name}</p>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {t("byUser", { user: movement.performed_by })} • {formatTime(movement.timestamp)}
+                    {t("byUser", { user: movement.performed_by })} •{" "}
+                    {formatTime(movement.timestamp)}
                   </p>
                 </div>
 

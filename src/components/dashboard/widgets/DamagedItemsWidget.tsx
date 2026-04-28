@@ -8,7 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useDamagedItemsThisMonth } from "@/hooks/usePurchasingDashboard";
 import { formatCurrency } from "@/lib/utils/currency";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 import { WidgetEmptyState } from "./WidgetEmptyState";
 
 const COLORS = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#06b6d4"];
@@ -129,25 +139,27 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
         )}
 
         {/* KPI Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <AlertTriangle className="h-4 w-4" />
               <span>{t("count")}</span>
             </div>
-            <p className="mt-2 text-xl sm:text-2xl font-bold text-destructive">{data.count}</p>
+            <p className="mt-2 text-xl font-bold text-destructive sm:text-2xl">{data.count}</p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TrendingDown className="h-4 w-4" />
               <span>{t("totalValue")}</span>
             </div>
-            <p className="mt-2 text-xl sm:text-2xl font-bold text-destructive">{formatCurrency(data.totalValue)}</p>
+            <p className="mt-2 text-xl font-bold text-destructive sm:text-2xl">
+              {formatCurrency(data.totalValue)}
+            </p>
           </div>
         </div>
 
         {/* Charts */}
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {/* By Supplier Pie Chart */}
           {topSuppliers.length > 0 && (
             <div className="space-y-2">

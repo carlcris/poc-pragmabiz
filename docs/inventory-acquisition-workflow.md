@@ -21,6 +21,7 @@ Return to Supplier (RTS)
 ```
 
 **Key Relationship:**
+
 - N Stock Requisitions → N Load Lists (many-to-many)
 - 1 Load List → 1 Goods Receipt Note
 - 1 GRN → N Stock Entries (per item line)
@@ -34,6 +35,7 @@ Return to Supplier (RTS)
 **Purpose:** Formal document tracking items requested from supplier via phone/email
 
 **Key Fields:**
+
 - `dr_number` - Unique identifier (e.g., SR-2026-0001)
 - `business_unit_id` - Which BU is requesting
 - `supplier_id` - Supplier reference
@@ -44,6 +46,7 @@ Return to Supplier (RTS)
 - `total_amount` - Total estimated value
 
 **Line Items:** `stock_requisition_items`
+
 - `item_id` - Product being requested
 - `requested_qty` - Quantity requested
 - `unit_price` - Agreed price with supplier
@@ -53,6 +56,7 @@ Return to Supplier (RTS)
 - `notes` - Item-specific notes
 
 **Business Rules:**
+
 - Users can manually close/fulfill a SR even if outstanding_qty > 0
 - Track which load lists fulfilled which SR items (junction table)
 - SR can be edited while in Draft status
@@ -65,6 +69,7 @@ Return to Supplier (RTS)
 **Purpose:** Supplier-provided document listing items in shipment (single source of truth)
 
 **Key Fields:**
+
 - `ll_number` - Unique identifier (e.g., LL-2026-0001)
 - `supplier_ll_number` - Supplier's reference number
 - `business_unit_id` - Destination BU
@@ -84,6 +89,7 @@ Return to Supplier (RTS)
 - `notes` - General notes
 
 **Line Items:** `load_list_items`
+
 - `item_id` - Product in shipment
 - `load_list_qty` - Quantity per load list
 - `received_qty` - Actual received quantity (can be partial)
@@ -94,11 +100,13 @@ Return to Supplier (RTS)
 - `notes` - Item-specific notes
 
 **Linking Table:** `load_list_dr_items`
+
 - `load_list_item_id`
 - `dr_item_id`
 - `fulfilled_qty` - How much of this SR item this LL fulfills
 
 **Business Rules:**
+
 - **Status → "In Transit"**: System updates `inventory.in_transit` field (increment by `load_list_qty`)
 - **Status → "Received"**: System updates inventory (decrement `in_transit`, increment `on_hand`)
 - **Status → "Cancelled"** (from In Transit): System rolls back `inventory.in_transit` (decrement by `load_list_qty`)
@@ -112,6 +120,7 @@ Return to Supplier (RTS)
 **Purpose:** Internal receiving document generated from Load List for physical verification
 
 **Key Fields:**
+
 - `grn_number` - Unique identifier (e.g., GRN-2026-0001)
 - `load_list_id` - Reference to parent load list
 - `business_unit_id`
@@ -126,6 +135,7 @@ Return to Supplier (RTS)
 - `notes`
 
 **Line Items:** `grn_items`
+
 - `item_id`
 - `load_list_qty` - Expected quantity from LL
 - `received_qty` - Actual received
@@ -135,6 +145,7 @@ Return to Supplier (RTS)
 - `notes`
 
 **Box/Carton Tracking:** `grn_boxes`
+
 - `grn_item_id`
 - `box_number` - Sequential number (1, 2, 3...)
 - `barcode` - Generated barcode
@@ -145,6 +156,7 @@ Return to Supplier (RTS)
 - `seal_number`
 
 **Business Rules:**
+
 - Auto-generated from Load List when status changes to "Arrived" or "Receiving"
 - Receiver enters actual quantities
 - System calculates variances
@@ -157,6 +169,7 @@ Return to Supplier (RTS)
 **Purpose:** Update inventory quantities after GRN approval
 
 **Key Fields:**
+
 - Standard stock entry fields
 - `grn_id` - Reference to GRN
 - `transaction_type` - "Receipt from Supplier"
@@ -172,6 +185,7 @@ Return to Supplier (RTS)
 **Purpose:** Track damaged/defective items separately
 
 **Key Fields:**
+
 - `grn_id`
 - `item_id`
 - `qty`
@@ -189,6 +203,7 @@ Return to Supplier (RTS)
 **Purpose:** Handle returns of damaged/defective items
 
 **Key Fields:**
+
 - `rts_number` - Unique identifier (e.g., RTS-2026-0001)
 - `grn_id` - Reference to original receipt
 - `supplier_id`
@@ -201,6 +216,7 @@ Return to Supplier (RTS)
 - `approved_by`
 
 **Line Items:** `rts_items`
+
 - `item_id`
 - `return_qty`
 - `reason`
@@ -219,6 +235,7 @@ Draft → Submitted → Partially Fulfilled → Fulfilled
 ```
 
 **Status Definitions:**
+
 - **Draft** - Being created, not yet sent to supplier
 - **Submitted** - Communicated to supplier (phone/email)
 - **Partially Fulfilled** - Some items received via load lists
@@ -226,6 +243,7 @@ Draft → Submitted → Partially Fulfilled → Fulfilled
 - **Cancelled** - Requisition cancelled
 
 **Transitions:**
+
 - Draft → Submitted: Manual by user
 - Submitted → Partially Fulfilled: Auto when first LL items link to SR
 - Partially Fulfilled → Fulfilled: Auto when all outstanding_qty = 0 OR manual close
@@ -242,6 +260,7 @@ Draft → Confirmed → In Transit → Arrived → Receiving → Pending Approva
 ```
 
 **Status Definitions:**
+
 - **Draft** - Load list being entered into system
 - **Confirmed** - Supplier confirmed the shipment details
 - **In Transit** - Container shipped, items shown as "in transit" in reports
@@ -252,6 +271,7 @@ Draft → Confirmed → In Transit → Arrived → Receiving → Pending Approva
 - **Cancelled** - Shipment cancelled
 
 **Transitions:**
+
 - Draft → Confirmed: Manual by user after supplier confirmation
 - Confirmed → In Transit: Manual when supplier notifies shipment
 - In Transit → Arrived: Manual when container arrives
@@ -262,6 +282,7 @@ Draft → Confirmed → In Transit → Arrived → Receiving → Pending Approva
 - Any (except Received) → Cancelled: Manual by authorized user
 
 **System Actions by Status:**
+
 - **Confirmed → In Transit**:
   - **UPDATE inventory**: Increment `in_transit` field for each item in the load list
   - Send "In Transit" notification to warehouse staff
@@ -296,6 +317,7 @@ Draft → Receiving → Pending Approval → Approved
 ```
 
 **Status Definitions:**
+
 - **Draft** - Auto-created from load list
 - **Receiving** - Active receiving in progress
 - **Pending Approval** - Awaiting supervisor sign-off
@@ -303,6 +325,7 @@ Draft → Receiving → Pending Approval → Approved
 - **Rejected** - Sent back for corrections
 
 **Transitions:**
+
 - Draft → Receiving: Auto when LL status = Arrived or manual start
 - Receiving → Pending Approval: Receiving personnel submits
 - Pending Approval → Approved: Supervisor approves
@@ -320,6 +343,7 @@ Draft → Receiving → Pending Approval → Approved
 **Format:** Code 128 or QR Code
 
 **Barcode Data Structure (QR Code Recommended):**
+
 ```json
 {
   "grn_box_id": "12345",
@@ -340,10 +364,12 @@ Then lookup in database for details.
 ### 4.2 Barcode Printing
 
 **Trigger:**
+
 - During receiving, after receiver enters received_qty and num_boxes
 - User clicks "Print Barcodes" button for that line item
 
 **Print Layout:**
+
 - Print one label per box
 - Label includes:
   - Barcode (scannable)
@@ -354,6 +380,7 @@ Then lookup in database for details.
   - Storage Location (if already assigned)
 
 **Workflow:**
+
 1. Receiver enters: received_qty = 100, num_boxes = 2
 2. System creates 2 records in `grn_boxes`:
    - Box 1: qty_per_box = 50
@@ -366,10 +393,12 @@ Then lookup in database for details.
 ### 4.3 Storage Location Assignment
 
 **Option 1: During Receiving**
+
 - Receiver assigns location while entering data
 - Barcode includes location
 
 **Option 2: After Receiving (Recommended)**
+
 - Print barcode without location
 - Separate "putaway" process:
   - Scan box barcode
@@ -384,6 +413,7 @@ Then lookup in database for details.
 ### 5.1 Two-Step Receiving
 
 **Step 1: Physical Receiving**
+
 - Receiving personnel unload and count items
 - Enter actual quantities in GRN
 - Document damages
@@ -391,6 +421,7 @@ Then lookup in database for details.
 - Submit for approval (status → Pending Approval)
 
 **Step 2: Supervisor Approval**
+
 - Warehouse manager/supervisor reviews GRN
 - Checks for variances
 - Reviews damaged items
@@ -401,12 +432,14 @@ Then lookup in database for details.
 ### 5.2 Approval Rules
 
 **Who Can Approve:**
+
 - Warehouse Manager
 - Warehouse Supervisor
 - Inventory Manager
 - Configurable by role (RBAC)
 
 **Approval Triggers:**
+
 - All GRNs require approval
 - Optional: Auto-approve if no variances (future enhancement)
 
@@ -416,19 +449,20 @@ Then lookup in database for details.
 
 ### 6.1 Notification Events
 
-| Event | Status Change | Notification To | Message |
-|-------|--------------|-----------------|---------|
-| Container Arriving | LL: Confirmed → In Transit | Warehouse Manager, Receiving Staff | "Load List {ll_number} is in transit. Expected arrival: {date}" |
-| Container Arrived | LL: In Transit → Arrived | Warehouse Manager, Receiving Staff | "Load List {ll_number} has arrived. Container: {container_number}" |
-| Receiving Started | LL: Arrived → Receiving | Warehouse Manager | "Receiving started for Load List {ll_number}" |
-| Pending Approval | LL: Receiving → Pending Approval, GRN: Receiving → Pending Approval | Warehouse Manager, Supervisor, Approvers | "GRN {grn_number} is pending your approval" |
-| Approved | LL: Pending Approval → Received, GRN: Pending Approval → Approved | Requester, Procurement, Warehouse Manager | "GRN {grn_number} approved. Items added to inventory." |
-| Rejected | GRN: Pending Approval → Rejected | Receiving Staff | "GRN {grn_number} was rejected. Reason: {notes}" |
-| Damaged Items | Damaged items logged | Warehouse Manager, Procurement | "Damaged items reported in GRN {grn_number}: {qty} units of {item}" |
+| Event              | Status Change                                                       | Notification To                           | Message                                                             |
+| ------------------ | ------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------- |
+| Container Arriving | LL: Confirmed → In Transit                                          | Warehouse Manager, Receiving Staff        | "Load List {ll_number} is in transit. Expected arrival: {date}"     |
+| Container Arrived  | LL: In Transit → Arrived                                            | Warehouse Manager, Receiving Staff        | "Load List {ll_number} has arrived. Container: {container_number}"  |
+| Receiving Started  | LL: Arrived → Receiving                                             | Warehouse Manager                         | "Receiving started for Load List {ll_number}"                       |
+| Pending Approval   | LL: Receiving → Pending Approval, GRN: Receiving → Pending Approval | Warehouse Manager, Supervisor, Approvers  | "GRN {grn_number} is pending your approval"                         |
+| Approved           | LL: Pending Approval → Received, GRN: Pending Approval → Approved   | Requester, Procurement, Warehouse Manager | "GRN {grn_number} approved. Items added to inventory."              |
+| Rejected           | GRN: Pending Approval → Rejected                                    | Receiving Staff                           | "GRN {grn_number} was rejected. Reason: {notes}"                    |
+| Damaged Items      | Damaged items logged                                                | Warehouse Manager, Procurement            | "Damaged items reported in GRN {grn_number}: {qty} units of {item}" |
 
 ### 6.2 Notification Configuration
 
 **Settings Table:** `notification_settings`
+
 - `event_type` - Enum of events above
 - `role_id` - Which role receives notification
 - `user_id` - Specific user override
@@ -436,6 +470,7 @@ Then lookup in database for details.
 - `enabled` - Boolean
 
 **User Preferences:**
+
 - Allow users to opt-in/out of specific notifications
 - Default based on role
 
@@ -446,11 +481,13 @@ Then lookup in database for details.
 ### 7.1 Return to Supplier Process
 
 **Trigger:**
+
 - Damaged items identified during receiving
 - Defective items found later
 - Wrong items shipped
 
 **Workflow:**
+
 1. Create Return to Supplier (RTS) document
 2. Link to original GRN
 3. Select items and quantities to return
@@ -462,6 +499,7 @@ Then lookup in database for details.
    - Track return shipment
 
 **Inventory Impact:**
+
 - If damaged items were already added to inventory: Create adjustment to reduce
 - If damaged items were logged during receiving: No adjustment needed
 
@@ -473,6 +511,7 @@ Then lookup in database for details.
 
 **Inventory Table Fields:**
 The `inventory` (or `item_warehouse`) table should have:
+
 - `on_hand` - Physical quantity in warehouse
 - `in_transit` - Quantity currently in shipment
 - `reserved` - Quantity allocated to orders
@@ -482,14 +521,15 @@ The `inventory` (or `item_warehouse`) table should have:
 
 When Load List status changes, update the `in_transit` field:
 
-| Status Transition | Inventory Action |
-|-------------------|------------------|
-| Confirmed → **In Transit** | **INCREMENT** `in_transit` by `load_list_qty` for each item |
-| In Transit → **Arrived** | No change (still in transit until received) |
+| Status Transition                       | Inventory Action                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Confirmed → **In Transit**              | **INCREMENT** `in_transit` by `load_list_qty` for each item                               |
+| In Transit → **Arrived**                | No change (still in transit until received)                                               |
 | Arrived → **Received** (after approval) | **DECREMENT** `in_transit` by `received_qty`<br>**INCREMENT** `on_hand` by `received_qty` |
-| In Transit → **Cancelled** | **DECREMENT** `in_transit` by `load_list_qty` |
+| In Transit → **Cancelled**              | **DECREMENT** `in_transit` by `load_list_qty`                                             |
 
 **Example Flow:**
+
 ```sql
 -- Initial state
 item_id: 123, warehouse_id: 1, on_hand: 100, in_transit: 0, available: 80
@@ -507,12 +547,14 @@ WHERE item_id = 123 AND warehouse_id = 1;
 ```
 
 **Business Rules:**
+
 - In Transit items are NOT available for sale (not in `available` calculation)
 - In Transit items ARE visible in inventory reports for planning
 - If Load List is partially received, only decrement `in_transit` by `received_qty`, not `load_list_qty`
 - Damaged items reduce `in_transit` but do NOT increase `on_hand`
 
 **Report Features:**
+
 - Show in_transit quantity in inventory list views
 - Dedicated "In Transit" report grouped by: Supplier, Expected Arrival Date, Warehouse
 - Alert when in_transit items are overdue (expected arrival date passed)
@@ -522,6 +564,7 @@ WHERE item_id = 123 AND warehouse_id = 1;
 **Requirement:** Track delivery_date for LIFO sales
 
 **Implementation:**
+
 - Store `delivery_date` in `grn_boxes` table
 - When picking for sales, query by:
   ```sql
@@ -532,13 +575,16 @@ WHERE item_id = 123 AND warehouse_id = 1;
 ### 8.3 Storage Location Tracking
 
 **Hierarchy:**
+
 - Warehouse → Location (Aisle-Rack-Shelf format)
 
 **Tracking Level:**
+
 - Box/carton level via `grn_boxes.warehouse_location_id`
 - Aggregate to item level for reporting
 
 **Use Cases:**
+
 - Picking: Show location of item
 - Replenishment: Track which locations need restocking
 - Physical count: Organize by location
@@ -640,11 +686,13 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 ### 10.1 Stock Requisition Module
 
 **List View:**
+
 - Filters: Status, Supplier, Date Range, Requested By
 - Columns: SR Number, Date, Supplier, Total Items, Total Amount, Status
 - Actions: Create New, View, Edit (if Draft), Cancel
 
 **Form View:**
+
 - Header: SR Number (auto), Supplier, Requisition Date, Requested By
 - Line Items Grid:
   - Item, Requested Qty, Unit Price, Total, Fulfilled Qty, Outstanding Qty
@@ -653,6 +701,7 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 - Actions: Save as Draft, Submit
 
 **Detail View:**
+
 - Show all SR info
 - Tab: "Linked Load Lists" - Show which LLs fulfilled this SR
 - Tab: "Fulfillment History" - Timeline of fulfillment
@@ -662,11 +711,13 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 ### 10.2 Load List Module
 
 **List View:**
+
 - Filters: Status, Supplier, Warehouse, Date Range
 - Columns: LL Number, Supplier, Container, Status, Arrival Date, Total Items
 - Actions: Create New, View, Edit, Change Status
 
 **Form View:**
+
 - Header: LL Number (auto), Supplier LL Number, Supplier, Warehouse, Container Number, Seal Number, Dates
 - Status workflow buttons (Confirm, Mark In Transit, Mark Arrived, etc.)
 - Line Items Grid:
@@ -676,6 +727,7 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 - Actions: Save, Submit
 
 **Detail View:**
+
 - All LL info
 - Tab: "Linked Requisitions" - Show which SRs this LL fulfills
 - Tab: "Receiving Details" - Link to GRN
@@ -686,11 +738,13 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 ### 10.3 Goods Receipt Note (Receiving) Module
 
 **List View:**
+
 - Filters: Status, Warehouse, Date Range, Received By
 - Columns: GRN Number, LL Number, Container, Status, Receiving Date, Received By
 - Actions: View, Process (if status allows)
 
 **Receiving Form:**
+
 - Header: GRN Number (auto), LL Number, Container, Seal, Delivery Date
 - Line Items Grid:
   - Item, Expected Qty (from LL), Received Qty (editable), Damaged Qty (editable), Num Boxes (editable)
@@ -701,11 +755,13 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 - Actions: Save Progress, Submit for Approval
 
 **Barcode Printing:**
+
 - Modal/dialog with barcode preview
 - Option to assign locations before printing
 - Print button (triggers browser print or label printer)
 
 **Approval View:**
+
 - Same as receiving form but read-only
 - Show variances clearly
 - Approval notes field
@@ -716,6 +772,7 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 ### 10.4 Receiving Dashboard
 
 **Widgets:**
+
 - Pending Approvals count
 - In Transit Items (by arrival date)
 - Today's Scheduled Arrivals
@@ -723,6 +780,7 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 - Recent Damaged Items
 
 **Reports:**
+
 - In Transit Inventory Report
 - Receiving Performance (time from arrival to approved)
 - Variance Analysis
@@ -780,6 +838,7 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 ## 12. Implementation Phases
 
 ### Phase 1: Core Documents (Priority: High)
+
 - [ ] Stock Requisition CRUD
 - [ ] Load List CRUD
 - [ ] Basic status workflow for LL
@@ -787,6 +846,7 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 - [ ] Fulfillment tracking
 
 ### Phase 2: Receiving Workflow (Priority: High)
+
 - [ ] Add `in_transit` field to inventory table
 - [ ] Implement inventory updates on LL status changes
 - [ ] GRN auto-creation from LL
@@ -796,24 +856,28 @@ ALTER TABLE inventory (or item_warehouse) ADD COLUMN:
 - [ ] Stock entry creation on approval
 
 ### Phase 3: Barcode & Location (Priority: High)
+
 - [ ] Barcode generation logic
 - [ ] Barcode printing functionality
 - [ ] Storage location assignment
 - [ ] Box-level tracking
 
 ### Phase 4: Notifications (Priority: Medium)
+
 - [ ] Notification settings configuration
 - [ ] Event triggers for status changes
 - [ ] In-app notification display
 - [ ] Email notifications (optional)
 
 ### Phase 5: In Transit & Reporting (Priority: Medium)
+
 - [ ] In transit inventory report
 - [ ] LIFO tracking implementation
 - [ ] Receiving dashboard
 - [ ] Variance analysis reports
 
 ### Phase 6: Returns (Priority: Low)
+
 - [ ] Return to Supplier document
 - [ ] RTS workflow
 - [ ] Inventory adjustments for returns

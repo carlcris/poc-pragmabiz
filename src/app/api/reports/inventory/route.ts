@@ -73,7 +73,7 @@ const STATUSES = new Set<InventoryStatus>([
   "zero",
 ]);
 
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -88,9 +88,20 @@ const clampPageSize = (value: string | null, fallback: number) => {
   return Math.min(Math.max(parsed, 10), 50);
 };
 
-const escapeFilterValue = (value: string) => value.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_").replaceAll(",", "\\,");
+const escapeFilterValue = (value: string) =>
+  value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("%", "\\%")
+    .replaceAll("_", "\\_")
+    .replaceAll(",", "\\,");
 
-const resolveStatus = (currentStock: number, reservedStock: number, availableStock: number, inTransit: number, reorderLevel: number): InventoryStatus => {
+const resolveStatus = (
+  currentStock: number,
+  reservedStock: number,
+  availableStock: number,
+  inTransit: number,
+  reorderLevel: number
+): InventoryStatus => {
   if (currentStock <= 0 && inTransit <= 0) return "zero";
   if (availableStock > 0 && reorderLevel > 0 && availableStock <= reorderLevel) return "available";
   if (reservedStock > 0) return "allocated";
@@ -172,8 +183,8 @@ export async function GET(request: NextRequest) {
       .select(
         "id, item:items!inner(id, item_code, item_name, category_id, category:item_categories(id, name)), warehouse:warehouses!inner(id, business_unit_id)",
         {
-        count: "exact",
-        head: true,
+          count: "exact",
+          head: true,
         }
       )
       .eq("company_id", userData.company_id)
@@ -209,12 +220,18 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const escapedSearch = escapeFilterValue(search);
-      countQuery = countQuery.or(`item_code.ilike.%${escapedSearch}%,item_name.ilike.%${escapedSearch}%`, {
-        foreignTable: "item",
-      });
-      dataQuery = dataQuery.or(`item_code.ilike.%${escapedSearch}%,item_name.ilike.%${escapedSearch}%`, {
-        foreignTable: "item",
-      });
+      countQuery = countQuery.or(
+        `item_code.ilike.%${escapedSearch}%,item_name.ilike.%${escapedSearch}%`,
+        {
+          foreignTable: "item",
+        }
+      );
+      dataQuery = dataQuery.or(
+        `item_code.ilike.%${escapedSearch}%,item_name.ilike.%${escapedSearch}%`,
+        {
+          foreignTable: "item",
+        }
+      );
     }
 
     if (stockStatus === "on_hand") {
@@ -300,7 +317,8 @@ export async function GET(request: NextRequest) {
         pageQtyInTransit: rows.reduce((sum, row) => sum + row.inTransit, 0),
         pageStockValue: rows.reduce((sum, row) => sum + row.stockValue, 0),
         lowStockRows: rows.filter(
-          (row) => row.reorderLevel > 0 && row.availableStock > 0 && row.availableStock <= row.reorderLevel
+          (row) =>
+            row.reorderLevel > 0 && row.availableStock > 0 && row.availableStock <= row.reorderLevel
         ).length,
         outOfStockRows: rows.filter((row) => row.currentStock <= 0 && row.inTransit <= 0).length,
       },

@@ -135,9 +135,7 @@ export const salesOrdersApi = {
       body: JSON.stringify({ warehouseId }),
     });
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Failed to create job order" }));
+      const error = await response.json().catch(() => ({ error: "Failed to create job order" }));
       throw new Error(error.error || "Failed to create job order");
     }
     return response.json();

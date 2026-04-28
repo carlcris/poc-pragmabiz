@@ -26,7 +26,10 @@ const OutstandingRequisitionsWidget = dynamic(
   { ssr: false, loading: widgetFallback }
 );
 const DamagedItemsWidget = dynamic(
-  () => import("@/components/dashboard/widgets/DamagedItemsWidget").then((mod) => mod.DamagedItemsWidget),
+  () =>
+    import("@/components/dashboard/widgets/DamagedItemsWidget").then(
+      (mod) => mod.DamagedItemsWidget
+    ),
   { ssr: false, loading: widgetFallback }
 );
 const ExpectedArrivalsWidget = dynamic(
@@ -124,12 +127,10 @@ export default function PurchasingOverviewPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight">{t("title")}</h1>
+            <LayoutDashboard className="h-4 w-4 text-primary sm:h-5 sm:w-5" />
+            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t("title")}</h1>
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            {t("subtitle")}
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
@@ -167,28 +168,32 @@ export default function PurchasingOverviewPage() {
       {/* Warehouse Operations */}
       <section className="space-y-3 sm:space-y-4">
         <div>
-          <h2 className="text-lg sm:text-xl font-semibold">{t("warehouseOperations")}</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <h2 className="text-lg font-semibold sm:text-xl">{t("warehouseOperations")}</h2>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {t("warehouseOperationsDescription")}
           </p>
         </div>
         <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <TodaysReceivingQueueWidget warehouseId={warehouseId} businessUnitId={currentBusinessUnit?.id} />
+          <TodaysReceivingQueueWidget
+            warehouseId={warehouseId}
+            businessUnitId={currentBusinessUnit?.id}
+          />
           <PendingApprovalsWidget />
           <BoxAssignmentQueueWidget />
           <WarehouseCapacityWidget warehouseId={warehouseId} />
           <ActiveRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
-          <IncomingDeliveriesWidget warehouseId={warehouseId} businessUnitId={currentBusinessUnit?.id} />
+          <IncomingDeliveriesWidget
+            warehouseId={warehouseId}
+            businessUnitId={currentBusinessUnit?.id}
+          />
           <ActiveContainersWidget businessUnitId={currentBusinessUnit?.id} />
           <LocationAssignmentWidget />
         </div>
       </section>
 
       {/* Footer Info */}
-      <div className="rounded-lg border bg-muted/50 p-3 sm:p-4 text-center">
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          {t("footerAutoRefresh")}
-        </p>
+      <div className="rounded-lg border bg-muted/50 p-3 text-center sm:p-4">
+        <p className="text-xs text-muted-foreground sm:text-sm">{t("footerAutoRefresh")}</p>
       </div>
     </div>
   );

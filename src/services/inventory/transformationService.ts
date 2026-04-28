@@ -515,7 +515,9 @@ export async function executeTransformation(
         quantity: Number(outputData.producedQuantity ?? 0),
       };
     });
-    const resolvedOutputMap = new Map(resolvedOutputs.map((output) => [output.outputLineId, output]));
+    const resolvedOutputMap = new Map(
+      resolvedOutputs.map((output) => [output.outputLineId, output])
+    );
 
     // 7.5 Resolve waste quantities for cost allocation
     const resolvedWastes = executionData.outputs
@@ -541,7 +543,8 @@ export async function executeTransformation(
     const totalOutputQuantity = resolvedOutputs.reduce((sum, output, idx) => {
       const hasWaste =
         executionData.outputs[idx].wastedQuantity && executionData.outputs[idx].wastedQuantity > 0;
-      const wasteQty = hasWaste && resolvedWastes[wasteIndex] ? resolvedWastes[wasteIndex++].quantity : 0;
+      const wasteQty =
+        hasWaste && resolvedWastes[wasteIndex] ? resolvedWastes[wasteIndex++].quantity : 0;
       return sum + output.quantity + wasteQty;
     }, 0);
 
@@ -567,9 +570,10 @@ export async function executeTransformation(
         .eq("warehouse_id", order.source_warehouse_id)
         .maybeSingle();
 
-      const warehouseStockRow = warehouseStock as
-        | { current_stock?: number | string | null; default_location_id?: string | null }
-        | null;
+      const warehouseStockRow = warehouseStock as {
+        current_stock?: number | string | null;
+        default_location_id?: string | null;
+      } | null;
       const currentStock = warehouseStockRow
         ? parseFloat(String(warehouseStockRow.current_stock))
         : 0;

@@ -30,10 +30,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Textarea } from "@/components/ui/textarea";
 import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
-import {
-  createInvoiceLineItemSchema,
-  invoiceLineItemSchema,
-} from "@/lib/validations/invoice";
+import { createInvoiceLineItemSchema, invoiceLineItemSchema } from "@/lib/validations/invoice";
 
 export type LineItemFormValues = z.output<typeof invoiceLineItemSchema> & {
   lineTotal?: number;
@@ -82,7 +79,8 @@ export function InvoiceLineItemDialog({
   });
   const selectedItemId = form.watch("itemId");
   const { data: selectedItemResponse } = useItem(selectedItemId);
-  const selectedItem = items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
+  const selectedItem =
+    items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
 
   useEffect(() => {
     if (open && item) {
@@ -173,7 +171,9 @@ export function InvoiceLineItemDialog({
                       renderOption={(entry, selected) => (
                         <div className="flex items-center gap-2">
                           <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
-                          <span>{entry.code} - {entry.name}</span>
+                          <span>
+                            {entry.code} - {entry.name}
+                          </span>
                         </div>
                       )}
                     />

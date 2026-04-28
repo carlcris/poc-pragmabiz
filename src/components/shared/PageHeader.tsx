@@ -21,15 +21,16 @@ export const PageHeader = ({
   actionsClassName,
 }: PageHeaderProps) => (
   <div
-    className={cn(
-      "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
-      className
-    )}
+    className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}
   >
     <div className="min-w-0">
-      <h1 className={cn("text-lg font-semibold tracking-tight sm:text-xl", titleClassName)}>{title}</h1>
+      <h1 className={cn("text-lg font-semibold tracking-tight sm:text-xl", titleClassName)}>
+        {title}
+      </h1>
       {subtitle ? (
-        <p className={cn("text-xs text-muted-foreground sm:text-sm", subtitleClassName)}>{subtitle}</p>
+        <p className={cn("text-xs text-muted-foreground sm:text-sm", subtitleClassName)}>
+          {subtitle}
+        </p>
       ) : null}
     </div>
     {actions ? (

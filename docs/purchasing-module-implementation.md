@@ -8,16 +8,17 @@
 
 ## Quick Status Overview
 
-| Phase | Status | Completion |
-|-------|--------|------------|
-| **Phase 1: Database Layer** | ✅ Complete | 100% |
-| **Phase 2: API Routes** | ✅ Complete | 100% |
-| **Phase 3: Hooks & API Client** | ✅ Complete | 100% |
-| **Phase 4: UI Components** | ✅ Complete | 100% |
-| **Phase 5: Pages** | ✅ Complete | 100% |
-| **Phase 6: Testing** | 🧪 In Progress | 20% |
+| Phase                           | Status         | Completion |
+| ------------------------------- | -------------- | ---------- |
+| **Phase 1: Database Layer**     | ✅ Complete    | 100%       |
+| **Phase 2: API Routes**         | ✅ Complete    | 100%       |
+| **Phase 3: Hooks & API Client** | ✅ Complete    | 100%       |
+| **Phase 4: UI Components**      | ✅ Complete    | 100%       |
+| **Phase 5: Pages**              | ✅ Complete    | 100%       |
+| **Phase 6: Testing**            | 🧪 In Progress | 20%        |
 
 **Recent Achievements:**
+
 - ✅ Created 3 database migrations (suppliers, purchase orders, purchase receipts)
 - ✅ Implemented stock update triggers (auto-update inventory on receipt)
 - ✅ Implemented PO status auto-update triggers
@@ -36,6 +37,7 @@
 - ✅ Implemented purchase orders page with full workflow (create, edit, submit, approve, cancel, delete, view)
 
 **Next Steps:**
+
 1. Test suppliers page end-to-end workflow
 2. Test purchase orders page workflow (draft → submit → approve)
 3. Verify data persistence and API integration
@@ -45,6 +47,7 @@
 ## Current State Analysis
 
 ### ✅ What Exists:
+
 - ✅ **Database tables** - suppliers, purchase_orders, purchase_order_items, purchase_receipts, purchase_receipt_items
 - ✅ **Database triggers** - Auto-update stock on receipt, auto-update PO status
 - ✅ **Seed data** - 6 suppliers, 3 purchase orders with 6 line items
@@ -54,6 +57,7 @@
 - ✅ Some components exist (`SupplierFormDialog`)
 
 ### ❌ What's Missing (TO DO):
+
 - ❌ **NO API routes** yet - Need to create all REST endpoints
 - ❌ **Hooks not connected** - useSuppliers and usePurchaseOrders need API client functions
 - ❌ **Components incomplete** - SupplierFormDialog needs verification/updates
@@ -68,6 +72,7 @@
 Create migration files for:
 
 #### 1. Suppliers Table Migration (`20251111_add_suppliers.sql`)
+
 - **Table**: `suppliers`
 - **Columns**: All fields from Supplier type
   - `id` (UUID, PK)
@@ -93,6 +98,7 @@ Create migration files for:
 - **Indexes**: company_id, supplier_code, status
 
 #### 2. Purchase Orders Tables Migration (`20251111_add_purchase_orders.sql`)
+
 - **Table**: `purchase_orders` (header)
   - `id` (UUID, PK)
   - `company_id` (UUID, FK to companies)
@@ -131,6 +137,7 @@ Create migration files for:
 - **Indexes**: company_id, supplier_id, status, order_date
 
 #### 3. Purchase Receipts Table Migration (`20251111_add_purchase_receipts.sql`)
+
 - **Table**: `purchase_receipts` (GRN - Goods Receipt Note)
   - `id` (UUID, PK)
   - `company_id` (UUID, FK to companies)
@@ -167,7 +174,9 @@ Create migration files for:
 - **Indexes**: company_id, purchase_order_id, warehouse_id, receipt_date
 
 #### 4. Update Seed Data (`seed.sql`)
+
 Add sample data:
+
 - 5-10 suppliers (mix of active/inactive, different payment terms)
 - 3-5 purchase orders with line items (various statuses)
 - 2-3 purchase receipts
@@ -179,6 +188,7 @@ Add sample data:
 Create Next.js API routes following RESTful pattern:
 
 #### 1. Suppliers API (`/api/suppliers/`)
+
 - `GET /api/suppliers` - List with filters (search, status, pagination)
 - `POST /api/suppliers` - Create new supplier (auto-generate code)
 - `GET /api/suppliers/[id]` - Get single supplier
@@ -186,6 +196,7 @@ Create Next.js API routes following RESTful pattern:
 - `DELETE /api/suppliers/[id]` - Soft delete supplier
 
 #### 2. Purchase Orders API (`/api/purchase-orders/`)
+
 - `GET /api/purchase-orders` - List with filters (search, status, supplier, date range)
 - `POST /api/purchase-orders` - Create new PO (auto-generate code, status=draft)
 - `GET /api/purchase-orders/[id]` - Get single PO with line items
@@ -196,6 +207,7 @@ Create Next.js API routes following RESTful pattern:
 - `POST /api/purchase-orders/[id]/cancel` - Cancel PO (any status except received)
 
 #### 3. Purchase Receipts API (`/api/purchase-receipts/`)
+
 - `GET /api/purchase-receipts` - List receipts with filters
 - `POST /api/purchase-receipts` - Create receipt (update stock!)
 - `GET /api/purchase-receipts/[id]` - Get single receipt
@@ -240,6 +252,7 @@ Create Next.js API routes following RESTful pattern:
 Create/update components (following Quotation/Invoice pattern):
 
 #### 1. Suppliers
+
 - ✅ `SupplierFormDialog` exists - verify/update
 - Multi-tab form:
   - Tab 1: General Info (name, code, contact person, email, phone, website)
@@ -248,6 +261,7 @@ Create/update components (following Quotation/Invoice pattern):
   - Tab 4: Notes & Status
 
 #### 2. Purchase Orders
+
 - **`PurchaseOrderFormDialogV2`** - Main form with 3 tabs
   - Tab 1: General (supplier, order date, expected delivery, delivery address)
   - Tab 2: Line Items (table + popup dialog for add/edit)
@@ -263,6 +277,7 @@ Create/update components (following Quotation/Invoice pattern):
 - Status badges with colors
 
 #### 3. Purchase Receipts
+
 - **`PurchaseReceiptFormDialog`** - Create receipt from PO
   - Show PO details
   - List PO items with ordered qty
@@ -280,6 +295,7 @@ Create/update components (following Quotation/Invoice pattern):
 Update existing pages:
 
 #### 1. `/purchasing/suppliers/page.tsx`
+
 - Already has basic structure
 - Features:
   - Search bar
@@ -290,6 +306,7 @@ Update existing pages:
   - Pagination
 
 #### 2. `/purchasing/orders/page.tsx`
+
 - Already has basic structure
 - Features:
   - Search bar
@@ -308,6 +325,7 @@ Update existing pages:
   - Pagination
 
 #### 3. `/purchasing/receipts/page.tsx`
+
 - Implement from scratch
 - Features:
   - Search bar (by receipt code or PO number)
@@ -319,6 +337,7 @@ Update existing pages:
   - Actions: View, Print GRN
 
 #### 4. `/purchasing/receipts/[id]/page.tsx`
+
 - Receipt detail page
 - Show:
   - Receipt header (code, PO, supplier, warehouse, date)
@@ -328,6 +347,7 @@ Update existing pages:
   - Print button
 
 #### 5. `/purchasing/page.tsx` (Dashboard)
+
 - Overview widgets:
   - **Pending POs** - Count of POs awaiting approval
   - **POs Awaiting Receipt** - Approved POs not yet received
@@ -365,6 +385,7 @@ Create validation schemas:
 ### ✅ Phase 1: Database Layer (COMPLETED - Nov 11, 2025)
 
 **Migrations Created:**
+
 1. ✅ `20251111120001_add_suppliers.sql` - Suppliers table
    - All fields: code, name, contact, addresses, payment terms, bank details, status
    - RLS policies for company isolation
@@ -388,6 +409,7 @@ Create validation schemas:
    - Indexes
 
 **Seed Data Added:**
+
 - ✅ 6 Suppliers (5 active + 1 inactive)
   - Tech Solutions Inc. (electronics)
   - Office Depot Philippines (office supplies)
@@ -408,6 +430,7 @@ Create validation schemas:
 ### ✅ Phase 2: API Routes (COMPLETED - Nov 11, 2025)
 
 #### Week 1: Suppliers Module
+
 1. ✅ API routes for suppliers CRUD
    - ✅ GET /api/suppliers - List with filters (status, search) and pagination
    - ✅ POST /api/suppliers - Create with auto-generated code (SUP-001, SUP-002...)
@@ -420,6 +443,7 @@ Create validation schemas:
 5. ⏳ Test end-to-end
 
 #### Week 2: Purchase Orders Module
+
 1. ✅ API routes (including workflow actions)
    - ✅ GET /api/purchase-orders - List with filters (status, supplier, date range, search), includes nested supplier and line items
    - ✅ POST /api/purchase-orders - Create with auto-generated code (PO-2025-0001...), calculates totals
@@ -438,6 +462,7 @@ Create validation schemas:
 5. ⏳ Test workflow: draft → submit → approve → cancel
 
 **Key Features Implemented:**
+
 - Complete CRUD operations for both suppliers and purchase orders
 - Workflow state management with validation
 - Auto-generated codes following convention
@@ -453,12 +478,15 @@ Create validation schemas:
 ### ✅ Phase 3: Hooks & API Client (COMPLETED - Nov 11, 2025)
 
 #### Suppliers Module
+
 ✅ **API Client** (`lib/api/suppliers.ts`)
+
 - Updated to use PUT method for updates (consistent with API route)
 - All CRUD operations connected to API routes
 - Proper error handling
 
 ✅ **React Query Hooks** (`hooks/useSuppliers.ts`)
+
 - `useSuppliers(filters)` - List query with filters
 - `useSupplier(id)` - Single supplier query
 - `useCreateSupplier()` - Create mutation
@@ -467,7 +495,9 @@ Create validation schemas:
 - Automatic cache invalidation on mutations
 
 #### Purchase Orders Module
+
 ✅ **API Client** (`lib/api/purchase-orders.ts`)
+
 - Updated to use PUT method for updates
 - Fixed filter parameter names (supplier_id, from_date, to_date)
 - Added workflow action functions:
@@ -477,6 +507,7 @@ Create validation schemas:
 - All CRUD operations connected to API routes
 
 ✅ **React Query Hooks** (`hooks/usePurchaseOrders.ts`)
+
 - `usePurchaseOrders(filters)` - List query with filters
 - `usePurchaseOrder(id)` - Single PO query
 - `useCreatePurchaseOrder()` - Create mutation
@@ -488,6 +519,7 @@ Create validation schemas:
 - Automatic cache invalidation on all mutations
 
 **Key Benefits:**
+
 - Type-safe API calls with TypeScript
 - Automatic loading, error, and success states
 - Optimistic updates support
@@ -499,7 +531,9 @@ Create validation schemas:
 ### ✅ Phase 4: UI Components (COMPLETED - Nov 11, 2025)
 
 #### Suppliers Components
+
 ✅ **SupplierFormDialog** (`components/suppliers/SupplierFormDialog.tsx`)
+
 - Multi-tab form with 5 tabs:
   - General: Code, name, contact, email, phone, mobile, website, tax ID
   - Billing: Full billing address fields
@@ -511,7 +545,9 @@ Create validation schemas:
 - Fixed hardcoded companyId/createdBy values
 
 #### Purchase Orders Components
+
 ✅ **PurchaseOrderLineItemDialog** (`components/purchase-orders/PurchaseOrderLineItemDialog.tsx`)
+
 - Popup dialog for adding/editing line items
 - Features:
   - Item selection dropdown with auto-fill (uses cost price)
@@ -522,6 +558,7 @@ Create validation schemas:
 - Follows same pattern as InvoiceLineItemDialog
 
 ✅ **PurchaseOrderFormDialogV2** (`components/purchase-orders/PurchaseOrderFormDialogV2.tsx`)
+
 - Main form dialog with 3 tabs:
   - General: Supplier selection, order date, expected delivery, delivery address (full fields)
   - Line Items: Table display with Add/Edit/Delete actions, real-time totals
@@ -535,6 +572,7 @@ Create validation schemas:
   - Loading states during submission
 
 ✅ **PurchaseOrderViewDialog** (`components/purchase-orders/PurchaseOrderViewDialog.tsx`)
+
 - Read-only view dialog for PO details
 - Features:
   - Status badge with color coding
@@ -548,6 +586,7 @@ Create validation schemas:
   - Print functionality
 
 **Key Design Patterns:**
+
 - Consistent with invoice and quotation components
 - Table layout for line items (not cards)
 - Popup dialog for add/edit line items
@@ -560,7 +599,9 @@ Create validation schemas:
 ### ✅ Phase 5: Pages Implementation (COMPLETED - Nov 11, 2025)
 
 #### Suppliers Page (`src/app/(dashboard)/purchasing/suppliers/page.tsx`)
+
 ✅ **Complete implementation with:**
+
 - Search functionality (by name, code, email)
 - Status filter dropdown (all, active, inactive, blacklisted)
 - Comprehensive table display with columns:
@@ -576,7 +617,9 @@ Create validation schemas:
 - Balance highlighting for non-zero values
 
 #### Purchase Orders Page (`src/app/(dashboard)/purchasing/orders/page.tsx`)
+
 ✅ **Complete implementation with full workflow:**
+
 - Search functionality
 - Status filter dropdown (all statuses)
 - Comprehensive table display with columns:
@@ -602,6 +645,7 @@ Create validation schemas:
 - Toast notifications for all actions
 
 **Workflow Implementation:**
+
 ```
 Draft → Submit → Approve → [In Transit] → Partially Received → Received
   ↓                ↓             ↓               ↓
@@ -609,6 +653,7 @@ Delete          Cancel        Cancel          Cancel
 ```
 
 **Key Features:**
+
 - Complete CRUD operations
 - Full workflow state management
 - Proper validation (only drafts can be edited/deleted)
@@ -620,6 +665,7 @@ Delete          Cancel        Cancel          Cancel
 ---
 
 #### Week 3: Purchase Receipts Module
+
 1. ⏳ API routes (with stock update logic!)
 2. ⏳ Create hooks & API client
 3. ⏳ Create UI components:
@@ -634,17 +680,20 @@ Delete          Cancel        Cancel          Cancel
 ## Key Design Decisions
 
 ### 1. Follow Sales Module Pattern
+
 - Use same table naming convention (snake_case in DB, camelCase in TypeScript)
 - Use same soft delete pattern with `deleted_at`
 - Use same audit fields (`created_by`, `updated_by`, `created_at`, `updated_at`)
 - Use same RLS policies pattern
 
 ### 2. Purchase Order Workflow
+
 ```
 draft → submitted → approved → in_transit → partially_received → received
                                                                   ↓
                                                               cancelled
 ```
+
 - Only **drafts** can be edited/deleted
 - **Approved** POs can create receipts
 - **Cancelled** POs cannot be received
@@ -653,18 +702,21 @@ draft → submitted → approved → in_transit → partially_received → recei
   - All items received: partially_received → received
 
 ### 3. Stock Integration
+
 - Purchase receipts update `item_warehouse.current_stock`
 - Track `quantity_received` in `purchase_order_items` table
 - Support **partial receiving** (can create multiple receipts for one PO)
 - Formula: `current_stock = current_stock + received_quantity`
 
 ### 4. Line Items Pattern (Same as Invoices)
+
 - Use **popup dialog** for adding/editing items
 - **Table display** (not cards)
 - Real-time totals calculation
 - Columns: Item, Description, Qty, Unit Price, Disc %, Tax %, Total, Actions
 
 ### 5. Auto-Generated Codes
+
 - Suppliers: `SUP-0001`, `SUP-0002`, etc.
 - Purchase Orders: `PO-2025-0001`, `PO-2025-0002`, etc.
 - Purchase Receipts: `GRN-2025-0001`, `GRN-2025-0002`, etc.
@@ -674,6 +726,7 @@ draft → submitted → approved → in_transit → partially_received → recei
 ## Database Schema Reference
 
 Always refer to **`docs/database-design.md`** for:
+
 - Complete database schema
 - Table relationships
 - Column definitions
@@ -685,6 +738,7 @@ Always refer to **`docs/database-design.md`** for:
 ## API Response Formats
 
 ### Suppliers
+
 ```typescript
 {
   data: Supplier[],
@@ -698,6 +752,7 @@ Always refer to **`docs/database-design.md`** for:
 ```
 
 ### Purchase Orders
+
 ```typescript
 {
   data: PurchaseOrder[],
@@ -734,6 +789,7 @@ Always refer to **`docs/database-design.md`** for:
 ### Test Environment Setup ✅
 
 **Completed:**
+
 - ✅ Development server running at http://localhost:3000
 - ✅ Supabase local instance running at http://127.0.0.1:54321
 - ✅ Database migrations applied successfully
@@ -759,6 +815,7 @@ Always refer to **`docs/database-design.md`** for:
 ### Test Execution Plan
 
 **Next Steps:**
+
 1. **Authentication Setup** - Ensure user authentication is configured for API access
 2. **Suppliers Module Testing**
    - Test create supplier flow
@@ -799,6 +856,7 @@ Always refer to **`docs/database-design.md`** for:
 ## Testing Checklist
 
 ### Suppliers Module
+
 - [ ] Create supplier
 - [ ] Edit supplier
 - [ ] View supplier
@@ -808,6 +866,7 @@ Always refer to **`docs/database-design.md`** for:
 - [ ] Pagination works
 
 ### Purchase Orders Module
+
 - [ ] Create PO (draft)
 - [ ] Edit PO (draft only)
 - [ ] Delete PO (draft only)
@@ -822,6 +881,7 @@ Always refer to **`docs/database-design.md`** for:
 - [ ] Date range filters work
 
 ### Purchase Receipts Module
+
 - [ ] Create receipt from approved PO
 - [ ] Receive full quantity
 - [ ] Receive partial quantity

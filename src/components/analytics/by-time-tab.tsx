@@ -83,9 +83,7 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
           {isLoading ? (
             <Skeleton className="h-[400px] w-full" />
           ) : chartData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {t("noSalesData")}
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t("noSalesData")}</p>
           ) : (
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={chartData}>

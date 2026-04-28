@@ -4,10 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/grns/[id]/approve - Approve GRN and create stock entries
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
     const { id } = await params;

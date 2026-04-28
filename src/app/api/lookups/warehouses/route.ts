@@ -42,7 +42,8 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (!includeInactive) query = query.eq("is_active", true);
-    if (search) query = query.or(`warehouse_code.ilike.%${search}%,warehouse_name.ilike.%${search}%`);
+    if (search)
+      query = query.or(`warehouse_code.ilike.%${search}%,warehouse_name.ilike.%${search}%`);
 
     const { data, error } = await query;
     if (error) {

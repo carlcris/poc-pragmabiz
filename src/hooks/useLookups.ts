@@ -12,9 +12,19 @@ export type LookupWarehouseOption = {
 
 type LookupResponse<T> = { data: T[] };
 
-export function useLookupWarehouses(params?: { search?: string; limit?: number; includeInactive?: boolean }) {
+export function useLookupWarehouses(params?: {
+  search?: string;
+  limit?: number;
+  includeInactive?: boolean;
+}) {
   return useQuery({
-    queryKey: ["lookups", "warehouses", params?.search ?? "", params?.limit ?? 50, params?.includeInactive ?? false],
+    queryKey: [
+      "lookups",
+      "warehouses",
+      params?.search ?? "",
+      params?.limit ?? 50,
+      params?.includeInactive ?? false,
+    ],
     queryFn: () =>
       apiClient.get<LookupResponse<LookupWarehouseOption>>("/api/lookups/warehouses", {
         params: {
@@ -41,12 +51,15 @@ export function useLookupWarehouseLocations(
     ],
     enabled: !!warehouseId,
     queryFn: () =>
-      apiClient.get<LookupResponse<WarehouseLocation>>(`/api/lookups/warehouses/${warehouseId!}/locations`, {
-        params: {
-          search: params?.search,
-          limit: params?.limit ?? 50,
-          includeInactive: params?.includeInactive ? "true" : "false",
-        },
-      }),
+      apiClient.get<LookupResponse<WarehouseLocation>>(
+        `/api/lookups/warehouses/${warehouseId!}/locations`,
+        {
+          params: {
+            search: params?.search,
+            limit: params?.limit ?? 50,
+            includeInactive: params?.includeInactive ? "true" : "false",
+          },
+        }
+      ),
   });
 }

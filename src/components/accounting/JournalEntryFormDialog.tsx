@@ -174,22 +174,43 @@ export function JournalEntryFormDialog({
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="postingDate">{t("postingDate")} *</Label>
-              <Input id="postingDate" type="date" value={postingDate} onChange={(e) => setPostingDate(e.target.value)} required />
+              <Input
+                id="postingDate"
+                type="date"
+                value={postingDate}
+                onChange={(e) => setPostingDate(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="referenceCode">{t("referenceCode")}</Label>
-              <Input id="referenceCode" placeholder={t("referencePlaceholder")} value={referenceCode} onChange={(e) => setReferenceCode(e.target.value)} />
+              <Input
+                id="referenceCode"
+                placeholder={t("referencePlaceholder")}
+                value={referenceCode}
+                onChange={(e) => setReferenceCode(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">{t("descriptionLabel")}</Label>
-              <Input id="description" placeholder={t("descriptionPlaceholder")} value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Input
+                id="description"
+                placeholder={t("descriptionPlaceholder")}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>{t("journalLines")} *</Label>
-              <Button type="button" variant="outline" size="sm" onClick={() => setLines((current) => [...current, createEmptyLine()])}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setLines((current) => [...current, createEmptyLine()])}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 {t("addLine")}
               </Button>
@@ -215,7 +236,9 @@ export function JournalEntryFormDialog({
                           onValueChange={(value) =>
                             setLines((current) =>
                               current.map((entry) =>
-                                entry.tempId === line.tempId ? { ...entry, accountId: value } : entry
+                                entry.tempId === line.tempId
+                                  ? { ...entry, accountId: value }
+                                  : entry
                               )
                             )
                           }
@@ -224,11 +247,13 @@ export function JournalEntryFormDialog({
                             <SelectValue placeholder={t("selectAccount")} />
                           </SelectTrigger>
                           <SelectContent>
-                            {accounts.filter((account) => account.isActive).map((account) => (
-                              <SelectItem key={account.id} value={account.id}>
-                                {account.accountNumber} - {account.accountName}
-                              </SelectItem>
-                            ))}
+                            {accounts
+                              .filter((account) => account.isActive)
+                              .map((account) => (
+                                <SelectItem key={account.id} value={account.id}>
+                                  {account.accountNumber} - {account.accountName}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -281,7 +306,8 @@ export function JournalEntryFormDialog({
                                 entry.tempId === line.tempId
                                   ? {
                                       ...entry,
-                                      credit: e.target.value === "" ? 0 : parseFloat(e.target.value),
+                                      credit:
+                                        e.target.value === "" ? 0 : parseFloat(e.target.value),
                                     }
                                   : entry
                               )
@@ -299,7 +325,9 @@ export function JournalEntryFormDialog({
                               toast.error(t("minLinesError"));
                               return;
                             }
-                            setLines((current) => current.filter((entry) => entry.tempId !== line.tempId));
+                            setLines((current) =>
+                              current.filter((entry) => entry.tempId !== line.tempId)
+                            );
                           }}
                           disabled={lines.length <= 2}
                         >
@@ -309,14 +337,26 @@ export function JournalEntryFormDialog({
                     </TableRow>
                   ))}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={2} className="text-right">{t("totals")}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totals.totalDebit)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(totals.totalCredit)}</TableCell>
+                    <TableCell colSpan={2} className="text-right">
+                      {t("totals")}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(totals.totalDebit)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatCurrency(totals.totalCredit)}
+                    </TableCell>
                     <TableCell />
                   </TableRow>
-                  <TableRow className={isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"}>
+                  <TableRow
+                    className={
+                      isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"
+                    }
+                  >
                     <TableCell colSpan={2} className="text-right font-semibold">
-                      {isBalanced ? `✓ ${t("balanced").toUpperCase()}` : `⚠ ${t("notBalanced").toUpperCase()}`}
+                      {isBalanced
+                        ? `✓ ${t("balanced").toUpperCase()}`
+                        : `⚠ ${t("notBalanced").toUpperCase()}`}
                     </TableCell>
                     <TableCell colSpan={2} className="text-right font-semibold">
                       {t("difference")}: {formatCurrency(Math.abs(totals.difference))}

@@ -32,10 +32,9 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
       setAvailableBusinessUnits(businessUnits);
 
       // Check if current BU is valid for this user
-      const matchingCurrentBusinessUnit =
-        currentBusinessUnit
-          ? businessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ?? null
-          : null;
+      const matchingCurrentBusinessUnit = currentBusinessUnit
+        ? (businessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ?? null)
+        : null;
       const isCurrentBUValid = matchingCurrentBusinessUnit !== null;
 
       // Auto-select default BU if none is selected OR if current BU is invalid

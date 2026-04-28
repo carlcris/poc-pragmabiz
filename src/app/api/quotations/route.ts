@@ -36,7 +36,9 @@ const decodeCursor = (value: string | null): QuotationCursor | null => {
   if (!value) return null;
 
   try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf-8")) as Partial<QuotationCursor>;
+    const parsed = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf-8")
+    ) as Partial<QuotationCursor>;
     if (
       typeof parsed.quotationDate === "string" &&
       typeof parsed.createdAt === "string" &&
@@ -270,7 +272,10 @@ export async function POST(request: NextRequest) {
 
     if (fetchError || !quotation) {
       logQuotationError("Error fetching created quotation:", fetchError);
-      return NextResponse.json({ error: "Quotation was created but could not be loaded" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Quotation was created but could not be loaded" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(quotation, { status: 201 });

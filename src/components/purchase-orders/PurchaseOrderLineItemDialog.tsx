@@ -79,7 +79,8 @@ export function PurchaseOrderLineItemDialog({
   });
   const selectedItemId = form.watch("itemId");
   const { data: selectedItemResponse } = useItem(selectedItemId);
-  const selectedItem = items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
+  const selectedItem =
+    items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
 
   useEffect(() => {
     if (open && item) {
@@ -135,9 +136,7 @@ export function PurchaseOrderLineItemDialog({
         <DialogHeader>
           <DialogTitle>{mode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
-            {mode === "edit"
-              ? t("editDescription")
-              : t("createDescription")}
+            {mode === "edit" ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -179,10 +178,11 @@ export function PurchaseOrderLineItemDialog({
                               </span>
                             </div>
                             <div className="mt-0.5 text-xs text-muted-foreground">
-                              {t("onHand")}: {("onHand" in entry ? entry.onHand ?? 0 : 0).toFixed(2)}{" "}
-                              {"uom" in entry ? entry.uom ?? "" : ""} • {t("available")}:{" "}
-                              {("available" in entry ? entry.available ?? 0 : 0).toFixed(2)}{" "}
-                              {"uom" in entry ? entry.uom ?? "" : ""}
+                              {t("onHand")}:{" "}
+                              {("onHand" in entry ? (entry.onHand ?? 0) : 0).toFixed(2)}{" "}
+                              {"uom" in entry ? (entry.uom ?? "") : ""} • {t("available")}:{" "}
+                              {("available" in entry ? (entry.available ?? 0) : 0).toFixed(2)}{" "}
+                              {"uom" in entry ? (entry.uom ?? "") : ""}
                             </div>
                           </div>
                           <div className="ml-4 flex-shrink-0 text-sm font-semibold">
@@ -302,7 +302,9 @@ export function PurchaseOrderLineItemDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 {t("cancel")}
               </Button>
-              <Button type="submit">{mode === "edit" ? t("updateAction") : t("createAction")}</Button>
+              <Button type="submit">
+                {mode === "edit" ? t("updateAction") : t("createAction")}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

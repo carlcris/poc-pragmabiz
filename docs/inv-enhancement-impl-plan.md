@@ -15,7 +15,6 @@ No changes to existing code yet.
 ALTER TABLE inventory_transactions ADD COLUMN variant_id uuid NULL;
 ALTER TABLE inventory_transactions ADD COLUMN packaging_id uuid NULL;
 
-
 This does not break anything.
 
 1.3 API Backward Compatibility
@@ -68,8 +67,7 @@ Default = auto-selected if only one.
 
 When user selects packaging:
 
-base_qty = qty_input * qty_per_pack
-
+base_qty = qty_input \* qty_per_pack
 
 When user selects variant:
 

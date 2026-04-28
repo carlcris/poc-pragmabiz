@@ -1,4 +1,5 @@
 # Multi-Business Unit Implementation TODO
+
 ## Progress Tracking
 
 **Start Date:** 2025-12-21
@@ -9,9 +10,11 @@
 ---
 
 ## Phase 1: Database Schema & Migration (Foundation)
+
 **Status:** ✅ Completed | **Progress:** 6/6
 
 ### ✅ 1.1 Create business_units Table
+
 - [x] Create migration file: `20251221000000_add_business_unit_support.sql`
 - [x] Add business_units table schema
 - [x] Add unique constraint on (company_id, code)
@@ -20,11 +23,13 @@
 - [x] Test table creation locally
 
 **Files:**
+
 - `supabase/migrations/20251221000000_add_business_unit_support.sql`
 
 ---
 
 ### ✅ 1.2 Create user_business_unit_access Table
+
 - [x] Add user_business_unit_access table schema
 - [x] Add composite primary key (user_id, business_unit_id)
 - [x] Add unique constraint for default BU per user
@@ -33,11 +38,13 @@
 - [x] Test table creation locally
 
 **Files:**
+
 - Same migration file as 1.1
 
 ---
 
 ### ✅ 1.3 Extend Operational Tables
+
 - [x] Add business_unit_id to sales_quotations
 - [x] Add business_unit_id to sales_orders
 - [x] Add business_unit_id to sales_invoices
@@ -60,21 +67,25 @@
 - [x] Test column additions locally
 
 **Files:**
+
 - Same migration file as 1.1
 
 ---
 
 ### ✅ 1.4 Create Default Business Unit
+
 - [x] Insert default BU for Demo Company
 - [x] Verify default BU created successfully
 - [x] Test query for default BU
 
 **Files:**
+
 - `supabase/seed.sql`
 
 ---
 
 ### ✅ 1.5 Backfill Existing Data
+
 - [x] Backfill sales_quotations with default BU
 - [x] Backfill sales_orders with default BU
 - [x] Backfill sales_invoices with default BU
@@ -97,32 +108,38 @@
 - [x] Check for NULL business_unit_id records
 
 **Files:**
+
 - `supabase/seed.sql`
 
 ---
 
 ### ✅ 1.6 Grant Default BU Access to Existing Users
+
 - [x] Insert user_business_unit_access for all existing users
 - [x] Set is_default = true for all grants
 - [x] Verify all users have access to default BU
 - [x] Test user access query
 
 **Files:**
+
 - `supabase/seed.sql`
 
 ---
 
 ## Phase 2: Row Level Security (RLS) Implementation
+
 **Status:** ✅ Completed | **Progress:** 3/3
 
 > **RESOLVED**: JWT-based approach implemented to solve connection pooling issue.
+>
 > - Auth hook injects `current_business_unit_id` claim into JWT
 > - RLS policies read from JWT via `get_current_business_unit_id()` function
 > - Database tracks current BU selection in `user_business_unit_access.is_current`
 > - Session refresh updates JWT with new BU context
-> **Status**: Working correctly with full data isolation
+>   **Status**: Working correctly with full data isolation
 
 ### ✅ 2.1 Enable RLS on All Tables
+
 - [x] Enable RLS on sales_quotations
 - [x] Enable RLS on sales_orders
 - [x] Enable RLS on sales_invoices
@@ -144,11 +161,13 @@
 - [x] Verify RLS enabled on all tables
 
 **Files:**
+
 - `supabase/migrations/20251221000001_enable_bu_rls.sql`
 
 ---
 
 ### ✅ 2.2 Create RLS Policies for All Tables
+
 - [x] Create SELECT policy for sales_quotations
 - [x] Create INSERT policy for sales_quotations
 - [x] Create UPDATE policy for sales_quotations
@@ -173,11 +192,13 @@
 - [x] Verify all policies created (18 tables × 4 policies = 72 policies)
 
 **Files:**
+
 - `supabase/migrations/20251221000001_enable_bu_rls.sql`
 
 ---
 
 ### ✅ 2.3 Create Performance Indexes
+
 - [x] Create index on sales_quotations(business_unit_id)
 - [x] Create index on sales_orders(business_unit_id)
 - [x] Create index on sales_invoices(business_unit_id)
@@ -200,14 +221,17 @@
 - [x] Run EXPLAIN ANALYZE to verify index usage
 
 **Files:**
+
 - `supabase/migrations/20251221000001_enable_bu_rls.sql`
 
 ---
 
 ## Phase 3: Backend Middleware & Context Management
+
 **Status:** ✅ Completed | **Progress:** 5/5
 
 ### ✅ 3.1 Create Business Unit Store
+
 - [x] Create businessUnitStore.ts with Zustand
 - [x] Add currentBusinessUnit state
 - [x] Add availableBusinessUnits state
@@ -218,22 +242,26 @@
 - [x] Test store in isolation
 
 **Files:**
+
 - `src/stores/businessUnitStore.ts`
 
 ---
 
 ### ✅ 3.2 Create TypeScript Types
+
 - [x] Create BusinessUnit interface
 - [x] Create UserBusinessUnitAccess interface
 - [x] Create BusinessUnitFilters type
 - [x] Export types from index
 
 **Files:**
+
 - `src/types/business-unit.ts`
 
 ---
 
 ### ✅ 3.3 Create Database Context Function
+
 - [x] Create set_business_unit_context function
 - [x] Create get_current_business_unit_id function
 - [x] Add user access verification
@@ -244,12 +272,14 @@
 - [x] Test function without authentication
 
 **Files:**
+
 - `supabase/migrations/20251221000002_add_bu_context_function.sql`
 - `supabase/migrations/20251224000000_fix_get_current_business_unit_function_name.sql`
 
 ---
 
 ### ✅ 3.4 Create API Routes
+
 - [x] Create GET /api/business-units route
 - [x] Create POST /api/business-units/switch route
 - [x] Add authentication check
@@ -259,11 +289,13 @@
 - [x] Test API endpoint
 
 **Files:**
+
 - `src/app/api/business-units/route.ts`
 
 ---
 
 ### ✅ 3.5 Create Supabase Client Wrapper
+
 - [x] Create createServerClientWithBU function
 - [x] Create createClientWithBU function (client-side)
 - [x] Auto-inject BU context via headers
@@ -272,15 +304,18 @@
 - [x] Document usage
 
 **Files:**
+
 - `src/lib/supabase/client-with-bu.ts`
 - `src/lib/supabase/server-with-bu.ts`
 
 ---
 
 ## Phase 4: Frontend Components
+
 **Status:** ✅ Completed | **Progress:** 4/4
 
 ### ✅ 4.1 Create BusinessUnitSwitcher Component
+
 - [x] Create component file
 - [x] Add Popover/Command UI
 - [x] Integrate with businessUnitStore
@@ -292,11 +327,13 @@
 - [x] Test component in isolation
 
 **Files:**
+
 - `src/components/business-unit/BusinessUnitSwitcher.tsx`
 
 ---
 
 ### ✅ 4.2 Create BusinessUnitProvider Component
+
 - [x] Create provider component
 - [x] Load available BUs on mount
 - [x] Auto-select default BU
@@ -305,11 +342,13 @@
 - [x] Test provider
 
 **Files:**
+
 - `src/components/business-unit/BusinessUnitProvider.tsx`
 
 ---
 
 ### ✅ 4.3 Add BU Switcher to Layout
+
 - [x] Update Sidebar component
 - [x] Add BusinessUnitSwitcher to header
 - [x] Position switcher appropriately
@@ -317,25 +356,30 @@
 - [x] Verify on all screen sizes
 
 **Files:**
+
 - `src/components/layout/Sidebar.tsx`
 
 ---
 
 ### ✅ 4.4 Wrap App with BusinessUnitProvider
+
 - [x] Update root layout
 - [x] Add BusinessUnitProvider wrapper
 - [x] Test provider initialization
 - [x] Verify BU context available app-wide
 
 **Files:**
+
 - `src/app/(dashboard)/layout.tsx`
 
 ---
 
 ## Phase 5: Update Existing APIs & Forms
+
 **Status:** ✅ Completed | **Progress:** 2/2
 
 ### ✅ 5.1 Update All API Client Files
+
 - [x] Update sales quotations API client (`src/lib/api/quotations.ts`)
 - [x] Update sales orders API client
 - [x] Update sales invoices API client
@@ -358,12 +402,14 @@
 - [x] Verify RLS filtering works with JWT-based approach
 
 **Files:**
+
 - `src/lib/api/*.ts` (all API client files use apiClient with BU headers)
 - `src/app/api/**/route.ts` (all server routes use createServerClientWithBU)
 
 ---
 
 ### ✅ 5.2 Update All Forms & Create Operations
+
 - [x] Update sales quotation form
 - [x] Update sales order form
 - [x] Update sales invoice form
@@ -383,6 +429,7 @@
 - [x] Test form submissions
 
 **Files:**
+
 - `src/components/**/FormDialog.tsx` (all forms work through API clients)
 
 **Note**: Forms use API clients which send `x-business-unit-id` header. Server-side routes use `createServerClientWithBU()` which gets BU from JWT. RLS policies automatically inject and validate business_unit_id. No form changes needed.
@@ -390,9 +437,11 @@
 ---
 
 ## Phase 6: Testing & Validation
+
 **Status:** ⬜ Not Started | **Progress:** 0/5
 
 ### ⬜ 6.1 RLS Policy Testing
+
 - [ ] Test SELECT with valid BU context
 - [ ] Test SELECT with invalid BU context
 - [ ] Test SELECT without BU context
@@ -406,11 +455,13 @@
 - [ ] Document test results
 
 **Files:**
+
 - `docs/testing/bu-rls-test-results.md`
 
 ---
 
 ### ⬜ 6.2 Integration Testing
+
 - [ ] Test user login with default BU
 - [ ] Test BU switcher dropdown
 - [ ] Test BU switching functionality
@@ -423,6 +474,7 @@
 ---
 
 ### ⬜ 6.3 Backward Compatibility Testing
+
 - [ ] Test existing sales workflows
 - [ ] Test existing purchase workflows
 - [ ] Test existing inventory workflows
@@ -435,6 +487,7 @@
 ---
 
 ### ⬜ 6.4 Performance Testing
+
 - [ ] Benchmark query performance with RLS
 - [ ] Verify index usage with EXPLAIN
 - [ ] Test with large datasets
@@ -446,6 +499,7 @@
 ---
 
 ### ⬜ 6.5 Security Testing
+
 - [ ] Attempt cross-BU data access
 - [ ] Test SQL injection scenarios
 - [ ] Verify RLS cannot be bypassed
@@ -457,9 +511,11 @@
 ---
 
 ## Phase 7: Documentation & Deployment
+
 **Status:** ⬜ Not Started | **Progress:** 0/4
 
 ### ⬜ 7.1 User Documentation
+
 - [ ] Write BU switcher user guide
 - [ ] Document BU access management
 - [ ] Create admin guide for BU setup
@@ -467,11 +523,13 @@
 - [ ] Record demo video
 
 **Files:**
+
 - `docs/user-guide/business-units.md`
 
 ---
 
 ### ⬜ 7.2 Developer Documentation
+
 - [ ] Document RLS architecture
 - [ ] Document BU context flow
 - [ ] Add code examples
@@ -479,11 +537,13 @@
 - [ ] Create migration guide
 
 **Files:**
+
 - `docs/developer/business-unit-architecture.md`
 
 ---
 
 ### ⬜ 7.3 Database Migration Verification
+
 - [ ] Test migration on fresh database
 - [ ] Test migration on existing data
 - [ ] Verify rollback procedure
@@ -491,11 +551,13 @@
 - [ ] Create deployment checklist
 
 **Files:**
+
 - `docs/deployment/bu-migration-checklist.md`
 
 ---
 
 ### ⬜ 7.4 Production Deployment
+
 - [ ] Create deployment plan
 - [ ] Schedule maintenance window
 - [ ] Backup production database
@@ -509,6 +571,7 @@
 ## Summary Statistics
 
 **Phase Completion:**
+
 - Phase 1 (Database Schema): ✅ 6/6 (100%)
 - Phase 2 (RLS): ✅ 3/3 (100% - JWT-based approach working)
 - Phase 3 (Backend): ✅ 5/5 (100%)
@@ -530,9 +593,11 @@
 ## Notes & Blockers
 
 ### Current Blockers
+
 None - All blockers resolved!
 
 ### Important Decisions
+
 - Using Zustand for BU state management (persist to localStorage)
 - Using RLS as primary isolation mechanism with JWT-based context
 - Using custom auth hook to inject business_unit_id into JWT claims
@@ -541,6 +606,7 @@ None - All blockers resolved!
 - Query invalidation on BU switch (ensures fresh data)
 
 ### Risk Register
+
 1. **Data Migration Risk:** Backfilling large datasets may be slow
    - Mitigation: Run during maintenance window, use batching
 

@@ -35,8 +35,13 @@ export const useUpdateItemUnitOption = (itemId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ unitOptionId, data }: { unitOptionId: string; data: UpdateItemUnitOptionRequest }) =>
-      itemUnitOptionsApi.updateItemUnitOption(itemId, unitOptionId, data),
+    mutationFn: ({
+      unitOptionId,
+      data,
+    }: {
+      unitOptionId: string;
+      data: UpdateItemUnitOptionRequest;
+    }) => itemUnitOptionsApi.updateItemUnitOption(itemId, unitOptionId, data),
     onSuccess: () => invalidateItemQueries(queryClient, itemId),
   });
 };
@@ -45,7 +50,8 @@ export const useDeleteItemUnitOption = (itemId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (unitOptionId: string) => itemUnitOptionsApi.deleteItemUnitOption(itemId, unitOptionId),
+    mutationFn: (unitOptionId: string) =>
+      itemUnitOptionsApi.deleteItemUnitOption(itemId, unitOptionId),
     onSuccess: () => invalidateItemQueries(queryClient, itemId),
   });
 };

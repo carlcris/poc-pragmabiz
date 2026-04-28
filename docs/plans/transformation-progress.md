@@ -12,6 +12,7 @@
 **Migration File:** `supabase/migrations/20251217000000_transformation_schema.sql`
 
 **Tables Created:**
+
 - ✅ `transformation_templates` - Reusable transformation recipes
 - ✅ `transformation_template_inputs` - Template input items (N per template)
 - ✅ `transformation_template_outputs` - Template output items (N per template)
@@ -21,6 +22,7 @@
 - ✅ `transformation_lineage` - N→M traceability
 
 **Features:**
+
 - ✅ Foreign keys to companies, items, warehouses, users, units_of_measure
 - ✅ Triggers for auto-updating timestamps
 - ✅ **Template immutability enforcement** (blocks edits when usage_count > 0)
@@ -36,11 +38,13 @@
 ### 2. ✅ TypeScript Types (EPIC 1)
 
 **Files Created:**
+
 - ✅ `src/types/transformation-template.ts`
 - ✅ `src/types/transformation-order.ts`
 - ✅ `src/types/transformation-lineage.ts`
 
 **Key Interfaces:**
+
 - `TransformationTemplate`, `TransformationTemplateInput`, `TransformationTemplateOutput`
 - `TransformationOrder`, `TransformationOrderInput`, `TransformationOrderOutput`
 - `TransformationOrderStatus` (DRAFT → RELEASED → EXECUTING → COMPLETED → CLOSED)
@@ -49,6 +53,7 @@
 - Filter types for list/search operations
 
 **Helper Functions:**
+
 - `isValidTransition(from, to)` - Validates state machine transitions
 - `VALID_TRANSITIONS` map - Defines allowed state changes
 
@@ -57,12 +62,14 @@
 ### 3. ✅ Validation Schemas (EPIC 3 & 4)
 
 **Files Created:**
+
 - ✅ `src/lib/validations/transformation-template.ts`
 - ✅ `src/lib/validations/transformation-order.ts`
 
 **Validation Rules:**
 
 **Templates:**
+
 - ✅ At least 1 input and 1 output required
 - ✅ All quantities must be > 0
 - ✅ No circular references (item cannot be both input and output)
@@ -70,6 +77,7 @@
 - ✅ Template code max 50 chars, name max 200 chars
 
 **Orders:**
+
 - ✅ Source and destination warehouses must be different
 - ✅ Planned quantity must be > 0
 - ✅ Execution requires actual quantities for all inputs/outputs
@@ -120,6 +128,7 @@
    - Checks if template can be modified (usage_count == 0)
 
 **Key Features:**
+
 - ✅ Atomic transactions with rollback on failure
 - ✅ Creates stock_transactions for full audit trail
 - ✅ Cost conservation (total input cost = total output cost, except scrap)
@@ -133,10 +142,12 @@
 **Files Created:**
 
 **`src/app/api/transformations/templates/route.ts`**
+
 - ✅ `GET /api/transformations/templates` - List templates with filters
 - ✅ `POST /api/transformations/templates` - Create template with inputs/outputs
 
 **`src/app/api/transformations/templates/[id]/route.ts`**
+
 - ✅ `GET /api/transformations/templates/[id]` - Get template by ID (with inputs/outputs)
 - ✅ `PATCH /api/transformations/templates/[id]` - Update template (limited fields)
   - ✅ Blocks structural changes if usage_count > 0
@@ -144,6 +155,7 @@
 - ✅ `DELETE /api/transformations/templates/[id]` - Soft delete (only if usage_count == 0)
 
 **Features:**
+
 - ✅ Authentication and company isolation
 - ✅ Zod schema validation on all requests
 - ✅ Template immutability enforcement (checks usage_count)
@@ -158,6 +170,7 @@
 **Files Created:**
 
 **`src/app/api/transformations/orders/route.ts`**
+
 - ✅ `GET /api/transformations/orders` - List orders with filters
 - ✅ `POST /api/transformations/orders` - Create order from template
   - ✅ Validates template
@@ -165,6 +178,7 @@
   - ✅ Multiplies quantities by plannedQuantity
 
 **`src/app/api/transformations/orders/[id]/route.ts`**
+
 - ✅ `GET /api/transformations/orders/[id]` - Get order with all details
 - ✅ `PATCH /api/transformations/orders/[id]` - Update order (DRAFT only)
 - ✅ `DELETE /api/transformations/orders/[id]` - Soft delete (DRAFT only)
@@ -172,12 +186,14 @@
 **State Transition Endpoints:**
 
 **`src/app/api/transformations/orders/[id]/release/route.ts`**
+
 - ✅ `POST` - Release order (DRAFT → RELEASED)
   - ✅ Validates template is active
   - ✅ Validates stock availability
   - ✅ Validates state transition
 
 **`src/app/api/transformations/orders/[id]/execute/route.ts`**
+
 - ✅ `POST` - Execute transformation (RELEASED → EXECUTING → COMPLETED)
   - ✅ Validates execution data (actual quantities)
   - ✅ Calls `executeTransformation()` service
@@ -185,14 +201,17 @@
   - ✅ Auto-updates status to COMPLETED
 
 **`src/app/api/transformations/orders/[id]/complete/route.ts`**
+
 - ✅ `POST` - Complete order (EXECUTING → COMPLETED)
   - ✅ Optional endpoint (execution usually auto-completes)
 
 **`src/app/api/transformations/orders/[id]/close/route.ts`**
+
 - ✅ `POST` - Close order (COMPLETED → CLOSED)
   - ✅ Finalizes the order
 
 **Features:**
+
 - ✅ Complete state machine implementation
 - ✅ Authentication and authorization on all endpoints
 - ✅ Zod schema validation
@@ -213,10 +232,12 @@ None currently - ready to proceed with frontend
 ### 7. ✅ API Client Layer
 
 **Files Created:**
+
 - ✅ `src/lib/api/transformation-templates.ts`
 - ✅ `src/lib/api/transformation-orders.ts`
 
 **Template API Client Functions:**
+
 - ✅ `list(params)` - List templates with filters
 - ✅ `getById(id)` - Get single template
 - ✅ `create(data)` - Create new template
@@ -226,6 +247,7 @@ None currently - ready to proceed with frontend
 - ✅ `activate(id)` - Set isActive = true
 
 **Order API Client Functions:**
+
 - ✅ `list(params)` - List orders with filters
 - ✅ `getById(id)` - Get single order with details
 - ✅ `create(data)` - Create order from template
@@ -237,6 +259,7 @@ None currently - ready to proceed with frontend
 - ✅ `close(id)` - Close order (COMPLETED → CLOSED)
 
 **Features:**
+
 - ✅ Type-safe API calls using apiClient
 - ✅ Proper response type enforcement
 - ✅ Clean function signatures following existing patterns
@@ -246,10 +269,12 @@ None currently - ready to proceed with frontend
 ### 8. ✅ React Query Hooks
 
 **Files Created:**
+
 - ✅ `src/hooks/useTransformationTemplates.ts`
 - ✅ `src/hooks/useTransformationOrders.ts`
 
 **Template Hooks:**
+
 - ✅ `useTransformationTemplates(params)` - Query: List templates
 - ✅ `useTransformationTemplate(id)` - Query: Single template
 - ✅ `useCreateTransformationTemplate()` - Mutation: Create
@@ -259,6 +284,7 @@ None currently - ready to proceed with frontend
 - ✅ `useActivateTransformationTemplate()` - Mutation: Activate
 
 **Order Hooks:**
+
 - ✅ `useTransformationOrders(params)` - Query: List orders
 - ✅ `useTransformationOrder(id)` - Query: Single order
 - ✅ `useCreateTransformationOrder()` - Mutation: Create
@@ -270,6 +296,7 @@ None currently - ready to proceed with frontend
 - ✅ `useCloseTransformationOrder()` - Mutation: Close
 
 **Features:**
+
 - ✅ Query key management for cache invalidation
 - ✅ Toast notifications on success/error
 - ✅ Automatic query invalidation on mutations
@@ -286,6 +313,7 @@ None currently - ready to proceed with frontend
 ### 9. ⏳ UI Components & Pages
 
 **Pages to Create:**
+
 ```
 src/app/(dashboard)/inventory/transformations/
 ├── page.tsx                          # List orders
@@ -295,6 +323,7 @@ src/app/(dashboard)/inventory/transformations/
 ```
 
 **Components to Create:**
+
 ```
 src/components/transformations/
 ├── TransformationTemplateForm.tsx    # Create/edit template
@@ -311,6 +340,7 @@ src/components/transformations/
 ## API Endpoints Summary
 
 ### Templates
+
 ```
 GET    /api/transformations/templates              # List
 POST   /api/transformations/templates              # Create
@@ -320,6 +350,7 @@ DELETE /api/transformations/templates/[id]         # Delete
 ```
 
 ### Orders
+
 ```
 GET    /api/transformations/orders                 # List
 POST   /api/transformations/orders                 # Create
@@ -338,23 +369,24 @@ POST   /api/transformations/orders/[id]/close      # COMPLETED → CLOSED
 
 **Overall Progress:** 8/9 tasks (89%)
 
-| Component | Status | Progress |
-|-----------|--------|----------|
-| Database Schema | ✅ Complete | 100% |
-| TypeScript Types | ✅ Complete | 100% |
-| Validation Schemas | ✅ Complete | 100% |
-| Business Logic Service | ✅ Complete | 100% |
-| Template API Routes | ✅ Complete | 100% |
-| Order API Routes | ✅ Complete | 100% |
-| API Client Layer | ✅ Complete | 100% |
-| React Query Hooks | ✅ Complete | 100% |
-| UI Components/Pages | ⏳ Pending | 0% |
+| Component              | Status      | Progress |
+| ---------------------- | ----------- | -------- |
+| Database Schema        | ✅ Complete | 100%     |
+| TypeScript Types       | ✅ Complete | 100%     |
+| Validation Schemas     | ✅ Complete | 100%     |
+| Business Logic Service | ✅ Complete | 100%     |
+| Template API Routes    | ✅ Complete | 100%     |
+| Order API Routes       | ✅ Complete | 100%     |
+| API Client Layer       | ✅ Complete | 100%     |
+| React Query Hooks      | ✅ Complete | 100%     |
+| UI Components/Pages    | ⏳ Pending  | 0%       |
 
 ---
 
 ## What Works Now
 
 **Backend Functionality (100% Complete):**
+
 - ✅ Create transformation templates with N inputs and N outputs
 - ✅ Templates are immutable once used (database enforced)
 - ✅ Create transformation orders from templates
@@ -369,11 +401,13 @@ POST   /api/transformations/orders/[id]/close      # COMPLETED → CLOSED
 
 **What Can Be Tested:**
 You can test the API endpoints directly using:
+
 - Postman / Insomnia
 - curl commands
 - Thunder Client (VS Code extension)
 
 Example:
+
 ```bash
 # Create template
 POST /api/transformations/templates
@@ -433,6 +467,7 @@ POST /api/transformations/orders/[id]/execute
 ## Testing Checklist
 
 ### Backend (Ready to Test)
+
 - [ ] Create template with inputs/outputs
 - [ ] Try to edit locked template (should fail)
 - [ ] Delete template with usage_count > 0 (should fail)
@@ -445,6 +480,7 @@ POST /api/transformations/orders/[id]/execute
 - [ ] Verify stock_transactions are created for audit
 
 ### Frontend (Pending Implementation)
+
 - [ ] List templates
 - [ ] Create/edit template
 - [ ] View template details
@@ -472,6 +508,7 @@ POST /api/transformations/orders/[id]/execute
 ## Architecture Compliance
 
 ✅ **Follows Project Standards:**
+
 - Database naming conventions
 - API route structure
 - TypeScript type patterns
@@ -480,12 +517,14 @@ POST /api/transformations/orders/[id]/execute
 - Error handling patterns
 
 ✅ **Domain-Driven Design:**
+
 - Isolated transformation domain
 - No manufacturing terminology leakage
 - Clear bounded context
 - Ubiquitous language (transformation, not production)
 
 ✅ **SOLID Principles:**
+
 - Single Responsibility: Each service function has one purpose
 - Open/Closed: Extensible for new cost allocation strategies
 - Dependency Inversion: Service depends on abstractions (Supabase client)
@@ -495,21 +534,26 @@ POST /api/transformations/orders/[id]/execute
 ## Files Created (27 files)
 
 ### Database (1 file)
+
 - `supabase/migrations/20251217000000_transformation_schema.sql`
 
 ### Types (3 files)
+
 - `src/types/transformation-template.ts`
 - `src/types/transformation-order.ts`
 - `src/types/transformation-lineage.ts`
 
 ### Validation (2 files)
+
 - `src/lib/validations/transformation-template.ts`
 - `src/lib/validations/transformation-order.ts`
 
 ### Service (1 file)
+
 - `src/services/inventory/transformationService.ts`
 
 ### API Routes (8 files)
+
 - `src/app/api/transformations/templates/route.ts`
 - `src/app/api/transformations/templates/[id]/route.ts`
 - `src/app/api/transformations/orders/route.ts`
@@ -520,14 +564,17 @@ POST /api/transformations/orders/[id]/execute
 - `src/app/api/transformations/orders/[id]/close/route.ts`
 
 ### API Client (2 files)
+
 - `src/lib/api/transformation-templates.ts`
 - `src/lib/api/transformation-orders.ts`
 
 ### React Query Hooks (2 files)
+
 - `src/hooks/useTransformationTemplates.ts`
 - `src/hooks/useTransformationOrders.ts`
 
 ### Documentation (2 files)
+
 - `docs/plans/transformation-todo.md`
 - `docs/plans/transformation-progress.md` (this file)
 
@@ -550,37 +597,38 @@ const { data: templates, isLoading } = useTransformationTemplates({ isActive: tr
 // Create template
 const createTemplate = useCreateTransformationTemplate();
 createTemplate.mutate({
-  templateCode: 'BREAD-001',
-  templateName: 'Bread Production',
-  inputs: [{ itemId: 'flour-id', quantity: 10, uomId: 'kg-id' }],
-  outputs: [{ itemId: 'bread-id', quantity: 100, uomId: 'piece-id' }]
+  templateCode: "BREAD-001",
+  templateName: "Bread Production",
+  inputs: [{ itemId: "flour-id", quantity: 10, uomId: "kg-id" }],
+  outputs: [{ itemId: "bread-id", quantity: 100, uomId: "piece-id" }],
 });
 
 // Create order from template
 const createOrder = useCreateTransformationOrder();
 createOrder.mutate({
-  templateId: 'template-id',
-  sourceWarehouseId: 'warehouse-1',
-  destWarehouseId: 'warehouse-2',
-  plannedQuantity: 1
+  templateId: "template-id",
+  sourceWarehouseId: "warehouse-1",
+  destWarehouseId: "warehouse-2",
+  plannedQuantity: 1,
 });
 
 // Release order
 const releaseOrder = useReleaseTransformationOrder();
-releaseOrder.mutate('order-id');
+releaseOrder.mutate("order-id");
 
 // Execute transformation
 const executeOrder = useExecuteTransformationOrder();
 executeOrder.mutate({
-  id: 'order-id',
+  id: "order-id",
   data: {
-    inputs: [{ inputLineId: 'input-id', consumedQuantity: 10 }],
-    outputs: [{ outputLineId: 'output-id', producedQuantity: 98 }]
-  }
+    inputs: [{ inputLineId: "input-id", consumedQuantity: 10 }],
+    outputs: [{ outputLineId: "output-id", producedQuantity: 98 }],
+  },
 });
 ```
 
 All hooks automatically:
+
 - ✅ Show toast notifications on success/error
 - ✅ Invalidate relevant queries to refresh data
 - ✅ Handle loading and error states

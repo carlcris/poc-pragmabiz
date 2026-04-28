@@ -14,10 +14,7 @@ export default function IntegrationSettingsPage() {
   const { data: settings, isLoading, error } = useSettings("integration");
 
   return (
-    <SettingsPageLayout
-      title={t("integrationTitle")}
-      description={t("integrationDescription")}
-    >
+    <SettingsPageLayout title={t("integrationTitle")} description={t("integrationDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -1,4 +1,5 @@
 # Multi-Business Unit Implementation Plan
+
 ## Strict Compliance with PRD Requirements
 
 ---
@@ -6,9 +7,11 @@
 ## Phase 1: Database Schema & Migration (Foundation)
 
 ### 1.1 Create New Tables
+
 **File:** `supabase/migrations/YYYYMMDD_add_business_unit_support.sql`
 
 #### Table: business_units
+
 ```sql
 CREATE TABLE business_units (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,6 +33,7 @@ CREATE INDEX idx_business_units_active ON business_units(is_active);
 ```
 
 #### Table: user_business_unit_access
+
 ```sql
 CREATE TABLE user_business_unit_access (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -49,6 +53,7 @@ CREATE INDEX idx_user_bu_access_default ON user_business_unit_access(user_id, is
 ```
 
 ### 1.2 Extend Operational Tables
+
 **Add business_unit_id to ALL operational tables:**
 
 ```sql
@@ -84,6 +89,7 @@ ALTER TABLE sales_quotations
 ```
 
 ### 1.3 Create Default Business Unit & Backfill
+
 ```sql
 -- Insert default BU for existing company
 INSERT INTO business_units (id, company_id, code, name, type, is_active)
@@ -130,6 +136,7 @@ END $$;
 ```
 
 ### 1.4 Grant Default Access to Existing Users
+
 ```sql
 -- Grant all existing users access to default BU
 INSERT INTO user_business_unit_access (user_id, business_unit_id, role, is_default)
@@ -152,6 +159,7 @@ AND NOT EXISTS (
 ## Phase 2: Row Level Security (RLS) Implementation
 
 ### 2.1 Enable RLS on All Tables
+
 ```sql
 ALTER TABLE sales_quotations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales_orders ENABLE ROW LEVEL SECURITY;
@@ -174,6 +182,7 @@ ALTER TABLE invoice_payments ENABLE ROW LEVEL SECURITY;
 ```
 
 ### 2.2 Create RLS Policies (Template)
+
 **For EACH table, create 4 policies:**
 
 ```sql
@@ -210,6 +219,7 @@ USING (
 ```
 
 ### 2.3 Create Indexes for RLS Performance
+
 ```sql
 CREATE INDEX idx_sales_quotations_bu ON sales_quotations(business_unit_id);
 CREATE INDEX idx_sales_orders_bu ON sales_orders(business_unit_id);
@@ -236,11 +246,12 @@ CREATE INDEX idx_invoice_payments_bu ON invoice_payments(business_unit_id);
 ## Phase 3: Backend Middleware & Context Management
 
 ### 3.1 Create Business Unit Context Store
+
 **File:** `src/stores/businessUnitStore.ts`
 
 ```typescript
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface BusinessUnit {
   id: string;
@@ -268,18 +279,19 @@ export const useBusinessUnitStore = create<BusinessUnitStore>()(
       clearBusinessUnit: () => set({ currentBusinessUnit: null, availableBusinessUnits: [] }),
     }),
     {
-      name: 'business-unit-storage',
+      name: "business-unit-storage",
     }
   )
 );
 ```
 
 ### 3.2 Create Supabase Client Wrapper with BU Context
+
 **File:** `src/lib/supabase/client-with-bu.ts`
 
 ```typescript
-import { createClient } from '@/lib/supabase/client';
-import { useBusinessUnitStore } from '@/stores/businessUnitStore';
+import { createClient } from "@/lib/supabase/client";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 
 export function createClientWithBU() {
   const supabase = createClient();
@@ -287,8 +299,8 @@ export function createClientWithBU() {
 
   // Set business unit context for all queries
   if (currentBusinessUnit) {
-    supabase.rpc('set_business_unit_context', {
-      bu_id: currentBusinessUnit.id
+    supabase.rpc("set_business_unit_context", {
+      bu_id: currentBusinessUnit.id,
     });
   }
 
@@ -297,6 +309,7 @@ export function createClientWithBU() {
 ```
 
 ### 3.3 Create Database Function for Setting Context
+
 **File:** `supabase/migrations/YYYYMMDD_add_bu_context_function.sql`
 
 ```sql
@@ -322,25 +335,29 @@ $$;
 ```
 
 ### 3.4 Create API Route for BU Operations
+
 **File:** `src/app/api/business-units/route.ts`
 
 ```typescript
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 // GET /api/business-units - Get user's accessible business units
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Get business units user has access to
   const { data, error } = await supabase
-    .from('user_business_unit_access')
-    .select(`
+    .from("user_business_unit_access")
+    .select(
+      `
       business_unit_id,
       role,
       is_default,
@@ -351,8 +368,9 @@ export async function GET() {
         type,
         is_active
       )
-    `)
-    .eq('user_id', user.id);
+    `
+    )
+    .eq("user_id", user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -367,6 +385,7 @@ export async function GET() {
 ## Phase 4: Frontend Components
 
 ### 4.1 Business Unit Switcher Component
+
 **File:** `src/components/business-unit/BusinessUnitSwitcher.tsx`
 
 ```typescript
@@ -447,6 +466,7 @@ export function BusinessUnitSwitcher() {
 ```
 
 ### 4.2 Business Unit Provider
+
 **File:** `src/components/business-unit/BusinessUnitProvider.tsx`
 
 ```typescript
@@ -501,6 +521,7 @@ export function BusinessUnitProvider({ children }: { children: React.ReactNode }
 ```
 
 ### 4.3 Update Layout to Include BU Switcher
+
 **File:** `src/components/layout/Sidebar.tsx`
 
 Add Business Unit Switcher to the sidebar header:
@@ -519,41 +540,37 @@ import { BusinessUnitSwitcher } from '@/components/business-unit/BusinessUnitSwi
 ## Phase 5: Update Existing APIs
 
 ### 5.1 Update All API Routes to Include BU Context
+
 **Pattern for all routes:**
 
 ```typescript
 // Before
-const { data } = await supabase
-  .from('sales_orders')
-  .select('*')
-  .eq('company_id', companyId);
+const { data } = await supabase.from("sales_orders").select("*").eq("company_id", companyId);
 
 // After
 const { currentBusinessUnit } = useBusinessUnitStore.getState();
 if (!currentBusinessUnit) {
-  return NextResponse.json({ error: 'No business unit selected' }, { status: 400 });
+  return NextResponse.json({ error: "No business unit selected" }, { status: 400 });
 }
 
 // Set BU context
-await supabase.rpc('set_business_unit_context', {
-  bu_id: currentBusinessUnit.id
+await supabase.rpc("set_business_unit_context", {
+  bu_id: currentBusinessUnit.id,
 });
 
 // RLS will automatically filter by BU
-const { data } = await supabase
-  .from('sales_orders')
-  .select('*')
-  .eq('company_id', companyId);
+const { data } = await supabase.from("sales_orders").select("*").eq("company_id", companyId);
 ```
 
 ### 5.2 Update All Forms to Include business_unit_id
+
 **Pattern for all create/update operations:**
 
 ```typescript
 // Add business_unit_id to insert/update data
 const { currentBusinessUnit } = useBusinessUnitStore.getState();
 
-await supabase.from('sales_orders').insert({
+await supabase.from("sales_orders").insert({
   ...formData,
   business_unit_id: currentBusinessUnit.id,
   company_id: companyId,
@@ -565,6 +582,7 @@ await supabase.from('sales_orders').insert({
 ## Phase 6: Testing & Validation
 
 ### 6.1 RLS Validation Queries
+
 ```sql
 -- Test 1: Verify BU context isolation
 SET app.current_business_unit_id = '<bu-1-id>';
@@ -584,6 +602,7 @@ VALUES ('<bu-2-id>', ...); -- Should FAIL
 ```
 
 ### 6.2 Integration Tests
+
 - User can only see assigned BUs
 - Default BU auto-selected on login
 - Switching BU refreshes data

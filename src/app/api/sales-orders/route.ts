@@ -863,7 +863,10 @@ export async function POST(request: NextRequest) {
 
       if (configurationError) {
         await supabase.from("sales_orders").delete().eq("id", order.id);
-        return NextResponse.json({ error: "Failed to create sales order item configurations" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to create sales order item configurations" },
+          { status: 500 }
+        );
       }
 
       const configurationIdByOrderItemId = new Map(
@@ -901,7 +904,10 @@ export async function POST(request: NextRequest) {
 
         if (componentError) {
           await supabase.from("sales_orders").delete().eq("id", order.id);
-          return NextResponse.json({ error: "Failed to create sales order item components" }, { status: 500 });
+          return NextResponse.json(
+            { error: "Failed to create sales order item components" },
+            { status: 500 }
+          );
         }
       }
     }

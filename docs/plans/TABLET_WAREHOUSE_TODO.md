@@ -9,6 +9,7 @@
 ## Phase 1: Foundation & Infrastructure (Week 1)
 
 ### Database Migration
+
 - [ ] **CRITICAL**: Create stock request status migration
   - [ ] Add new status values: 'ready_for_pick', 'picking', 'picked', 'delivered'
   - [ ] Add columns: picking_started_at, picking_started_by, delivered_at, delivered_by
@@ -19,7 +20,9 @@
   - **File**: `supabase/migrations/VVVVV_add_stock_request_statuses.sql`
 
 ### Layout & Navigation Structure
+
 - [ ] Create `/tablet` directory structure
+
   ```
   /src/app/tablet
   ├── layout.tsx
@@ -61,6 +64,7 @@
   - [ ] Safe area insets
 
 ### Authentication
+
 - [ ] **Login Page** (`/tablet/login/page.tsx`)
   - [ ] Reuse mobile login pattern
   - [ ] Email/password form
@@ -79,16 +83,18 @@
 ## Phase 2: Receiving Module (Week 2)
 
 ### TypeScript Types
+
 - [ ] **Create types** (`src/types/tablet-receiving.ts`)
   ```typescript
-  - PurchaseReceiptListItem
-  - PurchaseReceiptDetail
-  - ReceiptLineItem
-  - ReceivingFilters
-  - ReceivingStats
+  -PurchaseReceiptListItem -
+    PurchaseReceiptDetail -
+    ReceiptLineItem -
+    ReceivingFilters -
+    ReceivingStats;
   ```
 
 ### API Routes - Receiving
+
 - [ ] **GET /api/tablet/purchase-receipts**
   - [ ] Query params: status, warehouse_id, supplier_id, date_from, date_to, page, limit
   - [ ] Return paginated list with supplier info, item counts, status
@@ -134,6 +140,7 @@
   - [ ] **File**: `src/app/api/tablet/purchase-receipts/[receiptId]/post/route.ts`
 
 ### React Query Hooks - Receiving
+
 - [ ] **Create hooks** (`src/hooks/useTabletReceiving.ts`)
   - [ ] `useTabletPurchaseReceipts(filters)` - List with pagination
   - [ ] `useTabletPurchaseReceipt(receiptId)` - Single receipt
@@ -146,6 +153,7 @@
   - [ ] Error handling and toast notifications
 
 ### UI Components - Receiving
+
 - [ ] **ReceivingCard** (`components/tablet/ReceivingCard.tsx`)
   - [ ] Display: supplier name, receipt #, date
   - [ ] Item count summary (e.g., "5 items")
@@ -177,6 +185,7 @@
   - [ ] Visual indicator if qty mismatch
 
 ### Pages - Receiving
+
 - [ ] **Receiving List Page** (`/tablet/receiving/page.tsx`)
   - [ ] Header with title "Receiving"
   - [ ] Filter bar: status dropdown, date range
@@ -200,6 +209,7 @@
   - [ ] Error handling display
 
 ### Testing - Receiving
+
 - [ ] **API Tests**
   - [ ] List receipts with filters
   - [ ] Get single receipt with items
@@ -227,17 +237,19 @@
 ## Phase 3: Picking Module (Week 3)
 
 ### TypeScript Types
+
 - [ ] **Create types** (`src/types/tablet-picking.ts`)
   ```typescript
-  - StockRequestListItem
-  - StockRequestDetail
-  - PickLineItem
-  - PickingFilters
-  - PickingStats
-  - AvailableStockInfo
+  -StockRequestListItem -
+    StockRequestDetail -
+    PickLineItem -
+    PickingFilters -
+    PickingStats -
+    AvailableStockInfo;
   ```
 
 ### API Routes - Picking
+
 - [ ] **GET /api/tablet/stock-requests**
   - [ ] Query params: status, priority, warehouse_id, date_from, date_to, page, limit
   - [ ] Return paginated list with requester, warehouses, priority, item count
@@ -289,6 +301,7 @@
   - [ ] **File**: `src/app/api/tablet/stock-requests/[requestId]/mark-delivered/route.ts`
 
 ### React Query Hooks - Picking
+
 - [ ] **Create hooks** (`src/hooks/useTabletPicking.ts`)
   - [ ] `useTabletStockRequests(filters)` - List with pagination
   - [ ] `useTabletStockRequest(requestId)` - Single request
@@ -302,6 +315,7 @@
   - [ ] Error handling and toast notifications
 
 ### UI Components - Picking
+
 - [ ] **PickingCard** (`components/tablet/PickingCard.tsx`)
   - [ ] Request code and requester name
   - [ ] Source → Destination warehouses
@@ -336,6 +350,7 @@
   - [ ] Display: "Available: X units"
 
 ### Pages - Picking
+
 - [ ] **Picking List Page** (`/tablet/picking/page.tsx`)
   - [ ] Header with title "Picking"
   - [ ] Status tabs:
@@ -364,6 +379,7 @@
   - [ ] Error handling display
 
 ### Testing - Picking
+
 - [ ] **API Tests**
   - [ ] List requests with status filters
   - [ ] Get single request with stock info
@@ -394,6 +410,7 @@
 ## Phase 4: Polish & Production Readiness (Week 4)
 
 ### Error Handling & Validation
+
 - [ ] **API Error Responses**
   - [ ] Standardized error format
   - [ ] Validation error details
@@ -413,6 +430,7 @@
   - [ ] Recovery guidance
 
 ### Loading States & Feedback
+
 - [ ] **Skeleton Loaders**
   - [ ] List page skeletons
   - [ ] Detail page skeletons
@@ -431,6 +449,7 @@
   - [ ] Action confirmation messages
 
 ### Empty States
+
 - [ ] **No Data States**
   - [ ] Empty receipt list
   - [ ] Empty request list
@@ -439,6 +458,7 @@
   - [ ] Icon illustrations
 
 ### Performance Optimization
+
 - [ ] **Query Optimization**
   - [ ] Review N+1 query issues
   - [ ] Add database indexes if needed
@@ -457,6 +477,7 @@
   - [ ] Dynamic imports for heavy components
 
 ### Security & Permissions
+
 - [ ] **Authentication**
   - [ ] Require auth for all tablet routes
   - [ ] Session timeout handling
@@ -470,6 +491,7 @@
   - [ ] Error on unauthorized access
 
 ### Documentation
+
 - [ ] **API Documentation**
   - [ ] Endpoint reference (inputs, outputs)
   - [ ] Error codes and meanings
@@ -490,6 +512,7 @@
   - [ ] Deployment checklist
 
 ### Testing & QA
+
 - [ ] **Comprehensive Testing**
   - [ ] Unit test coverage > 80%
   - [ ] Integration test all workflows
@@ -506,6 +529,7 @@
   - [ ] Invalid data handling
 
 ### Deployment Preparation
+
 - [ ] **Database**
   - [ ] Run migration on staging
   - [ ] Verify data integrity
@@ -528,6 +552,7 @@
 ## Post-MVP Enhancements (Backlog)
 
 ### Barcode Scanning
+
 - [ ] Research barcode scanner libraries
 - [ ] Camera API integration
 - [ ] External scanner device support
@@ -535,6 +560,7 @@
 - [ ] Scan to confirm pick
 
 ### Location/Bin Management
+
 - [ ] Create warehouse_locations table
 - [ ] Location assignment UI
 - [ ] Location-guided picking
@@ -542,6 +568,7 @@
 - [ ] Location labels/QR codes
 
 ### Advanced Features
+
 - [ ] Offline support with draft queue
 - [ ] Push notifications (new receipts/requests)
 - [ ] Print labels (receipts, pick lists)
@@ -550,12 +577,14 @@
 - [ ] Returns processing
 
 ### Permissions Granularity
+
 - [ ] Create "Warehouse Receiver" role
 - [ ] Create "Picker" role
 - [ ] Granular permissions: receive, pick, deliver
 - [ ] Permission-based UI (hide unauthorized actions)
 
 ### Reporting & Analytics
+
 - [ ] Receiving metrics (speed, accuracy)
 - [ ] Picking metrics (speed, accuracy)
 - [ ] User performance reports
@@ -566,24 +595,28 @@
 ## Progress Tracking
 
 ### Phase 1: Foundation
+
 - **Status**: ⬜ Not Started
 - **Progress**: 0/X tasks
 - **Blockers**: None
 - **Notes**:
 
 ### Phase 2: Receiving
+
 - **Status**: ⬜ Not Started
 - **Progress**: 0/X tasks
 - **Blockers**:
 - **Notes**:
 
 ### Phase 3: Picking
+
 - **Status**: ⬜ Not Started
 - **Progress**: 0/X tasks
 - **Blockers**:
 - **Notes**:
 
 ### Phase 4: Polish
+
 - **Status**: ⬜ Not Started
 - **Progress**: 0/X tasks
 - **Blockers**:
@@ -594,21 +627,25 @@
 ## Decision Log
 
 ### Date: 2026-01-14
+
 **Decision**: Use existing stock_requests table for picking, add new statuses
 **Reason**: Avoid duplicate data structures, leverage existing workflow
 **Impact**: Need migration for new statuses
 
 ### Date: 2026-01-14
+
 **Decision**: Super Admin role for MVP, defer granular permissions
 **Reason**: Faster MVP delivery, add roles in post-MVP
 **Impact**: No role checks needed initially
 
 ### Date: 2026-01-14
+
 **Decision**: Defer barcode scanning to post-MVP
 **Reason**: Complex integration, not critical for MVP
 **Impact**: Use search/manual input for now
 
 ### Date: 2026-01-14
+
 **Decision**: Track picking on stock_requests, no separate pick_sessions table
 **Reason**: Simpler data model, sufficient for MVP
 **Impact**: One picker per request at a time
@@ -618,6 +655,7 @@
 ## Change Log
 
 ### 2026-01-14
+
 - Initial TODO created based on implementation plan
 - All phases outlined with detailed tasks
 - Decision log started

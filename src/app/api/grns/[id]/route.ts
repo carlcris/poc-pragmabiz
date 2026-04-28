@@ -2,16 +2,10 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import {
-  transformItemUnitOptionRow,
-  type DbItemUnitOptionRow,
-} from "@/lib/items/itemUnitOptions";
+import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 // GET /api/grns/[id]
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "view");
     const { id } = await params;
@@ -99,29 +93,25 @@ export async function GET(
     }
 
     // Format response
-    const loadList = Array.isArray(grn.load_list)
-      ? grn.load_list[0]
-      : grn.load_list ?? null;
+    const loadList = Array.isArray(grn.load_list) ? grn.load_list[0] : (grn.load_list ?? null);
     const loadListSupplier = loadList
       ? Array.isArray(loadList.supplier)
         ? loadList.supplier[0]
-        : loadList.supplier ?? null
+        : (loadList.supplier ?? null)
       : null;
     const businessUnit = Array.isArray(grn.business_unit)
       ? grn.business_unit[0]
-      : grn.business_unit ?? null;
-    const warehouse = Array.isArray(grn.warehouse)
-      ? grn.warehouse[0]
-      : grn.warehouse ?? null;
+      : (grn.business_unit ?? null);
+    const warehouse = Array.isArray(grn.warehouse) ? grn.warehouse[0] : (grn.warehouse ?? null);
     const receivedByUser = Array.isArray(grn.received_by_user)
       ? grn.received_by_user[0]
-      : grn.received_by_user ?? null;
+      : (grn.received_by_user ?? null);
     const checkedByUser = Array.isArray(grn.checked_by_user)
       ? grn.checked_by_user[0]
-      : grn.checked_by_user ?? null;
+      : (grn.checked_by_user ?? null);
     const createdByUser = Array.isArray(grn.created_by_user)
       ? grn.created_by_user[0]
-      : grn.created_by_user ?? null;
+      : (grn.created_by_user ?? null);
     const formattedGRN = {
       id: grn.id,
       grnNumber: grn.grn_number,
@@ -245,10 +235,7 @@ export async function GET(
 }
 
 // PUT /api/grns/[id] - Update GRN (receiving quantities)
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
     const { id } = await params;
@@ -433,10 +420,7 @@ export async function DELETE(
 
     // Only allow deleting draft GRNs
     if (existingGRN.status !== "draft") {
-      return NextResponse.json(
-        { error: "Only draft GRNs can be deleted" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Only draft GRNs can be deleted" }, { status: 400 });
     }
 
     // Soft delete GRN
@@ -450,10 +434,7 @@ export async function DELETE(
 
     if (deleteError) {
       console.error("Error deleting GRN:", deleteError);
-      return NextResponse.json(
-        { error: "Failed to delete GRN" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to delete GRN" }, { status: 500 });
     }
 
     return NextResponse.json({

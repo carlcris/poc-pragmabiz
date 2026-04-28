@@ -7,16 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function GET(request: NextRequest) {
   void request;
-  return NextResponse.json(
-    { error: "Packaging has been removed." },
-    { status: 410 }
-  );
+  return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }
 
 export async function POST(request: NextRequest) {
   void request;
-  return NextResponse.json(
-    { error: "Packaging has been removed." },
-    { status: 410 }
-  );
+  return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }

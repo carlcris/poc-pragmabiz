@@ -235,9 +235,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
         <DialogHeader>
           <DialogTitle>{supplier ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
-            {supplier
-              ? t("editDescription")
-              : t("createDescription")}
+            {supplier ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -261,7 +259,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                       <FormItem>
                         <FormLabel>{t("supplierCodeLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t("supplierCodePlaceholder")} {...field} disabled={!!supplier} />
+                          <Input
+                            placeholder={t("supplierCodePlaceholder")}
+                            {...field}
+                            disabled={!!supplier}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -529,7 +531,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                     <FormItem>
                       <FormLabel>{t("shippingAddressLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder={t("addressPlaceholder")} {...field} disabled={sameAsBilling} />
+                        <Input
+                          placeholder={t("addressPlaceholder")}
+                          {...field}
+                          disabled={sameAsBilling}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -544,7 +550,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                       <FormItem>
                         <FormLabel>{t("cityLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t("cityPlaceholder")} {...field} disabled={sameAsBilling} />
+                          <Input
+                            placeholder={t("cityPlaceholder")}
+                            {...field}
+                            disabled={sameAsBilling}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -558,7 +568,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                       <FormItem>
                         <FormLabel>{t("stateLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t("statePlaceholder")} {...field} disabled={sameAsBilling} />
+                          <Input
+                            placeholder={t("statePlaceholder")}
+                            {...field}
+                            disabled={sameAsBilling}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -572,7 +586,11 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: SupplierFor
                       <FormItem>
                         <FormLabel>{t("postalCodeLabel")}</FormLabel>
                         <FormControl>
-                          <Input placeholder={t("postalCodePlaceholder")} {...field} disabled={sameAsBilling} />
+                          <Input
+                            placeholder={t("postalCodePlaceholder")}
+                            {...field}
+                            disabled={sameAsBilling}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -64,13 +64,13 @@ export default function MobileLoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
       {/* Animated Gradient Background */}
-      <div className="absolute inset-0 animate-gradient-shift bg-gradient-to-br from-[#667eea] via-[#764ba2] via-[#f093fb] via-[#4facfe] to-[#00f2fe] bg-[length:400%_400%]" />
+      <div className="animate-gradient-shift absolute inset-0 bg-gradient-to-br from-[#667eea] via-[#4facfe] via-[#764ba2] via-[#f093fb] to-[#00f2fe] bg-[length:400%_400%]" />
 
       {/* Floating Background Shapes */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[10%] top-[10%] h-[200px] w-[200px] animate-float-slow rounded-full bg-white/10" />
-        <div className="absolute bottom-[15%] right-[15%] h-[150px] w-[150px] animate-float-medium rounded-full bg-white/10" />
-        <div className="absolute left-[5%] top-[60%] h-[100px] w-[100px] animate-float-fast rounded-full bg-white/10" />
+        <div className="animate-float-slow absolute left-[10%] top-[10%] h-[200px] w-[200px] rounded-full bg-white/10" />
+        <div className="animate-float-medium absolute bottom-[15%] right-[15%] h-[150px] w-[150px] rounded-full bg-white/10" />
+        <div className="animate-float-fast absolute left-[5%] top-[60%] h-[100px] w-[100px] rounded-full bg-white/10" />
       </div>
 
       <div className="relative z-10 w-full max-w-[360px]">
@@ -85,7 +85,9 @@ export default function MobileLoginPage() {
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-3">
             <div>
-              <label htmlFor="email" className="sr-only">Email</label>
+              <label htmlFor="email" className="sr-only">
+                Email
+              </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400" />
                 <Input
@@ -103,7 +105,9 @@ export default function MobileLoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="sr-only">Password</label>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400" />
                 <Input
@@ -121,7 +125,7 @@ export default function MobileLoginPage() {
             </div>
 
             <div className="flex items-center justify-between pt-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -133,7 +137,7 @@ export default function MobileLoginPage() {
               <button
                 type="button"
                 className="text-xs font-medium text-gray-900 transition-colors hover:text-gray-600"
-                onClick={() => alert('Contact your supervisor for password reset')}
+                onClick={() => alert("Contact your supervisor for password reset")}
               >
                 Forgot password?
               </button>
@@ -164,7 +168,9 @@ export default function MobileLoginPage() {
 
           {/* Powered by */}
           <div className="mt-7 flex flex-col items-center gap-3">
-            <span className="text-sm font-semibold uppercase tracking-wider text-gray-600">Powered by</span>
+            <span className="text-sm font-semibold uppercase tracking-wider text-gray-600">
+              Powered by
+            </span>
             <div className="flex items-center justify-center">
               <Image
                 src="/pragmatica.jpeg"
@@ -181,24 +187,51 @@ export default function MobileLoginPage() {
       {/* Custom Animations Styles */}
       <style jsx>{`
         @keyframes gradient-shift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
         }
         @keyframes float-slow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-20px) rotate(3deg); }
-          66% { transform: translateY(20px) rotate(-3deg); }
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          33% {
+            transform: translateY(-20px) rotate(3deg);
+          }
+          66% {
+            transform: translateY(20px) rotate(-3deg);
+          }
         }
         @keyframes float-medium {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-15px) rotate(2deg); }
-          66% { transform: translateY(15px) rotate(-2deg); }
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          33% {
+            transform: translateY(-15px) rotate(2deg);
+          }
+          66% {
+            transform: translateY(15px) rotate(-2deg);
+          }
         }
         @keyframes float-fast {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          33% { transform: translateY(-10px) rotate(1deg); }
-          66% { transform: translateY(10px) rotate(-1deg); }
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          33% {
+            transform: translateY(-10px) rotate(1deg);
+          }
+          66% {
+            transform: translateY(10px) rotate(-1deg);
+          }
         }
         @keyframes slide-in {
           from {

@@ -254,7 +254,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     for (let i = 0; i < resolvedItems.length; i++) {
       const item = resolvedItems[i];
       if (!item.uomId) {
-        return NextResponse.json({ error: "Item UOM not found for purchase receipt" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Item UOM not found for purchase receipt" },
+          { status: 400 }
+        );
       }
       // Get current stock balance from item_warehouse (source of truth)
       const { data: warehouseStock } = await supabase

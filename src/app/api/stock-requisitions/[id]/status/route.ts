@@ -5,10 +5,7 @@ import { RESOURCES } from "@/constants/resources";
 import { sendStockRequisitionEmail } from "@/lib/email";
 
 // PATCH /api/stock-requisitions/[id]/status
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "edit");
     if (unauthorized) return unauthorized;
@@ -81,7 +78,8 @@ export async function PATCH(
         // Fetch complete stock requisition data with all related information
         const { data: srComplete, error: fetchCompleteError } = await supabase
           .from("stock_requisitions")
-          .select(`
+          .select(
+            `
             id,
             sr_number,
             requisition_date,
@@ -114,7 +112,8 @@ export async function PATCH(
                 item_name_cn
               )
             )
-          `)
+          `
+          )
           .eq("id", id)
           .single();
 
@@ -137,9 +136,10 @@ export async function PATCH(
               email?: string | null;
             };
             const createdByUser = srComplete.users as SrCreatedByUser | null;
-            const createdByName = [createdByUser?.first_name, createdByUser?.last_name]
-              .filter(Boolean)
-              .join(" ") || createdByUser?.email || "Unknown";
+            const createdByName =
+              [createdByUser?.first_name, createdByUser?.last_name].filter(Boolean).join(" ") ||
+              createdByUser?.email ||
+              "Unknown";
 
             const supplierLanguage = (supplier?.lang === "chinese" ? "chinese" : "english") as
               | "english"
@@ -154,54 +154,52 @@ export async function PATCH(
               supplierName: supplier?.supplier_name || "Unknown Supplier",
               supplierEmail: supplierEmail,
               requisitionDate: srComplete.requisition_date
-                ? new Date(srComplete.requisition_date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                ? new Date(srComplete.requisition_date).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   })
-                : new Date().toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                : new Date().toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   }),
               requiredByDate: srComplete.required_by_date
-                ? new Date(srComplete.required_by_date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
+                ? new Date(srComplete.required_by_date).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
                   })
                 : undefined,
-              totalAmount: new Intl.NumberFormat('zh-CN', {
-                style: 'currency',
-                currency: 'CNY'
+              totalAmount: new Intl.NumberFormat("zh-CN", {
+                style: "currency",
+                currency: "CNY",
               }).format(srComplete.total_amount || 0),
-              items: ((
-                srComplete.stock_requisition_items as
-                  | Array<{
-                      requested_qty?: number | string | null;
-                      unit_price?: number | string | null;
-                      total_price?: number | string | null;
-                      items?: {
-                        item_code?: string | null;
-                        item_name?: string | null;
-                        item_name_cn?: string | null;
-                      } | null;
-                    }>
-                  | null
-              ) || []).map((item) => ({
+              items: (
+                (srComplete.stock_requisition_items as Array<{
+                  requested_qty?: number | string | null;
+                  unit_price?: number | string | null;
+                  total_price?: number | string | null;
+                  items?: {
+                    item_code?: string | null;
+                    item_name?: string | null;
+                    item_name_cn?: string | null;
+                  } | null;
+                }> | null) || []
+              ).map((item) => ({
                 itemCode: item.items?.item_code || "N/A",
                 itemName:
                   supplierLanguage === "chinese"
                     ? item.items?.item_name_cn || item.items?.item_name || "Unknown Item"
                     : item.items?.item_name || "Unknown Item",
                 requestedQty: Number(item.requested_qty ?? 0),
-                unitPrice: new Intl.NumberFormat('zh-CN', {
-                  style: 'currency',
-                  currency: 'CNY'
+                unitPrice: new Intl.NumberFormat("zh-CN", {
+                  style: "currency",
+                  currency: "CNY",
                 }).format(Number(item.unit_price ?? 0)),
-                totalPrice: new Intl.NumberFormat('zh-CN', {
-                  style: 'currency',
-                  currency: 'CNY'
+                totalPrice: new Intl.NumberFormat("zh-CN", {
+                  style: "currency",
+                  currency: "CNY",
                 }).format(Number(item.total_price ?? 0)),
               })),
               notes: srComplete.notes || undefined,
@@ -213,7 +211,9 @@ export async function PATCH(
 
             // Send email
             await sendStockRequisitionEmail(emailData);
-            console.log(`Email sent successfully for SR ${srComplete.sr_number} to ${supplierEmail}`);
+            console.log(
+              `Email sent successfully for SR ${srComplete.sr_number} to ${supplierEmail}`
+            );
           }
         }
       } catch (emailError) {

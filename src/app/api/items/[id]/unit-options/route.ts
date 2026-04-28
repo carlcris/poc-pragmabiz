@@ -26,8 +26,15 @@ const ITEM_UNIT_OPTION_SELECT = `
   )
 `;
 
-const getUserCompanyId = async (supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"], userId: string) => {
-  const { data: userData } = await supabase.from("users").select("company_id").eq("id", userId).single();
+const getUserCompanyId = async (
+  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  userId: string
+) => {
+  const { data: userData } = await supabase
+    .from("users")
+    .select("company_id")
+    .eq("id", userId)
+    .single();
   return userData?.company_id || null;
 };
 
@@ -60,7 +67,9 @@ const listUnitOptions = async (
   if (error) throw error;
 
   return sortItemUnitOptions(
-    ((data || []) as DbItemUnitOptionRow[]).map((row) => transformItemUnitOptionRow(row, baseUomCode))
+    ((data || []) as DbItemUnitOptionRow[]).map((row) =>
+      transformItemUnitOptionRow(row, baseUomCode)
+    )
   );
 };
 
@@ -136,10 +145,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (body.isDefault && body.isActive === false) {
-      return NextResponse.json(
-        { error: "Default unit option must stay active" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Default unit option must stay active" }, { status: 400 });
     }
 
     const { data: item, error: itemError } = await getItem(supabase, itemId, companyId);
@@ -164,23 +170,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    const { data: inserted, error: insertError } = await insertItemUnitOptionWithRetry<DbItemUnitOptionRow>({
-      supabase,
-      payload: {
-        company_id: companyId,
-        item_id: itemId,
-        uom_id: body.uomId,
-        option_label: body.optionLabel?.trim() || null,
-        qty_per_unit: body.qtyPerUnit,
-        is_base: false,
-        is_default: body.isDefault ?? false,
-        is_active: body.isActive ?? true,
-        sort_order: 0,
-        created_by: user.id,
-        updated_by: user.id,
-      },
-      select: ITEM_UNIT_OPTION_SELECT,
-    });
+    const { data: inserted, error: insertError } =
+      await insertItemUnitOptionWithRetry<DbItemUnitOptionRow>({
+        supabase,
+        payload: {
+          company_id: companyId,
+          item_id: itemId,
+          uom_id: body.uomId,
+          option_label: body.optionLabel?.trim() || null,
+          qty_per_unit: body.qtyPerUnit,
+          is_base: false,
+          is_default: body.isDefault ?? false,
+          is_active: body.isActive ?? true,
+          sort_order: 0,
+          created_by: user.id,
+          updated_by: user.id,
+        },
+        select: ITEM_UNIT_OPTION_SELECT,
+      });
 
     if (insertError) {
       return NextResponse.json(

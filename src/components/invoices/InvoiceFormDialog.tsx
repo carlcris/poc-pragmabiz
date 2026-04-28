@@ -50,9 +50,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
-import {
-  createInvoiceFormSchema,
-} from "@/lib/validations/invoice";
+import { createInvoiceFormSchema } from "@/lib/validations/invoice";
 import type { Invoice } from "@/types/invoice";
 import type { WarehouseLocation } from "@/types/inventory-location";
 import { InvoiceLineItemDialog, type LineItemFormValues } from "./InvoiceLineItemDialog";
@@ -98,7 +96,10 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
 
   const [lineItems, setLineItems] = useState<LineItemFormValues[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<{ index: number; item: LineItemFormValues } | null>(null);
+  const [editingItem, setEditingItem] = useState<{
+    index: number;
+    item: LineItemFormValues;
+  } | null>(null);
 
   const defaultValues = useMemo<InvoiceFormInput>(
     () => ({
@@ -123,7 +124,9 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
   const { data: selectedCustomerData } = useCustomer(selectedCustomerId);
   const { data: selectedWarehouseData } = useWarehouse(selectedWarehouseId || "");
   const selectedCustomer =
-    customers.find((customer) => customer.id === selectedCustomerId) ?? selectedCustomerData ?? null;
+    customers.find((customer) => customer.id === selectedCustomerId) ??
+    selectedCustomerData ??
+    null;
   const selectedWarehouse =
     warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) ??
     selectedWarehouseData?.data ??
@@ -210,7 +213,9 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
 
   const handleSaveItem = (item: LineItemFormValues) => {
     if (editingItem !== null) {
-      setLineItems((items) => items.map((entry, index) => (index === editingItem.index ? item : entry)));
+      setLineItems((items) =>
+        items.map((entry, index) => (index === editingItem.index ? item : entry))
+      );
     } else {
       setLineItems((items) => [...items, item]);
     }
@@ -287,7 +292,9 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
         <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isEditMode ? t("editTitle") : t("createTitle")}</DialogTitle>
-            <DialogDescription>{isEditMode ? t("editDescription") : t("createDescription")}</DialogDescription>
+            <DialogDescription>
+              {isEditMode ? t("editDescription") : t("createDescription")}
+            </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
@@ -295,7 +302,9 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
               <Tabs defaultValue="general" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
-                  <TabsTrigger value="items">{t("lineItemsTab", { count: lineItems.length })}</TabsTrigger>
+                  <TabsTrigger value="items">
+                    {t("lineItemsTab", { count: lineItems.length })}
+                  </TabsTrigger>
                   <TabsTrigger value="terms">{t("termsTab")}</TabsTrigger>
                 </TabsList>
 
@@ -344,7 +353,9 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                             selectedOption={selectedWarehouse}
                             getOptionValue={(warehouse) => warehouse.id}
                             getOptionLabel={(warehouse) => `${warehouse.code} - ${warehouse.name}`}
-                            getOptionSearchValue={(warehouse) => `${warehouse.code} ${warehouse.name}`}
+                            getOptionSearchValue={(warehouse) =>
+                              `${warehouse.code} ${warehouse.name}`
+                            }
                             placeholder={t("selectWarehouse")}
                             searchPlaceholder={t("selectWarehouse")}
                             emptyMessage={t("selectWarehouse")}
@@ -364,13 +375,21 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                       <FormItem>
                         <FormLabel>{t("location")}</FormLabel>
                         <Select
-                          onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)}
+                          onValueChange={(value) =>
+                            field.onChange(value === "__none__" ? "" : value)
+                          }
                           value={field.value || "__none__"}
                           disabled={!selectedWarehouseId}
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder={selectedWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")} />
+                              <SelectValue
+                                placeholder={
+                                  selectedWarehouseId
+                                    ? t("selectLocation")
+                                    : t("selectWarehouseFirst")
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -423,7 +442,14 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                       <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
                       <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
                     </div>
-                    <Button type="button" onClick={() => { setEditingItem(null); setItemDialogOpen(true); }} size="sm">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setEditingItem(null);
+                        setItemDialogOpen(true);
+                      }}
+                      size="sm"
+                    >
                       <Plus className="mr-2 h-4 w-4" />
                       {t("addItem")}
                     </Button>
@@ -458,23 +484,48 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                                   <TableCell>
                                     <div>
                                       <div className="font-medium">{item.itemName}</div>
-                                      <div className="text-sm text-muted-foreground">{item.itemCode}</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {item.itemCode}
+                                      </div>
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
-                                    <span className="text-muted-foreground">{item.uomId || "—"}</span>
+                                    <span className="text-muted-foreground">
+                                      {item.uomId || "—"}
+                                    </span>
                                   </TableCell>
-                                  <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
+                                  <TableCell className="text-right">
+                                    {formatCurrency(item.unitPrice)}
+                                  </TableCell>
                                   <TableCell className="text-right">{item.discount}%</TableCell>
                                   <TableCell className="text-right">{item.taxRate}%</TableCell>
-                                  <TableCell className="text-right font-medium">{formatCurrency(lineTotal)}</TableCell>
+                                  <TableCell className="text-right font-medium">
+                                    {formatCurrency(lineTotal)}
+                                  </TableCell>
                                   <TableCell>
                                     <div className="flex items-center gap-2">
-                                      <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingItem({ index, item: lineItems[index] }); setItemDialogOpen(true); }}>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingItem({ index, item: lineItems[index] });
+                                          setItemDialogOpen(true);
+                                        }}
+                                      >
                                         <Pencil className="h-4 w-4" />
                                       </Button>
-                                      <Button type="button" variant="ghost" size="sm" onClick={() => setLineItems((items) => items.filter((_, itemIndex) => itemIndex !== index))}>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          setLineItems((items) =>
+                                            items.filter((_, itemIndex) => itemIndex !== index)
+                                          )
+                                        }
+                                      >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </div>
@@ -498,7 +549,9 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                           </div>
                           <div className="flex justify-between text-red-600">
                             <span>{t("discount")}:</span>
-                            <span className="font-medium">-{formatCurrency(totals.totalDiscount)}</span>
+                            <span className="font-medium">
+                              -{formatCurrency(totals.totalDiscount)}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span>{t("tax")}:</span>
@@ -545,8 +598,13 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
               </Tabs>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  {t("cancel")}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
                   {createMutation.isPending || updateMutation.isPending
                     ? t("saving")
                     : isEditMode

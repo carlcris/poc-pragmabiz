@@ -139,7 +139,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const purchaseOrder = purchaseOrderData as PurchaseOrderQueryRow;
     const supplier = Array.isArray(purchaseOrder.supplier)
       ? purchaseOrder.supplier[0]
-      : purchaseOrder.supplier ?? null;
+      : (purchaseOrder.supplier ?? null);
 
     // Format response
     const formattedOrder = {
@@ -174,8 +174,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       approvedBy: purchaseOrder.approved_by,
       approvedAt: purchaseOrder.approved_at,
       items: purchaseOrder.items?.map((item) => {
-        const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
-        const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
+        const itemDetails = Array.isArray(item.item) ? item.item[0] : (item.item ?? null);
+        const uom = Array.isArray(item.uom) ? item.uom[0] : (item.uom ?? null);
 
         return {
           id: item.id,

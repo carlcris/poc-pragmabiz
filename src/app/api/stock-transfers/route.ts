@@ -22,16 +22,22 @@ type StockTransferRow = {
   status: string;
   notes: string | null;
   total_items: number | null;
-  from_warehouse?: {
-    id: string;
-    warehouse_code: string | null;
-    warehouse_name: string | null;
-  } | { id: string; warehouse_code: string | null; warehouse_name: string | null }[] | null;
-  to_warehouse?: {
-    id: string;
-    warehouse_code: string | null;
-    warehouse_name: string | null;
-  } | { id: string; warehouse_code: string | null; warehouse_name: string | null }[] | null;
+  from_warehouse?:
+    | {
+        id: string;
+        warehouse_code: string | null;
+        warehouse_name: string | null;
+      }
+    | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
+    | null;
+  to_warehouse?:
+    | {
+        id: string;
+        warehouse_code: string | null;
+        warehouse_name: string | null;
+      }
+    | { id: string; warehouse_code: string | null; warehouse_name: string | null }[]
+    | null;
   stock_transfer_items?: StockTransferItemRow[] | null;
 };
 
@@ -135,11 +141,11 @@ export async function GET(request: NextRequest) {
     const transformedTransfers =
       (transfers as StockTransferRow[] | null)?.map((transfer) => {
         const fromWarehouse = Array.isArray(transfer.from_warehouse)
-          ? transfer.from_warehouse[0] ?? null
-          : transfer.from_warehouse ?? null;
+          ? (transfer.from_warehouse[0] ?? null)
+          : (transfer.from_warehouse ?? null);
         const toWarehouse = Array.isArray(transfer.to_warehouse)
-          ? transfer.to_warehouse[0] ?? null
-          : transfer.to_warehouse ?? null;
+          ? (transfer.to_warehouse[0] ?? null)
+          : (transfer.to_warehouse ?? null);
 
         return {
           id: transfer.id,

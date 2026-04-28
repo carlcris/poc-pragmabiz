@@ -224,15 +224,11 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t("orderDate")}</div>
-                <div className="font-medium">
-                  {formatDate(purchaseOrder.orderDate)}
-                </div>
+                <div className="font-medium">{formatDate(purchaseOrder.orderDate)}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t("expectedDelivery")}</div>
-                <div className="font-medium">
-                  {formatDate(purchaseOrder.expectedDeliveryDate)}
-                </div>
+                <div className="font-medium">{formatDate(purchaseOrder.expectedDeliveryDate)}</div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground">{t("status")}</div>
@@ -461,7 +457,10 @@ export function ReceiveGoodsDialog({ open, onOpenChange, purchaseOrder }: Receiv
                         (itemError, idx: number) =>
                           itemError && (
                             <li key={idx}>
-                              {t("itemError", { index: idx + 1, message: JSON.stringify(itemError) })}
+                              {t("itemError", {
+                                index: idx + 1,
+                                message: JSON.stringify(itemError),
+                              })}
                             </li>
                           )
                       )}

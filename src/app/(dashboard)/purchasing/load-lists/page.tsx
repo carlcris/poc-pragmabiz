@@ -235,10 +235,14 @@ export default function LoadListsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+            {t("title")}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+            {t("subtitle")}
+          </p>
         </div>
-        <Button onClick={handleCreateLL} className="w-full sm:w-auto flex-shrink-0">
+        <Button onClick={handleCreateLL} className="w-full flex-shrink-0 sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           {t("createAction")}
         </Button>
@@ -382,9 +386,7 @@ export default function LoadListsPage() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : !data?.data || data.data.length === 0 ? (
           <EmptyStatePanel
             icon={Package}
@@ -442,10 +444,12 @@ export default function LoadListsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {(!ll.containerNumber && !ll.sealNumber) ? (
+                          {!ll.containerNumber && !ll.sealNumber ? (
                             t("noValue")
                           ) : (
-                            <div>{ll.containerNumber ?? t("noValue")} / {ll.sealNumber ?? t("noValue")}</div>
+                            <div>
+                              {ll.containerNumber ?? t("noValue")} / {ll.sealNumber ?? t("noValue")}
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -484,16 +488,16 @@ export default function LoadListsPage() {
                           onClick={(event) => event.stopPropagation()}
                         >
                           {(ll.status === "draft" || ll.status === "confirmed") && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2"
-                                onClick={() => handleEditLL(ll)}
-                                aria-label={t("edit")}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                <span>{t("edit")}</span>
-                              </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => handleEditLL(ll)}
+                              aria-label={t("edit")}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>{t("edit")}</span>
+                            </Button>
                           )}
                           {ll.status === "draft" && (
                             <Button
@@ -508,29 +512,29 @@ export default function LoadListsPage() {
                             </Button>
                           )}
                           {canCancelLL(ll) || ll.status === "draft" || ll.status === "confirmed" ? (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 w-8 p-0"
-                                    aria-label={t("actions")}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("actions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {canCancelLL(ll) && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleCancelLL(ll)}
+                                    disabled={updateStatusMutation.isPending}
+                                    className="text-destructive focus:text-destructive"
                                   >
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {canCancelLL(ll) && (
-                                    <DropdownMenuItem
-                                      onClick={() => handleCancelLL(ll)}
-                                      disabled={updateStatusMutation.isPending}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <XCircle className="h-4 w-4" />
-                                      <span>{t("cancel")}</span>
-                                    </DropdownMenuItem>
-                                  )}
-                                  {(ll.status === "draft" || ll.status === "confirmed") && (
+                                    <XCircle className="h-4 w-4" />
+                                    <span>{t("cancel")}</span>
+                                  </DropdownMenuItem>
+                                )}
+                                {(ll.status === "draft" || ll.status === "confirmed") && (
                                   <DropdownMenuItem
                                     onClick={() => handleDeleteLL(ll)}
                                     disabled={deleteMutation.isPending}
@@ -539,9 +543,9 @@ export default function LoadListsPage() {
                                     <Trash2 className="h-4 w-4" />
                                     <span>{t("delete")}</span>
                                   </DropdownMenuItem>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           ) : null}
                         </div>
                       </TableCell>
@@ -623,10 +627,7 @@ export default function LoadListsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmLoadList}
-              disabled={updateStatusMutation.isPending}
-            >
+            <AlertDialogAction onClick={confirmLoadList} disabled={updateStatusMutation.isPending}>
               {updateStatusMutation.isPending ? t("confirming") : t("confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>

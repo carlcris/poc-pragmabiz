@@ -145,7 +145,7 @@ const menuItems = [
         resource: RESOURCES.SALES_INVOICES as Resource,
         icon: FileText,
       },
-            {
+      {
         title: "Job Orders",
         href: "/sales/frame-job-orders",
         resource: RESOURCES.SALES_QUOTATIONS as Resource,

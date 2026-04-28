@@ -322,11 +322,15 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                         {!isAssigned && (
                           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{t("available")}</span>
-                            {permission.can_view && <span className="text-green-600">{tCommon("view")}</span>}
+                            {permission.can_view && (
+                              <span className="text-green-600">{tCommon("view")}</span>
+                            )}
                             {permission.can_create && (
                               <span className="text-green-600">{tCommon("create")}</span>
                             )}
-                            {permission.can_edit && <span className="text-green-600">{tCommon("edit")}</span>}
+                            {permission.can_edit && (
+                              <span className="text-green-600">{tCommon("edit")}</span>
+                            )}
                             {permission.can_delete && (
                               <span className="text-green-600">{tCommon("delete")}</span>
                             )}
@@ -348,17 +352,16 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
               total: String(allPermissions.length),
             })}
             {searchQuery && (
-              <span className="ml-2">{t("shownSummary", { count: String(filteredPermissions.length) })}</span>
+              <span className="ml-2">
+                {t("shownSummary", { count: String(filteredPermissions.length) })}
+              </span>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleCancel}>
               {tCommon("cancel")}
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || assignPermissions.isPending}
-            >
+            <Button onClick={handleSave} disabled={!hasChanges || assignPermissions.isPending}>
               {assignPermissions.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -37,11 +37,11 @@ export const itemUnitOptionsApi = {
     unitOptionId: string,
     data: UpdateItemUnitOptionRequest
   ): Promise<{ data: ItemUnitOption }> =>
-    apiClient.put<{ data: ItemUnitOption }>(`/api/items/${itemId}/unit-options/${unitOptionId}`, data),
+    apiClient.put<{ data: ItemUnitOption }>(
+      `/api/items/${itemId}/unit-options/${unitOptionId}`,
+      data
+    ),
 
-  deleteItemUnitOption: async (
-    itemId: string,
-    unitOptionId: string
-  ): Promise<{ success: true }> =>
+  deleteItemUnitOption: async (itemId: string, unitOptionId: string): Promise<{ success: true }> =>
     apiClient.delete<{ success: true }>(`/api/items/${itemId}/unit-options/${unitOptionId}`),
 };

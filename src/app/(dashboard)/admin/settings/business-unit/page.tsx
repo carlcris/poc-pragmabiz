@@ -26,9 +26,7 @@ export default function BusinessUnitSettingsPage() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t("noBusinessUnitSelectedTitle")}</AlertTitle>
-          <AlertDescription>
-            {t("noBusinessUnitSelectedDescription")}
-          </AlertDescription>
+          <AlertDescription>{t("noBusinessUnitSelectedDescription")}</AlertDescription>
         </Alert>
       )}
 

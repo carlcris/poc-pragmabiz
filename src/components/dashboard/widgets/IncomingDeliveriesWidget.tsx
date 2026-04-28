@@ -132,7 +132,9 @@ export function IncomingDeliveriesWidget({
               <Truck className="h-4 w-4" />
               <span>{t("deliveries")}</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-right text-gray-900">{data.count}</span>
+            <span className="text-right text-xl font-bold text-gray-900 sm:text-2xl">
+              {data.count}
+            </span>
           </div>
         </div>
 
@@ -154,15 +156,15 @@ export function IncomingDeliveriesWidget({
                   href={`/purchasing/load-lists/${ll.id}`}
                   className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-sm font-medium">{ll.ll_number}</span>
-                      <Badge variant="outline" className="gap-1 flex-shrink-0">
+                      <Badge variant="outline" className="flex-shrink-0 gap-1">
                         <FileText className="h-3 w-3" />
                         {srCount} {srCount === 1 ? t("sr") : t("srs")}
                       </Badge>
                     </div>
-                    <span className="text-xs text-muted-foreground truncate">
+                    <span className="truncate text-xs text-muted-foreground">
                       {ll.supplier?.supplier_name || t("unknownSupplier")}
                     </span>
                     {ll.estimated_arrival_date && (
@@ -174,10 +176,10 @@ export function IncomingDeliveriesWidget({
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  <div className="flex flex-shrink-0 flex-col items-end gap-2">
                     <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
                     {ll.container_number && (
-                      <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+                      <span className="max-w-[120px] truncate text-xs text-muted-foreground">
                         {ll.container_number}
                       </span>
                     )}

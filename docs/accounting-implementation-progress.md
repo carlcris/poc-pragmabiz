@@ -121,16 +121,16 @@
 
 ## Progress Summary by Phase
 
-| Phase | Description | Progress | Status |
-|-------|-------------|----------|--------|
-| **1** | Database Foundation | 100% (7/7) | 🟢 Complete |
-| **2** | Core Accounting APIs | 100% (6/6) | 🟢 Complete |
-| **3** | AR Integration | 100% (6/6) | 🟢 Complete |
-| **4** | COGS Integration | 100% (4/4) | 🟢 Complete |
-| **5** | AP Integration | 100% (4/4) | 🟢 Complete |
-| **6** | UI Components | 100% (5/5) | 🟢 Complete |
-| **7** | Reports | 0% (0/6) | 🔴 Not Started |
-| **T&D** | Testing & Docs | 0% (0/6) | 🔴 Not Started |
+| Phase   | Description          | Progress   | Status         |
+| ------- | -------------------- | ---------- | -------------- |
+| **1**   | Database Foundation  | 100% (7/7) | 🟢 Complete    |
+| **2**   | Core Accounting APIs | 100% (6/6) | 🟢 Complete    |
+| **3**   | AR Integration       | 100% (6/6) | 🟢 Complete    |
+| **4**   | COGS Integration     | 100% (4/4) | 🟢 Complete    |
+| **5**   | AP Integration       | 100% (4/4) | 🟢 Complete    |
+| **6**   | UI Components        | 100% (5/5) | 🟢 Complete    |
+| **7**   | Reports              | 0% (0/6)   | 🔴 Not Started |
+| **T&D** | Testing & Docs       | 0% (0/6)   | 🔴 Not Started |
 
 ---
 
@@ -148,6 +148,7 @@
 ## Change Log
 
 ### 2024-11-23 - Phase 6 Complete ✅
+
 - ✅ Created Chart of Accounts UI page (`/accounting/chart-of-accounts`)
   - Lists all accounts with filtering and search
   - Shows account hierarchy with indentation
@@ -169,6 +170,7 @@
 - ✅ Real-time data from accounting APIs
 
 ### 2024-11-23 - Phase 5 Complete ✅
+
 - ✅ Created AP posting service (`src/services/accounting/apPosting.ts`)
 - ✅ Implemented `postAPBill()` function:
   - DR Inventory (A-1200)
@@ -183,6 +185,7 @@
 - ✅ Error handling: AP posting failures logged but don't fail business transactions
 
 ### 2024-11-23 - Phase 4 Complete ✅
+
 - ✅ Created COGS posting service (`src/services/accounting/cogsPosting.ts`)
 - ✅ Implemented `calculateCOGS()` function:
   - Retrieves valuation_rate from stock_ledger (most recent entry)
@@ -199,6 +202,7 @@
 - ✅ Error handling: COGS posting failures logged but don't fail business transactions
 
 ### 2024-11-23 - Phase 3 Complete ✅
+
 - ✅ Created AR posting service (`src/services/accounting/arPosting.ts`)
 - ✅ Implemented `postARInvoice()` function:
   - DR Accounts Receivable (A-1100)
@@ -213,6 +217,7 @@
 - ✅ Error handling: GL posting failures logged but don't fail business transactions
 
 ### 2024-11-23 - Phase 2 Complete ✅
+
 - ✅ Created TypeScript types for all accounting entities (`src/types/accounting.ts`)
 - ✅ Implemented Chart of Accounts CRUD APIs:
   - GET/POST `/api/accounting/accounts` - List and create accounts
@@ -232,6 +237,7 @@
 - ✅ Automatic journal code generation using database function
 
 ### 2024-11-22 - Phase 1 Complete ✅
+
 - ✅ Created accounting migration file (`20251122000000_add_accounting_tables.sql`)
 - ✅ Defined 3 core tables: `accounts`, `journal_entries`, `journal_lines`
 - ✅ Implemented alphanumeric account numbering (A-1000, L-2000, etc.)
@@ -242,6 +248,7 @@
 - ✅ Verified seed data - 20 accounts inserted
 
 ### 2024-11-22 - Planning
+
 - ✅ Initial implementation plan created
 - ✅ Todo list structure defined
 - ✅ Progress tracking document created
@@ -251,6 +258,7 @@
 ## Notes & Decisions
 
 ### Key Design Decisions:
+
 1. **Non-Breaking Implementation:** All existing functionality remains unchanged
 2. **Additive Approach:** New tables only, no ALTER TABLE on existing schemas
 3. **Automatic Posting:** GL entries created automatically on status transitions
@@ -259,6 +267,7 @@
 6. **Reference Tracking:** journal_entries.reference_type + reference_id links to source
 
 ### Integration Points:
+
 - Sales Invoice (paid) → AR + Revenue journal
 - Invoice Payment → Cash + AR journal
 - Invoice Creation → COGS + Inventory journal
@@ -269,12 +278,12 @@
 
 ## Risk Register
 
-| Risk | Mitigation | Status |
-|------|------------|--------|
-| Breaking existing invoice workflow | No modifications to existing tables | ✅ Mitigated |
-| Double-entry validation errors | Comprehensive validation before posting | 🟡 Monitor |
-| Performance on large datasets | Proper indexing on journal tables | 🟡 Monitor |
-| COGS calculation accuracy | Use item_warehouse valuation | 🟡 Monitor |
+| Risk                               | Mitigation                              | Status       |
+| ---------------------------------- | --------------------------------------- | ------------ |
+| Breaking existing invoice workflow | No modifications to existing tables     | ✅ Mitigated |
+| Double-entry validation errors     | Comprehensive validation before posting | 🟡 Monitor   |
+| Performance on large datasets      | Proper indexing on journal tables       | 🟡 Monitor   |
+| COGS calculation accuracy          | Use item_warehouse valuation            | 🟡 Monitor   |
 
 ---
 

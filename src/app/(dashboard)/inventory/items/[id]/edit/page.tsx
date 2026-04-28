@@ -65,7 +65,10 @@ function EditItemContent({ params }: EditItemPageProps) {
   const unitOptions = useMemo(() => {
     if (!item?.uom) return unitsOfMeasure;
     if (unitsOfMeasure.some((unit) => unit.code === item.uom)) return unitsOfMeasure;
-    return [{ id: item.uomId || `current-uom-${itemId}`, code: item.uom, name: item.uom }, ...unitsOfMeasure];
+    return [
+      { id: item.uomId || `current-uom-${itemId}`, code: item.uom, name: item.uom },
+      ...unitsOfMeasure,
+    ];
   }, [item?.uom, item?.uomId, itemId, unitsOfMeasure]);
   const getUomLabel = (uomCode: string) => {
     const match = unitOptions.find((unit) => unit.code === uomCode);
@@ -76,12 +79,13 @@ function EditItemContent({ params }: EditItemPageProps) {
   const itemFormSchema = createItemFormSchema((key) => tValidation(key));
   type ItemFormInput = z.input<typeof itemFormSchema>;
   const itemTypes = useMemo(
-    () => [
-      { value: "raw_material", label: t("rawMaterial") },
-      { value: "finished_good", label: t("finishedGood") },
-      { value: "asset", label: t("asset") },
-      { value: "service", label: t("service") },
-    ] as const,
+    () =>
+      [
+        { value: "raw_material", label: t("rawMaterial") },
+        { value: "finished_good", label: t("finishedGood") },
+        { value: "asset", label: t("asset") },
+        { value: "service", label: t("service") },
+      ] as const,
     [t]
   );
 
@@ -168,7 +172,7 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -176,9 +180,9 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   if (error || !item) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-2">Error loading item</p>
+          <p className="mb-2 text-red-500">Error loading item</p>
           <p className="text-sm text-gray-500">{(error as Error)?.message || "Item not found"}</p>
           <Button asChild className="mt-4">
             <Link href="/inventory/items">Back to Items</Link>
@@ -189,7 +193,7 @@ function EditItemContent({ params }: EditItemPageProps) {
   }
 
   return (
-      <div className="space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div>
         <div>
@@ -206,7 +210,9 @@ function EditItemContent({ params }: EditItemPageProps) {
         <Card>
           <CardHeader>
             <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
-            <CardDescription className="text-sm">{t("itemInformationEditDescription")}</CardDescription>
+            <CardDescription className="text-sm">
+              {t("itemInformationEditDescription")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -225,9 +231,7 @@ function EditItemContent({ params }: EditItemPageProps) {
                           <FormControl>
                             <Input {...field} disabled />
                           </FormControl>
-                          <FormDescription>
-                            {t("itemCodeImmutableDescription")}
-                          </FormDescription>
+                          <FormDescription>{t("itemCodeImmutableDescription")}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -561,15 +565,10 @@ function EditItemContent({ params }: EditItemPageProps) {
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
                         <FormLabel className="text-base">{t("activeStatusLabel")}</FormLabel>
-                        <FormDescription>
-                          {t("activeStatusDescription")}
-                        </FormDescription>
+                        <FormDescription>{t("activeStatusDescription")}</FormDescription>
                       </div>
                       <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </FormItem>
                   )}
@@ -584,10 +583,7 @@ function EditItemContent({ params }: EditItemPageProps) {
                   >
                     {t("cancel")}
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={updateItem.isPending}
-                  >
+                  <Button type="submit" disabled={updateItem.isPending}>
                     {updateItem.isPending ? t("saving") : t("updateItem")}
                   </Button>
                 </div>
@@ -601,9 +597,7 @@ function EditItemContent({ params }: EditItemPageProps) {
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-semibold">{t("itemImageLabel")}</CardTitle>
-              <CardDescription className="text-sm">
-                {t("itemImageDescription")}
-              </CardDescription>
+              <CardDescription className="text-sm">{t("itemImageDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>

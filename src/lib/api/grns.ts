@@ -144,10 +144,7 @@ export const grnsApi = {
     return response.json();
   },
 
-  updateDamagedItem: async (
-    id: string,
-    data: UpdateDamagedItemRequest
-  ): Promise<DamagedItem> => {
+  updateDamagedItem: async (id: string, data: UpdateDamagedItemRequest): Promise<DamagedItem> => {
     const response = await fetch(`/api/damaged-items/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

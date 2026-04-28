@@ -391,10 +391,7 @@ export async function DELETE(
       });
 
       if (!salesOrderSync.ok) {
-        return NextResponse.json(
-          { error: salesOrderSync.error },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: salesOrderSync.error }, { status: 500 });
       }
     }
 

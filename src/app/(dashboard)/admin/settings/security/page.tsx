@@ -14,10 +14,7 @@ export default function SecuritySettingsPage() {
   const { data: settings, isLoading, error } = useSettings("security");
 
   return (
-    <SettingsPageLayout
-      title={t("securityTitle")}
-      description={t("securityDescription")}
-    >
+    <SettingsPageLayout title={t("securityTitle")} description={t("securityDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -113,7 +113,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     if (dispatchItems.length === 0) {
-      return NextResponse.json({ error: "No picked quantities available for dispatch" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No picked quantities available for dispatch" },
+        { status: 400 }
+      );
     }
 
     const businessUnitId = auth.currentBusinessUnitId || header.business_unit_id;

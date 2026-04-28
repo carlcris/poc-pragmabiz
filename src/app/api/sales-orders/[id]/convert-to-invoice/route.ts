@@ -288,10 +288,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (invoiceError) {
       logConvertToInvoiceError("Error creating invoice:", invoiceError);
-      return NextResponse.json(
-        { error: "Failed to create invoice" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create invoice" }, { status: 500 });
     }
 
     // Step 6: Copy sales order items to invoice items
@@ -324,10 +321,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Rollback: delete the invoice
       await supabase.from("sales_invoices").delete().eq("id", invoice.id);
       logConvertToInvoiceError("Error creating invoice items:", invoiceItemsError);
-      return NextResponse.json(
-        { error: "Failed to create invoice items" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create invoice items" }, { status: 500 });
     }
 
     // Step 7: Create stock transactions and ledger entries for stock-managed lines only
@@ -552,7 +546,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (updateError) {
       // Note: We don't rollback here as the invoice is already created successfully
-      logConvertToInvoiceError("Error updating sales order status after invoice conversion:", updateError);
+      logConvertToInvoiceError(
+        "Error updating sales order status after invoice conversion:",
+        updateError
+      );
     }
 
     // Step 9: Post AR transaction to general ledger
@@ -576,7 +573,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         logConvertToInvoiceError("AR posting failed after invoice conversion:", arResult.error);
       }
     } catch (postingError) {
-      logConvertToInvoiceError("Unexpected AR posting error after invoice conversion:", postingError);
+      logConvertToInvoiceError(
+        "Unexpected AR posting error after invoice conversion:",
+        postingError
+      );
     }
 
     // Step 10: Calculate and post COGS to general ledger
@@ -619,13 +619,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         });
 
         if (!cogsResult.success && cogsResult.error) {
-          logConvertToInvoiceError("COGS posting failed after invoice conversion:", cogsResult.error);
+          logConvertToInvoiceError(
+            "COGS posting failed after invoice conversion:",
+            cogsResult.error
+          );
         }
       } else if (cogsCalculation.error) {
-        logConvertToInvoiceError("COGS calculation failed after invoice conversion:", cogsCalculation.error);
+        logConvertToInvoiceError(
+          "COGS calculation failed after invoice conversion:",
+          cogsCalculation.error
+        );
       }
     } catch (cogsError) {
-      logConvertToInvoiceError("Unexpected COGS posting error after invoice conversion:", cogsError);
+      logConvertToInvoiceError(
+        "Unexpected COGS posting error after invoice conversion:",
+        cogsError
+      );
     }
 
     // Return success with invoice details

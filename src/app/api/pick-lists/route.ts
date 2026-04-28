@@ -6,7 +6,13 @@ import {
   getWarehouseBusinessUnitMap,
   notifyBusinessUnits,
 } from "@/app/api/_lib/workflow-notifications";
-import { createPickListForDn, fetchPickList, getPickListAuthContext, mapPickListRecord, type PickListStatus } from "./_lib";
+import {
+  createPickListForDn,
+  fetchPickList,
+  getPickListAuthContext,
+  mapPickListRecord,
+  type PickListStatus,
+} from "./_lib";
 
 type CreatePickListBody = {
   dnId?: string;
@@ -76,7 +82,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data: (data || []).map((row) => mapPickListRecord(row as PickListApiRecord)) });
+    return NextResponse.json({
+      data: (data || []).map((row) => mapPickListRecord(row as PickListApiRecord)),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -98,7 +106,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "dnId is required" }, { status: 400 });
     }
 
-    const uniquePickers = Array.from(new Set((body.pickerUserIds || []).map((id) => id.trim()).filter(Boolean)));
+    const uniquePickers = Array.from(
+      new Set((body.pickerUserIds || []).map((id) => id.trim()).filter(Boolean))
+    );
     if (uniquePickers.length === 0) {
       return NextResponse.json({ error: "At least one picker must be assigned" }, { status: 400 });
     }

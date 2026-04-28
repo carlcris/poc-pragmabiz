@@ -96,9 +96,7 @@ export function UserRolesDialog({ open, onOpenChange, user }: UserRolesDialogPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            {t("title", { name: `${user.first_name} ${user.last_name}` })}
-          </DialogTitle>
+          <DialogTitle>{t("title", { name: `${user.first_name} ${user.last_name}` })}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
 

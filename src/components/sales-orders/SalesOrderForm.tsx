@@ -113,7 +113,9 @@ export function SalesOrderForm({
   const selectedCustomerId = form.watch("customerId");
   const { data: selectedCustomerData } = useCustomer(selectedCustomerId);
   const selectedCustomer =
-    customers.find((customer) => customer.id === selectedCustomerId) ?? selectedCustomerData ?? null;
+    customers.find((customer) => customer.id === selectedCustomerId) ??
+    selectedCustomerData ??
+    null;
 
   const totals = useMemo(() => {
     const subtotal = lineItems.reduce(
@@ -364,7 +366,9 @@ export function SalesOrderForm({
                           <TableHead className="text-right">{t("discountPct")}</TableHead>
                           <TableHead className="text-right">{t("taxPct")}</TableHead>
                           <TableHead className="text-right">{t("total")}</TableHead>
-                          <TableHead className="w-[100px] text-center">{tCommon("actions")}</TableHead>
+                          <TableHead className="w-[100px] text-center">
+                            {tCommon("actions")}
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -380,7 +384,9 @@ export function SalesOrderForm({
                               <TableCell>
                                 <div>
                                   <div className="font-medium">{item.itemName}</div>
-                                  <div className="text-sm text-muted-foreground">{item.itemCode}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {item.itemCode}
+                                  </div>
                                   {!item.skipInventory &&
                                   typeof item.available === "number" &&
                                   item.quantity > item.available ? (

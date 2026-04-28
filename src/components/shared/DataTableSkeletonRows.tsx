@@ -25,7 +25,10 @@ export const DataTableSkeletonRows = ({
           const isRightAligned = rightAlignedColumns.includes(columnIndex);
 
           return (
-            <TableCell key={`${rowIndex}-${columnIndex}`} className={isRightAligned ? "text-right" : undefined}>
+            <TableCell
+              key={`${rowIndex}-${columnIndex}`}
+              className={isRightAligned ? "text-right" : undefined}
+            >
               {isActionColumn ? (
                 <div className="flex justify-end gap-2">
                   <Skeleton className="h-8 w-8" />

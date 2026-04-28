@@ -1,8 +1,7 @@
 # PRODUCT REQUIREMENTS DOCUMENT (PRD)
 
-**System:** Sales & Inventory System (ERP-Ready) 
-**Version:** v1.0 
-
+**System:** Sales & Inventory System (ERP-Ready)
+**Version:** v1.0
 
 ## 1. OVERVIEW & OBJECTIVES
 
@@ -39,28 +38,28 @@ To design and implement a modular Sales and Inventory Management System that ser
 
 ### 3.1 Inventory Module
 
-| Submodule | Description | Core Objective |
-|-----------|-------------|----------------|
-| Item Master | Centralized list of all products, ingredients, or materials | Single source of truth for all items |
-| Warehouse Management | Define storage locations, bins, and stock per location | Multi-location stock control |
-| Stock Transactions | Record all movements (in/out/transfer/adjustments) | Maintain real-time stock levels |
-| Reorder Management | Define reorder levels and alerts | Avoid stockouts |
-| Inventory Valuation | Compute inventory cost (FIFO, LIFO, Avg.) | Accurate costing |
-| Batch/Serial Tracking (optional) | Track unique identifiers or expiry | For regulated goods |
-| Recipe / BOM (optional) | Define items composed of other items | Supports manufacturing or restaurants |
+| Submodule                        | Description                                                 | Core Objective                        |
+| -------------------------------- | ----------------------------------------------------------- | ------------------------------------- |
+| Item Master                      | Centralized list of all products, ingredients, or materials | Single source of truth for all items  |
+| Warehouse Management             | Define storage locations, bins, and stock per location      | Multi-location stock control          |
+| Stock Transactions               | Record all movements (in/out/transfer/adjustments)          | Maintain real-time stock levels       |
+| Reorder Management               | Define reorder levels and alerts                            | Avoid stockouts                       |
+| Inventory Valuation              | Compute inventory cost (FIFO, LIFO, Avg.)                   | Accurate costing                      |
+| Batch/Serial Tracking (optional) | Track unique identifiers or expiry                          | For regulated goods                   |
+| Recipe / BOM (optional)          | Define items composed of other items                        | Supports manufacturing or restaurants |
 
 ### 3.2 Sales Module
 
-| Submodule | Description | Core Objective |
-|-----------|-------------|----------------|
-| Customer Master | Manage customer profiles and payment terms | Centralized customer info |
-| Price Lists & Discounts | Set tiered pricing and promotions | Pricing flexibility |
-| Sales Quotation | Draft pre-sale offers | Supports customer negotiation |
-| Sales Order | Confirmed sales commitment | Drives fulfillment workflow |
-| Delivery Note | Records physical delivery | Triggers stock movement |
-| Sales Invoice | Billing document linked to order and delivery | Revenue recognition |
-| Payment Collection | Records payment receipts | Links to finance later |
-| Sales Returns & Credit Notes | Manage returned goods | Adjust stock and customer balance |
+| Submodule                    | Description                                   | Core Objective                    |
+| ---------------------------- | --------------------------------------------- | --------------------------------- |
+| Customer Master              | Manage customer profiles and payment terms    | Centralized customer info         |
+| Price Lists & Discounts      | Set tiered pricing and promotions             | Pricing flexibility               |
+| Sales Quotation              | Draft pre-sale offers                         | Supports customer negotiation     |
+| Sales Order                  | Confirmed sales commitment                    | Drives fulfillment workflow       |
+| Delivery Note                | Records physical delivery                     | Triggers stock movement           |
+| Sales Invoice                | Billing document linked to order and delivery | Revenue recognition               |
+| Payment Collection           | Records payment receipts                      | Links to finance later            |
+| Sales Returns & Credit Notes | Manage returned goods                         | Adjust stock and customer balance |
 
 ## 4. CORE FEATURES & FUNCTIONAL REQUIREMENTS
 
@@ -113,13 +112,13 @@ To design and implement a modular Sales and Inventory Management System that ser
 
 ## 6. USER ROLES & PERMISSIONS
 
-| Role | Responsibilities | Access Scope |
-|------|------------------|--------------|
-| Admin | Manage settings, users, and all data | Full access |
-| Sales Officer | Create orders, invoices, collect payments | Sales module only |
-| Inventory Officer | Manage stock, adjustments, transfers | Inventory module only |
-| Approver / Manager | Approve discounts, adjustments, returns | Restricted approval access |
-| Viewer / Auditor | View-only reports and logs | Read-only access |
+| Role               | Responsibilities                          | Access Scope               |
+| ------------------ | ----------------------------------------- | -------------------------- |
+| Admin              | Manage settings, users, and all data      | Full access                |
+| Sales Officer      | Create orders, invoices, collect payments | Sales module only          |
+| Inventory Officer  | Manage stock, adjustments, transfers      | Inventory module only      |
+| Approver / Manager | Approve discounts, adjustments, returns   | Restricted approval access |
+| Viewer / Auditor   | View-only reports and logs                | Read-only access           |
 
 ## 7. DEPENDENCIES & INTEGRATIONS
 
@@ -129,36 +128,36 @@ None (standalone modules communicating through shared data models).
 
 ### Future Integrations (ERP expansion plan)
 
-| Module | Integration Purpose |
-|--------|-------------------|
-| Procurement | Auto-update inventory from supplier receipts |
-| Accounting | Map invoices to journal entries |
-| CRM | Sync customer records and leads |
-| Manufacturing | Consume BOM and finished goods |
-| HR | Link sales commissions to payroll |
+| Module        | Integration Purpose                          |
+| ------------- | -------------------------------------------- |
+| Procurement   | Auto-update inventory from supplier receipts |
+| Accounting    | Map invoices to journal entries              |
+| CRM           | Sync customer records and leads              |
+| Manufacturing | Consume BOM and finished goods               |
+| HR            | Link sales commissions to payroll            |
 
 ## 8. REPORTS & ANALYTICS
 
-| Report | Description |
-|--------|-------------|
-| Sales Summary Report | Sales by date, product, customer, region |
-| Pending Orders Report | Orders not yet delivered or invoiced |
-| Stock Movement Report | Detailed ledger of stock ins/outs |
-| Reorder Report | Items below reorder point |
-| Item Valuation Report | Current value per item using selected costing method |
+| Report                      | Description                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| Sales Summary Report        | Sales by date, product, customer, region                   |
+| Pending Orders Report       | Orders not yet delivered or invoiced                       |
+| Stock Movement Report       | Detailed ledger of stock ins/outs                          |
+| Reorder Report              | Items below reorder point                                  |
+| Item Valuation Report       | Current value per item using selected costing method       |
 | Sales Performance Dashboard | Visual charts: revenue trends, top products, top customers |
 
 ## 9. SCALABILITY NOTES (ERP-Ready Design)
 
-| Area | Scalability Strategy |
-|------|---------------------|
-| Data Model | Modular tables with shared master data |
-| APIs | Each module exposes standard CRUD endpoints |
-| Workflows | Each transaction supports approval status |
-| Multi-company / Branch | Add Company/Branch ID on all records |
-| Multi-currency / Localization | Configurable currency and tax logic |
-| Extensibility | Custom fields, tags, and metadata supported |
-| Reporting Layer | Compatible with BI tools (Power BI, Metabase, etc.) |
+| Area                          | Scalability Strategy                                |
+| ----------------------------- | --------------------------------------------------- |
+| Data Model                    | Modular tables with shared master data              |
+| APIs                          | Each module exposes standard CRUD endpoints         |
+| Workflows                     | Each transaction supports approval status           |
+| Multi-company / Branch        | Add Company/Branch ID on all records                |
+| Multi-currency / Localization | Configurable currency and tax logic                 |
+| Extensibility                 | Custom fields, tags, and metadata supported         |
+| Reporting Layer               | Compatible with BI tools (Power BI, Metabase, etc.) |
 
 ## 10. SALES ANALYTICS MODULE (Phase 2)
 
@@ -169,6 +168,7 @@ Sales Analytics provides comprehensive insights into sales performance across em
 ### 10.2 Key Features
 
 #### Employee/Sales Agent Management
+
 - Employee master data with role-based assignment (admin, manager, sales_agent, etc.)
 - Configurable commission rates per employee (default 5%, customizable by admin/manager)
 - Distribution territory assignment (city and region/state based on Philippines Mindanao locations)
@@ -176,6 +176,7 @@ Sales Analytics provides comprehensive insights into sales performance across em
 - Commission calculation and tracking (calculation only - payroll integration in future phase)
 
 #### Sales Distribution Tracking
+
 - Track sales by employee/sales agent
 - Track sales by location (city and region/state)
 - Track sales by time period (daily, weekly, monthly, quarterly, yearly)
@@ -183,6 +184,7 @@ Sales Analytics provides comprehensive insights into sales performance across em
 - Real-time aggregation of sales metrics
 
 #### Analytics Dashboard
+
 - **Main Dashboard Widgets:**
   - Today's Sales (real-time)
   - My Sales (for sales agents - own performance)
@@ -214,6 +216,7 @@ Sales Analytics provides comprehensive insights into sales performance across em
     - Sales by region (pie chart)
 
 #### Commission Management
+
 - Automatic commission calculation on invoice confirmation
 - Support for equal split or custom percentage split
 - Commission dashboard for agents (own earnings)
@@ -221,21 +224,23 @@ Sales Analytics provides comprehensive insights into sales performance across em
 - Pending vs paid commission tracking (for future payroll integration)
 
 #### Export Functionality
+
 - Export to Excel (.xlsx) - multi-sheet workbooks with summary and detailed data
 - Export to PDF - formatted reports with charts and tables
 - Filters apply to exports (date range, employee, location)
 
 ### 10.3 User Access Control
 
-| Role | Access Level | Permissions |
-|------|-------------|-------------|
-| Admin | Full Access | View all analytics, manage employees, configure commission rates, export reports |
-| Manager | Management View | View all analytics, view team performance, export reports, assign territories |
-| Sales Agent | Personal View | View own sales, own commission, own performance metrics |
+| Role        | Access Level    | Permissions                                                                      |
+| ----------- | --------------- | -------------------------------------------------------------------------------- |
+| Admin       | Full Access     | View all analytics, manage employees, configure commission rates, export reports |
+| Manager     | Management View | View all analytics, view team performance, export reports, assign territories    |
+| Sales Agent | Personal View   | View own sales, own commission, own performance metrics                          |
 
 ### 10.4 Location Strategy
 
 **Philippines Mindanao Focus:**
+
 - All addresses standardized to Philippines (Mindanao region)
 - Sales location determined by employee's assigned territory (primary approach)
 - Fallback to customer address if employee has no assigned territory
@@ -246,12 +251,14 @@ Sales Analytics provides comprehensive insights into sales performance across em
 ### 10.5 Technical Implementation
 
 **Data Model:**
+
 - `employees` - Employee master data with commission rates
 - `employee_distribution_locations` - Territory assignments
 - `invoice_employees` - Invoice-employee association (split commissions)
 - `sales_distribution` - Pre-aggregated daily statistics (performance optimization)
 
 **API Endpoints:**
+
 - `GET /api/analytics/sales/overview` - Summary KPIs
 - `GET /api/analytics/sales/by-day` - Daily breakdown
 - `GET /api/analytics/sales/by-employee` - Employee performance
@@ -262,10 +269,12 @@ Sales Analytics provides comprehensive insights into sales performance across em
 - `POST /api/employees/{id}/territories` - Territory assignment
 
 **Charts & Visualization:**
+
 - Library: Recharts
 - Chart Types: Line charts, bar charts, pie/donut charts, KPI cards
 
 **Real-time Updates:**
+
 - Analytics update in real-time on invoice confirmation
 - React Query with optimized caching (5 min staleTime)
 - Background aggregation to `sales_distribution` table
@@ -273,24 +282,28 @@ Sales Analytics provides comprehensive insights into sales performance across em
 ### 10.6 Implementation Phases
 
 **Phase 2.1: Foundation (Week 1)**
+
 - Create employee, territory, and analytics tables
 - Data cleanup: Standardize all addresses to Philippines (Mindanao)
 - Historical data backfill: Assign employees to existing invoices
 - Implement commission calculation logic
 
 **Phase 2.2: Core Analytics (Week 2-3)**
+
 - Build analytics API endpoints
 - Create dashboard widgets (today's sales, top agent)
 - Implement main analytics page with 4 tabs
 - Add date range and filter controls
 
 **Phase 2.3: Advanced Features (Week 4)**
+
 - Export to Excel and PDF
 - Commission dashboard for agents
 - Employee territory management UI
 - Manager view vs agent view implementation
 
 **Future Phases (Not in Current Scope):**
+
 - Van/vehicle tracking per transaction
 - Payroll integration with commission payment tracking
 - Advanced territory hierarchy (regions → cities → barangays)
@@ -306,12 +319,12 @@ Sales Analytics provides comprehensive insights into sales performance across em
 
 ### 10.8 Future Integrations
 
-| Module | Integration Purpose |
-|--------|-------------------|
+| Module       | Integration Purpose                                |
+| ------------ | -------------------------------------------------- |
 | HR & Payroll | Link commission calculations to payroll processing |
-| Accounting | Journal entries for commission expenses |
-| CRM | Link sales performance to lead conversion rates |
-| Procurement | Correlate sales trends with inventory reordering |
+| Accounting   | Journal entries for commission expenses            |
+| CRM          | Link sales performance to lead conversion rates    |
+| Procurement  | Correlate sales trends with inventory reordering   |
 
 ## 11. NEXT PHASE RECOMMENDATIONS
 

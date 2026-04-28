@@ -3,6 +3,7 @@
 **Version:** 1.0
 
 **Scope:**
+
 - 2.1 Chart of Accounts (CoA)
 - 2.2 General Ledger (GL)
 - 2.3 Accounts Receivable (AR)
@@ -160,10 +161,12 @@ Deliver a minimal, stable accounting foundation using synchronous API-based inte
 - Inventory module will directly call Accounting API to post:
 
 **COGS Posting**
+
 - Debit COGS
 - Credit Inventory
 
 **Stock Adjustment Posting**
+
 - Increase or decrease Inventory based on adjustment
 - **Account used:**
   - Inventory
@@ -185,57 +188,57 @@ Deliver a minimal, stable accounting foundation using synchronous API-based inte
 
 ### Account
 
-| Field | Description |
-|-------|-------------|
-| `account_id` | Primary key |
-| `number` | Account code |
-| `name` | Account title |
-| `type` | Asset/Liability/Equity/Revenue/Expense/COGS |
-| `parent_account` | Hierarchical grouping |
-| `is_active` | bool |
+| Field            | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `account_id`     | Primary key                                 |
+| `number`         | Account code                                |
+| `name`           | Account title                               |
+| `type`           | Asset/Liability/Equity/Revenue/Expense/COGS |
+| `parent_account` | Hierarchical grouping                       |
+| `is_active`      | bool                                        |
 
 ### Journal
 
-| Field | Description |
-|-------|-------------|
-| `journal_id` | Primary key |
-| `date` | Posting date |
-| `reference` | Source reference ID |
-| `description` | Notes |
-| `status` | Draft or Posted |
+| Field           | Description            |
+| --------------- | ---------------------- |
+| `journal_id`    | Primary key            |
+| `date`          | Posting date           |
+| `reference`     | Source reference ID    |
+| `description`   | Notes                  |
+| `status`        | Draft or Posted        |
 | `source_module` | AR/AP/Inventory/Manual |
 
 ### JournalLine
 
-| Field | Description |
-|-------|-------------|
-| `line_id` | Primary key |
-| `journal_id` | FK |
-| `account_id` | FK |
-| `debit` | amount |
-| `credit` | amount |
-| `description` | optional |
+| Field         | Description |
+| ------------- | ----------- |
+| `line_id`     | Primary key |
+| `journal_id`  | FK          |
+| `account_id`  | FK          |
+| `debit`       | amount      |
+| `credit`      | amount      |
+| `description` | optional    |
 
 ### ARInvoice
 
-| Field |
-|-------|
-| `invoice_id` |
-| `customer_id` |
+| Field          |
+| -------------- |
+| `invoice_id`   |
+| `customer_id`  |
 | `total_amount` |
-| `balance` |
-| `due_date` |
-| `reference` |
-| `status` |
+| `balance`      |
+| `due_date`     |
+| `reference`    |
+| `status`       |
 
 ### ARPayment
 
-| Field |
-|-------|
-| `payment_id` |
-| `amount` |
-| `method` |
-| `reference` |
+| Field                |
+| -------------------- |
+| `payment_id`         |
+| `amount`             |
+| `method`             |
+| `reference`          |
 | `applied_invoice_id` |
 
 ### APInvoice / APPayment
@@ -302,24 +305,28 @@ Mirrors AR with vendor fields.
 ## 5. APIs (MVP)
 
 ### Journals
+
 ```
 POST /api/v1/journals
 GET  /api/v1/ledgers/{account_id}
 ```
 
 ### Accounts Receivable
+
 ```
 POST /api/v1/receivables/invoices
 POST /api/v1/receivables/payments
 ```
 
 ### Accounts Payable
+
 ```
 POST /api/v1/payables/invoices
 POST /api/v1/payables/payments
 ```
 
 ### Inventory Posting
+
 ```
 POST /api/v1/inventory/cogs
 POST /api/v1/inventory/adjustments
@@ -340,13 +347,13 @@ POST /api/v1/inventory/adjustments
 
 ## 7. Acceptance Criteria (MVP)
 
-| ID | Criteria |
-|----|----------|
-| **AC-01** | Creating an AR invoice posts a balanced AR/Revenue journal. |
+| ID        | Criteria                                                                 |
+| --------- | ------------------------------------------------------------------------ |
+| **AC-01** | Creating an AR invoice posts a balanced AR/Revenue journal.              |
 | **AC-02** | COGS posting from Inventory correctly posts COGS and Inventory accounts. |
-| **AC-03** | AP invoices appear in AP Aging after posting. |
-| **AC-04** | Customer and supplier payments adjust balances correctly. |
-| **AC-05** | System rejects unbalanced journals with validation error. |
+| **AC-03** | AP invoices appear in AP Aging after posting.                            |
+| **AC-04** | Customer and supplier payments adjust balances correctly.                |
+| **AC-05** | System rejects unbalanced journals with validation error.                |
 
 ---
 

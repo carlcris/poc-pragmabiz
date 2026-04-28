@@ -60,15 +60,12 @@ export const BusinessUnitSwitcher = ({
   const isInitializing = !hasHydrated || (isLoading && !currentBusinessUnit);
   const effectiveBusinessUnits =
     availableBusinessUnits.length > 0 ? availableBusinessUnits : fallbackBusinessUnits;
-  const resolvedCurrentBusinessUnit =
-    currentBusinessUnit
-      ? effectiveBusinessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ??
-        currentBusinessUnit
-      : null;
+  const resolvedCurrentBusinessUnit = currentBusinessUnit
+    ? (effectiveBusinessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ??
+      currentBusinessUnit)
+    : null;
   const displayBusinessUnitName =
-    resolvedCurrentBusinessUnit?.name ||
-    initialBusinessUnitName ||
-    null;
+    resolvedCurrentBusinessUnit?.name || initialBusinessUnitName || null;
 
   useEffect(() => {
     let active = true;
@@ -79,7 +76,9 @@ export const BusinessUnitSwitcher = ({
       try {
         setIsBootstrapping(true);
         setBootstrapError(null);
-        const response = await apiClient.get<{ data: BusinessUnitWithAccess[] }>("/api/business-units");
+        const response = await apiClient.get<{ data: BusinessUnitWithAccess[] }>(
+          "/api/business-units"
+        );
         const rows = Array.isArray(response?.data) ? response.data : [];
         if (!active) return;
         setFallbackBusinessUnits(rows);
@@ -150,11 +149,7 @@ export const BusinessUnitSwitcher = ({
         }
 
         const matchedBusinessUnits = company.businessUnits.filter((businessUnit) => {
-          const searchHaystack = [
-            businessUnit.name,
-            businessUnit.code,
-            businessUnit.type,
-          ]
+          const searchHaystack = [businessUnit.name, businessUnit.code, businessUnit.type]
             .join(" ")
             .toLowerCase();
 
@@ -288,7 +283,7 @@ export const BusinessUnitSwitcher = ({
           <Check
             className={cn(
               "h-4 w-4 shrink-0",
-              isSelected ? "opacity-100 text-primary" : "opacity-0"
+              isSelected ? "text-primary opacity-100" : "opacity-0"
             )}
           />
           <div className="min-w-0 flex-1">
@@ -320,7 +315,7 @@ export const BusinessUnitSwitcher = ({
             className={cn(
               "h-4 w-4 shrink-0",
               resolvedCurrentBusinessUnit?.id === businessUnit.id
-                ? "opacity-100 text-primary"
+                ? "text-primary opacity-100"
                 : "opacity-0"
             )}
           />
@@ -399,7 +394,9 @@ export const BusinessUnitSwitcher = ({
       <div
         className={cn(
           "px-3 py-2 text-xs font-semibold uppercase tracking-wide",
-          tone === "tablet" ? "border-b border-gray-100 text-gray-500" : "border-b text-muted-foreground"
+          tone === "tablet"
+            ? "border-b border-gray-100 text-gray-500"
+            : "border-b text-muted-foreground"
         )}
       >
         Company
@@ -469,11 +466,7 @@ export const BusinessUnitSwitcher = ({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[300px] p-0"
-        side="right"
-        align="start"
-      >
+      <PopoverContent className="w-[300px] p-0" side="right" align="start">
         {renderSwitcherContent("default")}
       </PopoverContent>
     </Popover>

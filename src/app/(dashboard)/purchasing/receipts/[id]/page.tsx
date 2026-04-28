@@ -301,7 +301,13 @@ export default function GoodsReceiptDetailPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">{t("status")}</p>
                 <StatusText
-                  tone={status.color.includes("green") ? "green" : status.color.includes("yellow") ? "yellow" : "muted"}
+                  tone={
+                    status.color.includes("green")
+                      ? "green"
+                      : status.color.includes("yellow")
+                        ? "yellow"
+                        : "muted"
+                  }
                 >
                   {status.label}
                 </StatusText>
@@ -401,7 +407,8 @@ export default function GoodsReceiptDetailPage() {
               </TableHeader>
               <TableBody>
                 {receipt.items.map((item) => {
-                  const itemStatus = statusConfig[item.status as keyof typeof statusConfig] ?? statusConfig.pending;
+                  const itemStatus =
+                    statusConfig[item.status as keyof typeof statusConfig] ?? statusConfig.pending;
                   return (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.productCode}</TableCell>
@@ -410,7 +417,9 @@ export default function GoodsReceiptDetailPage() {
                       <TableCell className="text-right font-semibold">{item.receivedQty}</TableCell>
                       <TableCell>{item.unit}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatCurrency(item.totalPrice)}</TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(item.totalPrice)}
+                      </TableCell>
                       <TableCell>
                         <StatusText
                           tone={

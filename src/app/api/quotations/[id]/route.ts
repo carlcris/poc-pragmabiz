@@ -94,7 +94,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     if (fetchError || !quotation) {
       logQuotationError("Error fetching updated quotation:", fetchError);
-      return NextResponse.json({ error: "Quotation was updated but could not be loaded" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Quotation was updated but could not be loaded" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json(quotation);

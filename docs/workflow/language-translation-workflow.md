@@ -57,7 +57,7 @@ Use direct namespace access in the component:
 ```tsx
 const t = useTranslations("warehousesPage");
 
-<h1>{t("title")}</h1>
+<h1>{t("title")}</h1>;
 ```
 
 ### 3. Use shared namespaces for reused text
@@ -83,7 +83,7 @@ Examples:
 Do not introduce any of the following:
 
 ```tsx
-locale === "zh" ? "..." : "..."
+locale === "zh" ? "..." : "...";
 ```
 
 ```tsx
@@ -93,7 +93,7 @@ const tx = {
 ```
 
 ```tsx
-t.generated["some.key"]
+t.generated["some.key"];
 ```
 
 ```tsx
@@ -175,7 +175,7 @@ Pattern:
 ```tsx
 const t = useTranslations("itemsPage");
 
-<Button>{t("createItem")}</Button>
+<Button>{t("createItem")}</Button>;
 ```
 
 If a component needs multiple namespaces:

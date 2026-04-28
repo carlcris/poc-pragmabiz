@@ -1,5 +1,3 @@
-
-
 # Engineering Role
 
 ## Role: Senior React Engineer / UI-UX Expert / System Architect

@@ -210,9 +210,7 @@ export function PurchaseOrderViewDialog({
                             <div className="text-xs text-muted-foreground">{item.item?.code}</div>
                           </div>
                         </td>
-                        <td className="p-3 text-right">
-                          {item.quantity}
-                        </td>
+                        <td className="p-3 text-right">{item.quantity}</td>
                         <td className="p-3 text-center">
                           <span className="text-muted-foreground">
                             {item.uom?.code || item.uom?.name || t("noUnit")}
@@ -229,15 +227,15 @@ export function PurchaseOrderViewDialog({
                               const receivedQty = item.quantityReceived ?? 0;
                               return (
                                 <>
-                            <span
-                              className={
-                                receivedQty === item.quantity
-                                  ? "text-green-600"
-                                  : "text-yellow-600"
-                              }
-                            >
-                              {receivedQty} / {item.quantity}
-                            </span>
+                                  <span
+                                    className={
+                                      receivedQty === item.quantity
+                                        ? "text-green-600"
+                                        : "text-yellow-600"
+                                    }
+                                  >
+                                    {receivedQty} / {item.quantity}
+                                  </span>
                                 </>
                               );
                             })()}
@@ -295,7 +293,9 @@ export function PurchaseOrderViewDialog({
               <div>
                 <div className="mb-3 flex items-center gap-2">
                   <Package className="h-4 w-4" />
-                  <h3 className="text-sm font-semibold">{t("goodsReceived", { count: receipts.length })}</h3>
+                  <h3 className="text-sm font-semibold">
+                    {t("goodsReceived", { count: receipts.length })}
+                  </h3>
                 </div>
                 <div className="space-y-3">
                   {receipts.map((receipt) => (
@@ -305,7 +305,9 @@ export function PurchaseOrderViewDialog({
                           <div className="text-sm font-medium">{receipt.receiptCode}</div>
                           <div className="mt-1 text-xs text-muted-foreground">
                             {t("receivedOn", { date: formatDate(receipt.receiptDate) })}
-                            {receipt.warehouse ? t("atWarehouse", { warehouse: receipt.warehouse.name }) : ""}
+                            {receipt.warehouse
+                              ? t("atWarehouse", { warehouse: receipt.warehouse.name })
+                              : ""}
                           </div>
                         </div>
                         <Badge variant="default" className="bg-green-600">

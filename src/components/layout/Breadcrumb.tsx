@@ -24,7 +24,8 @@ export function Breadcrumb() {
   const isDeliveryNoteDetail = parentSegment === "delivery-notes" && pathSegments.length >= 3;
   const deliveryNoteId = isDeliveryNoteDetail ? lastSegment : "";
   const isItemCreate = pathname === "/inventory/items/create";
-  const isItemDetail = parentSegment === "items" && pathSegments.length >= 3 && lastSegment !== "edit";
+  const isItemDetail =
+    parentSegment === "items" && pathSegments.length >= 3 && lastSegment !== "edit";
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
   const isSupplierDetail =
     pathSegments[0] === "purchasing" && parentSegment === "suppliers" && pathSegments.length >= 3;
@@ -34,7 +35,11 @@ export function Breadcrumb() {
     pathname === "/inventory/transformations/templates/design";
   const isAdminSettingsPage =
     pathSegments[0] === "admin" && pathSegments[1] === "settings" && pathSegments.length >= 2;
-  const itemId = isItemEdit ? pathSegments[pathSegments.length - 2] : isItemDetail ? lastSegment : "";
+  const itemId = isItemEdit
+    ? pathSegments[pathSegments.length - 2]
+    : isItemDetail
+      ? lastSegment
+      : "";
   const supplierId = isSupplierDetail ? lastSegment : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
@@ -91,33 +96,33 @@ export function Breadcrumb() {
       ? t("Stock Requisition Details")
       : parentSegment === "load-lists"
         ? t("Load List Details")
-      : parentSegment === "grns"
-        ? t("GRN Details")
-      : parentSegment === "delivery-notes"
-        ? t("Delivery Note Details")
-        : isTransformationTemplateDesigner
-          ? "Designer"
-        : isAdminSettingsPage && adminSettingsLabelMap[lastSegment]
-          ? adminSettingsLabelMap[lastSegment]
-        : parentSegment === "reports" && reportLabelMap[lastSegment]
-          ? reportLabelMap[lastSegment]
-          : t.has(lastSegment)
-            ? t(lastSegment)
-            : lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+        : parentSegment === "grns"
+          ? t("GRN Details")
+          : parentSegment === "delivery-notes"
+            ? t("Delivery Note Details")
+            : isTransformationTemplateDesigner
+              ? "Designer"
+              : isAdminSettingsPage && adminSettingsLabelMap[lastSegment]
+                ? adminSettingsLabelMap[lastSegment]
+                : parentSegment === "reports" && reportLabelMap[lastSegment]
+                  ? reportLabelMap[lastSegment]
+                  : t.has(lastSegment)
+                    ? t(lastSegment)
+                    : lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
 
   if (isDeliveryNoteDetail) {
     return (
-      <nav className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
         <Link
           href="/dashboard"
-          className="flex items-center hover:text-foreground transition-colors font-medium"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Home")}
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         <Link
           href="/inventory/delivery-notes"
-          className="flex items-center hover:text-foreground transition-colors font-medium"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
         >
           {t("Delivery Note")}
         </Link>
@@ -153,10 +158,7 @@ export function Breadcrumb() {
         {itemLabel ? (
           <span className="font-medium text-foreground">{itemLabel}</span>
         ) : isItemLoading ? (
-          <span
-            aria-label="Loading"
-            className="h-4 w-40 animate-pulse rounded bg-muted"
-          />
+          <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
         ) : (
           <span className="font-medium text-foreground">{t("Item Master")}</span>
         )}
@@ -182,14 +184,9 @@ export function Breadcrumb() {
         </Link>
         <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
         {supplier ? (
-          <span className="font-medium text-foreground">
-            {supplier.name || supplier.code}
-          </span>
+          <span className="font-medium text-foreground">{supplier.name || supplier.code}</span>
         ) : isSupplierLoading ? (
-          <span
-            aria-label="Loading"
-            className="h-4 w-40 animate-pulse rounded bg-muted"
-          />
+          <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
         ) : (
           <span className="font-medium text-foreground">{t("Suppliers")}</span>
         )}
@@ -220,10 +217,10 @@ export function Breadcrumb() {
   }
 
   return (
-    <nav className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+    <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
       <Link
         href="/dashboard"
-        className="flex items-center hover:text-foreground transition-colors font-medium"
+        className="flex items-center font-medium transition-colors hover:text-foreground"
       >
         {t("Home")}
       </Link>
@@ -232,7 +229,7 @@ export function Breadcrumb() {
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
           <Link
             href="/reports"
-            className="flex items-center hover:text-foreground transition-colors font-medium"
+            className="flex items-center font-medium transition-colors hover:text-foreground"
           >
             {tReports("title")}
           </Link>
@@ -244,7 +241,7 @@ export function Breadcrumb() {
           <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
           <Link
             href={parentPath}
-            className="flex items-center hover:text-foreground transition-colors font-medium"
+            className="flex items-center font-medium transition-colors hover:text-foreground"
           >
             {isAdminSettingsPage ? adminSettingsLabelMap[parentSegment] : t(parentSegment)}
           </Link>

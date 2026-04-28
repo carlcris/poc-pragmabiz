@@ -72,7 +72,10 @@ const PurchaseOrderViewDialog = dynamic(
   { ssr: false }
 );
 const ReceiveGoodsDialog = dynamic(
-  () => import("@/components/purchase-receipts/ReceiveGoodsDialog").then((mod) => mod.ReceiveGoodsDialog),
+  () =>
+    import("@/components/purchase-receipts/ReceiveGoodsDialog").then(
+      (mod) => mod.ReceiveGoodsDialog
+    ),
   { ssr: false }
 );
 
@@ -313,9 +316,7 @@ export default function PurchaseOrdersPage() {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : orders.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             {t("emptyTitle")} {t("emptyDescription")}
@@ -348,9 +349,7 @@ export default function PurchaseOrdersPage() {
                         </div>
                       </TableCell>
                       <TableCell>{formatDate(order.orderDate)}</TableCell>
-                      <TableCell>
-                        {formatDate(order.expectedDeliveryDate)}
-                      </TableCell>
+                      <TableCell>{formatDate(order.expectedDeliveryDate)}</TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(order.totalAmount)}

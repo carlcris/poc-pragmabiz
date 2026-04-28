@@ -77,7 +77,11 @@ const getStatusLabel = (status: StockRequestStatus) => {
     case "cancelled":
       return <span className={`${baseClass} text-red-600`}>Cancelled</span>;
     default:
-      return <span className={`${baseClass} text-muted-foreground`}>{String(status).replace(/_/g, " ")}</span>;
+      return (
+        <span className={`${baseClass} text-muted-foreground`}>
+          {String(status).replace(/_/g, " ")}
+        </span>
+      );
   }
 };
 
@@ -297,7 +301,9 @@ export default function StockRequestDetailPage() {
                         </td>
                         <td className="p-3">
                           <span className="text-muted-foreground">
-                            {item.item_unit_option?.displayLabel || item.units_of_measure?.code || "--"}
+                            {item.item_unit_option?.displayLabel ||
+                              item.units_of_measure?.code ||
+                              "--"}
                           </span>
                         </td>
                         <td className="p-3 text-right">

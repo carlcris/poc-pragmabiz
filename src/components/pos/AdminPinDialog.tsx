@@ -100,7 +100,9 @@ export function AdminPinDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isVerifying}>{t("cancel")}</Button>
+          <Button variant="outline" onClick={handleCancel} disabled={isVerifying}>
+            {t("cancel")}
+          </Button>
           <Button onClick={handleVerify} disabled={isVerifying || !pin}>
             {isVerifying ? t("verifying") : t("verify")}
           </Button>

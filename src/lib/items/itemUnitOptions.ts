@@ -61,7 +61,12 @@ export const transformItemUnitOptionRow = (
     uomName: uom?.name || "",
     uomSymbol: uom?.symbol || undefined,
     optionLabel: row.option_label || undefined,
-    displayLabel: buildItemUnitOptionDisplayLabel(uomCode, row.qty_per_unit, baseUomCode, row.option_label),
+    displayLabel: buildItemUnitOptionDisplayLabel(
+      uomCode,
+      row.qty_per_unit,
+      baseUomCode,
+      row.option_label
+    ),
     qtyPerUnit: Number(row.qty_per_unit) || 0,
     barcode: row.barcode,
     isBase: row.is_base,

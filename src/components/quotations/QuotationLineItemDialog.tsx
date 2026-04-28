@@ -283,7 +283,7 @@ export function QuotationLineItemDialog({
       uom: materialItem.uom,
       uomId: materialItem.uomId,
       listPrice: materialItem.listPrice,
-      dimensions: "dimensions" in materialItem ? materialItem.dimensions ?? null : null,
+      dimensions: "dimensions" in materialItem ? (materialItem.dimensions ?? null) : null,
     })
   );
   const normalizedMaterialSearch = debouncedMaterialSearch.trim().toLowerCase();
@@ -532,9 +532,11 @@ export function QuotationLineItemDialog({
   };
 
   const getMoldingStickLength = (
-    source: {
-      dimensions?: ItemDimensions | null;
-    } | undefined
+    source:
+      | {
+          dimensions?: ItemDimensions | null;
+        }
+      | undefined
   ) =>
     getNumericValue(source?.dimensions?.length) ||
     getNumericValue(source?.dimensions?.height) ||
@@ -648,7 +650,8 @@ export function QuotationLineItemDialog({
       {
         ...pendingManualComponent,
         totalQuantity: frameQuantity,
-        totalAmount: frameQuantity * pendingManualComponent.qtyPerFrame * pendingManualComponent.unitRate,
+        totalAmount:
+          frameQuantity * pendingManualComponent.qtyPerFrame * pendingManualComponent.unitRate,
         sortOrder: current.length + 1,
       },
     ]);
@@ -741,7 +744,8 @@ export function QuotationLineItemDialog({
                             <span className="truncate text-sm">{materialItem.name}</span>
                           </div>
                           <div className="mt-0.5 text-xs text-muted-foreground">
-                            {materialItem.uom || "No UoM"} · {formatCurrency(materialItem.listPrice)}
+                            {materialItem.uom || "No UoM"} ·{" "}
+                            {formatCurrency(materialItem.listPrice)}
                           </div>
                         </div>
                       </div>
@@ -814,20 +818,20 @@ export function QuotationLineItemDialog({
                                     const availableQty = item.available ?? 0;
                                     const reorderPoint = item.reorderPoint ?? 0;
                                     return (
-                                    <CommandItem
-                                      key={item.id}
-                                      value={`${item.code} ${item.name}`}
-                                      onSelect={() => {
-                                        field.onChange(item.id);
-                                        handleItemSelect(item.id);
-                                        setItemOpen(false);
-                                      }}
-                                      className="flex items-center justify-between py-2"
-                                    >
-                                      <div className="flex min-w-0 flex-1 items-start">
-                                        <Check
-                                          className={cn(
-                                            "mr-2 mt-1 h-4 w-4 flex-shrink-0",
+                                      <CommandItem
+                                        key={item.id}
+                                        value={`${item.code} ${item.name}`}
+                                        onSelect={() => {
+                                          field.onChange(item.id);
+                                          handleItemSelect(item.id);
+                                          setItemOpen(false);
+                                        }}
+                                        className="flex items-center justify-between py-2"
+                                      >
+                                        <div className="flex min-w-0 flex-1 items-start">
+                                          <Check
+                                            className={cn(
+                                              "mr-2 mt-1 h-4 w-4 flex-shrink-0",
                                               field.value === item.id ? "opacity-100" : "opacity-0"
                                             )}
                                           />
@@ -849,14 +853,14 @@ export function QuotationLineItemDialog({
                                                 {t("stockLabel")}: {availableQty.toFixed(2)}{" "}
                                                 {item.uom}
                                               </span>
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="ml-4 flex-shrink-0">
-                                        <span className="text-sm font-semibold">
-                                          {formatCurrency(item.listPrice)}
-                                        </span>
-                                      </div>
+                                        <div className="ml-4 flex-shrink-0">
+                                          <span className="text-sm font-semibold">
+                                            {formatCurrency(item.listPrice)}
+                                          </span>
+                                        </div>
                                       </CommandItem>
                                     );
                                   })}
@@ -1271,7 +1275,9 @@ export function QuotationLineItemDialog({
                                               ? {
                                                   ...c,
                                                   componentType:
-                                                    value === "accessory" ? "accessory" : "material",
+                                                    value === "accessory"
+                                                      ? "accessory"
+                                                      : "material",
                                                 }
                                               : c
                                           )
@@ -1320,7 +1326,9 @@ export function QuotationLineItemDialog({
                                       size="sm"
                                       onClick={() =>
                                         setManualComponents((current) =>
-                                          current.filter((_, currentIndex) => currentIndex !== index)
+                                          current.filter(
+                                            (_, currentIndex) => currentIndex !== index
+                                          )
                                         )
                                       }
                                     >

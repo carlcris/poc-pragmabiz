@@ -40,49 +40,64 @@ type StockRequestItem = {
   notes?: string | null;
   created_at: string;
   updated_at: string;
-  items?: {
-    id?: string;
-    item_code: string;
-    item_name: string;
-    uom_id?: string;
-    base_unit?: {
-      id?: string;
-      code: string;
-      name?: string;
-      symbol?: string | null;
-    } | {
-      id?: string;
-      code: string;
-      name?: string;
-      symbol?: string | null;
-    }[] | null;
-  } | {
-    id?: string;
-    item_code: string;
-    item_name: string;
-    uom_id?: string;
-    base_unit?: {
-      id?: string;
-      code: string;
-      name?: string;
-      symbol?: string | null;
-    } | {
-      id?: string;
-      code: string;
-      name?: string;
-      symbol?: string | null;
-    }[] | null;
-  }[] | null;
-  units_of_measure?: {
-    id?: string;
-    code: string;
-    symbol: string;
-  } | { id?: string; code: string; symbol: string }[] | null;
-  item_unit_options?: (DbItemUnitOptionRow & {
-    units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
-  }) | (DbItemUnitOptionRow & {
-    units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
-  })[] | null;
+  items?:
+    | {
+        id?: string;
+        item_code: string;
+        item_name: string;
+        uom_id?: string;
+        base_unit?:
+          | {
+              id?: string;
+              code: string;
+              name?: string;
+              symbol?: string | null;
+            }
+          | {
+              id?: string;
+              code: string;
+              name?: string;
+              symbol?: string | null;
+            }[]
+          | null;
+      }
+    | {
+        id?: string;
+        item_code: string;
+        item_name: string;
+        uom_id?: string;
+        base_unit?:
+          | {
+              id?: string;
+              code: string;
+              name?: string;
+              symbol?: string | null;
+            }
+          | {
+              id?: string;
+              code: string;
+              name?: string;
+              symbol?: string | null;
+            }[]
+          | null;
+      }[]
+    | null;
+  units_of_measure?:
+    | {
+        id?: string;
+        code: string;
+        symbol: string;
+      }
+    | { id?: string; code: string; symbol: string }[]
+    | null;
+  item_unit_options?:
+    | (DbItemUnitOptionRow & {
+        units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
+      })
+    | (DbItemUnitOptionRow & {
+        units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
+      })[]
+    | null;
 };
 
 type DeliveryNoteSummary = {
@@ -146,26 +161,28 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
     ...rest
   } = record;
   const requestingWarehouse = Array.isArray(requesting_warehouse)
-    ? requesting_warehouse[0] ?? null
-    : requesting_warehouse ?? null;
+    ? (requesting_warehouse[0] ?? null)
+    : (requesting_warehouse ?? null);
   const fulfillingWarehouse = Array.isArray(fulfilling_warehouse)
-    ? fulfilling_warehouse[0] ?? null
-    : fulfilling_warehouse ?? null;
+    ? (fulfilling_warehouse[0] ?? null)
+    : (fulfilling_warehouse ?? null);
   const requestedByUser = Array.isArray(requested_by_user)
-    ? requested_by_user[0] ?? null
-    : requested_by_user ?? null;
+    ? (requested_by_user[0] ?? null)
+    : (requested_by_user ?? null);
   const receivedByUser = Array.isArray(received_by_user)
-    ? received_by_user[0] ?? null
-    : received_by_user ?? null;
+    ? (received_by_user[0] ?? null)
+    : (received_by_user ?? null);
   const linkedDeliveryNotes = (delivery_note_sources || [])
     .map((source) =>
       Array.isArray(source.delivery_notes)
-        ? source.delivery_notes[0] ?? null
-        : source.delivery_notes ?? null
+        ? (source.delivery_notes[0] ?? null)
+        : (source.delivery_notes ?? null)
     )
     .filter((note): note is DeliveryNoteSummary => Boolean(note));
   const sortedDeliveryNotes = [...linkedDeliveryNotes].sort(
-    (a, b) => new Date(String(b.created_at || "")).getTime() - new Date(String(a.created_at || "")).getTime()
+    (a, b) =>
+      new Date(String(b.created_at || "")).getTime() -
+      new Date(String(a.created_at || "")).getTime()
   );
   const fulfillingDeliveryNotes = Array.from(
     new Map(
@@ -219,18 +236,20 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
     received_by_user: mapStockRequestUser(receivedByUser),
     stock_request_items: stock_request_items?.map((item) => {
       const { ...restItem } = item;
-      const itemDetails = Array.isArray(item.items) ? item.items[0] ?? null : item.items ?? null;
+      const itemDetails = Array.isArray(item.items)
+        ? (item.items[0] ?? null)
+        : (item.items ?? null);
       const baseUnitDetails = itemDetails
         ? Array.isArray(itemDetails.base_unit)
-          ? itemDetails.base_unit[0] ?? null
-          : itemDetails.base_unit ?? null
+          ? (itemDetails.base_unit[0] ?? null)
+          : (itemDetails.base_unit ?? null)
         : null;
       const uomDetails = Array.isArray(item.units_of_measure)
-        ? item.units_of_measure[0] ?? null
-        : item.units_of_measure ?? null;
+        ? (item.units_of_measure[0] ?? null)
+        : (item.units_of_measure ?? null);
       const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
-        ? item.item_unit_options[0] ?? null
-        : item.item_unit_options ?? null;
+        ? (item.item_unit_options[0] ?? null)
+        : (item.item_unit_options ?? null);
       const baseUomCode = baseUnitDetails?.code || uomDetails?.code || "";
       const mappedItemUnitOption = itemUnitOptionDetails
         ? transformItemUnitOptionRow(itemUnitOptionDetails, baseUomCode)

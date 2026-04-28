@@ -59,7 +59,9 @@ const DetailItem = ({ icon: Icon, label, value, mutedValue }: DetailItemProps) =
     <div className="min-w-0 flex-1 space-y-1">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="break-words font-medium">{value || "-"}</div>
-      {mutedValue ? <div className="break-words text-sm text-muted-foreground">{mutedValue}</div> : null}
+      {mutedValue ? (
+        <div className="break-words text-sm text-muted-foreground">{mutedValue}</div>
+      ) : null}
     </div>
   </div>
 );
@@ -203,7 +205,11 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title={tPage("status")} icon={ShieldCheck} value={getStatusLabel(supplier.status)} />
+        <MetricCard
+          title={tPage("status")}
+          icon={ShieldCheck}
+          value={getStatusLabel(supplier.status)}
+        />
         <MetricCard
           title={tPage("paymentTerms")}
           icon={CreditCard}
@@ -219,7 +225,9 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
           icon={Banknote}
           value={formatCurrency(supplier.currentBalance)}
           valueClassName={
-            supplier.currentBalance > 0 ? "text-2xl font-bold text-orange-600" : "text-2xl font-bold"
+            supplier.currentBalance > 0
+              ? "text-2xl font-bold text-orange-600"
+              : "text-2xl font-bold"
           }
         />
       </div>
@@ -242,8 +250,16 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <DetailItem icon={Building2} label={tPage("code")} value={supplier.code} />
-                  <DetailItem icon={UserRound} label={tPage("contactPerson")} value={supplier.contactPerson} />
-                  <DetailItem icon={Mail} label={tForm("emailLabel").replace(" *", "")} value={supplier.email} />
+                  <DetailItem
+                    icon={UserRound}
+                    label={tPage("contactPerson")}
+                    value={supplier.contactPerson}
+                  />
+                  <DetailItem
+                    icon={Mail}
+                    label={tForm("emailLabel").replace(" *", "")}
+                    value={supplier.email}
+                  />
                   <DetailItem
                     icon={Phone}
                     label={tPage("contactInfo")}
@@ -256,7 +272,11 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
                     icon={Globe}
                     label={tForm("websiteLabel").replace(" *", "")}
                     value={supplier.website || "-"}
-                    mutedValue={supplier.taxId ? `${tForm("taxIdLabel").replace(" *", "")}: ${supplier.taxId}` : undefined}
+                    mutedValue={
+                      supplier.taxId
+                        ? `${tForm("taxIdLabel").replace(" *", "")}: ${supplier.taxId}`
+                        : undefined
+                    }
                   />
                 </div>
                 <div className="border-t pt-4">
@@ -276,15 +296,21 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{tPage("status")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tPage("status")}
+                  </span>
                   {getStatusBadge(supplier.status)}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{tForm("languageLabel").replace(" *", "")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tForm("languageLabel").replace(" *", "")}
+                  </span>
                   <Badge variant="outline">{supplier.lang}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{tPage("paymentTerms")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tPage("paymentTerms")}
+                  </span>
                   <Badge variant="outline">{getPaymentTermsLabel(supplier.paymentTerms)}</Badge>
                 </div>
                 <div className="border-t pt-4 text-sm text-muted-foreground">
@@ -333,9 +359,21 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
                 <CardDescription>Credit terms and outstanding balance.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <DetailItem icon={CreditCard} label={tPage("paymentTerms")} value={getPaymentTermsLabel(supplier.paymentTerms)} />
-                <DetailItem icon={BadgeDollarSign} label={tPage("creditLimit")} value={formatCurrency(supplier.creditLimit ?? 0)} />
-                <DetailItem icon={Banknote} label={tPage("balance")} value={formatCurrency(supplier.currentBalance)} />
+                <DetailItem
+                  icon={CreditCard}
+                  label={tPage("paymentTerms")}
+                  value={getPaymentTermsLabel(supplier.paymentTerms)}
+                />
+                <DetailItem
+                  icon={BadgeDollarSign}
+                  label={tPage("creditLimit")}
+                  value={formatCurrency(supplier.creditLimit ?? 0)}
+                />
+                <DetailItem
+                  icon={Banknote}
+                  label={tPage("balance")}
+                  value={formatCurrency(supplier.currentBalance)}
+                />
               </CardContent>
             </Card>
             <Card>
@@ -344,9 +382,21 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
                 <CardDescription>Bank details maintained for supplier payments.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <DetailItem icon={Building2} label={tForm("bankNameLabel")} value={supplier.bankName || "-"} />
-                <DetailItem icon={ReceiptText} label={tForm("bankAccountNameLabel")} value={supplier.bankAccountName || "-"} />
-                <DetailItem icon={CreditCard} label={tForm("bankAccountNumberLabel")} value={supplier.bankAccountNumber || "-"} />
+                <DetailItem
+                  icon={Building2}
+                  label={tForm("bankNameLabel")}
+                  value={supplier.bankName || "-"}
+                />
+                <DetailItem
+                  icon={ReceiptText}
+                  label={tForm("bankAccountNameLabel")}
+                  value={supplier.bankAccountName || "-"}
+                />
+                <DetailItem
+                  icon={CreditCard}
+                  label={tForm("bankAccountNumberLabel")}
+                  value={supplier.bankAccountNumber || "-"}
+                />
               </CardContent>
             </Card>
           </div>
@@ -363,8 +413,16 @@ function SupplierDetailsContent({ params }: SupplierDetailsPageProps) {
                 {supplier.notes || "-"}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
-                <DetailItem icon={FileText} label="Created" value={formatDate(supplier.createdAt)} />
-                <DetailItem icon={FileText} label="Updated" value={formatDate(supplier.updatedAt)} />
+                <DetailItem
+                  icon={FileText}
+                  label="Created"
+                  value={formatDate(supplier.createdAt)}
+                />
+                <DetailItem
+                  icon={FileText}
+                  label="Updated"
+                  value={formatDate(supplier.updatedAt)}
+                />
               </div>
             </CardContent>
           </Card>

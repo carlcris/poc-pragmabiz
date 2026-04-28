@@ -44,11 +44,7 @@ type UserRoleNameJoinRow = {
 };
 
 const normalizeRoleName = (value: string | null | undefined) =>
-  (value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
+  (value || "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
 
 const isSuperAdminRoleName = (value: string | null | undefined) =>
   ["super admin", "superadmin"].includes(normalizeRoleName(value).replace(/\s/g, ""));

@@ -74,9 +74,7 @@ export const GET = async (req: NextRequest) => {
     const paidCommission =
       commissions
         ?.filter((c) => {
-          const invoice = Array.isArray(c.sales_invoices)
-            ? c.sales_invoices[0]
-            : c.sales_invoices;
+          const invoice = Array.isArray(c.sales_invoices) ? c.sales_invoices[0] : c.sales_invoices;
           return invoice?.status === "paid";
         })
         .reduce((sum, c) => sum + Number(c.commission_amount), 0) || 0;
@@ -84,9 +82,7 @@ export const GET = async (req: NextRequest) => {
     const pendingCommission =
       commissions
         ?.filter((c) => {
-          const invoice = Array.isArray(c.sales_invoices)
-            ? c.sales_invoices[0]
-            : c.sales_invoices;
+          const invoice = Array.isArray(c.sales_invoices) ? c.sales_invoices[0] : c.sales_invoices;
           return invoice?.status !== "paid";
         })
         .reduce((sum, c) => sum + Number(c.commission_amount), 0) || 0;
@@ -123,9 +119,7 @@ export const GET = async (req: NextRequest) => {
             invoiceAmount: invoice?.total_amount,
             invoiceStatus: invoice?.status,
             employeeCode: employee?.employee_code,
-            employeeName: employee
-              ? `${employee.first_name} ${employee.last_name}`
-              : "",
+            employeeName: employee ? `${employee.first_name} ${employee.last_name}` : "",
             commissionRate: employee?.commission_rate,
             commissionAmount: c.commission_amount,
             splitPercentage: c.commission_split_percentage,

@@ -12,11 +12,14 @@ const normalizeOptionalDate = (value: unknown) => {
 const normalizeLoadListItemBaseQty = (item: {
   load_list_qty?: string | number | null;
   received_qty?: string | number | null;
-  item_unit_option?: { qty_per_unit?: string | number | null } | { qty_per_unit?: string | number | null }[] | null;
+  item_unit_option?:
+    | { qty_per_unit?: string | number | null }
+    | { qty_per_unit?: string | number | null }[]
+    | null;
 }) => {
   const rawUnitOption = Array.isArray(item.item_unit_option)
-    ? item.item_unit_option[0] ?? null
-    : item.item_unit_option ?? null;
+    ? (item.item_unit_option[0] ?? null)
+    : (item.item_unit_option ?? null);
   const qtyPerUnit = Number(rawUnitOption?.qty_per_unit ?? 1) || 1;
   const loadListQty = Number(item.load_list_qty ?? 0) || 0;
   const receivedQty = Number(item.received_qty ?? loadListQty) || 0;
@@ -28,10 +31,7 @@ const normalizeLoadListItemBaseQty = (item: {
 };
 
 // PATCH /api/load-lists/[id]/status
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
     if (unauthorized) return unauthorized;
@@ -120,7 +120,10 @@ export async function PATCH(
       ["arrived", "receiving", "pending_approval", "received"].includes(currentStatus)
     ) {
       return NextResponse.json(
-        { error: "Load lists that have arrived or started receiving must be reversed before cancellation" },
+        {
+          error:
+            "Load lists that have arrived or started receiving must be reversed before cancellation",
+        },
         { status: 400 }
       );
     }
@@ -141,10 +144,7 @@ export async function PATCH(
 
       if (reversalError) {
         console.error("Error reversing load list arrival:", reversalError);
-        return NextResponse.json(
-          { error: "Failed to reverse load list arrival" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Failed to reverse load list arrival" }, { status: 400 });
       }
 
       return NextResponse.json({
@@ -337,10 +337,7 @@ export async function PATCH(
 
     if (updateError) {
       console.error("Error updating load list status:", updateError);
-      return NextResponse.json(
-        { error: "Failed to update status" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
     }
 
     if (currentStatus !== newStatus && ["arrived", "receiving", "received"].includes(newStatus)) {
@@ -460,7 +457,13 @@ export async function PATCH(
       }
     }
 
-    const response: { id: string; llNumber: string; status: string; message: string; grnNumber?: string } = {
+    const response: {
+      id: string;
+      llNumber: string;
+      status: string;
+      message: string;
+      grnNumber?: string;
+    } = {
       id: updatedLL.id,
       llNumber: updatedLL.ll_number,
       status: updatedLL.status,

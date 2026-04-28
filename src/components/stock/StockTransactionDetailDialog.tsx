@@ -92,7 +92,11 @@ export function StockTransactionDetailDialog({
 }: StockTransactionDetailDialogProps) {
   const t = useTranslations("stockTransactionDetail");
   const locale = useLocale();
-  const { data: transaction, isLoading, error } = useQuery<TransactionDetail>({
+  const {
+    data: transaction,
+    isLoading,
+    error,
+  } = useQuery<TransactionDetail>({
     queryKey: ["stock-transaction", transactionId],
     queryFn: async () => {
       if (!transactionId) throw new Error(t("loadError"));

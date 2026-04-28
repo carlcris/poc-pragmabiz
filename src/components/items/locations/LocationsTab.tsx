@@ -122,9 +122,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     },
     onError: (mutationError) => {
       const message =
-        mutationError instanceof Error
-          ? mutationError.message
-          : t("updateDefaultError");
+        mutationError instanceof Error ? mutationError.message : t("updateDefaultError");
       toast.error(message);
     },
   });
@@ -168,8 +166,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       setMoveQty("");
     },
     onError: (mutationError) => {
-      const message =
-        mutationError instanceof Error ? mutationError.message : t("moveStockError");
+      const message = mutationError instanceof Error ? mutationError.message : t("moveStockError");
       toast.error(message);
     },
   });
@@ -265,9 +262,13 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                               </Badge>
                             )}
                           </div>
-                          <div className="text-xs text-muted-foreground">{location.locationName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {location.locationName}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-sm capitalize">{location.locationType}</TableCell>
+                        <TableCell className="text-sm capitalize">
+                          {location.locationType}
+                        </TableCell>
                         <TableCell className="text-right">
                           {formatQty(location.qtyOnHand, locale)}
                         </TableCell>
@@ -304,7 +305,9 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                                 <TableHeader>
                                   <TableRow className="hover:bg-transparent">
                                     <TableHead className="h-8 text-xs">{t("batchCode")}</TableHead>
-                                    <TableHead className="h-8 text-xs">{t("receivedDate")}</TableHead>
+                                    <TableHead className="h-8 text-xs">
+                                      {t("receivedDate")}
+                                    </TableHead>
                                     <TableHead className="h-8 text-right text-xs">
                                       {t("onHand")}
                                     </TableHead>

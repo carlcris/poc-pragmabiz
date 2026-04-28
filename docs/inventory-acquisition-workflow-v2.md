@@ -21,6 +21,7 @@ Return to Supplier (RTS)
 ```
 
 **Key Relationship Updates:**
+
 - N Stock Requisitions → N Load Lists (many-to-many)
 - **1 Load List → N GRNs** (supports partial or multi-day receiving)
 - 1 GRN → N Stock Ledger Entries (per item line)
@@ -34,15 +35,18 @@ Return to Supplier (RTS)
 **Purpose:** Internal request to supplier via phone/email (no formal PO)
 
 **Key Fields (unchanged):**
+
 - `dr_number`, `business_unit_id`, `supplier_id`, `requisition_date`, `requested_by`
 - `status`: Draft, Submitted, Partially Fulfilled, Fulfilled, Cancelled
 - `notes`, `total_amount` (estimated)
 
 **Line Items:** `stock_requisition_items`
+
 - `item_id`, `requested_qty`, `unit_price`, `total_price`
 - `fulfilled_qty`, `outstanding_qty`, `notes`
 
 **Clarifications:**
+
 - SR prices are **estimates** and may be overridden at GRN.
 - Fulfillment is updated when GRN lines are approved, not when LLs are linked.
 
@@ -53,19 +57,23 @@ Return to Supplier (RTS)
 **Purpose:** Supplier’s shipment document used for operational tracking
 
 **Key Fields (unchanged):**
+
 - `ll_number`, `supplier_ll_number`, `business_unit_id`, `supplier_id`, `warehouse_id`
 - `container_number`, `seal_number`, `estimated_arrival_date`, `actual_arrival_date`
 - `load_date`, `status`, `created_by`, `received_by`, `approved_by`
 - `received_date`, `approved_date`, `notes`
 
 **Line Items:** `load_list_items`
+
 - `item_id`, `load_list_qty`, `unit_price`, `total_price`, `notes`
 - `received_qty`, `damaged_qty`, `shortage_qty` (computed)
 
 **Linking Table:** `load_list_dr_items`
+
 - `load_list_item_id`, `dr_item_id`, `fulfilled_qty`
 
 **Clarifications:**
+
 - LL is **operational source** for shipment quantities.
 - **Inventory is NOT updated by LL status.**
 
@@ -76,20 +84,24 @@ Return to Supplier (RTS)
 **Purpose:** Internal receiving document; **only GRN Approval posts inventory**
 
 **Key Fields:**
+
 - `grn_number`, `load_list_id`, `business_unit_id`, `warehouse_id`
 - `container_number`, `seal_number`, `receiving_date`, `delivery_date`
 - `received_by`, `checked_by`, `status`, `notes`
 
 **Line Items:** `grn_items`
+
 - `item_id`, `load_list_qty`, `received_qty`, `damaged_qty`
 - `num_boxes`, `barcodes_printed`, `notes`
 - **`unit_price`** (GRN-level actual price; can override SR/LL)
 
 **Box/Carton Tracking:** `grn_boxes`
+
 - `grn_item_id`, `box_number`, `barcode`, `qty_per_box`
 - `warehouse_location_id`, `delivery_date`, `container_number`, `seal_number`
 
 **Clarifications:**
+
 - A single LL can generate **multiple GRNs** (partial receiving).
 - Rejections return to Receiving on the same GRN.
 
@@ -100,6 +112,7 @@ Return to Supplier (RTS)
 **Purpose:** Audit trail for all inventory quantity movements
 
 **Key Fields (new/recommended):**
+
 - `stock_ledger_id`, `item_id`, `warehouse_id`
 - `qty_delta`, `transaction_type`, `source_doc_type`, `source_doc_id`
 - `delivery_date`, `location_id`, `created_at`, `created_by`
@@ -119,6 +132,7 @@ Add `resolution_status`: pending, confirmed, disputed, returned, written_off
 ### 2.6 Return to Supplier (RTS)
 
 **Clarification:**
+
 - If damage is confirmed **before** GRN approval, items are never added to on_hand.
 - If discovered after approval, RTS creates a negative stock ledger entry.
 
@@ -147,6 +161,7 @@ Draft → Confirmed → In Transit → Arrived → Receiving → Pending Approva
 ```
 
 **System Actions (Revised):**
+
 - **Confirmed → In Transit**
   - Increment `inventory.in_transit` by `load_list_qty`
   - Notify warehouse
@@ -170,6 +185,7 @@ Draft → Receiving → Pending Approval → Approved
 ```
 
 **Inventory Updates (only on GRN Approved):**
+
 - Decrement `in_transit` by:
   - `received_qty` + confirmed `damaged_qty` + confirmed `shortage_qty`
 - Increment `on_hand` by:
@@ -209,6 +225,7 @@ Draft → Receiving → Pending Approval → Approved
 ## 6. Putaway & Location (Clarified)
 
 Introduce a post-receipt state:
+
 - `received_unputaway` vs `on_hand_putaway`
 - Items can be available but flagged as **unlocated**
 - Putaway process:
@@ -221,11 +238,13 @@ Introduce a post-receipt state:
 ## 7. Inventory Tracking (Revised)
 
 **In Transit Updates:**
+
 - Confirmed → In Transit: increment by `load_list_qty`
 - Cancelled (from In Transit): decrement by `load_list_qty`
 - GRN Approved: decrement by confirmed `received_qty + damaged + shortage`
 
 **Availability:**
+
 - `available = on_hand - reserved`
 - In-transit is visible but not available
 
@@ -234,6 +253,7 @@ Introduce a post-receipt state:
 ## 8. LIFO/FIFO Configuration (Revised)
 
 Because LIFO has compliance implications:
+
 - Configure **inventory valuation method per BU**:
   - FIFO / LIFO / Weighted Avg
 - Keep `delivery_date` on GRN/boxes for sequencing where LIFO is required
@@ -243,6 +263,7 @@ Because LIFO has compliance implications:
 ## 9. Data Model Summary (Updated)
 
 **Additions/Changes:**
+
 - `grn_items.unit_price`, `grn_items.price_source`
 - `damaged_items.resolution_status`
 - Optional `stock_ledger` table for audit
@@ -253,31 +274,37 @@ Because LIFO has compliance implications:
 ## 10. Implementation Phases (Updated)
 
 ### Phase 1: Core Documents
+
 - SR, LL CRUD
 - SR ↔ LL linking
 - Fulfillment tracking (post-GRN approval only)
 
 ### Phase 2: Receiving Workflow
+
 - GRN auto-creation
 - Variance handling
 - Approval workflow
 - Stock ledger entries on GRN approval
 
 ### Phase 3: Barcode & Putaway
+
 - Box-level barcode
 - Location assignment
 - Putaway completion
 
 ### Phase 4: Notifications
+
 - Status-based alerts
 - Role-based settings
 
 ### Phase 5: Reporting
+
 - In-transit report
 - Variance analysis
 - Receiving performance
 
 ### Phase 6: Returns
+
 - RTS workflow
 - Stock adjustments
 

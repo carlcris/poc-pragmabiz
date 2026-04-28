@@ -216,7 +216,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data: requests, error, count } = await query
+    const {
+      data: requests,
+      error,
+      count,
+    } = await query
       .order("request_date", { ascending: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -232,11 +236,11 @@ export async function GET(request: NextRequest) {
         typedRequests.flatMap((request) => {
           const ids: string[] = [];
           const requestingWarehouse = Array.isArray(request.requesting_warehouse)
-            ? request.requesting_warehouse[0] ?? null
-            : request.requesting_warehouse ?? null;
+            ? (request.requesting_warehouse[0] ?? null)
+            : (request.requesting_warehouse ?? null);
           const fulfillingWarehouse = Array.isArray(request.fulfilling_warehouse)
-            ? request.fulfilling_warehouse[0] ?? null
-            : request.fulfilling_warehouse ?? null;
+            ? (request.fulfilling_warehouse[0] ?? null)
+            : (request.fulfilling_warehouse ?? null);
 
           if (!requestingWarehouse && request.requesting_warehouse_id) {
             ids.push(request.requesting_warehouse_id);
@@ -258,17 +262,15 @@ export async function GET(request: NextRequest) {
         .in("id", missingWarehouseIds)
         .is("deleted_at", null);
 
-      const warehouseMap = new Map(
-        (warehouseRows || []).map((row) => [row.id, row])
-      );
+      const warehouseMap = new Map((warehouseRows || []).map((row) => [row.id, row]));
 
       for (const request of typedRequests) {
         const requestingWarehouse = Array.isArray(request.requesting_warehouse)
-          ? request.requesting_warehouse[0] ?? null
-          : request.requesting_warehouse ?? null;
+          ? (request.requesting_warehouse[0] ?? null)
+          : (request.requesting_warehouse ?? null);
         const fulfillingWarehouse = Array.isArray(request.fulfilling_warehouse)
-          ? request.fulfilling_warehouse[0] ?? null
-          : request.fulfilling_warehouse ?? null;
+          ? (request.fulfilling_warehouse[0] ?? null)
+          : (request.fulfilling_warehouse ?? null);
 
         if (!requestingWarehouse && request.requesting_warehouse_id) {
           const row = warehouseMap.get(request.requesting_warehouse_id);
@@ -296,9 +298,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const formattedRequests = typedRequests.map((request) =>
-      mapStockRequest(request)
-    );
+    const formattedRequests = typedRequests.map((request) => mapStockRequest(request));
 
     return NextResponse.json({
       data: formattedRequests,
@@ -403,15 +403,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Create stock request items
-    const requestItems = resolvedLineItems.map((item: StockRequestItemInput & { item_unit_option_id: string }) => ({
-      stock_request_id: stockRequest.id,
-      item_id: item.item_id,
-      requested_qty: item.requested_qty,
-      picked_qty: 0,
-      item_unit_option_id: item.item_unit_option_id,
-      uom_id: item.uom_id,
-      notes: item.notes || null,
-    }));
+    const requestItems = resolvedLineItems.map(
+      (item: StockRequestItemInput & { item_unit_option_id: string }) => ({
+        stock_request_id: stockRequest.id,
+        item_id: item.item_id,
+        requested_qty: item.requested_qty,
+        picked_qty: 0,
+        item_unit_option_id: item.item_unit_option_id,
+        uom_id: item.uom_id,
+        notes: item.notes || null,
+      })
+    );
 
     const { error: itemsError } = await supabase.from("stock_request_items").insert(requestItems);
 

@@ -97,7 +97,9 @@ export const InventoryHealthPanel = ({
               ))}
             </div>
           ) : outOfStocks.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t("noOutOfStockItems")}</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {t("noOutOfStockItems")}
+            </p>
           ) : (
             <div className="space-y-2">
               {outOfStockItems.map((item) => (
@@ -121,7 +123,8 @@ export const InventoryHealthPanel = ({
                       </p>
                       {item.last_moved_at && (
                         <p className="text-xs text-muted-foreground">
-                          {t("lastLabel")}: {new Date(item.last_moved_at).toLocaleDateString(locale)}
+                          {t("lastLabel")}:{" "}
+                          {new Date(item.last_moved_at).toLocaleDateString(locale)}
                         </p>
                       )}
                     </div>

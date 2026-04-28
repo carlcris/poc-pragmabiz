@@ -184,7 +184,10 @@ export async function GET(request: NextRequest) {
       for (const order of ((manufacturingRows || []) as ManufacturingOrderRow[]).sort((a, b) =>
         a.created_at < b.created_at ? 1 : -1
       )) {
-        if (order.status === "cancelled" || manufacturingByJobOrderId.has(order.frame_job_order_id)) {
+        if (
+          order.status === "cancelled" ||
+          manufacturingByJobOrderId.has(order.frame_job_order_id)
+        ) {
           continue;
         }
 

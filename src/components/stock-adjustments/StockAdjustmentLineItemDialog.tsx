@@ -24,25 +24,34 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 
 const createLineItemSchema = (
-  tValidation: (key: "itemRequired" | "uomRequired" | "currentQtyMin" | "adjustedQtyMin" | "unitCostMin") => string
-) => z.object({
-  itemId: z.string().min(1, tValidation("itemRequired")),
-  itemCode: z.string().optional(),
-  itemName: z.string().optional(),
-  uomId: z.string().min(1, tValidation("uomRequired")),
-  currentQty: z.number().min(0, tValidation("currentQtyMin")),
-  adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
-  unitCost: z.number().min(0, tValidation("unitCostMin")),
-  adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
-  adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
-});
+  tValidation: (
+    key: "itemRequired" | "uomRequired" | "currentQtyMin" | "adjustedQtyMin" | "unitCostMin"
+  ) => string
+) =>
+  z.object({
+    itemId: z.string().min(1, tValidation("itemRequired")),
+    itemCode: z.string().optional(),
+    itemName: z.string().optional(),
+    uomId: z.string().min(1, tValidation("uomRequired")),
+    currentQty: z.number().min(0, tValidation("currentQtyMin")),
+    adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
+    unitCost: z.number().min(0, tValidation("unitCostMin")),
+    adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
+    adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
+  });
 
 type LineItemSchema = ReturnType<typeof createLineItemSchema>;
 export type StockAdjustmentLineItemFormValues = z.infer<LineItemSchema>;
@@ -197,9 +206,7 @@ export function StockAdjustmentLineItemDialog({
             {mode === "edit" ? t("editTitle") : t("createTitle")}
           </DialogTitle>
           <DialogDescription>
-            {mode === "edit"
-              ? t("editDescription")
-              : t("createDescription")}
+            {mode === "edit" ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -218,7 +225,7 @@ export function StockAdjustmentLineItemDialog({
                 control={form.control}
                 name="itemId"
                 render={({ field }) => (
-                <FormItem>
+                  <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
                       {t("itemLabel")} <span className="text-red-500">*</span>
                     </FormLabel>
@@ -242,7 +249,9 @@ export function StockAdjustmentLineItemDialog({
                         isLoading={isItemsLoading}
                         renderOption={(entry, selected) => (
                           <div className="flex items-center gap-2">
-                            <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
+                            <Check
+                              className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`}
+                            />
                             <span className="font-mono text-xs text-gray-500">{entry.code}</span>
                             <span>•</span>
                             <span>{entry.name}</span>
@@ -250,18 +259,23 @@ export function StockAdjustmentLineItemDialog({
                         )}
                       />
                     </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
 
               {/* Current Stock Display */}
               <div className="rounded-lg bg-gray-50 p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">{t("currentStockOnHand")}</span>
+                  <span className="text-sm font-medium text-gray-600">
+                    {t("currentStockOnHand")}
+                  </span>
                   <div className="text-right">
                     <p className="text-2xl font-bold text-gray-900">
-                      {currentQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {currentQty.toLocaleString(locale, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </p>
                     <p className="text-xs text-gray-500">{uomLabel || t("units")}</p>
                   </div>
@@ -275,7 +289,9 @@ export function StockAdjustmentLineItemDialog({
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100">
                   <span className="text-lg font-bold text-purple-700">2</span>
                 </div>
-                <h3 className="text-base font-semibold text-gray-900">{t("adjustmentDetailsStep")}</h3>
+                <h3 className="text-base font-semibold text-gray-900">
+                  {t("adjustmentDetailsStep")}
+                </h3>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -375,7 +391,7 @@ export function StockAdjustmentLineItemDialog({
                           min="0"
                           {...field}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            placeholder={t("quantityPlaceholder")}
+                          placeholder={t("quantityPlaceholder")}
                           className="h-11 pl-8 pr-4 text-right text-base font-semibold"
                           disabled={!isItemSelected}
                         />
@@ -401,10 +417,15 @@ export function StockAdjustmentLineItemDialog({
                 <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-5">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">{t("newStockLevel")}</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {t("newStockLevel")}
+                      </span>
                       <div className="text-right">
                         <p className="text-3xl font-bold text-purple-900">
-                          {newStockQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {newStockQty.toLocaleString(locale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </p>
                         <p className="text-xs font-medium text-purple-600">
                           {uomLabel || t("units")}
@@ -416,26 +437,33 @@ export function StockAdjustmentLineItemDialog({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">{t("currentStock")}</span>
                         <span className="font-semibold text-gray-900">
-                          {currentQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {currentQty.toLocaleString(locale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-600">{t("adjustment")}</span>
                         <span
                           className={`font-bold ${
-                            adjustmentInBaseUnits > 0
-                              ? "text-green-600"
-                              : "text-red-600"
+                            adjustmentInBaseUnits > 0 ? "text-green-600" : "text-red-600"
                           }`}
                         >
                           {adjustmentInBaseUnits > 0 ? "+" : ""}
-                          {adjustmentInBaseUnits.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {adjustmentInBaseUnits.toLocaleString(locale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </span>
                       </div>
                       <div className="flex items-center justify-between border-t border-purple-200 pt-2 text-sm">
                         <span className="font-semibold text-gray-700">{t("newStock")}</span>
                         <span className="font-bold text-purple-900">
-                          {newStockQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {newStockQty.toLocaleString(locale, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </span>
                       </div>
                     </div>

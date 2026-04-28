@@ -30,7 +30,9 @@ const ALLOWED_TRANSITIONS: Record<PickListStatus, PickListStatus[]> = {
   done: [],
 };
 
-const DN_STATUS_BY_PICK_LIST_STATUS: Partial<Record<PickListStatus, "picking_in_progress" | "dispatch_ready" | "confirmed">> = {
+const DN_STATUS_BY_PICK_LIST_STATUS: Partial<
+  Record<PickListStatus, "picking_in_progress" | "dispatch_ready" | "confirmed">
+> = {
   in_progress: "picking_in_progress",
   done: "dispatch_ready",
 };
@@ -130,11 +132,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (nextStatus === "cancelled") {
-      const { error: cancelResetError } = await auth.supabase.rpc("cancel_pick_list_reset_progress", {
-        p_company_id: auth.companyId,
-        p_user_id: auth.userId,
-        p_pick_list_id: id,
-      });
+      const { error: cancelResetError } = await auth.supabase.rpc(
+        "cancel_pick_list_reset_progress",
+        {
+          p_company_id: auth.companyId,
+          p_user_id: auth.userId,
+          p_pick_list_id: id,
+        }
+      );
 
       if (cancelResetError) {
         return NextResponse.json({ error: cancelResetError.message }, { status: 400 });
@@ -181,7 +186,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: dnLineSummaryError.message }, { status: 500 });
       }
 
-      const hasHistoricalDispatch = (dnLineSummary || []).some((row) => asNumber(row.dispatched_qty) > 0);
+      const hasHistoricalDispatch = (dnLineSummary || []).some(
+        (row) => asNumber(row.dispatched_qty) > 0
+      );
       mappedDnStatus = hasHistoricalDispatch ? undefined : "confirmed";
 
       if (!mappedDnStatus && (dnLineSummary || []).length > 0) {

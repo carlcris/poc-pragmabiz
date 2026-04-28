@@ -10,9 +10,7 @@ export type DeliveryNoteStatus =
   | "received"
   | "voided";
 
-export type DeliveryNoteFulfillmentMode =
-  | "transfer_to_store"
-  | "customer_pickup_from_warehouse";
+export type DeliveryNoteFulfillmentMode = "transfer_to_store" | "customer_pickup_from_warehouse";
 
 export type DeliveryNoteSource = {
   company_id: string;
@@ -42,33 +40,45 @@ export type DeliveryNoteItem = {
   void_reason?: string | null;
   created_at: string;
   updated_at: string;
-  items?: {
-    item_name?: string | null;
-    item_code?: string | null;
-  } | {
-    item_name?: string | null;
-    item_code?: string | null;
-  }[] | null;
-  units_of_measure?: {
-    code?: string | null;
-    symbol?: string | null;
-    name?: string | null;
-  } | {
-    code?: string | null;
-    symbol?: string | null;
-    name?: string | null;
-  }[] | null;
+  items?:
+    | {
+        item_name?: string | null;
+        item_code?: string | null;
+      }
+    | {
+        item_name?: string | null;
+        item_code?: string | null;
+      }[]
+    | null;
+  units_of_measure?:
+    | {
+        code?: string | null;
+        symbol?: string | null;
+        name?: string | null;
+      }
+    | {
+        code?: string | null;
+        symbol?: string | null;
+        name?: string | null;
+      }[]
+    | null;
   item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
-  stock_requests?: {
-    request_code?: string | null;
-  } | {
-    request_code?: string | null;
-  }[] | null;
-  stock_request_items?: {
-    item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
-  } | {
-    item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
-  }[] | null;
+  stock_requests?:
+    | {
+        request_code?: string | null;
+      }
+    | {
+        request_code?: string | null;
+      }[]
+    | null;
+  stock_request_items?:
+    | {
+        item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
+      }
+    | {
+        item_unit_options?: ItemUnitOption | ItemUnitOption[] | null;
+      }[]
+    | null;
 };
 
 export type DeliveryNotePickListSummary = {

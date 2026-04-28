@@ -60,7 +60,9 @@ export const OperationalQueueTabs = ({ queues, isLoading, locale }: OperationalQ
             ) : queues.pick_list.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">{t("noItemsToPick")}</p>
             ) : (
-              queues.pick_list.map((item) => <PickListCard key={item.id} item={item} locale={locale} />)
+              queues.pick_list.map((item) => (
+                <PickListCard key={item.id} item={item} locale={locale} />
+              ))
             )}
           </TabsContent>
 
@@ -92,9 +94,13 @@ export const OperationalQueueTabs = ({ queues, isLoading, locale }: OperationalQ
                 ))}
               </div>
             ) : queues.stock_requests.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{t("noPendingRequests")}</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                {t("noPendingRequests")}
+              </p>
             ) : (
-              queues.stock_requests.map((item) => <StockRequestCard key={item.id} item={item} locale={locale} />)
+              queues.stock_requests.map((item) => (
+                <StockRequestCard key={item.id} item={item} locale={locale} />
+              ))
             )}
           </TabsContent>
         </Tabs>
@@ -124,9 +130,13 @@ const PickListCard = ({ item, locale }: PickListCardProps) => {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>{t("itemsCount", { count: item.lines })}</span>
             <span>•</span>
-            <span>{t("dueLabel")}: {new Date(item.required_date).toLocaleDateString(locale)}</span>
+            <span>
+              {t("dueLabel")}: {new Date(item.required_date).toLocaleDateString(locale)}
+            </span>
             <span>•</span>
-            <span>{t("byLabel")}: {item.requested_by}</span>
+            <span>
+              {t("byLabel")}: {item.requested_by}
+            </span>
           </div>
         </div>
       </Link>
@@ -182,11 +192,15 @@ const StockRequestCard = ({ item, locale }: StockRequestCardProps) => {
             <StatusBadge status={item.status} label={t(`status_${item.status}`)} />
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{t("byLabel")}: {item.requested_by}</span>
+            <span>
+              {t("byLabel")}: {item.requested_by}
+            </span>
             <span>•</span>
             <span>{t("itemsCount", { count: item.lines })}</span>
             <span>•</span>
-            <span>{t("requiredLabel")}: {new Date(item.required_date).toLocaleDateString(locale)}</span>
+            <span>
+              {t("requiredLabel")}: {new Date(item.required_date).toLocaleDateString(locale)}
+            </span>
           </div>
         </div>
       </Link>

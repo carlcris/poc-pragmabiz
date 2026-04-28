@@ -37,7 +37,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (header.status !== "dispatched") {
       return NextResponse.json(
-        { error: "Items can only be added after dispatch while the delivery note is in dispatched status" },
+        {
+          error:
+            "Items can only be added after dispatch while the delivery note is in dispatched status",
+        },
         { status: 400 }
       );
     }
@@ -47,7 +50,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
-    const pickerUserIds = Array.from(new Set((body.pickerUserIds || []).map((row) => row.trim()).filter(Boolean)));
+    const pickerUserIds = Array.from(
+      new Set((body.pickerUserIds || []).map((row) => row.trim()).filter(Boolean))
+    );
     if (pickerUserIds.length === 0) {
       return NextResponse.json({ error: "At least one picker must be assigned" }, { status: 400 });
     }
@@ -68,7 +73,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .filter((srItemId, index, arr) => arr.indexOf(srItemId) !== index);
 
     if (duplicateInputSrItemIds.length > 0) {
-      return NextResponse.json({ error: "Duplicate stock request items are not allowed" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Duplicate stock request items are not allowed" },
+        { status: 400 }
+      );
     }
 
     for (const line of body.items) {
@@ -94,7 +102,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (!stockRequests || stockRequests.length !== distinctSrIds.length) {
-      return NextResponse.json({ error: "One or more stock requests are invalid" }, { status: 400 });
+      return NextResponse.json(
+        { error: "One or more stock requests are invalid" },
+        { status: 400 }
+      );
     }
 
     const requestMap = new Map(stockRequests.map((row) => [row.id, row]));
@@ -111,7 +122,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       if (["draft", "cancelled", "completed", "fulfilled"].includes(stockRequest.status)) {
         return NextResponse.json(
-          { error: `Stock request ${stockRequest.request_code || stockRequest.id} is not allocatable` },
+          {
+            error: `Stock request ${stockRequest.request_code || stockRequest.id} is not allocatable`,
+          },
           { status: 400 }
         );
       }
@@ -131,14 +144,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
         items(item_name, item_code)
       `
       )
-      .in("id", body.items.map((line) => line.srItemId));
+      .in(
+        "id",
+        body.items.map((line) => line.srItemId)
+      );
 
     if (requestItemsError) {
       return NextResponse.json({ error: requestItemsError.message }, { status: 500 });
     }
 
     if (!requestItems || requestItems.length !== body.items.length) {
-      return NextResponse.json({ error: "One or more stock request items are invalid" }, { status: 400 });
+      return NextResponse.json(
+        { error: "One or more stock request items are invalid" },
+        { status: 400 }
+      );
     }
 
     const requestItemMap = new Map(requestItems.map((row) => [row.id, row]));
@@ -154,7 +173,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       `
       )
       .eq("company_id", auth.companyId)
-      .in("sr_item_id", body.items.map((line) => line.srItemId));
+      .in(
+        "sr_item_id",
+        body.items.map((line) => line.srItemId)
+      );
 
     if (otherAllocationsError) {
       return NextResponse.json({ error: otherAllocationsError.message }, { status: 500 });
@@ -165,7 +187,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const dnHeader = Array.isArray(existing.delivery_notes)
         ? existing.delivery_notes[0]
         : existing.delivery_notes;
-      if (!dnHeader || ["voided", "received"].includes(dnHeader.status) || existing.is_voided) continue;
+      if (!dnHeader || ["voided", "received"].includes(dnHeader.status) || existing.is_voided)
+        continue;
       const prior = allocatedByItem.get(existing.sr_item_id) || 0;
       allocatedByItem.set(existing.sr_item_id, prior + toNumber(existing.allocated_qty));
     }
@@ -174,7 +197,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const sr = requestMap.get(line.srId);
       const srItem = requestItemMap.get(line.srItemId);
       if (!sr || !srItem || srItem.stock_request_id !== line.srId) {
-        return NextResponse.json({ error: `Invalid stock request item ${line.srItemId}` }, { status: 400 });
+        return NextResponse.json(
+          { error: `Invalid stock request item ${line.srItemId}` },
+          { status: 400 }
+        );
       }
 
       if (srItem.item_id !== line.itemId || srItem.uom_id !== line.uomId) {
@@ -186,7 +212,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       const allocatedQty = toNumber(line.allocatedQty);
       if (allocatedQty <= 0) {
-        return NextResponse.json({ error: "Allocated quantity must be greater than zero" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Allocated quantity must be greater than zero" },
+          { status: 400 }
+        );
       }
 
       const alreadyAllocated = allocatedByItem.get(line.srItemId) || 0;
@@ -256,12 +285,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     insertedLineIds.push(...insertedItems.map((row) => row.id));
 
-    const { error: reserveError } = await auth.supabase.rpc("reserve_delivery_note_inventory_lines", {
-      p_company_id: auth.companyId,
-      p_user_id: auth.userId,
-      p_dn_id: id,
-      p_line_ids: insertedLineIds,
-    });
+    const { error: reserveError } = await auth.supabase.rpc(
+      "reserve_delivery_note_inventory_lines",
+      {
+        p_company_id: auth.companyId,
+        p_user_id: auth.userId,
+        p_dn_id: id,
+        p_line_ids: insertedLineIds,
+      }
+    );
 
     if (reserveError) {
       await auth.supabase

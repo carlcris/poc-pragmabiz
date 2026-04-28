@@ -810,7 +810,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         );
         const componentRows = itemsWithCalculations.flatMap((item, index) => {
           const orderItemId = orderItemIdBySortOrder.get(index);
-          const configurationId = orderItemId ? configurationIdByOrderItemId.get(orderItemId) : null;
+          const configurationId = orderItemId
+            ? configurationIdByOrderItemId.get(orderItemId)
+            : null;
           if (!orderItemId || !configurationId || !item.frameComponents?.length) return [];
           return item.frameComponents.map((component, componentIndex) => ({
             company_id: existingOrder.company_id,

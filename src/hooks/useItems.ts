@@ -82,7 +82,8 @@ export function useItems(filters?: ItemsQueryOptions) {
         const params = new URLSearchParams();
         if (normalizedFilters.search) params.append("search", normalizedFilters.search);
         if (normalizedFilters.category) params.append("category", normalizedFilters.category);
-        if (normalizedFilters.warehouseId) params.append("warehouseId", normalizedFilters.warehouseId);
+        if (normalizedFilters.warehouseId)
+          params.append("warehouseId", normalizedFilters.warehouseId);
         if (normalizedFilters.supplierId) params.append("supplierId", normalizedFilters.supplierId);
         if (normalizedFilters.status && normalizedFilters.status !== "all")
           params.append("status", normalizedFilters.status);
@@ -126,7 +127,8 @@ export function useItemsStats(filters?: ItemsStatsQueryOptions) {
       const params = new URLSearchParams();
       if (normalizedFilters.search) params.append("search", normalizedFilters.search);
       if (normalizedFilters.category) params.append("category", normalizedFilters.category);
-      if (normalizedFilters.warehouseId) params.append("warehouseId", normalizedFilters.warehouseId);
+      if (normalizedFilters.warehouseId)
+        params.append("warehouseId", normalizedFilters.warehouseId);
       if (normalizedFilters.supplierId) params.append("supplierId", normalizedFilters.supplierId);
       if (normalizedFilters.status && normalizedFilters.status !== "all") {
         params.append("status", normalizedFilters.status);

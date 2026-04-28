@@ -18,10 +18,7 @@ interface StockRequestViewDialogProps {
   request: StockRequest | null;
 }
 
-const getStatusLabel = (
-  status: StockRequestStatus,
-  tPage: ReturnType<typeof useTranslations>
-) => {
+const getStatusLabel = (status: StockRequestStatus, tPage: ReturnType<typeof useTranslations>) => {
   const baseClass = "text-xs font-medium";
 
   switch (status) {
@@ -54,7 +51,11 @@ const getStatusLabel = (
     case "cancelled":
       return <span className={`${baseClass} text-red-600`}>{tPage("cancelled")}</span>;
     default:
-      return <span className={`${baseClass} text-muted-foreground`}>{String(status).replace(/_/g, " ")}</span>;
+      return (
+        <span className={`${baseClass} text-muted-foreground`}>
+          {String(status).replace(/_/g, " ")}
+        </span>
+      );
   }
 };
 
@@ -109,7 +110,10 @@ export function StockRequestViewDialog({
     },
     { totalRequested: 0, totalDelivered: 0 }
   );
-  const remainingQty = Math.max(0, fulfillmentSummary.totalRequested - fulfillmentSummary.totalDelivered);
+  const remainingQty = Math.max(
+    0,
+    fulfillmentSummary.totalRequested - fulfillmentSummary.totalDelivered
+  );
   const linkedFulfillmentNotes =
     request.fulfilling_delivery_notes && request.fulfilling_delivery_notes.length > 0
       ? request.fulfilling_delivery_notes
@@ -125,7 +129,9 @@ export function StockRequestViewDialog({
             <DialogTitle>{t("title")}</DialogTitle>
             {getStatusLabel(request.status, tPage)}
           </div>
-          <DialogDescription>{t("requestNumber", { code: request.request_code })}</DialogDescription>
+          <DialogDescription>
+            {t("requestNumber", { code: request.request_code })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -150,7 +156,9 @@ export function StockRequestViewDialog({
               <div>
                 <span className="text-muted-foreground">{t("requestedByUser")}:</span>
                 <div className="font-medium">
-                  {request.requested_by_user?.full_name || request.requested_by_user?.email || t("noValue")}
+                  {request.requested_by_user?.full_name ||
+                    request.requested_by_user?.email ||
+                    t("noValue")}
                 </div>
               </div>
             </div>
@@ -173,7 +181,9 @@ export function StockRequestViewDialog({
               <div>
                 <span className="text-muted-foreground">{t("receivedBy")}:</span>
                 <div className="font-medium">
-                  {request.received_by_user?.full_name || request.received_by_user?.email || t("noValue")}
+                  {request.received_by_user?.full_name ||
+                    request.received_by_user?.email ||
+                    t("noValue")}
                 </div>
               </div>
               <div>
@@ -219,13 +229,23 @@ export function StockRequestViewDialog({
                           {item.items?.item_code || ""}
                         </div>
                       </td>
-                      <td className="p-3 text-right">{item.requested_qty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                       <td className="p-3 text-right">
-                        {(item.dispatch_qty ?? item.received_qty ?? 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {item.requested_qty.toLocaleString(locale, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td className="p-3 text-right">
+                        {(item.dispatch_qty ?? item.received_qty ?? 0).toLocaleString(locale, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </td>
                       <td className="p-3">
                         <span className="text-muted-foreground">
-                          {item.item_unit_option?.displayLabel || item.units_of_measure?.code || t("noValue")}
+                          {item.item_unit_option?.displayLabel ||
+                            item.units_of_measure?.code ||
+                            t("noValue")}
                         </span>
                       </td>
                       <td className="p-3 text-right">
@@ -258,21 +278,36 @@ export function StockRequestViewDialog({
             <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-lg border bg-muted/20 p-3">
                 <div className="mb-1 text-xs text-muted-foreground">{t("totalRequested")}</div>
-                <div className="text-2xl font-bold">{fulfillmentSummary.totalRequested.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="text-2xl font-bold">
+                  {fulfillmentSummary.totalRequested.toLocaleString(locale, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
               </div>
               <div className="rounded-lg border bg-green-50/40 p-3">
                 <div className="mb-1 text-xs text-muted-foreground">{t("totalDelivered")}</div>
                 <div className="text-2xl font-bold text-green-600">
-                  {fulfillmentSummary.totalDelivered.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {fulfillmentSummary.totalDelivered.toLocaleString(locale, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               </div>
               <div className="rounded-lg border bg-orange-50/50 p-3">
                 <div className="mb-1 text-xs text-muted-foreground">{t("remainingQty")}</div>
-                <div className="text-2xl font-bold text-orange-600">{remainingQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {remainingQty.toLocaleString(locale, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
               </div>
             </div>
             <div className="rounded-lg border p-4 text-sm">
-              <div className="mb-2 text-xs text-muted-foreground">{t("fulfillingDeliveryNotes")}</div>
+              <div className="mb-2 text-xs text-muted-foreground">
+                {t("fulfillingDeliveryNotes")}
+              </div>
               {linkedFulfillmentNotes.length > 0 ? (
                 <div className="space-y-2">
                   {linkedFulfillmentNotes.map((note) => (
@@ -283,7 +318,7 @@ export function StockRequestViewDialog({
                       >
                         {note.dn_no}
                       </Link>
-                      <span className="text-xs capitalize font-medium text-muted-foreground">
+                      <span className="text-xs font-medium capitalize text-muted-foreground">
                         {String(note.status || "--").replace(/_/g, " ")}
                       </span>
                     </div>

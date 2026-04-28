@@ -24,6 +24,7 @@
 ### Phase 1: Backend Setup & Supabase Installation
 
 #### 1.1 Backend Directory Structure
+
 - [x] ✅ Create `backend/` directory
 - [x] ✅ Create `backend/.env` file
 - [x] ✅ Create `backend/.gitignore`
@@ -31,10 +32,12 @@
 - [x] ✅ Update root `.gitignore` to include backend env files (already included)
 
 #### 1.2 Install Supabase CLI
+
 - [x] ✅ Install Supabase CLI via Homebrew: `brew install supabase/tap/supabase`
 - [x] ✅ Verify installation: `supabase --version` (v2.54.11)
 
 #### 1.3 Initialize Supabase in Backend
+
 - [x] ✅ Navigate to `backend/` directory
 - [x] ✅ Run `supabase init` (creates `backend/supabase/` directory)
 - [x] ✅ Review generated `backend/supabase/config.toml`
@@ -42,17 +45,20 @@
 - [x] ✅ Create `backend/supabase/seed.sql` placeholder
 
 #### 1.4 Start Supabase Local
+
 - [x] ✅ Run `supabase start` from backend directory
 - [x] ✅ Wait for Docker containers to start
 - [x] ✅ Note local credentials (API URL, anon key, service role key)
 - [x] ✅ Access Supabase Studio at http://localhost:54323
 
 #### 1.5 Configure Environment Variables
+
 - [x] ✅ Add Supabase credentials to `backend/.env`
 - [x] ✅ Add Supabase URL and anon key to `frontend/.env.local`
 - [x] ✅ Verify environment variables are in `.gitignore`
 
 #### 1.6 Install Supabase Client in Frontend
+
 - [x] ✅ Install: `cd frontend && npm install @supabase/supabase-js`
 - [x] ✅ Create `frontend/src/lib/supabase/client.ts` (browser client)
 - [x] ✅ Create `frontend/src/lib/supabase/server.ts` (server components)
@@ -65,12 +71,14 @@
 ### Phase 2: Database Schema - Item Master
 
 #### 2.1 Create Item Categories Migration
+
 - [x] ✅ Create migration: `001_db_schema_up.sql` and `001_db_schema_down.sql`
 - [x] ✅ Write SQL for item_categories table (category_id, category_name, description, parent_category_id, is_active)
 - [x] ✅ Create indexes on category_name, is_active
 - [x] ✅ Enable RLS and create policies
 
 #### 2.2 Create Items Migration
+
 - [x] ✅ Create migration: `002_db_schema_up.sql` and `002_db_schema_down.sql`
 - [x] ✅ Write SQL for items table (item_id, item_code, item_name, description, unit_of_measure, category_id, purchase_price, sales_price, is_active)
 - [x] ✅ Add UNIQUE constraint on item_code
@@ -79,6 +87,7 @@
 - [x] ✅ Enable RLS and create policies (authenticated users can read, specific roles can write)
 
 #### 2.3 Apply Migrations
+
 - [x] ✅ Apply migrations via Docker psql
 - [x] ✅ Verify tables created in database
 - [x] ✅ Verify RLS policies, indexes, and constraints
@@ -90,6 +99,7 @@
 ### Phase 3: Database Schema - Warehouse Management
 
 #### 3.1 Create Warehouses Migration
+
 - [ ] ⬜ Create migration: `supabase migration new create_warehouses`
 - [ ] ⬜ Write SQL for warehouses table (warehouse_id, warehouse_code, warehouse_name, address, city, region_state, contact_person, phone, is_active)
 - [ ] ⬜ Add UNIQUE constraint on warehouse_code
@@ -97,6 +107,7 @@
 - [ ] ⬜ Enable RLS and create policies
 
 #### 3.2 Create Item-Warehouse Junction Migration
+
 - [ ] ⬜ Create migration: `supabase migration new create_item_warehouses`
 - [ ] ⬜ Write SQL for item_warehouses table (id, item_id, warehouse_id, current_quantity, reorder_level, reorder_quantity)
 - [ ] ⬜ Add UNIQUE constraint on (item_id, warehouse_id)
@@ -105,6 +116,7 @@
 - [ ] ⬜ Enable RLS and create policies
 
 #### 3.3 Apply Migrations & Verify
+
 - [ ] ⬜ Apply migrations with `supabase db reset`
 - [ ] ⬜ Verify tables in Supabase Studio
 
@@ -115,9 +127,11 @@
 ### Phase 4: Database Schema - Stock Transactions
 
 #### 4.1 Create Transaction Type Enum
+
 - [x] ✅ Used VARCHAR(50) instead of enum for transaction_type field
 
 #### 4.2 Create Stock Transactions Migration
+
 - [x] ✅ Added to existing migration `00001_db_schema_up.sql` (co-located per convention)
 - [x] ✅ Created stock_transactions table with UUID primary key, company_id, audit fields
 - [x] ✅ Created stock_transaction_items table for line items
@@ -127,6 +141,7 @@
 - [x] ✅ Enabled RLS and created policies
 
 #### 4.3 Create Database Function for Quantity Updates
+
 - [ ] ⬜ Future enhancement: Create function: `update_item_warehouse_quantity()`
   - On stock_in: increase current_quantity
   - On stock_out: decrease current_quantity
@@ -134,10 +149,12 @@
   - On adjustment: increase or decrease based on quantity sign
 
 #### 4.4 Create Trigger
+
 - [ ] ⬜ Future enhancement: Create trigger on stock_transactions AFTER INSERT
 - [ ] ⬜ Future enhancement: Trigger calls `update_item_warehouse_quantity()`
 
 #### 4.5 Apply Migrations & Verify
+
 - [x] ✅ Applied migrations to database
 - [x] ✅ Verified tables created successfully (10 tables total)
 - [x] ✅ Regenerated TypeScript types with new stock transaction tables
@@ -150,6 +167,7 @@
 ### Phase 5: Seed Data
 
 #### 5.1 Create Seed File
+
 - [x] ✅ Created `backend/supabase/seed.sql` with comprehensive test data
 - [x] ✅ Added 1 demo company (Philippines-based)
 - [x] ✅ Created system user in auth.users and users tables
@@ -160,6 +178,7 @@
 - [x] ✅ Added 72 item_warehouse records with dynamic stock levels using RANDOM()
 
 #### 5.2 Apply Seed Data
+
 - [x] ✅ Applied seed data via Docker psql
 - [x] ✅ Verified data in database (10 UoMs, 8 categories, 18 items, 5 warehouses, 72 stock records)
 - [x] ✅ Stock levels vary by warehouse type (main: 100-600, retail: 20-120)
@@ -173,11 +192,13 @@
 ### Phase 6: Frontend Supabase Client Setup
 
 #### 6.1 Create Supabase Client Utilities
+
 - [ ] ⬜ Implement `frontend/src/lib/supabase/client.ts` (createBrowserClient)
 - [ ] ⬜ Implement `frontend/src/lib/supabase/server.ts` (createServerClient with cookies)
 - [ ] ⬜ Implement `frontend/src/lib/supabase/middleware.ts` (auth middleware)
 
 #### 6.2 Update Environment Variables
+
 - [ ] ⬜ Verify `frontend/.env.local` has NEXT_PUBLIC_SUPABASE_URL
 - [ ] ⬜ Verify `frontend/.env.local` has NEXT_PUBLIC_SUPABASE_ANON_KEY
 - [ ] ⬜ Test Supabase client connection
@@ -189,6 +210,7 @@
 ### Phase 7: API Implementation - Items
 
 #### 7.1 Create Items API Routes
+
 - [ ] ⬜ Create `frontend/src/app/api/items/route.ts` (GET all, POST create)
 - [ ] ⬜ Implement GET with filters (search, category, is_active)
 - [ ] ⬜ Implement POST with validation (check duplicate item_code)
@@ -196,15 +218,18 @@
 - [ ] ⬜ Implement error handling and proper HTTP status codes
 
 #### 7.2 Create Item Categories API Routes
+
 - [ ] ⬜ Create `frontend/src/app/api/item-categories/route.ts` (GET, POST)
 - [ ] ⬜ Implement CRUD operations
 
 #### 7.3 Update Frontend API Client
+
 - [ ] ⬜ Update `frontend/src/lib/api/items.ts` to call real API routes
 - [ ] ⬜ Remove mock API calls
 - [ ] ⬜ Keep existing validation logic
 
 #### 7.4 Test Items Module
+
 - [ ] ⬜ Disable MSW for items endpoints
 - [ ] ⬜ Test item list page with real data
 - [ ] ⬜ Test create new item
@@ -219,16 +244,19 @@
 ### Phase 8: API Implementation - Warehouses
 
 #### 8.1 Create Warehouses API Routes
+
 - [ ] ⬜ Create `frontend/src/app/api/warehouses/route.ts` (GET, POST)
 - [ ] ⬜ Create `frontend/src/app/api/warehouses/[id]/route.ts` (GET, PUT, DELETE)
 - [ ] ⬜ Create `frontend/src/app/api/warehouses/[id]/stock/route.ts` (GET stock levels)
 - [ ] ⬜ Implement stock level calculation (join item_warehouses)
 
 #### 8.2 Update Frontend API Client
+
 - [ ] ⬜ Update `frontend/src/lib/api/warehouses.ts`
 - [ ] ⬜ Update hooks to use real data
 
 #### 8.3 Test Warehouses Module
+
 - [ ] ⬜ Disable MSW for warehouses endpoints
 - [ ] ⬜ Test warehouse CRUD operations
 - [ ] ⬜ Test stock level display per warehouse
@@ -240,6 +268,7 @@
 ### Phase 9: API Implementation - Stock Transactions
 
 #### 9.1 Create Stock Transactions API Routes
+
 - [ ] ⬜ Create `frontend/src/app/api/stock-transactions/route.ts` (GET, POST)
 - [ ] ⬜ Implement GET with filters (date range, item, warehouse, transaction_type)
 - [ ] ⬜ Implement POST with validation
@@ -247,6 +276,7 @@
 - [ ] ⬜ Create `frontend/src/app/api/stock-transactions/transfer/route.ts` (warehouse transfer)
 
 #### 9.2 Implement Business Logic
+
 - [ ] ⬜ Validate transaction types
 - [ ] ⬜ Verify warehouse and item exist before transaction
 - [ ] ⬜ Check sufficient quantity for stock_out operations
@@ -254,10 +284,12 @@
 - [ ] ⬜ Add proper error messages
 
 #### 9.3 Update Frontend API Client
+
 - [ ] ⬜ Update `frontend/src/lib/api/stock-transactions.ts`
 - [ ] ⬜ Update hooks to use real data
 
 #### 9.4 Test Stock Transactions
+
 - [ ] ⬜ Disable MSW for stock-transactions endpoints
 - [ ] ⬜ Test stock in transaction
 - [ ] ⬜ Test stock out transaction
@@ -273,6 +305,7 @@
 ### Phase 10: Testing & Documentation
 
 #### 10.1 End-to-End Testing
+
 - [ ] ⬜ Test scenario: Create item → Add to warehouse → Stock in → Verify quantity
 - [ ] ⬜ Test scenario: Stock out → Verify quantity decreased
 - [ ] ⬜ Test scenario: Transfer between warehouses → Verify both quantities updated
@@ -280,6 +313,7 @@
 - [ ] ⬜ Test error cases (insufficient stock, invalid data, etc.)
 
 #### 10.2 Documentation
+
 - [ ] ⬜ Document backend setup in `backend/README.md`
 - [ ] ⬜ Document API endpoints (request/response formats)
 - [ ] ⬜ Document database schema and relationships
@@ -287,6 +321,7 @@
 - [ ] ⬜ Update main README.md with backend setup instructions
 
 #### 10.3 Cleanup
+
 - [ ] ⬜ Remove MSW handlers for inventory module
 - [ ] ⬜ Remove mock data files for inventory
 - [ ] ⬜ Clean up unused imports and code
@@ -1474,6 +1509,7 @@
 ## TOTAL ESTIMATED TIME
 
 **Phase 1: Core Inventory & Sales**
+
 - Inventory Domain: ~72 hours
 - Sales Domain: ~116 hours
 - Cross-Module & Admin: ~40 hours
@@ -1481,6 +1517,7 @@
 - **Subtotal: ~250 hours (~6-7 weeks)**
 
 **Phase 2: Sales Analytics Module**
+
 - Phase 2.1: 30 hours (1 week)
 - Phase 2.2: 82 hours (2 weeks)
 - Phase 2.3: 58 hours (1.5 weeks)

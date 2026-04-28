@@ -105,10 +105,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Error fetching stock requisitions:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch stock requisitions" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to fetch stock requisitions" }, { status: 500 });
     }
 
     type StockRequisitionListItemRow = {
@@ -122,19 +119,24 @@ export async function GET(request: NextRequest) {
         code: string;
         symbol?: string | null;
       } | null;
-      item_unit_options?: (DbItemUnitOptionRow & {
-        units_of_measure?: {
-          id: string;
-          code: string;
-          name: string;
-          symbol: string | null;
-        } | {
-          id: string;
-          code: string;
-          name: string;
-          symbol: string | null;
-        }[] | null;
-      }) | null;
+      item_unit_options?:
+        | (DbItemUnitOptionRow & {
+            units_of_measure?:
+              | {
+                  id: string;
+                  code: string;
+                  name: string;
+                  symbol: string | null;
+                }
+              | {
+                  id: string;
+                  code: string;
+                  name: string;
+                  symbol: string | null;
+                }[]
+              | null;
+          })
+        | null;
       item?: {
         id: string;
         item_code: string;
@@ -150,40 +152,44 @@ export async function GET(request: NextRequest) {
 
     // Format response
     const formattedRequisitions = requisitions?.map((sr) => {
-      const formattedItems = (sr.items as StockRequisitionListItemRow[] | null)?.map((item) => {
-        const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
-          ? item.item_unit_options[0] ?? null
-          : item.item_unit_options ?? null;
-        const baseUomCode = item.units_of_measure?.code || "";
-        const qtyPerUnit = Number(itemUnitOptionDetails?.qty_per_unit ?? 1) || 1;
-        const requestedQty = Number(item.requested_qty ?? 0);
-        const unitPrice = Number(item.unit_price ?? 0);
+      const formattedItems =
+        (sr.items as StockRequisitionListItemRow[] | null)?.map((item) => {
+          const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
+            ? (item.item_unit_options[0] ?? null)
+            : (item.item_unit_options ?? null);
+          const baseUomCode = item.units_of_measure?.code || "";
+          const qtyPerUnit = Number(itemUnitOptionDetails?.qty_per_unit ?? 1) || 1;
+          const requestedQty = Number(item.requested_qty ?? 0);
+          const unitPrice = Number(item.unit_price ?? 0);
 
-        return {
-          id: item.id,
-          srId: item.sr_id,
-          itemId: item.item_id,
-          itemUnitOptionId: item.item_unit_option_id,
-          uomId: item.uom_id,
-          uomCode: item.units_of_measure?.code || undefined,
-          itemUnitOption: itemUnitOptionDetails
-            ? transformItemUnitOptionRow(itemUnitOptionDetails as DbItemUnitOptionRow, baseUomCode)
-            : null,
-          item: item.item
-            ? {
-                id: item.item.id,
-                code: item.item.item_code,
-                name: item.item.item_name,
-              }
-            : null,
-          requestedQty,
-          unitPrice,
-          totalPrice: requestedQty * qtyPerUnit * unitPrice,
-          fulfilledQty: Number(item.fulfilled_qty ?? 0),
-          outstandingQty: Number(item.outstanding_qty ?? 0),
-          notes: item.notes,
-        };
-      }) || [];
+          return {
+            id: item.id,
+            srId: item.sr_id,
+            itemId: item.item_id,
+            itemUnitOptionId: item.item_unit_option_id,
+            uomId: item.uom_id,
+            uomCode: item.units_of_measure?.code || undefined,
+            itemUnitOption: itemUnitOptionDetails
+              ? transformItemUnitOptionRow(
+                  itemUnitOptionDetails as DbItemUnitOptionRow,
+                  baseUomCode
+                )
+              : null,
+            item: item.item
+              ? {
+                  id: item.item.id,
+                  code: item.item.item_code,
+                  name: item.item.item_name,
+                }
+              : null,
+            requestedQty,
+            unitPrice,
+            totalPrice: requestedQty * qtyPerUnit * unitPrice,
+            fulfilledQty: Number(item.fulfilled_qty ?? 0),
+            outstandingQty: Number(item.outstanding_qty ?? 0),
+            notes: item.notes,
+          };
+        }) || [];
 
       return {
         id: sr.id,
@@ -274,7 +280,11 @@ export async function POST(request: NextRequest) {
 
     let resolvedLineItems;
     try {
-      resolvedLineItems = await resolveStockRequisitionLineUnitOptions(supabase, companyId, body.items);
+      resolvedLineItems = await resolveStockRequisitionLineUnitOptions(
+        supabase,
+        companyId,
+        body.items
+      );
     } catch (error) {
       if (error instanceof StockRequisitionLineValidationError) {
         return NextResponse.json({ error: error.message }, { status: 400 });
@@ -310,10 +320,8 @@ export async function POST(request: NextRequest) {
 
     // Calculate total amount
     const totalAmount = resolvedLineItems.reduce(
-      (
-        sum: number,
-        item: { requestedQty: number; unitPrice: number; qty_per_unit: number }
-      ) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
+      (sum: number, item: { requestedQty: number; unitPrice: number; qty_per_unit: number }) =>
+        sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
       0
     );
 

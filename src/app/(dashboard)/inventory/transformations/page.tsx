@@ -72,7 +72,10 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { transformationOrdersApi } from "@/lib/api/transformation-orders";
 import { toast } from "sonner";
 
-const getStatusLabel = (status: TransformationOrderStatus, tCommon: ReturnType<typeof useTranslations>) => {
+const getStatusLabel = (
+  status: TransformationOrderStatus,
+  tCommon: ReturnType<typeof useTranslations>
+) => {
   switch (status) {
     case "DRAFT":
       return tCommon("draft");
@@ -205,7 +208,8 @@ export default function TransformationOrdersPage() {
       });
       setExecuteDialogOpen(true);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t("failedExecuteTransformation");
+      const errorMessage =
+        error instanceof Error ? error.message : t("failedExecuteTransformation");
       toast.error(errorMessage);
     } finally {
       setIsLoadingExecuteOrder(false);
@@ -237,7 +241,8 @@ export default function TransformationOrdersPage() {
       setExecuteOrder(null);
       setExecuteFormData(null);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t("failedExecuteTransformation");
+      const errorMessage =
+        error instanceof Error ? error.message : t("failedExecuteTransformation");
       toast.error(errorMessage);
     } finally {
       setIsProcessingAction(false);
@@ -251,17 +256,15 @@ export default function TransformationOrdersPage() {
         subtitle={t("manageMaterialTransformations")}
         actions={
           <>
-          <Button variant="outline" asChild className="w-full sm:w-auto">
-            <Link href="/inventory/transformations/templates">
-              {t("manageTemplates")}
-            </Link>
-          </Button>
-          <Button asChild className="w-full sm:w-auto">
-            <Link href="/inventory/transformations/new">
-              <Plus className="mr-2 h-4 w-4" />
-              {t("newTransformation")}
-            </Link>
-          </Button>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
+              <Link href="/inventory/transformations/templates">{t("manageTemplates")}</Link>
+            </Button>
+            <Button asChild className="w-full sm:w-auto">
+              <Link href="/inventory/transformations/new">
+                <Plus className="mr-2 h-4 w-4" />
+                {t("newTransformation")}
+              </Link>
+            </Button>
           </>
         }
       />
@@ -311,7 +314,17 @@ export default function TransformationOrdersPage() {
             </TableHeader>
             <TableBody>
               <DataTableSkeletonRows
-                columnWidths={["w-24", "w-24", "w-20", "w-24", "w-24", "w-16", "w-20", "w-20", "w-8"]}
+                columnWidths={[
+                  "w-24",
+                  "w-24",
+                  "w-20",
+                  "w-24",
+                  "w-24",
+                  "w-16",
+                  "w-20",
+                  "w-20",
+                  "w-8",
+                ]}
                 badgeColumns={[2]}
                 rightAlignedColumns={[6, 7, 8]}
                 actionColumnIndex={8}
@@ -356,7 +369,9 @@ export default function TransformationOrdersPage() {
                     </StatusText>
                   </TableCell>
                   <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
-                  <TableCell>{order.source_warehouse?.warehouse_name || t("notAvailable")}</TableCell>
+                  <TableCell>
+                    {order.source_warehouse?.warehouse_name || t("notAvailable")}
+                  </TableCell>
                   <TableCell>{order.planned_quantity}</TableCell>
                   <TableCell className="text-right">
                     {formatCurrency(order.total_input_cost || 0)}
@@ -403,7 +418,9 @@ export default function TransformationOrdersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setActionDialog({ orderId: order.id, action: "cancel" })}
+                              onClick={() =>
+                                setActionDialog({ orderId: order.id, action: "cancel" })
+                              }
                               className="text-destructive focus:text-destructive"
                             >
                               <XCircle className="h-4 w-4" />
@@ -533,8 +550,7 @@ export default function TransformationOrdersPage() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {t("planned")}:{" "}
-                            <span className="font-medium">{output.plannedQty}</span>
+                            {t("planned")}: <span className="font-medium">{output.plannedQty}</span>
                           </p>
                         </div>
                       </div>
@@ -577,9 +593,7 @@ export default function TransformationOrdersPage() {
                                 {difference}
                               </div>
                               {exceeds && (
-                                <p className="mt-1 text-xs text-red-600">
-                                  {t("exceedsPlanned")}
-                                </p>
+                                <p className="mt-1 text-xs text-red-600">{t("exceedsPlanned")}</p>
                               )}
                             </div>
                           )}

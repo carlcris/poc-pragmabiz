@@ -8,7 +8,12 @@ type EmptyStatePanelProps = {
   className?: string;
 };
 
-export function EmptyStatePanel({ icon: Icon, title, description, className }: EmptyStatePanelProps) {
+export function EmptyStatePanel({
+  icon: Icon,
+  title,
+  description,
+  className,
+}: EmptyStatePanelProps) {
   return (
     <div
       className={cn(

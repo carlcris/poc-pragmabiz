@@ -257,13 +257,13 @@ export async function GET() {
     >();
 
     for (const row of inventoryRows) {
-      const itemRecord = Array.isArray(row.items) ? row.items[0] ?? null : row.items ?? null;
+      const itemRecord = Array.isArray(row.items) ? (row.items[0] ?? null) : (row.items ?? null);
       const uomRecord = Array.isArray(itemRecord?.units_of_measure)
-        ? itemRecord?.units_of_measure[0] ?? null
-        : itemRecord?.units_of_measure ?? null;
+        ? (itemRecord?.units_of_measure[0] ?? null)
+        : (itemRecord?.units_of_measure ?? null);
       const locationRecord = Array.isArray(row.warehouse_locations)
-        ? row.warehouse_locations[0] ?? null
-        : row.warehouse_locations ?? null;
+        ? (row.warehouse_locations[0] ?? null)
+        : (row.warehouse_locations ?? null);
       const qty = Number(row.current_stock || 0);
       const reorderLevel = Number(row.reorder_level || 0);
       const locationCode = locationRecord?.code || null;
@@ -360,15 +360,17 @@ export async function GET() {
       },
       last_stock_movements: stockMovements.map((item) => {
         const transaction = Array.isArray(item.stock_transactions)
-          ? item.stock_transactions[0] ?? null
-          : item.stock_transactions ?? null;
+          ? (item.stock_transactions[0] ?? null)
+          : (item.stock_transactions ?? null);
         const user = Array.isArray(transaction?.users)
-          ? transaction?.users[0] ?? null
-          : transaction?.users ?? null;
-        const itemRecord = Array.isArray(item.items) ? item.items[0] ?? null : item.items ?? null;
+          ? (transaction?.users[0] ?? null)
+          : (transaction?.users ?? null);
+        const itemRecord = Array.isArray(item.items)
+          ? (item.items[0] ?? null)
+          : (item.items ?? null);
         const uomRecord = Array.isArray(item.units_of_measure)
-          ? item.units_of_measure[0] ?? null
-          : item.units_of_measure ?? null;
+          ? (item.units_of_measure[0] ?? null)
+          : (item.units_of_measure ?? null);
 
         return {
           type: transaction?.transaction_type || "",

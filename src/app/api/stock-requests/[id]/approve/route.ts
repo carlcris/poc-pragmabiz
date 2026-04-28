@@ -55,8 +55,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const destinationWarehouseRecord = destinationWarehouse?.fulfilling_warehouse;
     const destinationWarehouseRow = Array.isArray(destinationWarehouseRecord)
-      ? destinationWarehouseRecord[0] ?? null
-      : destinationWarehouseRecord ?? null;
+      ? (destinationWarehouseRecord[0] ?? null)
+      : (destinationWarehouseRecord ?? null);
     const destinationBusinessUnitId = destinationWarehouseRow?.business_unit_id || null;
 
     if (!destinationBusinessUnitId || destinationBusinessUnitId !== currentBusinessUnitId) {

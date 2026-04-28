@@ -4,10 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // PUT /api/grn-boxes/[id] - Update box (mainly for location assignment)
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
     const { id } = await params;
@@ -58,10 +55,7 @@ export async function PUT(
     if (body.warehouseLocationId !== undefined)
       updateData.warehouse_location_id = body.warehouseLocationId;
 
-    const { error: updateError } = await supabase
-      .from("grn_boxes")
-      .update(updateData)
-      .eq("id", id);
+    const { error: updateError } = await supabase.from("grn_boxes").update(updateData).eq("id", id);
 
     if (updateError) {
       console.error("Error updating box:", updateError);

@@ -119,7 +119,9 @@ export function JournalEntryViewDialog({
             </div>
             <div>
               <div className="text-sm text-muted-foreground">{t("referenceCode")}</div>
-              <div className="font-mono font-semibold">{journal.referenceCode || tCommon("no")}</div>
+              <div className="font-mono font-semibold">
+                {journal.referenceCode || tCommon("no")}
+              </div>
             </div>
             {journal.postedAt && (
               <div>
@@ -148,7 +150,9 @@ export function JournalEntryViewDialog({
                       <TableCell className="text-center font-mono">{line.lineNumber}</TableCell>
                       <TableCell>
                         <div className="font-medium">{line.account?.accountName}</div>
-                        <div className="font-mono text-sm text-muted-foreground">{line.account?.accountNumber}</div>
+                        <div className="font-mono text-sm text-muted-foreground">
+                          {line.account?.accountNumber}
+                        </div>
                       </TableCell>
                       <TableCell className="text-sm">{line.description || tCommon("no")}</TableCell>
                       <TableCell className="text-right font-mono">
@@ -160,11 +164,21 @@ export function JournalEntryViewDialog({
                     </TableRow>
                   ))}
                   <TableRow className="bg-muted/50 font-bold">
-                    <TableCell colSpan={3} className="text-right">{t("totals")}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(journal.totalDebit)}</TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(journal.totalCredit)}</TableCell>
+                    <TableCell colSpan={3} className="text-right">
+                      {t("totals")}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(journal.totalDebit)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {formatCurrency(journal.totalCredit)}
+                    </TableCell>
                   </TableRow>
-                  <TableRow className={isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"}>
+                  <TableRow
+                    className={
+                      isBalanced ? "bg-green-50 dark:bg-green-950" : "bg-red-50 dark:bg-red-950"
+                    }
+                  >
                     <TableCell colSpan={3} className="text-right font-semibold">
                       {isBalanced ? (
                         <span className="flex items-center justify-end gap-2">
@@ -176,7 +190,9 @@ export function JournalEntryViewDialog({
                       )}
                     </TableCell>
                     <TableCell colSpan={2} className="text-right font-semibold">
-                      {t("difference", { amount: formatCurrency(Math.abs(journal.totalDebit - journal.totalCredit)) })}
+                      {t("difference", {
+                        amount: formatCurrency(Math.abs(journal.totalDebit - journal.totalCredit)),
+                      })}
                     </TableCell>
                   </TableRow>
                 </TableBody>

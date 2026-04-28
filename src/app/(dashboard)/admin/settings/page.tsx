@@ -90,9 +90,7 @@ export default function SettingsPage() {
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {t("subtitle")}
-        </p>
+        <p className="mt-2 text-muted-foreground">{t("subtitle")}</p>
       </div>
 
       {/* Settings Cards Grid */}

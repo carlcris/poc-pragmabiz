@@ -14,10 +14,7 @@ type DamagedItemQueryRow = DamagedItemRow & {
 };
 
 // GET /api/grns/[id]/damaged-items - List damaged items for a GRN
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "view");
     const { id } = await params;
@@ -111,10 +108,7 @@ export async function GET(
 }
 
 // POST /api/grns/[id]/damaged-items - Create damaged item
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "create");
     const { id } = await params;
@@ -196,10 +190,7 @@ export async function POST(
 
     if (createError) {
       console.error("Error creating damaged item:", createError);
-      return NextResponse.json(
-        { error: "Failed to create damaged item" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create damaged item" }, { status: 500 });
     }
 
     const createdItem = damagedItem as unknown as DamagedItemQueryRow;
@@ -212,10 +203,10 @@ export async function POST(
       itemId: createdItem.item_id,
       item: item
         ? {
-          id: item.id,
-          code: item.item_code,
-          name: item.item_name,
-        }
+            id: item.id,
+            code: item.item_code,
+            name: item.item_name,
+          }
         : null,
       qty: Number(createdItem.qty),
       damageType: createdItem.damage_type,
@@ -223,11 +214,11 @@ export async function POST(
       reportedBy: createdItem.reported_by,
       reportedByUser: reportedByUser
         ? {
-          id: reportedByUser.id,
-          email: reportedByUser.email,
-          firstName: reportedByUser.first_name,
-          lastName: reportedByUser.last_name,
-        }
+            id: reportedByUser.id,
+            email: reportedByUser.email,
+            firstName: reportedByUser.first_name,
+            lastName: reportedByUser.last_name,
+          }
         : null,
       reportedDate: createdItem.reported_date,
       actionTaken: createdItem.action_taken,

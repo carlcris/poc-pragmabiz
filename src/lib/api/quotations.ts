@@ -54,9 +54,7 @@ export const quotationsApi = {
     return apiClient.delete<void>(`/api/quotations/${id}`);
   },
 
-  async convertToOrder(
-    id: string
-  ): Promise<{
+  async convertToOrder(id: string): Promise<{
     success: boolean;
     message: string;
     salesOrder: { id: string; orderNumber: string };

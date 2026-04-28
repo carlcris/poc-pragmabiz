@@ -39,7 +39,12 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: "#6b7280", marginBottom: 6 },
   meta: { fontSize: 10, color: "#6b7280" },
   table: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 4, overflow: "hidden" },
-  tableHeader: { flexDirection: "row", backgroundColor: "#e5e7eb", minHeight: 36, alignItems: "center" },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#e5e7eb",
+    minHeight: 36,
+    alignItems: "center",
+  },
   row: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#e5e7eb", minHeight: 38 },
   cell: { paddingHorizontal: 4, paddingVertical: 7, justifyContent: "center" },
   headerText: { fontSize: 9 },
@@ -85,14 +90,30 @@ export const ItemLocationBatchReportPDF = ({
 
       <View style={styles.table}>
         <View style={styles.tableHeader}>
-          <View style={[styles.cell, styles.wItem]}><Text style={styles.headerText}>{itemLabel}</Text></View>
-          <View style={[styles.cell, styles.wLocation]}><Text style={styles.headerText}>{warehouseLocationLabel}</Text></View>
-          <View style={[styles.cell, styles.wBatch]}><Text style={styles.headerText}>{batchLabel}</Text></View>
-          <View style={[styles.cell, styles.wSku]}><Text style={styles.headerText}>{locationSkuLabel}</Text></View>
-          <View style={[styles.cell, styles.wQty]}><Text style={[styles.headerText, styles.right]}>{onHandLabel}</Text></View>
-          <View style={[styles.cell, styles.wQty]}><Text style={[styles.headerText, styles.right]}>{reservedLabel}</Text></View>
-          <View style={[styles.cell, styles.wQty]}><Text style={[styles.headerText, styles.right]}>{availableLabel}</Text></View>
-          <View style={[styles.cell, styles.wUpdated]}><Text style={styles.headerText}>{updatedLabel}</Text></View>
+          <View style={[styles.cell, styles.wItem]}>
+            <Text style={styles.headerText}>{itemLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wLocation]}>
+            <Text style={styles.headerText}>{warehouseLocationLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wBatch]}>
+            <Text style={styles.headerText}>{batchLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wSku]}>
+            <Text style={styles.headerText}>{locationSkuLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wQty]}>
+            <Text style={[styles.headerText, styles.right]}>{onHandLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wQty]}>
+            <Text style={[styles.headerText, styles.right]}>{reservedLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wQty]}>
+            <Text style={[styles.headerText, styles.right]}>{availableLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wUpdated]}>
+            <Text style={styles.headerText}>{updatedLabel}</Text>
+          </View>
         </View>
 
         {rows.map((row) => (

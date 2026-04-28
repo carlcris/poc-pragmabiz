@@ -14,10 +14,7 @@ export default function WorkflowSettingsPage() {
   const { data: settings, isLoading, error } = useSettings("workflow");
 
   return (
-    <SettingsPageLayout
-      title={t("workflowTitle")}
-      description={t("workflowDescription")}
-    >
+    <SettingsPageLayout title={t("workflowTitle")} description={t("workflowDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

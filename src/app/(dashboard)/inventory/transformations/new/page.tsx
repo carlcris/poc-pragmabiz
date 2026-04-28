@@ -13,7 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type FormValues = {
   templateId: string;
@@ -65,7 +71,10 @@ export default function NewTransformationOrderPage() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const plannedQuantityNumber = useMemo(() => Number(values.plannedQuantity), [values.plannedQuantity]);
+  const plannedQuantityNumber = useMemo(
+    () => Number(values.plannedQuantity),
+    [values.plannedQuantity]
+  );
 
   const validate = (): FormErrors => {
     const nextErrors: FormErrors = {};
@@ -134,7 +143,10 @@ export default function NewTransformationOrderPage() {
               {templatesLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
-                <Select value={values.templateId} onValueChange={(value) => onFieldChange("templateId", value)}>
+                <Select
+                  value={values.templateId}
+                  onValueChange={(value) => onFieldChange("templateId", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectTemplate")} />
                   </SelectTrigger>
@@ -155,7 +167,10 @@ export default function NewTransformationOrderPage() {
               {warehousesLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : (
-                <Select value={values.warehouseId} onValueChange={(value) => onFieldChange("warehouseId", value)}>
+                <Select
+                  value={values.warehouseId}
+                  onValueChange={(value) => onFieldChange("warehouseId", value)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={t("selectWarehouse")} />
                   </SelectTrigger>
@@ -180,7 +195,9 @@ export default function NewTransformationOrderPage() {
                   value={values.plannedQuantity}
                   onChange={(event) => onFieldChange("plannedQuantity", event.target.value)}
                 />
-                {errors.plannedQuantity && <p className="text-sm text-red-500">{errors.plannedQuantity}</p>}
+                {errors.plannedQuantity && (
+                  <p className="text-sm text-red-500">{errors.plannedQuantity}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -216,7 +233,11 @@ export default function NewTransformationOrderPage() {
             {errors.root && <p className="text-sm text-red-500">{errors.root}</p>}
 
             <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={() => router.push("/inventory/transformations")}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/inventory/transformations")}
+              >
                 {tCommon("cancel")}
               </Button>
               <Button type="submit" disabled={createOrder.isPending}>

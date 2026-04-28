@@ -5,6 +5,7 @@
 **Completion Status:** Phases 1-5 Complete ✅ (Core RBAC System + Admin UI Fully Operational)
 
 ### ✅ Completed Phases:
+
 - **Phase 1:** Database Schema & Setup ✅
 - **Phase 2:** Backend Services (Permission Resolver, Authorization Utils, RBAC APIs) ✅
 - **Phase 4:** Frontend Integration (Store, Hooks, Guards, Protected Routes) ✅
@@ -14,6 +15,7 @@
 - **Phase 5:** Admin Management UI (User/Role/Permission Management Pages) ✅
 
 ### 🎯 Current Status:
+
 - **Working Features:**
   - ✅ Permission-based menu filtering (only show accessible items)
   - ✅ Page-level protection (redirect to 403 if no access)
@@ -28,15 +30,18 @@
   - ✅ Role deletion with system role protection
 
 ### ⚠️ Pending Phases:
+
 - **Phase 6-10:** Resource Constants Cleanup, Testing, Documentation, Deployment
 
 ### ✅ Recently Completed:
+
 - **Phase 5:** Admin Management UI (User/Role/Permission Management Pages) ✅
 - **Phase 3 (Partial):** Lookup Data Access Pattern Implementation ✅
   - Infrastructure: Configuration-driven lookup data permissions
   - Applied to 8 core lookup API endpoints (items, customers, warehouses, suppliers, employees, item_categories)
 
 ### 📦 Total Files Created: 34+
+
 - 2 database migrations
 - 1 seed data file (updated with Cashier role)
 - 2 service files (permission resolver)
@@ -53,6 +58,7 @@
 ## Phase 1: Database Schema & Setup ✅ COMPLETED
 
 ### 1.1 Database Tables ✅
+
 - [x] Create `roles` table
   - [x] Add id, name, description fields
   - [x] Add is_system_role flag
@@ -82,6 +88,7 @@
   - [x] Add RLS policies with BU context
 
 ### 1.2 Database Indexes ✅
+
 - [x] Index role_permissions.role_id
 - [x] Index role_permissions.permission_id
 - [x] Index user_roles.user_id
@@ -90,6 +97,7 @@
 - [x] Index permissions.resource
 
 ### 1.3 Seed Data ✅
+
 - [x] Define all system resources in constants (`constants/resources.ts` - 28 resources)
 - [x] Create seed data for default roles (Super Admin, Admin, Manager, User, Viewer)
 - [x] Create seed data for all resource permissions
@@ -98,6 +106,7 @@
 - [x] Create trigger to auto-setup RBAC for new companies
 
 **Files Created:**
+
 - `supabase/migrations/20251228000000_create_rbac_tables.sql`
 - `supabase/migrations/20251228000001_seed_rbac_data.sql`
 - `src/constants/resources.ts`
@@ -108,6 +117,7 @@
 ## Phase 2: Backend Services ✅ COMPLETED
 
 ### 2.1 Permission Resolution Service ✅
+
 - [x] Create `services/permissions/permissionResolver.ts`
   - [x] Implement `getUserPermissions(userId, businessUnitId)` method
   - [x] Implement `can(userId, resource, action)` method
@@ -121,6 +131,7 @@
   - [x] Define PermissionCheck interface
 
 ### 2.2 Authorization Utilities ✅
+
 - [x] Create `lib/auth/checkPermission.ts`
   - [x] Implement server-side permission check helper
   - [x] Extract user from request
@@ -137,6 +148,7 @@
 - [x] Create `lib/auth/index.ts` - Barrel export for easy imports
 
 **Files Created:**
+
 - `src/services/permissions/permissionResolver.ts`
 - `src/services/permissions/types.ts`
 - `src/lib/auth/checkPermission.ts`
@@ -146,6 +158,7 @@
 ### 2.3 RBAC Management APIs ✅
 
 #### Roles APIs ✅
+
 - [x] Create `src/app/api/rbac/roles/route.ts`
   - [x] GET: List all roles (requires 'roles' view permission)
   - [x] POST: Create role (requires 'roles' create permission)
@@ -160,6 +173,7 @@
   - [x] DELETE: Remove permissions from role
 
 #### Permissions APIs ✅
+
 - [x] Create `src/app/api/rbac/permissions/route.ts`
   - [x] GET: List all permissions
   - [x] POST: Create permission
@@ -170,6 +184,7 @@
   - [x] DELETE: Delete permission (prevent if in use)
 
 #### User-Role APIs ✅
+
 - [x] Create `src/app/api/rbac/users/[userId]/roles/route.ts`
   - [x] GET: List user's roles
   - [x] POST: Assign role to user (with BU scope)
@@ -179,6 +194,7 @@
   - [x] GET: Get effective user permissions (aggregated across roles)
 
 **Files Created:**
+
 - `src/app/api/rbac/roles/route.ts`
 - `src/app/api/rbac/roles/[id]/route.ts`
 - `src/app/api/rbac/roles/[id]/permissions/route.ts`
@@ -198,6 +214,7 @@
 **Architectural Enhancement**: Created a reusable pattern where transactional permissions implicitly grant READ-ONLY access to their required lookup data.
 
 **Infrastructure Created:**
+
 - [x] `config/lookupDataPermissions.ts` - Configuration mapping transactional features to lookup dependencies
 - [x] `lib/auth/requirePermission.ts` - Added `requireLookupDataAccess()` helper function
 - [x] `lib/auth/index.ts` - Exported new helper
@@ -205,6 +222,7 @@
 - [x] Updated `docs/plans/rbac-implementation-plan.md` - Documented the pattern
 
 **Lookup APIs Protected (8 endpoints):**
+
 - [x] Items APIs
   - [x] `/api/items/route.ts` (GET) - Uses lookup pattern
   - [x] `/api/items-enhanced/route.ts` (GET) - Uses lookup pattern
@@ -231,17 +249,20 @@
   - [x] POST still requires direct 'employees' create permission
 
 **Transactional Features Supported:**
+
 - POS, Van Sales, Sales Orders, Sales Quotations, Sales Invoices
 - Purchase Orders, Purchase Receipts
 - Stock Transfers, Stock Adjustments, Stock Transformations
 
 **Security Guarantees:**
+
 - ✅ Only VIEW access granted via lookup pattern
 - ✅ CREATE/EDIT/DELETE still require direct permissions
 - ✅ Configuration-driven and auditable
 - ✅ Zero breaking changes to existing permissions
 
 ### 3.2 Protect Remaining APIs (Standard Pattern)
+
 - [ ] Stock Adjustments APIs (`/api/stock-adjustments/*`)
   - [ ] Add permission checks: 'stock_adjustments' resource
 
@@ -264,11 +285,12 @@
   - [ ] Add permission checks: 'business_units' resource
 
 **Example Implementation:**
+
 ```typescript
-import { requirePermission, RESOURCES } from '@/lib/auth';
+import { requirePermission, RESOURCES } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, 'view');
+  const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "view");
   if (unauthorized) return unauthorized;
 
   // Continue with authorized logic...
@@ -276,8 +298,9 @@ export async function GET(request: NextRequest) {
 ```
 
 **Example Lookup Data Implementation:**
+
 ```typescript
-import { requireLookupDataAccess, RESOURCES } from '@/lib/auth';
+import { requireLookupDataAccess, RESOURCES } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   // For lookup data endpoints (items, customers, suppliers, etc.)
@@ -289,6 +312,7 @@ export async function GET(request: NextRequest) {
 ```
 
 ### 3.3 Standardize Error Responses ✅
+
 - [x] Create consistent 403 error format (implemented in requirePermission)
 - [x] Include helpful error messages
 - [x] Lookup pattern provides clear error messages showing available options
@@ -299,6 +323,7 @@ export async function GET(request: NextRequest) {
 ## Phase 4: Frontend Integration ✅ COMPLETED
 
 ### 4.1 Permission Store ✅
+
 - [x] Create `stores/permissionStore.ts`
   - [x] Define PermissionState interface
   - [x] Implement setPermissions action
@@ -309,6 +334,7 @@ export async function GET(request: NextRequest) {
   - [x] Add hasAnyPermissions utility
 
 ### 4.2 Permission Hooks ✅
+
 - [x] Create `hooks/usePermissions.ts`
   - [x] Export useLoadPermissions hook (auto-loads on auth/BU change)
   - [x] Export usePermissions hook
@@ -321,6 +347,7 @@ export async function GET(request: NextRequest) {
   - [x] Export useResourcePermissions hook
 
 ### 4.3 Permission Guard Components ✅
+
 - [x] Create `components/permissions/PermissionGuard.tsx`
   - [x] Implement generic PermissionGuard component
   - [x] Add fallback prop support
@@ -336,6 +363,7 @@ export async function GET(request: NextRequest) {
   - [x] AllPermissionsGuard (requires ALL of multiple permissions)
 
 ### 4.4 Route Protection ✅
+
 - [x] Create `components/permissions/ProtectedRoute.tsx`
   - [x] Check can_view permission for resource
   - [x] Redirect to /403 if no permission
@@ -356,6 +384,7 @@ export async function GET(request: NextRequest) {
 - [x] Create `components/permissions/index.ts` - Barrel export
 
 **Files Created:**
+
 - `src/stores/permissionStore.ts`
 - `src/hooks/usePermissions.ts`
 - `src/components/permissions/PermissionGuard.tsx`
@@ -364,6 +393,7 @@ export async function GET(request: NextRequest) {
 - `src/app/(dashboard)/403/page.tsx`
 
 ### 4.5 Update Navigation Menu ✅ COMPLETED
+
 - [x] Wrap menu items with ViewGuard
   - [x] Inventory menu items
   - [x] Sales menu items
@@ -377,16 +407,19 @@ export async function GET(request: NextRequest) {
 **Implemented in:** `src/components/layout/Sidebar.tsx`
 
 ### 4.6 Update Page Action Buttons ✅ COMPLETED
+
 - [x] Add permission guards to "Create" buttons
 - [x] Add permission guards to "Edit" buttons
 - [x] Add permission guards to "Delete" buttons
 - [x] Wrap pages with ProtectedRoute component
 
 **Pages Updated:**
+
 - Items Page: `src/app/(dashboard)/inventory/items/page.tsx`
 - Customers Page: `src/app/(dashboard)/sales/customers/page.tsx`
 
 ### 4.7 Role-Based Default Landing Pages ✅ COMPLETED
+
 - [x] Create role-to-page mapping configuration
 - [x] Create user roles API endpoint
 - [x] Create user roles hook
@@ -394,12 +427,14 @@ export async function GET(request: NextRequest) {
 - [x] Implement role priority logic
 
 **Files Created:**
+
 - `src/config/roleDefaultPages.ts` - Role to page mapping
 - `src/app/api/rbac/users/[userId]/roles/route.ts` - User roles API
 - `src/hooks/useUserRoles.ts` - User roles hook
 - Updated `src/app/(auth)/login/page.tsx` - Role-based redirect
 
 **Default Pages:**
+
 - Cashier → `/sales/pos`
 - Super Admin/Admin/Manager → `/dashboard`
 - User/Viewer → `/dashboard`
@@ -409,6 +444,7 @@ export async function GET(request: NextRequest) {
 ## Phase 5: Admin Management UI ✅ COMPLETED
 
 ### 5.1 User Management Page ✅
+
 - [x] Create `src/app/(dashboard)/admin/users/page.tsx`
   - [x] List all users with search/filter
   - [x] Show user's current roles
@@ -427,6 +463,7 @@ export async function GET(request: NextRequest) {
   - [ ] Indicate source role
 
 ### 5.2 Role Management Page ✅
+
 - [x] Create `src/app/(dashboard)/admin/roles/page.tsx`
   - [x] List all roles
   - [x] Show role description
@@ -447,6 +484,7 @@ export async function GET(request: NextRequest) {
   - [ ] Save changes
 
 ### 5.3 Permission Management Page ✅
+
 - [x] Create `src/app/(dashboard)/admin/permissions/page.tsx`
   - [x] List all resources
   - [x] Show permission flags per resource (view/create/edit/delete)
@@ -465,11 +503,13 @@ export async function GET(request: NextRequest) {
   - [ ] Link to role detail
 
 ### 5.4 Hooks Created ✅
+
 - [x] `hooks/useUsers.ts` - User management hooks (fetch, assign/remove roles, toggle status)
 - [x] `hooks/useRoles.ts` - Role management hooks (CRUD operations, permission assignment)
 - [x] `hooks/usePermissionsManagement.ts` - Permission management hooks (CRUD operations)
 
 ### 5.5 Audit Log UI (Future Phase)
+
 - [ ] Create audit log page
   - [ ] Show permission changes
   - [ ] Show role assignments
@@ -477,6 +517,7 @@ export async function GET(request: NextRequest) {
   - [ ] Export audit log
 
 **Files Created:**
+
 - `src/app/(dashboard)/admin/users/page.tsx`
 - `src/app/(dashboard)/admin/roles/page.tsx`
 - `src/app/(dashboard)/admin/permissions/page.tsx`
@@ -490,12 +531,14 @@ export async function GET(request: NextRequest) {
 ## Phase 6: Resource Constants
 
 ### 6.1 Define Resources
+
 - [ ] Create `constants/resources.ts`
   - [ ] Define all system resources as constants
   - [ ] Group by module (inventory, sales, purchasing, admin, etc.)
   - [ ] Export typed constant object
 
 ### 6.2 Resource Descriptions
+
 - [ ] Add human-readable names for each resource
 - [ ] Add descriptions for admin UI
 - [ ] Create resource groupings/categories
@@ -505,6 +548,7 @@ export async function GET(request: NextRequest) {
 ## Phase 7: Testing
 
 ### 7.1 Unit Tests
+
 - [ ] Test permission resolver
   - [ ] Test single role permissions
   - [ ] Test multi-role aggregation (UNION)
@@ -515,6 +559,7 @@ export async function GET(request: NextRequest) {
   - [ ] Test requirePermission middleware
 
 ### 7.2 Integration Tests
+
 - [ ] Test API route protection
   - [ ] Test GET routes require can_view
   - [ ] Test POST routes require can_create
@@ -533,6 +578,7 @@ export async function GET(request: NextRequest) {
   - [ ] Test effective permission calculation
 
 ### 7.3 E2E Tests
+
 - [ ] Test user cannot access forbidden pages
   - [ ] Create test user with limited permissions
   - [ ] Attempt to access restricted pages
@@ -551,6 +597,7 @@ export async function GET(request: NextRequest) {
   - [ ] Verify changes take effect
 
 ### 7.4 Security Tests
+
 - [ ] Test frontend bypass attempts
   - [ ] Modify React state to grant permissions
   - [ ] Verify API still blocks unauthorized requests
@@ -568,6 +615,7 @@ export async function GET(request: NextRequest) {
 ## Phase 8: Documentation
 
 ### 8.1 Technical Documentation
+
 - [ ] Document permission model
 - [ ] Document API authorization flow
 - [ ] Document how to add new resources
@@ -575,6 +623,7 @@ export async function GET(request: NextRequest) {
 - [ ] Create architecture diagrams
 
 ### 8.2 Admin User Guide
+
 - [ ] How to create roles
 - [ ] How to assign permissions
 - [ ] How to assign users to roles
@@ -582,6 +631,7 @@ export async function GET(request: NextRequest) {
 - [ ] Best practices for role design
 
 ### 8.3 Developer Guide
+
 - [ ] How to protect new API routes
 - [ ] How to add permission guards to UI
 - [ ] How to define new resources
@@ -592,6 +642,7 @@ export async function GET(request: NextRequest) {
 ## Phase 9: Deployment
 
 ### 9.1 Pre-Deployment Checklist
+
 - [ ] Run all migrations on staging
 - [ ] Verify seed data created correctly
 - [ ] Test with real user scenarios
@@ -599,6 +650,7 @@ export async function GET(request: NextRequest) {
 - [ ] Prepare rollback plan
 
 ### 9.2 Deployment Steps
+
 - [ ] Apply database migrations
 - [ ] Seed default roles and permissions
 - [ ] Assign Super Admin to current admins
@@ -607,6 +659,7 @@ export async function GET(request: NextRequest) {
 - [ ] Monitor for errors
 
 ### 9.3 Post-Deployment
+
 - [ ] Verify all users can log in
 - [ ] Verify permissions work correctly
 - [ ] Monitor 403 errors
@@ -618,6 +671,7 @@ export async function GET(request: NextRequest) {
 ## Phase 10: Future Enhancements
 
 ### 10.1 Advanced Features (Optional)
+
 - [ ] Permission templates
 - [ ] Bulk role assignment
 - [ ] Permission inheritance hierarchies
@@ -628,6 +682,7 @@ export async function GET(request: NextRequest) {
 - [ ] Custom permission conditions
 
 ### 10.2 Analytics
+
 - [ ] Track most used permissions
 - [ ] Identify unused permissions
 - [ ] Monitor access denied patterns
@@ -650,6 +705,7 @@ export async function GET(request: NextRequest) {
 ## Risk Mitigation
 
 ### High-Priority Risks
+
 - [ ] Locking out all admins
   - Mitigation: Always keep one super admin, prevent deletion
 

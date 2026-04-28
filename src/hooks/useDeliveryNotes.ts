@@ -38,7 +38,10 @@ export function useDeliveryNote(id: string) {
 }
 
 export function useDeliveryNoteAllocatableItems(id: string, enabled = true) {
-  useInventoryRealtimeInvalidation([DELIVERY_NOTES_QUERY_KEY, PICK_LISTS_QUERY_KEY], !!id && enabled);
+  useInventoryRealtimeInvalidation(
+    [DELIVERY_NOTES_QUERY_KEY, PICK_LISTS_QUERY_KEY],
+    !!id && enabled
+  );
 
   return useQuery({
     queryKey: [DELIVERY_NOTES_QUERY_KEY, id, "allocatable-items"],
@@ -175,7 +178,8 @@ export function useVoidDeliveryNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason?: string }) => deliveryNotesApi.void(id, reason),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      deliveryNotesApi.void(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       toast.success("Delivery note voided");
@@ -201,7 +205,9 @@ export function useAdjustDispatchedDeliveryNoteItem() {
     }) => deliveryNotesApi.adjustItem(id, itemId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"] });
+      queryClient.invalidateQueries({
+        queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"],
+      });
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
@@ -222,7 +228,9 @@ export function useAddDeliveryNoteItems() {
       deliveryNotesApi.addItems(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"] });
+      queryClient.invalidateQueries({
+        queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"],
+      });
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
       toast.success("Delivery note items added and queued for picking");

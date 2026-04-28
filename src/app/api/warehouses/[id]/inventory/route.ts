@@ -124,7 +124,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             ...new Set(
               inventoryRows
                 .map((stock) => {
-                  const item = Array.isArray(stock.items) ? stock.items[0] ?? null : stock.items;
+                  const item = Array.isArray(stock.items) ? (stock.items[0] ?? null) : stock.items;
                   return item?.uom_id || null;
                 })
                 .filter(Boolean)
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Transform data
     const inventory: InventoryItem[] = inventoryRows.map((stock) => {
-      const item = Array.isArray(stock.items) ? stock.items[0] ?? null : stock.items;
+      const item = Array.isArray(stock.items) ? (stock.items[0] ?? null) : stock.items;
 
       return {
         id: item?.id,

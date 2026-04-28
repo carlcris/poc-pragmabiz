@@ -1,6 +1,11 @@
 export type QuotationStatus = "draft" | "sent" | "accepted" | "rejected" | "expired" | "ordered";
 
-export type FrameServiceFeeMode = "per_frame" | "per_order" | "size_based" | "service_type" | "manual";
+export type FrameServiceFeeMode =
+  | "per_frame"
+  | "per_order"
+  | "size_based"
+  | "service_type"
+  | "manual";
 
 export type FrameInvoiceDisplayMode = "summary" | "components" | "both";
 

@@ -70,9 +70,9 @@ type GroupAgg = {
 
 const CHUNK_SIZE = 200;
 
-const asArray = <T,>(value: T | T[] | null | undefined): T[] =>
+const asArray = <T>(value: T | T[] | null | undefined): T[] =>
   value == null ? [] : Array.isArray(value) ? value : [value];
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
@@ -388,7 +388,10 @@ export async function GET(request: NextRequest) {
     const warehousePerformance = Array.from(warehouseMap.values())
       .map(toRow)
       .sort((a, b) => b.orderCount - a.orderCount);
-    const data = (groupBy === "warehouse" ? warehousePerformance : templatePerformance).slice(0, 50);
+    const data = (groupBy === "warehouse" ? warehousePerformance : templatePerformance).slice(
+      0,
+      50
+    );
 
     const dailyTrend = Array.from(dailyTrendMap.values())
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -450,4 +453,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

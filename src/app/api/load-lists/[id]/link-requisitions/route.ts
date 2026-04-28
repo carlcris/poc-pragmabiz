@@ -5,10 +5,7 @@ import { RESOURCES } from "@/constants/resources";
 
 // POST /api/load-lists/[id]/link-requisitions
 // Link load list items to stock requisition items
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
     if (unauthorized) return unauthorized;
@@ -65,8 +62,8 @@ export async function POST(
         );
       }
 
-    // Verify SR item exists and get current fulfilled_qty
-    const { data: srItem, error: srItemError } = await supabase
+      // Verify SR item exists and get current fulfilled_qty
+      const { data: srItem, error: srItemError } = await supabase
         .from("stock_requisition_items")
         .select(
           `
@@ -126,7 +123,6 @@ export async function POST(
         sr_item_id: link.srItemId,
         fulfilled_qty: newFulfilledQty,
       });
-
     }
 
     // Insert links
@@ -158,7 +154,10 @@ export async function POST(
         await supabase
           .from("load_list_sr_items")
           .delete()
-          .in("id", insertedLinks.map((link) => link.id));
+          .in(
+            "id",
+            insertedLinks.map((link) => link.id)
+          );
       }
 
       return NextResponse.json(
@@ -179,10 +178,7 @@ export async function POST(
 
 // GET /api/load-lists/[id]/link-requisitions
 // Get linked requisitions for a load list
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
     if (unauthorized) return unauthorized;
@@ -232,10 +228,7 @@ export async function GET(
 
     if (error) {
       console.error("Error fetching linked requisitions:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch linked requisitions" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to fetch linked requisitions" }, { status: 500 });
     }
 
     // Format response

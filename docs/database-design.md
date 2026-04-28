@@ -37,6 +37,7 @@ custom_fields     JSONB NULL                 -- Extensibility
 ### 2.1 RLS Overview
 
 Row Level Security (RLS) provides database-level security that ensures:
+
 - **Multi-tenant Data Isolation:** Users can only access data from their own company
 - **Role-Based Access Control:** Fine-grained permissions based on user roles
 - **Defense in Depth:** Security at the database layer, independent of application code
@@ -2323,6 +2324,7 @@ ALTER TABLE sales_distribution ENABLE ROW LEVEL SECURITY;
 All addresses in the system must be updated to use Philippines (Mindanao region) locations.
 
 #### Affected Tables
+
 - `companies` - city, state (region)
 - `warehouses` - city, state (region)
 - `customers` - billing_city, billing_state, shipping_city, shipping_state
@@ -2332,6 +2334,7 @@ All addresses in the system must be updated to use Philippines (Mindanao region)
 #### Mindanao Reference Data
 
 **Major Cities:**
+
 - Davao City
 - Cagayan de Oro City
 - General Santos City
@@ -2344,6 +2347,7 @@ All addresses in the system must be updated to use Philippines (Mindanao region)
 - Digos City
 
 **Regions:**
+
 - Davao Region (Region XI)
 - Northern Mindanao (Region X)
 - Zamboanga Peninsula (Region IX)

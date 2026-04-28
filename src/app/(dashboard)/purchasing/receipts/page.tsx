@@ -211,9 +211,7 @@ export default function PurchaseReceiptsPage() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : receipts.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             {t("emptyTitle")} {t("emptyDescription")}
@@ -269,9 +267,7 @@ export default function PurchaseReceiptsPage() {
                           <div className="text-sm">{receipt.warehouse?.code}</div>
                         </TableCell>
                         <TableCell>{receipt.batchSequenceNumber || t("noValue")}</TableCell>
-                        <TableCell>
-                          {formatDate(receipt.receiptDate)}
-                        </TableCell>
+                        <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(totalValue)}
                         </TableCell>

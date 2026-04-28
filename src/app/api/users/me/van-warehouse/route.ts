@@ -50,8 +50,8 @@ export async function GET() {
     const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(" ") || "User";
 
     const vanWarehouse = Array.isArray(userData.warehouses)
-      ? userData.warehouses[0] ?? null
-      : userData.warehouses ?? null;
+      ? (userData.warehouses[0] ?? null)
+      : (userData.warehouses ?? null);
 
     // Return user data with van warehouse info and employee ID
     return NextResponse.json({

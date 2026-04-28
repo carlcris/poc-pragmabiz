@@ -92,7 +92,7 @@ type AgeBucket = "all" | "0_30" | "31_60" | "61_90" | "91_180" | "181_plus" | "9
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -210,7 +210,10 @@ export async function GET(request: NextRequest) {
           .maybeSingle();
 
         if (categoryError) {
-          return NextResponse.json({ error: "Failed to fetch stock aging report" }, { status: 500 });
+          return NextResponse.json(
+            { error: "Failed to fetch stock aging report" },
+            { status: 500 }
+          );
         }
 
         if (!categoryData?.id) {
@@ -295,12 +298,7 @@ export async function GET(request: NextRequest) {
       })
       .filter((row) => {
         if (!search) return true;
-        const haystack = [
-          row.itemCode,
-          row.itemName,
-          row.batchCode,
-          row.batchLocationSku,
-        ]
+        const haystack = [row.itemCode, row.itemName, row.batchCode, row.batchLocationSku]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -328,9 +326,10 @@ export async function GET(request: NextRequest) {
         return receivedAtCompare;
       }
 
-      const locationCompare = `${left.warehouseCode || ""}-${left.locationCode || ""}`.localeCompare(
-        `${right.warehouseCode || ""}-${right.locationCode || ""}`
-      );
+      const locationCompare =
+        `${left.warehouseCode || ""}-${left.locationCode || ""}`.localeCompare(
+          `${right.warehouseCode || ""}-${right.locationCode || ""}`
+        );
       if (locationCompare !== 0) {
         return locationCompare;
       }

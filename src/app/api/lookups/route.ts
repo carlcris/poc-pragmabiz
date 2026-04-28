@@ -42,10 +42,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type");
     if (!isLookupType(type)) {
-      return NextResponse.json(
-        { error: "Invalid lookup type" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid lookup type" }, { status: 400 });
     }
 
     const context = await requireRequestContext();
@@ -191,8 +188,19 @@ export async function GET(request: NextRequest) {
       if (!includeInactive) query = query.eq("is_active", true);
       if (search) query = query.or(`item_code.ilike.%${search}%,item_name.ilike.%${search}%`);
       const { data, error } = await query;
-      if (error) return NextResponse.json({ error: "Failed to fetch items", details: error.message }, { status: 500 });
-      return NextResponse.json({ data: (data || []).map((row) => ({ id: row.id, code: row.item_code, name: row.item_name, isActive: row.is_active ?? true })) });
+      if (error)
+        return NextResponse.json(
+          { error: "Failed to fetch items", details: error.message },
+          { status: 500 }
+        );
+      return NextResponse.json({
+        data: (data || []).map((row) => ({
+          id: row.id,
+          code: row.item_code,
+          name: row.item_name,
+          isActive: row.is_active ?? true,
+        })),
+      });
     }
 
     if (type === "customers") {
@@ -204,10 +212,22 @@ export async function GET(request: NextRequest) {
         .order("customer_name", { ascending: true })
         .limit(limit);
       if (!includeInactive) query = query.eq("is_active", true);
-      if (search) query = query.or(`customer_code.ilike.%${search}%,customer_name.ilike.%${search}%`);
+      if (search)
+        query = query.or(`customer_code.ilike.%${search}%,customer_name.ilike.%${search}%`);
       const { data, error } = await query;
-      if (error) return NextResponse.json({ error: "Failed to fetch customers", details: error.message }, { status: 500 });
-      return NextResponse.json({ data: (data || []).map((row) => ({ id: row.id, code: row.customer_code, name: row.customer_name, isActive: row.is_active ?? true })) });
+      if (error)
+        return NextResponse.json(
+          { error: "Failed to fetch customers", details: error.message },
+          { status: 500 }
+        );
+      return NextResponse.json({
+        data: (data || []).map((row) => ({
+          id: row.id,
+          code: row.customer_code,
+          name: row.customer_name,
+          isActive: row.is_active ?? true,
+        })),
+      });
     }
 
     if (type === "suppliers") {
@@ -219,10 +239,23 @@ export async function GET(request: NextRequest) {
         .order("supplier_name", { ascending: true })
         .limit(limit);
       if (!includeInactive) query = query.eq("status", "active");
-      if (search) query = query.or(`supplier_code.ilike.%${search}%,supplier_name.ilike.%${search}%`);
+      if (search)
+        query = query.or(`supplier_code.ilike.%${search}%,supplier_name.ilike.%${search}%`);
       const { data, error } = await query;
-      if (error) return NextResponse.json({ error: "Failed to fetch suppliers", details: error.message }, { status: 500 });
-      return NextResponse.json({ data: (data || []).map((row) => ({ id: row.id, code: row.supplier_code, name: row.supplier_name, status: row.status, isActive: row.status === "active" })) });
+      if (error)
+        return NextResponse.json(
+          { error: "Failed to fetch suppliers", details: error.message },
+          { status: 500 }
+        );
+      return NextResponse.json({
+        data: (data || []).map((row) => ({
+          id: row.id,
+          code: row.supplier_code,
+          name: row.supplier_name,
+          status: row.status,
+          isActive: row.status === "active",
+        })),
+      });
     }
 
     if (type === "employees") {
@@ -234,9 +267,16 @@ export async function GET(request: NextRequest) {
         .order("employee_code", { ascending: true })
         .limit(limit);
       if (!includeInactive) query = query.eq("is_active", true);
-      if (search) query = query.or(`employee_code.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`);
+      if (search)
+        query = query.or(
+          `employee_code.ilike.%${search}%,first_name.ilike.%${search}%,last_name.ilike.%${search}%`
+        );
       const { data, error } = await query;
-      if (error) return NextResponse.json({ error: "Failed to fetch employees", details: error.message }, { status: 500 });
+      if (error)
+        return NextResponse.json(
+          { error: "Failed to fetch employees", details: error.message },
+          { status: 500 }
+        );
       return NextResponse.json({
         data: (data || []).map((row) => ({
           id: row.id,
@@ -259,8 +299,18 @@ export async function GET(request: NextRequest) {
         .limit(limit);
       if (search) query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
       const { data, error } = await query;
-      if (error) return NextResponse.json({ error: "Failed to fetch item categories", details: error.message }, { status: 500 });
-      return NextResponse.json({ data: (data || []).map((row) => ({ id: row.id, name: row.name, description: row.description })) });
+      if (error)
+        return NextResponse.json(
+          { error: "Failed to fetch item categories", details: error.message },
+          { status: 500 }
+        );
+      return NextResponse.json({
+        data: (data || []).map((row) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+        })),
+      });
     }
 
     // units_of_measure
@@ -272,9 +322,14 @@ export async function GET(request: NextRequest) {
       .order("code", { ascending: true })
       .limit(limit);
     if (!includeInactive) query = query.eq("is_active", true);
-    if (search) query = query.or(`code.ilike.%${search}%,name.ilike.%${search}%,symbol.ilike.%${search}%`);
+    if (search)
+      query = query.or(`code.ilike.%${search}%,name.ilike.%${search}%,symbol.ilike.%${search}%`);
     const { data, error } = await query;
-    if (error) return NextResponse.json({ error: "Failed to fetch units of measure", details: error.message }, { status: 500 });
+    if (error)
+      return NextResponse.json(
+        { error: "Failed to fetch units of measure", details: error.message },
+        { status: 500 }
+      );
     return NextResponse.json({
       data: (data || []).map((row) => ({
         id: row.id,

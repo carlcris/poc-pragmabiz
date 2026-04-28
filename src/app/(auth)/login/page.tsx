@@ -137,24 +137,24 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#f3e8ff] via-[#ede9fe] to-[#ddd6fe]">
       {/* Left Column - Branding & Illustration */}
-      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative overflow-hidden">
+      <div className="relative hidden items-center justify-center overflow-hidden p-12 lg:flex lg:w-1/2">
         {/* Background decorative circles */}
-        <div className="absolute top-10 left-10 w-40 h-40 rounded-full bg-purple-400/10"></div>
-        <div className="absolute bottom-20 right-10 w-32 h-32 rounded-full bg-violet-400/10"></div>
-        <div className="absolute top-1/2 left-1/4 w-24 h-24 rounded-full bg-purple-300/10"></div>
+        <div className="absolute left-10 top-10 h-40 w-40 rounded-full bg-purple-400/10"></div>
+        <div className="absolute bottom-20 right-10 h-32 w-32 rounded-full bg-violet-400/10"></div>
+        <div className="absolute left-1/4 top-1/2 h-24 w-24 rounded-full bg-purple-300/10"></div>
 
-        <div className="w-full max-w-xl text-center relative z-10">
+        <div className="relative z-10 w-full max-w-xl text-center">
           {/* Illustration Container */}
           <div className="relative mb-12">
-            <div className="relative mx-auto h-[450px] w-full max-w-[500px] flex items-center justify-center">
+            <div className="relative mx-auto flex h-[450px] w-full max-w-[500px] items-center justify-center">
               {/* Main Character Image */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px]">
+              <div className="absolute left-1/2 top-1/2 h-[350px] w-[350px] -translate-x-1/2 -translate-y-1/2">
                 <Image
                   src="/inv_man.png"
                   alt="Inventory Manager"
                   width={350}
                   height={350}
-                  className="w-full h-full object-contain opacity-50 drop-shadow-2xl"
+                  className="h-full w-full object-contain opacity-50 drop-shadow-2xl"
                   priority
                 />
               </div>
@@ -162,43 +162,52 @@ export default function LoginPage() {
               {/* Floating decorative elements */}
               <div className="absolute inset-0">
                 {/* Top left area */}
-                <div className="absolute left-[5%] top-[8%] animate-float-slow">
-                  <div className="h-14 w-14 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center border border-purple-200">
+                <div className="animate-float-slow absolute left-[5%] top-[8%]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-200 bg-white/80 shadow-lg backdrop-blur-sm">
                     <Package className="h-7 w-7 text-purple-600" />
                   </div>
                 </div>
 
                 {/* Top right area */}
-                <div className="absolute right-[8%] top-[12%] animate-float-medium">
-                  <div className="h-12 w-12 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center border border-violet-200">
+                <div className="animate-float-medium absolute right-[8%] top-[12%]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-violet-200 bg-white/80 shadow-lg backdrop-blur-sm">
                     <BarChart3 className="h-6 w-6 text-violet-500" />
                   </div>
                 </div>
 
                 {/* Bottom left */}
-                <div className="absolute left-[10%] bottom-[15%] animate-float-fast">
-                  <div className="h-16 w-16 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg flex items-center justify-center border border-purple-200">
+                <div className="animate-float-fast absolute bottom-[15%] left-[10%]">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-purple-200 bg-white/80 shadow-lg backdrop-blur-sm">
                     <Calendar className="h-7 w-7 text-purple-600" />
                   </div>
                 </div>
 
                 {/* Bottom right */}
-                <div className="absolute right-[12%] bottom-[20%] animate-float-slow" style={{ animationDelay: '1s' }}>
-                  <div className="px-4 py-2 rounded-xl bg-white/80 backdrop-blur-sm shadow-lg border border-gray-200">
+                <div
+                  className="animate-float-slow absolute bottom-[20%] right-[12%]"
+                  style={{ animationDelay: "1s" }}
+                >
+                  <div className="rounded-xl border border-gray-200 bg-white/80 px-4 py-2 shadow-lg backdrop-blur-sm">
                     <p className="text-sm font-semibold text-gray-700">Stock Level</p>
                     <p className="text-xs text-gray-500">98.5%</p>
                   </div>
                 </div>
 
                 {/* Additional floating badges */}
-                <div className="absolute right-[15%] top-[35%] animate-float-medium" style={{ animationDelay: '0.5s' }}>
-                  <div className="px-3 py-1.5 rounded-lg bg-purple-100 border border-purple-200 shadow-md">
+                <div
+                  className="animate-float-medium absolute right-[15%] top-[35%]"
+                  style={{ animationDelay: "0.5s" }}
+                >
+                  <div className="rounded-lg border border-purple-200 bg-purple-100 px-3 py-1.5 shadow-md">
                     <p className="text-xs font-semibold text-purple-700">+2.5k Orders</p>
                   </div>
                 </div>
 
-                <div className="absolute left-[12%] top-[40%] animate-float-fast" style={{ animationDelay: '1.5s' }}>
-                  <div className="px-3 py-1.5 rounded-lg bg-violet-100 border border-violet-200 shadow-md">
+                <div
+                  className="animate-float-fast absolute left-[12%] top-[40%]"
+                  style={{ animationDelay: "1.5s" }}
+                >
+                  <div className="rounded-lg border border-violet-200 bg-violet-100 px-3 py-1.5 shadow-md">
                     <p className="text-xs font-semibold text-violet-700">24/7 Active</p>
                   </div>
                 </div>
@@ -209,7 +218,7 @@ export default function LoginPage() {
           {/* Branding Text */}
           <div className="space-y-3">
             <h1 className="text-3xl font-bold text-gray-800">Achlers Inventory System</h1>
-            <p className="text-base text-gray-600 leading-relaxed">
+            <p className="text-base leading-relaxed text-gray-600">
               Unified system for managing products and stock movements
               <br />
               to ensure accurate inventory visibility across locations
@@ -227,7 +236,7 @@ export default function LoginPage() {
       </div>
 
       {/* Right Column - Login Form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-6 lg:p-12 bg-white/40 backdrop-blur-sm">
+      <div className="flex w-full items-center justify-center bg-white/40 p-6 backdrop-blur-sm lg:w-1/2 lg:p-12">
         <div className="w-full max-w-md">
           {/* Logo/Brand at top */}
           <div className="mb-8 text-center">
@@ -289,7 +298,7 @@ export default function LoginPage() {
                 />
 
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer group">
+                  <label className="group flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
                       checked={rememberMe}
@@ -297,12 +306,14 @@ export default function LoginPage() {
                       disabled={isBusy}
                       className="h-4 w-4 cursor-pointer rounded border-2 border-gray-300 text-purple-600 transition-all focus:ring-2 focus:ring-purple-500 focus:ring-offset-0"
                     />
-                    <span className="text-sm font-medium text-gray-600 group-hover:text-gray-800">Remember me</span>
+                    <span className="text-sm font-medium text-gray-600 group-hover:text-gray-800">
+                      Remember me
+                    </span>
                   </label>
                   <button
                     type="button"
-                    className="text-sm text-gray-500 hover:text-gray-700 transition-colors underline"
-                    onClick={() => alert('Contact your administrator for password reset')}
+                    className="text-sm text-gray-500 underline transition-colors hover:text-gray-700"
+                    onClick={() => alert("Contact your administrator for password reset")}
                   >
                     Forgot password?
                   </button>
@@ -310,7 +321,9 @@ export default function LoginPage() {
 
                 {(loginError || error) && (
                   <Alert variant="destructive" className="border-red-200 bg-red-50">
-                    <AlertDescription className="text-red-800">{loginError || error}</AlertDescription>
+                    <AlertDescription className="text-red-800">
+                      {loginError || error}
+                    </AlertDescription>
                   </Alert>
                 )}
 
@@ -334,7 +347,7 @@ export default function LoginPage() {
             {/* Powered by */}
             <div className="mt-8 flex flex-col items-center gap-2">
               <div className="text-center">
-                <span className="text-xs text-gray-400 uppercase tracking-wide">Powered by</span>
+                <span className="text-xs uppercase tracking-wide text-gray-400">Powered by</span>
               </div>
               <div className="flex items-center justify-center">
                 <Image
@@ -353,7 +366,8 @@ export default function LoginPage() {
       {/* CSS Animations */}
       <style jsx>{`
         @keyframes float-slow {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0px);
           }
           50% {
@@ -361,7 +375,8 @@ export default function LoginPage() {
           }
         }
         @keyframes float-medium {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0px) rotate(0deg);
           }
           50% {
@@ -369,7 +384,8 @@ export default function LoginPage() {
           }
         }
         @keyframes float-fast {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0px);
           }
           50% {

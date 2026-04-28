@@ -110,20 +110,20 @@ export function OutstandingRequisitionsWidget({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* KPI Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <ClipboardList className="h-4 w-4" />
               <span>{t("count")}</span>
             </div>
-            <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
+            <p className="mt-2 text-xl font-bold sm:text-2xl">{data.count}</p>
           </div>
           <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <TrendingUp className="h-4 w-4" />
               <span>{t("totalValue")}</span>
             </div>
-            <p className="mt-2 text-xl sm:text-2xl font-bold">{formatCurrency(data.totalValue)}</p>
+            <p className="mt-2 text-xl font-bold sm:text-2xl">{formatCurrency(data.totalValue)}</p>
           </div>
         </div>
 
@@ -137,17 +137,17 @@ export function OutstandingRequisitionsWidget({
                 href={`/purchasing/stock-requisitions/${sr.id}`}
                 className="flex items-center justify-between rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50"
               >
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <span className="text-sm font-medium truncate">{sr.sr_number}</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="truncate text-sm font-medium">{sr.sr_number}</span>
                   <span className="text-xs text-muted-foreground">
                     {sr.business_unit?.code || t("notAvailable")}
                   </span>
                 </div>
-                <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 flex-shrink-0">
-                  <span className="text-sm font-semibold whitespace-nowrap">
+                <div className="flex flex-shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
+                  <span className="whitespace-nowrap text-sm font-semibold">
                     {formatCurrency(sr.total_amount || 0)}
                   </span>
-                  <div className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 whitespace-nowrap">
+                  <div className="whitespace-nowrap rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                     {sr.status === "partially_fulfilled" ? t("partial") : t("submitted")}
                   </div>
                 </div>

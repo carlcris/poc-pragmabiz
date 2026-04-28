@@ -25,7 +25,10 @@ export const syncSalesOrderInvoiceStatus = async ({
     .neq("status", "cancelled");
 
   if (invoiceCountError) {
-    console.error("Failed to count active invoices for sales order status sync:", invoiceCountError);
+    console.error(
+      "Failed to count active invoices for sales order status sync:",
+      invoiceCountError
+    );
     return { ok: false, error: "Failed to evaluate related invoices" };
   }
 

@@ -47,20 +47,21 @@ import { format } from "date-fns";
 
 const createReceiveStockRequestSchema = (
   tValidation: (key: "receivedDateRequired" | "receivedQtyMin") => string
-) => z.object({
-  receivedDate: z.string().min(1, tValidation("receivedDateRequired")),
-  notes: z.string().optional(),
-  items: z.array(
-    z.object({
-      stockRequestItemId: z.string(),
-      itemId: z.string(),
-      requestedQty: z.number(),
-      receivedQty: z.number().min(0, tValidation("receivedQtyMin")),
-      uomId: z.string(),
-      locationId: z.string().nullable().optional(),
-    })
-  ),
-});
+) =>
+  z.object({
+    receivedDate: z.string().min(1, tValidation("receivedDateRequired")),
+    notes: z.string().optional(),
+    items: z.array(
+      z.object({
+        stockRequestItemId: z.string(),
+        itemId: z.string(),
+        requestedQty: z.number(),
+        receivedQty: z.number().min(0, tValidation("receivedQtyMin")),
+        uomId: z.string(),
+        locationId: z.string().nullable().optional(),
+      })
+    ),
+  });
 
 type ReceiveStockRequestSchema = ReturnType<typeof createReceiveStockRequestSchema>;
 type ReceiveStockRequestFormValues = z.infer<ReceiveStockRequestSchema>;
@@ -269,7 +270,9 @@ export function ReceiveStockRequestDialog({
                             </div>
                           </TableCell>
                           <TableCell>
-                            {requestItem.requested_qty.toLocaleString(locale, { maximumFractionDigits: 2 })}
+                            {requestItem.requested_qty.toLocaleString(locale, {
+                              maximumFractionDigits: 2,
+                            })}
                           </TableCell>
                           <TableCell className="text-right">{dispatchedQty}</TableCell>
                           <TableCell className="text-right">{receivedQty}</TableCell>
@@ -294,7 +297,11 @@ export function ReceiveStockRequestDialog({
                             >
                               <SelectTrigger className="h-9">
                                 <SelectValue
-                                  placeholder={receivingWarehouseId ? t("selectLocation") : t("selectWarehouseFirst")}
+                                  placeholder={
+                                    receivingWarehouseId
+                                      ? t("selectLocation")
+                                      : t("selectWarehouseFirst")
+                                  }
                                 />
                               </SelectTrigger>
                               <SelectContent>

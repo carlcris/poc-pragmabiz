@@ -34,21 +34,28 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useItem, useItems } from "@/hooks/useItems";
 
 const createLineItemSchema = (
   tValidation: (key: "itemRequired" | "uomRequired" | "requestedQtyMin") => string
-) => z.object({
-  itemId: z.string().min(1, tValidation("itemRequired")),
-  itemCode: z.string().optional(),
-  itemName: z.string().optional(),
-  itemUnitOptionId: z.string().min(1, tValidation("uomRequired")),
-  uomId: z.string().min(1, tValidation("uomRequired")),
-  requestedQty: z.number().min(0.01, tValidation("requestedQtyMin")),
-  notes: z.string().optional(),
-});
+) =>
+  z.object({
+    itemId: z.string().min(1, tValidation("itemRequired")),
+    itemCode: z.string().optional(),
+    itemName: z.string().optional(),
+    itemUnitOptionId: z.string().min(1, tValidation("uomRequired")),
+    uomId: z.string().min(1, tValidation("uomRequired")),
+    requestedQty: z.number().min(0.01, tValidation("requestedQtyMin")),
+    notes: z.string().optional(),
+  });
 
 type StockRequestLineItemSchema = ReturnType<typeof createLineItemSchema>;
 export type StockRequestLineItemFormValues = z.infer<StockRequestLineItemSchema>;
@@ -79,7 +86,11 @@ export function StockRequestLineItemDialog({
   const [itemOpen, setItemOpen] = useState(false);
   const [itemSearchInput, setItemSearchInput] = useState("");
   const [itemSearch, setItemSearch] = useState("");
-  const { data: itemsData, isLoading: isItemsLoading, isFetching: isItemsFetching } = useItems({
+  const {
+    data: itemsData,
+    isLoading: isItemsLoading,
+    isFetching: isItemsFetching,
+  } = useItems({
     limit: 5,
     includeStock: true,
     search: itemSearch || undefined,
@@ -199,7 +210,8 @@ export function StockRequestLineItemDialog({
 
   const requestedQty = form.watch("requestedQty") || 0;
   const selectedUnitOptionId = form.watch("itemUnitOptionId");
-  const selectedUnitOption = unitOptions.find((option) => option.id === selectedUnitOptionId) || null;
+  const selectedUnitOption =
+    unitOptions.find((option) => option.id === selectedUnitOptionId) || null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -207,9 +219,7 @@ export function StockRequestLineItemDialog({
         <DialogHeader>
           <DialogTitle>{mode === "edit" ? t("editTitle") : t("createTitle")}</DialogTitle>
           <DialogDescription>
-            {mode === "edit"
-              ? t("editDescription")
-              : t("createDescription")}
+            {mode === "edit" ? t("editDescription") : t("createDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -287,20 +297,22 @@ export function StockRequestLineItemDialog({
                                         )}
                                       />
                                       <div className="min-w-0 flex-1">
-                                        <div className="text-sm font-semibold break-words">
+                                        <div className="break-words text-sm font-semibold">
                                           {item.code}
                                         </div>
-                                        <div className="text-sm text-muted-foreground break-words">
+                                        <div className="break-words text-sm text-muted-foreground">
                                           {item.name}
                                         </div>
-                                        <div className="mt-1 text-xs text-muted-foreground break-words">
+                                        <div className="mt-1 break-words text-xs text-muted-foreground">
                                           {t("onHand")}:{" "}
-                                          {("onHand" in item ? item.onHand ?? 0 : 0).toFixed(2)}{" "}
-                                          {"uom" in item ? item.uom ?? "" : ""} • {t("available")}:{" "}
-                                          {("available" in item ? item.available ?? 0 : 0).toFixed(
-                                            2
-                                          )}{" "}
-                                          {"uom" in item ? item.uom ?? "" : ""}
+                                          {("onHand" in item ? (item.onHand ?? 0) : 0).toFixed(2)}{" "}
+                                          {"uom" in item ? (item.uom ?? "") : ""} • {t("available")}
+                                          :{" "}
+                                          {("available" in item
+                                            ? (item.available ?? 0)
+                                            : 0
+                                          ).toFixed(2)}{" "}
+                                          {"uom" in item ? (item.uom ?? "") : ""}
                                         </div>
                                       </div>
                                     </CommandItem>
@@ -409,10 +421,13 @@ export function StockRequestLineItemDialog({
               <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">{t("qtyPerUnitLabel")}:</span>
                 <span className="font-medium">
-                  {(selectedUnitOption?.qtyPerUnit ?? item?.qtyPerUnit ?? 1).toLocaleString(locale, {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 4,
-                  })}
+                  {(selectedUnitOption?.qtyPerUnit ?? item?.qtyPerUnit ?? 1).toLocaleString(
+                    locale,
+                    {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 4,
+                    }
+                  )}
                 </span>
               </div>
             </div>
@@ -421,7 +436,12 @@ export function StockRequestLineItemDialog({
             <div className="rounded-md border-2 border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{t("quantityToRequest")}:</span>
-                <span className="text-2xl font-bold">{requestedQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-2xl font-bold">
+                  {requestedQty.toLocaleString(locale, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </span>
               </div>
             </div>
 

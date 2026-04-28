@@ -26,24 +26,33 @@ type StockMovementItem = {
   valuation_rate: number | string | null;
   stock_value_before: number | string | null;
   stock_value_after: number | string | null;
-  transaction?: {
-    warehouse_id: string | null;
-    transaction_type?: string | null;
-  } | {
-    warehouse_id: string | null;
-    transaction_type?: string | null;
-  }[] | null;
-  item?: {
-    item_code: string | null;
-    item_name: string | null;
-    uom?: {
-      code: string | null;
-    } | { code: string | null }[] | null;
-  } | {
-    item_code: string | null;
-    item_name: string | null;
-    uom?: { code: string | null } | { code: string | null }[] | null;
-  }[] | null;
+  transaction?:
+    | {
+        warehouse_id: string | null;
+        transaction_type?: string | null;
+      }
+    | {
+        warehouse_id: string | null;
+        transaction_type?: string | null;
+      }[]
+    | null;
+  item?:
+    | {
+        item_code: string | null;
+        item_name: string | null;
+        uom?:
+          | {
+              code: string | null;
+            }
+          | { code: string | null }[]
+          | null;
+      }
+    | {
+        item_code: string | null;
+        item_name: string | null;
+        uom?: { code: string | null } | { code: string | null }[] | null;
+      }[]
+    | null;
 };
 
 type PrevTransactionItem = {

@@ -97,7 +97,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data: {
-        unitOption: transformItemUnitOptionRow(unitOption as DbItemUnitOptionRow, baseUom?.code || ""),
+        unitOption: transformItemUnitOptionRow(
+          unitOption as DbItemUnitOptionRow,
+          baseUom?.code || ""
+        ),
         item: {
           id: item.id,
           code: item.item_code,

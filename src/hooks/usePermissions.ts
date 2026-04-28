@@ -47,8 +47,7 @@ export function useLoadPermissions() {
   const permissionScopeKey = userId ? `${userId}:${businessUnitId ?? "all"}` : null;
 
   const isBusinessUnitReady =
-    !isBusinessUnitLoading &&
-    (Boolean(currentBusinessUnit) || availableBusinessUnits.length === 0);
+    !isBusinessUnitLoading && (Boolean(currentBusinessUnit) || availableBusinessUnits.length === 0);
 
   const query = useQuery({
     queryKey: ["permissions", userId, businessUnitId],

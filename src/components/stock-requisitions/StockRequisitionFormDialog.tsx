@@ -6,20 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
-import {
-  useCreateStockRequisition,
-  useUpdateStockRequisition,
-} from "@/hooks/useStockRequisitions";
+import { useCreateStockRequisition, useUpdateStockRequisition } from "@/hooks/useStockRequisitions";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useSupplier, useSuppliers } from "@/hooks/useSuppliers";
 import { useItem, useItems } from "@/hooks/useItems";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -141,7 +133,9 @@ export function StockRequisitionFormDialog({
   const selectedSupplierId = form.watch("supplierId");
   const { data: selectedSupplierData } = useSupplier(selectedSupplierId);
   const selectedSupplier =
-    suppliers.find((supplier) => supplier.id === selectedSupplierId) ?? selectedSupplierData ?? null;
+    suppliers.find((supplier) => supplier.id === selectedSupplierId) ??
+    selectedSupplierData ??
+    null;
 
   // Calculate total
   const totalAmount = useMemo(() => {
@@ -160,10 +154,7 @@ export function StockRequisitionFormDialog({
     const selectedItem = items.find((item) => item.id === selectedItemId);
     if (!selectedItem) return;
     const cost =
-      selectedItem.purchasePrice ??
-      selectedItem.standardCost ??
-      selectedItem.listPrice ??
-      0;
+      selectedItem.purchasePrice ?? selectedItem.standardCost ?? selectedItem.listPrice ?? 0;
     setPrice(Number(cost).toFixed(2));
   }, [items, selectedItemId]);
 
@@ -310,49 +301,46 @@ export function StockRequisitionFormDialog({
       form.reset();
       setLineItems([]);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("saveError")
-      );
+      toast.error(error instanceof Error ? error.message : t("saveError"));
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-0 gap-0">
+      <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 p-0">
         {/* Header */}
-        <div className="px-6 pt-6 pb-5 border-b border-gray-200 bg-white flex-shrink-0">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
+        <div className="flex-shrink-0 border-b border-gray-200 bg-white px-6 pb-5 pt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              <div>
+                <DialogTitle className="mb-1 text-2xl font-bold text-gray-900">
                   {isEditMode ? t("editTitle") : t("createTitle")}
-                  </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-500">
-                    {isEditMode
-                      ? t("editDescription")
-                      : t("createDescription")}
-                  </DialogDescription>
-                </div>
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  {isEditMode ? t("editDescription") : t("createDescription")}
+                </DialogDescription>
               </div>
             </div>
+          </div>
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col min-h-0">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
-              className="flex flex-1 flex-col min-h-0"
+              className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="px-6 pt-4 flex-shrink-0">
-                <TabsList className="grid w-full grid-cols-2 h-9">
+              <div className="flex-shrink-0 px-6 pt-4">
+                <TabsList className="grid h-9 w-full grid-cols-2">
                   <TabsTrigger value="general" className="gap-1.5 text-xs font-semibold">
                     <FileText className="h-3.5 w-3.5" />
                     {t("generalTab")}
                   </TabsTrigger>
                   <TabsTrigger value="items" className="gap-1.5 text-xs font-semibold">
                     <Package className="h-3.5 w-3.5" />
-                    {t("itemsTab")} {lineItems.length > 0 && (
+                    {t("itemsTab")}{" "}
+                    {lineItems.length > 0 && (
                       <span className="ml-1 rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
                         {lineItems.length}
                       </span>
@@ -361,26 +349,33 @@ export function StockRequisitionFormDialog({
                 </TabsList>
               </div>
 
-              <TabsContent value="general" className="flex-1 min-h-0 overflow-y-auto px-6 py-5 bg-gray-50">
-                <div className="max-w-5xl mx-auto space-y-5">
+              <TabsContent
+                value="general"
+                className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 py-5"
+              >
+                <div className="mx-auto max-w-5xl space-y-5">
                   {/* Basic Information Card */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-5 py-3.5 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
                           <FileText className="h-4 w-4 text-gray-600" />
                         </div>
-                        <h3 className="text-sm font-semibold text-gray-900">{t("basicInformation")}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {t("basicInformation")}
+                        </h3>
                       </div>
                     </div>
                     <div className="p-5">
-                      <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className="mb-4 grid grid-cols-3 gap-4">
                         <FormField
                           control={form.control}
                           name="supplierId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("supplierLabel")}</FormLabel>
+                              <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
+                                {t("supplierLabel")}
+                              </FormLabel>
                               <FormControl>
                                 <AsyncSearchCombobox
                                   value={field.value}
@@ -390,8 +385,12 @@ export function StockRequisitionFormDialog({
                                   options={suppliers}
                                   selectedOption={selectedSupplier}
                                   getOptionValue={(supplier) => supplier.id}
-                                  getOptionLabel={(supplier) => `${supplier.name} (${supplier.code})`}
-                                  getOptionSearchValue={(supplier) => `${supplier.code} ${supplier.name}`}
+                                  getOptionLabel={(supplier) =>
+                                    `${supplier.name} (${supplier.code})`
+                                  }
+                                  getOptionSearchValue={(supplier) =>
+                                    `${supplier.code} ${supplier.name}`
+                                  }
                                   placeholder={t("selectSupplier")}
                                   searchPlaceholder={t("selectSupplier")}
                                   emptyMessage={t("selectSupplier")}
@@ -409,9 +408,15 @@ export function StockRequisitionFormDialog({
                           name="requisitionDate"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("requisitionDateLabel")}</FormLabel>
+                              <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
+                                {t("requisitionDateLabel")}
+                              </FormLabel>
                               <FormControl>
-                                <Input type="date" {...field} className="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  className="h-10 border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -423,9 +428,15 @@ export function StockRequisitionFormDialog({
                           name="requiredByDate"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("requiredByDateLabel")}</FormLabel>
+                              <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
+                                {t("requiredByDateLabel")}
+                              </FormLabel>
                               <FormControl>
-                                <Input type="date" {...field} className="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
+                                <Input
+                                  type="date"
+                                  {...field}
+                                  className="h-10 border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -438,9 +449,16 @@ export function StockRequisitionFormDialog({
                         name="notes"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("notesLabel")}</FormLabel>
+                            <FormLabel className="text-xs font-semibold tracking-wide text-gray-700">
+                              {t("notesLabel")}
+                            </FormLabel>
                             <FormControl>
-                              <Textarea {...field} rows={2} placeholder={t("notesPlaceholder")} className="resize-none text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500" />
+                              <Textarea
+                                {...field}
+                                rows={2}
+                                placeholder={t("notesPlaceholder")}
+                                className="resize-none border-gray-300 text-sm focus:border-purple-500 focus:ring-purple-500"
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -451,71 +469,80 @@ export function StockRequisitionFormDialog({
                 </div>
               </TabsContent>
 
-              <TabsContent value="items" className="flex-1 min-h-0 overflow-y-auto px-6 py-5 bg-gray-50">
-                <div className="max-w-5xl mx-auto space-y-5">
+              <TabsContent
+                value="items"
+                className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 py-5"
+              >
+                <div className="mx-auto max-w-5xl space-y-5">
                   {/* Add Items Card */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="px-5 py-3.5 bg-gradient-to-r from-purple-50 to-violet-50 border-b border-purple-100">
+                  <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                    <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 px-5 py-3.5">
                       <div className="flex items-center gap-2.5">
                         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
                           <Package className="h-4 w-4 text-gray-600" />
                         </div>
-                      <h3 className="text-sm font-semibold text-gray-900">{t("addItemsTitle")}</h3>
+                        <h3 className="text-sm font-semibold text-gray-900">
+                          {t("addItemsTitle")}
+                        </h3>
                       </div>
                     </div>
-                    <div className="p-5 bg-gradient-to-br from-purple-50/30 to-violet-50/30">
+                    <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
                       <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
-                      <div className="min-w-0">
-                        <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("itemLabel")}</label>
-                        <AsyncSearchCombobox
-                          value={selectedItemId}
-                          onValueChange={(value) => {
-                            setSelectedItemId(value);
-                            const selectedItem = items.find((item) => item.id === value);
-                            const cost =
-                              selectedItem?.purchasePrice ??
-                              selectedItem?.standardCost ??
-                              selectedItem?.listPrice ??
-                              0;
-                            setSelectedUnitOptionId("");
-                            setPrice(Number(cost).toFixed(2));
-                            setAddItemError("");
-                          }}
-                          searchValue={itemSearch}
-                          onSearchValueChange={setItemSearch}
-                          options={items.filter((item) => item.isActive)}
-                          selectedOption={selectedItemDetail ?? null}
-                          getOptionValue={(item) => item.id}
-                          getOptionLabel={(item) => `${item.code} - ${item.name}`}
-                          getOptionSearchValue={(item) => `${item.code} ${item.name}`}
-                          placeholder={t("searchItemPlaceholder")}
-                          searchPlaceholder={t("searchItemByCodeOrName")}
-                          emptyMessage={t("noItemFound")}
-                          isLoading={isItemsLoading}
-                          buttonClassName="w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400"
-                          popoverClassName="w-[520px]"
-                          renderOption={(item, selected) => (
-                            <div className="flex w-full items-start justify-between gap-3 py-2">
-                              <div className="flex min-w-0 items-start gap-2">
-                              <Check
-                                className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
-                              />
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-medium">{item.code}</div>
-                                  <div className="text-sm text-muted-foreground whitespace-normal break-words leading-snug">
-                                    {item.name}
+                        <div className="min-w-0">
+                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                            {t("itemLabel")}
+                          </label>
+                          <AsyncSearchCombobox
+                            value={selectedItemId}
+                            onValueChange={(value) => {
+                              setSelectedItemId(value);
+                              const selectedItem = items.find((item) => item.id === value);
+                              const cost =
+                                selectedItem?.purchasePrice ??
+                                selectedItem?.standardCost ??
+                                selectedItem?.listPrice ??
+                                0;
+                              setSelectedUnitOptionId("");
+                              setPrice(Number(cost).toFixed(2));
+                              setAddItemError("");
+                            }}
+                            searchValue={itemSearch}
+                            onSearchValueChange={setItemSearch}
+                            options={items.filter((item) => item.isActive)}
+                            selectedOption={selectedItemDetail ?? null}
+                            getOptionValue={(item) => item.id}
+                            getOptionLabel={(item) => `${item.code} - ${item.name}`}
+                            getOptionSearchValue={(item) => `${item.code} ${item.name}`}
+                            placeholder={t("searchItemPlaceholder")}
+                            searchPlaceholder={t("searchItemByCodeOrName")}
+                            emptyMessage={t("noItemFound")}
+                            isLoading={isItemsLoading}
+                            buttonClassName="w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400"
+                            popoverClassName="w-[520px]"
+                            renderOption={(item, selected) => (
+                              <div className="flex w-full items-start justify-between gap-3 py-2">
+                                <div className="flex min-w-0 items-start gap-2">
+                                  <Check
+                                    className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
+                                  />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-medium">{item.code}</div>
+                                    <div className="whitespace-normal break-words text-sm leading-snug text-muted-foreground">
+                                      {item.name}
+                                    </div>
                                   </div>
                                 </div>
+                                <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
+                                  {formatCurrency(item.listPrice)}
+                                </div>
                               </div>
-                              <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
-                                {formatCurrency(item.listPrice)}
-                              </div>
-                            </div>
-                          )}
-                        />
-                      </div>
+                            )}
+                          />
+                        </div>
                         <div className="min-w-0">
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitLabel")}</label>
+                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                            {t("unitLabel")}
+                          </label>
                           <Select
                             value={selectedUnitOptionId}
                             onValueChange={(value) => {
@@ -524,7 +551,7 @@ export function StockRequisitionFormDialog({
                             }}
                             disabled={!selectedItemId || unitOptions.length === 0}
                           >
-                            <SelectTrigger className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500">
+                            <SelectTrigger className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500">
                               <SelectValue
                                 placeholder={
                                   selectedItemId ? t("selectUnit") : t("selectItemFirst")
@@ -541,7 +568,9 @@ export function StockRequisitionFormDialog({
                           </Select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("qtyPerUnitLabel")}</label>
+                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                            {t("qtyPerUnitLabel")}
+                          </label>
                           <Input
                             value={
                               selectedUnitOption
@@ -552,11 +581,13 @@ export function StockRequisitionFormDialog({
                             }
                             readOnly
                             placeholder="--"
-                            className="h-10 text-sm bg-gray-50 border-gray-300"
+                            className="h-10 border-gray-300 bg-gray-50 text-sm"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("quantityLabel")}</label>
+                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                            {t("quantityLabel")}
+                          </label>
                           <Input
                             type="number"
                             placeholder={t("quantityPlaceholder")}
@@ -566,11 +597,13 @@ export function StockRequisitionFormDialog({
                               setAddItemError("");
                             }}
                             step="0.01"
-                            className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                            className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
                           />
                         </div>
                         <div className="min-w-0">
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("totalQtyLabel")}</label>
+                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                            {t("totalQtyLabel")}
+                          </label>
                           <Input
                             value={
                               selectedUnitOption
@@ -581,33 +614,35 @@ export function StockRequisitionFormDialog({
                             }
                             readOnly
                             placeholder="--"
-                            className="h-10 text-sm bg-gray-50 border-gray-300"
+                            className="h-10 border-gray-300 bg-gray-50 text-sm"
                           />
                         </div>
                         <div className="min-w-0">
-                          <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitCostLabel")} *</label>
-                        <Input
-                          key={`unit-price-${selectedItemId}`}
-                          type="text"
-                          inputMode="decimal"
-                          pattern="^-?\\d*(\\.\\d{0,2})?$"
-                          placeholder={t("unitPricePlaceholder")}
-                          value={price ?? ""}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
-                              setPrice(next);
-                              setAddItemError("");
-                            }
-                          }}
-                          className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                        />
+                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                            {t("unitCostLabel")} *
+                          </label>
+                          <Input
+                            key={`unit-price-${selectedItemId}`}
+                            type="text"
+                            inputMode="decimal"
+                            pattern="^-?\\d*(\\.\\d{0,2})?$"
+                            placeholder={t("unitPricePlaceholder")}
+                            value={price ?? ""}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
+                                setPrice(next);
+                                setAddItemError("");
+                              }
+                            }}
+                            className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
                         </div>
                         <div className="flex items-end">
                           <Button
                             type="button"
                             onClick={handleAddItem}
-                            className="w-full h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
+                            className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
                           >
                             <Plus className="mr-2 h-4 w-4" />
                             {t("addItem")}
@@ -617,11 +652,19 @@ export function StockRequisitionFormDialog({
 
                       {/* Inline Error Message */}
                       {addItemError && (
-                        <div className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-3">
-                          <svg className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
+                        <div className="mt-3 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
+                          <svg
+                            className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-600"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                              clipRule="evenodd"
+                            />
                           </svg>
-                          <p className="text-sm text-red-800 font-medium">{addItemError}</p>
+                          <p className="text-sm font-medium text-red-800">{addItemError}</p>
                         </div>
                       )}
                     </div>
@@ -629,21 +672,24 @@ export function StockRequisitionFormDialog({
 
                   {/* Items List */}
                   {lineItems.length > 0 ? (
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                      <div className="px-5 py-3.5 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                      <div className="border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 px-5 py-3.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
                             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-transparent">
                               <Package className="h-4 w-4 text-gray-600" />
                             </div>
-                          <h3 className="text-sm font-semibold text-gray-900">{t("itemsTitle")}</h3>
+                            <h3 className="text-sm font-semibold text-gray-900">
+                              {t("itemsTitle")}
+                            </h3>
                             <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
-                              {lineItems.length} {lineItems.length === 1 ? t("itemSingular") : t("itemPlural")}
+                              {lineItems.length}{" "}
+                              {lineItems.length === 1 ? t("itemSingular") : t("itemPlural")}
                             </span>
                           </div>
                           <div className="text-right">
                             <p className="text-xs font-medium text-gray-500">{t("totalAmount")}</p>
-                            <p className="text-xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
+                            <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">
                               {formatCurrency(totalAmount)}
                             </p>
                           </div>
@@ -652,34 +698,61 @@ export function StockRequisitionFormDialog({
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
-                            <TableRow className="bg-gray-50 border-b border-gray-200">
-                              <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("itemCode")}</TableHead>
-                              <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("itemName")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("qty")}</TableHead>
-                              <TableHead className="font-semibold text-xs text-gray-700 h-10">{t("unitLabel")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("totalQtyLabel")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("unitCostLabel")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs text-gray-700 h-10">{t("total")}</TableHead>
-                              <TableHead className="w-[60px] h-10"></TableHead>
+                            <TableRow className="border-b border-gray-200 bg-gray-50">
+                              <TableHead className="h-10 text-xs font-semibold text-gray-700">
+                                {t("itemCode")}
+                              </TableHead>
+                              <TableHead className="h-10 text-xs font-semibold text-gray-700">
+                                {t("itemName")}
+                              </TableHead>
+                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
+                                {t("qty")}
+                              </TableHead>
+                              <TableHead className="h-10 text-xs font-semibold text-gray-700">
+                                {t("unitLabel")}
+                              </TableHead>
+                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
+                                {t("totalQtyLabel")}
+                              </TableHead>
+                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
+                                {t("unitCostLabel")}
+                              </TableHead>
+                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
+                                {t("total")}
+                              </TableHead>
+                              <TableHead className="h-10 w-[60px]"></TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {lineItems.map((item, index) => (
-                              <TableRow key={index} className="hover:bg-purple-50/50 transition-colors border-b border-gray-100">
-                                <TableCell className="font-semibold text-gray-900 text-sm py-3">{item.itemCode}</TableCell>
-                                <TableCell className="text-gray-700 text-sm py-3">{item.itemName}</TableCell>
-                                <TableCell className="text-right tabular-nums text-sm text-gray-900 py-3 font-medium">{item.requestedQty}</TableCell>
-                                <TableCell className="text-gray-700 text-sm py-3">{item.uomLabel}</TableCell>
-                                <TableCell className="text-right tabular-nums text-sm text-gray-900 py-3 font-medium">
+                              <TableRow
+                                key={index}
+                                className="border-b border-gray-100 transition-colors hover:bg-purple-50/50"
+                              >
+                                <TableCell className="py-3 text-sm font-semibold text-gray-900">
+                                  {item.itemCode}
+                                </TableCell>
+                                <TableCell className="py-3 text-sm text-gray-700">
+                                  {item.itemName}
+                                </TableCell>
+                                <TableCell className="py-3 text-right text-sm font-medium tabular-nums text-gray-900">
+                                  {item.requestedQty}
+                                </TableCell>
+                                <TableCell className="py-3 text-sm text-gray-700">
+                                  {item.uomLabel}
+                                </TableCell>
+                                <TableCell className="py-3 text-right text-sm font-medium tabular-nums text-gray-900">
                                   {(item.requestedQty * item.qtyPerUnit).toLocaleString(locale, {
                                     maximumFractionDigits: 4,
                                   })}
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums text-gray-700 text-sm py-3">
+                                <TableCell className="py-3 text-right text-sm tabular-nums text-gray-700">
                                   {formatCurrency(item.unitPrice)}
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums font-bold text-purple-600 text-sm py-3">
-                                  {formatCurrency(item.requestedQty * item.qtyPerUnit * item.unitPrice)}
+                                <TableCell className="py-3 text-right text-sm font-bold tabular-nums text-purple-600">
+                                  {formatCurrency(
+                                    item.requestedQty * item.qtyPerUnit * item.unitPrice
+                                  )}
                                 </TableCell>
                                 <TableCell className="py-3">
                                   <Button
@@ -687,7 +760,7 @@ export function StockRequisitionFormDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleRemoveItem(index)}
-                                    className="hover:bg-red-50 hover:text-red-600 h-8 w-8 p-0 rounded-lg"
+                                    className="h-8 w-8 rounded-lg p-0 hover:bg-red-50 hover:text-red-600"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -699,13 +772,15 @@ export function StockRequisitionFormDialog({
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-white rounded-xl shadow-sm border-2 border-dashed border-gray-300 p-12">
+                    <div className="rounded-xl border-2 border-dashed border-gray-300 bg-white p-12 shadow-sm">
                       <div className="text-center">
                         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-100 to-violet-100">
                           <ShoppingCart className="h-8 w-8 text-purple-600" />
                         </div>
-                        <h3 className="mb-2 text-base font-semibold text-gray-900">{t("noItemsTitle")}</h3>
-                        <p className="text-sm text-gray-500 max-w-sm mx-auto">
+                        <h3 className="mb-2 text-base font-semibold text-gray-900">
+                          {t("noItemsTitle")}
+                        </h3>
+                        <p className="mx-auto max-w-sm text-sm text-gray-500">
                           {t("noItemsDescription")}
                         </p>
                       </div>
@@ -717,7 +792,7 @@ export function StockRequisitionFormDialog({
 
             {/* Fixed Footer */}
             <div className="flex-shrink-0 border-t border-gray-200 bg-white px-6 py-4">
-              <div className="max-w-5xl mx-auto flex items-center justify-between">
+              <div className="mx-auto flex max-w-5xl items-center justify-between">
                 <div className="text-sm text-gray-500">
                   {lineItems.length > 0 && (
                     <span>
@@ -734,14 +809,14 @@ export function StockRequisitionFormDialog({
                     type="button"
                     variant="outline"
                     onClick={() => onOpenChange(false)}
-                    className="min-w-[100px] h-10 text-sm border-gray-300 hover:bg-gray-50"
+                    className="h-10 min-w-[100px] border-gray-300 text-sm hover:bg-gray-50"
                   >
                     {t("cancel")}
                   </Button>
                   <Button
                     type="submit"
                     disabled={createMutation.isPending || updateMutation.isPending}
-                    className="min-w-[140px] h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
+                    className="h-10 min-w-[140px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
                   >
                     {createMutation.isPending || updateMutation.isPending ? (
                       <span className="flex items-center gap-2">
@@ -749,9 +824,7 @@ export function StockRequisitionFormDialog({
                         {t("saving")}
                       </span>
                     ) : (
-                      <>
-                        {isEditMode ? t("updateAction") : t("createAction")}
-                      </>
+                      <>{isEditMode ? t("updateAction") : t("createAction")}</>
                     )}
                   </Button>
                 </div>

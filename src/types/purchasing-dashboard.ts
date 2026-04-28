@@ -5,7 +5,7 @@
  * These types define the data structures returned by the dashboard API.
  */
 
-import type { LoadListStatus } from './load-list';
+import type { LoadListStatus } from "./load-list";
 
 // ============================================================================
 // WIDGET DATA TYPES
@@ -228,19 +228,19 @@ export type DashboardQueryParams = {
  * Type-safe widget identifiers
  */
 export type WidgetName =
-  | 'outstandingRequisitions'
-  | 'damagedItemsThisMonth'
-  | 'expectedArrivalsThisWeek'
-  | 'delayedShipments'
-  | 'todaysReceivingQueue'
-  | 'pendingApprovals'
-  | 'boxAssignmentQueue'
-  | 'warehouseCapacity'
-  | 'activeRequisitions'
-  | 'incomingDeliveriesWithSRs'
-  | 'activeContainers'
-  | 'locationAssignmentStatus';
-export type DamageType = 'broken' | 'defective' | 'missing' | 'expired' | 'wrong_item' | 'other';
+  | "outstandingRequisitions"
+  | "damagedItemsThisMonth"
+  | "expectedArrivalsThisWeek"
+  | "delayedShipments"
+  | "todaysReceivingQueue"
+  | "pendingApprovals"
+  | "boxAssignmentQueue"
+  | "warehouseCapacity"
+  | "activeRequisitions"
+  | "incomingDeliveriesWithSRs"
+  | "activeContainers"
+  | "locationAssignmentStatus";
+export type DamageType = "broken" | "defective" | "missing" | "expired" | "wrong_item" | "other";
 
 export type DashboardSupplier = {
   id?: string;
@@ -268,7 +268,7 @@ export type DashboardLoadList = {
 export type DashboardStockRequisition = {
   id: string;
   sr_number: string;
-  status: 'draft' | 'submitted' | 'partially_fulfilled' | 'fulfilled' | 'cancelled';
+  status: "draft" | "submitted" | "partially_fulfilled" | "fulfilled" | "cancelled";
   total_amount: number;
   business_unit?: {
     id: string;

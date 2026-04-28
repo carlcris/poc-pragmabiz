@@ -223,8 +223,7 @@ export default function WarehouseLocationsPage() {
         />
 
         <Card>
-          <CardHeader>
-          </CardHeader>
+          <CardHeader></CardHeader>
           <CardContent>
             {error ? (
               <EmptyStatePanel
@@ -257,12 +256,24 @@ export default function WarehouseLocationsPage() {
                   {isPending
                     ? Array.from({ length: 8 }, (_, index) => `skeleton-${index}`).map((rowKey) => (
                         <TableRow key={rowKey}>
-                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-10" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-10" /></TableCell>
-                          <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-20" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-36" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-20" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-10" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-10" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-16 rounded-full" />
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Skeleton className="h-8 w-16" />

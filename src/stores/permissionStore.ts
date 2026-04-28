@@ -51,7 +51,7 @@ export const usePermissionStore = create<PermissionStore>()(
       permissionsCacheByScope: {},
       fetchedAtByScope: {},
 
-  // Actions
+      // Actions
       setScope: (scopeKey) => {
         if (!scopeKey) {
           set({
@@ -118,7 +118,7 @@ export const usePermissionStore = create<PermissionStore>()(
         });
       },
 
-  // Permission checks
+      // Permission checks
       can: (resource, action) => {
         const { permissions } = get();
         if (!permissions || !permissions[resource]) {
@@ -165,7 +165,7 @@ export const usePermissionStore = create<PermissionStore>()(
         return permissions[resource];
       },
 
-  // Utility
+      // Utility
       hasAnyPermissions: () => {
         const { permissions } = get();
         if (!permissions) return false;
@@ -173,7 +173,6 @@ export const usePermissionStore = create<PermissionStore>()(
         // Check if user has at least one view permission
         return Object.values(permissions).some((perm) => perm.can_view);
       },
-
     }),
     {
       name: "permission-store",

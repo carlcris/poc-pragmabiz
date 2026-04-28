@@ -33,7 +33,11 @@ export const resolveStockRequestLineUnitOptions = async (
   if (items.length === 0) return [];
 
   const explicitOptionIds = Array.from(
-    new Set(items.map((item) => item.item_unit_option_id).filter((value): value is string => Boolean(value)))
+    new Set(
+      items
+        .map((item) => item.item_unit_option_id)
+        .filter((value): value is string => Boolean(value))
+    )
   );
   const fallbackPairs = Array.from(
     new Set(
@@ -63,15 +67,25 @@ export const resolveStockRequestLineUnitOptions = async (
   const fallbackOptionMap = new Map<string, ItemUnitOptionRow>();
   if (fallbackPairs.length > 0) {
     const itemIds = Array.from(
-      new Set(fallbackPairs.map((pair) => pair.split(":")[0]).filter((value): value is string => Boolean(value)))
+      new Set(
+        fallbackPairs
+          .map((pair) => pair.split(":")[0])
+          .filter((value): value is string => Boolean(value))
+      )
     );
     const uomIds = Array.from(
-      new Set(fallbackPairs.map((pair) => pair.split(":")[1]).filter((value): value is string => Boolean(value)))
+      new Set(
+        fallbackPairs
+          .map((pair) => pair.split(":")[1])
+          .filter((value): value is string => Boolean(value))
+      )
     );
 
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select("id, item_id, uom_id, is_active, deleted_at, is_base, is_default, sort_order, created_at")
+      .select(
+        "id, item_id, uom_id, is_active, deleted_at, is_base, is_default, sort_order, created_at"
+      )
       .eq("company_id", companyId)
       .in("item_id", itemIds)
       .in("uom_id", uomIds)
@@ -107,7 +121,9 @@ export const resolveStockRequestLineUnitOptions = async (
         throw new StockRequestLineValidationError("Selected unit option is inactive");
       }
       if (option.item_id !== item.item_id) {
-        throw new StockRequestLineValidationError("Selected unit option does not belong to the item");
+        throw new StockRequestLineValidationError(
+          "Selected unit option does not belong to the item"
+        );
       }
       if (item.uom_id && item.uom_id !== option.uom_id) {
         throw new StockRequestLineValidationError("Selected unit option does not match the unit");
@@ -126,7 +142,9 @@ export const resolveStockRequestLineUnitOptions = async (
 
     const fallbackOption = fallbackOptionMap.get(buildOptionMapKey(item.item_id, item.uom_id));
     if (!fallbackOption) {
-      throw new StockRequestLineValidationError("No active item unit option matches the selected item and unit");
+      throw new StockRequestLineValidationError(
+        "No active item unit option matches the selected item and unit"
+      );
     }
 
     return {

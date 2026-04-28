@@ -99,9 +99,7 @@ function AccessDeniedContent() {
         <div className="mb-8 space-y-3">
           <p className="text-lg text-gray-700">{renderResourceMessage()}</p>
 
-          <p className="text-sm text-gray-600">
-            {t("supportMessage")}
-          </p>
+          <p className="text-sm text-gray-600">{t("supportMessage")}</p>
         </div>
 
         {/* Actions */}

@@ -27,10 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  useStockRequisition,
-  useUpdateStockRequisitionStatus,
-} from "@/hooks/useStockRequisitions";
+import { useStockRequisition, useUpdateStockRequisitionStatus } from "@/hooks/useStockRequisitions";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { StockRequisitionStatus } from "@/types/stock-requisition";
 
@@ -114,11 +111,7 @@ export default function StockRequisitionDetailPage() {
     }).format(new Date(dateString));
   };
 
-  const formatUser = (user?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  }) => {
+  const formatUser = (user?: { firstName?: string; lastName?: string; email?: string }) => {
     if (!user) return t("noValue");
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
     return fullName || user.email || t("noValue");
@@ -245,9 +238,7 @@ export default function StockRequisitionDetailPage() {
         </div>
       ) : error ? (
         <Card>
-          <CardContent className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </CardContent>
+          <CardContent className="py-8 text-center text-destructive">{t("loadError")}</CardContent>
         </Card>
       ) : !sr ? (
         <Card>
@@ -286,7 +277,8 @@ export default function StockRequisitionDetailPage() {
                   <div>
                     <span className="text-muted-foreground">{getLabel("businessUnit")}</span>
                     <div className="font-medium">
-                      {sr.businessUnit?.name || t("noValue")} ({sr.businessUnit?.code || t("noValue")})
+                      {sr.businessUnit?.name || t("noValue")} (
+                      {sr.businessUnit?.code || t("noValue")})
                     </div>
                   </div>
                   <div>
@@ -361,17 +353,17 @@ export default function StockRequisitionDetailPage() {
                               })}
                             </div>
                           </TableCell>
+                          <TableCell className="text-right">{item.requestedQty}</TableCell>
                           <TableCell className="text-right">
-                            {item.requestedQty}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {(item.requestedQty * (item.itemUnitOption?.qtyPerUnit ?? 1)).toLocaleString(locale, {
+                            {(
+                              item.requestedQty * (item.itemUnitOption?.qtyPerUnit ?? 1)
+                            ).toLocaleString(locale, {
                               maximumFractionDigits: 4,
                             })}
                           </TableCell>
                           <TableCell className="text-right">
                             <span
-                              className={item.fulfilledQty > 0 ? "text-green-600 font-medium" : ""}
+                              className={item.fulfilledQty > 0 ? "font-medium text-green-600" : ""}
                             >
                               {item.fulfilledQty}
                             </span>
@@ -379,7 +371,7 @@ export default function StockRequisitionDetailPage() {
                           <TableCell className="text-right">
                             <span
                               className={
-                                item.outstandingQty > 0 ? "text-orange-600 font-medium" : ""
+                                item.outstandingQty > 0 ? "font-medium text-orange-600" : ""
                               }
                             >
                               {item.outstandingQty}
@@ -424,9 +416,7 @@ export default function StockRequisitionDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("sendTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("sendDescription")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("sendDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
@@ -436,7 +426,6 @@ export default function StockRequisitionDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }

@@ -112,12 +112,7 @@ function ItemsPageContent() {
       warehouseId: currentBusinessUnitWarehouseId,
       status:
         statusFilter !== "all"
-          ? (statusFilter as
-              | "normal"
-              | "low_stock"
-              | "out_of_stock"
-              | "overstock"
-              | "discontinued")
+          ? (statusFilter as "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued")
           : "all",
       includeStock: true,
       includeStats: false,
@@ -152,7 +147,6 @@ function ItemsPageContent() {
   const { data: categoriesData } = useItemCategories();
   const categories = categoriesData?.data || [];
 
-
   const isInitialLoading = isLoading || !areItemQueriesEnabled;
   const items = (data?.data || []) as ItemWithStock[];
   const pagination = data?.pagination;
@@ -176,11 +170,7 @@ function ItemsPageContent() {
     },
     {
       title: t("totalAvailableValue"),
-      value: hasStatsError
-        ? "—"
-        : totalValue !== undefined
-          ? formatCurrency(totalValue)
-          : "—",
+      value: hasStatsError ? "—" : totalValue !== undefined ? formatCurrency(totalValue) : "—",
       description: t("totalAvailableValueDescription"),
       icon: TrendingUp,
       iconColor: "text-green-600",
@@ -313,22 +303,26 @@ function ItemsPageContent() {
   };
 
   return (
-    <div className="flex flex-col gap-2 sm:gap-4 md:gap-6 md:h-full">
+    <div className="flex flex-col gap-2 sm:gap-4 md:h-full md:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
             {t("title")}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
             {t("subtitle")}
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-          <Button variant="outline" onClick={handleExportCSV} className="w-full sm:w-auto flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={handleExportCSV}
+            className="w-full flex-shrink-0 sm:w-auto"
+          >
             <Download className="mr-2 h-4 w-4" />
             <span className="sm:inline">{t("exportCsv")}</span>
           </Button>
-          <Button onClick={handleCreateItem} className="w-full sm:w-auto flex-shrink-0">
+          <Button onClick={handleCreateItem} className="w-full flex-shrink-0 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             <span className="sm:inline">{t("createItem")}</span>
           </Button>
@@ -336,7 +330,7 @@ function ItemsPageContent() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-2 grid-cols-2 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-2 md:gap-4 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           const isFilterCard = !!stat.filterValue;
@@ -387,10 +381,10 @@ function ItemsPageContent() {
         })}
       </div>
 
-      <div className="flex flex-col gap-2 sm:gap-3 md:gap-4 md:min-h-0 md:flex-1">
+      <div className="flex flex-col gap-2 sm:gap-3 md:min-h-0 md:flex-1 md:gap-4">
         {/* Filters */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t("searchPlaceholder")}
@@ -446,7 +440,7 @@ function ItemsPageContent() {
         {/* Table */}
         <div className="md:min-h-0 md:flex-1">
           {isInitialLoading || isFetching ? (
-            <div className="h-[200px] md:h-full overflow-y-auto overscroll-contain rounded-md border">
+            <div className="h-[200px] overflow-y-auto overscroll-contain rounded-md border md:h-full">
               <Table containerClassName="overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
@@ -505,7 +499,7 @@ function ItemsPageContent() {
               </Table>
             </div>
           ) : error ? (
-            <div className="flex h-[200px] md:h-full items-center justify-center text-center">
+            <div className="flex h-[200px] items-center justify-center text-center md:h-full">
               <div>
                 <AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
                 <h3 className="mb-2 text-lg font-semibold text-destructive">
@@ -522,11 +516,11 @@ function ItemsPageContent() {
               </div>
             </div>
           ) : items.length === 0 ? (
-            <div className="flex h-[200px] md:h-full items-center justify-center text-muted-foreground">
+            <div className="flex h-[200px] items-center justify-center text-muted-foreground md:h-full">
               {t("empty")}
             </div>
           ) : (
-            <div className="h-[200px] md:h-full overflow-auto overscroll-contain rounded-md border">
+            <div className="h-[200px] overflow-auto overscroll-contain rounded-md border md:h-full">
               <Table containerClassName="min-w-[1200px] overflow-visible">
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm [&_th]:bg-background">
                   <TableRow>
@@ -564,12 +558,16 @@ function ItemsPageContent() {
                       <TableCell className="text-primary">
                         <div className="font-medium hover:underline">{item.name}</div>
                         {item.chineseName ? (
-                          <div className="font-medium text-muted-foreground">{item.chineseName}</div>
+                          <div className="font-medium text-muted-foreground">
+                            {item.chineseName}
+                          </div>
                         ) : null}
                       </TableCell>
                       <TableCell>{item.category}</TableCell>
                       <TableCell className="text-muted-foreground">{item.uom || "-"}</TableCell>
-                      <TableCell className="text-right">{Math.trunc(toNumber(item.onHand))}</TableCell>
+                      <TableCell className="text-right">
+                        {Math.trunc(toNumber(item.onHand))}
+                      </TableCell>
                       <TableCell className="text-right text-orange-600">
                         {Math.trunc(toNumber(item.allocated))}
                       </TableCell>
@@ -581,17 +579,17 @@ function ItemsPageContent() {
                           const availableValue = toNumber(item.available);
                           const reorderPointValue = toNumber(item.reorderPoint);
                           return (
-                        <span
-                          className={
-                            availableValue <= 0
-                              ? "text-red-600"
-                              : availableValue <= reorderPointValue
-                                ? "text-yellow-600"
-                                : "text-green-600"
-                          }
-                        >
-                          {Math.trunc(availableValue)}
-                        </span>
+                            <span
+                              className={
+                                availableValue <= 0
+                                  ? "text-red-600"
+                                  : availableValue <= reorderPointValue
+                                    ? "text-yellow-600"
+                                    : "text-green-600"
+                              }
+                            >
+                              {Math.trunc(availableValue)}
+                            </span>
                           );
                         })()}
                       </TableCell>
@@ -648,7 +646,7 @@ function ItemsPageContent() {
         </div>
 
         {pagination && pagination.total > 0 && (
-          <div className="shrink-0 sticky bottom-0 z-10 rounded-md border bg-card p-2 shadow-lg md:static md:shadow-none">
+          <div className="sticky bottom-0 z-10 shrink-0 rounded-md border bg-card p-2 shadow-lg md:static md:shadow-none">
             <DataTablePagination
               currentPage={page}
               totalPages={pagination.totalPages}

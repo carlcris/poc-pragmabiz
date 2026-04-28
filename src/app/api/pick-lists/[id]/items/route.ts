@@ -245,11 +245,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         suggested_pick_batch_received_at?: string | null;
         item_unit_options?:
           | {
-            qty_per_unit: number | string | null;
-          }
+              qty_per_unit: number | string | null;
+            }
           | Array<{
-            qty_per_unit: number | string | null;
-          }>
+              qty_per_unit: number | string | null;
+            }>
           | null;
       };
 
@@ -265,9 +265,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: dnLineError.message }, { status: 500 });
       }
 
-      const dnLineById = new Map(
-        ((dnLineRows || []) as DnLineMeta[]).map((row) => [row.id, row])
-      );
+      const dnLineById = new Map(((dnLineRows || []) as DnLineMeta[]).map((row) => [row.id, row]));
 
       const { data: existingPickRows, error: existingPickRowsError } = await auth.supabase
         .from("delivery_note_item_picks")
@@ -352,13 +350,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           }
 
           if (pickQty < 0) {
-            return NextResponse.json({ error: "Picked quantity cannot be negative" }, { status: 400 });
+            return NextResponse.json(
+              { error: "Picked quantity cannot be negative" },
+              { status: 400 }
+            );
           }
 
           const alreadyDispatched = toNumber(existingRow.dispatched_qty);
           if (pickQty < alreadyDispatched) {
             return NextResponse.json(
-              { error: `Picked quantity cannot be less than already dispatched quantity (${alreadyDispatched})` },
+              {
+                error: `Picked quantity cannot be less than already dispatched quantity (${alreadyDispatched})`,
+              },
               { status: 400 }
             );
           }
@@ -366,7 +369,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           const nextLinePicked = currentLinePicked - toNumber(existingRow.picked_qty) + pickQty;
           if (nextLinePicked > allocatedQty) {
             return NextResponse.json(
-              { error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line` },
+              {
+                error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line`,
+              },
               { status: 400 }
             );
           }
@@ -457,7 +462,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
           if (!resolvedSource) {
             return NextResponse.json(
-              { error: `Scanned batch location SKU ${row.batchLocationSku.trim()} not found for this item` },
+              {
+                error: `Scanned batch location SKU ${row.batchLocationSku.trim()} not found for this item`,
+              },
               { status: 400 }
             );
           }
@@ -478,7 +485,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           resolvedPickedBatchReceivedAt = String(itemBatch.received_at);
         }
 
-        if (!resolvedPickedLocationId || !resolvedPickedBatchCode || !resolvedPickedBatchReceivedAt) {
+        if (
+          !resolvedPickedLocationId ||
+          !resolvedPickedBatchCode ||
+          !resolvedPickedBatchReceivedAt
+        ) {
           return NextResponse.json(
             {
               error:
@@ -512,7 +523,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           const nextLinePicked = currentLinePicked + pickQty;
           if (nextLinePicked > allocatedQty) {
             return NextResponse.json(
-              { error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line` },
+              {
+                error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line`,
+              },
               { status: 400 }
             );
           }
@@ -579,7 +592,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           const nextLinePicked = currentLinePicked + pickQty;
           if (nextLinePicked > allocatedQty) {
             return NextResponse.json(
-              { error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line` },
+              {
+                error: `Picked quantity exceeds allocated quantity (${allocatedQty}) for this line`,
+              },
               { status: 400 }
             );
           }

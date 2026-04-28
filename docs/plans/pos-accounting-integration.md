@@ -11,6 +11,7 @@
 Integrate POS transactions with the General Ledger to automatically create accounting entries when sales are completed or voided.
 
 ### Current State
+
 - ✅ Sales Invoices → AR & COGS posting
 - ✅ Invoice Payments → Cash/AR posting
 - ✅ Purchase Receipts → AP posting
@@ -37,6 +38,7 @@ Integrate POS transactions with the General Ledger to automatically create accou
 **When:** POS transaction completed (status = 'completed')
 
 **Journal Entry:**
+
 ```
 DR  Cash/Bank (A-1000)              | Amount Paid
 CR  Sales Revenue (R-4000)          | Subtotal - Total Discount
@@ -45,6 +47,7 @@ CR  Sales Tax Payable (L-2100)      | Total Tax
 ```
 
 **Note:**
+
 - All payment methods (cash, card, e-wallet) consolidated to A-1000
 - Discounts recorded as contra-revenue (reduces sales)
 - Change is not tracked (customer takes it)
@@ -54,12 +57,14 @@ CR  Sales Tax Payable (L-2100)      | Total Tax
 **When:** Same time as revenue recognition
 
 **Journal Entry:**
+
 ```
 DR  Cost of Goods Sold (C-5000)     | COGS Amount
 CR  Inventory (A-1200)              | COGS Amount
 ```
 
 **COGS Calculation:**
+
 - Query `stock_ledger` for item valuation rates (weighted average)
 - Per item: `quantity × valuation_rate`
 - Fallback to `purchase_price` if no ledger entry
@@ -70,6 +75,7 @@ CR  Inventory (A-1200)              | COGS Amount
 **When:** POS transaction voided (status = 'voided')
 
 **Journal Entry:**
+
 ```
 DR  Sales Revenue (R-4000)          | Subtotal - Total Discount
 DR  Sales Discounts (R-4010)        | Total Discount
@@ -131,12 +137,13 @@ Transaction Voided
 
 Add to seed.sql and migration:
 
-| Account Number | Account Name | Type | Parent | Notes |
-|----------------|--------------|------|--------|-------|
-| R-4010 | Sales Discounts | revenue | R-4000 | Contra-revenue account |
-| L-2100 | Sales Tax Payable | liability | - | For output VAT/sales tax |
+| Account Number | Account Name      | Type      | Parent | Notes                    |
+| -------------- | ----------------- | --------- | ------ | ------------------------ |
+| R-4010         | Sales Discounts   | revenue   | R-4000 | Contra-revenue account   |
+| L-2100         | Sales Tax Payable | liability | -      | For output VAT/sales tax |
 
 **Note:**
+
 - A-1000 (Cash/Bank) already exists
 - R-4000 (Sales Revenue) already exists
 - C-5000 (Cost of Goods Sold) already exists
@@ -145,6 +152,7 @@ Add to seed.sql and migration:
 ### File Structure
 
 **New Files:**
+
 ```
 /src/services/accounting/posPosting.ts
   - postPOSSale(transactionId, supabase)
@@ -162,6 +170,7 @@ Add to seed.sql and migration:
 ```
 
 **Modified Files:**
+
 ```
 /src/app/api/pos/transactions/route.ts (POST)
   - Add stock transaction creation
@@ -179,6 +188,7 @@ Add to seed.sql and migration:
 ### Journal Entry Format
 
 **POS Sale Journal:**
+
 ```typescript
 {
   journal_code: "JE-00XXX", // auto-generated
@@ -195,6 +205,7 @@ Add to seed.sql and migration:
 ```
 
 **Journal Lines:**
+
 ```typescript
 [
   {
@@ -202,33 +213,34 @@ Add to seed.sql and migration:
     account_number: "A-1000",
     debit: amount_paid,
     credit: 0,
-    description: "Cash received"
+    description: "Cash received",
   },
   {
     line_number: 2,
     account_number: "R-4000",
     debit: 0,
     credit: subtotal - total_discount,
-    description: "Sales revenue"
+    description: "Sales revenue",
   },
   {
     line_number: 3, // only if discount > 0
     account_number: "R-4010",
     debit: 0,
     credit: total_discount,
-    description: "Sales discount"
+    description: "Sales discount",
   },
   {
     line_number: 4, // only if tax > 0
     account_number: "L-2100",
     debit: 0,
     credit: total_tax,
-    description: "Sales tax collected"
-  }
-]
+    description: "Sales tax collected",
+  },
+];
 ```
 
 **POS COGS Journal:**
+
 ```typescript
 {
   journal_code: "JE-00XXX", // auto-generated
@@ -247,6 +259,7 @@ Add to seed.sql and migration:
 ### Stock Transaction Format
 
 **Stock Transaction:**
+
 ```typescript
 {
   transaction_code: "ST-POS-{transaction_code}",
@@ -260,6 +273,7 @@ Add to seed.sql and migration:
 ```
 
 **Stock Ledger Entries (per item):**
+
 ```typescript
 {
   item_id: item.itemId,
@@ -296,13 +310,13 @@ Following the same pattern as invoice posting:
 4. **Error Response:**
    ```typescript
    // Success even if GL fails
-   return NextResponse.json({
-     data: transaction,
-     warnings: [
-       "Stock transaction creation failed",
-       "GL posting failed"
-     ]
-   }, { status: 201 })
+   return NextResponse.json(
+     {
+       data: transaction,
+       warnings: ["Stock transaction creation failed", "GL posting failed"],
+     },
+     { status: 201 }
+   );
    ```
 
 ---
@@ -310,6 +324,7 @@ Following the same pattern as invoice posting:
 ## Testing Checklist
 
 ### Functional Tests
+
 - [ ] POS transaction creates sale journal
 - [ ] POS transaction creates COGS journal
 - [ ] POS transaction creates stock transaction
@@ -322,12 +337,14 @@ Following the same pattern as invoice posting:
 - [ ] Fallback to purchase_price if no ledger entry
 
 ### Error Handling Tests
+
 - [ ] GL failure doesn't block POS transaction
 - [ ] Stock failure doesn't block POS transaction
 - [ ] Partial failures logged as warnings
 - [ ] Transaction still succeeds with warnings
 
 ### Integration Tests
+
 - [ ] Journal entries visible in GL
 - [ ] Trial balance includes POS sales
 - [ ] Ledger query shows POS transactions
@@ -335,6 +352,7 @@ Following the same pattern as invoice posting:
 - [ ] Stock ledger shows POS movements
 
 ### Edge Cases
+
 - [ ] Zero tax transaction
 - [ ] Zero discount transaction
 - [ ] Multiple items with different COGS
@@ -346,6 +364,7 @@ Following the same pattern as invoice posting:
 ## Dependencies
 
 ### Database Tables Used
+
 - `pos_transactions` (read)
 - `pos_transaction_items` (read)
 - `accounts` (read - resolve account numbers)
@@ -356,11 +375,13 @@ Following the same pattern as invoice posting:
 - `item_warehouse` (update quantities)
 
 ### Services Used
+
 - `journalValidation.ts` (validation)
 - Existing COGS calculation logic (reference from `cogsPosting.ts`)
 - Stock ledger query logic (reference from invoice posting)
 
 ### API Endpoints Modified
+
 - POST `/api/pos/transactions` (add posting calls)
 - POST `/api/pos/transactions/[id]/void` (add reversal calls)
 

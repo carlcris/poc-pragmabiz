@@ -47,7 +47,7 @@ export function NotificationsMenu() {
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+            <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
               {unreadCount}
             </span>
           )}
@@ -56,16 +56,17 @@ export function NotificationsMenu() {
       <DropdownMenuContent align="end" className="w-96">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>{t("title")}</span>
-          <Link href="/notifications" className="text-xs text-muted-foreground hover:text-foreground">
+          <Link
+            href="/notifications"
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
             {t("viewAll")}
           </Link>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-[320px] overflow-y-auto">
           {notifications.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">
-              {t("emptyMenu")}
-            </div>
+            <div className="px-4 py-6 text-sm text-muted-foreground">{t("emptyMenu")}</div>
           ) : (
             notifications.map((notification) => (
               <div key={notification.id} className="border-b px-4 py-3 last:border-b-0">

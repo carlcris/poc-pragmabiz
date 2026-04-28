@@ -161,7 +161,11 @@ export function EmployeeFormDialog({
                   <FormItem>
                     <FormLabel>{t("employeeCode")}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t("employeeCodePlaceholder")} {...field} disabled={mode === "edit"} />
+                      <Input
+                        placeholder={t("employeeCodePlaceholder")}
+                        {...field}
+                        disabled={mode === "edit"}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -183,7 +187,9 @@ export function EmployeeFormDialog({
                       <SelectContent>
                         <SelectItem value="sales_agent">{tRoles("salesAgent")}</SelectItem>
                         <SelectItem value="sales_manager">{tRoles("salesManager")}</SelectItem>
-                        <SelectItem value="territory_manager">{tRoles("territoryManager")}</SelectItem>
+                        <SelectItem value="territory_manager">
+                          {tRoles("territoryManager")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -268,9 +274,7 @@ export function EmployeeFormDialog({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t("commissionRateDescription")}
-                  </FormDescription>
+                  <FormDescription>{t("commissionRateDescription")}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -283,9 +287,7 @@ export function EmployeeFormDialog({
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">{t("activeStatus")}</FormLabel>
-                    <FormDescription>
-                      {t("activeStatusDescription")}
-                    </FormDescription>
+                    <FormDescription>{t("activeStatusDescription")}</FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />

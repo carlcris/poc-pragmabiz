@@ -7,31 +7,43 @@ type ItemWarehouseRow = {
   item_id: string;
   warehouse_id: string;
   current_stock: number | string | null;
-  item?: {
-    item_code: string | null;
-    item_name: string | null;
-    category_id: string | null;
-    cost_price?: number | string | null;
-    purchase_price?: number | string | null;
-    category?: {
-      name: string | null;
-    } | { name: string | null }[] | null;
-    uom?: {
-      code: string | null;
-    } | { code: string | null }[] | null;
-  } | {
-    item_code: string | null;
-    item_name: string | null;
-    category_id: string | null;
-    cost_price?: number | string | null;
-    purchase_price?: number | string | null;
-    category?: { name: string | null } | { name: string | null }[] | null;
-    uom?: { code: string | null } | { code: string | null }[] | null;
-  }[] | null;
-  warehouse?: {
-    warehouse_code: string | null;
-    warehouse_name: string | null;
-  } | { warehouse_code: string | null; warehouse_name: string | null }[] | null;
+  item?:
+    | {
+        item_code: string | null;
+        item_name: string | null;
+        category_id: string | null;
+        cost_price?: number | string | null;
+        purchase_price?: number | string | null;
+        category?:
+          | {
+              name: string | null;
+            }
+          | { name: string | null }[]
+          | null;
+        uom?:
+          | {
+              code: string | null;
+            }
+          | { code: string | null }[]
+          | null;
+      }
+    | {
+        item_code: string | null;
+        item_name: string | null;
+        category_id: string | null;
+        cost_price?: number | string | null;
+        purchase_price?: number | string | null;
+        category?: { name: string | null } | { name: string | null }[] | null;
+        uom?: { code: string | null } | { code: string | null }[] | null;
+      }[]
+    | null;
+  warehouse?:
+    | {
+        warehouse_code: string | null;
+        warehouse_name: string | null;
+      }
+    | { warehouse_code: string | null; warehouse_name: string | null }[]
+    | null;
 };
 
 type StockBalance = {

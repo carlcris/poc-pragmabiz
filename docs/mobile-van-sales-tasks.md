@@ -1,9 +1,11 @@
 # Mobile Van Sales - Implementation Tasks
 
 ## Phase 1: Database & Foundation ✅🚧⏳
+
 **Goal**: Set up database schema, authentication, and basic infrastructure
 
 ### Database Migration
+
 - [x] Create migration file for van sales tables
 - [x] Add `van_warehouse_id` to users table (nullable - optional assignment)
 - [x] Add `is_van` flag to warehouses table
@@ -12,12 +14,14 @@
 - [x] Run migration and verify schema
 
 ### Authentication & Authorization
+
 - [ ] Create `/mobile` route protection middleware (NEXT - needs testing)
 - [x] Add API endpoint to get user's assigned van warehouse
 - [x] Add API endpoint to assign/unassign user to van warehouse
 - [ ] Test authorization rules (driver can only access their van)
 
 ### Mobile Layout Foundation
+
 - [x] Create `src/app/mobile/layout.tsx` (mobile-optimized, no sidebar)
 - [x] Create `BottomNav` component for mobile navigation
 - [x] Create `MobileHeader` component (van name, date, user)
@@ -27,9 +31,11 @@
 ---
 
 ## Phase 2: Core Driver Screens ✅🚧⏳
+
 **Goal**: Build main driver workflows
 
 ### Dashboard Screen (`/mobile/van-sales/dashboard`)
+
 - [x] Create page component
 - [x] Display van information (name, driver, date)
 - [x] Show current on-hand inventory (items in van)
@@ -39,6 +45,7 @@
 - [ ] Test with real data
 
 ### Load Confirmation Screen (`/mobile/van-sales/load`)
+
 - [x] Create page component
 - [x] API: Fetch pending stock transfers to user's van
 - [x] Display transfer details (transfer #, from warehouse, items)
@@ -48,6 +55,7 @@
 - [x] Test stock transfer workflow end-to-end
 
 ### Quick Sell Screen (`/mobile/van-sales/sell`)
+
 - [x] Create page component
 - [x] Add customer search/select component
 - [x] Add "Create New Customer" quick form
@@ -65,9 +73,11 @@
 ---
 
 ## Phase 3: End-of-Day Reconciliation ✅🚧⏳
+
 **Goal**: Physical count and variance management
 
 ### EOD Driver Screen (`/mobile/van-sales/end-of-day`)
+
 - [ ] Create page component
 - [ ] Calculate expected ending stock (Opening + Load - Sales)
 - [ ] Create `<EODVarianceRow>` component (item, expected, count input, variance)
@@ -80,6 +90,7 @@
 - [ ] Test variance calculations
 
 ### EOD Approval Screen (Desktop - `/inventory/van-eod-approvals`)
+
 - [ ] Create page component (desktop layout)
 - [ ] List pending EOD submissions
 - [ ] Display variance details per submission
@@ -91,6 +102,7 @@
 - [ ] Test approval workflow
 
 ### Stock Adjustment Auto-Creation
+
 - [ ] On EOD approval, auto-create stock adjustment entry
 - [ ] Link stock adjustment to EOD reconciliation record
 - [ ] Update van warehouse stock levels
@@ -100,9 +112,11 @@
 ---
 
 ## Phase 4: Back Office & Reporting ✅🚧⏳
+
 **Goal**: Management visibility and controls
 
 ### Van Management (Desktop - `/inventory/vans`)
+
 - [ ] Create page to list all van warehouses
 - [ ] Show assigned driver per van (if any)
 - [ ] Add "Assign Driver" functionality
@@ -112,6 +126,7 @@
 - [ ] Test van-driver assignment
 
 ### Van Reports
+
 - [ ] Load vs Sales vs Ending Stock report
 - [ ] Van Sales Summary report (by driver, by date range)
 - [ ] Payment Collection Summary report
@@ -120,6 +135,7 @@
 - [ ] Test reports with sample data
 
 ### API Enhancements
+
 - [ ] Stock Transfers API: Filter by destination warehouse (van)
 - [ ] Sales Orders API: Filter by warehouse (van sales only)
 - [ ] Items API: Add `warehouse_id` filter parameter
@@ -129,9 +145,11 @@
 ---
 
 ## Phase 5: Mobile UI Polish & UX ✅🚧⏳
+
 **Goal**: Refinement and production-ready polish
 
 ### UI/UX Improvements
+
 - [ ] Add loading skeletons for data fetching
 - [ ] Add pull-to-refresh on mobile screens
 - [ ] Add haptic feedback on actions (if supported)
@@ -142,6 +160,7 @@
 - [ ] Test on actual mobile devices (iOS, Android)
 
 ### Performance Optimization
+
 - [ ] Implement pagination for item lists
 - [ ] Add React Query caching for van inventory
 - [ ] Lazy load images/components
@@ -150,6 +169,7 @@
 - [ ] Measure and optimize Core Web Vitals
 
 ### PWA Features (Future Offline Support)
+
 - [ ] Add service worker configuration
 - [ ] Add offline detection indicator
 - [ ] Add manifest.json for PWA
@@ -159,9 +179,11 @@
 ---
 
 ## Phase 6: Testing & Documentation ✅🚧⏳
+
 **Goal**: Quality assurance and knowledge transfer
 
 ### Testing
+
 - [ ] Unit tests for EOD calculations
 - [ ] Integration tests for sales flow
 - [ ] E2E tests for complete driver workflow
@@ -171,6 +193,7 @@
 - [ ] Security testing (authorization boundaries)
 
 ### Documentation
+
 - [ ] User guide for drivers (with screenshots)
 - [ ] User guide for supervisors (EOD approval)
 - [ ] User guide for depot staff (van setup)
@@ -181,11 +204,13 @@
 ---
 
 ## Legend
+
 - ✅ Completed
 - 🚧 In Progress
 - ⏳ Not Started
 
 ## Notes
+
 - Driver/sales agent assignment to van/warehouse is optional (nullable)
 - Multiple depots can load multiple vans simultaneously
 - Barcode scanning uses HTML5 Camera API (no native dependencies)
@@ -193,6 +218,7 @@
 - Offline support is Phase 5+ (PWA service workers)
 
 ## Current Progress
+
 **Phase 1**: 10/14 tasks completed (71%) 🚧
 **Phase 2**: 19/20 tasks completed (95%) 🚧
 **Phase 3**: 0/13 tasks completed (0%) ⏳

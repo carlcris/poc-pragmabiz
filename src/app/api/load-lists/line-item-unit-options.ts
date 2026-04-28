@@ -35,7 +35,9 @@ export const resolveLoadListLineUnitOptions = async (
   if (items.length === 0) return [];
 
   const explicitOptionIds = Array.from(
-    new Set(items.map((item) => item.itemUnitOptionId).filter((value): value is string => Boolean(value)))
+    new Set(
+      items.map((item) => item.itemUnitOptionId).filter((value): value is string => Boolean(value))
+    )
   );
   const fallbackPairs = Array.from(
     new Set(
@@ -67,7 +69,9 @@ export const resolveLoadListLineUnitOptions = async (
 
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select("id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at")
+      .select(
+        "id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at"
+      )
       .eq("company_id", companyId)
       .in("item_id", itemIds)
       .in("uom_id", uomIds)
@@ -121,7 +125,9 @@ export const resolveLoadListLineUnitOptions = async (
 
     const fallbackOption = fallbackOptionMap.get(buildOptionMapKey(item.itemId, item.uomId));
     if (!fallbackOption) {
-      throw new LoadListLineValidationError("No active item unit option matches the selected item and unit");
+      throw new LoadListLineValidationError(
+        "No active item unit option matches the selected item and unit"
+      );
     }
 
     return {

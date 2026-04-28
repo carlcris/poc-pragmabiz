@@ -187,9 +187,7 @@ export async function GET(request: NextRequest) {
 
     // Format response
     const formattedOrders = (purchaseOrders as PurchaseOrderQueryRow[] | null)?.map((order) => {
-      const supplier = Array.isArray(order.supplier)
-        ? order.supplier[0]
-        : order.supplier ?? null;
+      const supplier = Array.isArray(order.supplier) ? order.supplier[0] : (order.supplier ?? null);
 
       return {
         id: order.id,
@@ -220,8 +218,8 @@ export async function GET(request: NextRequest) {
         approvedBy: order.approved_by,
         approvedAt: order.approved_at,
         items: order.items?.map((item) => {
-          const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
-          const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
+          const itemDetails = Array.isArray(item.item) ? item.item[0] : (item.item ?? null);
+          const uom = Array.isArray(item.uom) ? item.uom[0] : (item.uom ?? null);
 
           return {
             id: item.id,

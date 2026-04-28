@@ -34,14 +34,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    const { data, error } = await asRpcClient(supabase).rpc(
-      "confirm_sales_quotation_transaction",
-      {
-        p_quotation_id: quotationId,
-        p_business_unit_id: currentBusinessUnitId,
-        p_warehouse_id: body.warehouseId || null,
-      }
-    );
+    const { data, error } = await asRpcClient(supabase).rpc("confirm_sales_quotation_transaction", {
+      p_quotation_id: quotationId,
+      p_business_unit_id: currentBusinessUnitId,
+      p_warehouse_id: body.warehouseId || null,
+    });
 
     const rows = Array.isArray(data) ? (data as ConfirmQuotationResult[]) : [];
     const result = rows[0];

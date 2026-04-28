@@ -106,12 +106,12 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const asArray = <T,>(value: T | T[] | null | undefined): T[] => {
+const asArray = <T>(value: T | T[] | null | undefined): T[] => {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
 };
 
-const pickOne = <T,>(value: T | T[] | null | undefined): T | null =>
+const pickOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const dateKey = (value: string) => value.slice(0, 10);
@@ -212,7 +212,10 @@ export async function GET(request: NextRequest) {
 
       const { data, error } = await query;
       if (error) {
-        return NextResponse.json({ error: "Failed to fetch picking efficiency data" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to fetch picking efficiency data" },
+          { status: 500 }
+        );
       }
 
       const chunk = (data || []) as PickListReportRow[];
@@ -293,14 +296,14 @@ export async function GET(request: NextRequest) {
       const plWarehouse = plWarehouseId ? warehouseMap.get(plWarehouseId) : null;
       const plItems = asArray(pl.pick_list_items);
       const pickRows = asArray(pl.delivery_note_item_picks).filter((r) => !r.deleted_at);
-      const lineByDnItemId = new Map(
-        plItems.map((i) => [i.dn_item_id, i] as const)
-      );
+      const lineByDnItemId = new Map(plItems.map((i) => [i.dn_item_id, i] as const));
 
       // Apply picker filter at pick-list inclusion level when pick rows exist
       if (pickerUserId) {
         const matchingPickRow = pickRows.some((r) => r.picker_user_id === pickerUserId);
-        const assigneeMatch = asArray(pl.pick_list_assignees).some((a) => a.user_id === pickerUserId);
+        const assigneeMatch = asArray(pl.pick_list_assignees).some(
+          (a) => a.user_id === pickerUserId
+        );
         if (!matchingPickRow && !assigneeMatch) continue;
       }
 
@@ -397,7 +400,10 @@ export async function GET(request: NextRequest) {
         warehouseAgg.totalPickSeconds += listDurationSeconds;
         warehouseAgg.cycleCount += 1;
       }
-      if (pl.started_at && (!warehouseAgg.firstStartedAt || pl.started_at < warehouseAgg.firstStartedAt)) {
+      if (
+        pl.started_at &&
+        (!warehouseAgg.firstStartedAt || pl.started_at < warehouseAgg.firstStartedAt)
+      ) {
         warehouseAgg.firstStartedAt = pl.started_at;
       }
       if (
@@ -457,10 +463,16 @@ export async function GET(request: NextRequest) {
         };
 
         pickerAgg.pickListCount += 1;
-        if (pl.started_at && (!pickerAgg.firstStartedAt || pl.started_at < pickerAgg.firstStartedAt)) {
+        if (
+          pl.started_at &&
+          (!pickerAgg.firstStartedAt || pl.started_at < pickerAgg.firstStartedAt)
+        ) {
           pickerAgg.firstStartedAt = pl.started_at;
         }
-        if (pl.completed_at && (!pickerAgg.lastCompletedAt || pl.completed_at > pickerAgg.lastCompletedAt)) {
+        if (
+          pl.completed_at &&
+          (!pickerAgg.lastCompletedAt || pl.completed_at > pickerAgg.lastCompletedAt)
+        ) {
           pickerAgg.lastCompletedAt = pl.completed_at;
         }
         if (listDurationSeconds > 0) {
@@ -496,7 +508,8 @@ export async function GET(request: NextRequest) {
       const activeHours = agg.totalPickSeconds / 3600;
       const avgPickSeconds = agg.cycleCount > 0 ? agg.totalPickSeconds / agg.cycleCount : 0;
       const spanSeconds = diffSeconds(agg.firstStartedAt, agg.lastCompletedAt);
-      const utilizationPct = spanSeconds > 0 ? Math.min(100, pct(agg.totalPickSeconds, spanSeconds)) : 0;
+      const utilizationPct =
+        spanSeconds > 0 ? Math.min(100, pct(agg.totalPickSeconds, spanSeconds)) : 0;
       const lineAccuracyPct = 100 - pct(agg.shortLineCount, Math.max(agg.lineCount, 1));
       const qtyFillRatePct = pct(agg.pickedQty, Math.max(agg.allocatedQty, 1));
 
@@ -595,4 +608,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-

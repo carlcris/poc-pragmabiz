@@ -90,7 +90,9 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t("title")}</DialogTitle>
-          <DialogDescription>{t("description", { invoiceNumber: invoice.invoiceNumber })}</DialogDescription>
+          <DialogDescription>
+            {t("description", { invoiceNumber: invoice.invoiceNumber })}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -102,29 +104,50 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("amountPaid")}:</span>
-                <span className="font-medium text-green-600">{formatCurrency(invoice.amountPaid)}</span>
+                <span className="font-medium text-green-600">
+                  {formatCurrency(invoice.amountPaid)}
+                </span>
               </div>
               <div className="flex justify-between border-t pt-2 text-sm">
                 <span className="text-muted-foreground">{t("amountDue")}:</span>
-                <span className="font-bold text-orange-600">{formatCurrency(invoice.amountDue)}</span>
+                <span className="font-bold text-orange-600">
+                  {formatCurrency(invoice.amountDue)}
+                </span>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">{t("paymentAmount")} <span className="text-red-500">*</span></Label>
-              <Input id="amount" type="number" step="0.01" {...register("amount", { valueAsNumber: true })} placeholder="0.00" />
+              <Label htmlFor="amount">
+                {t("paymentAmount")} <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                {...register("amount", { valueAsNumber: true })}
+                placeholder="0.00"
+              />
               {errors.amount && <p className="text-sm text-red-500">{errors.amount.message}</p>}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentDate">{t("paymentDate")} <span className="text-red-500">*</span></Label>
+              <Label htmlFor="paymentDate">
+                {t("paymentDate")} <span className="text-red-500">*</span>
+              </Label>
               <Input id="paymentDate" type="date" {...register("paymentDate")} />
-              {errors.paymentDate && <p className="text-sm text-red-500">{errors.paymentDate.message}</p>}
+              {errors.paymentDate && (
+                <p className="text-sm text-red-500">{errors.paymentDate.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentMethod">{t("paymentMethod")} <span className="text-red-500">*</span></Label>
-              <Select value={watch("paymentMethod")} onValueChange={(value) => setValue("paymentMethod", value)}>
+              <Label htmlFor="paymentMethod">
+                {t("paymentMethod")} <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={watch("paymentMethod")}
+                onValueChange={(value) => setValue("paymentMethod", value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder={t("selectPaymentMethod")} />
                 </SelectTrigger>
@@ -137,13 +160,21 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
                   <SelectItem value="other">{t("other")}</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.paymentMethod && <p className="text-sm text-red-500">{errors.paymentMethod.message}</p>}
+              {errors.paymentMethod && (
+                <p className="text-sm text-red-500">{errors.paymentMethod.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="reference">{t("referenceNumber")}</Label>
-              <Input id="reference" {...register("reference")} placeholder={t("referencePlaceholder")} />
-              {errors.reference && <p className="text-sm text-red-500">{errors.reference.message}</p>}
+              <Input
+                id="reference"
+                {...register("reference")}
+                placeholder={t("referencePlaceholder")}
+              />
+              {errors.reference && (
+                <p className="text-sm text-red-500">{errors.reference.message}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -154,7 +185,9 @@ export function RecordPaymentDialog({ open, onOpenChange, invoice }: RecordPayme
           </div>
 
           <div className="flex justify-end gap-3 border-t pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t("cancel")}
+            </Button>
             <Button type="submit" disabled={recordPayment.isPending}>
               {recordPayment.isPending ? t("recording") : t("recordPayment")}
             </Button>

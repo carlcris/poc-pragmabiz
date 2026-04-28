@@ -146,8 +146,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
               Number(item.quantity_received) < Number(item.quantity_ordered),
             remainingQty: Number(item.quantity_ordered) - Number(item.quantity_received),
           };
-        }
-        ) || [],
+        }) || [],
 
       // Notes
       notes: receipt.notes,

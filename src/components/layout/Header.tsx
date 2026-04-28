@@ -14,14 +14,14 @@ export function Header() {
 
   return (
     <header className="border-b border-border bg-background">
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
         {/* Left: Menu Toggle + Breadcrumb */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="flex-shrink-0 h-8 w-8 sm:h-9 sm:w-9"
+            className="h-8 w-8 flex-shrink-0 sm:h-9 sm:w-9"
             aria-label="Toggle sidebar"
           >
             <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -30,8 +30,8 @@ export function Header() {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-          <div className="hidden sm:flex items-center gap-4">
+        <div className="flex flex-shrink-0 items-center gap-2 sm:gap-4">
+          <div className="hidden items-center gap-4 sm:flex">
             <LanguageSwitcher />
             <CurrencySwitcher />
           </div>

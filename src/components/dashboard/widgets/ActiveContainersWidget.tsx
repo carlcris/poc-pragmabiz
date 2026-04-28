@@ -121,7 +121,7 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
             <Ship className="h-4 w-4" />
             <span>{t("inTransit")}</span>
           </div>
-          <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
+          <p className="mt-2 text-xl font-bold sm:text-2xl">{data.count}</p>
         </div>
 
         {/* Containers List */}
@@ -147,26 +147,32 @@ export function ActiveContainersWidget({ businessUnitId }: ActiveContainersWidge
                     isOverdue && "border-l-4 border-l-destructive"
                   )}
                 >
-                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex items-center gap-2">
-                      <Container className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm font-medium truncate">{container.containerNumber}</span>
+                      <Container className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <span className="truncate text-sm font-medium">
+                        {container.containerNumber}
+                      </span>
                     </div>
-                    <span className="text-xs text-muted-foreground truncate">{container.llNumber}</span>
-                    <span className="text-xs text-muted-foreground truncate">
+                    <span className="truncate text-xs text-muted-foreground">
+                      {container.llNumber}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
                       {container.supplierName || t("unknownSupplier")}
                     </span>
                     {eta && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3 flex-shrink-0" />
-                        <span className={cn(isOverdue && "text-destructive font-medium")}>
+                        <span className={cn(isOverdue && "font-medium text-destructive")}>
                           {isOverdue ? `${t("overdueLabel")}: ` : `${t("eta")}: `}
                           {format(eta, "MMM d, yyyy")}
                         </span>
                       </div>
                     )}
                   </div>
-                  <Badge className={cn(statusConfig.className, "flex-shrink-0")}>{t(statusConfig.label)}</Badge>
+                  <Badge className={cn(statusConfig.className, "flex-shrink-0")}>
+                    {t(statusConfig.label)}
+                  </Badge>
                 </Link>
               );
             })}

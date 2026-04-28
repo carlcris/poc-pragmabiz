@@ -60,13 +60,16 @@ export const GET = async (req: NextRequest) => {
       total_amount: number | string;
       commission_total: number | string;
       customer_id: string | null;
-      customers?: {
-        billing_city: string | null;
-        billing_state: string | null;
-      } | {
-        billing_city: string | null;
-        billing_state: string | null;
-      }[] | null;
+      customers?:
+        | {
+            billing_city: string | null;
+            billing_state: string | null;
+          }
+        | {
+            billing_city: string | null;
+            billing_state: string | null;
+          }[]
+        | null;
     };
 
     // Aggregate by location

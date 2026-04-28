@@ -83,7 +83,9 @@ export function useItemLocationBatchReport(filters: ItemLocationBatchReportFilte
       if (queryFilters.sortBy) params.append("sortBy", queryFilters.sortBy);
       if (queryFilters.sortOrder) params.append("sortOrder", queryFilters.sortOrder);
 
-      const response = await fetch(`${API_BASE_URL}/reports/item-location-batch?${params.toString()}`);
+      const response = await fetch(
+        `${API_BASE_URL}/reports/item-location-batch?${params.toString()}`
+      );
       if (!response.ok) throw new Error("Failed to fetch item location batch report");
       return response.json();
     },

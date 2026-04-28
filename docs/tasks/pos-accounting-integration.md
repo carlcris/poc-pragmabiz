@@ -10,6 +10,7 @@
 ## Phase 1: Database Setup ✅ COMPLETED
 
 ### Chart of Accounts
+
 - [x] 1.1 Create migration file for new GL accounts
 - [x] 1.2 Add R-4010 (Sales Discounts) account
 - [x] 1.3 Add L-2100 (Sales Tax Payable) account
@@ -22,6 +23,7 @@
 ## Phase 2: POS Posting Service ✅ COMPLETED
 
 ### Service Creation
+
 - [x] 2.1 Create `/src/services/accounting/posPosting.ts` file
 - [x] 2.2 Implement `postPOSSale()` function
   - [x] 2.2.1 Fetch POS transaction with items and payments
@@ -52,6 +54,7 @@
 ## Phase 3: Stock Transaction Service ✅ COMPLETED
 
 ### Service Creation
+
 - [x] 3.1 Create `/src/services/inventory/posStockService.ts` file
 - [x] 3.2 Implement `createPOSStockTransaction()` function
   - [x] 3.2.1 Generate stock transaction code (ST-POS-{code})
@@ -70,6 +73,7 @@
 ## Phase 4: API Integration ✅ COMPLETED
 
 ### POS Transaction Creation
+
 - [x] 4.1 Update POST `/api/pos/transactions/route.ts`
   - [x] 4.1.1 Import posPosting and posStockService
   - [x] 4.1.2 After transaction created, call createPOSStockTransaction()
@@ -80,6 +84,7 @@
   - [x] 4.1.7 Log errors to console
 
 ### POS Transaction Void
+
 - [x] 4.2 Update POST `/api/pos/transactions/[id]/void/route.ts`
   - [x] 4.2.1 Import posPosting and posStockService
   - [x] 4.2.2 After status updated to 'voided', call reversePOSStockTransaction()
@@ -93,6 +98,7 @@
 ## Phase 5: Testing - Functional
 
 ### POS Sale Tests
+
 - [~] 5.1 Create POS transaction with single item (**IN PROGRESS - Issue Found**)
   - [ ] 5.1.1 Verify sale journal created (**FAILED - See Blocker**)
   - [x] 5.1.2 Verify COGS journal created
@@ -112,6 +118,7 @@
   - [ ] 5.5.2 Verify journal balanced
 
 ### POS Void Tests
+
 - [ ] 5.6 Void a POS transaction
   - [ ] 5.6.1 Verify reversal sale journal created
   - [ ] 5.6.2 Verify reversal COGS journal created
@@ -119,6 +126,7 @@
   - [ ] 5.6.4 Verify inventory added back
 
 ### COGS Calculation Tests
+
 - [ ] 5.7 Item with stock ledger entries
   - [ ] 5.7.1 Verify weighted average rate used
   - [ ] 5.7.2 Verify COGS amount correct
@@ -131,6 +139,7 @@
 ## Phase 6: Testing - Error Handling
 
 ### Graceful Degradation
+
 - [ ] 6.1 Simulate stock transaction failure
   - [ ] 6.1.1 Verify POS transaction still succeeds
   - [ ] 6.1.2 Verify warning logged
@@ -148,6 +157,7 @@
 ## Phase 7: Testing - Integration
 
 ### GL Verification
+
 - [ ] 7.1 Check journal entries list
   - [ ] 7.1.1 Verify POS journals appear
   - [ ] 7.1.2 Verify source_module = 'POS' for sale
@@ -173,6 +183,7 @@
 ## Phase 8: Edge Cases & Cleanup
 
 ### Edge Cases
+
 - [ ] 8.1 Zero tax transaction
   - [ ] 8.1.1 Verify no tax line created
 - [ ] 8.2 Zero discount transaction
@@ -182,6 +193,7 @@
   - [ ] 8.3.2 Verify appropriate error message
 
 ### Code Quality
+
 - [ ] 8.4 Add TypeScript types for all functions
 - [ ] 8.5 Add JSDoc comments
 - [ ] 8.6 Handle all error cases
@@ -189,6 +201,7 @@
 - [ ] 8.8 Remove any unused imports
 
 ### Documentation
+
 - [ ] 8.9 Update plan document with any changes
 - [ ] 8.10 Add inline code comments for complex logic
 - [ ] 8.11 Document any assumptions made
@@ -204,6 +217,7 @@
 **Completion**: 39% (Implementation Complete, Testing Pending)
 
 ### Phase Status:
+
 - ✅ **Phase 1**: Database Setup - 6/6 tasks (100%)
 - ✅ **Phase 2**: POS Posting Service - 18/18 tasks (100%)
 - ✅ **Phase 3**: Stock Transaction Service - 10/10 tasks (100%)
@@ -218,6 +232,7 @@
 ## Blockers & Issues
 
 ### 🔴 CRITICAL: POS Sale GL Posting Failure (Phase 5.1.1)
+
 **Status**: Under Investigation
 **Severity**: HIGH
 **Date Found**: 2025-11-25
@@ -226,24 +241,28 @@
 The `postPOSSale()` function is failing to create sale journal entries, although `postPOSCOGS()` works correctly using identical implementation patterns.
 
 **Evidence**:
+
 - Test Transaction: `POS-1764075528967` (ID: `87267d67-0905-45e2-8f7a-3b0a9ac4d1bb`)
 - ✅ Stock transaction created: `ST-POS-POS-1764075528967`
 - ✅ COGS journal created: `JE-00004` with correct DR/CR
 - ❌ **POS Sale journal NOT created** - No entry with `source_module = 'POS'`
 
 **Impact**:
+
 - POS transactions complete successfully
 - Stock and COGS are recorded correctly
 - BUT: Cash and Revenue journal entries are missing
 - Result: Incomplete accounting records
 
 **Investigation**:
+
 - All required GL accounts exist (A-1000, R-4000, R-4010, L-2100)
 - The `get_next_journal_code()` RPC works
 - The COGS posting (identical pattern) works perfectly
 - Error is caught by graceful degradation and logged as warning only
 
 **Next Steps**:
+
 1. Add enhanced error logging to `postPOSSale()` function
 2. Create new test POS transaction to capture real-time error logs
 3. Fix identified issue
@@ -258,24 +277,28 @@ The `postPOSSale()` function is failing to create sale journal entries, although
 ### ✅ Completed Work:
 
 **Phase 1: Database Setup**
+
 - Created migration file: `20251125000000_add_pos_accounting_accounts.sql`
 - Added R-4010 (Sales Discounts) and L-2100 (Sales Tax Payable) accounts
 - Updated seed.sql with new accounts
 - Migration run successfully, accounts verified in database
 
 **Phase 2: POS Posting Service**
+
 - Created `/src/services/accounting/posPosting.ts`
 - Implemented all 4 functions: `postPOSSale()`, `calculatePOSCOGS()`, `postPOSCOGS()`, `reversePOSTransaction()`
 - Follows exact patterns from existing AR and COGS posting services
 - Graceful error handling with warnings (never blocks POS transactions)
 
 **Phase 3: Stock Transaction Service**
+
 - Created `/src/services/inventory/posStockService.ts`
 - Implemented `createPOSStockTransaction()` and `reversePOSStockTransaction()`
 - Creates stock_transactions, stock_ledger entries, and updates item_warehouse quantities
 - Handles both outbound (sales) and inbound (voids) transactions
 
 **Phase 4: API Integration**
+
 - Updated `POST /api/pos/transactions` to integrate all services
 - Updated `POST /api/pos/transactions/[id]/void` for reversal logic
 - Added warehouse-aware logic using user's `van_warehouse_id`
@@ -283,7 +306,9 @@ The `postPOSSale()` function is failing to create sale journal entries, although
 - Complete audit trail via `reference_type` and `reference_id` linking
 
 ### 🔍 Ready for Testing:
+
 All implementation complete. Testing phases (5-8) can now begin to verify:
+
 - Functional correctness (sale posting, COGS calculation, stock updates)
 - Error handling (graceful failures, warnings logged)
 - Integration verification (GL journals, trial balance, stock ledger)

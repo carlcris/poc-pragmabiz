@@ -29,10 +29,7 @@ export const posApi = {
 
   // Void transaction
   voidTransaction: async (id: string) => {
-    const response = await apiClient.post<POSTransaction>(
-      `/api/pos/transactions/${id}/void`,
-      {}
-    );
+    const response = await apiClient.post<POSTransaction>(`/api/pos/transactions/${id}/void`, {});
     return response;
   },
 

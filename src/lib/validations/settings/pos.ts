@@ -10,9 +10,7 @@ export const createPOSSettingsSchema = () =>
       .number()
       .min(0, "Discount percentage must be 0 or greater")
       .max(100, "Discount percentage cannot exceed 100%"),
-    require_manager_approval_threshold: z
-      .number()
-      .min(0, "Threshold must be 0 or greater"),
+    require_manager_approval_threshold: z.number().min(0, "Threshold must be 0 or greater"),
     cash_drawer_enabled: z.boolean().default(true),
     print_receipt_auto: z.boolean().default(false),
     default_payment_method: z.string().max(50).optional().or(z.literal("")),

@@ -136,13 +136,13 @@ export default function TransformationTemplatesPage() {
 
       <PageToolbar>
         <div className="relative w-full sm:flex-1">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={tCommon("search_")}
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="pl-10"
-        />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder={tCommon("search_")}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-10"
+          />
         </div>
       </PageToolbar>
 
@@ -219,7 +219,9 @@ export default function TransformationTemplatesPage() {
                   <TableCell>
                     <Badge variant="outline">{template.usage_count}</Badge>
                     {template.usage_count > 0 && (
-                      <span className="ml-2 text-xs text-muted-foreground">{tCommon("locked")}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {tCommon("locked")}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>

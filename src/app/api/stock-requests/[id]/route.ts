@@ -22,17 +22,17 @@ async function rehydrateMissingWarehouses(
   companyId: string
 ): Promise<StockRequestDbRecord> {
   const requestingWarehouse = Array.isArray(record.requesting_warehouse)
-    ? record.requesting_warehouse[0] ?? null
-    : record.requesting_warehouse ?? null;
+    ? (record.requesting_warehouse[0] ?? null)
+    : (record.requesting_warehouse ?? null);
   const fulfillingWarehouse = Array.isArray(record.fulfilling_warehouse)
-    ? record.fulfilling_warehouse[0] ?? null
-    : record.fulfilling_warehouse ?? null;
+    ? (record.fulfilling_warehouse[0] ?? null)
+    : (record.fulfilling_warehouse ?? null);
 
   const missingWarehouseIds = Array.from(
     new Set(
       [
         !requestingWarehouse ? record.requesting_warehouse_id : null,
-        !fulfillingWarehouse ? record.fulfilling_warehouse_id ?? null : null,
+        !fulfillingWarehouse ? (record.fulfilling_warehouse_id ?? null) : null,
       ].filter((value): value is string => Boolean(value))
     )
   );
@@ -272,17 +272,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const fulfillingWarehouseId = body.fulfilling_warehouse_id;
 
     if (!requestingWarehouseId) {
-      return NextResponse.json(
-        { error: "Requested by is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Requested by is required" }, { status: 400 });
     }
 
     if (!fulfillingWarehouseId) {
-      return NextResponse.json(
-        { error: "Requested to is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Requested to is required" }, { status: 400 });
     }
 
     if (requestingWarehouseId === fulfillingWarehouseId) {
@@ -327,15 +321,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       await supabase.from("stock_request_items").delete().eq("stock_request_id", id);
 
       // Insert new items
-      const requestItems = resolvedLineItems.map((item: StockRequestItemInput & { item_unit_option_id: string }) => ({
-        stock_request_id: id,
-        item_id: item.item_id,
-        requested_qty: item.requested_qty,
-        picked_qty: 0,
-        item_unit_option_id: item.item_unit_option_id,
-        uom_id: item.uom_id,
-        notes: item.notes || null,
-      }));
+      const requestItems = resolvedLineItems.map(
+        (item: StockRequestItemInput & { item_unit_option_id: string }) => ({
+          stock_request_id: id,
+          item_id: item.item_id,
+          requested_qty: item.requested_qty,
+          picked_qty: 0,
+          item_unit_option_id: item.item_unit_option_id,
+          uom_id: item.uom_id,
+          notes: item.notes || null,
+        })
+      );
 
       const { error: itemsError } = await supabase.from("stock_request_items").insert(requestItems);
 

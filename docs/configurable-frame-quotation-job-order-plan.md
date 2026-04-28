@@ -31,9 +31,10 @@ This is not a separate quotation module. It is an extension of quotation line be
    - creates a job order for configurable frame lines
    - creates a draft sales invoice
 10. When the job order is completed:
-   - reserved materials are deducted from inventory
-   - reservations are marked consumed
-   - job order is marked completed
+
+- reserved materials are deducted from inventory
+- reservations are marked consumed
+- job order is marked completed
 
 ## Example
 

@@ -21,10 +21,10 @@ type ItemRow = Tables<"items">;
 type UnitRow = Tables<"units_of_measure">;
 
 type PurchaseReceiptItemQueryRow = PurchaseReceiptItemRow & {
-  item?: Pick<ItemRow, "id" | "item_code" | "item_name"> | Pick<
-    ItemRow,
-    "id" | "item_code" | "item_name"
-  >[] | null;
+  item?:
+    | Pick<ItemRow, "id" | "item_code" | "item_name">
+    | Pick<ItemRow, "id" | "item_code" | "item_name">[]
+    | null;
   uom?: Pick<UnitRow, "id" | "code" | "name"> | Pick<UnitRow, "id" | "code" | "name">[] | null;
 };
 
@@ -169,11 +169,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const receipt = receiptData as PurchaseReceiptQueryRow;
     const purchaseOrder = Array.isArray(receipt.purchase_order)
       ? receipt.purchase_order[0]
-      : receipt.purchase_order ?? null;
-    const supplier = Array.isArray(receipt.supplier) ? receipt.supplier[0] : receipt.supplier ?? null;
+      : (receipt.purchase_order ?? null);
+    const supplier = Array.isArray(receipt.supplier)
+      ? receipt.supplier[0]
+      : (receipt.supplier ?? null);
     const warehouse = Array.isArray(receipt.warehouse)
       ? receipt.warehouse[0]
-      : receipt.warehouse ?? null;
+      : (receipt.warehouse ?? null);
 
     // Format response
     const formattedReceipt = {
@@ -210,8 +212,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       status: receipt.status,
       notes: receipt.notes,
       items: receipt.items?.map((item) => {
-        const itemDetails = Array.isArray(item.item) ? item.item[0] : item.item ?? null;
-        const uom = Array.isArray(item.uom) ? item.uom[0] : item.uom ?? null;
+        const itemDetails = Array.isArray(item.item) ? item.item[0] : (item.item ?? null);
+        const uom = Array.isArray(item.uom) ? item.uom[0] : (item.uom ?? null);
 
         return {
           id: item.id,

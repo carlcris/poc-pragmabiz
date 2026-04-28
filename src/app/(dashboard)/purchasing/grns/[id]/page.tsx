@@ -148,8 +148,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
         if (field === "receivedQty") {
           const qtyPerUnit = Number(currentItem?.itemUnitOption?.qtyPerUnit ?? 1) || 1;
-          nextItem.numBoxes =
-            qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
+          nextItem.numBoxes = qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
         }
 
         return nextItem;
@@ -346,26 +345,44 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
           </CardHeader>
           <CardContent className="space-y-4 pt-5">
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("grnNumber")}</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("grnNumber")}
+              </Label>
               <p className="mt-1 text-sm font-semibold text-gray-900">{grn.grnNumber}</p>
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("loadList")}</Label>
-              <p className="mt-1 text-sm font-medium text-gray-900">{grn.loadList?.llNumber || t("noValue")}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("loadList")}
+              </Label>
+              <p className="mt-1 text-sm font-medium text-gray-900">
+                {grn.loadList?.llNumber || t("noValue")}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("container")}</Label>
-                <p className="mt-1 text-sm font-medium text-gray-900">{grn.containerNumber || t("noValue")}</p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {t("container")}
+                </Label>
+                <p className="mt-1 text-sm font-medium text-gray-900">
+                  {grn.containerNumber || t("noValue")}
+                </p>
               </div>
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("seal")}</Label>
-                <p className="mt-1 text-sm font-medium text-gray-900">{grn.sealNumber || t("noValue")}</p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {t("seal")}
+                </Label>
+                <p className="mt-1 text-sm font-medium text-gray-900">
+                  {grn.sealNumber || t("noValue")}
+                </p>
               </div>
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("batchNumber")}</Label>
-              <p className="mt-1 text-sm font-medium text-gray-900">{grn.batchNumber || t("noValue")}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("batchNumber")}
+              </Label>
+              <p className="mt-1 text-sm font-medium text-gray-900">
+                {grn.batchNumber || t("noValue")}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -381,21 +398,35 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
           </CardHeader>
           <CardContent className="space-y-4 pt-5">
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("warehouse")}</Label>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{grn.warehouse?.name || t("noValue")}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("warehouse")}
+              </Label>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                {grn.warehouse?.name || t("noValue")}
+              </p>
               {grn.warehouse?.code && <p className="text-xs text-gray-500">{grn.warehouse.code}</p>}
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("businessUnit")}</Label>
-              <p className="mt-1 text-sm font-medium text-gray-900">{grn.businessUnit?.name || t("noValue")}</p>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("businessUnit")}
+              </Label>
+              <p className="mt-1 text-sm font-medium text-gray-900">
+                {grn.businessUnit?.name || t("noValue")}
+              </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("deliveryDate")}</Label>
-                <p className="mt-1 text-sm font-medium text-gray-900">{formatDate(grn.deliveryDate)}</p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {t("deliveryDate")}
+                </Label>
+                <p className="mt-1 text-sm font-medium text-gray-900">
+                  {formatDate(grn.deliveryDate)}
+                </p>
               </div>
               <div>
-                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("receivingDate")}</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {t("receivingDate")}
+                </Label>
                 <p className="mt-1 text-sm font-medium text-gray-900">
                   {formatDate(grn.receivingDate, t("notStarted"))}
                 </p>
@@ -416,13 +447,19 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
           <CardContent className="space-y-4 pt-5">
             {grn.loadList?.supplier && (
               <div className="border-b border-gray-100 pb-4">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("supplier")}</Label>
-                <p className="mt-1 text-sm font-semibold text-gray-900">{grn.loadList.supplier.name}</p>
+                <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {t("supplier")}
+                </Label>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {grn.loadList.supplier.name}
+                </p>
                 <p className="text-xs text-gray-500">{grn.loadList.supplier.code}</p>
               </div>
             )}
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("createdBy")}</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("createdBy")}
+              </Label>
               <p className="mt-1 text-sm font-medium text-gray-900">
                 {grn.createdByUser
                   ? `${grn.createdByUser.firstName} ${grn.createdByUser.lastName}`
@@ -430,7 +467,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
               </p>
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("receivedBy")}</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("receivedBy")}
+              </Label>
               <p className="mt-1 text-sm font-medium text-gray-900">
                 {grn.receivedByUser
                   ? `${grn.receivedByUser.firstName} ${grn.receivedByUser.lastName}`
@@ -438,7 +477,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
               </p>
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("checkedBy")}</Label>
+              <Label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {t("checkedBy")}
+              </Label>
               <p className="mt-1 text-sm font-medium text-gray-900">
                 {grn.checkedByUser
                   ? `${grn.checkedByUser.firstName} ${grn.checkedByUser.lastName}`
@@ -484,16 +525,36 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
-                      <TableHead className="text-xs font-semibold text-gray-700">{t("itemCode")}</TableHead>
-                      <TableHead className="text-xs font-semibold text-gray-700">{t("itemName")}</TableHead>
-                      <TableHead className="text-xs font-semibold text-gray-700">{t("unitWithQtyPerUnitLabel")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("requestedQtyLabel")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("totalQtyLabel")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("received")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("damaged")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("boxes")}</TableHead>
-                      <TableHead className="text-right text-xs font-semibold text-gray-700">{t("variance")}</TableHead>
-                      <TableHead className="min-w-[200px] text-xs font-semibold text-gray-700">{t("notes")}</TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-700">
+                        {t("itemCode")}
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-700">
+                        {t("itemName")}
+                      </TableHead>
+                      <TableHead className="text-xs font-semibold text-gray-700">
+                        {t("unitWithQtyPerUnitLabel")}
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">
+                        {t("requestedQtyLabel")}
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">
+                        {t("totalQtyLabel")}
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">
+                        {t("received")}
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">
+                        {t("damaged")}
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">
+                        {t("boxes")}
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-semibold text-gray-700">
+                        {t("variance")}
+                      </TableHead>
+                      <TableHead className="min-w-[200px] text-xs font-semibold text-gray-700">
+                        {t("notes")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -517,8 +578,12 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                           key={item.id}
                           className={`border-b border-gray-100 ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"} transition-colors hover:bg-blue-50/50`}
                         >
-                          <TableCell className="text-sm font-semibold text-gray-900">{item.item?.code || t("noValue")}</TableCell>
-                          <TableCell className="text-sm text-gray-700">{item.item?.name || t("noValue")}</TableCell>
+                          <TableCell className="text-sm font-semibold text-gray-900">
+                            {item.item?.code || t("noValue")}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700">
+                            {item.item?.name || t("noValue")}
+                          </TableCell>
                           <TableCell>
                             <div className="font-medium text-gray-900">
                               {item.itemUnitOption?.displayLabel || t("noValue")}
@@ -548,12 +613,18 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 min="0"
                                 value={getItemValue(item, "receivedQty")}
                                 onChange={(e) =>
-                                  handleItemChange(item.id, "receivedQty", parseFloat(e.target.value) || 0)
+                                  handleItemChange(
+                                    item.id,
+                                    "receivedQty",
+                                    parseFloat(e.target.value) || 0
+                                  )
                                 }
                                 className="h-9 w-24 border-gray-300 text-right text-sm focus:border-indigo-500 focus:ring-indigo-500"
                               />
                             ) : (
-                              <span className="text-sm font-medium text-gray-900">{receivedQty}</span>
+                              <span className="text-sm font-medium text-gray-900">
+                                {receivedQty}
+                              </span>
                             )}
                           </TableCell>
                           <TableCell className="text-right">
@@ -563,7 +634,11 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 min="0"
                                 value={getItemValue(item, "damagedQty")}
                                 onChange={(e) =>
-                                  handleItemChange(item.id, "damagedQty", parseFloat(e.target.value) || 0)
+                                  handleItemChange(
+                                    item.id,
+                                    "damagedQty",
+                                    parseFloat(e.target.value) || 0
+                                  )
                                 }
                                 className="h-9 w-24 border-gray-300 text-right text-sm focus:border-red-500 focus:ring-red-500"
                               />
@@ -580,7 +655,11 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 min="0"
                                 value={getItemValue(item, "numBoxes")}
                                 onChange={(e) =>
-                                  handleItemChange(item.id, "numBoxes", parseInt(e.target.value, 10) || 0)
+                                  handleItemChange(
+                                    item.id,
+                                    "numBoxes",
+                                    parseInt(e.target.value, 10) || 0
+                                  )
                                 }
                                 className="h-9 w-24 border-gray-300 text-right text-sm focus:border-blue-500 focus:ring-blue-500"
                               />
@@ -591,8 +670,12 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-bold ${varianceClass}`}>
-                              {variance === null ? t("noValue") : (
+                            <span
+                              className={`inline-flex items-center justify-center rounded-full px-2.5 py-1 text-xs font-bold ${varianceClass}`}
+                            >
+                              {variance === null ? (
+                                t("noValue")
+                              ) : (
                                 <>
                                   {variance > 0 ? "+" : ""}
                                   {variance}
@@ -610,7 +693,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                                 placeholder={t("addNotesPlaceholder")}
                               />
                             ) : (
-                              <span className="text-sm text-gray-700">{getItemValue(item, "notes") || t("noValue")}</span>
+                              <span className="text-sm text-gray-700">
+                                {getItemValue(item, "notes") || t("noValue")}
+                              </span>
                             )}
                           </TableCell>
                         </TableRow>
@@ -643,7 +728,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
             </CardHeader>
             <CardContent className="pt-5">
               {grn.notes ? (
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{grn.notes}</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
+                  {grn.notes}
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground">{t("noNotes")}</p>
               )}

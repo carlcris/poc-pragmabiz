@@ -164,7 +164,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }: { name?: string; percent?: number }) =>
-                      `${name ?? ""} (${(((percent ?? 0) * 100).toFixed(0))}%)`
+                      `${name ?? ""} (${((percent ?? 0) * 100).toFixed(0)}%)`
                     }
                     outerRadius={100}
                     fill="#8884d8"
@@ -203,9 +203,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
             ))}
           </div>
         ) : locationData.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {t("noLocationData")}
-          </p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("noLocationData")}</p>
         ) : (
           <>
             <div className="rounded-md border">

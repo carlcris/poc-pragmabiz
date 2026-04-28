@@ -40,15 +40,15 @@ The goal is to support:
 
 ## 3. Terminology
 
-| Term | Definition |
-|------|------------|
+| Term                   | Definition                                                           |
+| ---------------------- | -------------------------------------------------------------------- |
 | **Stock Request (SR)** | A request to move stock from a source entity to a destination entity |
-| **Delivery Note (DN)** | Operational document used to pick, dispatch, and receive stock |
-| **Allocation** | Reservation of inventory for a future dispatch |
-| **Picking** | Physical warehouse operation of gathering allocated items |
-| **Dispatch** | Posting of inventory out of the source entity |
-| **Receipt** | Posting of inventory into the destination entity |
-| **Short Pick** | Difference between allocated quantity and picked quantity |
+| **Delivery Note (DN)** | Operational document used to pick, dispatch, and receive stock       |
+| **Allocation**         | Reservation of inventory for a future dispatch                       |
+| **Picking**            | Physical warehouse operation of gathering allocated items            |
+| **Dispatch**           | Posting of inventory out of the source entity                        |
+| **Receipt**            | Posting of inventory into the destination entity                     |
+| **Short Pick**         | Difference between allocated quantity and picked quantity            |
 
 ---
 
@@ -111,6 +111,7 @@ FULFILLED
 **Purpose:** Requested and fulfilled quantities per item
 
 **Fields:**
+
 - `id` (PK)
 - `sr_id` (FK)
 - `item_id`
@@ -122,9 +123,11 @@ FULFILLED
 - `updated_at` (timestamp)
 
 **Constraints:**
+
 - `0 <= received_qty <= requested_qty`
 
 **Removed:**
+
 - `picked_qty`
 - `short_qty`
 
@@ -135,6 +138,7 @@ FULFILLED
 **Purpose:** Operational document for pick–dispatch–receive
 
 **Fields:**
+
 - `id` (PK)
 - `dn_no` (unique)
 - `status` (enum)
@@ -160,6 +164,7 @@ FULFILLED
 **Purpose:** DN ↔ SR header mapping
 
 **Fields:**
+
 - `dn_id` (FK)
 - `sr_id` (FK)
 - **PK:** `(dn_id, sr_id)`
@@ -169,6 +174,7 @@ FULFILLED
 **Purpose:** Allocation, picking, and dispatch quantities
 
 **Fields:**
+
 - `id` (PK)
 - `dn_id` (FK)
 - `sr_id` (FK)
@@ -183,6 +189,7 @@ FULFILLED
 - `updated_at` (timestamp)
 
 **Invariants:**
+
 - `picked_qty <= allocated_qty`
 - `dispatched_qty <= picked_qty`
 - `short_qty = allocated_qty - picked_qty`
@@ -192,6 +199,7 @@ FULFILLED
 **Purpose:** Authorization for picking
 
 **Fields:**
+
 - `dn_id`
 - `user_id`
 - `assigned_at` (timestamp)
@@ -211,10 +219,12 @@ FULFILLED
 ### 7.2 Picking Rules
 
 **Picking can only start if:**
+
 - DN is `CONFIRMED`
 - Picker is assigned
 
 **Only assigned pickers may:**
+
 - Start picking
 - Mark DN as dispatch-ready
 
@@ -224,6 +234,7 @@ FULFILLED
 - Driver signature is mandatory
 
 **Dispatch:**
+
 - Deducts inventory
 - Reduces allocation
 - Releases surplus allocation
@@ -233,6 +244,7 @@ FULFILLED
 - DN must be `DISPATCHED`
 
 **Receipt:**
+
 - Increases destination inventory
 - Updates `stock_request_items.received_qty`
 - DN terminal state = `RECEIVED`
@@ -240,12 +252,14 @@ FULFILLED
 ### 7.5 DN Void Rules
 
 **Allowed only if DN status is:**
+
 - `DRAFT`
 - `CONFIRMED`
 - `PICKING_IN_PROGRESS`
 - `DISPATCH_READY`
 
 **Voiding:**
+
 - Releases allocations
 - Excludes DN from SR computations
 
@@ -299,14 +313,14 @@ DRAFT → CONFIRMED → PICKING_IN_PROGRESS
 
 ### 10.1 Delivery Note Transitions
 
-| From | To | Role | Preconditions | Postconditions |
-|------|-----|------|---------------|----------------|
-| `DRAFT` | `CONFIRMED` | Dispatcher | Valid allocations | Allocations locked |
-| `CONFIRMED` | `PICKING_IN_PROGRESS` | Assigned Picker | Picker assigned | Picking start audit |
-| `PICKING_IN_PROGRESS` | `DISPATCH_READY` | Assigned Picker | Picks recorded | Ready to dispatch |
-| `DISPATCH_READY` | `DISPATCHED` | Dispatcher | Signature present | Inventory out |
-| `DISPATCHED` | `RECEIVED` | Receiver | Authorized | Inventory in |
-| `*` | `VOIDED` | Supervisor | Pre-dispatch only | Allocation released |
+| From                  | To                    | Role            | Preconditions     | Postconditions      |
+| --------------------- | --------------------- | --------------- | ----------------- | ------------------- |
+| `DRAFT`               | `CONFIRMED`           | Dispatcher      | Valid allocations | Allocations locked  |
+| `CONFIRMED`           | `PICKING_IN_PROGRESS` | Assigned Picker | Picker assigned   | Picking start audit |
+| `PICKING_IN_PROGRESS` | `DISPATCH_READY`      | Assigned Picker | Picks recorded    | Ready to dispatch   |
+| `DISPATCH_READY`      | `DISPATCHED`          | Dispatcher      | Signature present | Inventory out       |
+| `DISPATCHED`          | `RECEIVED`            | Receiver        | Authorized        | Inventory in        |
+| `*`                   | `VOIDED`              | Supervisor      | Pre-dispatch only | Allocation released |
 
 ---
 
@@ -339,6 +353,7 @@ Inventory is deducted exactly once at dispatch, never at allocation or picking.
 ### No Orphaned Allocations
 
 All allocations are tracked and released properly:
+
 - Released when DN is dispatched
 - Released when DN is voided
 
@@ -351,14 +366,14 @@ All allocations are tracked and released properly:
 
 ## 14. Key Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| DN status is authoritative | User-driven, reflects warehouse reality |
-| SR status is derived | Computed from DN aggregates, always consistent |
-| Allocation locked at confirmation | Prevents mid-pick allocation changes |
-| Inventory deducted at dispatch | Reflects legal transfer of ownership |
-| `received_qty` on SR items | Enables partial fulfillment tracking |
-| No `picked_qty` on SR items | Belongs to DN execution, not SR demand |
+| Decision                          | Rationale                                      |
+| --------------------------------- | ---------------------------------------------- |
+| DN status is authoritative        | User-driven, reflects warehouse reality        |
+| SR status is derived              | Computed from DN aggregates, always consistent |
+| Allocation locked at confirmation | Prevents mid-pick allocation changes           |
+| Inventory deducted at dispatch    | Reflects legal transfer of ownership           |
+| `received_qty` on SR items        | Enables partial fulfillment tracking           |
+| No `picked_qty` on SR items       | Belongs to DN execution, not SR demand         |
 
 ---
 
@@ -415,5 +430,6 @@ All allocations are tracked and released properly:
 **Document Version:** 1.0
 **Last Updated:** 2026-02-15
 **Related Documents:**
+
 - `pick-dispatch-module-prd.md` - Functional requirements
 - `delivery-note-schema-srs.md` - Database schema details

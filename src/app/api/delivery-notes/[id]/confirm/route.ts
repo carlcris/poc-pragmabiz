@@ -23,7 +23,10 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     }
 
     if (header.status !== "draft") {
-      return NextResponse.json({ error: "Only draft delivery notes can be confirmed" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Only draft delivery notes can be confirmed" },
+        { status: 400 }
+      );
     }
 
     const nowIso = new Date().toISOString();

@@ -23,7 +23,11 @@ type TransactionDetailsDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-export function TransactionDetailsDialog({ transaction, open, onOpenChange }: TransactionDetailsDialogProps) {
+export function TransactionDetailsDialog({
+  transaction,
+  open,
+  onOpenChange,
+}: TransactionDetailsDialogProps) {
   const t = useTranslations("posTransactionDetailsDialog");
   const locale = useLocale();
 
@@ -41,7 +45,8 @@ export function TransactionDetailsDialog({ transaction, open, onOpenChange }: Tr
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "completed") return <Badge className="bg-green-100 text-green-800">{t("completed")}</Badge>;
+    if (status === "completed")
+      return <Badge className="bg-green-100 text-green-800">{t("completed")}</Badge>;
     if (status === "voided") return <Badge variant="secondary">{t("voided")}</Badge>;
     return <Badge>{status}</Badge>;
   };
@@ -76,7 +81,9 @@ export function TransactionDetailsDialog({ transaction, open, onOpenChange }: Tr
             <div>
               <div className="text-sm text-muted-foreground">{t("customer")}</div>
               <div className="font-medium">
-                {transaction.customerName || <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>}
+                {transaction.customerName || (
+                  <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>
+                )}
               </div>
             </div>
             <div>
@@ -108,8 +115,12 @@ export function TransactionDetailsDialog({ transaction, open, onOpenChange }: Tr
                     </TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                    <TableCell className="text-right">{item.discount > 0 ? `${item.discount}%` : t("notAvailable")}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(item.lineTotal)}</TableCell>
+                    <TableCell className="text-right">
+                      {item.discount > 0 ? `${item.discount}%` : t("notAvailable")}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(item.lineTotal)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -131,7 +142,9 @@ export function TransactionDetailsDialog({ transaction, open, onOpenChange }: Tr
             )}
             {transaction.totalTax > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t("tax", { rate: transaction.taxRate })}</span>
+                <span className="text-muted-foreground">
+                  {t("tax", { rate: transaction.taxRate })}
+                </span>
                 <span className="font-medium">{formatCurrency(transaction.totalTax)}</span>
               </div>
             )}

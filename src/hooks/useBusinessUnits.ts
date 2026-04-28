@@ -96,8 +96,9 @@ export function useSetBusinessUnitContext(options?: { silent?: boolean }) {
       // Update current business unit in store first
       if (response.business_unit) {
         const selectedBusinessUnit =
-          availableBusinessUnits.find((businessUnit) => businessUnit.id === response.business_unit.id) ??
-          (response.business_unit as BusinessUnitWithAccess);
+          availableBusinessUnits.find(
+            (businessUnit) => businessUnit.id === response.business_unit.id
+          ) ?? (response.business_unit as BusinessUnitWithAccess);
         setCurrentBusinessUnit(selectedBusinessUnit);
       }
 

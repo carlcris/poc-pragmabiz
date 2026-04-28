@@ -196,7 +196,13 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
             title="Total IN"
             icon={TrendingUp}
             iconClassName="h-4 w-4 text-green-600"
-            value={data ? (totalIn > 0 ? `+${formatQuantity(totalIn)}` : formatQuantity(totalIn)) : undefined}
+            value={
+              data
+                ? totalIn > 0
+                  ? `+${formatQuantity(totalIn)}`
+                  : formatQuantity(totalIn)
+                : undefined
+            }
             caption="Stock received"
             valueClassName="text-2xl font-bold text-green-600"
             isLoading={isLoading}
@@ -205,7 +211,13 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
             title="Total OUT"
             icon={TrendingDown}
             iconClassName="h-4 w-4 text-red-600"
-            value={data ? (totalOut > 0 ? `-${formatQuantity(totalOut)}` : formatQuantity(totalOut)) : undefined}
+            value={
+              data
+                ? totalOut > 0
+                  ? `-${formatQuantity(totalOut)}`
+                  : formatQuantity(totalOut)
+                : undefined
+            }
             caption="Stock issued"
             valueClassName="text-2xl font-bold text-red-600"
             isLoading={isLoading}
@@ -351,7 +363,9 @@ export const ItemLedgerTab = ({ itemId, itemUom }: ItemLedgerTabProps) => {
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {entry.actualQty < 0 ? (
-                        <span className="text-red-600">{formatQuantity(Math.abs(entry.actualQty))}</span>
+                        <span className="text-red-600">
+                          {formatQuantity(Math.abs(entry.actualQty))}
+                        </span>
                       ) : (
                         <span className="text-muted-foreground">-</span>
                       )}

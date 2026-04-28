@@ -247,9 +247,7 @@ export default function SalesOrdersPage() {
   const canCreateFrameJobOrder = (order: SalesOrder) =>
     !order.frameJobOrder &&
     order.hasFrameJobEligibleItems &&
-    (order.status === "confirmed" ||
-      order.status === "in_progress" ||
-      order.status === "invoiced");
+    (order.status === "confirmed" || order.status === "in_progress" || order.status === "invoiced");
 
   return (
     <div className="space-y-6">
@@ -574,12 +572,12 @@ export default function SalesOrdersPage() {
             </Button>
             <Button
               onClick={
-                orderToCreateJobOrder ? handleConfirmJobOrderCreation : handleConfirmInvoiceConversion
+                orderToCreateJobOrder
+                  ? handleConfirmJobOrderCreation
+                  : handleConfirmInvoiceConversion
               }
               disabled={
-                !selectedWarehouse ||
-                convertToInvoice.isPending ||
-                createFrameJobOrder.isPending
+                !selectedWarehouse || convertToInvoice.isPending || createFrameJobOrder.isPending
               }
             >
               {orderToCreateJobOrder

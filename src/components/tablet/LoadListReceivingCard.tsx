@@ -20,7 +20,11 @@ const statusColors: Record<string, string> = {
   received: "bg-emerald-100 text-emerald-700",
 };
 
-export function LoadListReceivingCard({ loadList, onMarkArrived, isMarkingArrived }: LoadListReceivingCardProps) {
+export function LoadListReceivingCard({
+  loadList,
+  onMarkArrived,
+  isMarkingArrived,
+}: LoadListReceivingCardProps) {
   const statusColor = statusColors[loadList.status] || "bg-gray-100 text-gray-700";
 
   const totalItems = loadList.items?.length || 0;
@@ -86,7 +90,8 @@ export function LoadListReceivingCard({ loadList, onMarkArrived, isMarkingArrive
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Items</span>
             <span className="font-semibold text-gray-900">
-              {receivedItems > 0 ? `${receivedItems} / ` : ""}{totalItems} items
+              {receivedItems > 0 ? `${receivedItems} / ` : ""}
+              {totalItems} items
             </span>
           </div>
           {receivedItems > 0 && (
@@ -108,7 +113,7 @@ export function LoadListReceivingCard({ loadList, onMarkArrived, isMarkingArrive
       )}
 
       {loadList.status === "in_transit" && onMarkArrived && (
-        <div className="mt-3 pt-3 border-t border-gray-200">
+        <div className="mt-3 border-t border-gray-200 pt-3">
           <Button
             onClick={handleMarkArrived}
             disabled={isMarkingArrived}
@@ -135,9 +140,5 @@ export function LoadListReceivingCard({ loadList, onMarkArrived, isMarkingArrive
   }
 
   // Otherwise, just display the card
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow">
-      {CardContent}
-    </div>
-  );
+  return <div className="rounded-lg border border-gray-200 bg-white p-4 shadow">{CardContent}</div>;
 }

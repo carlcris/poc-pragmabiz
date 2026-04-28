@@ -128,7 +128,9 @@ export function TodaysReceivingQueueWidget({
               <PackageCheck className="h-4 w-4" />
               <span>{t("toReceive")}</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-right text-primary">{data.count}</span>
+            <span className="text-right text-xl font-bold text-primary sm:text-2xl">
+              {data.count}
+            </span>
           </div>
         </div>
 
@@ -152,17 +154,17 @@ export function TodaysReceivingQueueWidget({
                     isArrived && "border-l-4 border-l-amber-500"
                   )}
                 >
-                  <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium truncate">{item.ll_number}</span>
+                      <span className="truncate text-sm font-medium">{item.ll_number}</span>
                       {isArrived && (
-                        <Badge variant="outline" className="gap-1 text-xs flex-shrink-0">
+                        <Badge variant="outline" className="flex-shrink-0 gap-1 text-xs">
                           <Clock className="h-3 w-3" />
                           {t("pending")}
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground truncate">
+                    <span className="truncate text-xs text-muted-foreground">
                       {item.supplier?.supplier_name || t("unknownSupplier")}
                     </span>
                     {item.actual_arrival_date && (
@@ -171,7 +173,7 @@ export function TodaysReceivingQueueWidget({
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 flex-shrink-0">
+                  <div className="flex flex-shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
                     <Button size="sm" variant={isArrived ? "default" : "outline"}>
                       {isArrived ? (

@@ -63,7 +63,11 @@ function RoleManagementContent() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [roleToEdit, setRoleToEdit] = useState<Role | null>(null);
 
-  const { data: rolesData, isLoading, error } = useRoles({
+  const {
+    data: rolesData,
+    isLoading,
+    error,
+  } = useRoles({
     search,
     page: 1,
     limit: 50,
@@ -108,11 +112,18 @@ function RoleManagementContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+            {t("title")}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+            {t("subtitle")}
+          </p>
         </div>
         <CreateGuard resource={RESOURCES.ROLES}>
-          <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto flex-shrink-0">
+          <Button
+            onClick={() => setCreateDialogOpen(true)}
+            className="w-full flex-shrink-0 sm:w-auto"
+          >
             <Plus className="mr-2 h-4 w-4" />
             {t("createRole")}
           </Button>
@@ -166,9 +177,7 @@ function RoleManagementContent() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : roles.length === 0 ? (
           <EmptyStatePanel
             icon={Shield}

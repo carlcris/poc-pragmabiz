@@ -9,10 +9,7 @@ import {
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
 // GET /api/stock-requisitions/[id]
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "view");
     if (unauthorized) return unauthorized;
@@ -83,19 +80,24 @@ export async function GET(
         code: string;
         symbol?: string | null;
       } | null;
-      item_unit_options?: (DbItemUnitOptionRow & {
-        units_of_measure?: {
-          id: string;
-          code: string;
-          name: string;
-          symbol: string | null;
-        } | {
-          id: string;
-          code: string;
-          name: string;
-          symbol: string | null;
-        }[] | null;
-      }) | null;
+      item_unit_options?:
+        | (DbItemUnitOptionRow & {
+            units_of_measure?:
+              | {
+                  id: string;
+                  code: string;
+                  name: string;
+                  symbol: string | null;
+                }
+              | {
+                  id: string;
+                  code: string;
+                  name: string;
+                  symbol: string | null;
+                }[]
+              | null;
+          })
+        | null;
       item?: {
         id: string;
         item_code: string;
@@ -110,41 +112,42 @@ export async function GET(
       notes: string | null;
     };
 
-    const formattedItems = (sr.items as StockRequisitionItemRow[] | null)?.map((item) => {
-      const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
-        ? item.item_unit_options[0] ?? null
-        : item.item_unit_options ?? null;
-      const baseUomCode = item.units_of_measure?.code || "";
-      const qtyPerUnit = Number(itemUnitOptionDetails?.qty_per_unit ?? 1) || 1;
-      const requestedQty = Number(item.requested_qty ?? 0);
-      const unitPrice = Number(item.unit_price ?? 0);
+    const formattedItems =
+      (sr.items as StockRequisitionItemRow[] | null)?.map((item) => {
+        const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
+          ? (item.item_unit_options[0] ?? null)
+          : (item.item_unit_options ?? null);
+        const baseUomCode = item.units_of_measure?.code || "";
+        const qtyPerUnit = Number(itemUnitOptionDetails?.qty_per_unit ?? 1) || 1;
+        const requestedQty = Number(item.requested_qty ?? 0);
+        const unitPrice = Number(item.unit_price ?? 0);
 
-      return {
-        id: item.id,
-        srId: item.sr_id,
-        itemId: item.item_id,
-        itemUnitOptionId: item.item_unit_option_id,
-        uomId: item.uom_id,
-        uomCode: item.units_of_measure?.code || undefined,
-        itemUnitOption: itemUnitOptionDetails
-          ? transformItemUnitOptionRow(itemUnitOptionDetails as DbItemUnitOptionRow, baseUomCode)
-          : null,
-        item: item.item
-          ? {
-              id: item.item.id,
-              code: item.item.item_code,
-              name: item.item.item_name,
-              chineseName: item.item.item_name_cn || undefined,
-            }
-          : null,
-        requestedQty,
-        unitPrice,
-        totalPrice: requestedQty * qtyPerUnit * unitPrice,
-        fulfilledQty: Number(item.fulfilled_qty ?? 0),
-        outstandingQty: Number(item.outstanding_qty ?? 0),
-        notes: item.notes,
-      };
-    }) || [];
+        return {
+          id: item.id,
+          srId: item.sr_id,
+          itemId: item.item_id,
+          itemUnitOptionId: item.item_unit_option_id,
+          uomId: item.uom_id,
+          uomCode: item.units_of_measure?.code || undefined,
+          itemUnitOption: itemUnitOptionDetails
+            ? transformItemUnitOptionRow(itemUnitOptionDetails as DbItemUnitOptionRow, baseUomCode)
+            : null,
+          item: item.item
+            ? {
+                id: item.item.id,
+                code: item.item.item_code,
+                name: item.item.item_name,
+                chineseName: item.item.item_name_cn || undefined,
+              }
+            : null,
+          requestedQty,
+          unitPrice,
+          totalPrice: requestedQty * qtyPerUnit * unitPrice,
+          fulfilledQty: Number(item.fulfilled_qty ?? 0),
+          outstandingQty: Number(item.outstanding_qty ?? 0),
+          notes: item.notes,
+        };
+      }) || [];
 
     const formattedSR = {
       id: sr.id,
@@ -209,10 +212,7 @@ export async function GET(
 }
 
 // PUT /api/stock-requisitions/[id]
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "edit");
     if (unauthorized) return unauthorized;
@@ -237,10 +237,7 @@ export async function PUT(
 
     // Only allow editing draft requisitions
     if (existingSR.status !== "draft") {
-      return NextResponse.json(
-        { error: "Only draft requisitions can be edited" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Only draft requisitions can be edited" }, { status: 400 });
     }
 
     if (body.items && body.items.length === 0) {
@@ -264,13 +261,12 @@ export async function PUT(
     }
 
     // Calculate total amount
-    const totalAmount = resolvedLineItems?.reduce(
-      (
-        sum: number,
-        item: { requestedQty: number; unitPrice: number; qty_per_unit: number }
-      ) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
-      0
-    ) || 0;
+    const totalAmount =
+      resolvedLineItems?.reduce(
+        (sum: number, item: { requestedQty: number; unitPrice: number; qty_per_unit: number }) =>
+          sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
+        0
+      ) || 0;
 
     // Update stock requisition
     const { data: sr, error: updateError } = await supabase
@@ -390,10 +386,7 @@ export async function DELETE(
 
     if (deleteError) {
       console.error("Error deleting stock requisition:", deleteError);
-      return NextResponse.json(
-        { error: "Failed to delete stock requisition" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to delete stock requisition" }, { status: 500 });
     }
 
     return NextResponse.json({ message: "Stock requisition deleted successfully" });

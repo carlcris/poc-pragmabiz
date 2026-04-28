@@ -1,10 +1,7 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { supabase } = await createServerClientWithBU();
     const {

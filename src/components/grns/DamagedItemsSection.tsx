@@ -282,7 +282,9 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                     <TableCell className="text-right">{item.qty}</TableCell>
                     <TableCell>{getDamageTypeBadge(item.damageType)}</TableCell>
                     <TableCell>
-                      <div className="max-w-xs truncate text-sm">{item.description || t("noValue")}</div>
+                      <div className="max-w-xs truncate text-sm">
+                        {item.description || t("noValue")}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
@@ -294,7 +296,9 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                     <TableCell>{formatDate(item.reportedDate)}</TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     <TableCell>
-                      <div className="max-w-xs truncate text-sm">{item.actionTaken || t("noValue")}</div>
+                      <div className="max-w-xs truncate text-sm">
+                        {item.actionTaken || t("noValue")}
+                      </div>
                     </TableCell>
                     {isEditable && (
                       <TableCell className="text-right">
@@ -349,9 +353,7 @@ export function DamagedItemsSection({ grnId, grnItems, isEditable }: DamagedItem
                 min="0"
                 step="0.01"
                 value={formData.qty}
-                onChange={(e) =>
-                  setFormData({ ...formData, qty: parseFloat(e.target.value) || 0 })
-                }
+                onChange={(e) => setFormData({ ...formData, qty: parseFloat(e.target.value) || 0 })}
               />
             </div>
             <div>

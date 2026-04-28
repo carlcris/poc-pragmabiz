@@ -160,12 +160,14 @@ export default function SuppliersPage() {
     <div className="flex h-full flex-col gap-4 sm:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+            {t("title")}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
             {t("subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateSupplier} className="w-full sm:w-auto flex-shrink-0">
+        <Button onClick={handleCreateSupplier} className="w-full flex-shrink-0 sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           {t("createSupplier")}
         </Button>

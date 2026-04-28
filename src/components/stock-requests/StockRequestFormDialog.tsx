@@ -10,41 +10,78 @@ import type { StockRequest } from "@/types/stock-request";
 import type { StockRequestLineItemPayload } from "@/components/stock-requests/StockRequestLineItemDialog";
 import { StockRequestLineItemDialog } from "@/components/stock-requests/StockRequestLineItemDialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
 const createRequestFormSchema = (
-  tValidation: (key: "requestDateRequired" | "requiredDateRequired" | "requestedByRequired" | "requestedToRequired" | "requestingAndFulfillingMustDiffer") => string
+  tValidation: (
+    key:
+      | "requestDateRequired"
+      | "requiredDateRequired"
+      | "requestedByRequired"
+      | "requestedToRequired"
+      | "requestingAndFulfillingMustDiffer"
+  ) => string
 ) =>
   z
-  .object({
-    request_date: z.string().min(1, tValidation("requestDateRequired")),
-    required_date: z.string().min(1, tValidation("requiredDateRequired")),
-    requesting_warehouse_id: z.string().min(1, tValidation("requestedByRequired")),
-    fulfilling_warehouse_id: z.string().min(1, tValidation("requestedToRequired")),
-    priority: z.enum(["low", "normal", "high", "urgent"]),
-    purpose: z.string().optional(),
-    notes: z.string().optional(),
-  })
-  .superRefine((values, ctx) => {
-    if (values.fulfilling_warehouse_id && values.fulfilling_warehouse_id === values.requesting_warehouse_id) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: tValidation("requestingAndFulfillingMustDiffer"),
-        path: ["fulfilling_warehouse_id"],
-      });
-    }
-  });
+    .object({
+      request_date: z.string().min(1, tValidation("requestDateRequired")),
+      required_date: z.string().min(1, tValidation("requiredDateRequired")),
+      requesting_warehouse_id: z.string().min(1, tValidation("requestedByRequired")),
+      fulfilling_warehouse_id: z.string().min(1, tValidation("requestedToRequired")),
+      priority: z.enum(["low", "normal", "high", "urgent"]),
+      purpose: z.string().optional(),
+      notes: z.string().optional(),
+    })
+    .superRefine((values, ctx) => {
+      if (
+        values.fulfilling_warehouse_id &&
+        values.fulfilling_warehouse_id === values.requesting_warehouse_id
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: tValidation("requestingAndFulfillingMustDiffer"),
+          path: ["fulfilling_warehouse_id"],
+        });
+      }
+    });
 
 type StockRequestFormSchema = ReturnType<typeof createRequestFormSchema>;
 export type StockRequestFormValues = z.infer<StockRequestFormSchema>;
@@ -106,7 +143,8 @@ export function StockRequestFormDialog({
     },
   });
   const requestingWarehouseId = form.watch("requesting_warehouse_id");
-  const requestingWarehouse = warehouses.find((warehouse) => warehouse.id === requestingWarehouseId) ?? null;
+  const requestingWarehouse =
+    warehouses.find((warehouse) => warehouse.id === requestingWarehouseId) ?? null;
   const requestingWarehouseLabel = requestingWarehouse
     ? `${requestingWarehouse.code} - ${requestingWarehouse.name}`
     : t("autoAssignedWarehouseUnavailable");
@@ -210,7 +248,10 @@ export function StockRequestFormDialog({
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="flex flex-1 flex-col overflow-hidden"
+            >
               <div className="flex-1 overflow-y-auto px-1">
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-3">
@@ -219,7 +260,10 @@ export function StockRequestFormDialog({
                       name="request_date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">{t("requestDateLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                          <FormLabel className="text-xs">
+                            {t("requestDateLabel")}
+                            <span className="ml-0.5 text-destructive">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9" />
                           </FormControl>
@@ -233,7 +277,10 @@ export function StockRequestFormDialog({
                       name="required_date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">{t("requiredDateLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                          <FormLabel className="text-xs">
+                            {t("requiredDateLabel")}
+                            <span className="ml-0.5 text-destructive">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9" />
                           </FormControl>
@@ -247,7 +294,10 @@ export function StockRequestFormDialog({
                       name="priority"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs">{t("priorityLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                          <FormLabel className="text-xs">
+                            {t("priorityLabel")}
+                            <span className="ml-0.5 text-destructive">*</span>
+                          </FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-9">
@@ -272,7 +322,10 @@ export function StockRequestFormDialog({
                         name="requesting_warehouse_id"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">{t("requestedByLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                            <FormLabel className="text-xs">
+                              {t("requestedByLabel")}
+                              <span className="ml-0.5 text-destructive">*</span>
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 value={requestingWarehouseLabel}
@@ -292,14 +345,17 @@ export function StockRequestFormDialog({
                         name="fulfilling_warehouse_id"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-xs">{t("requestedToLabel")}<span className="ml-0.5 text-destructive">*</span></FormLabel>
+                            <FormLabel className="text-xs">
+                              {t("requestedToLabel")}
+                              <span className="ml-0.5 text-destructive">*</span>
+                            </FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                              <SelectTrigger className="h-9">
-                                <SelectValue placeholder={t("selectRequestedTo")} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder={t("selectRequestedTo")} />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
                                 {fulfillingWarehouseOptions.map((warehouse) => (
                                   <SelectItem key={warehouse.id} value={warehouse.id}>
                                     {warehouse.code} - {warehouse.name}
@@ -320,7 +376,11 @@ export function StockRequestFormDialog({
                         <FormItem className="col-span-3">
                           <FormLabel className="text-xs">{t("purposeLabel")}</FormLabel>
                           <FormControl>
-                            <Input placeholder={t("purposePlaceholder")} {...field} className="h-9" />
+                            <Input
+                              placeholder={t("purposePlaceholder")}
+                              {...field}
+                              className="h-9"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -334,7 +394,11 @@ export function StockRequestFormDialog({
                         <FormItem className="col-span-3">
                           <FormLabel className="text-xs">{t("notesLabel")}</FormLabel>
                           <FormControl>
-                            <Textarea placeholder={t("notesPlaceholder")} className="h-16 resize-none" {...field} />
+                            <Textarea
+                              placeholder={t("notesPlaceholder")}
+                              className="h-16 resize-none"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -367,9 +431,13 @@ export function StockRequestFormDialog({
                               <TableHead className="py-2 text-xs">{t("item")}</TableHead>
                               <TableHead className="py-2 text-right text-xs">{t("qty")}</TableHead>
                               <TableHead className="py-2 text-xs">{t("unit")}</TableHead>
-                              <TableHead className="py-2 text-right text-xs">{t("qtyPerUnit")}</TableHead>
+                              <TableHead className="py-2 text-right text-xs">
+                                {t("qtyPerUnit")}
+                              </TableHead>
                               <TableHead className="py-2 text-xs">{t("notes")}</TableHead>
-                              <TableHead className="w-[80px] py-2 text-xs">{t("actions")}</TableHead>
+                              <TableHead className="w-[80px] py-2 text-xs">
+                                {t("actions")}
+                              </TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -378,11 +446,20 @@ export function StockRequestFormDialog({
                                 <TableCell className="py-2">
                                   <div>
                                     <div className="text-sm font-medium">{item.itemName}</div>
-                                    <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {item.itemCode}
+                                    </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="py-2 text-right text-sm">{item.requestedQty.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="py-2 text-sm">{item.uomLabel || t("noValue")}</TableCell>
+                                <TableCell className="py-2 text-right text-sm">
+                                  {item.requestedQty.toLocaleString(locale, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </TableCell>
+                                <TableCell className="py-2 text-sm">
+                                  {item.uomLabel || t("noValue")}
+                                </TableCell>
                                 <TableCell className="py-2 text-right text-sm">
                                   {(item.qtyPerUnit ?? 1).toLocaleString(locale, {
                                     minimumFractionDigits: 0,
@@ -390,7 +467,9 @@ export function StockRequestFormDialog({
                                   })}
                                 </TableCell>
                                 <TableCell className="py-2">
-                                  <div className="max-w-[150px] truncate text-sm">{item.notes || t("noValue")}</div>
+                                  <div className="max-w-[150px] truncate text-sm">
+                                    {item.notes || t("noValue")}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <div className="flex items-center gap-1">
@@ -439,7 +518,12 @@ export function StockRequestFormDialog({
               </div>
 
               <DialogFooter className="mt-4 flex-shrink-0">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-9">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="h-9"
+                >
                   {t("cancel")}
                 </Button>
                 <Button

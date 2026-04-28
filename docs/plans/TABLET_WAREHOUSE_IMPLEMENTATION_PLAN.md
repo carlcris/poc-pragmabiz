@@ -1,6 +1,7 @@
 # Tablet Warehouse App - Implementation Plan
 
 ## Project Overview
+
 Build a tablet-first browser application for warehouse operations following the same architectural patterns as the Mobile Van Sales app.
 
 **Target URL**: `/tablet/*`
@@ -12,6 +13,7 @@ Build a tablet-first browser application for warehouse operations following the 
 ## Architecture Decisions
 
 ### 1. Routing Structure
+
 ```
 /tablet
 ├── /login              - Authentication (reuse mobile login pattern)
@@ -27,11 +29,13 @@ Build a tablet-first browser application for warehouse operations following the 
 ### 2. Status Model Updates
 
 **Purchase Receipts** (existing):
+
 - `draft` - Created but not confirmed
 - `received` - Confirmed (inventory updated)
 - `cancelled` - Cancelled
 
 **Stock Requests** (new statuses to add):
+
 - `draft` - Initial (existing)
 - `submitted` - Awaiting approval (existing)
 - `approved` - Approved for picking (existing)
@@ -47,6 +51,7 @@ Build a tablet-first browser application for warehouse operations following the 
 ### 3. Component Patterns (from Mobile Van Sales)
 
 **Reuse Pattern**:
+
 - `MobileHeader` → `TabletHeader` (with warehouse context)
 - `BottomNav` → `TabletBottomNav` (Receiving | Dashboard | Picking)
 - Card-based list views with touch-friendly targets
@@ -55,6 +60,7 @@ Build a tablet-first browser application for warehouse operations following the 
 - Status badges and color coding
 
 **New Components**:
+
 - `ReceivingCard` - Purchase receipt list item
 - `ReceiptDetailCard` - Receipt header info
 - `ReceiveLineItem` - Line item with quantity stepper
@@ -94,6 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_stock_requests_picking_status
 ### 2. Purchase Receipt Enhancements (if needed)
 
 Check if these fields exist:
+
 - `receiving_started_at` - Track when receiving began
 - `receiving_started_by` - User who started receiving
 - `partially_received` status support
@@ -105,6 +112,7 @@ Check if these fields exist:
 ### Receiving Module
 
 **GET /api/tablet/purchase-receipts**
+
 - Query params: status, warehouse_id, date_from, date_to
 - Returns: List of purchase receipts with:
   - Receipt header info
@@ -114,25 +122,30 @@ Check if these fields exist:
   - Status
 
 **GET /api/tablet/purchase-receipts/[receiptId]**
+
 - Returns: Complete receipt with line items
   - Header: supplier, warehouse, dates, status
   - Items: item details, expected qty, received qty, UOM, packaging
 
 **POST /api/tablet/purchase-receipts/[receiptId]/start-receiving**
+
 - Updates status to `in_progress`
 - Records `receiving_started_by` and `receiving_started_at`
 - Returns: Updated receipt
 
 **POST /api/tablet/purchase-receipts/[receiptId]/receive-all**
+
 - Auto-fills all line items with expected quantities
 - Returns: Updated receipt items
 
 **PATCH /api/tablet/purchase-receipts/[receiptId]/items/[itemId]**
+
 - Updates received_qty for a line item
 - Validates: received_qty <= quantity_ordered
 - Returns: Updated item
 
 **POST /api/tablet/purchase-receipts/[receiptId]/post**
+
 - Validates all items have received_qty
 - Updates status to `received`
 - Creates stock_transactions (type: 'in')
@@ -144,35 +157,41 @@ Check if these fields exist:
 ### Picking Module
 
 **GET /api/tablet/stock-requests**
+
 - Query params: status, priority, date_from, date_to, warehouse_id
 - Returns: List of stock requests filtered by status tabs
   - Request info, source/dest, priority, item count, status
 
 **GET /api/tablet/stock-requests/[requestId]**
+
 - Returns: Complete request with line items
   - Header: requester, warehouses, priority, dates
   - Items: item details, requested qty, available stock, picked qty, UOM, packaging
   - Current stock levels from item_warehouse
 
 **POST /api/tablet/stock-requests/[requestId]/start-picking**
+
 - Updates status to `picking`
 - Records `picking_started_by` and `picking_started_at`
 - Validates: Only one picker can pick at a time
 - Returns: Updated request
 
 **PATCH /api/tablet/stock-requests/[requestId]/items/[itemId]**
+
 - Updates picked_qty for a line item
 - Validates: picked_qty <= requested_qty
 - Validates: picked_qty <= available stock
 - Returns: Updated item
 
 **POST /api/tablet/stock-requests/[requestId]/mark-picked**
+
 - Updates status to `picked`
 - Records picked_by and picked_at
 - Validates all items have picked_qty set
 - Returns: Updated request
 
 **POST /api/tablet/stock-requests/[requestId]/mark-delivered**
+
 - Updates status to `delivered`
 - Creates stock_transactions (type: 'out')
 - Updates item_warehouse balances (deduct picked quantities)
@@ -214,6 +233,7 @@ Check if these fields exist:
 ### Layout Components
 
 **`/tablet/layout.tsx`**
+
 ```typescript
 - Max width: 768px (tablet optimized)
 - Bottom padding for navigation
@@ -221,6 +241,7 @@ Check if these fields exist:
 ```
 
 **`TabletHeader.tsx`**
+
 ```typescript
 - Warehouse context display
 - User info dropdown
@@ -229,6 +250,7 @@ Check if these fields exist:
 ```
 
 **`TabletBottomNav.tsx`**
+
 ```typescript
 - 3 items: Receiving | Dashboard | Picking
 - Active state indicators
@@ -238,68 +260,76 @@ Check if these fields exist:
 ### Receiving Components
 
 **`ReceivingCard.tsx`**
+
 ```typescript
 type ReceivingCardProps = {
-  receipt: PurchaseReceipt
-  onPress: () => void
-}
+  receipt: PurchaseReceipt;
+  onPress: () => void;
+};
 // Displays: supplier, receipt #, item count, status badge
 ```
 
 **`ReceiptDetailHeader.tsx`**
+
 ```typescript
 // Supplier, warehouse, dates, document numbers, status
 ```
 
 **`ReceiveLineItemRow.tsx`**
+
 ```typescript
 type ReceiveLineItemRowProps = {
-  item: PurchaseReceiptItem
-  onUpdate: (qty: number) => void
-  disabled: boolean
-}
+  item: PurchaseReceiptItem;
+  onUpdate: (qty: number) => void;
+  disabled: boolean;
+};
 // Item name, SKU, expected qty, QuantityStepper, UOM
 ```
 
 **`QuantityStepper.tsx`**
+
 ```typescript
 type QuantityStepperProps = {
-  value: number
-  max: number
-  onChange: (value: number) => void
-  disabled: boolean
-}
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+  disabled: boolean;
+};
 // Large +/- buttons, numeric display, validation
 ```
 
 ### Picking Components
 
 **`PickingCard.tsx`**
+
 ```typescript
 type PickingCardProps = {
-  request: StockRequest
-  onPress: () => void
-}
+  request: StockRequest;
+  onPress: () => void;
+};
 // Request #, source→dest, priority badge, item count, status
 ```
 
 **`PickRequestHeader.tsx`**
+
 ```typescript
 // Requester, warehouses, priority, dates, purpose
 ```
 
 **`PickLineItemRow.tsx`**
+
 ```typescript
 type PickLineItemRowProps = {
-  item: StockRequestItem
-  availableStock: number
-  onUpdate: (qty: number) => void
-  disabled: boolean
-}
+  item: StockRequestItem;
+  availableStock: number;
+  onUpdate: (qty: number) => void;
+  disabled: boolean;
+};
 // Item name, SKU, requested qty, available stock, QuantityStepper, UOM
 ```
 
 **`LocationDisplay.tsx`** (future - when location support added)
+
 ```typescript
 // Shows bin/location code if available
 ```
@@ -311,6 +341,7 @@ type PickLineItemRowProps = {
 **For MVP**: Use Super Admin role (bypass permission checks)
 
 **Post-MVP**: Create granular permissions:
+
 - Resource: `purchase_receipts`
   - Actions: `view`, `receive`, `post`
 - Resource: `stock_requests` (already exists)
@@ -323,6 +354,7 @@ type PickLineItemRowProps = {
 ## Implementation Phases
 
 ### Phase 1: Foundation (Week 1)
+
 - [ ] Create `/tablet` layout structure
 - [ ] Build `TabletHeader` and `TabletBottomNav` components
 - [ ] Setup authentication flow (reuse mobile pattern)
@@ -330,6 +362,7 @@ type PickLineItemRowProps = {
 - [ ] Test migration on local Supabase
 
 ### Phase 2: Receiving Module (Week 2)
+
 - [ ] API routes for purchase receipts
 - [ ] React Query hooks for receiving
 - [ ] Receiving list page with filters
@@ -340,6 +373,7 @@ type PickLineItemRowProps = {
 - [ ] Test full receiving workflow
 
 ### Phase 3: Picking Module (Week 3)
+
 - [ ] API routes for stock requests (tablet endpoints)
 - [ ] React Query hooks for picking
 - [ ] Picking list page with status tabs
@@ -350,6 +384,7 @@ type PickLineItemRowProps = {
 - [ ] Test full picking workflow
 
 ### Phase 4: Polish & Testing (Week 4)
+
 - [ ] Error handling and validation messages
 - [ ] Loading states and skeletons
 - [ ] Empty states
@@ -364,12 +399,14 @@ type PickLineItemRowProps = {
 ## Testing Strategy
 
 ### Unit Tests
+
 - API route handlers (mock Supabase client)
 - React Query hooks (mock API calls)
 - Component rendering (React Testing Library)
 - Validation logic (quantity limits, stock checks)
 
 ### Integration Tests
+
 - Complete receiving workflow
 - Complete picking workflow
 - Stock transaction creation
@@ -377,6 +414,7 @@ type PickLineItemRowProps = {
 - Purchase order status updates
 
 ### Manual Testing Scenarios
+
 1. Receive full quantity of all items
 2. Receive partial quantity (some items short)
 3. Multiple receipts for same PO
@@ -391,6 +429,7 @@ type PickLineItemRowProps = {
 ## Data Validation Rules
 
 ### Receiving
+
 - ✅ received_qty <= quantity_ordered
 - ✅ received_qty >= 0
 - ✅ Cannot post receipt with status != 'draft'
@@ -398,6 +437,7 @@ type PickLineItemRowProps = {
 - ✅ Sum of all receipts <= PO quantity
 
 ### Picking
+
 - ✅ picked_qty <= requested_qty
 - ✅ picked_qty <= available_stock
 - ✅ picked_qty >= 0
@@ -411,12 +451,14 @@ type PickLineItemRowProps = {
 ## Performance Considerations
 
 ### Query Optimization
+
 - Indexes on status columns (already exist)
 - Pagination for list views (limit 50 per page)
 - Eager loading relationships (Supabase select with joins)
 - Cache React Query results (staleTime: 30s for lists)
 
 ### Touch Performance
+
 - Debounce quantity input (300ms)
 - Optimistic updates for line item qty changes
 - Skeleton loaders during data fetch
@@ -427,23 +469,28 @@ type PickLineItemRowProps = {
 ## Open Questions / Future Enhancements
 
 ### Barcode Scanning
+
 - Integration point identified
 - Placeholder search by item code for now
 - Future: Camera API or external scanner device
 
 ### Location/Bin Management
+
 - Database columns exist (from_location_id, to_location_id)
 - No location management UI yet
 - Future: Location-guided picking
 
 ### Offline Support
+
 - Current: Online-only
 - Future: Draft queue with sync on reconnect
 
 ### Notifications
+
 - Future: Push notifications for new receipts/requests
 
 ### Print Labels
+
 - Future: Print receipt labels, pick lists
 
 ---
@@ -451,6 +498,7 @@ type PickLineItemRowProps = {
 ## Success Criteria
 
 ### Receiving Module
+
 - ✅ Warehouse staff can view open purchase receipts
 - ✅ Start receiving process updates status
 - ✅ Update received quantities for each item
@@ -459,6 +507,7 @@ type PickLineItemRowProps = {
 - ✅ Purchase order status updated (partial/full)
 
 ### Picking Module
+
 - ✅ Warehouse staff can view stock requests by status
 - ✅ Start picking locks request to one picker
 - ✅ Update picked quantities for each item
@@ -467,6 +516,7 @@ type PickLineItemRowProps = {
 - ✅ Inventory balances deducted correctly
 
 ### User Experience
+
 - ✅ Touch-friendly interface (44px min targets)
 - ✅ Clear visual feedback (loading, success, error)
 - ✅ Fast response times (<500ms for updates)
@@ -488,8 +538,8 @@ type PickLineItemRowProps = {
 
 ## Sign-off
 
-**Product Owner**: _______________ Date: _______
+**Product Owner**: **\*\***\_\_\_**\*\*** Date: **\_\_\_**
 
-**Tech Lead**: _______________ Date: _______
+**Tech Lead**: **\*\***\_\_\_**\*\*** Date: **\_\_\_**
 
-**QA Lead**: _______________ Date: _______
+**QA Lead**: **\*\***\_\_\_**\*\*** Date: **\_\_\_**

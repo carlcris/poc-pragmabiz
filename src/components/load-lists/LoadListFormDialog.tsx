@@ -4,7 +4,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Trash2, Check, ChevronsUpDown, Package, FileText, Truck, Container, DollarSign } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Check,
+  ChevronsUpDown,
+  Package,
+  FileText,
+  Truck,
+  Container,
+  DollarSign,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useCreateLoadList, useLoadList, useUpdateLoadList } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
@@ -127,7 +137,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     unitOptions.find((option) => option.id === selectedUnitOptionId) ||
     selectedItemDetail?.unitOptions?.find((option) => option.id === selectedUnitOptionId) ||
     null;
-  const selectedItemRecord = selectedItemDetail || items.find((item) => item.id === selectedItemId) || null;
+  const selectedItemRecord =
+    selectedItemDetail || items.find((item) => item.id === selectedItemId) || null;
   const selectedQtyPerUnit = selectedUnitOption?.qtyPerUnit ?? 1;
   const selectedUomLabel =
     selectedUnitOption?.displayLabel ||
@@ -345,50 +356,43 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     const selectedItem = selectedItemRecord;
     if (!selectedItem) return;
     const cost =
-      selectedItem.purchasePrice ??
-      selectedItem.standardCost ??
-      selectedItem.listPrice ??
-      0;
+      selectedItem.purchasePrice ?? selectedItem.standardCost ?? selectedItem.listPrice ?? 0;
     setUnitCost(Number(cost).toFixed(2));
   }, [selectedItemId, selectedItemRecord]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0 gap-0">
-        <DialogHeader className="px-5 pt-4 pb-3 border-b bg-gradient-to-r from-purple-50 to-violet-50">
+      <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col gap-0 p-0">
+        <DialogHeader className="border-b bg-gradient-to-r from-purple-50 to-violet-50 px-5 pb-3 pt-4">
           <div className="flex items-center gap-2.5">
             <div>
               <DialogTitle className="text-xl font-bold">
                 {isEditMode ? t("editTitle") : t("createTitle")}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                {isEditMode
-                  ? t("editDescription")
-                  : t("createDescription")}
+                {isEditMode ? t("editDescription") : t("createDescription")}
               </DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-1 flex-col min-h-0"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
-              className="flex flex-1 flex-col min-h-0"
+              className="flex min-h-0 flex-1 flex-col"
             >
-              <div className="px-5 pt-3 flex-shrink-0">
-                <TabsList className="grid w-full grid-cols-2 h-9">
+              <div className="flex-shrink-0 px-5 pt-3">
+                <TabsList className="grid h-9 w-full grid-cols-2">
                   <TabsTrigger value="general" className="gap-1.5 text-xs font-semibold">
                     <FileText className="h-3.5 w-3.5" />
                     {t("generalTab")}
                   </TabsTrigger>
                   <TabsTrigger value="items" className="gap-1.5 text-xs font-semibold">
                     <Package className="h-3.5 w-3.5" />
-                    {t("itemsTab")} {lineItems.length > 0 && (
+                    {t("itemsTab")}{" "}
+                    {lineItems.length > 0 && (
                       <span className="ml-1 rounded-full bg-purple-600 px-1.5 py-0.5 text-[10px] text-white">
                         {lineItems.length}
                       </span>
@@ -397,14 +401,19 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                 </TabsList>
               </div>
 
-              <TabsContent value="general" className="flex-1 min-h-0 overflow-y-auto px-5 py-3 space-y-3">
+              <TabsContent
+                value="general"
+                className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3"
+              >
                 {/* Primary Information */}
                 <div className="rounded-lg border bg-white p-4 shadow-sm">
                   <div className="mb-3 flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded-md bg-purple-100">
                       <Truck className="h-3.5 w-3.5 text-purple-600" />
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-900">{t("primaryInformation")}</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {t("primaryInformation")}
+                    </h3>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
@@ -412,7 +421,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="supplierId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">{t("supplierLabel")}</FormLabel>
+                          <FormLabel className="text-xs font-medium">
+                            {t("supplierLabel")}
+                          </FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-9 text-sm">
@@ -437,7 +448,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="warehouseId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">{t("warehouseLabel")}</FormLabel>
+                          <FormLabel className="text-xs font-medium">
+                            {t("warehouseLabel")}
+                          </FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-9 text-sm">
@@ -462,7 +475,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="supplierLlNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">{t("supplierLoadListNumber")}</FormLabel>
+                          <FormLabel className="text-xs font-medium">
+                            {t("supplierLoadListNumber")}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               placeholder={t("supplierLoadListPlaceholder")}
@@ -488,7 +503,6 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         </FormItem>
                       )}
                     />
-
                   </div>
                 </div>
 
@@ -500,15 +514,21 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900">{t("containerDetails")}</h3>
                   </div>
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                     <FormField
                       control={form.control}
                       name="containerNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">{t("containerNumber")}</FormLabel>
+                          <FormLabel className="text-xs font-medium">
+                            {t("containerNumber")}
+                          </FormLabel>
                           <FormControl>
-                            <Input placeholder={t("containerNumberPlaceholder")} {...field} className="h-9 text-sm" />
+                            <Input
+                              placeholder={t("containerNumberPlaceholder")}
+                              {...field}
+                              className="h-9 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -522,7 +542,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         <FormItem>
                           <FormLabel className="text-xs font-medium">{t("sealNumber")}</FormLabel>
                           <FormControl>
-                            <Input placeholder={t("sealNumberPlaceholder")} {...field} className="h-9 text-sm" />
+                            <Input
+                              placeholder={t("sealNumberPlaceholder")}
+                              {...field}
+                              className="h-9 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -536,7 +560,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         <FormItem>
                           <FormLabel className="text-xs font-medium">{t("batchNumber")}</FormLabel>
                           <FormControl>
-                            <Input placeholder={t("batchNumberPlaceholder")} {...field} className="h-9 text-sm" />
+                            <Input
+                              placeholder={t("batchNumberPlaceholder")}
+                              {...field}
+                              className="h-9 text-sm"
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -548,7 +576,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       name="estimatedArrivalDate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-xs font-medium">{t("estimatedArrivalDate")}</FormLabel>
+                          <FormLabel className="text-xs font-medium">
+                            {t("estimatedArrivalDate")}
+                          </FormLabel>
                           <FormControl>
                             <Input type="date" {...field} className="h-9 text-sm" />
                           </FormControl>
@@ -574,7 +604,6 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         </FormItem>
                       )}
                     />
-
                   </div>
                 </div>
 
@@ -606,7 +635,10 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                 </div>
               </TabsContent>
 
-              <TabsContent value="items" className="flex-1 flex min-h-0 flex-col overflow-hidden px-5 py-3 space-y-3">
+              <TabsContent
+                value="items"
+                className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden px-5 py-3"
+              >
                 {/* Add Item Section */}
                 <div className="rounded-lg border border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50 p-3 shadow-sm">
                   <div className="mb-2 flex items-center gap-2">
@@ -616,211 +648,242 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                     <h3 className="text-sm font-semibold text-gray-900">{t("addItemsTitle")}</h3>
                   </div>
                   <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
-                  <div className="min-w-0">
-                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("itemLabel")}</label>
-                    <Popover
-                      open={itemOpen}
-                      onOpenChange={(nextOpen) => {
-                        setItemOpen(nextOpen);
-                        if (!nextOpen) {
-                          setItemSearchInput("");
-                          setDebouncedItemSearch("");
-                        }
-                      }}
-                    >
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={itemOpen}
-                          className={cn(
-                            "w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400",
-                            !selectedItemId && "text-muted-foreground"
-                          )}
-                        >
-                          <span className="min-w-0 truncate text-left">{selectedItemLabel}</span>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[520px] p-0" align="start">
-                        <Command shouldFilter={false}>
-                          <CommandInput
-                            value={itemSearchInput}
-                            onValueChange={setItemSearchInput}
-                            placeholder={t("searchByCodeOrName")}
-                          />
-                          <CommandList className="max-h-[260px] overflow-y-auto">
-                            <CommandEmpty>{t("noItemFound")}</CommandEmpty>
-                            <CommandGroup>
-                              {items
-                                .filter((item) => item.isActive)
-                                .map((item) => (
-                                  <CommandItem
-                                    key={item.id}
-                                    value={item.id}
-                                    onSelect={() => {
-                                      const cost =
-                                        item.purchasePrice ??
-                                        item.standardCost ??
-                                        item.listPrice ??
-                                        0;
-                                      setSelectedItemId(item.id);
-                                      setSelectedUnitOptionId("");
-                                      setUnitCost(Number(cost).toFixed(2));
-                                      setItemSearchInput("");
-                                      setDebouncedItemSearch("");
-                                      setItemOpen(false);
-                                    }}
-                                    className="flex items-start gap-2 py-2"
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mt-0.5 h-4 w-4 shrink-0",
-                                        selectedItemId === item.id ? "opacity-100" : "opacity-0"
-                                      )}
-                                    />
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-medium">{item.code}</div>
-                                      <div className="text-sm text-muted-foreground whitespace-normal break-words leading-snug">
-                                        {item.name}
-                                      </div>
-                                    </div>
-                                    <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
-                                      {formatCurrency(
-                                        item.purchasePrice ??
+                    <div className="min-w-0">
+                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        {t("itemLabel")}
+                      </label>
+                      <Popover
+                        open={itemOpen}
+                        onOpenChange={(nextOpen) => {
+                          setItemOpen(nextOpen);
+                          if (!nextOpen) {
+                            setItemSearchInput("");
+                            setDebouncedItemSearch("");
+                          }
+                        }}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={itemOpen}
+                            className={cn(
+                              "h-10 w-full min-w-0 justify-between border-gray-300 bg-white text-sm hover:border-purple-400",
+                              !selectedItemId && "text-muted-foreground"
+                            )}
+                          >
+                            <span className="min-w-0 truncate text-left">{selectedItemLabel}</span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[520px] p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandInput
+                              value={itemSearchInput}
+                              onValueChange={setItemSearchInput}
+                              placeholder={t("searchByCodeOrName")}
+                            />
+                            <CommandList className="max-h-[260px] overflow-y-auto">
+                              <CommandEmpty>{t("noItemFound")}</CommandEmpty>
+                              <CommandGroup>
+                                {items
+                                  .filter((item) => item.isActive)
+                                  .map((item) => (
+                                    <CommandItem
+                                      key={item.id}
+                                      value={item.id}
+                                      onSelect={() => {
+                                        const cost =
+                                          item.purchasePrice ??
                                           item.standardCost ??
                                           item.listPrice ??
-                                          0
-                                      )}
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="min-w-0">
-                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("unitLabel")}</label>
-                    <Select
-                      value={selectedUnitOptionId}
-                      onValueChange={setSelectedUnitOptionId}
-                      disabled={!selectedItemId || unitOptions.length === 0}
-                    >
-                      <SelectTrigger className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                        <SelectValue
-                          placeholder={selectedItemId ? t("selectUnit") : t("selectItemFirst")}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {unitOptions.map((option) => (
-                          <SelectItem key={option.id} value={option.id}>
-                            {option.displayLabel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("qtyPerUnitLabel")}</label>
-                    <Input
-                      value={
-                        selectedUomLabel
-                          ? selectedQtyPerUnit.toLocaleString(locale, {
-                              maximumFractionDigits: 4,
-                            })
-                          : ""
-                      }
-                      readOnly
-                      placeholder="--"
-                      className="h-10 text-sm bg-gray-50 border-gray-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("quantityLabel")}</label>
-                    <Input
-                      type="number"
-                      placeholder={t("quantityPlaceholder")}
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      step="0.01"
-                      className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("totalQtyLabel")}</label>
-                    <Input
-                      value={
-                        selectedUomLabel
-                          ? selectedTotalQty.toLocaleString(locale, {
-                              maximumFractionDigits: 4,
-                            })
-                          : ""
-                      }
-                      readOnly
-                      placeholder="--"
-                      className="h-10 text-sm bg-gray-50 border-gray-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-700 tracking-wide mb-2 block">{t("unitCostLabel")}</label>
-                    <Input
-                      key={`unit-cost-${selectedItemId}`}
-                      type="text"
-                      inputMode="decimal"
-                      pattern="^-?\\d*(\\.\\d{0,2})?$"
-                      placeholder={t("unitCostPlaceholder")}
-                      value={unitCost}
-                      onChange={(e) => {
-                        const next = e.target.value;
-                        if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
-                          setUnitCost(next);
+                                          0;
+                                        setSelectedItemId(item.id);
+                                        setSelectedUnitOptionId("");
+                                        setUnitCost(Number(cost).toFixed(2));
+                                        setItemSearchInput("");
+                                        setDebouncedItemSearch("");
+                                        setItemOpen(false);
+                                      }}
+                                      className="flex items-start gap-2 py-2"
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mt-0.5 h-4 w-4 shrink-0",
+                                          selectedItemId === item.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-medium">{item.code}</div>
+                                        <div className="whitespace-normal break-words text-sm leading-snug text-muted-foreground">
+                                          {item.name}
+                                        </div>
+                                      </div>
+                                      <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
+                                        {formatCurrency(
+                                          item.purchasePrice ??
+                                            item.standardCost ??
+                                            item.listPrice ??
+                                            0
+                                        )}
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="min-w-0">
+                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        {t("unitLabel")}
+                      </label>
+                      <Select
+                        value={selectedUnitOptionId}
+                        onValueChange={setSelectedUnitOptionId}
+                        disabled={!selectedItemId || unitOptions.length === 0}
+                      >
+                        <SelectTrigger className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500">
+                          <SelectValue
+                            placeholder={selectedItemId ? t("selectUnit") : t("selectItemFirst")}
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unitOptions.map((option) => (
+                            <SelectItem key={option.id} value={option.id}>
+                              {option.displayLabel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        {t("qtyPerUnitLabel")}
+                      </label>
+                      <Input
+                        value={
+                          selectedUomLabel
+                            ? selectedQtyPerUnit.toLocaleString(locale, {
+                                maximumFractionDigits: 4,
+                              })
+                            : ""
                         }
-                      }}
-                      className="h-10 text-sm bg-white border-gray-300 focus:border-purple-500 focus:ring-purple-500"
-                    />
+                        readOnly
+                        placeholder="--"
+                        className="h-10 border-gray-300 bg-gray-50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        {t("quantityLabel")}
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder={t("quantityPlaceholder")}
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        step="0.01"
+                        className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        {t("totalQtyLabel")}
+                      </label>
+                      <Input
+                        value={
+                          selectedUomLabel
+                            ? selectedTotalQty.toLocaleString(locale, {
+                                maximumFractionDigits: 4,
+                              })
+                            : ""
+                        }
+                        readOnly
+                        placeholder="--"
+                        className="h-10 border-gray-300 bg-gray-50 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                        {t("unitCostLabel")}
+                      </label>
+                      <Input
+                        key={`unit-cost-${selectedItemId}`}
+                        type="text"
+                        inputMode="decimal"
+                        pattern="^-?\\d*(\\.\\d{0,2})?$"
+                        placeholder={t("unitCostPlaceholder")}
+                        value={unitCost}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
+                            setUnitCost(next);
+                          }
+                        }}
+                        className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        onClick={handleAddItem}
+                        className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t("addItem")}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-end">
-                    <Button
-                      type="button"
-                      onClick={handleAddItem}
-                      className="w-full h-10 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg text-sm font-semibold"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      {t("addItem")}
-                    </Button>
-                  </div>
-                </div>
                 </div>
 
                 {/* Line Items Table */}
                 <div className="flex min-h-0 flex-1 flex-col">
                   {lineItems.length > 0 ? (
-                    <div className="flex flex-col flex-1 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+                    <div className="flex flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                       <div className="flex-1 overflow-y-auto">
                         <Table>
-                          <TableHeader className="sticky top-0 bg-gray-50 z-10">
+                          <TableHeader className="sticky top-0 z-10 bg-gray-50">
                             <TableRow className="border-b">
-                              <TableHead className="font-semibold text-xs h-8">{t("itemCode")}</TableHead>
-                              <TableHead className="font-semibold text-xs h-8">{t("itemName")}</TableHead>
-                              <TableHead className="font-semibold text-xs h-8">{t("unitWithQtyPerUnitLabel")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">{t("qty")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">{t("totalQtyLabel")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">{t("unitCostLabel")}</TableHead>
-                              <TableHead className="text-right font-semibold text-xs h-8">{t("total")}</TableHead>
-                              <TableHead className="w-[50px] h-8"></TableHead>
+                              <TableHead className="h-8 text-xs font-semibold">
+                                {t("itemCode")}
+                              </TableHead>
+                              <TableHead className="h-8 text-xs font-semibold">
+                                {t("itemName")}
+                              </TableHead>
+                              <TableHead className="h-8 text-xs font-semibold">
+                                {t("unitWithQtyPerUnitLabel")}
+                              </TableHead>
+                              <TableHead className="h-8 text-right text-xs font-semibold">
+                                {t("qty")}
+                              </TableHead>
+                              <TableHead className="h-8 text-right text-xs font-semibold">
+                                {t("totalQtyLabel")}
+                              </TableHead>
+                              <TableHead className="h-8 text-right text-xs font-semibold">
+                                {t("unitCostLabel")}
+                              </TableHead>
+                              <TableHead className="h-8 text-right text-xs font-semibold">
+                                {t("total")}
+                              </TableHead>
+                              <TableHead className="h-8 w-[50px]"></TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {lineItems.map((item, index) => (
-                              <TableRow key={index} className="hover:bg-gray-50 transition-colors h-9">
-                                <TableCell className="font-medium text-gray-900 text-xs py-2">{item.itemCode}</TableCell>
-                                <TableCell className="text-gray-700 text-xs py-2">{item.itemName}</TableCell>
-                                <TableCell className="text-gray-700 text-xs py-2">
-                                  <div className="font-medium">
-                                    {item.uomLabel || "--"}
-                                  </div>
+                              <TableRow
+                                key={index}
+                                className="h-9 transition-colors hover:bg-gray-50"
+                              >
+                                <TableCell className="py-2 text-xs font-medium text-gray-900">
+                                  {item.itemCode}
+                                </TableCell>
+                                <TableCell className="py-2 text-xs text-gray-700">
+                                  {item.itemName}
+                                </TableCell>
+                                <TableCell className="py-2 text-xs text-gray-700">
+                                  <div className="font-medium">{item.uomLabel || "--"}</div>
                                   <div className="text-[11px] text-muted-foreground">
                                     {t("qtyPerUnitInlineLabel", {
                                       qty: item.qtyPerUnit.toLocaleString(locale, {
@@ -829,17 +892,21 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                     })}
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums text-xs py-2">{item.loadListQty}</TableCell>
-                                <TableCell className="text-right tabular-nums text-xs py-2">
+                                <TableCell className="py-2 text-right text-xs tabular-nums">
+                                  {item.loadListQty}
+                                </TableCell>
+                                <TableCell className="py-2 text-right text-xs tabular-nums">
                                   {(item.loadListQty * item.qtyPerUnit).toLocaleString(locale, {
                                     maximumFractionDigits: 4,
                                   })}
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums text-gray-700 text-xs py-2">
+                                <TableCell className="py-2 text-right text-xs tabular-nums text-gray-700">
                                   {formatCurrency(item.unitPrice)}
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums font-semibold text-purple-600 text-xs py-2">
-                                  {formatCurrency(item.loadListQty * item.qtyPerUnit * item.unitPrice)}
+                                <TableCell className="py-2 text-right text-xs font-semibold tabular-nums text-purple-600">
+                                  {formatCurrency(
+                                    item.loadListQty * item.qtyPerUnit * item.unitPrice
+                                  )}
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <Button
@@ -847,7 +914,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleRemoveItem(index)}
-                                    className="hover:bg-red-50 hover:text-red-600 h-7 w-7 p-0"
+                                    className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
@@ -866,12 +933,14 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                               <DollarSign className="h-4 w-4 text-white" />
                             </div>
                             <div>
-                              <p className="text-xs text-gray-600 font-medium">{t("totalAmount")}</p>
+                              <p className="text-xs font-medium text-gray-600">
+                                {t("totalAmount")}
+                              </p>
                               <p className="text-[10px] text-gray-500">{lineItems.length}</p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
+                            <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-2xl font-bold text-transparent">
                               {formatCurrency(totalAmount)}
                             </p>
                           </div>
@@ -884,7 +953,9 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                         <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
                           <Package className="h-6 w-6 text-gray-400" />
                         </div>
-                        <h3 className="mb-1 text-sm font-semibold text-gray-900">{t("noItemsTitle")}</h3>
+                        <h3 className="mb-1 text-sm font-semibold text-gray-900">
+                          {t("noItemsTitle")}
+                        </h3>
                         <p className="text-xs text-gray-500">{t("noItemsDescription")}</p>
                       </div>
                     </div>
@@ -893,20 +964,20 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
               </TabsContent>
             </Tabs>
 
-            <DialogFooter className="border-t bg-gray-50 px-5 py-3 flex-shrink-0 mt-auto">
+            <DialogFooter className="mt-auto flex-shrink-0 border-t bg-gray-50 px-5 py-3">
               <div className="flex w-full justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => onOpenChange(false)}
-                  className="min-w-[90px] h-9 text-sm"
+                  className="h-9 min-w-[90px] text-sm"
                 >
                   {t("cancel")}
                 </Button>
                 <Button
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
-                  className="min-w-[110px] h-9 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-md shadow-purple-500/20 text-sm"
+                  className="h-9 min-w-[110px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm shadow-md shadow-purple-500/20 hover:from-purple-700 hover:to-violet-700"
                 >
                   {createMutation.isPending || updateMutation.isPending ? (
                     <span className="flex items-center gap-1.5">

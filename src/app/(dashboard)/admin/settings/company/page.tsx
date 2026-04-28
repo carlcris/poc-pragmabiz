@@ -14,10 +14,7 @@ export default function CompanySettingsPage() {
   const { data: settings, isLoading, error } = useSettings("company");
 
   return (
-    <SettingsPageLayout
-      title={t("companyTitle")}
-      description={t("companyDescription")}
-    >
+    <SettingsPageLayout title={t("companyTitle")} description={t("companyDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

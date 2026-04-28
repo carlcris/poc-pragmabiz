@@ -229,7 +229,9 @@ export default function ChartOfAccountsPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    {account.isSystemAccount && <Badge variant="outline">{t("systemAccount")}</Badge>}
+                    {account.isSystemAccount && (
+                      <Badge variant="outline">{t("systemAccount")}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

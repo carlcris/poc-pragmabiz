@@ -128,7 +128,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Check if template is locked (usage_count > 0)
     // Only allow isActive updates if locked, block name/description/image/structure changes
     if (existingTemplate.usage_count > 0) {
-      if (data.templateName || data.description || data.imageUrl !== undefined || hasStructuralChanges) {
+      if (
+        data.templateName ||
+        data.description ||
+        data.imageUrl !== undefined ||
+        hasStructuralChanges
+      ) {
         return NextResponse.json(
           {
             error: `Template is locked because it is used by ${existingTemplate.usage_count} order(s). Only status changes are allowed.`,

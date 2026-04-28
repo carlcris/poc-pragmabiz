@@ -3,13 +3,16 @@
 ## 1. Product Goal and Constraints
 
 ### Goal
+
 Build a tablet-first browser application for warehouse staff to:
+
 - Receive incoming stocks from Purchase Receipts
 - View and act on Stock Requests
 - Pick and prepare items that are ready for picking
 - Provide a fast, simple UX optimized for touch and scanning
 
 ### Constraints
+
 - Runs in a browser (no native app yet)
 - Tablet view is the primary target (not phone)
 - Must follow the same interaction and architectural pattern as the existing Mobile Van Sales app
@@ -19,17 +22,20 @@ Build a tablet-first browser application for warehouse staff to:
 ## 2. Primary User Roles
 
 ### Warehouse Receiver
+
 - Views incoming purchase receipts
 - Receives and confirms quantities
 - Handles partial receipts, damaged or short items, and notes
 
 ### Picker
+
 - Views stock requests that are ready for picking
 - Executes pick lists
 - Confirms picked quantities (partial picks allowed)
 - Progresses request status
 
 ### Warehouse Clerk / Stock Controller (Optional)
+
 - Can perform both receiving and picking
 - Handles exceptions and adjustments if permitted
 
@@ -43,6 +49,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ## A. Receiving from Purchase Receipts (Inbound)
 
 ### Receipt Status Model
+
 - Open
 - In Progress
 - Received (Complete)
@@ -52,6 +59,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ### Receiving Workflow
 
 #### 1. Receiving List
+
 - Displays purchase receipts filtered by:
   - Date (Today / Last 7 Days)
   - Supplier
@@ -64,6 +72,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
   - Status
 
 #### 2. Receipt Detail
+
 - Header information:
   - Supplier
   - Document number
@@ -82,18 +91,21 @@ Receivers default to Receiving views, Pickers default to Picking views.
   - Post Receipt (finalize)
 
 #### 3. Receive Line Item
+
 - Tablet-optimized input:
   - Large quantity stepper (+ / -)
   - Barcode scan to jump to item
   - Mark damaged or short quantity with reason
 
 #### 4. Posting Receipt
+
 - On post:
   - Create stock_transactions records
   - Update item_warehouse balances
   - Lock receipt from further editing
 
 ### Required Behaviors
+
 - Support partial receiving
 - Prevent double posting
 - Maintain audit trail (user, timestamp, changes)
@@ -103,6 +115,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ## B. Stock Requests and Picking (Outbound)
 
 ### Stock Request Status Model
+
 - Submitted
 - Approved
 - Ready for Picking
@@ -115,6 +128,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ### Picking Workflow
 
 #### 1. Requests List
+
 - Tabs:
   - Submitted / Approved
   - Ready for Picking
@@ -128,6 +142,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
   - Status
 
 #### 2. Request Detail
+
 - Header:
   - Request information
   - Status
@@ -143,6 +158,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
   - Mark Pick Complete
 
 #### 3. Pick List Execution
+
 - One-item-at-a-time picking mode
 - Prominent item name and SKU
 - Quantity stepper
@@ -151,6 +167,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 - Display location (bin/crate) if available
 
 ### Required Behaviors
+
 - Only one picker may pick a request at a time
 - Partial picking allowed
 - Stock handling strategy:
@@ -162,6 +179,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ## 4. Tablet-First UI Structure
 
 ### Navigation
+
 - Receiving
 - Picking
 - Requests (optional if combined with Picking)
@@ -169,6 +187,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 - Profile / Sync
 
 ### UI Pattern
+
 - Mirrors existing Mobile Van Sales app:
   - List view (cards)
   - Detail view
@@ -177,6 +196,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 - Touch-friendly spacing and controls
 
 ### Required UI Components
+
 - Status indicators (chips or badges)
 - Search and barcode scan input
 - Draft handling for interrupted workflows
@@ -186,15 +206,18 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ## 5. Data and Integration Assumptions
 
 ### Inventory Model
+
 - item_warehouse is the single source of truth for stock balances
 - stock_transactions records all inventory movements
 
 ### Transaction Mapping
+
 - Receiving posts create stock_transactions of type PURCHASE_RECEIPT_IN
 - Picking posts create stock_transactions of type PICK / ISSUE / TRANSFER_OUT
 - Purchase Receipts and Stock Requests act as source documents
 
 ### Conceptual Tables
+
 - purchase_receipts
 - purchase_receipt_lines
 - stock_requests
@@ -208,14 +231,17 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ## 6. Permissions Model
 
 ### Receiving
+
 - can_view_receipts
 - can_receive_receipts
 
 ### Picking
+
 - can_view_requests
 - can_pick_requests
 
 ### Administrative
+
 - can_unpost_or_reverse (prefer reversal transactions over deletion)
 
 ---
@@ -223,6 +249,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 ## 7. MVP Scope
 
 ### MVP Features
+
 - Receiving list and receipt detail
 - Receive and post purchase receipts
 - Requests list filtered to Ready for Picking
@@ -231,6 +258,7 @@ Receivers default to Receiving views, Pickers default to Picking views.
 - Search and basic filters
 
 ### Post-MVP Enhancements
+
 - Barcode scanning optimization
 - Location-guided picking (bin/crate)
 - Offline draft queue and sync retries

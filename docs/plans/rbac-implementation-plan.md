@@ -11,6 +11,7 @@ This document outlines the complete implementation of a Role-Based Access Contro
 ### 1. Permission Model
 
 #### Permission Structure
+
 ```typescript
 {
   resource: string,      // e.g., "users", "inventory", "sales"
@@ -22,6 +23,7 @@ This document outlines the complete implementation of a Role-Based Access Contro
 ```
 
 #### Authorization Flow
+
 ```
 User Login
     ↓
@@ -87,6 +89,7 @@ Allow/Deny Action
 ### Row-Level Security (RLS)
 
 All tables must have RLS policies based on:
+
 - Company isolation
 - Business unit context (where applicable)
 - Admin role checks for management operations
@@ -121,13 +124,17 @@ interface UserPermissions {
 
 class PermissionResolver {
   // Fetch and aggregate user permissions across all roles
-  async getUserPermissions(userId: string, businessUnitId?: string): Promise<UserPermissions>
+  async getUserPermissions(userId: string, businessUnitId?: string): Promise<UserPermissions>;
 
   // Check if user has specific permission
-  can(userId: string, resource: string, action: 'view' | 'create' | 'edit' | 'delete'): Promise<boolean>
+  can(
+    userId: string,
+    resource: string,
+    action: "view" | "create" | "edit" | "delete"
+  ): Promise<boolean>;
 
   // Aggregate permissions from multiple roles (UNION logic)
-  private aggregatePermissions(rolePermissions: Permission[]): UserPermissions
+  private aggregatePermissions(rolePermissions: Permission[]): UserPermissions;
 }
 ```
 
@@ -137,17 +144,17 @@ class PermissionResolver {
 
 ```typescript
 // Middleware to protect API routes
-export function requirePermission(resource: string, action: 'view' | 'create' | 'edit' | 'delete') {
+export function requirePermission(resource: string, action: "view" | "create" | "edit" | "delete") {
   return async (request: NextRequest) => {
     const user = await getAuthenticatedUser(request);
     const hasPermission = await permissionResolver.can(user.id, resource, action);
 
     if (!hasPermission) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Continue to route handler
-  }
+  };
 }
 ```
 
@@ -159,16 +166,16 @@ Apply authorization to all API routes:
 // Example: src/app/api/users/route.ts
 export async function GET(request: NextRequest) {
   // Check permission
-  if (!await checkPermission(request, 'users', 'view')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!(await checkPermission(request, "users", "view"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Continue with logic
 }
 
 export async function POST(request: NextRequest) {
-  if (!await checkPermission(request, 'users', 'create')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!(await checkPermission(request, "users", "create"))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Continue with logic
@@ -190,8 +197,8 @@ Defines which resources are lookup data and which transactional features depend 
 ```typescript
 export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResource[]> = {
   [RESOURCES.POS]: [
-    RESOURCES.ITEMS,           // Cashiers need to see items for sale
-    RESOURCES.CUSTOMERS,       // Need to select customers
+    RESOURCES.ITEMS, // Cashiers need to see items for sale
+    RESOURCES.CUSTOMERS, // Need to select customers
     RESOURCES.ITEM_CATEGORIES, // Need for item filtering
   ],
 
@@ -211,6 +218,7 @@ export const LOOKUP_DATA_ACCESS_MAP: Record<TransactionalResource, LookupResourc
 **File**: `src/lib/auth/requirePermission.ts`
 
 Includes `requireLookupDataAccess()` helper that checks if user has EITHER:
+
 1. Direct `view` permission to the lookup resource, OR
 2. `view` permission to any transactional feature that depends on it
 
@@ -228,14 +236,17 @@ export async function GET(request: NextRequest) {
 #### Implementation Status ✅
 
 **Files Created:**
+
 - `src/config/lookupDataPermissions.ts` - Configuration and utilities
 - `docs/plans/lookup-data-permission-pattern.md` - Comprehensive implementation plan
 
 **Files Modified:**
+
 - `src/lib/auth/requirePermission.ts` - Added `requireLookupDataAccess()` function
 - `src/lib/auth/index.ts` - Exported new function
 
 **APIs Updated (8 endpoints):**
+
 1. `/api/items/route.ts` (GET)
 2. `/api/items-enhanced/route.ts` (GET)
 3. `/api/customers/route.ts` (GET)
@@ -246,6 +257,7 @@ export async function GET(request: NextRequest) {
 8. `/api/employees/route.ts` (GET)
 
 **Transactional Features Supported:**
+
 - POS, Van Sales, Sales Orders, Sales Quotations, Sales Invoices
 - Purchase Orders, Purchase Receipts
 - Stock Transfers, Stock Adjustments, Stock Transformations
@@ -261,11 +273,13 @@ export async function GET(request: NextRequest) {
 #### Real-World Impact
 
 **Before:**
+
 - ❌ Cashier with POS permission → 403 errors on items/customers
 - ❌ Van Sales with van_sales permission → 403 errors on warehouses
 - ❌ Required granting full CRUD permissions for basic viewing
 
 **After:**
+
 - ✅ Cashier with POS permission → Can VIEW items/customers (read-only)
 - ✅ Van Sales with van_sales permission → Can VIEW warehouses (read-only)
 - ✅ Proper separation of concerns - view vs. manage
@@ -331,10 +345,10 @@ export function usePermissions() {
 }
 
 // Specific hooks for convenience
-export function useCanView(resource: string): boolean
-export function useCanCreate(resource: string): boolean
-export function useCanEdit(resource: string): boolean
-export function useCanDelete(resource: string): boolean
+export function useCanView(resource: string): boolean;
+export function useCanCreate(resource: string): boolean;
+export function useCanEdit(resource: string): boolean;
+export function useCanDelete(resource: string): boolean;
 ```
 
 ### 3. Permission Guard Components
@@ -350,13 +364,13 @@ interface PermissionGuardProps {
 }
 
 // Conditionally render children based on permission
-export function PermissionGuard({ resource, action, fallback, children }: PermissionGuardProps)
+export function PermissionGuard({ resource, action, fallback, children }: PermissionGuardProps);
 
 // Specific guards
-export function ViewGuard({ resource, fallback, children })
-export function CreateGuard({ resource, fallback, children })
-export function EditGuard({ resource, fallback, children })
-export function DeleteGuard({ resource, fallback, children })
+export function ViewGuard({ resource, fallback, children });
+export function CreateGuard({ resource, fallback, children });
+export function EditGuard({ resource, fallback, children });
+export function DeleteGuard({ resource, fallback, children });
 ```
 
 ### 4. Route Protection
@@ -388,18 +402,22 @@ export function withPermission(Component: React.ComponentType, resource: string)
 ### 5. Admin Management UI
 
 #### User Management
+
 **File**: `src/app/(dashboard)/admin/users/page.tsx`
 
 Features:
+
 - List all users with their roles
 - Assign/remove roles per user
 - Activate/deactivate users
 - View effective permissions per user
 
 #### Role Management
+
 **File**: `src/app/(dashboard)/admin/roles/page.tsx`
 
 Features:
+
 - Create/edit/delete roles
 - Assign permissions to roles
 - View users with each role
@@ -407,9 +425,11 @@ Features:
 - Prevent deletion of roles in use
 
 #### Permission Management
+
 **File**: `src/app/(dashboard)/admin/permissions/page.tsx`
 
 Features:
+
 - List all resources
 - Create new resource permissions
 - Toggle can_view/create/edit/delete flags
@@ -425,41 +445,41 @@ Define all resources in the system:
 // src/constants/resources.ts
 export const RESOURCES = {
   // User Management
-  USERS: 'users',
-  ROLES: 'roles',
-  PERMISSIONS: 'permissions',
+  USERS: "users",
+  ROLES: "roles",
+  PERMISSIONS: "permissions",
 
   // Inventory
-  ITEMS: 'items',
-  WAREHOUSES: 'warehouses',
-  STOCK_ADJUSTMENTS: 'stock_adjustments',
-  STOCK_TRANSFERS: 'stock_transfers',
-  STOCK_TRANSFORMATIONS: 'stock_transformations',
-  REORDER_MANAGEMENT: 'reorder_management',
+  ITEMS: "items",
+  WAREHOUSES: "warehouses",
+  STOCK_ADJUSTMENTS: "stock_adjustments",
+  STOCK_TRANSFERS: "stock_transfers",
+  STOCK_TRANSFORMATIONS: "stock_transformations",
+  REORDER_MANAGEMENT: "reorder_management",
 
   // Sales
-  CUSTOMERS: 'customers',
-  SALES_QUOTATIONS: 'sales_quotations',
-  SALES_ORDERS: 'sales_orders',
-  SALES_INVOICES: 'sales_invoices',
+  CUSTOMERS: "customers",
+  SALES_QUOTATIONS: "sales_quotations",
+  SALES_ORDERS: "sales_orders",
+  SALES_INVOICES: "sales_invoices",
 
   // Purchasing
-  SUPPLIERS: 'suppliers',
-  PURCHASE_ORDERS: 'purchase_orders',
-  PURCHASE_RECEIPTS: 'purchase_receipts',
+  SUPPLIERS: "suppliers",
+  PURCHASE_ORDERS: "purchase_orders",
+  PURCHASE_RECEIPTS: "purchase_receipts",
 
   // Accounting
-  CHART_OF_ACCOUNTS: 'chart_of_accounts',
-  JOURNAL_ENTRIES: 'journal_entries',
-  GENERAL_LEDGER: 'general_ledger',
+  CHART_OF_ACCOUNTS: "chart_of_accounts",
+  JOURNAL_ENTRIES: "journal_entries",
+  GENERAL_LEDGER: "general_ledger",
 
   // Settings
-  COMPANY_SETTINGS: 'company_settings',
-  BUSINESS_UNITS: 'business_units',
+  COMPANY_SETTINGS: "company_settings",
+  BUSINESS_UNITS: "business_units",
 
   // Reports
-  REPORTS: 'reports',
-  ANALYTICS: 'analytics',
+  REPORTS: "reports",
+  ANALYTICS: "analytics",
 } as const;
 ```
 
@@ -497,24 +517,29 @@ export const RESOURCES = {
 ## Security Considerations
 
 ### 1. Backend is Source of Truth
+
 - Never trust frontend permission checks alone
 - Always validate on backend
 
 ### 2. Permission Aggregation
+
 - UNION logic: If ANY role grants permission, allow
 - Cache user permissions for performance
 - Invalidate cache on role/permission changes
 
 ### 3. Business Unit Scoping
+
 - Permissions can be scoped to business units
 - User may have different roles in different BUs
 
 ### 4. Audit Trail
+
 - Log permission changes
 - Track who assigned what role to whom
 - Monitor access denied attempts
 
 ### 5. Performance
+
 - Index foreign keys
 - Cache permission lookups
 - Batch permission checks where possible
@@ -524,29 +549,34 @@ export const RESOURCES = {
 ## Migration Strategy
 
 ### Phase 1: Database Setup
+
 1. Create RBAC tables
 2. Seed default roles and permissions
 3. Assign Super Admin role to existing admin users
 
 ### Phase 2: Backend Integration
+
 1. Implement permission resolver
 2. Add authorization middleware
 3. Protect critical API routes first
 4. Gradually add to all routes
 
 ### Phase 3: Frontend Integration
+
 1. Create permission store and hooks
 2. Add permission guards to UI
 3. Update navigation menu with permission checks
 4. Add access denied pages
 
 ### Phase 4: Admin UI
+
 1. Build role management
 2. Build permission management
 3. Build user-role assignment
 4. Add audit logs
 
 ### Phase 5: Testing and Rollout
+
 1. Test all permission scenarios
 2. Verify no permission bypass
 3. Train administrators
@@ -557,21 +587,25 @@ export const RESOURCES = {
 ## Testing Strategy
 
 ### Unit Tests
+
 - Permission resolver logic
 - Authorization middleware
 - Permission aggregation
 
 ### Integration Tests
+
 - API route protection
 - Permission inheritance across roles
 - Business unit scoping
 
 ### E2E Tests
+
 - User cannot access forbidden pages
 - User cannot perform forbidden actions
 - Admin can manage roles and permissions
 
 ### Security Tests
+
 - Attempt to bypass frontend guards
 - Test API without proper permissions
 - Test privilege escalation scenarios
@@ -581,17 +615,20 @@ export const RESOURCES = {
 ## Maintenance and Evolution
 
 ### Adding New Resources
+
 1. Add resource constant
 2. Create permission record in database
 3. Assign to appropriate roles
 4. Add guards to UI and API
 
 ### Adding New Roles
+
 1. Create role in admin UI
 2. Assign appropriate permissions
 3. Assign to users as needed
 
 ### Modifying Permissions
+
 1. Update via admin UI
 2. Changes take effect immediately
 3. Logged users may need to refresh token
@@ -601,11 +638,13 @@ export const RESOURCES = {
 ## Performance Optimization
 
 ### Caching Strategy
+
 - Cache user permissions in auth token/session
 - Refresh on role/permission changes
 - Use TTL for sensitive operations
 
 ### Database Optimization
+
 - Index role_id, permission_id, user_id
 - Denormalize if needed for read-heavy operations
 - Partition by business_unit_id if data grows large
@@ -615,6 +654,7 @@ export const RESOURCES = {
 ## Rollback Plan
 
 If issues arise:
+
 1. Disable RLS policies temporarily
 2. Grant temporary admin access
 3. Fix permission data
@@ -652,29 +692,35 @@ If issues arise:
 ## Phase 3 Completion - API Protection and Bug Fixes ✅
 
 ### Overview
+
 Phase 3 focused on completing API protection coverage and resolving critical permission and RLS policy issues discovered during testing.
 
 ### Issues Discovered and Resolved
 
 #### 1. Stock Transformations Permission Mismatch ✅
+
 **Location**: `/src/app/api/transformations/**/*.ts` (7 files)
 
 **Problem**:
+
 - Database permission record: `stock_transformations`
 - API routes checking for: `RESOURCES.TRANSFORMATIONS` (non-existent resource)
 - Super Admin users receiving 403 errors on stock transformation pages
 
 **Root Cause**:
 Resource name mismatch between:
+
 - `/src/constants/resources.ts`: Had both `TRANSFORMATIONS` and `STOCK_TRANSFORMATIONS` constants
 - `/supabase/migrations/20251228000001_seed_rbac_data.sql`: Only seeded `stock_transformations` permission
 
 **Solution**:
+
 1. Identified all 11 occurrences of `RESOURCES.TRANSFORMATIONS` across transformation API routes
 2. Applied bulk sed replacement to standardize on `RESOURCES.STOCK_TRANSFORMATIONS`
 3. Verified all transformation APIs now use correct resource name
 
 **Files Modified**:
+
 - `/api/transformations/orders/route.ts` (GET, POST)
 - `/api/transformations/orders/[id]/route.ts` (GET, PATCH, DELETE)
 - `/api/transformations/orders/[id]/cancel/route.ts` (POST)
@@ -688,14 +734,17 @@ Resource name mismatch between:
 ---
 
 #### 2. RLS Policy Violation in Transformation Service ✅
+
 **Location**: `/src/services/inventory/transformationService.ts`
 
 **Problem**:
+
 ```
 Failed to create input stock transaction: new row violates row-level security policy for table "stock_transactions"
 ```
 
 **Root Cause Analysis**:
+
 1. RLS policies on `stock_transactions` require `business_unit_id` to match `get_current_business_unit_id()` from JWT
 2. Stock transaction INSERT statements were missing `business_unit_id` field
 3. Even with BU context in JWT, if the field is not provided, RLS CHECK constraint fails
@@ -704,44 +753,43 @@ Failed to create input stock transaction: new row violates row-level security po
 **Solution (Multi-Part Fix)**:
 
 **Part 1: Pass Supabase Client from API Route**
+
 ```typescript
 // Service function signature updated to accept client
 export async function executeTransformation(
   orderId: string,
   userId: string,
   executionData: ExecuteTransformationOrderRequest,
-  supabaseClient?: any  // ← Added parameter
-)
+  supabaseClient?: any // ← Added parameter
+);
 
 // API route passes its authenticated client
 const result = await executeTransformation(id, user.id, data, supabase);
 ```
 
 **Part 2: Include business_unit_id in SELECT**
+
 ```typescript
 // Before (missing field):
-const { data: order } = await supabase
-  .from("transformation_orders")
-  .select(`
+const { data: order } = await supabase.from("transformation_orders").select(`
     id,
     company_id,
     order_code,
     ...
-  `)
+  `);
 
 // After (includes BU):
-const { data: order } = await supabase
-  .from("transformation_orders")
-  .select(`
+const { data: order } = await supabase.from("transformation_orders").select(`
     id,
     company_id,
     business_unit_id,  // ← Added
     order_code,
     ...
-  `)
+  `);
 ```
 
 **Part 3: Include business_unit_id in All Stock Transaction INSERTs**
+
 ```typescript
 // Input transactions
 await supabase.from("stock_transactions").insert({
@@ -769,6 +817,7 @@ await supabase.from("stock_transactions").insert({
 ```
 
 **Technical Details**:
+
 - RLS policy: `WITH CHECK (business_unit_id = get_current_business_unit_id() OR business_unit_id IS NULL)`
 - `get_current_business_unit_id()` reads from `auth.jwt() ->> 'current_business_unit_id'`
 - The field must be explicitly provided in INSERT for the CHECK constraint to pass
@@ -786,12 +835,13 @@ await supabase.from("stock_transactions").insert({
 
 **Use Cases**:
 
-| Client Type | When to Use | Examples |
-|-------------|-------------|----------|
-| `createClient()` | No business unit context needed | Auth APIs (login, register, logout), Business Units APIs, Permission Resolver (cross-BU queries) |
-| `createServerClientWithBU()` | Business unit context required | All service layer functions that create/modify scoped data, Transaction creation, Stock operations |
+| Client Type                  | When to Use                     | Examples                                                                                           |
+| ---------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `createClient()`             | No business unit context needed | Auth APIs (login, register, logout), Business Units APIs, Permission Resolver (cross-BU queries)   |
+| `createServerClientWithBU()` | Business unit context required  | All service layer functions that create/modify scoped data, Transaction creation, Stock operations |
 
 **Pattern Established**:
+
 - API routes: Use auth helper (`requirePermission`) which includes BU context
 - Services creating data: Use `createServerClientWithBU()` for RLS compliance
 - Auth operations: Use basic `createClient()` (no BU context yet)
@@ -806,6 +856,7 @@ await supabase.from("stock_transactions").insert({
 **Scope**: All 102 API route files audited
 
 **Coverage**:
+
 - 94+ routes protected with `requirePermission(resource, action)`
 - 12 routes protected with `requireLookupDataAccess(resource)`
 - 100% coverage - no unprotected APIs
@@ -813,12 +864,14 @@ await supabase.from("stock_transactions").insert({
 **Protection Patterns**:
 
 1. **Transactional APIs**: Use `requirePermission()`
+
    ```typescript
-   const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, 'edit');
+   const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "edit");
    if (unauthorized) return unauthorized;
    ```
 
 2. **Lookup Data APIs**: Use `requireLookupDataAccess()`
+
    ```typescript
    const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS);
    if (unauthorized) return unauthorized;
@@ -831,6 +884,7 @@ await supabase.from("stock_transactions").insert({
    - DELETE: `requirePermission(resource, 'delete')`
 
 **Categories Audited**:
+
 - Sales (Customers, Quotations, Orders, Invoices)
 - Purchasing (Suppliers, POs, Receipts)
 - Inventory (Items, Stock Adjustments, Transfers, Transformations)
@@ -845,12 +899,12 @@ await supabase.from("stock_transactions").insert({
 
 **Resource Name Mismatches** (not causing active errors but need attention):
 
-| Constant | Database Permission | Status |
-|----------|---------------------|--------|
-| `TRANSFORMATIONS` | Not in DB | ✅ Fixed - changed to `STOCK_TRANSFORMATIONS` |
-| `REORDER` | Not in DB | ⚠️ Potential issue - DB has `reorder_management` |
-| `QUOTATIONS` | Not in DB | ⚠️ Potential issue - DB has `sales_quotations` |
-| `INVOICES` | Not in DB | ⚠️ Potential issue - DB has `sales_invoices` |
+| Constant          | Database Permission | Status                                           |
+| ----------------- | ------------------- | ------------------------------------------------ |
+| `TRANSFORMATIONS` | Not in DB           | ✅ Fixed - changed to `STOCK_TRANSFORMATIONS`    |
+| `REORDER`         | Not in DB           | ⚠️ Potential issue - DB has `reorder_management` |
+| `QUOTATIONS`      | Not in DB           | ⚠️ Potential issue - DB has `sales_quotations`   |
+| `INVOICES`        | Not in DB           | ⚠️ Potential issue - DB has `sales_invoices`     |
 
 **Recommendation**: Audit and standardize remaining resource name constants in future phase
 
@@ -880,9 +934,11 @@ await supabase.from("stock_transactions").insert({
 ### Files Created/Modified in Phase 3
 
 **Created**:
+
 - None (bug fixes only)
 
 **Modified**:
+
 1. `/src/app/api/transformations/orders/route.ts` - Fixed resource name
 2. `/src/app/api/transformations/orders/[id]/route.ts` - Fixed resource name
 3. `/src/app/api/transformations/orders/[id]/cancel/route.ts` - Fixed resource name
@@ -927,6 +983,7 @@ All critical bugs resolved, API protection verified, and patterns documented.
 ## Phase 4 Completion - Resource Name Cleanup and Permission Guard Audit ✅
 
 ### Overview
+
 Phase 4 focused on fixing critical resource name mismatches between constants and database permissions, and auditing the permission guard implementation across the application.
 
 ### Issues Discovered and Resolved
@@ -938,14 +995,15 @@ After Phase 3 fixed `TRANSFORMATIONS` → `STOCK_TRANSFORMATIONS`, audit reveale
 
 **Mismatches Found**:
 
-| Code Constant | Database Permission | Impact |
-|---------------|---------------------|--------|
-| `RESOURCES.REORDER` | `reorder_management` | 14 API files affected |
-| `RESOURCES.QUOTATIONS` | `sales_quotations` | 7 API files affected |
-| `RESOURCES.INVOICES` | `sales_invoices` | 10 API files affected |
+| Code Constant          | Database Permission  | Impact                |
+| ---------------------- | -------------------- | --------------------- |
+| `RESOURCES.REORDER`    | `reorder_management` | 14 API files affected |
+| `RESOURCES.QUOTATIONS` | `sales_quotations`   | 7 API files affected  |
+| `RESOURCES.INVOICES`   | `sales_invoices`     | 10 API files affected |
 
 **Root Cause**:
 The `/src/constants/resources.ts` file contained duplicate constants with different names for the same resources:
+
 ```typescript
 // Duplicates causing confusion:
 REORDER: 'reorder',                      // Not in database
@@ -991,6 +1049,7 @@ SALES_INVOICES: 'sales_invoices',        // ✅ Correct
    - `/api/invoices/[id]/send/route.ts` - 1 occurrence fixed
 
 **Verification Process**:
+
 ```bash
 # Verified no incorrect constants remain
 grep -r "RESOURCES\.REORDER\>" . --include="*.ts" | grep -v REORDER_MANAGEMENT
@@ -1004,6 +1063,7 @@ grep -r "RESOURCES\.INVOICES\>" . --include="*.ts" | grep -v SALES_INVOICES
 ```
 
 **Impact**:
+
 - ✅ All 31 permission checks now use correct resource names
 - ✅ Permission checks will properly validate against database permissions
 - ✅ No more false 403 errors due to resource name mismatches
@@ -1086,17 +1146,17 @@ grep -r "RESOURCES\.INVOICES\>" . --include="*.ts" | grep -v SALES_INVOICES
 
 **Nice-to-Have Enhancements** (Future Backlog):
 
-| Enhancement | Description | Priority | Effort |
-|-------------|-------------|----------|--------|
-| **Bulk Role Assignment** | Select multiple users and assign a role to all at once | Medium | Medium |
-| **Role Cloning** | Duplicate an existing role as a starting point for new roles | Low | Small |
-| **Permission Templates** | Pre-configured permission sets for common roles (e.g., "Sales Rep", "Warehouse Manager", "Accountant") | Medium | Medium |
-| **Audit Log Viewing** | Show who made what permission changes when, with filtering and export | High | Large |
-| **Better Error Messages** | More specific feedback on permission denials (e.g., "You need 'edit' permission on 'sales_invoices' to perform this action") | Medium | Small |
-| **Role Usage Statistics** | Show how many users have each role, which roles are most used, unused roles | Low | Small |
-| **Permission Presets UI** | Visual UI for creating/managing permission templates instead of code | Medium | Medium |
-| **Role Hierarchy** | Support for role inheritance (e.g., Manager inherits all User permissions) | Low | Large |
-| **Conditional Permissions** | Context-based permissions (e.g., "Edit own invoices only", "View within business unit only") | Low | Very Large |
+| Enhancement                 | Description                                                                                                                  | Priority | Effort     |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------- | ---------- |
+| **Bulk Role Assignment**    | Select multiple users and assign a role to all at once                                                                       | Medium   | Medium     |
+| **Role Cloning**            | Duplicate an existing role as a starting point for new roles                                                                 | Low      | Small      |
+| **Permission Templates**    | Pre-configured permission sets for common roles (e.g., "Sales Rep", "Warehouse Manager", "Accountant")                       | Medium   | Medium     |
+| **Audit Log Viewing**       | Show who made what permission changes when, with filtering and export                                                        | High     | Large      |
+| **Better Error Messages**   | More specific feedback on permission denials (e.g., "You need 'edit' permission on 'sales_invoices' to perform this action") | Medium   | Small      |
+| **Role Usage Statistics**   | Show how many users have each role, which roles are most used, unused roles                                                  | Low      | Small      |
+| **Permission Presets UI**   | Visual UI for creating/managing permission templates instead of code                                                         | Medium   | Medium     |
+| **Role Hierarchy**          | Support for role inheritance (e.g., Manager inherits all User permissions)                                                   | Low      | Large      |
+| **Conditional Permissions** | Context-based permissions (e.g., "Edit own invoices only", "View within business unit only")                                 | Low      | Very Large |
 
 **Recommendation**: The admin UI is production-ready. Focus on adding nice-to-have features incrementally based on actual user feedback and usage patterns rather than speculatively.
 
@@ -1107,11 +1167,12 @@ grep -r "RESOURCES\.INVOICES\>" . --include="*.ts" | grep -v SALES_INVOICES
 **Modified** (25 files):
 
 1. `/src/constants/resources.ts` - Removed duplicate constants
-2-15. Reorder Management APIs (14 files)
-16-22. Sales Quotations APIs (7 files)
-23-32. Sales Invoices APIs (10 files)
+   2-15. Reorder Management APIs (14 files)
+   16-22. Sales Quotations APIs (7 files)
+   23-32. Sales Invoices APIs (10 files)
 
 **Audited** (No changes needed):
+
 - `/src/components/permissions/PermissionGuard.tsx` - All guard components verified
 - `/src/components/layout/Sidebar.tsx` - Navigation guards verified
 - `/src/app/(dashboard)/admin/users/page.tsx` - Admin UI verified

@@ -26,56 +26,68 @@ type LoadListItemRow = {
   unit_price: number | string;
   total_price: number | string;
   notes: string | null;
-  item?: {
-    id: string;
-    item_code: string;
-    item_name: string;
-  } | {
-    id: string;
-    item_code: string;
-    item_name: string;
-  }[] | null;
-  units_of_measure?: {
-    id: string;
-    code: string;
-    symbol?: string | null;
-  } | {
-    id: string;
-    code: string;
-    symbol?: string | null;
-  }[] | null;
-  item_unit_options?: (DbItemUnitOptionRow & {
-    units_of_measure?: {
-      id: string;
-      code: string;
-      name: string;
-      symbol: string | null;
-    } | {
-      id: string;
-      code: string;
-      name: string;
-      symbol: string | null;
-    }[] | null;
-  }) | (DbItemUnitOptionRow & {
-    units_of_measure?: {
-      id: string;
-      code: string;
-      name: string;
-      symbol: string | null;
-    } | {
-      id: string;
-      code: string;
-      name: string;
-      symbol: string | null;
-    }[] | null;
-  })[] | null;
+  item?:
+    | {
+        id: string;
+        item_code: string;
+        item_name: string;
+      }
+    | {
+        id: string;
+        item_code: string;
+        item_name: string;
+      }[]
+    | null;
+  units_of_measure?:
+    | {
+        id: string;
+        code: string;
+        symbol?: string | null;
+      }
+    | {
+        id: string;
+        code: string;
+        symbol?: string | null;
+      }[]
+    | null;
+  item_unit_options?:
+    | (DbItemUnitOptionRow & {
+        units_of_measure?:
+          | {
+              id: string;
+              code: string;
+              name: string;
+              symbol: string | null;
+            }
+          | {
+              id: string;
+              code: string;
+              name: string;
+              symbol: string | null;
+            }[]
+          | null;
+      })
+    | (DbItemUnitOptionRow & {
+        units_of_measure?:
+          | {
+              id: string;
+              code: string;
+              name: string;
+              symbol: string | null;
+            }
+          | {
+              id: string;
+              code: string;
+              name: string;
+              symbol: string | null;
+            }[]
+          | null;
+      })[]
+    | null;
 };
 
 // GET /api/load-lists/[id]
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
     if (unauthorized) return unauthorized;
@@ -162,18 +174,18 @@ export async function GET(
     // Format response
     const businessUnit = Array.isArray(ll.business_unit)
       ? ll.business_unit[0]
-      : ll.business_unit ?? null;
-    const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : ll.supplier ?? null;
-    const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : ll.warehouse ?? null;
+      : (ll.business_unit ?? null);
+    const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : (ll.supplier ?? null);
+    const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : (ll.warehouse ?? null);
     const createdByUser = Array.isArray(ll.created_by_user)
       ? ll.created_by_user[0]
-      : ll.created_by_user ?? null;
+      : (ll.created_by_user ?? null);
     const receivedByUser = Array.isArray(ll.received_by_user)
       ? ll.received_by_user[0]
-      : ll.received_by_user ?? null;
+      : (ll.received_by_user ?? null);
     const approvedByUser = Array.isArray(ll.approved_by_user)
       ? ll.approved_by_user[0]
-      : ll.approved_by_user ?? null;
+      : (ll.approved_by_user ?? null);
     const formattedLL = {
       id: ll.id,
       llNumber: ll.ll_number,
@@ -245,13 +257,13 @@ export async function GET(
       approvedDate: ll.approved_date,
       notes: ll.notes,
       items: (ll.items as LoadListItemRow[] | null)?.map((item) => {
-        const itemDetails = Array.isArray(item.item) ? item.item[0] ?? null : item.item ?? null;
+        const itemDetails = Array.isArray(item.item) ? (item.item[0] ?? null) : (item.item ?? null);
         const unitDetails = Array.isArray(item.item_unit_options)
-          ? item.item_unit_options[0] ?? null
-          : item.item_unit_options ?? null;
+          ? (item.item_unit_options[0] ?? null)
+          : (item.item_unit_options ?? null);
         const uomDetails = Array.isArray(item.units_of_measure)
-          ? item.units_of_measure[0] ?? null
-          : item.units_of_measure ?? null;
+          ? (item.units_of_measure[0] ?? null)
+          : (item.units_of_measure ?? null);
         const baseUomCode = uomDetails?.code || "";
         const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
         const loadListQty = parseFloat(String(item.load_list_qty));
@@ -294,10 +306,7 @@ export async function GET(
 }
 
 // PUT /api/load-lists/[id]
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
     if (unauthorized) return unauthorized;
@@ -398,16 +407,11 @@ export async function PUT(
         })
       );
 
-      const { error: itemsError } = await supabase
-        .from("load_list_items")
-        .insert(itemsToInsert);
+      const { error: itemsError } = await supabase.from("load_list_items").insert(itemsToInsert);
 
       if (itemsError) {
         console.error("Error updating load list items:", itemsError);
-        return NextResponse.json(
-          { error: "Failed to update load list items" },
-          { status: 500 }
-        );
+        return NextResponse.json({ error: "Failed to update load list items" }, { status: 500 });
       }
     }
 

@@ -10,9 +10,7 @@ const BUSINESS_UNITS_QUERY_KEY = "business-units";
 /**
  * Fetch settings for a specific group
  */
-async function fetchSettings<T extends SettingsGroupKey>(
-  group: T
-): Promise<SettingsForGroup<T>> {
+async function fetchSettings<T extends SettingsGroupKey>(group: T): Promise<SettingsForGroup<T>> {
   const response = await fetch(`/api/settings/${group}`);
 
   if (!response.ok) {
@@ -52,7 +50,9 @@ async function updateSettings<T extends SettingsGroupKey>(
  * Hook to fetch settings for a specific group
  */
 export function useSettings<T extends SettingsGroupKey>(group: T) {
-  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id ?? null);
+  const currentBusinessUnitId = useBusinessUnitStore(
+    (state) => state.currentBusinessUnit?.id ?? null
+  );
   const scopeKey = group === "company" ? "company" : currentBusinessUnitId;
 
   return useQuery({
@@ -70,11 +70,10 @@ export function useUpdateSettings<T extends SettingsGroupKey>(group: T) {
   const queryClient = useQueryClient();
   const { currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit } =
     useBusinessUnitStore();
-  const scopeKey = group === "company" ? "company" : currentBusinessUnit?.id ?? null;
+  const scopeKey = group === "company" ? "company" : (currentBusinessUnit?.id ?? null);
 
   return useMutation({
-    mutationFn: (settings: Partial<SettingsForGroup<T>>) =>
-      updateSettings(group, settings),
+    mutationFn: (settings: Partial<SettingsForGroup<T>>) => updateSettings(group, settings),
     onSuccess: async (data) => {
       // Update cache with new data
       queryClient.setQueryData([SETTINGS_QUERY_KEY, group, scopeKey], data);
@@ -82,8 +81,9 @@ export function useUpdateSettings<T extends SettingsGroupKey>(group: T) {
       await queryClient.invalidateQueries({ queryKey: [SETTINGS_QUERY_KEY, group, scopeKey] });
 
       if (group === "business_unit") {
-        const businessUnitsResponse =
-          await apiClient.get<{ data: BusinessUnitWithAccess[] }>("/api/business-units");
+        const businessUnitsResponse = await apiClient.get<{ data: BusinessUnitWithAccess[] }>(
+          "/api/business-units"
+        );
         const businessUnits = Array.isArray(businessUnitsResponse.data)
           ? businessUnitsResponse.data
           : [];
@@ -93,7 +93,8 @@ export function useUpdateSettings<T extends SettingsGroupKey>(group: T) {
 
         if (currentBusinessUnit) {
           const refreshedCurrentBusinessUnit =
-            businessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ?? null;
+            businessUnits.find((businessUnit) => businessUnit.id === currentBusinessUnit.id) ??
+            null;
           setCurrentBusinessUnit(refreshedCurrentBusinessUnit);
         }
       }

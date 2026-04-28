@@ -18,10 +18,7 @@ const normalizeSearch = (raw: string | null) => {
   return value ? value : null;
 };
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES);
     if (unauthorized) return unauthorized;

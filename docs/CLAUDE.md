@@ -65,27 +65,27 @@ npm start
 
 ### TypeScript
 
-•⁠  ⁠*ALWAYS ⁠ type ⁠* (never ⁠ interface ⁠)
-•⁠  ⁠*NEVER ⁠ any ⁠* (use ⁠ unknown ⁠)
-•⁠  ⁠Strict generics: ⁠ <T extends SomeType> ⁠
-•⁠  ⁠Unions over enums: ⁠ type Status = 'pending' | 'completed' ⁠
+•⁠ ⁠*ALWAYS ⁠ type ⁠* (never ⁠ interface ⁠)
+•⁠ ⁠*NEVER ⁠ any ⁠* (use ⁠ unknown ⁠)
+•⁠ ⁠Strict generics: ⁠ <T extends SomeType> ⁠
+•⁠ ⁠Unions over enums: ⁠ type Status = 'pending' | 'completed' ⁠
 
 ### React Components
 
-•⁠  ⁠Arrow functions for non-page components/hooks
-•⁠  ⁠Named exports (except pages use default export)
-•⁠  ⁠Destructure props, TypeScript all props
+•⁠ ⁠Arrow functions for non-page components/hooks
+•⁠ ⁠Named exports (except pages use default export)
+•⁠ ⁠Destructure props, TypeScript all props
 
 ⁠ typescript
 type ButtonProps = {
-  children: React.ReactNode;
-  variant?: "primary" | "secondary";
+children: React.ReactNode;
+variant?: "primary" | "secondary";
 };
 
 export const Button = ({ children, variant = "primary" }: ButtonProps) => (
-  <button className={variant === "primary" ? "btn-primary" : "btn-secondary"}>
-    {children}
-  </button>
+<button className={variant === "primary" ? "btn-primary" : "btn-secondary"}>
+{children}
+</button>
 );
 
 ### Database (Supabase)
@@ -147,6 +147,7 @@ When working with database migrations in the `supabase/migrations/` directory, f
 ### Migration Content Structure
 
 Each migration file should include:
+
 - Clear header comments (version, description, author, date)
 - Tables with proper constraints and indexes
 - RLS (Row Level Security) policies
@@ -194,6 +195,7 @@ Do not add temporary compatibility reads, writes, or query fallbacks just to mak
 **CRITICAL: Shared hooks should not own UI toasts by default.**
 
 For hooks in `src/hooks/`:
+
 1. Keep hook responsibilities focused on API calls, cache invalidation, and typed state/error propagation.
 2. Prefer pages/components to own presentation side effects such as toast messages, banners, dialogs, and inline form errors.
 3. If a shared hook must support custom UI behavior, prefer caller-provided callbacks or `mutateAsync` handling over hardcoded toast calls inside the hook.
@@ -233,6 +235,7 @@ For API routes and server actions:
 4. If the client needs more actionable feedback, translate the failure into a safe domain-level message rather than forwarding the raw backend text.
 
 ### Why This Rule Exists
+
 - Prevents errors from incorrect column names, table names, or relationships
 - Ensures type safety and correct data handling
 - Avoids multiple debugging iterations
@@ -266,14 +269,14 @@ For API routes and server actions:
 ### Example Workflow
 
 **BAD - Guessing field names:**
+
 ```typescript
 // ❌ WRONG - Writing code without checking schema
-const { data } = await supabase
-  .from('items')
-  .select('sell_price, uom_name')  // These might not exist!
+const { data } = await supabase.from("items").select("sell_price, uom_name"); // These might not exist!
 ```
 
 **GOOD - Verifying schema first:**
+
 ```typescript
 // 1. First, check supabase/migrations/00001_db_schema_up.sql
 // 2. Find the items table definition:
@@ -286,9 +289,7 @@ const { data } = await supabase
 //    );
 //
 // 3. Then write the correct query:
-const { data } = await supabase
-  .from('items')
-  .select('sales_price, uom_id')  // ✅ CORRECT - verified from schema
+const { data } = await supabase.from("items").select("sales_price, uom_id"); // ✅ CORRECT - verified from schema
 ```
 
 ### Migration File Location
@@ -296,6 +297,7 @@ const { data } = await supabase
 Database migrations are located in: `supabase/migrations/`
 
 Common tables to reference:
+
 - `items` - Product/inventory items
 - `item_warehouse` - Stock levels per warehouse
 - `warehouses` - Warehouse locations
@@ -306,7 +308,7 @@ Common tables to reference:
 - `sales_orders` - Sales order headers
 - `sales_order_items` - Sales order line items
 
-gipabuhat nako prompt si claude para malikayan ning iyang mali2.  pero testingan pa pud nako ni.
+gipabuhat nako prompt si claude para malikayan ning iyang mali2. pero testingan pa pud nako ni.
 
 ```
 Prompt to Prevent These Mistakes
@@ -357,6 +359,7 @@ This is a repetitive mistake that wastes time. You must follow this protocol str
 ### The Problem
 
 You frequently:
+
 - ❌ Assume data structure without checking the actual return type
 - ❌ Guess whether data is wrapped in `{ data: T }` or returned as `T` directly
 - ❌ Write code based on assumptions instead of reading the actual types
@@ -368,10 +371,11 @@ You frequently:
 **Before writing ANY code that uses a hook, API call, or function:**
 
 1. **READ THE SOURCE - Don't Guess**
+
    ```typescript
    // ❌ WRONG - Guessing the structure
-   const { data } = useMyHook()
-   return data?.items  // Is it data.items or data.data.items?
+   const { data } = useMyHook();
+   return data?.items; // Is it data.items or data.data.items?
 
    // ✅ CORRECT - Read the hook first to see what it returns
    // Check: Does the hook return response.data or response.data.data?
@@ -385,6 +389,7 @@ You frequently:
    - Verify what the function actually returns, not what you think it returns
 
 3. **Check the TypeScript Interface**
+
    ```typescript
    // If the interface is:
    interface VanInventoryData {
@@ -412,13 +417,13 @@ You frequently:
 
 ### Common Patterns to Check
 
-| Pattern | What to Check |
-|---------|---------------|
-| `useQuery()` hook | What does `queryFn` return? |
+| Pattern              | What to Check                                       |
+| -------------------- | --------------------------------------------------- |
+| `useQuery()` hook    | What does `queryFn` return?                         |
 | `apiClient.get<T>()` | Is T the full response or wrapped in `{ data: T }`? |
-| `response.data` | Is this the final data or is there another `.data`? |
-| `.map(item => ...)` | Add type: `.map((item: Type) => ...)` |
-| `.filter(x => ...)` | Add type: `.filter((x: Type) => ...)` |
+| `response.data`      | Is this the final data or is there another `.data`? |
+| `.map(item => ...)`  | Add type: `.map((item: Type) => ...)`               |
+| `.filter(x => ...)`  | Add type: `.filter((x: Type) => ...)`               |
 
 ### Example of Correct Verification Process
 
@@ -436,8 +441,8 @@ You frequently:
 // Conclusion: Has summary property at root level
 
 // STEP 3: Write correct code
-const { data: inventoryData } = useVanInventory(id)
-const itemsInStock = inventoryData?.summary?.itemsInStock  // ✅ CORRECT
+const { data: inventoryData } = useVanInventory(id);
+const itemsInStock = inventoryData?.summary?.itemsInStock; // ✅ CORRECT
 // NOT: inventoryData?.data?.summary?.itemsInStock  // ❌ WRONG
 ```
 
@@ -457,20 +462,24 @@ const itemsInStock = inventoryData?.summary?.itemsInStock  // ✅ CORRECT
 These are mandatory for new pages and when refactoring existing pages:
 
 ### 1) No Full-Page Blocking Loaders
+
 - Always render the static layout immediately (header, sidebar, page title, filters).
 - Do **not** show full-screen or full-page “Loading…” overlays for data fetches.
 
 ### 2) Skeletons for Dynamic Content
+
 - Use skeleton loaders for dynamic sections (tables, cards, widgets, lists).
 - On first load, show skeleton rows/cards instead of blank space or spinners.
 - Keep filter controls visible; only the data portion should show skeletons.
 
 ### 3) Prevent Hydration Mismatch with Radix UI
+
 - Radix components (Select, DropdownMenu, Popover) can cause hydration mismatch.
 - Wrap Radix triggers/content in a `ClientOnly` wrapper and provide skeleton fallback.
 - Prefer `ClientOnly` for header controls and filter selects on new pages.
 
 ### 4) Permission/BU Loading Behavior
+
 - Do not block rendering while permissions or business units load.
 - Allow rendering while permissions load, and use skeletons or disabled controls.
 - Avoid redirecting to `/403` until permissions are fully loaded.
@@ -493,6 +502,7 @@ Before writing code that uses external data:
 ### The Problem
 
 Quick fixes and "band-aid" solutions that only address symptoms often lead to:
+
 - ❌ Recurring issues when edge cases are encountered
 - ❌ Technical debt that compounds over time
 - ❌ Inconsistent code patterns across the codebase
@@ -530,15 +540,17 @@ Quick fixes and "band-aid" solutions that only address symptoms often lead to:
 ### Examples of Good vs Bad Fixes
 
 #### ❌ BAD - Band-Aid Fix
+
 ```typescript
 // User reports: "Permissions still show after removal"
 // Band-aid: Clear cache on logout only
 logout: async () => {
-  queryClient.clear();  // Only fixes it on logout, not on permission changes
-}
+  queryClient.clear(); // Only fixes it on logout, not on permission changes
+};
 ```
 
 #### ✅ GOOD - Architectural Solution
+
 ```typescript
 // Root cause: Permissions are security-critical and should NEVER be cached
 // Solution: Zero-caching strategy across all layers
@@ -547,20 +559,20 @@ logout: async () => {
 const CACHE_TTL = 0; // No caching for security
 
 // 2. HTTP layer: Prevent browser caching
-response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
 
 // 3. Client-side: React Query configuration
 useQuery({
-  staleTime: 0,           // Immediately stale
-  gcTime: 0,              // Clear from cache
-  refetchOnMount: true,   // Always refetch
+  staleTime: 0, // Immediately stale
+  gcTime: 0, // Clear from cache
+  refetchOnMount: true, // Always refetch
   refetchOnWindowFocus: true,
 });
 
 // 4. Invalidation: On permission changes
 onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['permissions'] });
-}
+  queryClient.invalidateQueries({ queryKey: ["permissions"] });
+};
 
 // 5. Documentation: /docs/PERMISSION_CACHING_STRATEGY.md
 ```
@@ -570,11 +582,13 @@ onSuccess: () => {
 **Problem**: User with no permissions redirected to default page they can't access
 
 **Bad Fix (Band-Aid)**:
+
 - Check permission only for the default page
 - Redirect to 403 if no access
 - Doesn't handle other pages, doesn't consider priority
 
 **Good Fix (Architectural)**:
+
 - Created `PAGE_RESOURCE_MAP` - maps all routes to required permissions
 - Created `PAGE_PRIORITY` - ordered list for finding accessible pages
 - Created `getFirstAccessiblePage()` - finds first accessible page or 403
@@ -627,6 +641,7 @@ async get<T>(endpoint: string): Promise<T> {
 ### The Rule
 
 **In React Query hooks:**
+
 - ✅ `return response` - Correct (response is already the parsed JSON)
 - ❌ `return response.data` - Wrong (unless the API response has a `.data` wrapper)
 - ❌ `return response.data.data` - Wrong (double unwrapping)
@@ -637,39 +652,39 @@ async get<T>(endpoint: string): Promise<T> {
 // ✅ CORRECT - API returns { data: T[], pagination: {...} }
 export function useItems() {
   return useQuery({
-    queryKey: ['items'],
+    queryKey: ["items"],
     queryFn: async () => {
-      const response = await apiClient.get<ItemsResponse>('/api/items');
-      return response;  // ✅ Returns ItemsResponse directly
+      const response = await apiClient.get<ItemsResponse>("/api/items");
+      return response; // ✅ Returns ItemsResponse directly
     },
   });
 }
 
 // Then in component:
-const { data } = useItems();  // data is ItemsResponse
-const items = data?.data;     // Access the items array
+const { data } = useItems(); // data is ItemsResponse
+const items = data?.data; // Access the items array
 
 // ✅ CORRECT - API returns { data: T }
 export function useItem(id: string) {
   return useQuery({
-    queryKey: ['item', id],
+    queryKey: ["item", id],
     queryFn: async () => {
       const response = await apiClient.get<{ data: Item }>(`/api/items/${id}`);
-      return response.data;  // ✅ Unwrap once to get the Item
+      return response.data; // ✅ Unwrap once to get the Item
     },
   });
 }
 
 // Then in component:
-const { data: item } = useItem(id);  // data is Item directly
+const { data: item } = useItem(id); // data is Item directly
 
 // ❌ WRONG - Double unwrapping
 export function useItems() {
   return useQuery({
-    queryKey: ['items'],
+    queryKey: ["items"],
     queryFn: async () => {
-      const response = await apiClient.get<ItemsResponse>('/api/items');
-      return response.data;  // ❌ Error: response is already ItemsResponse
+      const response = await apiClient.get<ItemsResponse>("/api/items");
+      return response.data; // ❌ Error: response is already ItemsResponse
     },
   });
 }
@@ -678,6 +693,7 @@ export function useItems() {
 ### How to Verify
 
 1. Check the API route's response format:
+
    ```typescript
    // In /api/items/route.ts
    return NextResponse.json({
@@ -687,8 +703,9 @@ export function useItems() {
    ```
 
 2. Check the hook's generic type:
+
    ```typescript
-   apiClient.get<ItemsResponse>('/api/items')
+   apiClient.get<ItemsResponse>("/api/items");
    // ItemsResponse should match the API response structure
    ```
 
@@ -699,8 +716,8 @@ export function useItems() {
 
 ### Common Mistakes
 
-| Mistake | Why It's Wrong | Fix |
-|---------|----------------|-----|
-| `return response.data` when API returns `{ data: T[] }` | `response` is already `{ data: T[] }`, accessing `.data` again breaks the structure | `return response` |
-| `return response.data.data` | Double unwrapping - `apiClient` already returns parsed JSON | `return response.data` or `return response` |
-| Inconsistent unwrapping across hooks | Some hooks return `response`, others `response.data` for same API pattern | Standardize based on API response structure |
+| Mistake                                                 | Why It's Wrong                                                                      | Fix                                         |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| `return response.data` when API returns `{ data: T[] }` | `response` is already `{ data: T[] }`, accessing `.data` again breaks the structure | `return response`                           |
+| `return response.data.data`                             | Double unwrapping - `apiClient` already returns parsed JSON                         | `return response.data` or `return response` |
+| Inconsistent unwrapping across hooks                    | Some hooks return `response`, others `response.data` for same API pattern           | Standardize based on API response structure |

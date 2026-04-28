@@ -8,13 +8,7 @@ export type GRNStatus =
   | "rejected"
   | "cancelled";
 
-export type DamageType =
-  | "broken"
-  | "defective"
-  | "missing"
-  | "expired"
-  | "wrong_item"
-  | "other";
+export type DamageType = "broken" | "defective" | "missing" | "expired" | "wrong_item" | "other";
 
 export type DamagedItemStatus = "reported" | "processing" | "resolved";
 

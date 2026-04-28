@@ -96,7 +96,8 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
     if (words.length > 0 && lines.length) {
       const usedWords = lines.join(" ").split(" ").length;
       if (usedWords < words.length) {
-        lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`;
+        lines[lines.length - 1] =
+          `${lines[lines.length - 1].slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`;
       }
     }
 
@@ -154,13 +155,7 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
           {formatDimension(sheetHeight)}
         </text>
       </g>
-      <rect
-        x={0}
-        y={0}
-        width={sheetWidth}
-        height={sheetHeight}
-        fill="#ffffff"
-      />
+      <rect x={0} y={0} width={sheetWidth} height={sheetHeight} fill="#ffffff" />
       {layoutSections.map((section) => {
         const isMappedPiece = section.type === "piece" && !!section.mappedItem;
         const fill = section.type === "piece" ? "#ffffff" : "#f8fafc";
@@ -221,9 +216,7 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                   <>
                     <text
                       x={section.x + section.width / 2}
-                      y={
-                        section.y + section.height / 2 + textLayout.titleFontSize * 0.75
-                      }
+                      y={section.y + section.height / 2 + textLayout.titleFontSize * 0.75}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fontSize={textLayout.dimensionFontSize}
@@ -443,7 +436,7 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                         <img
                           src={template.image_url}
                           alt={`${template.template_name} template`}
-                          className="h-64 w-full cursor-zoom-in object-contain bg-white"
+                          className="h-64 w-full cursor-zoom-in bg-white object-contain"
                         />
                         <div className="border-t bg-background/90 px-3 py-2 text-xs text-muted-foreground">
                           Click image to view full size
@@ -479,7 +472,9 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                         {input.items?.item_code} <span className="text-muted-foreground">•</span>{" "}
                         {input.items?.item_name}
                       </p>
-                      {input.notes && <p className="text-sm text-muted-foreground">{input.notes}</p>}
+                      {input.notes && (
+                        <p className="text-sm text-muted-foreground">{input.notes}</p>
+                      )}
                     </div>
                     <span className="whitespace-nowrap font-medium">
                       {input.quantity}{" "}
@@ -552,8 +547,10 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
             </DialogHeader>
             {isSheetLayout ? (
               <div className="max-h-[calc(88vh-76px)] overflow-auto bg-slate-50 p-4 sm:p-5">
-                <div className="grid gap-5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start sm:p-4">
-                  <div className="min-w-0">{renderSheetLayoutSvg("mx-auto max-h-[68vh] w-full")}</div>
+                <div className="grid gap-5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-start">
+                  <div className="min-w-0">
+                    {renderSheetLayoutSvg("mx-auto max-h-[68vh] w-full")}
+                  </div>
                   <div>{renderCutSizeSummary()}</div>
                 </div>
               </div>
@@ -568,8 +565,7 @@ export function TransformationTemplateDetailDialog({ open, onOpenChange, templat
                   />
                 </div>
               </div>
-            ) : null
-            }
+            ) : null}
           </DialogContent>
         </Dialog>
       )}

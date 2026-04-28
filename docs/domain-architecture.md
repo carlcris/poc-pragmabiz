@@ -121,12 +121,12 @@ This system follows **Domain-Driven Design (DDD)** with **Clean Architecture** (
 
 ### 2.1 Context Map
 
-| Context | Responsibility | Aggregates | Upstream/Downstream |
-|---------|---------------|------------|---------------------|
-| **Inventory** | Manage items, warehouses, stock movements, valuation | Item, Warehouse, StockTransaction, BillOfMaterials | Upstream to Sales |
-| **Sales** | Manage customers, quotations, orders, deliveries, invoices, payments | Customer, Quotation, SalesOrder, Delivery, Invoice, Payment | Downstream from Inventory |
-| **User** | Authentication, authorization, roles, permissions | User, Role, Permission | Upstream to all |
-| **Shared Kernel** | Common value objects, interfaces, events | Money, Quantity, Address, ContactInfo | Shared by all |
+| Context           | Responsibility                                                       | Aggregates                                                  | Upstream/Downstream       |
+| ----------------- | -------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------- |
+| **Inventory**     | Manage items, warehouses, stock movements, valuation                 | Item, Warehouse, StockTransaction, BillOfMaterials          | Upstream to Sales         |
+| **Sales**         | Manage customers, quotations, orders, deliveries, invoices, payments | Customer, Quotation, SalesOrder, Delivery, Invoice, Payment | Downstream from Inventory |
+| **User**          | Authentication, authorization, roles, permissions                    | User, Role, Permission                                      | Upstream to all           |
+| **Shared Kernel** | Common value objects, interfaces, events                             | Money, Quantity, Address, ContactInfo                       | Shared by all             |
 
 ### 2.2 Module Communication
 
@@ -166,6 +166,7 @@ available, err := stockQuery.GetAvailableStock(ctx, orderItem.ItemID, warehouseI
 ### 3.1 Bounded Context Responsibility
 
 Manages all inventory-related operations:
+
 - Item master data (products, materials, services)
 - Warehouse locations and stock levels
 - Stock movements (in, out, transfers, adjustments)
@@ -1157,6 +1158,7 @@ func (e StockTransactionCancelledEvent) OccurredAt() time.Time { return e.Cancel
 ### 4.1 Bounded Context Responsibility
 
 Manages all sales-related operations:
+
 - Customer master data and relationships
 - Price lists and discount rules
 - Sales quotations (pre-sales)
@@ -3097,6 +3099,7 @@ func (m *MockEventBus) Subscribe(eventName string, handler shared.EventHandler) 
 ### 10.1 Current Phase: Modular Monolith
 
 **Advantages:**
+
 - ✅ Simple deployment (single binary)
 - ✅ ACID transactions across modules
 - ✅ Lower infrastructure costs
@@ -3106,12 +3109,14 @@ func (m *MockEventBus) Subscribe(eventName string, handler shared.EventHandler) 
 ### 10.2 Scaling Strategy
 
 **Phase 1: Vertical Scaling**
+
 - Increase server resources (CPU, RAM)
 - Database read replicas
 - Connection pooling
 - Caching layer (Redis)
 
 **Phase 2: Horizontal Scaling**
+
 - Multiple app instances behind load balancer
 - Stateless application design
 - Session management in Redis
@@ -3127,11 +3132,13 @@ Extract bounded contexts to independent services:
 4. **Sales Service** (if sales volume demands independent scaling)
 
 **Migration Path:**
+
 ```
 Current: Modular Monolith → Extract Notifications → Extract Reporting → Full Microservices
 ```
 
 **Communication Changes:**
+
 - In-memory events → Message broker (Kafka/RabbitMQ)
 - Direct calls → gRPC or REST APIs
 - Shared database → Database per service

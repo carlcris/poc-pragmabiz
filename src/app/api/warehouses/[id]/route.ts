@@ -66,7 +66,10 @@ function transformDbWarehouse(dbWarehouse: DbWarehouse): Warehouse {
   };
 }
 
-async function resolveUserScope(supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"], userId: string) {
+async function resolveUserScope(
+  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  userId: string
+) {
   const { data: userRow, error: userError } = await supabase
     .from("users")
     .select("company_id")
@@ -104,7 +107,8 @@ async function getScopedWarehouse(
   companyId: string,
   accessibleBusinessUnitIds: string[]
 ) {
-  if (accessibleBusinessUnitIds.length === 0) return { data: null as DbWarehouse | null, error: null };
+  if (accessibleBusinessUnitIds.length === 0)
+    return { data: null as DbWarehouse | null, error: null };
 
   const buScope = `business_unit_id.in.(${accessibleBusinessUnitIds.join(",")}),business_unit_id.is.null`;
 

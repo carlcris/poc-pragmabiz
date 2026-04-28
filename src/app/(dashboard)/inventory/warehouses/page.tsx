@@ -38,7 +38,8 @@ import { RESOURCES } from "@/constants/resources";
 import type { Warehouse } from "@/types/warehouse";
 
 const WarehouseFormDialog = dynamic(
-  () => import("@/components/warehouses/WarehouseFormDialog").then((mod) => mod.WarehouseFormDialog),
+  () =>
+    import("@/components/warehouses/WarehouseFormDialog").then((mod) => mod.WarehouseFormDialog),
   { ssr: false }
 );
 const ConfirmDialog = dynamic(
@@ -64,8 +65,7 @@ export default function WarehousesPage() {
 
   const { data, isLoading, error } = useWarehouses({
     search: search || undefined,
-    isActive:
-      statusFilter === "all" ? undefined : statusFilter === "active" ? true : false,
+    isActive: statusFilter === "all" ? undefined : statusFilter === "active" ? true : false,
     page,
     limit: pageSize,
   });
@@ -118,14 +118,14 @@ export default function WarehousesPage() {
     <div className="flex h-full flex-col gap-4 sm:gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
             {t("title")}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
             {t("subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateWarehouse} className="w-full sm:w-auto flex-shrink-0">
+        <Button onClick={handleCreateWarehouse} className="w-full flex-shrink-0 sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           <span className="sm:inline">{t("createWarehouse")}</span>
         </Button>
@@ -173,13 +173,34 @@ export default function WarehousesPage() {
                 <TableBody>
                   {[...Array(8)].map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><div className="flex items-center gap-2"><Skeleton className="h-4 w-4 rounded-full" /><Skeleton className="h-4 w-32" /></div></TableCell>
-                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                      <TableCell className="text-right"><div className="flex justify-end gap-2"><Skeleton className="h-8 w-24" /><Skeleton className="h-8 w-20" /><Skeleton className="h-8 w-8" /></div></TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-4 rounded-full" />
+                          <Skeleton className="h-4 w-32" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-36" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Skeleton className="h-8 w-24" />
+                          <Skeleton className="h-8 w-20" />
+                          <Skeleton className="h-8 w-8" />
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -218,7 +239,9 @@ export default function WarehousesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">{warehouse.city}, {warehouse.state}</div>
+                        <div className="text-sm">
+                          {warehouse.city}, {warehouse.state}
+                        </div>
                         <div className="text-xs text-muted-foreground">{warehouse.country}</div>
                       </TableCell>
                       <TableCell>{warehouse.managerName || "-"}</TableCell>
@@ -241,7 +264,11 @@ export default function WarehousesPage() {
                               </Link>
                             </Button>
                           </ViewGuard>
-                          <Button variant="outline" size="sm" onClick={() => handleEditWarehouse(warehouse)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditWarehouse(warehouse)}
+                          >
                             <Pencil className="mr-2 h-4 w-4" />
                             <span>{tCommon("edit")}</span>
                           </Button>

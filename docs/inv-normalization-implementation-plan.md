@@ -1,6 +1,7 @@
 # Inventory UOM Normalization Implementation Plan (v2)
 
 ## Document Control
+
 - **Created**: 2026-01-02
 - **Status**: Draft for Review (Updated)
 - **Version**: 2.0
@@ -13,12 +14,14 @@
 ## Updates in Version 2.0
 
 ### Key Changes from v1.0
+
 1. ✅ **Removed `items.uom_id`** - Replaced with `items.package_id`
 2. ✅ **Simplified default package logic** - Base package IS the default package
 3. ✅ **Atomic creation** - Database function handles item + package creation
 4. ✅ **Enforced package consistency** - `package_id` must reference valid `item_packaging`
 
 ### Design Decision Summary
+
 - **items.package_id**: References the base storage package (qty_per_pack = 1)
 - **Base = Default**: Users always transact in base package by default
 - **Additional packages**: Users can explicitly select other packages (bags, cartons, etc.)
@@ -31,6 +34,7 @@
 This plan implements **inventory quantity normalization** to ensure all inventory quantities are stored in the item's base unit of measure (defined by `items.package_id`), while allowing users to transact using various packages (boxes, cartons, cases, etc.).
 
 ### Core Principles
+
 1. **Single Source of Truth**: `items.package_id` defines how inventory is stored
 2. **Package-First Design**: Base unit MUST be a valid package in `item_packaging`
 3. **Simplified Defaults**: Base package is automatically the transaction default
@@ -67,6 +71,7 @@ This plan implements **inventory quantity normalization** to ensure all inventor
 ### Example Flow
 
 **Item Configuration:**
+
 ```sql
 -- Base package (created first)
 item_packaging:
@@ -93,6 +98,7 @@ item_packaging:
 ```
 
 **Transaction Flow:**
+
 ```
 User Action: Receive 10 cartons of flour
 
@@ -645,11 +651,11 @@ async function normalizeQuantity(
   input: PackageConversionInput,
   supabase: SupabaseClient
 ): Promise<PackageConversionResult> {
-
   // STEP 1: Get item's base package
   const { data: item, error: itemError } = await supabase
-    .from('items')
-    .select(`
+    .from("items")
+    .select(
+      `
       package_id,
       base_package:item_packaging!package_id(
         id,
@@ -659,11 +665,12 @@ async function normalizeQuantity(
         uom_id,
         units_of_measure(name)
       )
-    `)
-    .eq('id', input.itemId)
-    .eq('company_id', companyId)
-    .eq('setup_complete', true)
-    .is('deleted_at', null)
+    `
+    )
+    .eq("id", input.itemId)
+    .eq("company_id", companyId)
+    .eq("setup_complete", true)
+    .is("deleted_at", null)
     .single();
 
   if (itemError || !item) {
@@ -672,7 +679,7 @@ async function normalizeQuantity(
 
   const basePackage = item.base_package as any;
   if (!basePackage) {
-    throw new Error('Item base package not found');
+    throw new Error("Item base package not found");
   }
 
   // STEP 2: Determine input package
@@ -692,17 +699,17 @@ async function normalizeQuantity(
   } else {
     // Using different package - fetch it
     const { data: pkg, error: pkgError } = await supabase
-      .from('item_packaging')
-      .select('id, pack_name, pack_type, qty_per_pack')
-      .eq('id', inputPackageId)
-      .eq('company_id', companyId)
-      .eq('item_id', input.itemId)
-      .eq('is_active', true)
-      .is('deleted_at', null)
+      .from("item_packaging")
+      .select("id, pack_name, pack_type, qty_per_pack")
+      .eq("id", inputPackageId)
+      .eq("company_id", companyId)
+      .eq("item_id", input.itemId)
+      .eq("is_active", true)
+      .is("deleted_at", null)
       .single();
 
     if (pkgError || !pkg) {
-      throw new Error('Input package not found or does not belong to item');
+      throw new Error("Input package not found or does not belong to item");
     }
 
     inputPackage = pkg;
@@ -735,7 +742,7 @@ async function normalizeQuantity(
       inputPackageType: inputPackage.pack_type,
       basePackageName: basePackage.pack_name,
       baseUomId: basePackage.uom_id,
-      baseUomName: basePackage.units_of_measure?.name || 'unit',
+      baseUomName: basePackage.units_of_measure?.name || "unit",
     },
   };
 }
@@ -838,43 +845,43 @@ RESULT: Same inventory increase (250 kg), different audit trail
 
 ```typescript
 // Example 1: Simple item with base package only
-const result = await supabase.rpc('create_item_with_packages', {
+const result = await supabase.rpc("create_item_with_packages", {
   p_company_id: companyId,
   p_user_id: userId,
-  p_item_code: 'FLOUR-001',
-  p_item_name: 'Premium Flour',
-  p_item_description: 'High-quality wheat flour',
-  p_item_type: 'raw_material',
-  p_base_package_name: 'Kilogram',
-  p_base_package_type: 'base',
+  p_item_code: "FLOUR-001",
+  p_item_name: "Premium Flour",
+  p_item_description: "High-quality wheat flour",
+  p_item_type: "raw_material",
+  p_base_package_name: "Kilogram",
+  p_base_package_type: "base",
   p_base_uom_id: uomKgId,
-  p_standard_cost: 100.00,
-  p_list_price: 150.00,
+  p_standard_cost: 100.0,
+  p_list_price: 150.0,
   p_additional_packages: null, // No additional packages
 });
 
 // Result: Item with single base package "Kilogram" (qty_per_pack=1)
 
 // Example 2: Item with multiple packages
-const result = await supabase.rpc('create_item_with_packages', {
+const result = await supabase.rpc("create_item_with_packages", {
   p_company_id: companyId,
   p_user_id: userId,
-  p_item_code: 'FLOUR-001',
-  p_item_name: 'Premium Flour',
-  p_base_package_name: 'Kilogram',
+  p_item_code: "FLOUR-001",
+  p_item_name: "Premium Flour",
+  p_base_package_name: "Kilogram",
   p_base_uom_id: uomKgId,
   p_additional_packages: [
     {
-      pack_type: 'bag',
-      pack_name: 'Bag (5kg)',
+      pack_type: "bag",
+      pack_name: "Bag (5kg)",
       qty_per_pack: 5.0,
-      barcode: '1234567890123',
+      barcode: "1234567890123",
     },
     {
-      pack_type: 'carton',
-      pack_name: 'Carton (25kg)',
+      pack_type: "carton",
+      pack_name: "Carton (25kg)",
       qty_per_pack: 25.0,
-      barcode: '1234567890124',
+      barcode: "1234567890124",
     },
   ],
 });
@@ -888,7 +895,7 @@ const result = await supabase.rpc('create_item_with_packages', {
 ### 5.2 Updated POS Stock Service
 
 ```typescript
-import { normalizeTransactionItems } from './normalizationService';
+import { normalizeTransactionItems } from "./normalizationService";
 
 export async function createPOSStockTransaction(
   companyId: string,
@@ -912,10 +919,10 @@ export async function createPOSStockTransaction(
     // STEP 2: Validate stock availability
     for (const item of normalizedItems) {
       const { data: warehouseStock } = await supabase
-        .from('item_warehouse')
-        .select('current_stock')
-        .eq('item_id', item.itemId)
-        .eq('warehouse_id', data.warehouseId)
+        .from("item_warehouse")
+        .select("current_stock")
+        .eq("item_id", item.itemId)
+        .eq("warehouse_id", data.warehouseId)
         .single();
 
       const currentBalance = warehouseStock?.current_stock || 0;
@@ -930,40 +937,40 @@ export async function createPOSStockTransaction(
 
     // STEP 3: Create stock transaction header
     const { data: stockTransaction, error: transactionError } = await supabase
-      .from('stock_transactions')
+      .from("stock_transactions")
       .insert({
         company_id: companyId,
         business_unit_id: businessUnitId,
         transaction_code: `ST-POS-${data.transactionCode}`,
-        transaction_type: 'out',
-        transaction_date: data.transactionDate.split('T')[0],
+        transaction_type: "out",
+        transaction_date: data.transactionDate.split("T")[0],
         warehouse_id: data.warehouseId,
-        reference_type: 'pos_transaction',
+        reference_type: "pos_transaction",
         reference_id: data.transactionId,
-        status: 'posted',
+        status: "posted",
         created_by: userId,
       })
       .select()
       .single();
 
     if (transactionError) {
-      return { success: false, error: 'Failed to create stock transaction' };
+      return { success: false, error: "Failed to create stock transaction" };
     }
 
     // STEP 4: Create stock transaction items with normalization
     for (const item of normalizedItems) {
       const { data: warehouseStock } = await supabase
-        .from('item_warehouse')
-        .select('current_stock')
-        .eq('item_id', item.itemId)
-        .eq('warehouse_id', data.warehouseId)
+        .from("item_warehouse")
+        .select("current_stock")
+        .eq("item_id", item.itemId)
+        .eq("warehouse_id", data.warehouseId)
         .single();
 
       const currentBalance = warehouseStock?.current_stock || 0;
       const newBalance = currentBalance - item.normalizedQty;
 
       // Create transaction item with full normalization metadata
-      await supabase.from('stock_transaction_items').insert({
+      await supabase.from("stock_transaction_items").insert({
         company_id: companyId,
         transaction_id: stockTransaction.id,
         item_id: item.itemId,
@@ -981,16 +988,16 @@ export async function createPOSStockTransaction(
         // Audit fields
         qty_before: currentBalance,
         qty_after: newBalance,
-        posting_date: new Date().toISOString().split('T')[0],
+        posting_date: new Date().toISOString().split("T")[0],
         created_by: userId,
       });
 
       // Update warehouse stock
       await supabase
-        .from('item_warehouse')
+        .from("item_warehouse")
         .update({ current_stock: newBalance })
-        .eq('item_id', item.itemId)
-        .eq('warehouse_id', data.warehouseId);
+        .eq("item_id", item.itemId)
+        .eq("warehouse_id", data.warehouseId);
     }
 
     return { success: true, stockTransactionId: stockTransaction.id };
@@ -1071,16 +1078,19 @@ SELECT COUNT(*) FROM items WHERE setup_complete = FALSE;
 ### 7.1 Transition Plan
 
 **Phase 1: Coexistence (Month 1-2)**
+
 - Keep `items.uom_id` (deprecated)
 - New code uses `package_id`
 - Old code continues working
 
 **Phase 2: Migration (Month 3)**
+
 - All items migrated to `package_id`
 - All new items use atomic function
 - Reports updated
 
 **Phase 3: Cleanup (Month 4+)**
+
 - Drop `items.uom_id` column
 - Remove deprecated comments
 - Archive old migration scripts
@@ -1092,12 +1102,12 @@ SELECT COUNT(*) FROM items WHERE setup_complete = FALSE;
 ### 8.1 Critical Test Cases
 
 ```typescript
-describe('Package-based Normalization', () => {
-  test('Create item with base package only', async () => {
+describe("Package-based Normalization", () => {
+  test("Create item with base package only", async () => {
     const result = await createItemWithPackages({
-      itemCode: 'TEST-001',
-      itemName: 'Test Item',
-      basePackageName: 'Piece',
+      itemCode: "TEST-001",
+      itemName: "Test Item",
+      basePackageName: "Piece",
     });
 
     expect(result.item_id).toBeDefined();
@@ -1108,10 +1118,10 @@ describe('Package-based Normalization', () => {
     expect(pkg.qty_per_pack).toBe(1.0);
   });
 
-  test('Transaction with base package (default)', async () => {
+  test("Transaction with base package (default)", async () => {
     // User doesn't specify package - uses base
     const tx = await createStockTransaction({
-      itemId: 'item-1',
+      itemId: "item-1",
       packagingId: null, // Use base
       inputQty: 100,
     });
@@ -1122,11 +1132,11 @@ describe('Package-based Normalization', () => {
     expect(txItem.conversion_factor).toBe(1.0);
   });
 
-  test('Transaction with non-base package', async () => {
+  test("Transaction with non-base package", async () => {
     // User selects carton (qty_per_pack=25)
     const tx = await createStockTransaction({
-      itemId: 'item-1',
-      packagingId: 'pkg-carton',
+      itemId: "item-1",
+      packagingId: "pkg-carton",
       inputQty: 10,
     });
 
@@ -1136,13 +1146,13 @@ describe('Package-based Normalization', () => {
     expect(txItem.conversion_factor).toBe(25);
   });
 
-  test('Prevent transaction on incomplete item', async () => {
+  test("Prevent transaction on incomplete item", async () => {
     // Create item without completing setup
     const item = await createIncompleteItem();
 
-    await expect(
-      createStockTransaction({ itemId: item.id })
-    ).rejects.toThrow('not fully configured');
+    await expect(createStockTransaction({ itemId: item.id })).rejects.toThrow(
+      "not fully configured"
+    );
   });
 });
 ```
@@ -1152,21 +1162,25 @@ describe('Package-based Normalization', () => {
 ## 9. Success Criteria
 
 ✅ **Schema Updated**
+
 - `items.package_id` replaces `uom_id`
 - Base package = default package
 - Atomic creation function works
 
 ✅ **Normalization Working**
+
 - All transactions normalize correctly
 - Conversion metadata recorded
 - Inventory always in base units
 
 ✅ **Data Integrity**
+
 - No incomplete items in production
 - All packages belong to correct items
 - Foreign keys enforced
 
 ✅ **User Experience**
+
 - Base package auto-selected by default
 - Additional packages selectable
 - Clear error messages
@@ -1176,6 +1190,7 @@ describe('Package-based Normalization', () => {
 ## 10. Implementation Checklist
 
 ### Phase 1: Database (Week 1)
+
 - [ ] Run migration `20260102000000_replace_uom_with_package_id.sql`
 - [ ] Run migration `20260102000001_update_item_packaging.sql`
 - [ ] Run migration `20260102000002_add_conversion_metadata.sql`
@@ -1185,6 +1200,7 @@ describe('Package-based Normalization', () => {
 - [ ] Validate data integrity
 
 ### Phase 2: Application Code (Week 2)
+
 - [ ] Update normalizationService.ts
 - [ ] Update posStockService.ts
 - [ ] Update purchase receipt handler
@@ -1192,12 +1208,14 @@ describe('Package-based Normalization', () => {
 - [ ] Update all transaction handlers
 
 ### Phase 3: Testing (Week 3)
+
 - [ ] Unit tests for normalization
 - [ ] Integration tests for transactions
 - [ ] Test atomic item creation
 - [ ] Test incomplete item prevention
 
 ### Phase 4: Deployment (Week 4)
+
 - [ ] Staging deployment
 - [ ] UAT testing
 - [ ] Production deployment

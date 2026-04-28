@@ -263,7 +263,9 @@ export const StockAgingReportPDF = ({
                 <View style={[styles.cell, styles.colBatch]}>
                   <Text style={styles.cellText}>{row.batchCode || noValueLabel}</Text>
                   <Text style={styles.cellMuted}>
-                    {row.batchReceivedAt ? new Date(row.batchReceivedAt).toLocaleString() : noValueLabel}
+                    {row.batchReceivedAt
+                      ? new Date(row.batchReceivedAt).toLocaleString()
+                      : noValueLabel}
                   </Text>
                 </View>
                 <View style={[styles.cell, styles.colAge]}>

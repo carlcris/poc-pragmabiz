@@ -112,7 +112,11 @@ function normalizeSearch(raw: string | null): string | null {
 }
 
 async function getUserContext(): Promise<
-  | { ok: true; context: UserContext; supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"] }
+  | {
+      ok: true;
+      context: UserContext;
+      supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
+    }
   | { ok: false; response: NextResponse }
 > {
   const { supabase } = await createServerClientWithBU();
@@ -147,7 +151,10 @@ async function getUserContext(): Promise<
   if (buError) {
     return {
       ok: false,
-      response: NextResponse.json({ error: "Failed to resolve business unit access" }, { status: 500 }),
+      response: NextResponse.json(
+        { error: "Failed to resolve business unit access" },
+        { status: 500 }
+      ),
     };
   }
 
@@ -303,7 +310,10 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "Warehouse code already exists", details: `Warehouse code "${code}" is already in use` },
+        {
+          error: "Warehouse code already exists",
+          details: `Warehouse code "${code}" is already in use`,
+        },
         { status: 409 }
       );
     }
@@ -344,7 +354,10 @@ export async function POST(request: NextRequest) {
       userId: user.id,
     });
 
-    return NextResponse.json({ data: transformDbWarehouse(newWarehouse as DbWarehouse) }, { status: 201 });
+    return NextResponse.json(
+      { data: transformDbWarehouse(newWarehouse as DbWarehouse) },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

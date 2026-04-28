@@ -135,7 +135,7 @@ export function LocationAssignmentWidget() {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">{t("assignmentRate")}</span>
-            <span className={cn("text-xl sm:text-2xl font-bold", statusConfig.color)}>
+            <span className={cn("text-xl font-bold sm:text-2xl", statusConfig.color)}>
               {assignmentPercent.toFixed(1)}%
             </span>
           </div>
@@ -146,7 +146,9 @@ export function LocationAssignmentWidget() {
             />
           </div>
           <div className="flex justify-center">
-            <div className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusConfig.bgColor)}>
+            <div
+              className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusConfig.bgColor)}
+            >
               {statusConfig.label}
             </div>
           </div>
@@ -154,17 +156,21 @@ export function LocationAssignmentWidget() {
 
         {/* Box Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
             <div className="text-xs text-muted-foreground">{t("total")}</div>
-            <p className="mt-1 text-base sm:text-lg font-bold">{data.totalBoxes}</p>
+            <p className="mt-1 text-base font-bold sm:text-lg">{data.totalBoxes}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
             <div className="text-xs text-muted-foreground">{t("assigned")}</div>
-            <p className="mt-1 text-base sm:text-lg font-bold text-green-600">{data.assignedBoxes}</p>
+            <p className="mt-1 text-base font-bold text-green-600 sm:text-lg">
+              {data.assignedBoxes}
+            </p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
             <div className="text-xs text-muted-foreground">{t("unassigned")}</div>
-            <p className="mt-1 text-base sm:text-lg font-bold text-red-600">{data.unassignedBoxes}</p>
+            <p className="mt-1 text-base font-bold text-red-600 sm:text-lg">
+              {data.unassignedBoxes}
+            </p>
           </div>
         </div>
 

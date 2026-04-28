@@ -72,9 +72,7 @@ export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsPr
             ))}
           </div>
         ) : commissions.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {t("noRecords")}
-          </p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("noRecords")}</p>
         ) : (
           <div className="rounded-md border">
             <Table>
@@ -97,7 +95,11 @@ export function CommissionDetails({ dateRange, employeeId }: CommissionDetailsPr
                       <code className="text-xs">{commission.invoiceCode}</code>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "2-digit" }).format(new Date(commission.invoiceDate))}
+                      {new Intl.DateTimeFormat(locale, {
+                        year: "numeric",
+                        month: "short",
+                        day: "2-digit",
+                      }).format(new Date(commission.invoiceDate))}
                     </TableCell>
                     <TableCell>
                       <div>

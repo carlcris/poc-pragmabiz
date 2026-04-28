@@ -80,7 +80,6 @@ export async function GET(request: NextRequest) {
       return "other";
     };
 
-
     // Initialize response object
     const dashboardData: PurchasingDashboardData = {};
 
@@ -133,8 +132,8 @@ export async function GET(request: NextRequest) {
         const rows = data as StockRequisitionRow[];
         const requisitions: DashboardStockRequisition[] = rows.map((row) => {
           const businessUnit = Array.isArray(row.business_unit)
-            ? row.business_unit[0] ?? null
-            : row.business_unit ?? null;
+            ? (row.business_unit[0] ?? null)
+            : (row.business_unit ?? null);
           return {
             id: row.id,
             sr_number: row.sr_number,
@@ -161,7 +160,14 @@ export async function GET(request: NextRequest) {
     if (shouldFetch("damagedItemsThisMonth")) {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const endOfMonth = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59
+      ).toISOString();
 
       type DamagedItemRow = {
         qty: number | null;
@@ -228,7 +234,10 @@ export async function GET(request: NextRequest) {
         }, 0);
 
         // Group by supplier
-        const supplierMap = new Map<string, { id: string; name: string; count: number; value: number }>();
+        const supplierMap = new Map<
+          string,
+          { id: string; name: string; count: number; value: number }
+        >();
         rows.forEach((item) => {
           const supplier = item.grns?.load_lists?.suppliers;
 
@@ -311,7 +320,9 @@ export async function GET(request: NextRequest) {
         query = query.eq("warehouse_id", warehouseId);
       }
 
-      const { data, error, count } = await query.order("estimated_arrival_date", { ascending: true });
+      const { data, error, count } = await query.order("estimated_arrival_date", {
+        ascending: true,
+      });
 
       if (!error && data) {
         dashboardData.expectedArrivalsThisWeek = {
@@ -350,7 +361,9 @@ export async function GET(request: NextRequest) {
         query = query.eq("warehouse_id", warehouseId);
       }
 
-      const { data, error, count } = await query.order("estimated_arrival_date", { ascending: true });
+      const { data, error, count } = await query.order("estimated_arrival_date", {
+        ascending: true,
+      });
 
       if (!error && data) {
         dashboardData.delayedShipments = {
@@ -511,7 +524,8 @@ export async function GET(request: NextRequest) {
         const totalLocations = count || 0;
         const occupiedLocations = data.filter((loc) => loc.is_occupied).length;
         const availableSpace = totalLocations - occupiedLocations;
-        const utilizationPercent = totalLocations > 0 ? (occupiedLocations / totalLocations) * 100 : 0;
+        const utilizationPercent =
+          totalLocations > 0 ? (occupiedLocations / totalLocations) * 100 : 0;
 
         dashboardData.warehouseCapacity = {
           totalLocations,
@@ -592,7 +606,9 @@ export async function GET(request: NextRequest) {
         query = query.eq("warehouse_id", warehouseId);
       }
 
-      const { data: loadLists, error } = await query.order("estimated_arrival_date", { ascending: true });
+      const { data: loadLists, error } = await query.order("estimated_arrival_date", {
+        ascending: true,
+      });
 
       if (!error && loadLists) {
         // For each load list, get linked SRs
@@ -669,14 +685,16 @@ export async function GET(request: NextRequest) {
       const { data, error } = await query.order("estimated_arrival_date", { ascending: true });
 
       if (!error && data) {
-        const containers = (data as Array<{
-          id: string;
-          ll_number: string;
-          container_number: string | null;
-          status: LoadListStatus;
-          estimated_arrival_date: string | null;
-          supplier?: { supplier_name?: string | null } | null;
-        }>).map((ll) => ({
+        const containers = (
+          data as Array<{
+            id: string;
+            ll_number: string;
+            container_number: string | null;
+            status: LoadListStatus;
+            estimated_arrival_date: string | null;
+            supplier?: { supplier_name?: string | null } | null;
+          }>
+        ).map((ll) => ({
           containerNumber: ll.container_number || "",
           loadListId: ll.id,
           llNumber: ll.ll_number,

@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-import { fetchDeliveryNote, fetchDeliveryNoteHeader, getAuthContext, syncStockRequestStatusCache, toNumber } from "../../../_lib";
+import {
+  fetchDeliveryNote,
+  fetchDeliveryNoteHeader,
+  getAuthContext,
+  syncStockRequestStatusCache,
+  toNumber,
+} from "../../../_lib";
 
 type RouteContext = {
   params: Promise<{ id: string; itemId: string }>;
@@ -28,7 +34,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (header.status !== "dispatched") {
-      return NextResponse.json({ error: "Only dispatched delivery notes can be adjusted" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Only dispatched delivery notes can be adjusted" },
+        { status: 400 }
+      );
     }
 
     const body = (await request.json().catch(() => ({}))) as AdjustDeliveryNoteItemBody;
@@ -53,7 +62,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (nextDispatchedQty < 0 || nextDispatchedQty > currentDispatchedQty) {
       return NextResponse.json(
-        { error: `New dispatched quantity must be between 0 and ${currentDispatchedQty}. Use Add Items to source additional quantity from another stock request line.` },
+        {
+          error: `New dispatched quantity must be between 0 and ${currentDispatchedQty}. Use Add Items to source additional quantity from another stock request line.`,
+        },
         { status: 400 }
       );
     }

@@ -21,10 +21,7 @@ const VALID_GROUPS: SettingsGroupKey[] = [
  * GET /api/settings/[group]
  * Fetch all settings for a specific group
  */
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ group: string }> }
-) {
+export async function GET(request: NextRequest, context: { params: Promise<{ group: string }> }) {
   try {
     const { group } = await context.params;
 
@@ -75,9 +72,8 @@ export async function GET(
     }
 
     // Determine business_unit_id filter based on group
-    const businessUnitId = group !== "company"
-      ? (await supabase.rpc("get_current_business_unit_id")).data
-      : null;
+    const businessUnitId =
+      group !== "company" ? (await supabase.rpc("get_current_business_unit_id")).data : null;
 
     if (group !== "company" && !businessUnitId) {
       return NextResponse.json({ error: "No business unit selected" }, { status: 400 });
@@ -121,7 +117,10 @@ export async function GET(
 
       if (businessUnitError) {
         console.error("Error fetching business unit settings:", businessUnitError);
-        return NextResponse.json({ error: "Failed to fetch business unit settings" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to fetch business unit settings" },
+          { status: 500 }
+        );
       }
 
       settingsObject.display_name = businessUnit.name;
@@ -139,10 +138,7 @@ export async function GET(
  * PUT /api/settings/[group]
  * Update or create settings for a specific group
  */
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ group: string }> }
-) {
+export async function PUT(request: NextRequest, context: { params: Promise<{ group: string }> }) {
   try {
     const { group } = await context.params;
 
@@ -233,9 +229,8 @@ export async function PUT(
     }
 
     // Determine business_unit_id for the settings
-    const businessUnitId = group !== "company"
-      ? (await supabase.rpc("get_current_business_unit_id")).data
-      : null;
+    const businessUnitId =
+      group !== "company" ? (await supabase.rpc("get_current_business_unit_id")).data : null;
 
     if (group !== "company" && !businessUnitId) {
       return NextResponse.json({ error: "No business unit selected" }, { status: 400 });

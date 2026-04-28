@@ -26,7 +26,8 @@ type ItemLocationBatchRow = {
         received_at: string;
       }[]
     | null;
-  item?: { id: string; item_code: string | null; item_name: string | null }
+  item?:
+    | { id: string; item_code: string | null; item_name: string | null }
     | { id: string; item_code: string | null; item_name: string | null }[]
     | null;
   warehouse?:
@@ -45,7 +46,7 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/reports/item-location-batch
@@ -158,7 +159,10 @@ export async function GET(request: NextRequest) {
 
     const { data, error, count } = await query.range(offset, offset + limit - 1);
     if (error) {
-      return NextResponse.json({ error: "Failed to fetch item location batch report" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Failed to fetch item location batch report" },
+        { status: 500 }
+      );
     }
 
     const rows = ((data || []) as ItemLocationBatchRow[]).map((row) => {

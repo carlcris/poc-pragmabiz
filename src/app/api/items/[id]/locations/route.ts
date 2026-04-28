@@ -135,24 +135,24 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       (itemWarehouses || []).map((row) => [row.warehouse_id, row.default_location_id])
     );
     const inTransitMap = new Map(
-      (itemWarehouses || []).map((row) => [
-        row.warehouse_id,
-        Number(row.in_transit || 0),
-      ])
+      (itemWarehouses || []).map((row) => [row.warehouse_id, Number(row.in_transit || 0)])
     );
     const estimatedArrivalMap = new Map(
       (itemWarehouses || []).map((row) => [row.warehouse_id, row.estimated_arrival_date || null])
     );
 
     // Group batches by location
-    const batchesByLocation = new Map<string, Array<{
-      id: string;
-      batchCode: string;
-      receivedAt: string;
-      qtyOnHand: number;
-      qtyReserved: number;
-      qtyAvailable: number;
-    }>>();
+    const batchesByLocation = new Map<
+      string,
+      Array<{
+        id: string;
+        batchCode: string;
+        receivedAt: string;
+        qtyOnHand: number;
+        qtyReserved: number;
+        qtyAvailable: number;
+      }>
+    >();
 
     (batchData || []).forEach((batch) => {
       const locationBatches = batchesByLocation.get(batch.location_id) || [];

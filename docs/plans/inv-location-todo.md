@@ -3,11 +3,13 @@
 Source: `docs/plans/inv-location-plan.md`
 
 ## Status Legend
+
 - [ ] Not started
 - [~] In progress
 - [x] Done
 
 ## Phase 1: Schema + Backfill
+
 - [x] Create migration for `warehouse_locations` table (fields, constraints, indexes).
 - [x] Create migration for `item_location` table (fields, constraints, indexes).
 - [x] Add `default_location_id` to `item_warehouse` (nullable) + FK.
@@ -34,6 +36,7 @@ HAVING COALESCE(SUM(il.qty_on_hand), 0) <> iw.current_stock;
 ```
 
 ## Phase 1: API + Services
+
 - [x] CRUD for `warehouse_locations` (list/create/update/deactivate) with permissions.
 - [x] Read `item_location` by item + warehouse (for UI tabs).
 - [x] Update stock-in flows to upsert `item_location` and write `to_location_id`.
@@ -42,6 +45,7 @@ HAVING COALESCE(SUM(il.qty_on_hand), 0) <> iw.current_stock;
 - [x] Update warehouse transfer flow: OUT with `from_location_id`, IN with `to_location_id`.
 
 ## Phase 1: UI
+
 - [x] Warehouse → Locations screen (create/edit/deactivate).
 - [x] Item → Warehouse stock tab: add Locations tab with per-location quantities.
 - [x] Stock In form: optional To Location (default MAIN).
@@ -49,16 +53,19 @@ HAVING COALESCE(SUM(il.qty_on_hand), 0) <> iw.current_stock;
 - [x] Internal Transfer form: From → To Location.
 
 ## Phase 1: Permissions
+
 - [x] Add `manage_locations` permission.
 - [x] Add `view_location_stock` permission.
 - [x] Add `transfer_between_locations` permission.
 - [x] Wire permissions into routes/UI.
 
 ## Phase 1: Validation + QA
+
 - [x] Guard against negative qty and reserved > on_hand in API.
 - [ ] Verify migration/backfill on staging data.
 - [ ] End-to-end test: receive → move → sell → reconcile totals.
 
 ## Phase 2 (Optional)
+
 - [ ] DB triggers for item_location ↔ item_warehouse consistency.
 - [ ] Make location selection required per warehouse config.

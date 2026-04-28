@@ -14,10 +14,7 @@ export default function FinancialSettingsPage() {
   const { data: settings, isLoading, error } = useSettings("financial");
 
   return (
-    <SettingsPageLayout
-      title={t("financialTitle")}
-      description={t("financialDescription")}
-    >
+    <SettingsPageLayout title={t("financialTitle")} description={t("financialDescription")}>
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

@@ -84,7 +84,10 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as CreateDeliveryNoteBody;
     if (!body.items || body.items.length === 0) {
-      return NextResponse.json({ error: "At least one delivery note line is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "At least one delivery note line is required" },
+        { status: 400 }
+      );
     }
 
     const fulfillmentMode = body.fulfillmentMode || "transfer_to_store";
@@ -92,7 +95,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid fulfillment mode" }, { status: 400 });
     }
 
-    const distinctSrIds = Array.from(new Set([...(body.srIds || []), ...body.items.map((item) => item.srId)]));
+    const distinctSrIds = Array.from(
+      new Set([...(body.srIds || []), ...body.items.map((item) => item.srId)])
+    );
 
     const { data: stockRequests } = await auth.supabase
       .from("stock_requests")
@@ -102,7 +107,10 @@ export async function POST(request: NextRequest) {
       .is("deleted_at", null);
 
     if (!stockRequests || stockRequests.length !== distinctSrIds.length) {
-      return NextResponse.json({ error: "One or more stock requests are invalid" }, { status: 400 });
+      return NextResponse.json(
+        { error: "One or more stock requests are invalid" },
+        { status: 400 }
+      );
     }
 
     const requestMap = new Map(stockRequests.map((row) => [row.id, row]));
@@ -112,7 +120,10 @@ export async function POST(request: NextRequest) {
 
     for (const sr of stockRequests) {
       if (!sr.fulfilling_warehouse_id || !sr.requesting_warehouse_id) {
-        return NextResponse.json({ error: "Stock request warehouse mapping is incomplete" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Stock request warehouse mapping is incomplete" },
+          { status: 400 }
+        );
       }
 
       const expectedSource = sr.requesting_warehouse_id;
@@ -136,10 +147,16 @@ export async function POST(request: NextRequest) {
         items(item_code, item_name)
       `
       )
-      .in("id", body.items.map((line) => line.srItemId));
+      .in(
+        "id",
+        body.items.map((line) => line.srItemId)
+      );
 
     if (!requestItems || requestItems.length !== body.items.length) {
-      return NextResponse.json({ error: "One or more stock request items are invalid" }, { status: 400 });
+      return NextResponse.json(
+        { error: "One or more stock request items are invalid" },
+        { status: 400 }
+      );
     }
 
     const requestItemMap = new Map(requestItems.map((item) => [item.id, item]));
@@ -154,7 +171,10 @@ export async function POST(request: NextRequest) {
       `
       )
       .eq("company_id", auth.companyId)
-      .in("sr_item_id", body.items.map((line) => line.srItemId));
+      .in(
+        "sr_item_id",
+        body.items.map((line) => line.srItemId)
+      );
 
     const allocatedByItem = new Map<string, number>();
     for (const existing of existingDnItems || []) {
@@ -181,7 +201,10 @@ export async function POST(request: NextRequest) {
 
       const srItem = requestItemMap.get(line.srItemId);
       if (!srItem || srItem.stock_request_id !== line.srId) {
-        return NextResponse.json({ error: `Invalid stock request item ${line.srItemId}` }, { status: 400 });
+        return NextResponse.json(
+          { error: `Invalid stock request item ${line.srItemId}` },
+          { status: 400 }
+        );
       }
 
       if (srItem.item_id !== line.itemId || srItem.uom_id !== line.uomId) {
@@ -193,7 +216,10 @@ export async function POST(request: NextRequest) {
 
       const allocatedQty = toNumber(line.allocatedQty);
       if (allocatedQty <= 0) {
-        return NextResponse.json({ error: "Allocated quantity must be greater than zero" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Allocated quantity must be greater than zero" },
+          { status: 400 }
+        );
       }
 
       const alreadyAllocated = allocatedByItem.get(line.srItemId) || 0;
@@ -237,7 +263,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (createError || !dn) {
-      return NextResponse.json({ error: createError?.message || "Failed to create delivery note" }, { status: 500 });
+      return NextResponse.json(
+        { error: createError?.message || "Failed to create delivery note" },
+        { status: 500 }
+      );
     }
 
     const dnSources = distinctSrIds.map((srId) => ({
@@ -247,7 +276,9 @@ export async function POST(request: NextRequest) {
       created_at: nowIso,
     }));
 
-    const { error: sourceError } = await auth.supabase.from("delivery_note_sources").insert(dnSources);
+    const { error: sourceError } = await auth.supabase
+      .from("delivery_note_sources")
+      .insert(dnSources);
     if (sourceError) {
       return NextResponse.json({ error: sourceError.message }, { status: 500 });
     }

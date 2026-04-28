@@ -227,7 +227,10 @@ export const updateTransformationTemplateSchema = z.object({
   sheetUnit: z.enum(["in", "cm", "mm"]).optional(),
   layout: sheetLayoutSchema.optional(),
   inputs: z.array(templateInputItemSchema).min(1, "At least one input item is required").optional(),
-  outputs: z.array(templateOutputItemSchema).min(1, "At least one output item is required").optional(),
+  outputs: z
+    .array(templateOutputItemSchema)
+    .min(1, "At least one output item is required")
+    .optional(),
   isActive: z.boolean().optional(),
 });
 

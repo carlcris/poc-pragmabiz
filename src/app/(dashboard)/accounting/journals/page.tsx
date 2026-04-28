@@ -102,7 +102,12 @@ export default function JournalsPage() {
 
     return (
       <StatusText tone={tones[status]}>
-        {(status === "posted" ? t("posted") : status === "draft" ? t("draft") : tCommon("cancelled")).toUpperCase()}
+        {(status === "posted"
+          ? t("posted")
+          : status === "draft"
+            ? t("draft")
+            : tCommon("cancelled")
+        ).toUpperCase()}
       </StatusText>
     );
   };
@@ -118,7 +123,15 @@ export default function JournalsPage() {
 
     return (
       <Badge className={colors[module]} variant="secondary">
-        {module === "AR" ? t("ar") : module === "AP" ? t("ap") : module === "Inventory" ? t("inventory") : module === "Manual" ? t("manual") : module}
+        {module === "AR"
+          ? t("ar")
+          : module === "AP"
+            ? t("ap")
+            : module === "Inventory"
+              ? t("inventory")
+              : module === "Manual"
+                ? t("manual")
+                : module}
       </Badge>
     );
   };
@@ -251,7 +264,13 @@ export default function JournalsPage() {
               journals.map((journal) => (
                 <TableRow key={journal.id}>
                   <TableCell className="font-mono font-medium">{journal.journalCode}</TableCell>
-                  <TableCell>{new Date(journal.postingDate).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}</TableCell>
+                  <TableCell>
+                    {new Date(journal.postingDate).toLocaleDateString(locale, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </TableCell>
                   <TableCell>{getSourceModuleBadge(journal.sourceModule)}</TableCell>
                   <TableCell className="font-mono text-sm">
                     {journal.referenceCode || "-"}

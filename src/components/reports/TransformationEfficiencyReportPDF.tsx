@@ -32,7 +32,12 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: "#6b7280", marginBottom: 6 },
   meta: { fontSize: 10, color: "#6b7280" },
   table: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 4, overflow: "hidden" },
-  tableHeader: { flexDirection: "row", backgroundColor: "#e5e7eb", minHeight: 36, alignItems: "center" },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#e5e7eb",
+    minHeight: 36,
+    alignItems: "center",
+  },
   row: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#e5e7eb", minHeight: 38 },
   cell: { paddingHorizontal: 4, paddingVertical: 7, justifyContent: "center" },
   headerText: { fontSize: 9 },
@@ -74,13 +79,27 @@ export const TransformationEfficiencyReportPDF = ({
 
       <View style={styles.table}>
         <View style={styles.tableHeader}>
-          <View style={[styles.cell, styles.wGroup]}><Text style={styles.headerText}>{groupLabel}</Text></View>
-          <View style={[styles.cell, styles.wQty]}><Text style={[styles.headerText, styles.right]}>{ordersLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{yieldLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{wasteLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{planLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{avgCycleLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{varianceLabel}</Text></View>
+          <View style={[styles.cell, styles.wGroup]}>
+            <Text style={styles.headerText}>{groupLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wQty]}>
+            <Text style={[styles.headerText, styles.right]}>{ordersLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{yieldLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{wasteLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{planLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{avgCycleLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{varianceLabel}</Text>
+          </View>
         </View>
 
         {rows.map((row) => (
@@ -93,12 +112,26 @@ export const TransformationEfficiencyReportPDF = ({
                 {row.templateName || row.warehouseName || noValueLabel}
               </Text>
             </View>
-            <View style={[styles.cell, styles.wQty]}><Text style={[styles.cellText, styles.right]}>{num(row.orderCount, 0)}</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.yieldPct)}%</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.wasteRatePct)}%</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.planAdherencePct)}%</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.averageCycleSeconds / 60)}</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.totalCostVariance)}</Text></View>
+            <View style={[styles.cell, styles.wQty]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.orderCount, 0)}</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.yieldPct)}%</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.wasteRatePct)}%</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.planAdherencePct)}%</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>
+                {num(row.averageCycleSeconds / 60)}
+              </Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.totalCostVariance)}</Text>
+            </View>
           </View>
         ))}
       </View>

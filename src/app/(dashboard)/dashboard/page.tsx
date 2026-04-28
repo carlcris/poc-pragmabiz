@@ -55,12 +55,10 @@ export default function WarehouseDashboardPage() {
     <div className="container mx-auto space-y-6 p-4 md:p-6">
       {/* Page Header */}
       <div className="border-b border-gray-200 pb-5">
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
+        <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
           {greeting}, {user?.firstName || t("fallbackUser")}!
         </h1>
-        <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-          {t("subtitle")}
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
       </div>
 
       {/* Summary Cards - 3 columns */}

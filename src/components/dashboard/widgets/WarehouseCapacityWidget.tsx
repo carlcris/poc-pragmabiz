@@ -77,10 +77,7 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
           </div>
         </CardHeader>
         <CardContent>
-          <WidgetEmptyState
-            icon={Warehouse}
-            title={t("noCapacityDataAvailable")}
-          />
+          <WidgetEmptyState icon={Warehouse} title={t("noCapacityDataAvailable")} />
         </CardContent>
       </Card>
     );
@@ -99,7 +96,11 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
       : isMediumCapacity
         ? "bg-amber-100 text-amber-700"
         : "bg-green-100 text-green-700",
-    progressColor: isHighCapacity ? "bg-red-500" : isMediumCapacity ? "bg-amber-500" : "bg-green-500",
+    progressColor: isHighCapacity
+      ? "bg-red-500"
+      : isMediumCapacity
+        ? "bg-amber-500"
+        : "bg-green-500",
   };
 
   return (
@@ -128,7 +129,7 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">{t("utilization")}</span>
-            <span className={cn("text-xl sm:text-2xl font-bold", statusConfig.color)}>
+            <span className={cn("text-xl font-bold sm:text-2xl", statusConfig.color)}>
               {utilizationPercent.toFixed(1)}%
             </span>
           </div>
@@ -139,7 +140,9 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
             />
           </div>
           <div className="flex justify-center">
-            <div className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusConfig.bgColor)}>
+            <div
+              className={cn("rounded-full px-3 py-1 text-xs font-semibold", statusConfig.bgColor)}
+            >
               {statusConfig.label}
             </div>
           </div>
@@ -147,17 +150,19 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
 
         {/* Location Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
             <div className="text-xs text-muted-foreground">{t("total")}</div>
-            <p className="mt-1 text-base sm:text-lg font-bold">{data.totalLocations}</p>
+            <p className="mt-1 text-base font-bold sm:text-lg">{data.totalLocations}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
             <div className="text-xs text-muted-foreground">{t("occupied")}</div>
-            <p className="mt-1 text-base sm:text-lg font-bold">{data.occupiedLocations}</p>
+            <p className="mt-1 text-base font-bold sm:text-lg">{data.occupiedLocations}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-2 sm:p-3 text-center">
+          <div className="rounded-lg border bg-muted/50 p-2 text-center sm:p-3">
             <div className="text-xs text-muted-foreground">{t("available")}</div>
-            <p className="mt-1 text-base sm:text-lg font-bold text-green-600">{data.availableSpace}</p>
+            <p className="mt-1 text-base font-bold text-green-600 sm:text-lg">
+              {data.availableSpace}
+            </p>
           </div>
         </div>
 
@@ -171,7 +176,9 @@ export function WarehouseCapacityWidget({ warehouseId }: WarehouseCapacityWidget
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">{t("spaceRemaining")}</span>
-            <span className="font-semibold text-green-600">{t("locationsRemaining", { count: data.availableSpace })}</span>
+            <span className="font-semibold text-green-600">
+              {t("locationsRemaining", { count: data.availableSpace })}
+            </span>
           </div>
         </div>
 

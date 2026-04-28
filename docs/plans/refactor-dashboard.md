@@ -5,12 +5,13 @@ You are a senior full-stack engineer working on an ERP web app. Implement a **Wa
 ## 0) Goal
 
 Build a **Warehouse Operator Dashboard** that shows:
-1) **Incoming Deliveries**
-2) **Stock Requests / Withdrawals**
-3) **Pick List**
-4) **Last 5 Stock Movements**
-5) **Low Stocks**
-6) **Out of Stocks**
+
+1. **Incoming Deliveries**
+2. **Stock Requests / Withdrawals**
+3. **Pick List**
+4. **Last 5 Stock Movements**
+5. **Low Stocks**
+6. **Out of Stocks**
 
 The dashboard must be operational (action-first) and role-appropriate for warehouse staff.
 
@@ -39,12 +40,15 @@ The dashboard must be operational (action-first) and role-appropriate for wareho
 ## 3) UI Layout Specification (Exact)
 
 ### 3.1 Top Summary Row (3 cards)
+
 At the top, show 3 cards with:
+
 - **📦 Incoming Deliveries (Today)**: count
 - **📤 Stock Requests / Withdrawals (Pending)**: count
 - **🧾 Pick List (To Pick)**: count
 
 Card behavior:
+
 - Entire card clickable.
 - Navigates to:
   - Incoming Deliveries list view
@@ -52,29 +56,36 @@ Card behavior:
   - Pick List view
 
 Card content:
+
 - Title
 - Count (large)
 - Subtext (small): e.g., "Today", "Pending", "To Pick"
 
 ### 3.2 Inventory Health (2 columns)
+
 Below summary row:
+
 - Left panel: **Low Stocks** (list, max 8 items)
 - Right panel: **Out of Stocks** (list, max 8 items)
 
 Each row shows:
+
 - Item name (primary)
 - On-hand qty + UOM (secondary)
 - Optional: primary location code (if available)
-Row click => item detail page (or item stock/location page).
+  Row click => item detail page (or item stock/location page).
 
 ### 3.3 Operational Queue (Tabbed)
+
 Below inventory health:
 Tabs:
+
 - Default tab: **Pick List**
 - Tab 2: **Incoming Deliveries**
 - Tab 3: **Stock Requests / Withdrawals**
 
 Each tab is a compact queue list (max 12 rows) with:
+
 - Identifier (SO/PO/REQ number)
 - Counter fields (item lines, qty summary)
 - Priority badge (if supported) or status badge
@@ -86,10 +97,12 @@ Each tab is a compact queue list (max 12 rows) with:
 Row click opens details; CTA starts the workflow screen.
 
 ### 3.4 Last 5 Stock Movements
+
 Bottom section:
+
 - Title: "Last 5 Stock Movements"
 - List exactly 5 most recent movements (filtered to allowed warehouse/BU)
-Each row:
+  Each row:
 - Movement type badge: IN/OUT/ADJ/TRANSFER (based on your system)
 - Item name
 - Qty + UOM
@@ -97,6 +110,7 @@ Each row:
 - Performed by (user name if available)
 
 Ordering:
+
 - Most recent first
 - Stable tie-breaker: created_at DESC, id DESC
 
@@ -109,24 +123,28 @@ You must implement server endpoints (or service functions) that return exactly w
 ### 4.1 Definitions
 
 #### Incoming Deliveries (Today)
+
 - Deliveries scheduled for today OR created today with status in:
   - `PENDING`, `ARRIVING`, `RECEIVING` (adapt to your enums)
 - Count shown in top card uses these rules.
 - Tab list shows up to 12, sorted by ETA ASC then created_at ASC.
 
 #### Stock Requests / Withdrawals (Pending)
+
 - Requests with status:
   - `PENDING`, `APPROVED` (if warehouse still needs to fulfill), `FOR_PICK` (adapt)
 - Count in top card = all statuses that require warehouse action.
 - Tab list up to 12, sorted by priority DESC then created_at ASC.
 
 #### Pick List (To Pick)
+
 - Pick tasks/orders with status:
   - `READY_TO_PICK` / `PICKING` (if assigned to current user) (adapt)
 - Count in top card = READY_TO_PICK (not completed)
 - Tab list up to 12, sorted by priority DESC then requested_ship_date ASC then created_at ASC.
 
 #### Low Stocks
+
 - Source of truth: `item_warehouse.on_hand_qty` (or equivalent)
 - Low stock criteria:
   - `on_hand_qty > 0` AND `on_hand_qty <= reorder_level`
@@ -134,6 +152,7 @@ You must implement server endpoints (or service functions) that return exactly w
 - Limit 8 items.
 
 #### Out of Stocks
+
 - Criteria:
   - `on_hand_qty <= 0`
 - Sort by most recently moved items first:
@@ -141,6 +160,7 @@ You must implement server endpoints (or service functions) that return exactly w
 - Limit 8 items.
 
 #### Last 5 Stock Movements
+
 - Source: `stock_transactions` (or equivalent)
 - Show last 5 by created_at DESC
 - Filter by allowed warehouse/BU
@@ -268,3 +288,4 @@ last 5 movements ordering
 permission filtering
 
 Implement now.
+```

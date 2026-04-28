@@ -4,7 +4,16 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2, Pencil, FileText, ArrowDownToLine, ArrowUpFromLine, Image as ImageIcon, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  FileText,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Image as ImageIcon,
+  AlertCircle,
+} from "lucide-react";
 import {
   useCreateTransformationTemplate,
   useUpdateTransformationTemplate,
@@ -326,12 +335,13 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
             {template && template.usage_count > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-amber-900">Template In Use</h4>
                     <p className="mt-1 text-sm text-amber-700">
-                      This template has been used {template.usage_count} time{template.usage_count > 1 ? 's' : ''}.
-                      Input and output materials cannot be modified.
+                      This template has been used {template.usage_count} time
+                      {template.usage_count > 1 ? "s" : ""}. Input and output materials cannot be
+                      modified.
                     </p>
                   </div>
                 </div>
@@ -344,10 +354,10 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                 <FileText className="h-4 w-4 text-muted-foreground" />
                 <h3 className="text-sm font-semibold">Basic Information</h3>
               </div>
-              <div className="p-6 space-y-4">
+              <div className="space-y-4 p-6">
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                   {/* Form Fields */}
-                  <div className="lg:col-span-2 space-y-4">
+                  <div className="space-y-4 lg:col-span-2">
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -356,7 +366,11 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                           <FormItem>
                             <FormLabel>Template Code *</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="e.g., BREAD-001" disabled={!!template} />
+                              <Input
+                                {...field}
+                                placeholder="e.g., BREAD-001"
+                                disabled={!!template}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -429,7 +443,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                       <ArrowDownToLine className="h-4 w-4 text-blue-600" />
                       <h3 className="text-sm font-semibold">Input Materials</h3>
                       <span className="text-xs text-muted-foreground">
-                        ({inputs.length} item{inputs.length !== 1 ? 's' : ''})
+                        ({inputs.length} item{inputs.length !== 1 ? "s" : ""})
                       </span>
                     </div>
                     <Button
@@ -452,7 +466,8 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                         No input materials added yet
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Click &quot;Add Input&quot; to add raw materials required for this transformation
+                        Click &quot;Add Input&quot; to add raw materials required for this
+                        transformation
                       </p>
                     </div>
                   ) : (
@@ -464,7 +479,9 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                             <TableHead className="font-semibold">Item Name</TableHead>
                             <TableHead className="text-right font-semibold">Quantity</TableHead>
                             <TableHead className="font-semibold">UOM</TableHead>
-                            <TableHead className="w-[120px] text-center font-semibold">Actions</TableHead>
+                            <TableHead className="w-[120px] text-center font-semibold">
+                              Actions
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -472,7 +489,9 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                             <TableRow key={index}>
                               <TableCell className="font-mono text-xs">{input.itemCode}</TableCell>
                               <TableCell className="font-medium">{input.itemName}</TableCell>
-                              <TableCell className="text-right font-semibold">{input.quantity}</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {input.quantity}
+                              </TableCell>
                               <TableCell>
                                 <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
                                   {input.uom}
@@ -515,7 +534,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                       <ArrowUpFromLine className="h-4 w-4 text-green-600" />
                       <h3 className="text-sm font-semibold">Output Products</h3>
                       <span className="text-xs text-muted-foreground">
-                        ({outputs.length} item{outputs.length !== 1 ? 's' : ''})
+                        ({outputs.length} item{outputs.length !== 1 ? "s" : ""})
                       </span>
                     </div>
                     <Button
@@ -551,7 +570,9 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                             <TableHead className="text-right font-semibold">Quantity</TableHead>
                             <TableHead className="font-semibold">UOM</TableHead>
                             <TableHead className="font-semibold">Type</TableHead>
-                            <TableHead className="w-[120px] text-center font-semibold">Actions</TableHead>
+                            <TableHead className="w-[120px] text-center font-semibold">
+                              Actions
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -559,7 +580,9 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
                             <TableRow key={index}>
                               <TableCell className="font-mono text-xs">{output.itemCode}</TableCell>
                               <TableCell className="font-medium">{output.itemName}</TableCell>
-                              <TableCell className="text-right font-semibold">{output.quantity}</TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {output.quantity}
+                              </TableCell>
                               <TableCell>
                                 <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
                                   {output.uom}
@@ -611,7 +634,7 @@ export function TransformationTemplateFormDialog({ open, onOpenChange, template 
             {form.formState.errors.root && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+                  <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />
                   <div className="flex-1">
                     <h4 className="text-sm font-semibold text-destructive">Validation Error</h4>
                     <p className="mt-1 text-sm text-destructive/90">

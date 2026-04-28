@@ -44,10 +44,7 @@ export async function createPOSStockTransaction(
     const supabase = await createClient();
 
     const itemIds = data.items.map((item) => item.itemId);
-    const { data: itemUoms } = await supabase
-      .from("items")
-      .select("id, uom_id")
-      .in("id", itemIds);
+    const { data: itemUoms } = await supabase.from("items").select("id, uom_id").in("id", itemIds);
     const itemUomMap = new Map(
       (itemUoms as Array<{ id: string; uom_id: string | null }> | null)?.map((row) => [
         row.id,

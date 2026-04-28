@@ -359,7 +359,9 @@ export const DeliveryNotePDF: React.FC<DeliveryNotePDFProps> = ({
 }) => {
   const rows = (deliveryNote.delivery_note_items || []).map((item, index) => {
     const itemRef = Array.isArray(item.items) ? item.items[0] : item.items;
-    const uomRef = Array.isArray(item.units_of_measure) ? item.units_of_measure[0] : item.units_of_measure;
+    const uomRef = Array.isArray(item.units_of_measure)
+      ? item.units_of_measure[0]
+      : item.units_of_measure;
     const directUnitOptionRef = Array.isArray(item.item_unit_options)
       ? item.item_unit_options[0]
       : item.item_unit_options;
@@ -377,10 +379,16 @@ export const DeliveryNotePDF: React.FC<DeliveryNotePDFProps> = ({
       code: toText(itemRef?.item_code || item.item_id),
       description: toText(itemRef?.item_name || itemRef?.item_code),
       unit: directUnitOptionRef
-        ? transformItemUnitOptionRow(directUnitOptionRef as unknown as DbItemUnitOptionRow, uomRef?.code || "").displayLabel
+        ? transformItemUnitOptionRow(
+            directUnitOptionRef as unknown as DbItemUnitOptionRow,
+            uomRef?.code || ""
+          ).displayLabel
         : unitOptionRef
-        ? transformItemUnitOptionRow(unitOptionRef as unknown as DbItemUnitOptionRow, uomRef?.code || "").displayLabel
-        : toText(uomRef?.symbol || uomRef?.code || uomRef?.name),
+          ? transformItemUnitOptionRow(
+              unitOptionRef as unknown as DbItemUnitOptionRow,
+              uomRef?.code || ""
+            ).displayLabel
+          : toText(uomRef?.symbol || uomRef?.code || uomRef?.name),
       qty: toNumber(item.allocated_qty),
     };
   });
@@ -484,9 +492,7 @@ export const DeliveryNotePDF: React.FC<DeliveryNotePDFProps> = ({
                   <Text style={[styles.cellText, styles.textCenter]}>{row.unit}</Text>
                 </View>
                 <View style={styles.colQty}>
-                  <Text style={[styles.cellTextBold, styles.textRight]}>
-                    {row.qty.toFixed(2)}
-                  </Text>
+                  <Text style={[styles.cellTextBold, styles.textRight]}>{row.qty.toFixed(2)}</Text>
                 </View>
               </View>
             ))}

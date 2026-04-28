@@ -30,7 +30,7 @@ export const MetricCard = ({
     </CardHeader>
     <CardContent className="flex min-h-[72px] flex-col justify-between gap-2">
       <div className={valueClassName}>
-        {isLoading ? <Skeleton className="h-8 w-24" /> : value ?? "-"}
+        {isLoading ? <Skeleton className="h-8 w-24" /> : (value ?? "-")}
       </div>
       {caption || skeletonCaption ? (
         <div className="min-h-[16px]">

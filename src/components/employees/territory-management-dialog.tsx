@@ -224,9 +224,9 @@ export function TerritoryManagementDialog({
                               {territory.city}, {territory.regionState}
                             </span>
                             {territory.isPrimary && (
-                                <Badge variant="default" className="text-xs">
+                              <Badge variant="default" className="text-xs">
                                 {t("primary")}
-                                </Badge>
+                              </Badge>
                             )}
                           </div>
                         </div>

@@ -13,6 +13,7 @@
 **Status**: COMPLETED 2025-11-26
 
 ### 1.1 Create New Tables ✅
+
 - [x] Create `item_variants` table
   - [x] Write migration up SQL
   - [x] Write migration down SQL (for rollback scenarios)
@@ -31,6 +32,7 @@
 **Migration File**: `20251126000000_add_item_variants_packaging_prices.sql`
 
 ### 1.2 Add Nullable Columns to Existing Tables ✅
+
 - [x] Modified ALL transaction tables
   - [x] `stock_transaction_items` - Added variant_id, packaging_id
   - [x] `purchase_order_items` - Added variant_id, packaging_id
@@ -47,12 +49,14 @@
   - [x] Existing data preserved
 
 ### 1.3 API Backward Compatibility Setup ⏸
+
 - [ ] Review existing inventory APIs
   - [ ] Document current API contracts
   - [ ] Identify endpoints that need variant/packaging support
   - [ ] Plan backward-compatible changes
 
 **Notes**:
+
 - Phase 1.1 and 1.2 COMPLETED successfully
 - All tables created with proper indexes, triggers, and constraints
 - Migration tested locally - NO ERRORS
@@ -66,6 +70,7 @@
 **Status**: COMPLETED 2025-11-26
 
 ### 2.1 Create Default Variants ✅
+
 - [x] Write migration script to create default variants
   - [x] One variant per existing item
   - [x] Set `variant_code` = 'DEFAULT'
@@ -78,6 +83,7 @@
 **Result**: 30 variants created for 30 items
 
 ### 2.2 Create Default Packaging ✅
+
 - [x] Write migration script to create default packaging
   - [x] One packaging per variant
   - [x] Set `pack_type` = 'each'
@@ -90,6 +96,7 @@
 **Result**: 30 packaging options created
 
 ### 2.3 Migrate Price Tiers ✅
+
 - [x] Write migration script to migrate prices
   - [x] Migrate `purchase_price` → 'fc' (Factory Cost)
   - [x] Migrate `cost_price` → 'ws' (Wholesale)
@@ -102,6 +109,7 @@
 **Result**: 90 price records created (30 items × 3 tiers)
 
 ### 2.4 Verification ✅
+
 - [x] Verified all existing items have:
   - [x] One default variant ✓
   - [x] One default packaging (qty=1) ✓
@@ -110,10 +118,12 @@
 - [x] No migration issues encountered
 
 **Migration Files**:
+
 - `20251126000100_migrate_existing_items_to_variants.sql` (production migration)
 - Updated `seed.sql` (for development seeding)
 
 **Notes**:
+
 - Migration is IDEMPOTENT (safe to run multiple times)
 - Uses ON CONFLICT DO NOTHING to prevent duplicates
 - Old price fields in items table NOT deleted (backward compatibility)
@@ -128,6 +138,7 @@
 **Status**: IN PROGRESS - Variants feature completed (2025-11-26)
 
 ### 3.1 Update Item Master Screen
+
 - [x] Design tab layout (General / Variants / Packaging / Prices)
 - [x] Implement General tab (existing fields)
 - [x] Implement Variants tab
@@ -149,6 +160,7 @@
 - [ ] Test item master CRUD operations
 
 **Completed Components**:
+
 - `/src/app/(dashboard)/inventory/items/[id]/page.tsx` - Item detail page with tabs
 - `/src/components/items/variants/VariantsTab.tsx` - Full CRUD for variants
 - `/src/components/items/variants/VariantFormDialog.tsx` - Create/edit variant form
@@ -157,6 +169,7 @@
 - Updated items list page to link to detail page
 
 ### 3.2 Update Transaction Forms
+
 - [ ] **Purchase Receipt Form**
   - [ ] Add variant dropdown (default auto-selected)
   - [ ] Add packaging dropdown (default auto-selected)
@@ -184,6 +197,7 @@
   - [ ] Add packaging dropdown
 
 ### 3.3 Computation Logic Implementation
+
 - [ ] Create utility functions for packaging conversions
   - [ ] `calculateBaseQuantity(qty, packaging)` → qty × qty_per_pack
   - [ ] `calculatePackageQuantity(baseQty, packaging)` → baseQty / qty_per_pack
@@ -199,6 +213,7 @@
 **Goal**: Update backend logic to support variants and packaging
 
 ### 4.1 Stock-In Transaction Logic
+
 - [ ] Update stock-in API to accept:
   - [ ] `variant_id` (optional, defaults to default variant)
   - [ ] `packaging_id` (optional, defaults to default packaging)
@@ -212,6 +227,7 @@
 - [ ] Test stock-in with variants and packaging
 
 ### 4.2 Stock-Out Transaction Logic
+
 - [ ] Update stock-out API to accept:
   - [ ] `variant_id`
   - [ ] `packaging_id`
@@ -221,6 +237,7 @@
 - [ ] Test stock-out with variants and packaging
 
 ### 4.3 Stock Calculation Functions
+
 - [ ] Update stock ledger queries
   - [ ] GROUP BY `item_id`, `variant_id`, `warehouse_id`
   - [ ] Calculate running balance per variant
@@ -231,6 +248,7 @@
 - [ ] Test stock calculations with multi-variant scenarios
 
 ### 4.4 API Endpoints
+
 - [ ] **Variant APIs**
   - [ ] `GET /api/items/{id}/variants` - List variants
   - [ ] `POST /api/items/{id}/variants` - Create variant
@@ -254,6 +272,7 @@
 **Goal**: Comprehensive testing to ensure zero bugs
 
 ### 5.1 Unit Tests
+
 - [ ] Test variant CRUD operations
 - [ ] Test packaging CRUD operations
 - [ ] Test price tier CRUD operations
@@ -262,6 +281,7 @@
 - [ ] Test stock calculation with variants
 
 ### 5.2 Integration Tests
+
 - [ ] Test full purchase flow:
   - [ ] Create item with variant (8×12 canvas)
   - [ ] Set packaging (100 pcs/carton)
@@ -277,6 +297,7 @@
   - [ ] Verify correct qty calculations
 
 ### 5.3 Regression Tests
+
 - [ ] Test existing items without variants
   - [ ] Should use default variant automatically
   - [ ] Should work exactly as before
@@ -291,6 +312,7 @@
   - [ ] Purchase analysis report
 
 ### 5.4 UAT Test Cases
+
 - [ ] **Scenario 1: Canvas Item**
   - [ ] Create "Stretch Canvas" item
   - [ ] Add variant "8×12"
@@ -318,6 +340,7 @@
 **Goal**: Deploy to production safely
 
 ### 6.1 Release Steps
+
 - [ ] **Database Deployment**
   - [ ] Backup production database
   - [ ] Run Phase 1 migrations (new tables, nullable columns)
@@ -334,6 +357,7 @@
   - [ ] Monitor user feedback
 
 ### 6.2 Monitoring
+
 - [ ] Set up monitoring dashboards
   - [ ] Transaction logs (variant/packaging usage)
   - [ ] Error logs (API failures)
@@ -352,12 +376,14 @@
 **Goal**: Advanced features and gradual improvements
 
 ### 7.1 Gradual Item Migration
+
 - [ ] Document process for migrating old items to variants
 - [ ] Create bulk migration tools (if needed)
 - [ ] Train users on variant creation
 - [ ] Support migration on request
 
 ### 7.2 Advanced Features (Optional - Phase 2)
+
 - [ ] Barcode per packaging
   - [ ] Add `barcode` field to `item_packaging`
   - [ ] Update POS scanner to use packaging barcodes
@@ -383,6 +409,7 @@
 ---
 
 ## Legend
+
 - ✅ = Completed
 - ❌ = Not Started
 - ⏸ = In Progress
@@ -393,12 +420,14 @@
 ## Notes and Issues
 
 ### Issues Log
-*(Track any blockers or issues encountered during implementation)*
+
+_(Track any blockers or issues encountered during implementation)_
 
 - None yet
 
 ### Decisions Log
-*(Track key decisions made during implementation)*
+
+_(Track key decisions made during implementation)_
 
 - **2025-11-26**: Default variant code = "DEFAULT" for all items
 - **2025-11-26**: Price migration mapping:

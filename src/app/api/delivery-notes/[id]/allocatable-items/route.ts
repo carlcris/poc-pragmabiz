@@ -116,7 +116,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       const dnHeader = Array.isArray(existing.delivery_notes)
         ? existing.delivery_notes[0]
         : existing.delivery_notes;
-      if (!dnHeader || ["voided", "received"].includes(dnHeader.status) || existing.is_voided) continue;
+      if (!dnHeader || ["voided", "received"].includes(dnHeader.status) || existing.is_voided)
+        continue;
       const prior = allocatedByItem.get(existing.sr_item_id) || 0;
       allocatedByItem.set(existing.sr_item_id, prior + toNumber(existing.allocated_qty));
     }
@@ -124,9 +125,13 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     const data = (requestItems || [])
       .filter((row) => !existingSrItemIds.has(row.id as string))
       .map((row) => {
-        const request = Array.isArray(row.stock_requests) ? row.stock_requests[0] : row.stock_requests;
+        const request = Array.isArray(row.stock_requests)
+          ? row.stock_requests[0]
+          : row.stock_requests;
         const item = Array.isArray(row.items) ? row.items[0] : row.items;
-        const uom = Array.isArray(row.units_of_measure) ? row.units_of_measure[0] : row.units_of_measure;
+        const uom = Array.isArray(row.units_of_measure)
+          ? row.units_of_measure[0]
+          : row.units_of_measure;
         const unitOption = Array.isArray(row.item_unit_options)
           ? row.item_unit_options[0]
           : row.item_unit_options;
@@ -147,7 +152,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
           uomId: row.uom_id,
           uomLabel:
             (unitOption
-              ? transformItemUnitOptionRow(unitOption as DbItemUnitOptionRow, uom?.code || "").displayLabel
+              ? transformItemUnitOptionRow(unitOption as DbItemUnitOptionRow, uom?.code || "")
+                  .displayLabel
               : null) ||
             uom?.code ||
             uom?.symbol ||

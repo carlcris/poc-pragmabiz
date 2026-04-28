@@ -111,9 +111,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query with pagination
-    const { data: grns, error, count } = await query
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const {
+      data: grns,
+      error,
+      count,
+    } = await query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
 
     if (error) {
       console.error("Error fetching GRNs:", error);
@@ -122,29 +124,25 @@ export async function GET(request: NextRequest) {
 
     // Format response
     const formattedGRNs = grns?.map((grn) => {
-      const loadList = Array.isArray(grn.load_list)
-        ? grn.load_list[0]
-        : grn.load_list ?? null;
+      const loadList = Array.isArray(grn.load_list) ? grn.load_list[0] : (grn.load_list ?? null);
       const loadListSupplier = loadList
         ? Array.isArray(loadList.supplier)
           ? loadList.supplier[0]
-          : loadList.supplier ?? null
+          : (loadList.supplier ?? null)
         : null;
       const businessUnit = Array.isArray(grn.business_unit)
         ? grn.business_unit[0]
-        : grn.business_unit ?? null;
-      const warehouse = Array.isArray(grn.warehouse)
-        ? grn.warehouse[0]
-        : grn.warehouse ?? null;
+        : (grn.business_unit ?? null);
+      const warehouse = Array.isArray(grn.warehouse) ? grn.warehouse[0] : (grn.warehouse ?? null);
       const receivedByUser = Array.isArray(grn.received_by_user)
         ? grn.received_by_user[0]
-        : grn.received_by_user ?? null;
+        : (grn.received_by_user ?? null);
       const checkedByUser = Array.isArray(grn.checked_by_user)
         ? grn.checked_by_user[0]
-        : grn.checked_by_user ?? null;
+        : (grn.checked_by_user ?? null);
       const createdByUser = Array.isArray(grn.created_by_user)
         ? grn.created_by_user[0]
-        : grn.created_by_user ?? null;
+        : (grn.created_by_user ?? null);
 
       return {
         id: grn.id,
@@ -301,7 +299,9 @@ export async function POST(request: NextRequest) {
 
     const requestedLoadListItemIds = Array.from(
       new Set(
-        (body.items as Array<{ loadListItemId?: string }>).map((item) => item.loadListItemId).filter(Boolean)
+        (body.items as Array<{ loadListItemId?: string }>)
+          .map((item) => item.loadListItemId)
+          .filter(Boolean)
       )
     ) as string[];
 

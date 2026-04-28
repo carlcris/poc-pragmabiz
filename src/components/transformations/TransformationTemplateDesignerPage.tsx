@@ -375,11 +375,7 @@ const getSectionTextLayout = (section: SheetLayoutSection) => {
   };
 };
 
-const wrapSvgText = (
-  text: string,
-  maxCharsPerLine: number,
-  maxLines: number
-): string[] => {
+const wrapSvgText = (text: string, maxCharsPerLine: number, maxLines: number): string[] => {
   const normalized = text.trim().replace(/\s+/g, " ");
   if (!normalized) return [];
 
@@ -416,7 +412,8 @@ const wrapSvgText = (
   if (words.length > 0 && lines.length) {
     const usedWords = lines.join(" ").split(" ").length;
     if (usedWords < words.length) {
-      lines[lines.length - 1] = `${lines[lines.length - 1].slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`;
+      lines[lines.length - 1] =
+        `${lines[lines.length - 1].slice(0, Math.max(0, maxCharsPerLine - 1)).trimEnd()}…`;
     }
   }
 
@@ -454,7 +451,9 @@ export function TransformationTemplateDesignerPage() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [sliceDialogOpen, setSliceDialogOpen] = useState(false);
   const [sliceDialogError, setSliceDialogError] = useState<string | null>(null);
-  const [sliceDialogSelection, setSliceDialogSelection] = useState<SliceDialogSelection | null>(null);
+  const [sliceDialogSelection, setSliceDialogSelection] = useState<SliceDialogSelection | null>(
+    null
+  );
   const [sliceItemOpen, setSliceItemOpen] = useState(false);
   const [sliceItemSearchInput, setSliceItemSearchInput] = useState("");
   const [sliceItemSearch, setSliceItemSearch] = useState("");
@@ -700,7 +699,7 @@ export function TransformationTemplateDesignerPage() {
 
     const nextSections = sections.map((section) =>
       section.id === selectedSection.id
-        ? { ...section, type, mappedItem: type === "piece" ? section.mappedItem ?? null : null }
+        ? { ...section, type, mappedItem: type === "piece" ? (section.mappedItem ?? null) : null }
         : section
     );
     commitSections(nextSections);
@@ -721,7 +720,10 @@ export function TransformationTemplateDesignerPage() {
     }
 
     if (sliceWidth > targetSection.width || sliceHeight > targetSection.height) {
-      return { ok: false as const, error: "Slice dimensions must fit within the selected section." };
+      return {
+        ok: false as const,
+        error: "Slice dimensions must fit within the selected section.",
+      };
     }
 
     const nextSliceSections = buildSliceSections(targetSection, sliceWidth, sliceHeight);
@@ -912,7 +914,7 @@ export function TransformationTemplateDesignerPage() {
     const fallbackSection =
       sections.length === 1 && sections[0]
         ? sections[0]
-        : sections.find((item) => item.id === selectedSectionId) ?? null;
+        : (sections.find((item) => item.id === selectedSectionId) ?? null);
     const section =
       (sectionId ? sections.find((item) => item.id === sectionId) : null) ?? fallbackSection;
 
@@ -998,7 +1000,7 @@ export function TransformationTemplateDesignerPage() {
     setSliceClipboard({
       width: selectedSection.width,
       height: selectedSection.height,
-      mappedItem: selectedSection.type === "piece" ? selectedSection.mappedItem ?? null : null,
+      mappedItem: selectedSection.type === "piece" ? (selectedSection.mappedItem ?? null) : null,
     });
     setContextMenu(null);
     toast.success(`Copied ${selectedSection.label} slice`);
@@ -1029,7 +1031,9 @@ export function TransformationTemplateDesignerPage() {
 
     setInteractionMode("slice");
     setContextMenu(null);
-    toast.success(`Pasted ${sliceClipboard.width.toFixed(2)} x ${sliceClipboard.height.toFixed(2)} slice`);
+    toast.success(
+      `Pasted ${sliceClipboard.width.toFixed(2)} x ${sliceClipboard.height.toFixed(2)} slice`
+    );
   };
 
   const handleContextDeleteSection = () => {
@@ -1272,16 +1276,12 @@ export function TransformationTemplateDesignerPage() {
       setSelectedSectionId(mappedSectionId);
       setRecentlyMappedSectionId(mappedSectionId);
       window.setTimeout(() => {
-        setRecentlyMappedSectionId((current) =>
-          current === mappedSectionId ? null : current
-        );
+        setRecentlyMappedSectionId((current) => (current === mappedSectionId ? null : current));
       }, 1800);
       toast.success(`Mapped ${targetSection.label} to ${item.code}`);
       closeItemPicker();
     } catch (error) {
-      setItemPickerError(
-        error instanceof Error ? error.message : "Failed to load item details."
-      );
+      setItemPickerError(error instanceof Error ? error.message : "Failed to load item details.");
     } finally {
       setIsSelectingItem(false);
     }
@@ -1399,7 +1399,10 @@ export function TransformationTemplateDesignerPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push("/inventory/transformations/templates")}>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/inventory/transformations/templates")}
+          >
             Cancel
           </Button>
           <Button onClick={handleSaveTemplate} disabled={isSaving}>
@@ -1433,7 +1436,7 @@ export function TransformationTemplateDesignerPage() {
           </div>
 
           {/* Parent Sheet Card */}
-          <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="space-y-3 rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2">
               <Package className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Parent Sheet</h3>
@@ -1452,7 +1455,9 @@ export function TransformationTemplateDesignerPage() {
               <div className="rounded-lg border bg-muted/30 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-medium">{parentSheetItem.itemCode}</span>
-                  <Badge variant="secondary" className="text-xs">Source</Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Source
+                  </Badge>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{parentSheetItem.itemName}</p>
               </div>
@@ -1479,7 +1484,10 @@ export function TransformationTemplateDesignerPage() {
                   placeholder="Height"
                   className="text-sm"
                 />
-                <Select value={sheetUnit} onValueChange={(value) => setSheetUnit(value as SheetLayoutUnit)}>
+                <Select
+                  value={sheetUnit}
+                  onValueChange={(value) => setSheetUnit(value as SheetLayoutUnit)}
+                >
                   <SelectTrigger className="w-[80px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -1498,7 +1506,7 @@ export function TransformationTemplateDesignerPage() {
           </div>
 
           {/* Tools Card */}
-          <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="space-y-3 rounded-lg border bg-card p-4">
             <div className="flex items-center gap-2">
               <ScissorsLineDashed className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Tools</h3>
@@ -1558,31 +1566,33 @@ export function TransformationTemplateDesignerPage() {
                     Horizontal
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground pt-1">
+                <p className="pt-1 text-xs text-muted-foreground">
                   Click and drag inside a section to place the cut line
                 </p>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground pt-1">
+              <p className="pt-1 text-xs text-muted-foreground">
                 Enter slice dimensions and plot without drawing a cut line
               </p>
             )}
           </div>
 
           {/* Selection Card */}
-          <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="space-y-3 rounded-lg border bg-card p-4">
             <h3 className="text-sm font-semibold">
               {selectedCut ? "Selected Cut" : selectedSection ? "Selected Section" : "Selection"}
             </h3>
 
             {selectedCut ? (
               <>
-                <div className="rounded-lg bg-muted/30 p-3 space-y-2">
+                <div className="space-y-2 rounded-lg bg-muted/30 p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">
                       {selectedCut.orientation === "vertical" ? "Vertical Cut" : "Horizontal Cut"}
                     </span>
-                    <Badge variant="outline" className="text-xs">Cut Line</Badge>
+                    <Badge variant="outline" className="text-xs">
+                      Cut Line
+                    </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Between {selectedCut.a.label} and {selectedCut.b.label}
@@ -1606,22 +1616,32 @@ export function TransformationTemplateDesignerPage() {
               </>
             ) : selectedSection ? (
               <div className="space-y-3">
-                <div className="rounded-lg bg-muted/30 p-3 space-y-2">
+                <div className="space-y-2 rounded-lg bg-muted/30 p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{selectedSection.label}</span>
-                    <Badge variant={selectedSection.type === "piece" ? "default" : "secondary"} className="text-xs">
+                    <Badge
+                      variant={selectedSection.type === "piece" ? "default" : "secondary"}
+                      className="text-xs"
+                    >
                       {selectedSection.type === "piece" ? "Piece" : "Leftover"}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {selectedSection.width.toFixed(2)} x {selectedSection.height.toFixed(2)} {sheetUnit}
+                    {selectedSection.width.toFixed(2)} x {selectedSection.height.toFixed(2)}{" "}
+                    {sheetUnit}
                   </p>
 
                   {selectedSection.type === "piece" && selectedSection.mappedItem && (
                     <div className="mt-2 rounded-md border bg-background px-2.5 py-2">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Mapped Item</p>
-                      <p className="mt-0.5 text-xs font-medium">{selectedSection.mappedItem.itemCode}</p>
-                      <p className="text-xs text-muted-foreground">{selectedSection.mappedItem.itemName}</p>
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Mapped Item
+                      </p>
+                      <p className="mt-0.5 text-xs font-medium">
+                        {selectedSection.mappedItem.itemCode}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedSection.mappedItem.itemName}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1737,7 +1757,6 @@ export function TransformationTemplateDesignerPage() {
               </p>
             </div>
           </div>
-
         </div>
 
         <div className="overflow-auto rounded-lg border bg-muted/30 p-6">
@@ -1780,9 +1799,9 @@ export function TransformationTemplateDesignerPage() {
                     ? "#38bdf8"
                     : isRecentlyMapped
                       ? "#0f766e"
-                    : isMappedPiece
-                      ? "#0284c7"
-                      : "#64748b";
+                      : isMappedPiece
+                        ? "#0284c7"
+                        : "#64748b";
                   const textLayout = getSectionTextLayout(section);
                   const mappedItemLines =
                     section.mappedItem && textLayout.canShowMappedItem
@@ -1845,11 +1864,7 @@ export function TransformationTemplateDesignerPage() {
                               <text
                                 pointerEvents="none"
                                 x={section.x + section.width / 2}
-                                y={
-                                  section.y +
-                                  section.height / 2 +
-                                  textLayout.titleFontSize * 0.75
-                                }
+                                y={section.y + section.height / 2 + textLayout.titleFontSize * 0.75}
                                 textAnchor="middle"
                                 dominantBaseline="middle"
                                 fontSize={textLayout.dimensionFontSize}
@@ -1876,7 +1891,11 @@ export function TransformationTemplateDesignerPage() {
                                     <tspan
                                       key={`${section.id}-mapped-line-${index}`}
                                       x={section.x + section.width / 2}
-                                      dy={index === 0 ? textLayout.dimensionFontSize * 1.2 : textLayout.dimensionFontSize * 1.05}
+                                      dy={
+                                        index === 0
+                                          ? textLayout.dimensionFontSize * 1.2
+                                          : textLayout.dimensionFontSize * 1.05
+                                      }
                                     >
                                       {line}
                                     </tspan>
@@ -1951,26 +1970,26 @@ export function TransformationTemplateDesignerPage() {
 
                         return (
                           <>
-                      <rect
-                            x={overlayX}
-                            y={overlayY}
-                            width={overlayWidth}
-                            height={overlayHeight}
-                            rx={0.65}
-                            fill="#0f172a"
-                            opacity={0.9}
-                      />
-                      <text
-                            x={overlayX + overlayWidth / 2}
-                            y={overlayY + overlayHeight / 2 + 0.15}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            fontSize={0.72}
-                            fontWeight={600}
-                            fill="#ffffff"
-                      >
-                        {dragMeasurement.text}
-                      </text>
+                            <rect
+                              x={overlayX}
+                              y={overlayY}
+                              width={overlayWidth}
+                              height={overlayHeight}
+                              rx={0.65}
+                              fill="#0f172a"
+                              opacity={0.9}
+                            />
+                            <text
+                              x={overlayX + overlayWidth / 2}
+                              y={overlayY + overlayHeight / 2 + 0.15}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              fontSize={0.72}
+                              fontWeight={600}
+                              fill="#ffffff"
+                            >
+                              {dragMeasurement.text}
+                            </text>
                           </>
                         );
                       })()}
@@ -1987,7 +2006,8 @@ export function TransformationTemplateDesignerPage() {
                     </div>
                     <p className="text-base font-semibold">Parent Sheet Required</p>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      Select a parent sheet item before drawing cuts, adding slices, or editing the layout.
+                      Select a parent sheet item before drawing cuts, adding slices, or editing the
+                      layout.
                     </p>
                   </div>
                 </div>
@@ -2056,7 +2076,7 @@ export function TransformationTemplateDesignerPage() {
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleContextCopySlice}
             disabled={!selectedSection}
           >
@@ -2065,7 +2085,7 @@ export function TransformationTemplateDesignerPage() {
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleContextPasteSlice}
             disabled={!selectedSection || !sliceClipboard}
           >
@@ -2074,7 +2094,7 @@ export function TransformationTemplateDesignerPage() {
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleContextMapItem}
             disabled={selectedSection?.type !== "piece"}
           >
@@ -2085,7 +2105,7 @@ export function TransformationTemplateDesignerPage() {
           <div className="px-2 py-1.5 text-xs font-semibold text-foreground">Edit</div>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleContextMarkLeftover}
             disabled={selectedSection?.type === "leftover" || !selectedSection}
           >
@@ -2094,7 +2114,7 @@ export function TransformationTemplateDesignerPage() {
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleUndo}
             disabled={!history.length}
           >
@@ -2103,7 +2123,7 @@ export function TransformationTemplateDesignerPage() {
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleRedo}
             disabled={!future.length}
           >
@@ -2112,7 +2132,7 @@ export function TransformationTemplateDesignerPage() {
           </button>
           <button
             type="button"
-            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50 disabled:pointer-events-none"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleContextDeleteSection}
             disabled={selectedSection?.type !== "piece"}
           >
@@ -2309,7 +2329,10 @@ export function TransformationTemplateDesignerPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!itemPickerState} onOpenChange={(open) => (!open ? closeItemPicker() : undefined)}>
+      <Dialog
+        open={!!itemPickerState}
+        onOpenChange={(open) => (!open ? closeItemPicker() : undefined)}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
@@ -2332,7 +2355,9 @@ export function TransformationTemplateDesignerPage() {
               </div>
             ) : (
               <div className="rounded-lg border border-destructive bg-destructive/5 px-3 py-2.5">
-                <p className="text-sm font-medium text-destructive">No warehouse is available for the current business unit.</p>
+                <p className="text-sm font-medium text-destructive">
+                  No warehouse is available for the current business unit.
+                </p>
               </div>
             )}
             <div className="space-y-2">
@@ -2374,7 +2399,9 @@ export function TransformationTemplateDesignerPage() {
                         <p className="text-sm text-muted-foreground">{item.name}</p>
                       </div>
                       <div className="ml-3 text-right">
-                        <p className="text-sm font-medium">{item.available.toFixed(2)} {item.uom}</p>
+                        <p className="text-sm font-medium">
+                          {item.available.toFixed(2)} {item.uom}
+                        </p>
                         <p className="text-xs text-muted-foreground">available</p>
                       </div>
                     </button>

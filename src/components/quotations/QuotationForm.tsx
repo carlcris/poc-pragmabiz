@@ -53,12 +53,7 @@ type QuotationFormProps = {
   submitLabel?: string;
 };
 
-export function QuotationForm({
-  quotation,
-  onCancel,
-  onSuccess,
-  submitLabel,
-}: QuotationFormProps) {
+export function QuotationForm({ quotation, onCancel, onSuccess, submitLabel }: QuotationFormProps) {
   const t = useTranslations("quotationForm");
   const tCommon = useTranslations("common");
   const isEditMode = !!quotation;
@@ -100,7 +95,9 @@ export function QuotationForm({
   const selectedCustomerId = form.watch("customerId");
   const { data: selectedCustomerData } = useCustomer(selectedCustomerId);
   const selectedCustomer =
-    customers.find((customer) => customer.id === selectedCustomerId) ?? selectedCustomerData ?? null;
+    customers.find((customer) => customer.id === selectedCustomerId) ??
+    selectedCustomerData ??
+    null;
 
   const totals = useMemo(() => {
     const subtotal = lineItems.reduce((sum, item) => {
@@ -235,7 +232,9 @@ export function QuotationForm({
             })
           : await createMutation.mutateAsync(apiRequest);
 
-      toast.success(isEditMode ? "Quotation updated successfully" : "Quotation created successfully");
+      toast.success(
+        isEditMode ? "Quotation updated successfully" : "Quotation created successfully"
+      );
       onSuccess?.(result);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save quotation");
@@ -250,223 +249,225 @@ export function QuotationForm({
             <div>
               <h3 className="text-lg font-semibold">{t("generalTab")}</h3>
             </div>
-              <FormField
-                control={form.control}
-                name="customerId"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>{t("customer")} *</FormLabel>
-                    <FormControl>
-                      <AsyncSearchCombobox
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        searchValue={customerSearch}
-                        onSearchValueChange={setCustomerSearch}
-                        options={customers}
-                        selectedOption={selectedCustomer}
-                        getOptionValue={(customer) => customer.id}
-                        getOptionLabel={(customer) => customer.name}
-                        getOptionSearchValue={(customer) => `${customer.code} ${customer.name}`}
-                        placeholder={t("selectCustomer")}
-                        searchPlaceholder="Search customer"
-                        emptyMessage="No customer found."
-                        isLoading={isCustomersLoading}
-                        renderOption={(customer, selected) => (
-                          <div className="flex items-start py-2">
-                            <div
-                              className={`mr-2 mt-1 h-4 w-4 flex-shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
-                            >
-                              ✓
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-medium">{customer.name}</div>
-                              <div className="mt-0.5 text-xs text-muted-foreground">
-                                {customer.code}
-                              </div>
+            <FormField
+              control={form.control}
+              name="customerId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>{t("customer")} *</FormLabel>
+                  <FormControl>
+                    <AsyncSearchCombobox
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      searchValue={customerSearch}
+                      onSearchValueChange={setCustomerSearch}
+                      options={customers}
+                      selectedOption={selectedCustomer}
+                      getOptionValue={(customer) => customer.id}
+                      getOptionLabel={(customer) => customer.name}
+                      getOptionSearchValue={(customer) => `${customer.code} ${customer.name}`}
+                      placeholder={t("selectCustomer")}
+                      searchPlaceholder="Search customer"
+                      emptyMessage="No customer found."
+                      isLoading={isCustomersLoading}
+                      renderOption={(customer, selected) => (
+                        <div className="flex items-start py-2">
+                          <div
+                            className={`mr-2 mt-1 h-4 w-4 flex-shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
+                          >
+                            ✓
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium">{customer.name}</div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {customer.code}
                             </div>
                           </div>
-                        )}
-                      />
+                        </div>
+                      )}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="quotationDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("quotationDate")} *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="quotationDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("quotationDate")} *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="validUntil"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t("validUntil")} *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="validUntil"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("validUntil")} *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </section>
 
           <section className="space-y-4 rounded-lg border bg-card p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
-                </div>
-                <Button type="button" onClick={handleAddItem} size="sm">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t("addItem")}
-                </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
+                <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
               </div>
+              <Button type="button" onClick={handleAddItem} size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                {t("addItem")}
+              </Button>
+            </div>
 
-              {lineItems.length === 0 ? (
-                <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
-                  <p>{t("noItems")}</p>
-                  <p className="text-sm">{t("noItemsDescription")}</p>
+            {lineItems.length === 0 ? (
+              <div className="rounded-lg border-2 border-dashed py-12 text-center text-muted-foreground">
+                <p>{t("noItems")}</p>
+                <p className="text-sm">{t("noItemsDescription")}</p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{tCommon("item")}</TableHead>
+                        <TableHead className="text-right">{t("qty")}</TableHead>
+                        <TableHead className="text-center">{t("unit")}</TableHead>
+                        <TableHead className="text-right">{t("price")}</TableHead>
+                        <TableHead className="text-right">{t("discountPct")}</TableHead>
+                        <TableHead className="text-right">{t("taxPct")}</TableHead>
+                        <TableHead className="text-right">{t("total")}</TableHead>
+                        <TableHead className="w-[100px]">{tCommon("actions")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lineItems.map((item, index) => {
+                        const lineTotal = item.lineTotal ?? item.quantity * item.unitPrice;
+
+                        return (
+                          <TableRow key={index}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{item.itemName}</div>
+                                <div className="text-sm text-muted-foreground">{item.itemCode}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-center">
+                              <span className="text-muted-foreground">
+                                {item.uomCode || item.uomName || "-"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.unitPrice)}
+                            </TableCell>
+                            <TableCell className="text-right">{item.discount}%</TableCell>
+                            <TableCell className="text-right">{item.taxRate}%</TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(lineTotal)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditItem(index)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteItem(index)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
-              ) : (
-                <>
-                  <div className="rounded-lg border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>{tCommon("item")}</TableHead>
-                          <TableHead className="text-right">{t("qty")}</TableHead>
-                          <TableHead className="text-center">{t("unit")}</TableHead>
-                          <TableHead className="text-right">{t("price")}</TableHead>
-                          <TableHead className="text-right">{t("discountPct")}</TableHead>
-                          <TableHead className="text-right">{t("taxPct")}</TableHead>
-                          <TableHead className="text-right">{t("total")}</TableHead>
-                          <TableHead className="w-[100px]">{tCommon("actions")}</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {lineItems.map((item, index) => {
-                          const lineTotal = item.lineTotal ?? item.quantity * item.unitPrice;
 
-                          return (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{item.itemName}</div>
-                                  <div className="text-sm text-muted-foreground">{item.itemCode}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">{item.quantity}</TableCell>
-                              <TableCell className="text-center">
-                                <span className="text-muted-foreground">
-                                  {item.uomCode || item.uomName || "-"}
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                              <TableCell className="text-right">{item.discount}%</TableCell>
-                              <TableCell className="text-right">{item.taxRate}%</TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(lineTotal)}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleEditItem(index)}
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteItem(index)}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                <div className="rounded-lg bg-muted p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Calculator className="h-5 w-5" />
+                    <h4 className="font-semibold">{t("totals")}</h4>
                   </div>
-
-                  <div className="rounded-lg bg-muted p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <Calculator className="h-5 w-5" />
-                      <h4 className="font-semibold">{t("totals")}</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>{t("subtotal")}:</span>
+                      <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
                     </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span>{t("subtotal")}:</span>
-                        <span className="font-medium">{formatCurrency(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-red-600">
-                        <span>{t("discount")}:</span>
-                        <span className="font-medium">-{formatCurrency(totals.totalDiscount)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t("tax")}:</span>
-                        <span className="font-medium">{formatCurrency(totals.totalTax)}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                        <span>{t("total")}:</span>
-                        <span>{formatCurrency(totals.totalAmount)}</span>
-                      </div>
+                    <div className="flex justify-between text-red-600">
+                      <span>{t("discount")}:</span>
+                      <span className="font-medium">-{formatCurrency(totals.totalDiscount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{t("tax")}:</span>
+                      <span className="font-medium">{formatCurrency(totals.totalTax)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 text-lg font-bold">
+                      <span>{t("total")}:</span>
+                      <span>{formatCurrency(totals.totalAmount)}</span>
                     </div>
                   </div>
-                </>
-              )}
+                </div>
+              </>
+            )}
           </section>
 
           <section className="space-y-4 rounded-lg border bg-card p-6">
             <div>
               <h3 className="text-lg font-semibold">{t("termsTab")}</h3>
             </div>
-              <FormField
-                control={form.control}
-                name="terms"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("termsConditions")}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={4} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <FormField
+              control={form.control}
+              name="terms"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("termsConditions")}</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} rows={4} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("internalNotes")}</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={4} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                    )}
-                  />
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t("internalNotes")}</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} rows={4} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </section>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -475,10 +476,7 @@ export function QuotationForm({
                 {tCommon("cancel")}
               </Button>
             ) : null}
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending
                 ? t("saving")
                 : submitLabel || (isEditMode ? t("updateQuotation") : t("createQuotation"))}

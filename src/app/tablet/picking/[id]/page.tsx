@@ -93,7 +93,9 @@ const parseBatchLocationQrPayload = (rawScan: string): ParsedBatchLocationQr | n
       const itemId =
         typeof parsed.itemId === "string" && parsed.itemId.trim() ? parsed.itemId.trim() : null;
       const locationId =
-        typeof parsed.location === "string" && parsed.location.trim() ? parsed.location.trim() : null;
+        typeof parsed.location === "string" && parsed.location.trim()
+          ? parsed.location.trim()
+          : null;
       const batchCode =
         typeof parsed.batchNumber === "string" && parsed.batchNumber.trim()
           ? parsed.batchNumber.trim()
@@ -183,7 +185,8 @@ export default function TabletPickingDetailPage() {
       const pickedValue = toNumber(item.picked_qty);
       const dnLine = one(item.delivery_note_items);
       const suggestedPickLocation = one(
-        (dnLine as { suggested_pick_location?: unknown } | null | undefined)?.suggested_pick_location as
+        (dnLine as { suggested_pick_location?: unknown } | null | undefined)
+          ?.suggested_pick_location as
           | { id: string; code: string | null; name: string | null }
           | { id: string; code: string | null; name: string | null }[]
           | null
@@ -540,15 +543,17 @@ export default function TabletPickingDetailPage() {
           <>
             {/* Progress Card */}
             <Card>
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-center justify-between mb-3">
+              <CardContent className="pb-4 pt-5">
+                <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-100">
                       <PackageCheck className="h-4 w-4 text-blue-600" />
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-gray-900">Pick Progress</div>
-                      <div className="text-xs text-gray-500">{pickList?.delivery_notes?.dn_no || "--"}</div>
+                      <div className="text-xs text-gray-500">
+                        {pickList?.delivery_notes?.dn_no || "--"}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
@@ -563,7 +568,9 @@ export default function TabletPickingDetailPage() {
                     className={`h-full transition-all duration-500 ${
                       pickedLinesCount === totalLines ? "bg-green-500" : "bg-blue-500"
                     }`}
-                    style={{ width: `${totalLines > 0 ? (pickedLinesCount / totalLines) * 100 : 0}%` }}
+                    style={{
+                      width: `${totalLines > 0 ? (pickedLinesCount / totalLines) * 100 : 0}%`,
+                    }}
                   />
                 </div>
               </CardContent>
@@ -572,7 +579,7 @@ export default function TabletPickingDetailPage() {
             {/* Action Buttons */}
             {pickList.status === "pending" && (
               <Button
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                className="h-12 w-full bg-blue-600 hover:bg-blue-700"
                 onClick={startPicking}
                 disabled={updateStatusMutation.isPending}
               >
@@ -585,7 +592,7 @@ export default function TabletPickingDetailPage() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1 h-12"
+                  className="h-12 flex-1"
                   onClick={pausePicking}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -593,7 +600,7 @@ export default function TabletPickingDetailPage() {
                   Pause
                 </Button>
                 <Button
-                  className="flex-1 h-12 bg-green-600 hover:bg-green-700"
+                  className="h-12 flex-1 bg-green-600 hover:bg-green-700"
                   onClick={completePicking}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -605,7 +612,7 @@ export default function TabletPickingDetailPage() {
 
             {pickList.status === "paused" && (
               <Button
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700"
+                className="h-12 w-full bg-blue-600 hover:bg-blue-700"
                 onClick={resumePicking}
                 disabled={updateStatusMutation.isPending}
               >
@@ -616,7 +623,7 @@ export default function TabletPickingDetailPage() {
 
             {pickList.status === "done" && (
               <Button
-                className="w-full h-12 bg-indigo-600 hover:bg-indigo-700"
+                className="h-12 w-full bg-indigo-600 hover:bg-indigo-700"
                 onClick={onOpenDeliveryNotes}
               >
                 <PackageCheck className="mr-2 h-4 w-4" />
@@ -639,7 +646,8 @@ export default function TabletPickingDetailPage() {
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription className="text-sm">
                         {pickList.status === "pending" && "Tap Start Picking to begin scanning."}
-                        {pickList.status === "paused" && "Picking is paused. Tap Resume to continue."}
+                        {pickList.status === "paused" &&
+                          "Picking is paused. Tap Resume to continue."}
                         {pickList.status === "done" && "Picking is completed."}
                         {pickList.status === "cancelled" && "This pick list is cancelled."}
                       </AlertDescription>
@@ -647,7 +655,9 @@ export default function TabletPickingDetailPage() {
                   )}
 
                   <div className="space-y-2">
-                    <Label htmlFor="barcode-scan" className="text-sm">Barcode</Label>
+                    <Label htmlFor="barcode-scan" className="text-sm">
+                      Barcode
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         id="barcode-scan"
@@ -720,7 +730,7 @@ export default function TabletPickingDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-lg bg-blue-50 p-3">
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="mb-2 flex items-center gap-2">
                       <span className="text-xs font-medium text-blue-900">Pick Location</span>
                     </div>
                     <div className="space-y-1 text-xs text-blue-800">
@@ -734,7 +744,8 @@ export default function TabletPickingDetailPage() {
                       ) : null}
                       {currentItem.suggestedPickBatchCode ? (
                         <div>
-                          Batch: <span className="font-mono">{currentItem.suggestedPickBatchCode}</span>
+                          Batch:{" "}
+                          <span className="font-mono">{currentItem.suggestedPickBatchCode}</span>
                         </div>
                       ) : null}
                     </div>
@@ -750,7 +761,8 @@ export default function TabletPickingDetailPage() {
                     <Alert>
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription className="text-sm">
-                        Scanned batch/location does not match suggested source. Confirm pick to override.
+                        Scanned batch/location does not match suggested source. Confirm pick to
+                        override.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -758,7 +770,9 @@ export default function TabletPickingDetailPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Barcode</span>
-                      <span className="font-mono font-medium">{currentItem.barcode || currentItem.matchedScanCode}</span>
+                      <span className="font-mono font-medium">
+                        {currentItem.barcode || currentItem.matchedScanCode}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Required</span>
@@ -778,7 +792,7 @@ export default function TabletPickingDetailPage() {
                       step="0.01"
                       value={pickedQty}
                       onChange={(e) => setPickedQty(Number(e.target.value))}
-                      className="h-12 text-lg font-semibold text-center"
+                      className="h-12 text-center text-lg font-semibold"
                     />
                   </div>
 
@@ -804,7 +818,7 @@ export default function TabletPickingDetailPage() {
                   )}
 
                   <Button
-                    className="w-full h-12 bg-green-600 hover:bg-green-700"
+                    className="h-12 w-full bg-green-600 hover:bg-green-700"
                     onClick={handleConfirmPick}
                     disabled={updateItemsMutation.isPending || pickList.status !== "in_progress"}
                   >
@@ -819,7 +833,7 @@ export default function TabletPickingDetailPage() {
             {remainingLines.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center justify-between">
+                  <CardTitle className="flex items-center justify-between text-base">
                     <span>Remaining Items</span>
                     <Badge variant="secondary">{remainingLines.length}</Badge>
                   </CardTitle>
@@ -828,12 +842,13 @@ export default function TabletPickingDetailPage() {
                   {remainingLines.map((line) => (
                     <div
                       key={line.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-gray-50"
+                      className="flex items-center justify-between rounded-lg border bg-white p-3 hover:bg-gray-50"
                     >
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
                         <div className="text-xs text-gray-500">
-                          Remaining: {Math.max(0, line.requiredQty - line.pickedQty)} {line.uomLabel}
+                          Remaining: {Math.max(0, line.requiredQty - line.pickedQty)}{" "}
+                          {line.uomLabel}
                         </div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-gray-400" />
@@ -847,7 +862,7 @@ export default function TabletPickingDetailPage() {
             {pickedLines.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center justify-between">
+                  <CardTitle className="flex items-center justify-between text-base">
                     <span className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                       Picked Items
@@ -861,11 +876,13 @@ export default function TabletPickingDetailPage() {
                     return (
                       <div
                         key={line.id}
-                        className="flex items-center justify-between p-3 rounded-lg border border-green-200 bg-green-50"
+                        className="flex items-center justify-between rounded-lg border border-green-200 bg-green-50 p-3"
                       >
                         <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{line.displayName}</div>
-                        <div className="text-xs text-green-700">
+                          <div className="text-sm font-medium text-gray-900">
+                            {line.displayName}
+                          </div>
+                          <div className="text-xs text-green-700">
                             Picked: {line.pickedQty} {line.uomLabel}
                             {skuText ? ` | ${skuText}` : ""}
                           </div>
@@ -879,7 +896,7 @@ export default function TabletPickingDetailPage() {
             )}
 
             {pickedLinesCount === totalLines && (
-              <div className="rounded-lg bg-green-50 border border-green-200 py-8 text-center">
+              <div className="rounded-lg border border-green-200 bg-green-50 py-8 text-center">
                 <CheckCircle2 className="mx-auto mb-2 h-10 w-10 text-green-600" />
                 <p className="text-base font-semibold text-green-900">All Items Picked!</p>
                 <p className="text-sm text-green-700">Ready to complete</p>

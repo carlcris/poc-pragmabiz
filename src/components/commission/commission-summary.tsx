@@ -121,7 +121,9 @@ export function CommissionSummary({ dateRange, employeeId }: CommissionSummaryPr
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{t("averageSalesPerTransaction")}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("averageSalesPerTransaction")}
+              </span>
               <span className="text-sm font-semibold">
                 {formatCurrency(
                   summary.transactionCount > 0 ? summary.totalSales / summary.transactionCount : 0

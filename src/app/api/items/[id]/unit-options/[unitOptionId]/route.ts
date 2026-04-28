@@ -21,8 +21,15 @@ const ITEM_UNIT_OPTION_SELECT = `
   )
 `;
 
-const getUserCompanyId = async (supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"], userId: string) => {
-  const { data: userData } = await supabase.from("users").select("company_id").eq("id", userId).single();
+const getUserCompanyId = async (
+  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  userId: string
+) => {
+  const { data: userData } = await supabase
+    .from("users")
+    .select("company_id")
+    .eq("id", userId)
+    .single();
   return userData?.company_id || null;
 };
 
@@ -82,7 +89,10 @@ export async function PUT(
     if (existing.is_base) {
       if (body.qtyPerUnit !== undefined && body.qtyPerUnit !== 1) {
         return NextResponse.json(
-          { error: "Base unit option qty is fixed", details: "Base unit option must stay at qty 1" },
+          {
+            error: "Base unit option qty is fixed",
+            details: "Base unit option must stay at qty 1",
+          },
           { status: 400 }
         );
       }
@@ -95,10 +105,7 @@ export async function PUT(
     }
 
     if (body.isDefault && body.isActive === false) {
-      return NextResponse.json(
-        { error: "Default unit option must stay active" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Default unit option must stay active" }, { status: 400 });
     }
 
     if (body.isDefault) {

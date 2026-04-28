@@ -85,7 +85,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return scanValidationError("Batch location SKU not found");
     }
 
-    const itemBatch = Array.isArray(sourceRow.item_batch) ? sourceRow.item_batch[0] : sourceRow.item_batch;
+    const itemBatch = Array.isArray(sourceRow.item_batch)
+      ? sourceRow.item_batch[0]
+      : sourceRow.item_batch;
     const location = Array.isArray(sourceRow.warehouse_location)
       ? sourceRow.warehouse_location[0]
       : sourceRow.warehouse_location;
@@ -98,7 +100,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return scanValidationError("Scanned QR item does not match the batch location SKU item");
     }
     if (scannedLocationId && scannedLocationId !== sourceRow.location_id) {
-      return scanValidationError("Scanned QR location does not match the batch location SKU location");
+      return scanValidationError(
+        "Scanned QR location does not match the batch location SKU location"
+      );
     }
     if (scannedBatchCode && scannedBatchCode !== (itemBatch.batch_code as string)) {
       return scanValidationError("Scanned QR batch does not match the batch location SKU batch");
@@ -138,12 +142,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const matchable = (pickItems || []).map((row) => {
-      const dnLine = Array.isArray(row.delivery_note_items) ? row.delivery_note_items[0] : row.delivery_note_items;
-      const itemUnitOption = Array.isArray(row.item_unit_options) ? row.item_unit_options[0] : row.item_unit_options;
+      const dnLine = Array.isArray(row.delivery_note_items)
+        ? row.delivery_note_items[0]
+        : row.delivery_note_items;
+      const itemUnitOption = Array.isArray(row.item_unit_options)
+        ? row.item_unit_options[0]
+        : row.item_unit_options;
       const remainingQty = Math.max(0, toNumber(row.allocated_qty) - toNumber(row.picked_qty));
       const isSuggestedMatch =
-        (!dnLine?.suggested_pick_location_id || dnLine.suggested_pick_location_id === sourceRow.location_id) &&
-        (!dnLine?.suggested_pick_batch_code || dnLine.suggested_pick_batch_code === itemBatch.batch_code);
+        (!dnLine?.suggested_pick_location_id ||
+          dnLine.suggested_pick_location_id === sourceRow.location_id) &&
+        (!dnLine?.suggested_pick_batch_code ||
+          dnLine.suggested_pick_batch_code === itemBatch.batch_code);
 
       return {
         pickListItemId: row.id as string,
@@ -157,8 +167,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
         suggestedPickBatchCode: dnLine?.suggested_pick_batch_code || null,
         item: dnLine?.items
           ? {
-            itemCode: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_code || null,
-            itemName: (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_name || null,
+              itemCode:
+                (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_code || null,
+              itemName:
+                (Array.isArray(dnLine.items) ? dnLine.items[0] : dnLine.items)?.item_name || null,
               barcode: itemUnitOption?.barcode || null,
             }
           : null,
@@ -190,8 +202,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         line: selectedLine,
         isMismatch:
           !!selectedLine &&
-          (!selectedLine.isSuggestedMatch &&
-            (!!selectedLine.suggestedPickLocationId || !!selectedLine.suggestedPickBatchCode)),
+          !selectedLine.isSuggestedMatch &&
+          (!!selectedLine.suggestedPickLocationId || !!selectedLine.suggestedPickBatchCode),
       },
     });
   } catch (error) {

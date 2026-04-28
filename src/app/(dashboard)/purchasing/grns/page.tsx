@@ -163,7 +163,8 @@ export default function GRNsPage() {
     try {
       const grn = await grnsApi.getGRN(grnToSubmit.id);
       const items = Array.isArray(grn.items) ? grn.items : [];
-      const hasReceivedQty = items.length > 0 && items.every((item) => Number(item.receivedQty ?? 0) > 0);
+      const hasReceivedQty =
+        items.length > 0 && items.every((item) => Number(item.receivedQty ?? 0) > 0);
 
       if (!hasReceivedQty) {
         toast.error(t("submitMissingReceivedQty"));
@@ -217,8 +218,12 @@ export default function GRNsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+            {t("title")}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+            {t("subtitle")}
+          </p>
         </div>
       </div>
 
@@ -319,9 +324,7 @@ export default function GRNsPage() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : !data?.data || data.data.length === 0 ? (
           <EmptyStatePanel
             icon={Package}
@@ -389,7 +392,9 @@ export default function GRNsPage() {
                         {grn.warehouse ? (
                           <div>
                             <div className="font-medium">{grn.warehouse.name}</div>
-                            <div className="text-xs text-muted-foreground">{grn.warehouse.code}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {grn.warehouse.code}
+                            </div>
                           </div>
                         ) : (
                           t("noValue")
@@ -397,18 +402,19 @@ export default function GRNsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {(!grn.containerNumber && !grn.sealNumber) ? (
+                          {!grn.containerNumber && !grn.sealNumber ? (
                             t("noValue")
                           ) : (
-                            <div>{grn.containerNumber ?? t("noValue")} / {grn.sealNumber ?? t("noValue")}</div>
+                            <div>
+                              {grn.containerNumber ?? t("noValue")} /{" "}
+                              {grn.sealNumber ?? t("noValue")}
+                            </div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
                         {grn.receivingDate ? (
-                          <div className="text-sm">
-                            {formatDate(grn.receivingDate)}
-                          </div>
+                          <div className="text-sm">{formatDate(grn.receivingDate)}</div>
                         ) : (
                           <div className="text-sm text-muted-foreground">{t("notStarted")}</div>
                         )}
@@ -546,10 +552,7 @@ export default function GRNsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmSubmit}
-              disabled={submitMutation.isPending}
-            >
+            <AlertDialogAction onClick={confirmSubmit} disabled={submitMutation.isPending}>
               {submitMutation.isPending ? t("submitting") : t("submit")}
             </AlertDialogAction>
           </AlertDialogFooter>

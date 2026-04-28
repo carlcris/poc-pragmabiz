@@ -224,7 +224,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (updateError) {
       // Rollback stock transactions if they were created
       if (invoice.warehouse_id && stockTransactionId) {
-        await supabase.from("stock_transaction_items").delete().eq("transaction_id", stockTransactionId);
+        await supabase
+          .from("stock_transaction_items")
+          .delete()
+          .eq("transaction_id", stockTransactionId);
         await supabase.from("stock_transactions").delete().eq("id", stockTransactionId);
       }
       return NextResponse.json({ error: "Failed to send invoice" }, { status: 500 });

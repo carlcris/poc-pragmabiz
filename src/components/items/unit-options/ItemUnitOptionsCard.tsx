@@ -26,7 +26,14 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type ItemUnitOptionsCardProps = {
   itemId: string;
@@ -217,7 +224,9 @@ export const ItemUnitOptionsCard = ({
                     <TableHead>{t("qtyPerUnitLabel")}</TableHead>
                     <TableHead>{t("barcodeLabel")}</TableHead>
                     <TableHead>{t("statusLabel")}</TableHead>
-                    {editable ? <TableHead className="text-right">{t("actionsLabel")}</TableHead> : null}
+                    {editable ? (
+                      <TableHead className="text-right">{t("actionsLabel")}</TableHead>
+                    ) : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -227,8 +236,12 @@ export const ItemUnitOptionsCard = ({
                         <div className="space-y-1">
                           <div className="font-medium">{unitOption.displayLabel}</div>
                           <div className="flex flex-wrap gap-2">
-                            {unitOption.isBase ? <Badge variant="secondary">{t("baseLabel")}</Badge> : null}
-                            {unitOption.isDefault ? <Badge variant="outline">{t("defaultLabel")}</Badge> : null}
+                            {unitOption.isBase ? (
+                              <Badge variant="secondary">{t("baseLabel")}</Badge>
+                            ) : null}
+                            {unitOption.isDefault ? (
+                              <Badge variant="outline">{t("defaultLabel")}</Badge>
+                            ) : null}
                           </div>
                         </div>
                       </TableCell>
@@ -323,7 +336,9 @@ export const ItemUnitOptionsCard = ({
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={formState.uomId}
-                onChange={(event) => setFormState((current) => ({ ...current, uomId: event.target.value }))}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, uomId: event.target.value }))
+                }
               >
                 <option value="">{t("selectUom")}</option>
                 {availableUoms.map((uom) => (
@@ -361,12 +376,18 @@ export const ItemUnitOptionsCard = ({
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <div className="text-sm font-medium">{t("defaultLabel")}</div>
-                <div className="text-xs text-muted-foreground">{t("defaultUnitOptionDescription")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("defaultUnitOptionDescription")}
+                </div>
               </div>
               <Switch
                 checked={formState.isDefault}
                 onCheckedChange={(checked) =>
-                  setFormState((current) => ({ ...current, isDefault: checked, isActive: checked ? true : current.isActive }))
+                  setFormState((current) => ({
+                    ...current,
+                    isDefault: checked,
+                    isActive: checked ? true : current.isActive,
+                  }))
                 }
               />
             </div>
@@ -374,12 +395,18 @@ export const ItemUnitOptionsCard = ({
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
                 <div className="text-sm font-medium">{t("activeLabel")}</div>
-                <div className="text-xs text-muted-foreground">{t("activeUnitOptionDescription")}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t("activeUnitOptionDescription")}
+                </div>
               </div>
               <Switch
                 checked={formState.isActive}
                 onCheckedChange={(checked) =>
-                  setFormState((current) => ({ ...current, isActive: checked, isDefault: checked ? current.isDefault : false }))
+                  setFormState((current) => ({
+                    ...current,
+                    isActive: checked,
+                    isDefault: checked ? current.isDefault : false,
+                  }))
                 }
               />
             </div>

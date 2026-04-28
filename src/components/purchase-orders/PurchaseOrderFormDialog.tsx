@@ -115,7 +115,9 @@ export function PurchaseOrderFormDialog({
   const selectedSupplierId = form.watch("supplierId");
   const { data: selectedSupplierData } = useSupplier(selectedSupplierId);
   const selectedSupplier =
-    suppliers.find((supplier) => supplier.id === selectedSupplierId) ?? selectedSupplierData ?? null;
+    suppliers.find((supplier) => supplier.id === selectedSupplierId) ??
+    selectedSupplierData ??
+    null;
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -264,11 +266,7 @@ export function PurchaseOrderFormDialog({
       onOpenChange(false);
     } catch (error) {
       const errorMessage =
-        error instanceof Error
-          ? error.message
-          : isEditMode
-            ? t("updateError")
-            : t("createError");
+        error instanceof Error ? error.message : isEditMode ? t("updateError") : t("createError");
       toast.error(errorMessage);
     }
   };
@@ -278,13 +276,9 @@ export function PurchaseOrderFormDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {isEditMode ? t("editTitle") : t("createTitle")}
-            </DialogTitle>
+            <DialogTitle>{isEditMode ? t("editTitle") : t("createTitle")}</DialogTitle>
             <DialogDescription>
-              {isEditMode
-                ? t("editDescription")
-                : t("createDescription")}
+              {isEditMode ? t("editDescription") : t("createDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -302,7 +296,9 @@ export function PurchaseOrderFormDialog({
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
-                  <TabsTrigger value="items">{t("itemsTab", { count: lineItems.length })}</TabsTrigger>
+                  <TabsTrigger value="items">
+                    {t("itemsTab", { count: lineItems.length })}
+                  </TabsTrigger>
                   <TabsTrigger value="terms">{t("notesTab")}</TabsTrigger>
                 </TabsList>
 
@@ -448,9 +444,7 @@ export function PurchaseOrderFormDialog({
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-lg font-medium">{t("lineItemsTitle")}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {t("lineItemsDescription")}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
                     </div>
                     <Button type="button" onClick={handleAddItem} size="sm">
                       <Plus className="mr-2 h-4 w-4" />

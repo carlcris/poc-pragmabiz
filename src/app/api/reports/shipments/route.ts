@@ -26,10 +26,7 @@ type LoadListReportRow = {
     | { warehouse_name: string | null; warehouse_code: string | null }
     | { warehouse_name: string | null; warehouse_code: string | null }[]
     | null;
-  business_unit?:
-    | { name: string | null }
-    | { name: string | null }[]
-    | null;
+  business_unit?: { name: string | null } | { name: string | null }[] | null;
   load_list_items?:
     | {
         load_list_qty: number | string | null;
@@ -44,7 +41,7 @@ type LoadListReportRow = {
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
 
-const one = <T,>(value: T | T[] | null | undefined): T | null =>
+const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -79,7 +76,8 @@ export async function GET(request: NextRequest) {
     const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
     const limit = Math.min(
       Math.max(
-        Number.parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`, 10) || DEFAULT_PAGE_SIZE,
+        Number.parseInt(searchParams.get("limit") || `${DEFAULT_PAGE_SIZE}`, 10) ||
+          DEFAULT_PAGE_SIZE,
         10
       ),
       MAX_PAGE_SIZE

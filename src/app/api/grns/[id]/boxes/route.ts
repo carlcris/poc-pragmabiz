@@ -4,10 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // GET /api/grns/[id]/boxes - List boxes for a GRN item
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "view");
     const { id } = await params;
@@ -95,8 +92,12 @@ export async function GET(
 
     const batchLocationSkuByKey = new Map<string, string>();
     if (boxItemLocationKeys.size > 0 && grnHeader?.warehouse_id && grnHeader?.batch_number) {
-      const itemIds = Array.from(new Set(Array.from(boxItemLocationKeys).map((k) => k.split("::")[0])));
-      const locationIds = Array.from(new Set(Array.from(boxItemLocationKeys).map((k) => k.split("::")[1])));
+      const itemIds = Array.from(
+        new Set(Array.from(boxItemLocationKeys).map((k) => k.split("::")[0]))
+      );
+      const locationIds = Array.from(
+        new Set(Array.from(boxItemLocationKeys).map((k) => k.split("::")[1]))
+      );
 
       const { data: batchLocationRows } = await supabase
         .from("item_location_batch")
@@ -134,12 +135,12 @@ export async function GET(
         const itemId = item?.id as string | undefined;
         const locationId = box.warehouse_location_id as string | undefined;
         const key = itemId && locationId ? `${itemId}::${locationId}` : "";
-        const storedBatchLocationSku = (box.batch_location_sku as string | null | undefined) ?? null;
+        const storedBatchLocationSku =
+          (box.batch_location_sku as string | null | undefined) ?? null;
         return {
           itemId,
           batchLocationSku:
-            storedBatchLocationSku ??
-            (key ? (batchLocationSkuByKey.get(key) ?? null) : null),
+            storedBatchLocationSku ?? (key ? (batchLocationSkuByKey.get(key) ?? null) : null),
         };
       })(),
       id: box.id,
@@ -169,10 +170,7 @@ export async function GET(
 }
 
 // POST /api/grns/[id]/boxes - Generate boxes and barcodes for GRN items
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "create");
     const { id } = await params;
@@ -222,7 +220,8 @@ export async function POST(
     // Get GRN item details
     const { data: grnItem, error: itemError } = await supabase
       .from("grn_items")
-      .select(`
+      .select(
+        `
         id,
         item_id,
         item_unit_option_id,
@@ -231,7 +230,8 @@ export async function POST(
         item_unit_option:item_unit_options(
           qty_per_unit
         )
-      `)
+      `
+      )
       .eq("id", body.grnItemId)
       .eq("grn_id", id)
       .single();
@@ -249,8 +249,8 @@ export async function POST(
     }
 
     const unitOption = Array.isArray(grnItem.item_unit_option)
-      ? grnItem.item_unit_option[0] ?? null
-      : grnItem.item_unit_option ?? null;
+      ? (grnItem.item_unit_option[0] ?? null)
+      : (grnItem.item_unit_option ?? null);
     const qtyPerUnit = Number(unitOption?.qty_per_unit ?? 1) || 1;
     const receivedBaseQty = receivedQty * qtyPerUnit;
 
@@ -320,10 +320,7 @@ export async function POST(
     }
 
     // Update GRN item to mark barcodes as printed
-    await supabase
-      .from("grn_items")
-      .update({ barcodes_printed: true })
-      .eq("id", body.grnItemId);
+    await supabase.from("grn_items").update({ barcodes_printed: true }).eq("id", body.grnItemId);
 
     return NextResponse.json({
       message: `${body.numBoxes} boxes created successfully`,

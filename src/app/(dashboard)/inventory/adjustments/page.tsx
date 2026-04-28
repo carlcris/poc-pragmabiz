@@ -130,7 +130,6 @@ export default function StockAdjustmentsPage() {
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
 
-
   const getStatusBadge = (status: StockAdjustmentStatus) => {
     switch (status) {
       case "draft":
@@ -304,10 +303,14 @@ export default function StockAdjustmentsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+            <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+              {t("title")}
+            </h1>
+            <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+              {t("subtitle")}
+            </p>
           </div>
-          <Button onClick={handleCreateAdjustment} className="w-full sm:w-auto flex-shrink-0">
+          <Button onClick={handleCreateAdjustment} className="w-full flex-shrink-0 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             {t("createAdjustment")}
           </Button>
@@ -411,9 +414,7 @@ export default function StockAdjustmentsPage() {
               </Table>
             </div>
           ) : error ? (
-            <div className="py-8 text-center text-destructive">
-              {t("loadingError")}
-            </div>
+            <div className="py-8 text-center text-destructive">{t("loadingError")}</div>
           ) : adjustments.length === 0 ? (
             <EmptyStatePanel
               icon={Calculator}
@@ -593,7 +594,11 @@ export default function StockAdjustmentsPage() {
               <AlertDialogTitle>{t("postTitle")}</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div>
-                  <p>{adjustmentToPost ? t("postDescription", { code: adjustmentToPost.adjustmentCode }) : ""}</p>
+                  <p>
+                    {adjustmentToPost
+                      ? t("postDescription", { code: adjustmentToPost.adjustmentCode })
+                      : ""}
+                  </p>
                   <p className="mt-2">{t("summaryLabel")}:</p>
                   <ul className="mt-2 list-inside list-disc space-y-1">
                     <li>{t("postStepCreateTransaction")}</li>
@@ -617,7 +622,6 @@ export default function StockAdjustmentsPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-
     </>
   );
 }

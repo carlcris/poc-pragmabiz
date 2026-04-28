@@ -16,9 +16,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Skeleton
-} from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -265,10 +263,7 @@ export default function FrameJobOrderDetailsPage({ params }: PageProps) {
   });
 
   const order = data?.data;
-  const canPushToProduction =
-    order &&
-    !order.manufacturingOrder &&
-    order.status === "pending";
+  const canPushToProduction = order && !order.manufacturingOrder && order.status === "pending";
 
   const handlePushToProduction = async () => {
     if (!order) return;
@@ -538,7 +533,6 @@ export default function FrameJobOrderDetailsPage({ params }: PageProps) {
           </CardContent>
         </Card>
       ) : null}
-
     </div>
   );
 }

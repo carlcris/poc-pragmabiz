@@ -189,7 +189,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }: { name?: string; percent?: number }) =>
-                      `${name ?? ""} (${(((percent ?? 0) * 100).toFixed(0))}%)`
+                      `${name ?? ""} (${((percent ?? 0) * 100).toFixed(0)}%)`
                     }
                     outerRadius={100}
                     fill="#8884d8"
@@ -225,9 +225,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
             ))}
           </div>
         ) : employeeData.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {t("noEmployeeData")}
-          </p>
+          <p className="py-8 text-center text-sm text-muted-foreground">{t("noEmployeeData")}</p>
         ) : (
           <>
             <div className="rounded-md border">

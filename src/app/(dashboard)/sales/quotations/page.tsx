@@ -550,8 +550,8 @@ export default function QuotationsPage() {
             <AlertDialogTitle>Confirm quotation</AlertDialogTitle>
             <AlertDialogDescription>
               Confirming {quotationToConfirm?.quotationNumber ?? "this quotation"} will mark the
-              quotation as accepted and draft a sales invoice. Job orders are created later from
-              the sales order.
+              quotation as accepted and draft a sales invoice. Job orders are created later from the
+              sales order.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

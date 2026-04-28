@@ -39,9 +39,19 @@ import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { usePOSTransaction, usePOSTransactions, useVoidPOSTransaction } from "@/hooks/usePos";
 import type { POSTransaction } from "@/types/pos";
 
-const AdminPinDialog = dynamic(() => import("@/components/pos/AdminPinDialog").then((mod) => mod.AdminPinDialog), { ssr: false });
-const ReceiptPanel = dynamic(() => import("@/components/pos/ReceiptPanel").then((mod) => mod.ReceiptPanel), { ssr: false });
-const TransactionDetailsDialog = dynamic(() => import("@/components/pos/TransactionDetailsDialog").then((mod) => mod.TransactionDetailsDialog), { ssr: false });
+const AdminPinDialog = dynamic(
+  () => import("@/components/pos/AdminPinDialog").then((mod) => mod.AdminPinDialog),
+  { ssr: false }
+);
+const ReceiptPanel = dynamic(
+  () => import("@/components/pos/ReceiptPanel").then((mod) => mod.ReceiptPanel),
+  { ssr: false }
+);
+const TransactionDetailsDialog = dynamic(
+  () =>
+    import("@/components/pos/TransactionDetailsDialog").then((mod) => mod.TransactionDetailsDialog),
+  { ssr: false }
+);
 
 export default function POSTransactionsPage() {
   const t = useTranslations("posTransactionsPage");
@@ -70,13 +80,18 @@ export default function POSTransactionsPage() {
       page: currentPage,
       limit: pageSize,
     };
-    return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined)) as Record<string, string | number>;
+    return Object.fromEntries(
+      Object.entries(params).filter(([, value]) => value !== undefined)
+    ) as Record<string, string | number>;
   }, [search, statusFilter, dateRange, cashierFilter, currentPage, pageSize]);
 
   const { data, isLoading } = usePOSTransactions(queryParams);
   const { data: selectedTransaction } = usePOSTransaction(selectedTransactionId || "");
   const { data: receiptTransaction } = usePOSTransaction(receiptTransactionId || "");
-  const voidTransaction = useVoidPOSTransaction({ success: t("voidSuccess"), error: t("voidError") });
+  const voidTransaction = useVoidPOSTransaction({
+    success: t("voidSuccess"),
+    error: t("voidError"),
+  });
 
   useEffect(() => {
     const value = searchInput.trim();
@@ -96,7 +111,8 @@ export default function POSTransactionsPage() {
     return Array.from(cashiers.entries()).map(([id, name]) => ({ id, name }));
   }, [transactions]);
 
-  const formatCurrency = (amount: number) => new Intl.NumberFormat(locale, { style: "currency", currency: "PHP" }).format(amount);
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat(locale, { style: "currency", currency: "PHP" }).format(amount);
   const formatDateTime = (dateString: string) => {
     try {
       return new Intl.DateTimeFormat(locale, {
@@ -133,15 +149,25 @@ export default function POSTransactionsPage() {
         </div>
         <div className="rounded-lg border p-3 md:p-4">
           <div className="text-xs text-muted-foreground md:text-sm">{t("completed")}</div>
-          <div className="text-xl font-bold text-green-600 md:text-2xl">{transactions.filter((txn) => txn.status === "completed").length}</div>
+          <div className="text-xl font-bold text-green-600 md:text-2xl">
+            {transactions.filter((txn) => txn.status === "completed").length}
+          </div>
         </div>
         <div className="rounded-lg border p-3 md:p-4">
           <div className="text-xs text-muted-foreground md:text-sm">{t("voided")}</div>
-          <div className="text-xl font-bold text-gray-500 md:text-2xl">{transactions.filter((txn) => txn.status === "voided").length}</div>
+          <div className="text-xl font-bold text-gray-500 md:text-2xl">
+            {transactions.filter((txn) => txn.status === "voided").length}
+          </div>
         </div>
         <div className="rounded-lg border p-3 md:p-4">
           <div className="text-xs text-muted-foreground md:text-sm">{t("totalSales")}</div>
-          <div className="text-lg font-bold md:text-2xl">{formatCurrency(transactions.filter((txn) => txn.status === "completed").reduce((sum, txn) => sum + txn.totalAmount, 0))}</div>
+          <div className="text-lg font-bold md:text-2xl">
+            {formatCurrency(
+              transactions
+                .filter((txn) => txn.status === "completed")
+                .reduce((sum, txn) => sum + txn.totalAmount, 0)
+            )}
+          </div>
         </div>
       </div>
 
@@ -149,10 +175,24 @@ export default function POSTransactionsPage() {
         <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
-            <Input placeholder={t("searchPlaceholder")} value={searchInput} onChange={(e) => { setSearchInput(e.target.value); setCurrentPage(1); }} className="pl-10" />
+            <Input
+              placeholder={t("searchPlaceholder")}
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+            />
           </div>
 
-          <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => {
+              setStatusFilter(value);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder={t("statusPlaceholder")} />
             </SelectTrigger>
@@ -166,21 +206,48 @@ export default function POSTransactionsPage() {
 
         <div className="flex flex-col items-stretch gap-4 md:flex-row md:items-center">
           <div className="w-full md:w-[300px]">
-            <DateRangePicker value={dateRange} onChange={(range) => { setDateRange(range); setCurrentPage(1); }} />
+            <DateRangePicker
+              value={dateRange}
+              onChange={(range) => {
+                setDateRange(range);
+                setCurrentPage(1);
+              }}
+            />
           </div>
 
-          <Select value={cashierFilter} onValueChange={(value) => { setCashierFilter(value); setCurrentPage(1); }}>
+          <Select
+            value={cashierFilter}
+            onValueChange={(value) => {
+              setCashierFilter(value);
+              setCurrentPage(1);
+            }}
+          >
             <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue placeholder={t("allCashiers")} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("allCashiers")}</SelectItem>
-              {uniqueCashiers.map((cashier) => <SelectItem key={cashier.id} value={cashier.id}>{cashier.name}</SelectItem>)}
+              {uniqueCashiers.map((cashier) => (
+                <SelectItem key={cashier.id} value={cashier.id}>
+                  {cashier.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
           {(searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all") && (
-            <Button variant="ghost" onClick={() => { setSearch(""); setSearchInput(""); setStatusFilter("all"); setDateRange(undefined); setCashierFilter("all"); setCurrentPage(1); }} className="w-full md:w-auto">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSearch("");
+                setSearchInput("");
+                setStatusFilter("all");
+                setDateRange(undefined);
+                setCashierFilter("all");
+                setCurrentPage(1);
+              }}
+              className="w-full md:w-auto"
+            >
               {t("clearFilters")}
             </Button>
           )}
@@ -204,14 +271,18 @@ export default function POSTransactionsPage() {
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center">{t("loading")}</TableCell>
+                <TableCell colSpan={8} className="py-8 text-center">
+                  {t("loading")}
+                </TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </div>
       ) : transactions.length === 0 ? (
         <div className="rounded-md border py-8 text-center text-muted-foreground">
-          {searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all" ? t("emptyFiltered") : t("empty")}
+          {searchInput || statusFilter !== "all" || dateRange || cashierFilter !== "all"
+            ? t("emptyFiltered")
+            : t("empty")}
         </div>
       ) : (
         <>
@@ -232,23 +303,55 @@ export default function POSTransactionsPage() {
               <TableBody>
                 {transactions.map((transaction) => (
                   <TableRow key={transaction.id}>
-                    <TableCell className="font-mono font-medium">{transaction.transactionNumber}</TableCell>
+                    <TableCell className="font-mono font-medium">
+                      {transaction.transactionNumber}
+                    </TableCell>
                     <TableCell>{formatDateTime(transaction.transactionDate)}</TableCell>
-                    <TableCell>{transaction.customerName || <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>}</TableCell>
+                    <TableCell>
+                      {transaction.customerName || (
+                        <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>
+                      )}
+                    </TableCell>
                     <TableCell>{transaction.cashierName}</TableCell>
-                    <TableCell>{t("itemsCount", { count: transaction.itemCount ?? transaction.items.length })}</TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(transaction.totalAmount)}</TableCell>
+                    <TableCell>
+                      {t("itemsCount", {
+                        count: transaction.itemCount ?? transaction.items.length,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(transaction.totalAmount)}
+                    </TableCell>
                     <TableCell>{getStatusBadge(transaction.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedTransactionId(transaction.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedTransactionId(transaction.id)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" title={t("printReceipt")} onClick={() => { setReceiptTransactionId(transaction.id); setShowReceiptPanel(true); }}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title={t("printReceipt")}
+                          onClick={() => {
+                            setReceiptTransactionId(transaction.id);
+                            setShowReceiptPanel(true);
+                          }}
+                        >
                           <Printer className="h-4 w-4" />
                         </Button>
                         {transaction.status === "completed" && (
-                          <Button variant="ghost" size="sm" title={t("voidTransaction")} onClick={() => { setTransactionToVoid(transaction); setShowAdminPinDialog(true); }}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title={t("voidTransaction")}
+                            onClick={() => {
+                              setTransactionToVoid(transaction);
+                              setShowAdminPinDialog(true);
+                            }}
+                          >
                             <XCircle className="h-4 w-4" />
                           </Button>
                         )}
@@ -275,38 +378,84 @@ export default function POSTransactionsPage() {
         </>
       )}
 
-      {selectedTransactionId && <TransactionDetailsDialog transaction={selectedTransaction ?? null} open={!!selectedTransactionId} onOpenChange={(open) => !open && setSelectedTransactionId(null)} />}
+      {selectedTransactionId && (
+        <TransactionDetailsDialog
+          transaction={selectedTransaction ?? null}
+          open={!!selectedTransactionId}
+          onOpenChange={(open) => !open && setSelectedTransactionId(null)}
+        />
+      )}
 
-      <AdminPinDialog open={showAdminPinDialog} onOpenChange={() => { setTransactionToVoid(null); setShowAdminPinDialog(false); setShowVoidConfirmDialog(false); }} onVerify={async (pin: string) => {
-        const isValid = pin === "0000";
-        if (isValid) {
+      <AdminPinDialog
+        open={showAdminPinDialog}
+        onOpenChange={() => {
+          setTransactionToVoid(null);
           setShowAdminPinDialog(false);
-          setShowVoidConfirmDialog(true);
-        }
-        return isValid;
-      }} title={t("adminPinTitle")} description={t("adminPinDescription")} />
+          setShowVoidConfirmDialog(false);
+        }}
+        onVerify={async (pin: string) => {
+          const isValid = pin === "0000";
+          if (isValid) {
+            setShowAdminPinDialog(false);
+            setShowVoidConfirmDialog(true);
+          }
+          return isValid;
+        }}
+        title={t("adminPinTitle")}
+        description={t("adminPinDescription")}
+      />
 
-      <AlertDialog open={showVoidConfirmDialog} onOpenChange={() => { setTransactionToVoid(null); setShowAdminPinDialog(false); setShowVoidConfirmDialog(false); }}>
+      <AlertDialog
+        open={showVoidConfirmDialog}
+        onOpenChange={() => {
+          setTransactionToVoid(null);
+          setShowAdminPinDialog(false);
+          setShowVoidConfirmDialog(false);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("voidTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{transactionToVoid && t("voidDescription", { transactionNumber: transactionToVoid.transactionNumber })}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {transactionToVoid &&
+                t("voidDescription", { transactionNumber: transactionToVoid.transactionNumber })}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setTransactionToVoid(null); setShowAdminPinDialog(false); setShowVoidConfirmDialog(false); }}>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => {
-              if (!transactionToVoid) return;
-              await voidTransaction.mutateAsync(transactionToVoid.id);
-              setTransactionToVoid(null);
-              setShowVoidConfirmDialog(false);
-            }} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogCancel
+              onClick={() => {
+                setTransactionToVoid(null);
+                setShowAdminPinDialog(false);
+                setShowVoidConfirmDialog(false);
+              }}
+            >
+              {t("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!transactionToVoid) return;
+                await voidTransaction.mutateAsync(transactionToVoid.id);
+                setTransactionToVoid(null);
+                setShowVoidConfirmDialog(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
               {t("voidAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {showReceiptPanel && <ReceiptPanel transaction={receiptTransaction ?? null} open={showReceiptPanel} onClose={() => { setShowReceiptPanel(false); setReceiptTransactionId(null); }} />}
+      {showReceiptPanel && (
+        <ReceiptPanel
+          transaction={receiptTransaction ?? null}
+          open={showReceiptPanel}
+          onClose={() => {
+            setShowReceiptPanel(false);
+            setReceiptTransactionId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -74,19 +74,15 @@ export default function PickingPage() {
                     <Package className="h-5 w-5 text-gray-600" />
                     <h3 className="font-bold text-gray-900">{row.request_code}</h3>
                   </div>
-                  <span className="text-xs font-semibold uppercase text-blue-700">{row.status}</span>
+                  <span className="text-xs font-semibold uppercase text-blue-700">
+                    {row.status}
+                  </span>
                 </div>
-                <p className="text-sm text-gray-700">
-                  Lines: {row.lines}
-                </p>
-                <p className="text-sm text-gray-600">
-                  Assigned: {row.requested_by || "Unknown"}
-                </p>
+                <p className="text-sm text-gray-700">Lines: {row.lines}</p>
+                <p className="text-sm text-gray-600">Assigned: {row.requested_by || "Unknown"}</p>
                 <p className="text-xs text-gray-500">
                   Required:{" "}
-                  {row.required_date
-                    ? format(new Date(row.required_date), "MMM d, yyyy")
-                    : "--"}
+                  {row.required_date ? format(new Date(row.required_date), "MMM d, yyyy") : "--"}
                 </p>
               </Link>
             ))}

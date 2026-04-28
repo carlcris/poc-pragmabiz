@@ -43,7 +43,11 @@ function UserManagementContent() {
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
 
-  const { data: usersData, isLoading, error } = useUsers({
+  const {
+    data: usersData,
+    isLoading,
+    error,
+  } = useUsers({
     search,
     page: 1,
     limit: 50,
@@ -83,8 +87,12 @@ function UserManagementContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+            {t("title")}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+            {t("subtitle")}
+          </p>
         </div>
       </div>
 
@@ -163,9 +171,7 @@ function UserManagementContent() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : users.length === 0 ? (
           <EmptyStatePanel
             icon={UserCheck}

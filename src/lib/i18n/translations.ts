@@ -9109,8 +9109,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearchPlaceholder: "按编码或名称搜索...",
       noItemFound: "未找到项目。",
       stockLabel: "库存",
-      inventoryWarning:
-        "请求数量 {requested} 超过可用库存 {available} {uom}。仍可保存该行项目。",
+      inventoryWarning: "请求数量 {requested} 超过可用库存 {available} {uom}。仍可保存该行项目。",
       description: "描述",
       quantity: "数量",
       unitPrice: "单价",

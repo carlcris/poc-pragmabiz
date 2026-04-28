@@ -11,15 +11,42 @@ import { subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
 import type { SalesAnalyticsFilters } from "@/types/analytics";
 
-const OverviewTab = dynamic(() => import("@/components/analytics/overview-tab").then((mod) => mod.OverviewTab), { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> });
-const ByTimeTab = dynamic(() => import("@/components/analytics/by-time-tab").then((mod) => mod.ByTimeTab), { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> });
-const ByEmployeeTab = dynamic(() => import("@/components/analytics/by-employee-tab").then((mod) => mod.ByEmployeeTab), { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> });
-const ByLocationTab = dynamic(() => import("@/components/analytics/by-location-tab").then((mod) => mod.ByLocationTab), { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" /> });
+const OverviewTab = dynamic(
+  () => import("@/components/analytics/overview-tab").then((mod) => mod.OverviewTab),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" />,
+  }
+);
+const ByTimeTab = dynamic(
+  () => import("@/components/analytics/by-time-tab").then((mod) => mod.ByTimeTab),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" />,
+  }
+);
+const ByEmployeeTab = dynamic(
+  () => import("@/components/analytics/by-employee-tab").then((mod) => mod.ByEmployeeTab),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" />,
+  }
+);
+const ByLocationTab = dynamic(
+  () => import("@/components/analytics/by-location-tab").then((mod) => mod.ByLocationTab),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 animate-pulse rounded-lg border bg-muted/50" />,
+  }
+);
 
 export default function SalesAnalyticsPage() {
   const t = useTranslations("salesAnalyticsPage");
   const [activeTab, setActiveTab] = useState("overview");
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({ from: subDays(new Date(), 29), to: new Date() });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 29),
+    to: new Date(),
+  });
   const [employeeId, setEmployeeId] = useState<string | undefined>();
   const [city, setCity] = useState<string | undefined>();
   const [regionState, setRegionState] = useState<string | undefined>();
@@ -64,16 +91,36 @@ export default function SalesAnalyticsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /><span className="hidden sm:inline">{t("overviewTab")}</span></TabsTrigger>
-          <TabsTrigger value="by-time" className="flex items-center gap-2"><Calendar className="h-4 w-4" /><span className="hidden sm:inline">{t("byTimeTab")}</span></TabsTrigger>
-          <TabsTrigger value="by-employee" className="flex items-center gap-2"><Users className="h-4 w-4" /><span className="hidden sm:inline">{t("byEmployeeTab")}</span></TabsTrigger>
-          <TabsTrigger value="by-location" className="flex items-center gap-2"><MapPin className="h-4 w-4" /><span className="hidden sm:inline">{t("byLocationTab")}</span></TabsTrigger>
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("overviewTab")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="by-time" className="flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("byTimeTab")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="by-employee" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("byEmployeeTab")}</span>
+          </TabsTrigger>
+          <TabsTrigger value="by-location" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("byLocationTab")}</span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">{activeTab === "overview" && <OverviewTab filters={analyticsFilters} />}</TabsContent>
-        <TabsContent value="by-time" className="space-y-6">{activeTab === "by-time" && <ByTimeTab filters={analyticsFilters} />}</TabsContent>
-        <TabsContent value="by-employee" className="space-y-6">{activeTab === "by-employee" && <ByEmployeeTab filters={analyticsFilters} />}</TabsContent>
-        <TabsContent value="by-location" className="space-y-6">{activeTab === "by-location" && <ByLocationTab filters={analyticsFilters} />}</TabsContent>
+        <TabsContent value="overview" className="space-y-6">
+          {activeTab === "overview" && <OverviewTab filters={analyticsFilters} />}
+        </TabsContent>
+        <TabsContent value="by-time" className="space-y-6">
+          {activeTab === "by-time" && <ByTimeTab filters={analyticsFilters} />}
+        </TabsContent>
+        <TabsContent value="by-employee" className="space-y-6">
+          {activeTab === "by-employee" && <ByEmployeeTab filters={analyticsFilters} />}
+        </TabsContent>
+        <TabsContent value="by-location" className="space-y-6">
+          {activeTab === "by-location" && <ByLocationTab filters={analyticsFilters} />}
+        </TabsContent>
       </Tabs>
     </div>
   );

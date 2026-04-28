@@ -136,9 +136,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
           {timeLoading ? (
             <Skeleton className="h-[300px] w-full" />
           ) : salesTrendData.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {t("noSalesData")}
-            </p>
+            <p className="py-8 text-center text-sm text-muted-foreground">{t("noSalesData")}</p>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={salesTrendData}>
@@ -253,7 +251,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
                     cy="50%"
                     labelLine={false}
                     label={({ name, percent }: { name?: string; percent?: number }) =>
-                      `${name ?? ""} (${(((percent ?? 0) * 100).toFixed(0))}%)`
+                      `${name ?? ""} (${((percent ?? 0) * 100).toFixed(0)}%)`
                     }
                     outerRadius={80}
                     fill="#8884d8"

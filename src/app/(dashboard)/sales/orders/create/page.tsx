@@ -27,7 +27,10 @@ export default function CreateSalesOrderPage() {
         </div>
       </div>
 
-      <SalesOrderForm onCancel={() => router.push("/sales/orders")} onSuccess={() => router.push("/sales/orders")} />
+      <SalesOrderForm
+        onCancel={() => router.push("/sales/orders")}
+        onSuccess={() => router.push("/sales/orders")}
+      />
     </div>
   );
 }

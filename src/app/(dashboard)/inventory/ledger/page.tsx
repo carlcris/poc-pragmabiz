@@ -224,7 +224,9 @@ export default function StockLedgerPage() {
             title="Total OUT"
             icon={TrendingDown}
             iconClassName="h-4 w-4 text-red-600"
-            value={data ? (totalOut > 0 ? `-${totalOut.toFixed(2)}` : totalOut.toFixed(2)) : undefined}
+            value={
+              data ? (totalOut > 0 ? `-${totalOut.toFixed(2)}` : totalOut.toFixed(2)) : undefined
+            }
             caption="Stock issued"
             valueClassName="text-2xl font-bold text-red-600"
             isLoading={isLoading}

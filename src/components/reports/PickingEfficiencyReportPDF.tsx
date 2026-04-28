@@ -33,7 +33,12 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13, color: "#6b7280", marginBottom: 6 },
   meta: { fontSize: 10, color: "#6b7280" },
   table: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 4, overflow: "hidden" },
-  tableHeader: { flexDirection: "row", backgroundColor: "#e5e7eb", minHeight: 36, alignItems: "center" },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#e5e7eb",
+    minHeight: 36,
+    alignItems: "center",
+  },
   row: { flexDirection: "row", borderTopWidth: 1, borderTopColor: "#e5e7eb", minHeight: 38 },
   cell: { paddingHorizontal: 4, paddingVertical: 7, justifyContent: "center" },
   headerText: { fontSize: 9 },
@@ -76,14 +81,30 @@ export const PickingEfficiencyReportPDF = ({
 
       <View style={styles.table}>
         <View style={styles.tableHeader}>
-          <View style={[styles.cell, styles.wGroup]}><Text style={styles.headerText}>{groupLabel}</Text></View>
-          <View style={[styles.cell, styles.wQty]}><Text style={[styles.headerText, styles.right]}>{pickListsLabel}</Text></View>
-          <View style={[styles.cell, styles.wQty]}><Text style={[styles.headerText, styles.right]}>{linesLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{linesPerHourLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{accuracyLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{shortRateLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{avgTimeLabel}</Text></View>
-          <View style={[styles.cell, styles.wMetric]}><Text style={[styles.headerText, styles.right]}>{utilizationLabel}</Text></View>
+          <View style={[styles.cell, styles.wGroup]}>
+            <Text style={styles.headerText}>{groupLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wQty]}>
+            <Text style={[styles.headerText, styles.right]}>{pickListsLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wQty]}>
+            <Text style={[styles.headerText, styles.right]}>{linesLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{linesPerHourLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{accuracyLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{shortRateLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{avgTimeLabel}</Text>
+          </View>
+          <View style={[styles.cell, styles.wMetric]}>
+            <Text style={[styles.headerText, styles.right]}>{utilizationLabel}</Text>
+          </View>
         </View>
 
         {rows.map((row) => (
@@ -96,13 +117,29 @@ export const PickingEfficiencyReportPDF = ({
                 {row.warehouseName || row.pickerName || noValueLabel}
               </Text>
             </View>
-            <View style={[styles.cell, styles.wQty]}><Text style={[styles.cellText, styles.right]}>{num(row.pickListCount, 0)}</Text></View>
-            <View style={[styles.cell, styles.wQty]}><Text style={[styles.cellText, styles.right]}>{num(row.lineCount, 0)}</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.pickLinesPerHour)}</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.pickAccuracyPct)}%</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.shortPickRatePct)}%</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.averagePickSeconds / 60)}</Text></View>
-            <View style={[styles.cell, styles.wMetric]}><Text style={[styles.cellText, styles.right]}>{num(row.pickerUtilizationPct)}%</Text></View>
+            <View style={[styles.cell, styles.wQty]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.pickListCount, 0)}</Text>
+            </View>
+            <View style={[styles.cell, styles.wQty]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.lineCount, 0)}</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.pickLinesPerHour)}</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.pickAccuracyPct)}%</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.shortPickRatePct)}%</Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>
+                {num(row.averagePickSeconds / 60)}
+              </Text>
+            </View>
+            <View style={[styles.cell, styles.wMetric]}>
+              <Text style={[styles.cellText, styles.right]}>{num(row.pickerUtilizationPct)}%</Text>
+            </View>
           </View>
         ))}
       </View>

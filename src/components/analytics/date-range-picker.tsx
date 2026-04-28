@@ -6,7 +6,15 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format, subDays, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from "date-fns";
+import {
+  format,
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
+  endOfYear,
+  subMonths,
+} from "date-fns";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
 
@@ -21,12 +29,27 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
   const presets = [
     { label: t("today"), getValue: () => ({ from: new Date(), to: new Date() }) },
-    { label: t("yesterday"), getValue: () => ({ from: subDays(new Date(), 1), to: subDays(new Date(), 1) }) },
+    {
+      label: t("yesterday"),
+      getValue: () => ({ from: subDays(new Date(), 1), to: subDays(new Date(), 1) }),
+    },
     { label: t("last7Days"), getValue: () => ({ from: subDays(new Date(), 6), to: new Date() }) },
     { label: t("last30Days"), getValue: () => ({ from: subDays(new Date(), 29), to: new Date() }) },
-    { label: t("thisMonth"), getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }) },
-    { label: t("lastMonth"), getValue: () => { const lastMonth = subMonths(new Date(), 1); return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) }; } },
-    { label: t("thisYear"), getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }) },
+    {
+      label: t("thisMonth"),
+      getValue: () => ({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) }),
+    },
+    {
+      label: t("lastMonth"),
+      getValue: () => {
+        const lastMonth = subMonths(new Date(), 1);
+        return { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
+      },
+    },
+    {
+      label: t("thisYear"),
+      getValue: () => ({ from: startOfYear(new Date()), to: endOfYear(new Date()) }),
+    },
   ];
 
   const formatDateRange = () => {
@@ -38,7 +61,13 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground"
+          )}
+        >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {formatDateRange()}
         </Button>
@@ -48,13 +77,28 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
           <div className="space-y-1 border-r p-3">
             <div className="mb-2 text-sm font-medium">{t("presets")}</div>
             {presets.map((preset) => (
-              <Button key={preset.label} variant="ghost" size="sm" className="w-full justify-start text-sm" onClick={() => { onChange(preset.getValue()); setOpen(false); }}>
+              <Button
+                key={preset.label}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-sm"
+                onClick={() => {
+                  onChange(preset.getValue());
+                  setOpen(false);
+                }}
+              >
                 {preset.label}
               </Button>
             ))}
           </div>
           <div className="p-3">
-            <Calendar mode="range" selected={value} onSelect={onChange} numberOfMonths={2} initialFocus />
+            <Calendar
+              mode="range"
+              selected={value}
+              onSelect={onChange}
+              numberOfMonths={2}
+              initialFocus
+            />
           </div>
         </div>
       </PopoverContent>

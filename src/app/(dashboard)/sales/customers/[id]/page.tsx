@@ -58,7 +58,9 @@ const DetailItem = ({ icon: Icon, label, value, mutedValue }: DetailItemProps) =
     <div className="min-w-0 flex-1 space-y-1">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="break-words font-medium">{value || "-"}</div>
-      {mutedValue ? <div className="break-words text-sm text-muted-foreground">{mutedValue}</div> : null}
+      {mutedValue ? (
+        <div className="break-words text-sm text-muted-foreground">{mutedValue}</div>
+      ) : null}
     </div>
   </div>
 );
@@ -194,7 +196,11 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title={tCommon("status")} icon={ShieldCheck} value={getStatusLabel(customer.isActive)} />
+        <MetricCard
+          title={tCommon("status")}
+          icon={ShieldCheck}
+          value={getStatusLabel(customer.isActive)}
+        />
         <MetricCard
           title={tForm("customerType")}
           icon={Building2}
@@ -210,7 +216,9 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
           icon={Banknote}
           value={formatCurrency(customer.currentBalance)}
           valueClassName={
-            customer.currentBalance > 0 ? "text-2xl font-bold text-orange-600" : "text-2xl font-bold"
+            customer.currentBalance > 0
+              ? "text-2xl font-bold text-orange-600"
+              : "text-2xl font-bold"
           }
         />
       </div>
@@ -232,7 +240,11 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <DetailItem icon={Building2} label={tForm("customerCode")} value={customer.code} />
+                  <DetailItem
+                    icon={Building2}
+                    label={tForm("customerCode")}
+                    value={customer.code}
+                  />
                   <DetailItem
                     icon={UserRound}
                     label={tForm("customerType")}
@@ -255,7 +267,11 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                   />
                 </div>
                 <div className="border-t pt-4">
-                  <DetailItem icon={FileText} label={tForm("notes")} value={customer.notes || "-"} />
+                  <DetailItem
+                    icon={FileText}
+                    label={tForm("notes")}
+                    value={customer.notes || "-"}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -267,17 +283,23 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{tCommon("status")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tCommon("status")}
+                  </span>
                   <StatusText tone={customer.isActive ? "green" : "muted"}>
                     {getStatusLabel(customer.isActive)}
                   </StatusText>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{tForm("customerType")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tForm("customerType")}
+                  </span>
                   <Badge variant="outline">{getCustomerTypeLabel(customer.customerType)}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{tForm("paymentTerms")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {tForm("paymentTerms")}
+                  </span>
                   <Badge variant="outline">{getPaymentTermsLabel(customer.paymentTerms)}</Badge>
                 </div>
                 <div className="border-t pt-4 text-sm text-muted-foreground">
@@ -355,8 +377,16 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
                 {customer.notes || "-"}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
-                <DetailItem icon={FileText} label="Created" value={formatDate(customer.createdAt)} />
-                <DetailItem icon={FileText} label="Updated" value={formatDate(customer.updatedAt)} />
+                <DetailItem
+                  icon={FileText}
+                  label="Created"
+                  value={formatDate(customer.createdAt)}
+                />
+                <DetailItem
+                  icon={FileText}
+                  label="Updated"
+                  value={formatDate(customer.updatedAt)}
+                />
               </div>
             </CardContent>
           </Card>

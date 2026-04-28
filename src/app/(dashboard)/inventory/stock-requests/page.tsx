@@ -81,7 +81,8 @@ const StockRequestFormDialog = dynamic(
     ),
   { ssr: false }
 );
-type StockRequestFormValues = import("@/components/stock-requests/StockRequestFormDialog").StockRequestFormValues;
+type StockRequestFormValues =
+  import("@/components/stock-requests/StockRequestFormDialog").StockRequestFormValues;
 type StockRequestLineItemPayload =
   import("@/components/stock-requests/StockRequestLineItemDialog").StockRequestLineItemPayload;
 const ReceiveStockRequestDialog = dynamic(
@@ -134,7 +135,9 @@ export default function StockRequestsPage() {
   const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
   const defaultRequestingWarehouseId = useMemo(() => {
     if (!currentBusinessUnit?.id) return "";
-    return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id || "";
+    return (
+      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id || ""
+    );
   }, [currentBusinessUnit?.id, warehouses]);
 
   const createMutation = useCreateStockRequest();
@@ -259,10 +262,7 @@ export default function StockRequestsPage() {
     if (request.status === "submitted" && canFulfillRequest(request)) return true;
     if (request.status === "approved" && canFulfillRequest(request)) return true;
     if (["picking", "picked"].includes(request.status) && canFulfillRequest(request)) return true;
-    if (
-      request.status === "dispatched" &&
-      canReceiveRequest(request)
-    ) {
+    if (request.status === "dispatched" && canReceiveRequest(request)) {
       return true;
     }
     if (["draft", "submitted", "approved"].includes(request.status)) return true;
@@ -458,14 +458,18 @@ export default function StockRequestsPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+            <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+              {t("title")}
+            </h1>
+            <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+              {t("subtitle")}
+            </p>
           </div>
           <div className="flex w-full gap-2 sm:w-auto">
-            <Button asChild variant="outline" className="w-full sm:w-auto flex-shrink-0">
+            <Button asChild variant="outline" className="w-full flex-shrink-0 sm:w-auto">
               <Link href="/inventory/delivery-notes">{t("deliveryNotes")}</Link>
             </Button>
-            <Button onClick={handleCreateRequest} className="w-full sm:w-auto flex-shrink-0">
+            <Button onClick={handleCreateRequest} className="w-full flex-shrink-0 sm:w-auto">
               <Plus className="mr-2 h-4 w-4" />
               {t("createRequest")}
             </Button>
@@ -583,9 +587,7 @@ export default function StockRequestsPage() {
               </Table>
             </div>
           ) : error ? (
-            <div className="py-8 text-center text-destructive">
-              {t("loadingError")}
-            </div>
+            <div className="py-8 text-center text-destructive">{t("loadingError")}</div>
           ) : requests.length === 0 ? (
             <EmptyStatePanel
               icon={Package}
@@ -607,7 +609,9 @@ export default function StockRequestsPage() {
                       <TableHead>{t("status")}</TableHead>
                       {!hasAnyActions && <TableHead>{t("receivedDate")}</TableHead>}
                       <TableHead>{t("requestedByUser")}</TableHead>
-                      {hasAnyActions && <TableHead className="text-right">{t("actions")}</TableHead>}
+                      {hasAnyActions && (
+                        <TableHead className="text-right">{t("actions")}</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -625,8 +629,12 @@ export default function StockRequestsPage() {
                         </TableCell>
                         <TableCell>{formatDate(request.request_date)}</TableCell>
                         <TableCell>{formatDate(request.required_date)}</TableCell>
-                        <TableCell>{request.requesting_warehouse?.warehouse_code || t("noWarehouse")}</TableCell>
-                        <TableCell>{request.fulfilling_warehouse?.warehouse_code || t("noWarehouse")}</TableCell>
+                        <TableCell>
+                          {request.requesting_warehouse?.warehouse_code || t("noWarehouse")}
+                        </TableCell>
+                        <TableCell>
+                          {request.fulfilling_warehouse?.warehouse_code || t("noWarehouse")}
+                        </TableCell>
                         <TableCell>{getPriorityBadge(request.priority)}</TableCell>
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         {!hasAnyActions && (
@@ -695,21 +703,25 @@ export default function StockRequestsPage() {
                                       </Button>
                                     )}
 
-                                  {request.status === "dispatched" && canReceiveRequest(request) && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 px-2"
-                                      onClick={() => handleAction("receive", request)}
-                                    >
-                                      <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
-                                      <span>{t("receive")}</span>
-                                    </Button>
-                                  )}
+                                  {request.status === "dispatched" &&
+                                    canReceiveRequest(request) && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-2"
+                                        onClick={() => handleAction("receive", request)}
+                                      >
+                                        <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" />
+                                        <span>{t("receive")}</span>
+                                      </Button>
+                                    )}
 
                                   {(request.status === "draft" ||
-                                    (request.status === "submitted" && canFulfillRequest(request)) ||
-                                    ["draft", "submitted", "approved"].includes(request.status)) && (
+                                    (request.status === "submitted" &&
+                                      canFulfillRequest(request)) ||
+                                    ["draft", "submitted", "approved"].includes(
+                                      request.status
+                                    )) && (
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button
@@ -722,16 +734,19 @@ export default function StockRequestsPage() {
                                         </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
-                                        {request.status === "submitted" && canFulfillRequest(request) && (
-                                          <DropdownMenuItem
-                                            onClick={() => handleAction("reject", request)}
-                                            className="text-destructive focus:text-destructive"
-                                          >
-                                            <ThumbsDown className="h-4 w-4" />
-                                            <span>{t("reject")}</span>
-                                          </DropdownMenuItem>
-                                        )}
-                                        {["draft", "submitted", "approved"].includes(request.status) && (
+                                        {request.status === "submitted" &&
+                                          canFulfillRequest(request) && (
+                                            <DropdownMenuItem
+                                              onClick={() => handleAction("reject", request)}
+                                              className="text-destructive focus:text-destructive"
+                                            >
+                                              <ThumbsDown className="h-4 w-4" />
+                                              <span>{t("reject")}</span>
+                                            </DropdownMenuItem>
+                                          )}
+                                        {["draft", "submitted", "approved"].includes(
+                                          request.status
+                                        ) && (
                                           <DropdownMenuItem
                                             onClick={() => handleAction("cancel", request)}
                                             className="text-destructive focus:text-destructive"
@@ -754,7 +769,9 @@ export default function StockRequestsPage() {
                                   )}
                                 </>
                               ) : (
-                                <span className="text-xs text-muted-foreground">{t("noActions")}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {t("noActions")}
+                                </span>
                               )}
                             </div>
                           </TableCell>
@@ -831,7 +848,9 @@ export default function StockRequestsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                {requestToDelete ? t("deleteDescription", { code: requestToDelete.request_code }) : ""}
+                {requestToDelete
+                  ? t("deleteDescription", { code: requestToDelete.request_code })
+                  : ""}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -899,7 +918,6 @@ export default function StockRequestsPage() {
           </AlertDialogContent>
         </AlertDialog>
       </div>
-
     </>
   );
 }

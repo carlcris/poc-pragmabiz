@@ -102,14 +102,24 @@ export default function DeliveryNoteDetailPage() {
   const [voidReason, setVoidReason] = useState("");
 
   const items = useMemo(() => dn?.delivery_note_items || [], [dn?.delivery_note_items]);
-  const shellItemRows = isLoading && items.length === 0 ? Array.from({ length: 4 }, (_, index) => `skeleton-${index}`) : [];
-  const allocatableItems = useMemo(() => allocatableItemsData?.data || [], [allocatableItemsData?.data]);
+  const shellItemRows =
+    isLoading && items.length === 0
+      ? Array.from({ length: 4 }, (_, index) => `skeleton-${index}`)
+      : [];
+  const allocatableItems = useMemo(
+    () => allocatableItemsData?.data || [],
+    [allocatableItemsData?.data]
+  );
   const { data: sourceWarehouseData } = useWarehouse(dn?.requesting_warehouse_id || "");
   const { data: destinationWarehouseData } = useWarehouse(dn?.fulfilling_warehouse_id || "");
 
   const activePickList = useMemo(() => {
     const rows = dn?.pick_lists || [];
-    return rows.find((row) => !row.deleted_at && ["pending", "in_progress", "paused"].includes(row.status)) || null;
+    return (
+      rows.find(
+        (row) => !row.deleted_at && ["pending", "in_progress", "paused"].includes(row.status)
+      ) || null
+    );
   }, [dn?.pick_lists]);
 
   const linkedPickList = useMemo(() => {
@@ -121,7 +131,10 @@ export default function DeliveryNoteDetailPage() {
   }, [dn?.pick_lists]);
 
   const hasPendingPickableLines = useMemo(
-    () => items.some((item) => !item.is_voided && toNumber(item.allocated_qty) > toNumber(item.picked_qty)),
+    () =>
+      items.some(
+        (item) => !item.is_voided && toNumber(item.allocated_qty) > toNumber(item.picked_qty)
+      ),
     [items]
   );
 
@@ -166,7 +179,11 @@ export default function DeliveryNoteDetailPage() {
       { label: t("created"), value: dn?.created_at, userId: dn?.created_by },
       { label: t("confirmed"), value: dn?.confirmed_at, userId: dn?.updated_by },
       { label: t("pickingStarted"), value: dn?.picking_started_at, userId: dn?.picking_started_by },
-      { label: t("pickingCompleted"), value: dn?.picking_completed_at, userId: dn?.picking_completed_by },
+      {
+        label: t("pickingCompleted"),
+        value: dn?.picking_completed_at,
+        userId: dn?.picking_completed_by,
+      },
       { label: t("dispatched"), value: dn?.dispatched_at, userId: dn?.updated_by },
       { label: t("received"), value: dn?.received_at, userId: dn?.updated_by },
       { label: t("voided"), value: dn?.voided_at, userId: dn?.updated_by },
@@ -196,8 +213,9 @@ export default function DeliveryNoteDetailPage() {
     Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
   const sourceWarehouseLabel =
-    [sourceWarehouseData?.data?.code, sourceWarehouseData?.data?.name].filter(Boolean).join(" - ") ||
-    t("unknownSourceWarehouse");
+    [sourceWarehouseData?.data?.code, sourceWarehouseData?.data?.name]
+      .filter(Boolean)
+      .join(" - ") || t("unknownSourceWarehouse");
 
   const destinationWarehouseLabel =
     [destinationWarehouseData?.data?.code, destinationWarehouseData?.data?.name]
@@ -207,7 +225,8 @@ export default function DeliveryNoteDetailPage() {
   const canConfirmReceive =
     !!dn &&
     dn.status === "dispatched" &&
-    (!currentBusinessUnit?.id || destinationWarehouseData?.data?.businessUnitId !== currentBusinessUnit.id);
+    (!currentBusinessUnit?.id ||
+      destinationWarehouseData?.data?.businessUnitId !== currentBusinessUnit.id);
 
   const statusLabel = (status: string) => {
     switch (status) {
@@ -246,9 +265,7 @@ export default function DeliveryNoteDetailPage() {
     };
     const directUnitOptionRef = one(row.item_unit_options);
     const requestItemRef = one(row.stock_request_items);
-    const unitOptionRef = requestItemRef
-      ? one(requestItemRef.item_unit_options)
-      : null;
+    const unitOptionRef = requestItemRef ? one(requestItemRef.item_unit_options) : null;
     const ref = one(row.units_of_measure);
     if (directUnitOptionRef) {
       return transformItemUnitOptionRow(directUnitOptionRef, ref?.code || "").displayLabel;
@@ -275,7 +292,9 @@ export default function DeliveryNoteDetailPage() {
   };
 
   const getReceivedQty = (itemId: string, fallback: number) =>
-    Object.prototype.hasOwnProperty.call(receivedQtyMap, itemId) ? receivedQtyMap[itemId] : fallback;
+    Object.prototype.hasOwnProperty.call(receivedQtyMap, itemId)
+      ? receivedQtyMap[itemId]
+      : fallback;
 
   const canQueuePicking =
     !!dn &&
@@ -287,7 +306,10 @@ export default function DeliveryNoteDetailPage() {
   const pageActions = dn ? (
     <>
       {dn.status === "draft" && (
-        <Button onClick={() => confirmMutation.mutateAsync(dn.id)} disabled={confirmMutation.isPending}>
+        <Button
+          onClick={() => confirmMutation.mutateAsync(dn.id)}
+          disabled={confirmMutation.isPending}
+        >
           {t("confirm")}
         </Button>
       )}
@@ -302,9 +324,13 @@ export default function DeliveryNoteDetailPage() {
           {t("addItems")}
         </Button>
       )}
-      {["picking_in_progress", "dispatch_ready", "draft", "confirmed", "queued_for_picking"].includes(
-        dn.status
-      ) && (
+      {[
+        "picking_in_progress",
+        "dispatch_ready",
+        "draft",
+        "confirmed",
+        "queued_for_picking",
+      ].includes(dn.status) && (
         <Button
           variant="destructive"
           onClick={() => voidMutation.mutateAsync({ id: dn.id, reason: voidReason || undefined })}
@@ -464,7 +490,10 @@ export default function DeliveryNoteDetailPage() {
         <div className="rounded-lg border bg-card p-4">
           <div className="text-xs text-muted-foreground">{t("linkedPickList")}</div>
           {dn && linkedPickList ? (
-            <Link href="/inventory/pick-lists" className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline">
+            <Link
+              href="/inventory/pick-lists"
+              className="mt-1 inline-block text-sm font-medium text-blue-600 hover:underline"
+            >
               {linkedPickList.pick_list_no}
             </Link>
           ) : isLoading ? (
@@ -501,14 +530,22 @@ export default function DeliveryNoteDetailPage() {
             title={t("totalAllocated")}
             icon={Package2}
             iconClassName="h-4 w-4 text-green-600"
-            value={dn ? items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2) : undefined}
+            value={
+              dn
+                ? items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2)
+                : undefined
+            }
             isLoading={!dn && isLoading}
           />
           <MetricCard
             title={t("totalShort")}
             icon={TrendingDown}
             iconClassName="h-4 w-4 text-orange-600"
-            value={dn ? items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2) : undefined}
+            value={
+              dn
+                ? items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2)
+                : undefined
+            }
             valueClassName="text-2xl font-bold text-orange-600"
             isLoading={!dn && isLoading}
           />
@@ -531,113 +568,142 @@ export default function DeliveryNoteDetailPage() {
                   <TableHead className="text-right font-semibold">{t("short")}</TableHead>
                   <TableHead className="text-right font-semibold">{t("dispatchedQty")}</TableHead>
                   <TableHead className="font-semibold">{t("lineState")}</TableHead>
-                  {showItemActions && <TableHead className="text-right font-semibold">{t("actions")}</TableHead>}
+                  {showItemActions && (
+                    <TableHead className="text-right font-semibold">{t("actions")}</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!dn && isLoading
                   ? shellItemRows.map((rowKey) => (
                       <TableRow key={rowKey}>
-                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-2">
                             <Skeleton className="h-4 w-44" />
                             <Skeleton className="h-3 w-32" />
                           </div>
                         </TableCell>
-                        <TableCell><Skeleton className="h-6 w-16" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-14" /></TableCell>
+                        <TableCell>
+                          <Skeleton className="h-6 w-16" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="ml-auto h-4 w-14" />
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="ml-auto flex w-14 flex-col items-end gap-1">
                             <Skeleton className="h-4 w-14" />
                             <Skeleton className="h-3 w-10" />
                           </div>
                         </TableCell>
-                        <TableCell className="text-right"><Skeleton className="ml-auto h-6 w-16" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-14" /></TableCell>
-                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                        {showItemActions && <TableCell className="text-right"><Skeleton className="ml-auto h-8 w-24" /></TableCell>}
+                        <TableCell className="text-right">
+                          <Skeleton className="ml-auto h-6 w-16" />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Skeleton className="ml-auto h-4 w-14" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-6 w-24" />
+                        </TableCell>
+                        {showItemActions && (
+                          <TableCell className="text-right">
+                            <Skeleton className="ml-auto h-8 w-24" />
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   : items.map((item) => {
-                  const allocatedQty = toNumber(item.allocated_qty);
-                  const pickedQty = toNumber(item.picked_qty);
-                  const shortQty = toNumber(item.short_qty);
-                  const dispatchedQty = toNumber(item.dispatched_qty);
-                  const pickCompletion = allocatedQty > 0 ? ((pickedQty / allocatedQty) * 100).toFixed(0) : 0;
+                      const allocatedQty = toNumber(item.allocated_qty);
+                      const pickedQty = toNumber(item.picked_qty);
+                      const shortQty = toNumber(item.short_qty);
+                      const dispatchedQty = toNumber(item.dispatched_qty);
+                      const pickCompletion =
+                        allocatedQty > 0 ? ((pickedQty / allocatedQty) * 100).toFixed(0) : 0;
 
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{requestLabel(item)}</TableCell>
-                      <TableCell>
-                        <div className="font-medium">{itemLabel(item)}</div>
-                        {item.void_reason && item.is_voided && (
-                          <div className="mt-1 text-xs text-muted-foreground">{item.void_reason}</div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">{uomLabel(item)}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="font-semibold">{allocatedQty.toFixed(2)}</div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="space-y-1">
-                          <div className="font-medium">{pickedQty.toFixed(2)}</div>
-                          <div className="text-xs text-muted-foreground">{pickCompletion}%</div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {shortQty > 0 ? (
-                          <div className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1">
-                            <TrendingDown className="h-3 w-3 text-orange-600" />
-                            <span className="font-semibold text-orange-600">{shortQty.toFixed(2)}</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">{shortQty.toFixed(2)}</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="font-medium">{dispatchedQty.toFixed(2)}</div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">{lineStateLabel(item)}</span>
-                      </TableCell>
-                      {showItemActions && (
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={dispatchedQty <= 0 || adjustItemMutation.isPending}
-                              onClick={() => {
-                                setAdjustItemId(item.id);
-                                setAdjustDispatchedQty(dispatchedQty.toFixed(2));
-                                setAdjustReason("");
-                              }}
-                            >
-                              <Pencil className="mr-2 h-3.5 w-3.5" />
-                              {t("editQty")}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={dispatchedQty <= 0 || adjustItemMutation.isPending}
-                              onClick={() => {
-                                setAdjustItemId(item.id);
-                                setAdjustDispatchedQty("0");
-                                setAdjustReason("");
-                              }}
-                            >
-                              <XCircle className="mr-2 h-3.5 w-3.5" />
-                              {t("voidItem")}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {requestLabel(item)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{itemLabel(item)}</div>
+                            {item.void_reason && item.is_voided && (
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {item.void_reason}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                              {uomLabel(item)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="font-semibold">{allocatedQty.toFixed(2)}</div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="space-y-1">
+                              <div className="font-medium">{pickedQty.toFixed(2)}</div>
+                              <div className="text-xs text-muted-foreground">{pickCompletion}%</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {shortQty > 0 ? (
+                              <div className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1">
+                                <TrendingDown className="h-3 w-3 text-orange-600" />
+                                <span className="font-semibold text-orange-600">
+                                  {shortQty.toFixed(2)}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">{shortQty.toFixed(2)}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="font-medium">{dispatchedQty.toFixed(2)}</div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                              {lineStateLabel(item)}
+                            </span>
+                          </TableCell>
+                          {showItemActions && (
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={dispatchedQty <= 0 || adjustItemMutation.isPending}
+                                  onClick={() => {
+                                    setAdjustItemId(item.id);
+                                    setAdjustDispatchedQty(dispatchedQty.toFixed(2));
+                                    setAdjustReason("");
+                                  }}
+                                >
+                                  <Pencil className="mr-2 h-3.5 w-3.5" />
+                                  {t("editQty")}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={dispatchedQty <= 0 || adjustItemMutation.isPending}
+                                  onClick={() => {
+                                    setAdjustItemId(item.id);
+                                    setAdjustDispatchedQty("0");
+                                    setAdjustReason("");
+                                  }}
+                                >
+                                  <XCircle className="mr-2 h-3.5 w-3.5" />
+                                  {t("voidItem")}
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
               </TableBody>
             </Table>
           </div>
@@ -667,19 +733,38 @@ export default function DeliveryNoteDetailPage() {
           <CardContent className="space-y-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">{t("driverName")}</Label>
-              <Input placeholder={t("enterDriverName")} value={driverName} onChange={(event) => setDriverName(event.target.value)} />
+              <Input
+                placeholder={t("enterDriverName")}
+                value={driverName}
+                onChange={(event) => setDriverName(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">
                 {t("driverSignature")} <span className="text-red-500">*</span>
               </Label>
-              <Input placeholder={t("required")} value={driverSignature} onChange={(event) => setDriverSignature(event.target.value)} />
+              <Input
+                placeholder={t("required")}
+                value={driverSignature}
+                onChange={(event) => setDriverSignature(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-muted-foreground">{t("dispatchNotes")}</Label>
-              <Textarea placeholder={t("optionalNotes")} value={dispatchNotes} onChange={(event) => setDispatchNotes(event.target.value)} rows={3} />
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t("dispatchNotes")}
+              </Label>
+              <Textarea
+                placeholder={t("optionalNotes")}
+                value={dispatchNotes}
+                onChange={(event) => setDispatchNotes(event.target.value)}
+                rows={3}
+              />
             </div>
-            <Button onClick={submitDispatch} disabled={dispatchMutation.isPending || !driverSignature.trim()} className="w-full sm:w-auto">
+            <Button
+              onClick={submitDispatch}
+              disabled={dispatchMutation.isPending || !driverSignature.trim()}
+              className="w-full sm:w-auto"
+            >
               {dispatchMutation.isPending ? t("dispatching") : t("confirmDispatch")}
             </Button>
           </CardContent>
@@ -694,15 +779,25 @@ export default function DeliveryNoteDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-xs font-medium text-muted-foreground">{t("receiveNotes")}</Label>
-              <Textarea placeholder={t("optionalNotes")} value={receiveNotes} onChange={(event) => setReceiveNotes(event.target.value)} rows={3} />
+              <Label className="text-xs font-medium text-muted-foreground">
+                {t("receiveNotes")}
+              </Label>
+              <Textarea
+                placeholder={t("optionalNotes")}
+                value={receiveNotes}
+                onChange={(event) => setReceiveNotes(event.target.value)}
+                rows={3}
+              />
             </div>
             <div className="space-y-3">
               <div className="text-sm font-medium">{t("receivedQuantities")}</div>
               {items
                 .filter((item) => !item.is_voided && toNumber(item.dispatched_qty) > 0)
                 .map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3"
+                  >
                     <div className="flex-1">
                       <div className="text-sm font-medium">{itemLabel(item)}</div>
                       <div className="text-xs text-muted-foreground">{requestLabel(item)}</div>
@@ -721,7 +816,10 @@ export default function DeliveryNoteDetailPage() {
                             ...prev,
                             [item.id]: Math.max(
                               0,
-                              Math.min(toNumber(item.dispatched_qty), parseFloat(event.target.value) || 0)
+                              Math.min(
+                                toNumber(item.dispatched_qty),
+                                parseFloat(event.target.value) || 0
+                              )
                             ),
                           }))
                         }
@@ -731,7 +829,11 @@ export default function DeliveryNoteDetailPage() {
                 ))}
             </div>
             {canConfirmReceive ? (
-              <Button onClick={submitReceive} disabled={receiveMutation.isPending} className="w-full sm:w-auto">
+              <Button
+                onClick={submitReceive}
+                disabled={receiveMutation.isPending}
+                className="w-full sm:w-auto"
+              >
                 {receiveMutation.isPending ? t("receiving") : t("confirmReceive")}
               </Button>
             ) : null}
@@ -753,22 +855,29 @@ export default function DeliveryNoteDetailPage() {
         </Card>
       )}
 
-      {dn && ["draft", "confirmed", "queued_for_picking", "picking_in_progress", "dispatch_ready"].includes(dn.status) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("voidDeliveryNote")}</CardTitle>
-            <p className="text-sm text-muted-foreground">{t("reasonForVoidingOptional")}</p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Textarea
-              placeholder={t("reasonForVoidingOptional")}
-              value={voidReason}
-              onChange={(event) => setVoidReason(event.target.value)}
-              rows={3}
-            />
-          </CardContent>
-        </Card>
-      )}
+      {dn &&
+        [
+          "draft",
+          "confirmed",
+          "queued_for_picking",
+          "picking_in_progress",
+          "dispatch_ready",
+        ].includes(dn.status) && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("voidDeliveryNote")}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t("reasonForVoidingOptional")}</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea
+                placeholder={t("reasonForVoidingOptional")}
+                value={voidReason}
+                onChange={(event) => setVoidReason(event.target.value)}
+                rows={3}
+              />
+            </CardContent>
+          </Card>
+        )}
 
       <Card>
         <CardHeader>
@@ -781,7 +890,9 @@ export default function DeliveryNoteDetailPage() {
                   <div key={`timeline-skeleton-${index}`} className="relative flex gap-4">
                     <div className="flex flex-col items-center">
                       <Skeleton className="h-3 w-3 rounded-full" />
-                      {index < 4 && <div className="mt-1 w-0.5 flex-1 bg-muted" style={{ minHeight: "24px" }} />}
+                      {index < 4 && (
+                        <div className="mt-1 w-0.5 flex-1 bg-muted" style={{ minHeight: "24px" }} />
+                      )}
                     </div>
                     <div className="flex-1 space-y-2 pb-2">
                       <Skeleton className="h-4 w-28" />
@@ -791,102 +902,130 @@ export default function DeliveryNoteDetailPage() {
                   </div>
                 ))
               : timeline.map((event, index) => {
-              const userName = getUserDisplayName(event.userId);
+                  const userName = getUserDisplayName(event.userId);
 
-              return (
-                <div key={event.label} className="relative flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`h-3 w-3 rounded-full border-2 ${
-                        event.value ? "border-blue-600 bg-blue-600" : "border-muted-foreground/30 bg-background"
-                      }`}
-                    />
-                    {index < timeline.length - 1 && (
-                      <div
-                        className={`mt-1 w-0.5 flex-1 ${timeline[index + 1].value ? "bg-blue-600" : "bg-muted-foreground/20"}`}
-                        style={{ minHeight: "24px" }}
-                      />
-                    )}
-                  </div>
-
-                  <div className="flex-1 pb-2">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1">
-                        <div className={`text-sm font-medium ${event.value ? "text-foreground" : "text-muted-foreground"}`}>
-                          {event.label}
-                        </div>
-                        {userName && event.value && (
-                          <div className="mt-1 text-xs text-muted-foreground">{t("byUser", { user: userName })}</div>
+                  return (
+                    <div key={event.label} className="relative flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`h-3 w-3 rounded-full border-2 ${
+                            event.value
+                              ? "border-blue-600 bg-blue-600"
+                              : "border-muted-foreground/30 bg-background"
+                          }`}
+                        />
+                        {index < timeline.length - 1 && (
+                          <div
+                            className={`mt-1 w-0.5 flex-1 ${timeline[index + 1].value ? "bg-blue-600" : "bg-muted-foreground/20"}`}
+                            style={{ minHeight: "24px" }}
+                          />
                         )}
                       </div>
-                      <span className={`whitespace-nowrap text-sm ${event.value ? "text-foreground" : "text-muted-foreground"}`}>
-                        {formatDate(event.value, locale)}
-                      </span>
+
+                      <div className="flex-1 pb-2">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1">
+                            <div
+                              className={`text-sm font-medium ${event.value ? "text-foreground" : "text-muted-foreground"}`}
+                            >
+                              {event.label}
+                            </div>
+                            {userName && event.value && (
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {t("byUser", { user: userName })}
+                              </div>
+                            )}
+                          </div>
+                          <span
+                            className={`whitespace-nowrap text-sm ${event.value ? "text-foreground" : "text-muted-foreground"}`}
+                          >
+                            {formatDate(event.value, locale)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
           </div>
         </CardContent>
       </Card>
 
-      {dn ? <Dialog open={queueOpen} onOpenChange={setQueueOpen}>
-        <DialogContent className="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{t("createPickList")}</DialogTitle>
-            <DialogDescription>{t("createPickListDescription", { code: dn.dn_no })}</DialogDescription>
-          </DialogHeader>
+      {dn ? (
+        <Dialog open={queueOpen} onOpenChange={setQueueOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{t("createPickList")}</DialogTitle>
+              <DialogDescription>
+                {t("createPickListDescription", { code: dn.dn_no })}
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t("assignPickers")}</Label>
-              <Input placeholder={t("searchNameOrEmail")} value={queuePickerSearch} onChange={(event) => setQueuePickerSearch(event.target.value)} />
-              <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
-                {filteredQueuePickerUsers.map((user) => (
-                  <label key={user.id} className="flex cursor-pointer items-center gap-3 rounded p-2 text-sm transition-colors hover:bg-muted/50">
-                    <Checkbox
-                      checked={selectedQueuePickerIds.has(user.id)}
-                      onCheckedChange={(checked) => {
-                        setSelectedQueuePickerIds((prev) => {
-                          const next = new Set(prev);
-                          if (checked === true) next.add(user.id);
-                          else next.delete(user.id);
-                          return next;
-                        });
-                      }}
-                    />
-                    <span>{user.label}</span>
-                  </label>
-                ))}
-                {filteredQueuePickerUsers.length === 0 && <div className="py-4 text-center text-sm text-muted-foreground">{t("noMatchingUsers")}</div>}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("assignPickers")}</Label>
+                <Input
+                  placeholder={t("searchNameOrEmail")}
+                  value={queuePickerSearch}
+                  onChange={(event) => setQueuePickerSearch(event.target.value)}
+                />
+                <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
+                  {filteredQueuePickerUsers.map((user) => (
+                    <label
+                      key={user.id}
+                      className="flex cursor-pointer items-center gap-3 rounded p-2 text-sm transition-colors hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        checked={selectedQueuePickerIds.has(user.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedQueuePickerIds((prev) => {
+                            const next = new Set(prev);
+                            if (checked === true) next.add(user.id);
+                            else next.delete(user.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span>{user.label}</span>
+                    </label>
+                  ))}
+                  {filteredQueuePickerUsers.length === 0 && (
+                    <div className="py-4 text-center text-sm text-muted-foreground">
+                      {t("noMatchingUsers")}
+                    </div>
+                  )}
+                </div>
+                {selectedQueuePickerIds.size > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {t("pickersSelected", { count: selectedQueuePickerIds.size })}
+                  </div>
+                )}
               </div>
-              {selectedQueuePickerIds.size > 0 && (
-                <div className="text-xs text-muted-foreground">{t("pickersSelected", { count: selectedQueuePickerIds.size })}</div>
-              )}
+
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("pickingInstructions")}</Label>
+                <Textarea
+                  placeholder={t("optionalPickingInstructions")}
+                  value={queueNotes}
+                  onChange={(event) => setQueueNotes(event.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">{t("pickingInstructions")}</Label>
-              <Textarea
-                placeholder={t("optionalPickingInstructions")}
-                value={queueNotes}
-                onChange={(event) => setQueueNotes(event.target.value)}
-                rows={3}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQueueOpen(false)}>
-              {t("cancel")}
-            </Button>
-            <Button onClick={submitCreatePickList} disabled={selectedQueuePickerIds.size === 0 || createPickListMutation.isPending}>
-              {createPickListMutation.isPending ? t("creating") : t("createPickList")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog> : null}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setQueueOpen(false)}>
+                {t("cancel")}
+              </Button>
+              <Button
+                onClick={submitCreatePickList}
+                disabled={selectedQueuePickerIds.size === 0 || createPickListMutation.isPending}
+              >
+                {createPickListMutation.isPending ? t("creating") : t("createPickList")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       <Dialog
         open={!!adjustItemId}
@@ -906,11 +1045,22 @@ export default function DeliveryNoteDetailPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("newDispatchedQty")}</Label>
-              <Input type="number" min="0" step="0.01" value={adjustDispatchedQty} onChange={(event) => setAdjustDispatchedQty(event.target.value)} />
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={adjustDispatchedQty}
+                onChange={(event) => setAdjustDispatchedQty(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label>{t("reason")}</Label>
-              <Textarea rows={3} placeholder={t("reasonOptional")} value={adjustReason} onChange={(event) => setAdjustReason(event.target.value)} />
+              <Textarea
+                rows={3}
+                placeholder={t("reasonOptional")}
+                value={adjustReason}
+                onChange={(event) => setAdjustReason(event.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -941,7 +1091,11 @@ export default function DeliveryNoteDetailPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("searchItems")}</Label>
-              <Input placeholder={t("searchItems")} value={addItemSearch} onChange={(event) => setAddItemSearch(event.target.value)} />
+              <Input
+                placeholder={t("searchItems")}
+                value={addItemSearch}
+                onChange={(event) => setAddItemSearch(event.target.value)}
+              />
             </div>
 
             <div className="max-h-80 overflow-y-auto rounded-lg border">
@@ -975,8 +1129,12 @@ export default function DeliveryNoteDetailPage() {
                     <TableRow key={item.srItemId}>
                       <TableCell className="font-mono text-xs">{item.requestCode}</TableCell>
                       <TableCell>
-                        <div className="font-medium">{item.itemName || item.itemCode || t("unknownItem")}</div>
-                        {item.itemCode && <div className="text-xs text-muted-foreground">{item.itemCode}</div>}
+                        <div className="font-medium">
+                          {item.itemName || item.itemCode || t("unknownItem")}
+                        </div>
+                        {item.itemCode && (
+                          <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                        )}
                       </TableCell>
                       <TableCell>{item.uomLabel || t("unknownUnit")}</TableCell>
                       <TableCell className="text-right">{item.requestedQty.toFixed(2)}</TableCell>
@@ -1007,7 +1165,10 @@ export default function DeliveryNoteDetailPage() {
               <Label>{t("assignPickers")}</Label>
               <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border bg-muted/30 p-3">
                 {pickerUsers.map((user) => (
-                  <label key={user.id} className="flex cursor-pointer items-center gap-3 rounded p-2 text-sm hover:bg-muted/50">
+                  <label
+                    key={user.id}
+                    className="flex cursor-pointer items-center gap-3 rounded p-2 text-sm hover:bg-muted/50"
+                  >
                     <Checkbox
                       checked={selectedAddPickerIds.has(user.id)}
                       onCheckedChange={(checked) => {
@@ -1027,7 +1188,12 @@ export default function DeliveryNoteDetailPage() {
 
             <div className="space-y-2">
               <Label>{t("pickingInstructions")}</Label>
-              <Textarea rows={3} placeholder={t("optionalPickingInstructions")} value={addItemNotes} onChange={(event) => setAddItemNotes(event.target.value)} />
+              <Textarea
+                rows={3}
+                placeholder={t("optionalPickingInstructions")}
+                value={addItemNotes}
+                onChange={(event) => setAddItemNotes(event.target.value)}
+              />
             </div>
           </div>
 
@@ -1041,11 +1207,20 @@ export default function DeliveryNoteDetailPage() {
                 addItemsMutation.isPending ||
                 selectedAddPickerIds.size === 0 ||
                 !allocatableItems.some(
-                  (item) => Math.max(0, Math.min(item.allocatableQty, parseFloat(selectedAddQtyMap[item.srItemId] || "0") || 0)) > 0
+                  (item) =>
+                    Math.max(
+                      0,
+                      Math.min(
+                        item.allocatableQty,
+                        parseFloat(selectedAddQtyMap[item.srItemId] || "0") || 0
+                      )
+                    ) > 0
                 )
               }
             >
-              {addItemsMutation.isPending ? t("creatingReplacementPickList") : t("addSelectedItems")}
+              {addItemsMutation.isPending
+                ? t("creatingReplacementPickList")
+                : t("addSelectedItems")}
             </Button>
           </DialogFooter>
         </DialogContent>

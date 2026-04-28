@@ -221,8 +221,7 @@ export const PriceFormDialog = ({ open, onOpenChange, itemId, price }: PriceForm
               control={control}
               rules={{
                 required: t("priceRequired"),
-                validate: (value) =>
-                  value === "" || Number(value) >= 0 || t("priceMin"),
+                validate: (value) => value === "" || Number(value) >= 0 || t("priceMin"),
               }}
               render={({ field }) => (
                 <Input

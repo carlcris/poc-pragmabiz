@@ -4,10 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/grns/[id]/reject - Reject GRN
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
     const { id } = await params;
@@ -35,10 +32,7 @@ export async function POST(
 
     // Validate rejection reason
     if (!body.reason || body.reason.trim() === "") {
-      return NextResponse.json(
-        { error: "Rejection reason is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Rejection reason is required" }, { status: 400 });
     }
 
     // Fetch GRN
@@ -75,10 +69,7 @@ export async function POST(
 
     if (updateError) {
       console.error("Error rejecting GRN:", updateError);
-      return NextResponse.json(
-        { error: "Failed to reject GRN" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to reject GRN" }, { status: 500 });
     }
 
     return NextResponse.json({

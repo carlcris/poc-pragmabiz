@@ -146,7 +146,9 @@ export function DelayedShipmentsWidget({
               <Clock className="h-4 w-4" />
               <span>{t("overdueShipments")}</span>
             </div>
-            <span className="text-xl sm:text-2xl font-bold text-right text-destructive">{data.count}</span>
+            <span className="text-right text-xl font-bold text-destructive sm:text-2xl">
+              {data.count}
+            </span>
           </div>
         </div>
 
@@ -165,26 +167,27 @@ export function DelayedShipmentsWidget({
                   item.severity === "medium" && "border-yellow-500/50 bg-yellow-50"
                 )}
               >
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate">{item.ll_number}</span>
+                    <span className="truncate text-sm font-medium">{item.ll_number}</span>
                     {item.severity === "critical" && (
-                      <AlertCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 text-red-600" />
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground truncate">
+                  <span className="truncate text-xs text-muted-foreground">
                     {item.supplier?.supplier_name || t("unknownSupplier")}
                   </span>
                   {item.estimated_arrival_date && (
                     <span className="text-xs text-muted-foreground">
-                      {t("expected")}: {format(parseISO(item.estimated_arrival_date), "MMM d, yyyy")}
+                      {t("expected")}:{" "}
+                      {format(parseISO(item.estimated_arrival_date), "MMM d, yyyy")}
                     </span>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <div className="flex flex-shrink-0 flex-col items-end gap-1">
                   <div
                     className={cn(
-                      "rounded-full px-2.5 py-1 text-xs font-bold whitespace-nowrap",
+                      "whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold",
                       item.severity === "critical" && "bg-red-600 text-white",
                       item.severity === "high" && "bg-orange-600 text-white",
                       item.severity === "medium" && "bg-yellow-600 text-white"
@@ -192,7 +195,9 @@ export function DelayedShipmentsWidget({
                   >
                     {t("daysLate", { count: item.daysOverdue })}
                   </div>
-                  <span className="text-xs capitalize text-muted-foreground">{item.status?.replace("_", " ")}</span>
+                  <span className="text-xs capitalize text-muted-foreground">
+                    {item.status?.replace("_", " ")}
+                  </span>
                 </div>
               </Link>
             ))}

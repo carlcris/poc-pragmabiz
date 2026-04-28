@@ -521,7 +521,7 @@ export function StockTransactionFormDialog({
                 const selectedItem = basicItems.find((i) => i.id === field.value);
                 const isDisabled = !selectedWarehouseId;
                 return (
-                    <FormItem className="flex flex-col">
+                  <FormItem className="flex flex-col">
                     <FormLabel>{t("itemLabel")}</FormLabel>
                     <Popover
                       open={itemOpen}

@@ -132,7 +132,8 @@ export default function POSPage() {
       newCart[existingItemIndex] = {
         ...newCart[existingItemIndex],
         quantity: newQty,
-        lineTotal: newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
+        lineTotal:
+          newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
       };
       setCart(newCart);
     } else {
@@ -156,7 +157,8 @@ export default function POSPage() {
     setSearch("");
   };
 
-  const removeFromCart = (index: number) => setCart(cart.filter((_, itemIndex) => itemIndex !== index));
+  const removeFromCart = (index: number) =>
+    setCart(cart.filter((_, itemIndex) => itemIndex !== index));
 
   const updateQuantity = (index: number, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -269,7 +271,11 @@ export default function POSPage() {
             </PopoverTrigger>
             <PopoverContent className="w-[600px] p-0" align="start">
               <Command>
-                <CommandInput placeholder={t("searchItems")} value={search} onValueChange={setSearch} />
+                <CommandInput
+                  placeholder={t("searchItems")}
+                  value={search}
+                  onValueChange={setSearch}
+                />
                 <CommandList>
                   {itemsLoading ? (
                     <CommandGroup>
@@ -289,34 +295,51 @@ export default function POSPage() {
                     <>
                       <CommandEmpty>{t("noItemsFound")}</CommandEmpty>
                       <CommandGroup>
-                        {items.filter((item) => item.isActive).slice(0, 20).map((item) => {
-                          const isOutOfStock = item.available <= 0;
-                          const isLowStock = item.available > 0 && item.available <= item.reorderPoint;
+                        {items
+                          .filter((item) => item.isActive)
+                          .slice(0, 20)
+                          .map((item) => {
+                            const isOutOfStock = item.available <= 0;
+                            const isLowStock =
+                              item.available > 0 && item.available <= item.reorderPoint;
 
-                          return (
-                            <CommandItem
-                              key={item.id}
-                              value={item.name}
-                              onSelect={() => addToCart(item)}
-                              disabled={isOutOfStock}
-                              className={isOutOfStock ? "cursor-not-allowed opacity-50" : "cursor-pointer"}
-                            >
-                              <div className="flex w-full items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">{item.name}</span>
-                                    {isOutOfStock && <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">{t("outOfStock")}</span>}
-                                    {isLowStock && <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700">{t("lowStock")}</span>}
+                            return (
+                              <CommandItem
+                                key={item.id}
+                                value={item.name}
+                                onSelect={() => addToCart(item)}
+                                disabled={isOutOfStock}
+                                className={
+                                  isOutOfStock ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                                }
+                              >
+                                <div className="flex w-full items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{item.name}</span>
+                                      {isOutOfStock && (
+                                        <span className="rounded bg-red-100 px-2 py-0.5 text-xs text-red-700">
+                                          {t("outOfStock")}
+                                        </span>
+                                      )}
+                                      {isLowStock && (
+                                        <span className="rounded bg-orange-100 px-2 py-0.5 text-xs text-orange-700">
+                                          {t("lowStock")}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {item.code} • {item.uom} •{" "}
+                                      {t("stockLabel", { count: item.available })}
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {item.code} • {item.uom} • {t("stockLabel", { count: item.available })}
+                                  <div className="text-sm font-medium">
+                                    {formatCurrency(item.listPrice)}
                                   </div>
                                 </div>
-                                <div className="text-sm font-medium">{formatCurrency(item.listPrice)}</div>
-                              </div>
-                            </CommandItem>
-                          );
-                        })}
+                              </CommandItem>
+                            );
+                          })}
                       </CommandGroup>
                     </>
                   )}
@@ -367,12 +390,26 @@ export default function POSPage() {
                     </TableCell>
                     <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
                     <TableCell>
-                      <Input type="number" min="1" value={item.quantity} onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)} className="w-20" />
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
+                        className="w-20"
+                      />
                     </TableCell>
                     <TableCell>
-                      <Input type="number" min="0" value={item.discount} onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)} className="w-24" />
+                      <Input
+                        type="number"
+                        min="0"
+                        value={item.discount}
+                        onChange={(e) => updateDiscount(index, parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
                     </TableCell>
-                    <TableCell className="text-right font-medium">{formatCurrency(item.lineTotal)}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(item.lineTotal)}
+                    </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => removeFromCart(index)}>
                         <Trash2 className="h-4 w-4" />
@@ -443,7 +480,12 @@ export default function POSPage() {
             </div>
 
             {!showCheckout ? (
-              <Button size="lg" className="w-full" disabled={cart.length === 0} onClick={() => setShowCheckout(true)}>
+              <Button
+                size="lg"
+                className="w-full"
+                disabled={cart.length === 0}
+                onClick={() => setShowCheckout(true)}
+              >
                 {t("proceedToPayment")}
               </Button>
             ) : (
@@ -451,19 +493,35 @@ export default function POSPage() {
                 <div>
                   <label className="mb-2 block text-sm font-medium">{t("paymentMethod")}</label>
                   <div className="grid grid-cols-2 gap-2">
-                    <Button variant={paymentMethod === "cash" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("cash")}>
+                    <Button
+                      variant={paymentMethod === "cash" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("cash")}
+                    >
                       {getPaymentIcon("cash")}
                       <span className="ml-2">{t("cash")}</span>
                     </Button>
-                    <Button variant={paymentMethod === "credit_card" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("credit_card")}>
+                    <Button
+                      variant={paymentMethod === "credit_card" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("credit_card")}
+                    >
                       {getPaymentIcon("credit_card")}
                       <span className="ml-2">{t("card")}</span>
                     </Button>
-                    <Button variant={paymentMethod === "gcash" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("gcash")}>
+                    <Button
+                      variant={paymentMethod === "gcash" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("gcash")}
+                    >
                       {getPaymentIcon("gcash")}
                       <span className="ml-2">{t("gcash")}</span>
                     </Button>
-                    <Button variant={paymentMethod === "paymaya" ? "default" : "outline"} size="sm" onClick={() => setPaymentMethod("paymaya")}>
+                    <Button
+                      variant={paymentMethod === "paymaya" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setPaymentMethod("paymaya")}
+                    >
                       {getPaymentIcon("paymaya")}
                       <span className="ml-2">{t("maya")}</span>
                     </Button>
@@ -474,21 +532,37 @@ export default function POSPage() {
                   <>
                     <div className="space-y-2">
                       <label className="text-sm font-medium">{t("amountReceived")}</label>
-                      <Input type="number" placeholder="0.00" value={amountReceived} onChange={(e) => setAmountReceived(e.target.value)} autoFocus />
+                      <Input
+                        type="number"
+                        placeholder="0.00"
+                        value={amountReceived}
+                        onChange={(e) => setAmountReceived(e.target.value)}
+                        autoFocus
+                      />
                     </div>
 
                     {received > 0 && (
                       <div className="flex justify-between text-lg font-bold">
                         <span>{t("change")}:</span>
-                        <span className={changeAmount < 0 ? "text-red-600" : "text-green-600"}>{formatCurrency(Math.abs(changeAmount))}</span>
+                        <span className={changeAmount < 0 ? "text-red-600" : "text-green-600"}>
+                          {formatCurrency(Math.abs(changeAmount))}
+                        </span>
                       </div>
                     )}
                   </>
                 )}
 
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" onClick={() => setShowCheckout(false)}>{t("cancel")}</Button>
-                  <Button onClick={handleCheckout} disabled={createTransaction.isPending || (paymentMethod === "cash" && (received < totalAmount || received === 0))}>
+                  <Button variant="outline" onClick={() => setShowCheckout(false)}>
+                    {t("cancel")}
+                  </Button>
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={
+                      createTransaction.isPending ||
+                      (paymentMethod === "cash" && (received < totalAmount || received === 0))
+                    }
+                  >
                     {t("completeSale")}
                   </Button>
                 </div>

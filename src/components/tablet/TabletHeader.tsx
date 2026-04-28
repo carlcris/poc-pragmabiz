@@ -142,7 +142,10 @@ export function TabletHeader({
           {/* Business Unit Switcher */}
           {displayBusinessUnitName && (
             <div className="min-w-0 flex-1">
-              <BusinessUnitSwitcher initialBusinessUnitName={displayBusinessUnitName} variant="tablet" />
+              <BusinessUnitSwitcher
+                initialBusinessUnitName={displayBusinessUnitName}
+                variant="tablet"
+              />
             </div>
           )}
 

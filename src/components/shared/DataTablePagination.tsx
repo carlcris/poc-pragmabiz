@@ -72,11 +72,11 @@ export function DataTablePagination({
   };
 
   return (
-    <div className="flex flex-col gap-2 px-1 md:gap-3 md:px-2 md:flex-row md:items-center md:justify-between">
-      <div className="flex flex-col gap-1 text-center md:gap-2 md:flex-row md:items-center md:space-x-6 lg:space-x-8 md:text-left">
+    <div className="flex flex-col gap-2 px-1 md:flex-row md:items-center md:justify-between md:gap-3 md:px-2">
+      <div className="flex flex-col gap-1 text-center md:flex-row md:items-center md:gap-2 md:space-x-6 md:text-left lg:space-x-8">
         {onPageSizeChange && (
           <div className="flex items-center justify-center space-x-2 md:justify-start">
-            <p className="text-xs md:text-sm font-medium">{t("rowsPerPage")}</p>
+            <p className="text-xs font-medium md:text-sm">{t("rowsPerPage")}</p>
             <Select
               value={`${pageSize}`}
               onValueChange={(value) => {
@@ -97,10 +97,10 @@ export function DataTablePagination({
             </Select>
           </div>
         )}
-        <div className="flex items-center justify-center text-xs md:text-sm font-medium md:w-[100px]">
+        <div className="flex items-center justify-center text-xs font-medium md:w-[100px] md:text-sm">
           {t("pageOf", { currentPage, totalPages })}
         </div>
-        <div className="hidden md:block text-sm text-muted-foreground">
+        <div className="hidden text-sm text-muted-foreground md:block">
           {t("showing", { startItem, endItem, totalItems })}
         </div>
       </div>
@@ -129,7 +129,10 @@ export function DataTablePagination({
           {getPageNumbers().map((pageNum, idx) => {
             if (pageNum === "...") {
               return (
-                <span key={`ellipsis-${idx}`} className="px-1 md:px-2 text-xs md:text-sm text-muted-foreground">
+                <span
+                  key={`ellipsis-${idx}`}
+                  className="px-1 text-xs text-muted-foreground md:px-2 md:text-sm"
+                >
                   ...
                 </span>
               );

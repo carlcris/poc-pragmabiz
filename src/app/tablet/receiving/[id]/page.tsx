@@ -128,8 +128,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
 
         if (field === "receivedQty") {
           const qtyPerUnit = Number(currentItem?.itemUnitOption?.qtyPerUnit ?? 1) || 1;
-          nextItem.numBoxes =
-            qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
+          nextItem.numBoxes = qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
         }
 
         return nextItem;
@@ -384,7 +383,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
 
         {/* Receiving Checklist */}
         <Card>
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-violet-50 border-b">
+          <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-violet-50">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base">Receiving Checklist</CardTitle>
@@ -403,7 +402,9 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                 className="h-2 rounded-full bg-gradient-to-r from-purple-600 to-violet-600 transition-all"
                 style={{
                   width: `${
-                    (grn.items.filter((item) => (item.receivedQty || 0) > 0).length / grn.items.length) * 100
+                    (grn.items.filter((item) => (item.receivedQty || 0) > 0).length /
+                      grn.items.length) *
+                    100
                   }%`,
                 }}
               />
@@ -412,13 +413,16 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
           <CardContent className="p-0">
             <div className="space-y-2 p-4">
               {grn.items.map((item) => {
-                const receivedQty = Number(getItemValue(item.id, "receivedQty", item.receivedQty || 0)) || 0;
-                const damagedQty = Number(getItemValue(item.id, "damagedQty", item.damagedQty || 0)) || 0;
+                const receivedQty =
+                  Number(getItemValue(item.id, "receivedQty", item.receivedQty || 0)) || 0;
+                const damagedQty =
+                  Number(getItemValue(item.id, "damagedQty", item.damagedQty || 0)) || 0;
                 const numBoxes = Number(getItemValue(item.id, "numBoxes", item.numBoxes || 0)) || 0;
                 const itemNotes = String(getItemValue(item.id, "notes", item.notes || ""));
                 const requestedQty = item.loadListQty;
                 const expectedBaseQty = item.expectedBaseQty ?? requestedQty;
-                const rowHasEntry = Boolean(editedItems[item.id]) || receivedQty > 0 || damagedQty > 0;
+                const rowHasEntry =
+                  Boolean(editedItems[item.id]) || receivedQty > 0 || damagedQty > 0;
                 const variance = rowHasEntry ? receivedQty + damagedQty - requestedQty : null;
                 const isChecked = receivedQty > 0;
                 const hasIssues = damagedQty > 0 || (variance !== null && variance < 0);
@@ -467,7 +471,9 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                       <div className="flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className={`font-bold ${isChecked ? "text-gray-900" : "text-gray-700"}`}>
+                            <p
+                              className={`font-bold ${isChecked ? "text-gray-900" : "text-gray-700"}`}
+                            >
                               {item.item?.name || "-"}
                             </p>
                             <p className="text-sm text-gray-600">{item.item?.code || "-"}</p>
@@ -476,7 +482,8 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                                 {item.itemUnitOption?.displayLabel || "-"}
                               </p>
                               <p className="text-xs text-gray-500">
-                                Qty/Unit: {(item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(undefined, {
+                                Qty/Unit:{" "}
+                                {(item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(undefined, {
                                   maximumFractionDigits: 4,
                                 })}
                               </p>

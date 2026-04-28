@@ -82,7 +82,7 @@ export async function generateStockRequisitionPDF(data: StockRequisitionPDFData)
   const itemsRows = data.items
     .map(
       (item, index) => `
-    <tr style="${index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f9fafb;'}">
+    <tr style="${index % 2 === 0 ? "background-color: #ffffff;" : "background-color: #f9fafb;"}">
       <td style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280; font-family: 'Courier New', monospace; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${item.itemCode}</td>
       <td style="padding: 12px; text-align: left; font-size: 13px; color: #1f2937; font-weight: 500; border-bottom: 1px solid #e5e7eb;">${item.itemName}</td>
       <td style="padding: 12px; text-align: right; font-size: 13px; color: #1f2937; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${item.requestedQty}</td>
@@ -200,7 +200,7 @@ export async function generateStockRequisitionPDF(data: StockRequisitionPDFData)
               <p style="margin: 4px 0 0 0; font-size: 10px; color: #9ca3af;">${t.footerDoc}</p>
             </td>
             <td style="text-align: right; vertical-align: top;">
-              <p style="margin: 0; font-size: 10px; color: #9ca3af;">${t.generated}: ${new Date().toLocaleDateString(language === "chinese" ? "zh-CN" : "en-US", { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p style="margin: 0; font-size: 10px; color: #9ca3af;">${t.generated}: ${new Date().toLocaleDateString(language === "chinese" ? "zh-CN" : "en-US", { year: "numeric", month: "long", day: "numeric" })}</p>
             </td>
           </tr>
         </table>

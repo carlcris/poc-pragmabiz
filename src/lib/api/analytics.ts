@@ -68,9 +68,7 @@ export const analyticsApi = {
   },
 
   // Sales by location
-  async getSalesByLocation(
-    filters?: SalesAnalyticsFilters & { groupBy?: string }
-  ): Promise<{
+  async getSalesByLocation(filters?: SalesAnalyticsFilters & { groupBy?: string }): Promise<{
     data: SalesByLocation[];
     pagination: { page: number; limit: number; total: number; totalPages: number };
     groupBy: string;

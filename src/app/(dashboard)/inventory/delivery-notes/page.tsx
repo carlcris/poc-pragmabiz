@@ -335,7 +335,13 @@ export default function DeliveryNotesPage() {
     const warehouse = warehouseById.get(warehouseId);
     if (!warehouse) return "";
 
-    const parts = [warehouse.address, warehouse.city, warehouse.state, warehouse.postalCode, warehouse.country]
+    const parts = [
+      warehouse.address,
+      warehouse.city,
+      warehouse.state,
+      warehouse.postalCode,
+      warehouse.country,
+    ]
       .map((part) => part?.trim())
       .filter(Boolean);
     return parts.join(", ");
@@ -394,7 +400,9 @@ export default function DeliveryNotesPage() {
   };
 
   const actionRequestLabel = (item: (typeof actionItems)[number]) => {
-    const requestRef = Array.isArray(item.stock_requests) ? item.stock_requests[0] : item.stock_requests;
+    const requestRef = Array.isArray(item.stock_requests)
+      ? item.stock_requests[0]
+      : item.stock_requests;
     return requestRef?.request_code || "Unknown stock request";
   };
 
@@ -410,17 +418,28 @@ export default function DeliveryNotesPage() {
         ? stockRequestItemRef.item_unit_options[0]
         : stockRequestItemRef.item_unit_options
       : null;
-    const uomRef = Array.isArray(item.units_of_measure) ? item.units_of_measure[0] : item.units_of_measure;
+    const uomRef = Array.isArray(item.units_of_measure)
+      ? item.units_of_measure[0]
+      : item.units_of_measure;
     if (directUnitOptionRef) {
-      return transformItemUnitOptionRow(directUnitOptionRef as unknown as DbItemUnitOptionRow, uomRef?.code || "").displayLabel;
+      return transformItemUnitOptionRow(
+        directUnitOptionRef as unknown as DbItemUnitOptionRow,
+        uomRef?.code || ""
+      ).displayLabel;
     }
     if (unitOptionRef) {
-      return transformItemUnitOptionRow(unitOptionRef as unknown as DbItemUnitOptionRow, uomRef?.code || "").displayLabel;
+      return transformItemUnitOptionRow(
+        unitOptionRef as unknown as DbItemUnitOptionRow,
+        uomRef?.code || ""
+      ).displayLabel;
     }
     return uomRef?.symbol || uomRef?.name || "Unknown unit";
   };
 
-  const getPrimaryRowAction = (dn: DeliveryNote, linkedPickList: DeliveryNotePickListSummary | null) => {
+  const getPrimaryRowAction = (
+    dn: DeliveryNote,
+    linkedPickList: DeliveryNotePickListSummary | null
+  ) => {
     if (dn.status === "draft" && canDispatchDn(dn)) {
       return {
         label: t("confirm"),
@@ -480,7 +499,8 @@ export default function DeliveryNotesPage() {
   const sourceBusinessUnits = useMemo(() => {
     const map = new Map<string, string>();
     for (const request of selectableRequests) {
-      const sourceBuId = request.requesting_warehouse?.businessUnitId || request.business_unit_id || "";
+      const sourceBuId =
+        request.requesting_warehouse?.businessUnitId || request.business_unit_id || "";
       if (!sourceBuId) continue;
       const label =
         request.requesting_warehouse?.warehouse_name ||
@@ -521,7 +541,8 @@ export default function DeliveryNotesPage() {
 
     const lines = selectableRequests
       .filter((request) => {
-        const sourceBuId = request.requesting_warehouse?.businessUnitId || request.business_unit_id || "";
+        const sourceBuId =
+          request.requesting_warehouse?.businessUnitId || request.business_unit_id || "";
         return sourceBuId === buId;
       })
       .flatMap((request) =>
@@ -549,7 +570,8 @@ export default function DeliveryNotesPage() {
               allocatedQty: allocatableQty,
               requestingWarehouseId: request.requesting_warehouse_id,
               fulfillingWarehouseId: request.fulfilling_warehouse_id || "",
-              sourceBuId: request.requesting_warehouse?.businessUnitId || request.business_unit_id || "",
+              sourceBuId:
+                request.requesting_warehouse?.businessUnitId || request.business_unit_id || "",
             } satisfies DraftLine;
           })
           .filter((line) => line.allocatableQty > 0 && !!line.fulfillingWarehouseId)
@@ -706,10 +728,7 @@ export default function DeliveryNotesPage() {
       setCreateOpen(false);
       resetCreateState();
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : t("createError");
+      const message = error instanceof Error ? error.message : t("createError");
       setCreateValidationError(message);
     }
   };
@@ -770,7 +789,10 @@ export default function DeliveryNotesPage() {
             .filter((item) => !item.is_voided)
             .map((item) => ({
               deliveryNoteItemId: item.id,
-              dispatchQty: Math.max(0, Number(item.picked_qty || 0) - Number(item.dispatched_qty || 0)),
+              dispatchQty: Math.max(
+                0,
+                Number(item.picked_qty || 0) - Number(item.dispatched_qty || 0)
+              ),
             }))
             .filter((item) => item.dispatchQty > 0),
         },
@@ -811,11 +833,15 @@ export default function DeliveryNotesPage() {
       {/* Header Section */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">{t("title")}</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{t("subtitle")}</p>
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
+            {t("title")}
+          </h1>
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
+            {t("subtitle")}
+          </p>
         </div>
         <div className="flex w-full gap-2 sm:w-auto">
-          <Button onClick={() => setCreateOpen(true)} className="w-full sm:w-auto flex-shrink-0">
+          <Button onClick={() => setCreateOpen(true)} className="w-full flex-shrink-0 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             {t("createDn")}
           </Button>
@@ -855,180 +881,181 @@ export default function DeliveryNotesPage() {
 
         {/* Table List */}
         {isLoading ? (
-        <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-background">
-              <TableRow>
-                <TableHead>{t("dnNo")}</TableHead>
-                <TableHead>{t("requestedBy")}</TableHead>
-                <TableHead>{t("fulfilledBy")}</TableHead>
-                <TableHead>{t("pickList")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
-                <TableHead className="text-right">{t("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[...Array(8)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-28" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-28" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-20" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Skeleton className="h-8 w-16" />
-                      <Skeleton className="h-8 w-16" />
-                      <Skeleton className="h-8 w-24" />
-                      <Skeleton className="h-8 w-8" />
-                    </div>
-                  </TableCell>
+          <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                <TableRow>
+                  <TableHead>{t("dnNo")}</TableHead>
+                  <TableHead>{t("requestedBy")}</TableHead>
+                  <TableHead>{t("fulfilledBy")}</TableHead>
+                  <TableHead>{t("pickList")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : deliveryNotes.length === 0 ? (
-        <EmptyStatePanel
-          icon={FileText}
-          title={t("emptyTitle")}
-          description={
-            search || statusFilter !== "all"
-              ? t("emptyFilteredDescription")
-              : t("emptyDescription")
-          }
-        />
-      ) : (
-        <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-background">
-              <TableRow>
-                <TableHead>{t("dnNo")}</TableHead>
-                <TableHead>{t("requestedBy")}</TableHead>
-                <TableHead>{t("fulfilledBy")}</TableHead>
-                <TableHead>{t("pickList")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
-                <TableHead className="text-right">{t("actions")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deliveryNotes.map((dn) => {
-                const linkedPickList = resolveActivePickList(dn);
-                const detailsHref = `/inventory/delivery-notes/${dn.id}`;
-                const primaryAction = getPrimaryRowAction(dn, linkedPickList);
-                const canVoidDn = [
-                  "draft",
-                  "confirmed",
-                  "queued_for_picking",
-                  "picking_in_progress",
-                  "dispatch_ready",
-                ].includes(dn.status);
-
-                return (
-                  <TableRow
-                    key={dn.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={(event) => {
-                      const target = event.target as HTMLElement;
-                      if (target.closest("a,button,input,textarea,select,[role='menuitem']")) return;
-                      router.push(detailsHref);
-                    }}
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(dn.status)}
-                        <span className="hover:underline">{dn.dn_no}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {resolveWarehouseLabel(dn.requesting_warehouse_id)}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {resolveWarehouseLabel(dn.fulfilling_warehouse_id)}
+              </TableHeader>
+              <TableBody>
+                {[...Array(8)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
                     </TableCell>
                     <TableCell>
-                      {linkedPickList ? (
-                        <Link
-                          href="/inventory/pick-lists"
-                          className="text-sm text-blue-600 hover:underline"
-                        >
-                          {linkedPickList.pick_list_no}
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">{t("noValue")}</span>
-                      )}
+                      <Skeleton className="h-4 w-32" />
                     </TableCell>
-                    <TableCell>{getStatusBadge(dn.status, statusLabel(dn.status))}</TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            void handlePrintDeliveryNote(dn);
-                          }}
-                          disabled={printingDnId === dn.id}
-                          aria-label={printingDnId === dn.id ? t("generatingPdf") : t("printPdf")}
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          {t("printPdf")}
-                        </Button>
-                        {primaryAction ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={primaryAction.onClick}
-                            aria-label={primaryAction.label}
-                          >
-                            {primaryAction.icon}
-                            {primaryAction.label}
-                          </Button>
-                        ) : null}
-                        {canVoidDn ? (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                aria-label={t("actions")}
-                              >
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => openActionDialog("void", dn.id)}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <XCircle className="h-4 w-4" />
-                                <span>{t("void")}</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        ) : null}
+                        <Skeleton className="h-8 w-16" />
+                        <Skeleton className="h-8 w-16" />
+                        <Skeleton className="h-8 w-24" />
+                        <Skeleton className="h-8 w-8" />
                       </div>
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : deliveryNotes.length === 0 ? (
+          <EmptyStatePanel
+            icon={FileText}
+            title={t("emptyTitle")}
+            description={
+              search || statusFilter !== "all"
+                ? t("emptyFilteredDescription")
+                : t("emptyDescription")
+            }
+          />
+        ) : (
+          <div className="max-h-[calc(100vh-400px)] overflow-y-auto rounded-md border">
+            <Table>
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                <TableRow>
+                  <TableHead>{t("dnNo")}</TableHead>
+                  <TableHead>{t("requestedBy")}</TableHead>
+                  <TableHead>{t("fulfilledBy")}</TableHead>
+                  <TableHead>{t("pickList")}</TableHead>
+                  <TableHead>{t("status")}</TableHead>
+                  <TableHead className="text-right">{t("actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deliveryNotes.map((dn) => {
+                  const linkedPickList = resolveActivePickList(dn);
+                  const detailsHref = `/inventory/delivery-notes/${dn.id}`;
+                  const primaryAction = getPrimaryRowAction(dn, linkedPickList);
+                  const canVoidDn = [
+                    "draft",
+                    "confirmed",
+                    "queued_for_picking",
+                    "picking_in_progress",
+                    "dispatch_ready",
+                  ].includes(dn.status);
+
+                  return (
+                    <TableRow
+                      key={dn.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={(event) => {
+                        const target = event.target as HTMLElement;
+                        if (target.closest("a,button,input,textarea,select,[role='menuitem']"))
+                          return;
+                        router.push(detailsHref);
+                      }}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(dn.status)}
+                          <span className="hover:underline">{dn.dn_no}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {resolveWarehouseLabel(dn.requesting_warehouse_id)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {resolveWarehouseLabel(dn.fulfilling_warehouse_id)}
+                      </TableCell>
+                      <TableCell>
+                        {linkedPickList ? (
+                          <Link
+                            href="/inventory/pick-lists"
+                            className="text-sm text-blue-600 hover:underline"
+                          >
+                            {linkedPickList.pick_list_no}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">{t("noValue")}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(dn.status, statusLabel(dn.status))}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              void handlePrintDeliveryNote(dn);
+                            }}
+                            disabled={printingDnId === dn.id}
+                            aria-label={printingDnId === dn.id ? t("generatingPdf") : t("printPdf")}
+                          >
+                            <FileText className="mr-2 h-4 w-4" />
+                            {t("printPdf")}
+                          </Button>
+                          {primaryAction ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={primaryAction.onClick}
+                              aria-label={primaryAction.label}
+                            >
+                              {primaryAction.icon}
+                              {primaryAction.label}
+                            </Button>
+                          ) : null}
+                          {canVoidDn ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("actions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => openActionDialog("void", dn.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  <span>{t("void")}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : null}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
       <Dialog
@@ -1041,9 +1068,7 @@ export default function DeliveryNotesPage() {
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("createDialogTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("createDialogDescription")}
-            </DialogDescription>
+            <DialogDescription>{t("createDialogDescription")}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -1081,9 +1106,7 @@ export default function DeliveryNotesPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                {t("fulfillmentModeHint")}
-              </p>
+              <p className="text-xs text-muted-foreground">{t("fulfillmentModeHint")}</p>
             </div>
 
             <div className="space-y-2">
@@ -1103,7 +1126,8 @@ export default function DeliveryNotesPage() {
                   <div>
                     <span className="text-xs text-muted-foreground">{t("sourceBuLabel")}</span>{" "}
                     <span className="font-medium">
-                      {sourceBusinessUnits.find((bu) => bu.id === selectedSourceBuId)?.label || t("noValue")}
+                      {sourceBusinessUnits.find((bu) => bu.id === selectedSourceBuId)?.label ||
+                        t("noValue")}
                     </span>
                   </div>
                   <div className="flex gap-4 text-xs">
@@ -1122,9 +1146,7 @@ export default function DeliveryNotesPage() {
 
             {!selectedSourceBuId ? (
               <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {t("selectSourceBuHint")}
-                </p>
+                <p className="text-sm text-muted-foreground">{t("selectSourceBuHint")}</p>
               </div>
             ) : draftLines.length > 0 ? (
               <div className="overflow-hidden rounded-lg border">
@@ -1150,66 +1172,70 @@ export default function DeliveryNotesPage() {
                         line.allocatedQty > maxAllowedQty;
 
                       return (
-                      <TableRow
-                        key={line.srItemId}
-                        className={
-                          hasInsufficientInventory
-                            ? "bg-red-50/40"
-                            : selectedLineIds.has(line.srItemId)
-                              ? "bg-blue-50/50"
-                              : ""
-                        }
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedLineIds.has(line.srItemId)}
-                            onCheckedChange={(checked) => toggleLine(line, checked === true)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{line.requestCode}</TableCell>
-                        <TableCell className="text-sm">
-                          <div className="font-medium">{line.itemName}</div>
-                          <div className="text-xs font-medium text-orange-600">
-                            {t("availableLabel")}{" "}
-                            {isLoadingInventory && getAvailableQty(line) === undefined
-                              ? t("noValue")
-                              : (getAvailableQty(line) || 0).toFixed(2)}
-                          </div>
-                          {hasInsufficientInventory && (
-                            <div className="text-xs font-medium text-red-600">
-                              {t("insufficientInventory")}
+                        <TableRow
+                          key={line.srItemId}
+                          className={
+                            hasInsufficientInventory
+                              ? "bg-red-50/40"
+                              : selectedLineIds.has(line.srItemId)
+                                ? "bg-blue-50/50"
+                                : ""
+                          }
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedLineIds.has(line.srItemId)}
+                              onCheckedChange={(checked) => toggleLine(line, checked === true)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{line.requestCode}</TableCell>
+                          <TableCell className="text-sm">
+                            <div className="font-medium">{line.itemName}</div>
+                            <div className="text-xs font-medium text-orange-600">
+                              {t("availableLabel")}{" "}
+                              {isLoadingInventory && getAvailableQty(line) === undefined
+                                ? t("noValue")
+                                : (getAvailableQty(line) || 0).toFixed(2)}
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {line.uomLabel || t("noValue")}
-                        </TableCell>
-                        <TableCell className="text-right">{line.requestedQty.toFixed(2)}</TableCell>
-                        <TableCell className="text-right font-medium">{line.allocatableQty.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            className="ml-auto w-28 text-right"
-                            type="number"
-                            min="0"
-                            max={line.allocatableQty}
-                            step="0.01"
-                            value={line.allocatedQty}
-                            disabled={!selectedLineIds.has(line.srItemId)}
-                            onChange={(event) =>
-                              updateAllocatedQty(line.srItemId, parseFloat(event.target.value) || 0)
-                            }
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )})}
+                            {hasInsufficientInventory && (
+                              <div className="text-xs font-medium text-red-600">
+                                {t("insufficientInventory")}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">{line.uomLabel || t("noValue")}</TableCell>
+                          <TableCell className="text-right">
+                            {line.requestedQty.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {line.allocatableQty.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Input
+                              className="ml-auto w-28 text-right"
+                              type="number"
+                              min="0"
+                              max={line.allocatableQty}
+                              step="0.01"
+                              value={line.allocatedQty}
+                              disabled={!selectedLineIds.has(line.srItemId)}
+                              onChange={(event) =>
+                                updateAllocatedQty(
+                                  line.srItemId,
+                                  parseFloat(event.target.value) || 0
+                                )
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
             ) : (
               <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center">
-                <p className="text-sm text-muted-foreground">
-                  {t("noEligibleLines")}
-                </p>
+                <p className="text-sm text-muted-foreground">{t("noEligibleLines")}</p>
               </div>
             )}
           </div>
@@ -1243,7 +1269,9 @@ export default function DeliveryNotesPage() {
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {actionType ? actionTitleByType[actionType as Exclude<typeof actionType, "">] : t("action")}
+              {actionType
+                ? actionTitleByType[actionType as Exclude<typeof actionType, "">]
+                : t("action")}
             </DialogTitle>
             <DialogDescription>
               {actionType
@@ -1265,15 +1293,21 @@ export default function DeliveryNotesPage() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("status")}</div>
-                  <div className="font-medium">{getStatusBadge(actionDn.status, statusLabel(actionDn.status))}</div>
+                  <div className="font-medium">
+                    {getStatusBadge(actionDn.status, statusLabel(actionDn.status))}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("source")}</div>
-                  <div className="font-medium">{resolveWarehouseLabel(actionDn.requesting_warehouse_id)}</div>
+                  <div className="font-medium">
+                    {resolveWarehouseLabel(actionDn.requesting_warehouse_id)}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("destination")}</div>
-                  <div className="font-medium">{resolveWarehouseLabel(actionDn.fulfilling_warehouse_id)}</div>
+                  <div className="font-medium">
+                    {resolveWarehouseLabel(actionDn.fulfilling_warehouse_id)}
+                  </div>
                 </div>
               </div>
 
@@ -1293,11 +1327,19 @@ export default function DeliveryNotesPage() {
                     {actionItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="text-sm">{actionRequestLabel(item)}</TableCell>
-                        <TableCell className="text-sm font-medium">{actionItemLabel(item)}</TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {actionItemLabel(item)}
+                        </TableCell>
                         <TableCell className="text-sm">{actionUomLabel(item)}</TableCell>
-                        <TableCell className="text-right font-medium">{Number(item.allocated_qty || 0).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{Number(item.picked_qty || 0).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{Number(item.dispatched_qty || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {Number(item.allocated_qty || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {Number(item.picked_qty || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {Number(item.dispatched_qty || 0).toFixed(2)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1317,7 +1359,10 @@ export default function DeliveryNotesPage() {
                     <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg border bg-background p-3">
                       {filteredQueuePickerUsers.length > 0 ? (
                         filteredQueuePickerUsers.map((user) => (
-                          <label key={user.id} className="flex cursor-pointer items-center gap-3 text-sm hover:bg-muted/50 rounded p-2 transition-colors">
+                          <label
+                            key={user.id}
+                            className="flex cursor-pointer items-center gap-3 rounded p-2 text-sm transition-colors hover:bg-muted/50"
+                          >
                             <Checkbox
                               checked={selectedQueuePickerIds.has(user.id)}
                               onCheckedChange={(checked) => {
@@ -1333,7 +1378,9 @@ export default function DeliveryNotesPage() {
                           </label>
                         ))
                       ) : (
-                        <div className="text-sm text-muted-foreground text-center py-4">{t("noPickersFound")}</div>
+                        <div className="py-4 text-center text-sm text-muted-foreground">
+                          {t("noPickersFound")}
+                        </div>
                       )}
                     </div>
                     {selectedQueuePickerIds.size > 0 && (

@@ -142,17 +142,19 @@ const applyBatchLayerAdjustment = async (
         throw new Error(locationBatchUpdateError.message);
       }
     } else {
-      const { error: locationBatchInsertError } = await supabase.from("item_location_batch").insert({
-        company_id: companyId,
-        item_id: itemId,
-        warehouse_id: warehouseId,
-        location_id: locationId,
-        item_batch_id: itemBatchId,
-        qty_on_hand: quantityDelta,
-        qty_reserved: 0,
-        created_by: userId,
-        updated_by: userId,
-      });
+      const { error: locationBatchInsertError } = await supabase
+        .from("item_location_batch")
+        .insert({
+          company_id: companyId,
+          item_id: itemId,
+          warehouse_id: warehouseId,
+          location_id: locationId,
+          item_batch_id: itemBatchId,
+          qty_on_hand: quantityDelta,
+          qty_reserved: 0,
+          created_by: userId,
+          updated_by: userId,
+        });
 
       if (locationBatchInsertError) {
         throw new Error(locationBatchInsertError.message);

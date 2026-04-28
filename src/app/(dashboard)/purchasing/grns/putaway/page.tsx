@@ -290,7 +290,9 @@ export default function PutawayPage() {
             <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950">
               <div className="mb-2 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="font-medium text-green-900 dark:text-green-100">{t("boxScanned")}</span>
+                <span className="font-medium text-green-900 dark:text-green-100">
+                  {t("boxScanned")}
+                </span>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="grid grid-cols-2 gap-4">
@@ -393,7 +395,9 @@ export default function PutawayPage() {
                                 <div className="flex flex-col">
                                   <span className="font-medium">{location.code}</span>
                                   {location.name && (
-                                    <span className="text-sm text-muted-foreground">{location.name}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {location.name}
+                                    </span>
                                   )}
                                 </div>
                               </CommandItem>
@@ -437,7 +441,10 @@ export default function PutawayPage() {
                 .slice()
                 .reverse()
                 .map((box, index) => (
-                  <div key={`${box.id}-${index}`} className="flex items-center justify-between rounded-lg border p-3">
+                  <div
+                    key={`${box.id}-${index}`}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
                     <div>
                       <div className="font-medium">
                         {box.grnNumber} - #{box.boxNumber}

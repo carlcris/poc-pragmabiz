@@ -131,8 +131,7 @@ export const getClientErrorMessage = (error: RpcError | null | undefined, fallba
       "Production must be completed before the job order can be completed",
     "Job order must be pushed to production before completion":
       "Job order must be pushed to production before completion",
-    "Cancelled job orders cannot be completed":
-      "Cancelled job orders cannot be completed",
+    "Cancelled job orders cannot be completed": "Cancelled job orders cannot be completed",
     "Job orders already in production cannot be cancelled":
       "Job orders already in production cannot be cancelled",
     "Insufficient stock to complete frame job order": "Insufficient stock to complete job order",
@@ -143,8 +142,7 @@ export const getClientErrorMessage = (error: RpcError | null | undefined, fallba
     "Only confirmed, in-progress, or invoiced sales orders can create frame job orders":
       "Only confirmed, in-progress, or invoiced sales orders can create job orders",
     "This sales order already has a frame job order": "This sales order already has a job order",
-    "Manufacturing orders must be pushed from job orders":
-      "Orders must be pushed from job orders",
+    "Manufacturing orders must be pushed from job orders": "Orders must be pushed from job orders",
     "Manufacturing order not found": "Order not found",
     "Completed or cancelled manufacturing orders cannot be changed":
       "Completed or cancelled orders cannot be changed",
@@ -183,7 +181,8 @@ export const getClientErrorMessage = (error: RpcError | null | undefined, fallba
     message === "Insufficient stock to complete frame job order" ||
     message === "Sales order not found" ||
     message === "Only confirmed or in-progress sales orders can create frame job orders" ||
-    message === "Only confirmed, in-progress, or invoiced sales orders can create frame job orders" ||
+    message ===
+      "Only confirmed, in-progress, or invoiced sales orders can create frame job orders" ||
     message === "This sales order already has a frame job order" ||
     message === "Sales order has no frame-configured items" ||
     message === "Manufacturing orders must be pushed from job orders" ||

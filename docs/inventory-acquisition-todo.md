@@ -4,15 +4,15 @@
 
 ## Progress Overview
 
-| Phase | Tasks Completed | Total Tasks | Progress |
-|-------|----------------|-------------|----------|
-| **Phase 1: Core Documents** | 13 | 13 | 100% ✅ |
-| **Phase 2: Receiving Workflow** | 14 | 14 | 100% ✅ |
-| **Phase 3: Barcode & Location** | 6 | 6 | 100% ✅ |
-| **Phase 4: Notifications** | 0 | 8 | 0% |
-| **Phase 5: In Transit & Reporting** | 0 | 4 | 0% |
-| **Phase 6: Returns** | 0 | 6 | 0% |
-| **TOTAL** | **33** | **51** | **65%** |
+| Phase                               | Tasks Completed | Total Tasks | Progress |
+| ----------------------------------- | --------------- | ----------- | -------- |
+| **Phase 1: Core Documents**         | 13              | 13          | 100% ✅  |
+| **Phase 2: Receiving Workflow**     | 14              | 14          | 100% ✅  |
+| **Phase 3: Barcode & Location**     | 6               | 6           | 100% ✅  |
+| **Phase 4: Notifications**          | 0               | 8           | 0%       |
+| **Phase 5: In Transit & Reporting** | 0               | 4           | 0%       |
+| **Phase 6: Returns**                | 0               | 6           | 0%       |
+| **TOTAL**                           | **33**          | **51**      | **65%**  |
 
 ---
 
@@ -122,6 +122,7 @@
   - [ ] Track fulfillment history
 
 **Notes:**
+
 - Ensure all foreign keys are properly set up for cascading deletes/updates
 - Add proper validation for status transitions
 - Test N:N relationship between SR and LL thoroughly
@@ -240,6 +241,7 @@
   - [ ] Update inventory (on_hand, in_transit)
 
 **Notes:**
+
 - Ensure atomicity of inventory updates (use database transactions)
 - Test partial receiving scenarios thoroughly
 - Validate that in_transit never goes negative
@@ -315,6 +317,7 @@
   - [x] Added "Putaway Station" menu item in sidebar navigation
 
 **Implementation Files:**
+
 - `/src/lib/barcode.ts` - QR code generation and PDF label printing
 - `/src/components/grns/BoxManagementSection.tsx` - Box management UI in GRN detail
 - `/src/app/(dashboard)/purchasing/grns/putaway/page.tsx` - Dedicated putaway screen
@@ -323,6 +326,7 @@
 - `/src/app/api/warehouses/[id]/locations/route.ts` - Warehouse locations API
 
 **Notes:**
+
 - QR codes store comprehensive JSON data for offline scanning support
 - Putaway screen is mobile-friendly for warehouse workers with handheld devices
 - Location validation ensures boxes are only assigned to valid warehouse locations
@@ -396,6 +400,7 @@
   - [ ] Save button
 
 **Notes:**
+
 - Start with in-app notifications only
 - Email can be added later as optional
 - Consider using WebSockets or polling for real-time updates
@@ -452,6 +457,7 @@
   - [ ] Report on inventory age (oldest delivery_date per item)
 
 **Notes:**
+
 - Reports should be optimized for performance (use indexes, pagination)
 - Consider caching for dashboard widgets
 - LIFO tracking may require changes to existing stock picking logic
@@ -515,6 +521,7 @@
   - [ ] Validate sufficient inventory before approval
 
 **Notes:**
+
 - Returns are lower priority and can be implemented after core receiving is working
 - Consider supplier credit/refund tracking (future enhancement)
 
@@ -582,6 +589,7 @@
 ## Testing Checklist
 
 ### Unit Tests
+
 - [ ] Stock Requisition CRUD operations
 - [ ] Load List CRUD operations
 - [ ] SR to LL linking logic
@@ -593,6 +601,7 @@
 - [ ] Notification triggers
 
 ### Integration Tests
+
 - [ ] End-to-end workflow: SR → LL → GRN → Stock Entry
 - [ ] Status transitions with inventory updates
 - [ ] Partial receiving scenarios
@@ -601,6 +610,7 @@
 - [ ] N:N relationship (SR to LL)
 
 ### User Acceptance Testing
+
 - [ ] Create Stock Requisition
 - [ ] Create Load List and link to SR
 - [ ] Change LL status to In Transit (verify inventory update)

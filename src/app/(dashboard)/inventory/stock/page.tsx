@@ -174,14 +174,14 @@ export default function StockTransactionsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
             {t("title")}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
             {t("subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateTransaction} className="w-full sm:w-auto flex-shrink-0">
+        <Button onClick={handleCreateTransaction} className="w-full flex-shrink-0 sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           {t("newTransaction")}
         </Button>
@@ -260,9 +260,7 @@ export default function StockTransactionsPage() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadingError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadingError")}</div>
         ) : transactions.length === 0 ? (
           <EmptyStatePanel
             icon={Calendar}
@@ -300,7 +298,9 @@ export default function StockTransactionsPage() {
                         <TableCell className="font-medium">
                           {formatDate(transaction.transactionDate)}
                         </TableCell>
-                        <TableCell>{getTransactionTypeBadge(transaction.transactionType)}</TableCell>
+                        <TableCell>
+                          {getTransactionTypeBadge(transaction.transactionType)}
+                        </TableCell>
                         <TableCell>
                           <div className="text-sm">
                             <div className="font-medium">{transaction.itemCode}</div>

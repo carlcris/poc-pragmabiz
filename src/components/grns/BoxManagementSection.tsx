@@ -277,11 +277,13 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                                     </span>
                                   </>
                                 ) : (
-                                  <span className="text-sm text-muted-foreground">{t("notAssigned")}</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {t("notAssigned")}
+                                  </span>
                                 )}
                               </div>
                               {box.batchLocationSku ? (
-                                <div className="mt-1 text-xs font-mono text-muted-foreground">
+                                <div className="mt-1 font-mono text-xs text-muted-foreground">
                                   {box.batchLocationSku}
                                 </div>
                               ) : null}
@@ -326,7 +328,8 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                 {t("qtyPerBox", {
                   count: selectedItem
                     ? (
-                        ((selectedItem.receivedQty || 0) * (selectedItem.itemUnitOption?.qtyPerUnit ?? 1)) /
+                        ((selectedItem.receivedQty || 0) *
+                          (selectedItem.itemUnitOption?.qtyPerUnit ?? 1)) /
                         numBoxes
                       ).toFixed(2)
                     : 0,

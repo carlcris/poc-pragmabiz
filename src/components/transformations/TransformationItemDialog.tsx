@@ -168,7 +168,9 @@ export function TransformationItemDialog({
                       renderOption={(entry, selected) => (
                         <div className="flex items-center gap-2">
                           <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
-                          <span>{entry.code} - {entry.name}</span>
+                          <span>
+                            {entry.code} - {entry.name}
+                          </span>
                         </div>
                       )}
                     />

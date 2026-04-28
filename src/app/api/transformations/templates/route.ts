@@ -270,7 +270,8 @@ export async function POST(request: NextRequest) {
         : data.outputs || [];
 
     const templateCode =
-      data.templateCode || (data.templateKind === "sheet_layout" ? generateDesignerTemplateCode() : "");
+      data.templateCode ||
+      (data.templateKind === "sheet_layout" ? generateDesignerTemplateCode() : "");
 
     if (!templateCode) {
       return NextResponse.json({ error: "Template code is required" }, { status: 400 });
@@ -321,10 +322,7 @@ export async function POST(request: NextRequest) {
         templateError.hint
       );
       const status = templateError.code?.startsWith("23") ? 400 : 500;
-      return NextResponse.json(
-        { error: errorMessage || "Failed to create template" },
-        { status }
-      );
+      return NextResponse.json({ error: errorMessage || "Failed to create template" }, { status });
     }
 
     const templateId = insertedTemplate?.id;

@@ -64,12 +64,18 @@ export const deliveryNotesApi = {
     return apiClient.post<DeliveryNote>(`/api/delivery-notes/${id}/void`, { reason });
   },
 
-  async adjustItem(id: string, itemId: string, data: AdjustDispatchedDeliveryNoteItemPayload): Promise<DeliveryNote> {
+  async adjustItem(
+    id: string,
+    itemId: string,
+    data: AdjustDispatchedDeliveryNoteItemPayload
+  ): Promise<DeliveryNote> {
     return apiClient.patch<DeliveryNote>(`/api/delivery-notes/${id}/items/${itemId}`, data);
   },
 
   async getAllocatableItems(id: string): Promise<{ data: DeliveryNoteAllocatableItem[] }> {
-    return apiClient.get<{ data: DeliveryNoteAllocatableItem[] }>(`/api/delivery-notes/${id}/allocatable-items`);
+    return apiClient.get<{ data: DeliveryNoteAllocatableItem[] }>(
+      `/api/delivery-notes/${id}/allocatable-items`
+    );
   },
 
   async addItems(id: string, data: AddDeliveryNoteItemsPayload): Promise<DeliveryNote> {

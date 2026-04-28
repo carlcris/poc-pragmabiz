@@ -172,7 +172,7 @@ export default function GeneralLedgerPage() {
                 <div className="text-lg font-semibold">
                   {ledger.account.accountNumber} - {ledger.account.accountName}
                 </div>
-                  <Badge className="mt-1">{ledger.account.accountType.toUpperCase()}</Badge>
+                <Badge className="mt-1">{ledger.account.accountType.toUpperCase()}</Badge>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -257,7 +257,13 @@ export default function GeneralLedgerPage() {
                 ) : (
                   ledger.entries.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell>{new Date(entry.postingDate).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" })}</TableCell>
+                      <TableCell>
+                        {new Date(entry.postingDate).toLocaleDateString(locale, {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </TableCell>
                       <TableCell className="font-mono">{entry.journalCode}</TableCell>
                       <TableCell className="max-w-xs truncate">
                         {entry.description || t("notAvailable")}

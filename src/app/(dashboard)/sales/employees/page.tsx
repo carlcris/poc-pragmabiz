@@ -94,18 +94,21 @@ export default function EmployeesPage() {
           title={t("totalEmployees")}
           icon={Users}
           value={String(employees.length)}
-          caption={t("activeEmployees", { count: String(employees.filter((e) => e.isActive).length) })}
+          caption={t("activeEmployees", {
+            count: String(employees.filter((e) => e.isActive).length),
+          })}
           isLoading={isLoading}
         />
         <MetricCard
           title={t("avgCommissionRate")}
           icon={DollarSign}
-          value={`${employees.length > 0
-            ? (
-                employees.reduce((sum, e) => sum + Number(e.commissionRate), 0) /
-                employees.length
-              ).toFixed(2)
-            : "0.00"}%`}
+          value={`${
+            employees.length > 0
+              ? (
+                  employees.reduce((sum, e) => sum + Number(e.commissionRate), 0) / employees.length
+                ).toFixed(2)
+              : "0.00"
+          }%`}
           caption={t("avgCommissionRateDescription")}
           isLoading={isLoading}
         />
@@ -178,7 +181,9 @@ export default function EmployeesPage() {
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-sm text-muted-foreground">{t("noTerritories")}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {t("noTerritories")}
+                            </span>
                           )}
                           {employee.territories && employee.territories.length > 2 && (
                             <Badge variant="outline" className="text-xs">

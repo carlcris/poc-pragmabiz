@@ -78,7 +78,9 @@ export function WorkflowSettingsForm({ initialData }: WorkflowSettingsFormProps)
                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">{t("requireApproval")}</FormLabel>
-                    <FormDescription>{t("purchaseOrderRequireApprovalDescription")}</FormDescription>
+                    <FormDescription>
+                      {t("purchaseOrderRequireApprovalDescription")}
+                    </FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -102,7 +104,9 @@ export function WorkflowSettingsForm({ initialData }: WorkflowSettingsFormProps)
                         onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
-                    <FormDescription>{t("purchaseOrderApprovalThresholdDescription")}</FormDescription>
+                    <FormDescription>
+                      {t("purchaseOrderApprovalThresholdDescription")}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -231,7 +235,11 @@ export function WorkflowSettingsForm({ initialData }: WorkflowSettingsFormProps)
                 <FormItem>
                   <FormLabel>{t("notificationEmail")}</FormLabel>
                   <FormControl>
-                    <Input {...field} type="email" placeholder={t("notificationEmailPlaceholder")} />
+                    <Input
+                      {...field}
+                      type="email"
+                      placeholder={t("notificationEmailPlaceholder")}
+                    />
                   </FormControl>
                   <FormDescription>{t("notificationEmailDescription")}</FormDescription>
                   <FormMessage />

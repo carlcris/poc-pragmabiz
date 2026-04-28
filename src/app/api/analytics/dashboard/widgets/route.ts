@@ -59,13 +59,16 @@ export async function GET() {
     type InvoiceEmployeeRow = {
       total_amount: number | string;
       primary_employee_id: string | null;
-      employees?: {
-        id: string;
-        users?: EmployeeUserRow | EmployeeUserRow[] | null;
-      } | {
-        id: string;
-        users?: EmployeeUserRow | EmployeeUserRow[] | null;
-      }[] | null;
+      employees?:
+        | {
+            id: string;
+            users?: EmployeeUserRow | EmployeeUserRow[] | null;
+          }
+        | {
+            id: string;
+            users?: EmployeeUserRow | EmployeeUserRow[] | null;
+          }[]
+        | null;
     };
 
     type RecentPOSTransactionRow = {
@@ -74,7 +77,10 @@ export async function GET() {
       total_amount: number | string;
       created_at: string;
       customers?: { customer_name: string } | { customer_name: string }[] | null;
-      users?: { first_name: string; last_name: string } | { first_name: string; last_name: string }[] | null;
+      users?:
+        | { first_name: string; last_name: string }
+        | { first_name: string; last_name: string }[]
+        | null;
     };
 
     type RecentInvoiceRow = {
@@ -83,7 +89,10 @@ export async function GET() {
       total_amount: number | string;
       created_at: string;
       customers?: { customer_name: string } | { customer_name: string }[] | null;
-      employees?: { users?: EmployeeUserRow | EmployeeUserRow[] | null } | { users?: EmployeeUserRow | EmployeeUserRow[] | null }[] | null;
+      employees?:
+        | { users?: EmployeeUserRow | EmployeeUserRow[] | null }
+        | { users?: EmployeeUserRow | EmployeeUserRow[] | null }[]
+        | null;
       warehouses?: { warehouse_name: string | null } | { warehouse_name: string | null }[] | null;
     };
 
@@ -221,7 +230,9 @@ export async function GET() {
     >();
     if (invoicesByEmployee) {
       for (const invoice of invoicesByEmployee as InvoiceEmployeeRow[]) {
-        const employee = Array.isArray(invoice.employees) ? invoice.employees[0] : invoice.employees;
+        const employee = Array.isArray(invoice.employees)
+          ? invoice.employees[0]
+          : invoice.employees;
         const employeeUserRaw = employee?.users;
         const employeeUser = Array.isArray(employeeUserRaw) ? employeeUserRaw[0] : employeeUserRaw;
         if (employeeUser) {
@@ -389,8 +400,7 @@ export async function GET() {
           ? `${employeeUser.first_name} ${employeeUser.last_name}`
           : "Unknown";
 
-        const warehouse =
-          Array.isArray(inv.warehouses) ? inv.warehouses[0] : inv.warehouses;
+        const warehouse = Array.isArray(inv.warehouses) ? inv.warehouses[0] : inv.warehouses;
         const locationName = warehouse?.warehouse_name || "Invoice";
         const customer = Array.isArray(inv.customers) ? inv.customers[0] : inv.customers;
 

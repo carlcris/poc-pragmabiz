@@ -75,8 +75,13 @@ export function ReceiptPanel({ transaction, open, onClose }: ReceiptPanelProps) 
 
   return createPortal(
     <>
-      <div className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-500 ease-out ${open ? "opacity-100" : "opacity-0"}`} onClick={onClose} />
-      <div className={`fixed right-0 top-0 z-50 flex h-screen w-full transform flex-col bg-background shadow-2xl transition-all duration-500 ease-out md:w-[600px] ${open ? "translate-x-0" : "translate-x-full"}`}>
+      <div
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-500 ease-out ${open ? "opacity-100" : "opacity-0"}`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed right-0 top-0 z-50 flex h-screen w-full transform flex-col bg-background shadow-2xl transition-all duration-500 ease-out md:w-[600px] ${open ? "translate-x-0" : "translate-x-full"}`}
+      >
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-lg font-semibold">{t("title")}</h2>
           <div className="flex items-center gap-2">
@@ -109,7 +114,12 @@ export function ReceiptPanel({ transaction, open, onClose }: ReceiptPanelProps) 
           ) : pdfDataUrl ? (
             <div className="flex h-full w-full justify-center overflow-auto">
               <div className="bg-white" style={{ width: "80mm", maxWidth: "100%" }}>
-                <iframe src={pdfDataUrl} className="w-full border-0" style={{ height: "100%", minHeight: "100%" }} title={t("previewTitle")} />
+                <iframe
+                  src={pdfDataUrl}
+                  className="w-full border-0"
+                  style={{ height: "100%", minHeight: "100%" }}
+                  title={t("previewTitle")}
+                />
               </div>
             </div>
           ) : (

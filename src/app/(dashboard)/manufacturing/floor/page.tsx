@@ -354,13 +354,17 @@ export default function ManufacturingFloorPage() {
       ) : error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-8 text-center text-red-700">
           <AlertTriangle className="mx-auto mb-3 h-10 w-10" />
-          <p className="font-semibold">{error instanceof Error ? error.message : "Failed to load production"}</p>
+          <p className="font-semibold">
+            {error instanceof Error ? error.message : "Failed to load production"}
+          </p>
         </div>
       ) : orders.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <ChefHat className="mx-auto mb-4 h-14 w-14 text-muted-foreground/60" />
           <p className="text-lg font-semibold text-foreground">No jobs waiting at this station</p>
-          <p className="text-sm text-muted-foreground">New production orders will appear here automatically</p>
+          <p className="text-sm text-muted-foreground">
+            New production orders will appear here automatically
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -376,22 +380,26 @@ export default function ManufacturingFloorPage() {
                 key={order.id}
                 className={[
                   "group flex min-h-[380px] flex-col justify-between rounded-lg border-2 bg-card p-6 shadow-sm transition-all hover:shadow-md",
-                  focused ? "border-green-600 bg-green-50/30 ring-2 ring-green-600/20" : statusColor,
+                  focused
+                    ? "border-green-600 bg-green-50/30 ring-2 ring-green-600/20"
+                    : statusColor,
                   overdue && !focused ? "border-red-500 bg-red-50/30" : "",
                 ].join(" ")}
               >
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <div className="text-2xl font-bold tracking-tight">{order.manufacturingOrderCode}</div>
+                        <div className="text-2xl font-bold tracking-tight">
+                          {order.manufacturingOrderCode}
+                        </div>
                         {order.priority && (
                           <Badge variant={getPriorityColor(order.priority)} className="text-xs">
                             {labelize(order.priority)}
                           </Badge>
                         )}
                       </div>
-                      <div className="mt-1 text-sm text-muted-foreground truncate">
+                      <div className="mt-1 truncate text-sm text-muted-foreground">
                         {order.salesOrderCode || "No sales order"}
                       </div>
                       <div className="text-sm font-medium text-foreground">
@@ -522,7 +530,7 @@ export default function ManufacturingFloorPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+          <div className="max-h-[500px] space-y-2 overflow-y-auto pr-2">
             {materialsOrder?.materials.length ? (
               <>
                 <div className="sticky top-0 z-10 bg-background pb-2">
@@ -535,9 +543,10 @@ export default function ManufacturingFloorPage() {
                 </div>
 
                 {materialsOrder.materials.map((material, index) => {
-                  const materialProgress = material.requiredQuantity > 0
-                    ? Math.min((material.issuedQuantity / material.requiredQuantity) * 100, 100)
-                    : 100;
+                  const materialProgress =
+                    material.requiredQuantity > 0
+                      ? Math.min((material.issuedQuantity / material.requiredQuantity) * 100, 100)
+                      : 100;
                   const isShort = material.status === "short";
                   const isReady = material.status === "issued";
 
@@ -545,12 +554,16 @@ export default function ManufacturingFloorPage() {
                     <div
                       key={`${materialsOrder.id}-${material.description}-${index}`}
                       className={[
-                        "grid grid-cols-12 gap-4 items-center rounded-lg border-2 p-4 transition-colors",
-                        isShort ? "border-red-200 bg-red-50/50" : "border-border bg-background hover:bg-muted/30",
+                        "grid grid-cols-12 items-center gap-4 rounded-lg border-2 p-4 transition-colors",
+                        isShort
+                          ? "border-red-200 bg-red-50/50"
+                          : "border-border bg-background hover:bg-muted/30",
                       ].join(" ")}
                     >
                       <div className="col-span-5 min-w-0">
-                        <div className="font-semibold text-foreground truncate">{material.description}</div>
+                        <div className="truncate font-semibold text-foreground">
+                          {material.description}
+                        </div>
                         <div className="mt-0.5 text-xs text-muted-foreground">
                           {material.uomCode || "units"}
                         </div>
@@ -560,7 +573,8 @@ export default function ManufacturingFloorPage() {
                         <div className="text-lg font-bold text-foreground">
                           {material.issuedQuantity.toFixed(0)}
                           <span className="text-sm font-normal text-muted-foreground">
-                            {" "}/ {material.requiredQuantity.toFixed(0)}
+                            {" "}
+                            / {material.requiredQuantity.toFixed(0)}
                           </span>
                         </div>
                       </div>
@@ -594,9 +608,12 @@ export default function ManufacturingFloorPage() {
                 <div className="sticky bottom-0 mt-4 rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-blue-900">Overall Material Status</div>
+                      <div className="text-sm font-semibold text-blue-900">
+                        Overall Material Status
+                      </div>
                       <div className="text-xs text-blue-700">
-                        {materialsOrder.materialCount} material{materialsOrder.materialCount !== 1 ? "s" : ""} required
+                        {materialsOrder.materialCount} material
+                        {materialsOrder.materialCount !== 1 ? "s" : ""} required
                       </div>
                     </div>
                     <div className="text-right">

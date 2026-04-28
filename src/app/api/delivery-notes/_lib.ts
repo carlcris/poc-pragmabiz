@@ -255,12 +255,17 @@ export const computeStockRequestDerivedStatus = async (
   );
 
   const activeDnItems = (dnItems || []).filter((item) => {
-    const dnHeader = Array.isArray(item.delivery_notes) ? item.delivery_notes[0] : item.delivery_notes;
+    const dnHeader = Array.isArray(item.delivery_notes)
+      ? item.delivery_notes[0]
+      : item.delivery_notes;
     return dnHeader?.status !== "voided" && !item.is_voided;
   });
 
   const totalAllocated = activeDnItems.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0);
-  const totalDispatched = activeDnItems.reduce((sum, item) => sum + toNumber(item.dispatched_qty), 0);
+  const totalDispatched = activeDnItems.reduce(
+    (sum, item) => sum + toNumber(item.dispatched_qty),
+    0
+  );
   const hasNonVoidedDn = activeDnItems.length > 0;
 
   let derivedStatus: string;
@@ -324,11 +329,16 @@ export const syncStockRequestStatusCache = async (
     if (!projection) continue;
 
     const nextStatus = projection.derivedStatus || projection.cachedStatus || "submitted";
-    const patch: { status: string; updated_at: string; updated_by?: string; received_at?: string; received_by?: string } =
-      {
-        status: nextStatus,
-        updated_at: new Date().toISOString(),
-      };
+    const patch: {
+      status: string;
+      updated_at: string;
+      updated_by?: string;
+      received_at?: string;
+      received_by?: string;
+    } = {
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    };
 
     if (userId) {
       patch.updated_by = userId;

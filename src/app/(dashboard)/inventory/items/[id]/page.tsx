@@ -216,9 +216,9 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
     }
 
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-2">{t("errorLoadingTitle")}</p>
+          <p className="mb-2 text-red-500">{t("errorLoadingTitle")}</p>
           <p className="text-sm text-gray-500">{(error as Error)?.message || t("itemNotFound")}</p>
           <Button asChild className="mt-4">
             <Link href="/inventory/items">{t("backToItems")}</Link>
@@ -242,7 +242,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <EditGuard resource={RESOURCES.ITEMS}>
             <Button asChild>
               <Link href={`/inventory/items/${itemId}/edit`}>
-                <Pencil className="h-4 w-4 mr-2" />
+                <Pencil className="mr-2 h-4 w-4" />
                 {t("editItemAction")}
               </Link>
             </Button>
@@ -252,10 +252,22 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-4">
-        <MetricCard title={t("availableQtyLabel")} icon={Package} value={formatQuantity(item.available)} />
-        <MetricCard title={t("reservedQtyLabel")} icon={Lock} value={formatQuantity(item.allocated)} />
+        <MetricCard
+          title={t("availableQtyLabel")}
+          icon={Package}
+          value={formatQuantity(item.available)}
+        />
+        <MetricCard
+          title={t("reservedQtyLabel")}
+          icon={Lock}
+          value={formatQuantity(item.allocated)}
+        />
         <MetricCard title={t("onHandLabel")} icon={Warehouse} value={formatQuantity(item.onHand)} />
-        <MetricCard title={t("inTransitLabel")} icon={Truck} value={formatQuantity(item.inTransit)} />
+        <MetricCard
+          title={t("inTransitLabel")}
+          icon={Truck}
+          value={formatQuantity(item.inTransit)}
+        />
       </div>
 
       {/* Tabs */}
@@ -274,8 +286,12 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
             {/* Main Information Card */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
-                <CardDescription className="text-sm">{t("itemInformationDescription")}</CardDescription>
+                <CardTitle className="text-base font-semibold">
+                  {t("itemInformationTitle")}
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {t("itemInformationDescription")}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Basic Details Grid */}
@@ -285,8 +301,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <Hash className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">{t("itemCodeLabel")}</p>
-                      <p className="font-medium font-mono">{item.code}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("itemCodeLabel")}
+                      </p>
+                      <p className="font-mono font-medium">{item.code}</p>
                     </div>
                   </div>
 
@@ -295,7 +313,9 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <Tag className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">{t("categoryLabel")}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("categoryLabel")}
+                      </p>
                       <p className="font-medium">{item.category || t("uncategorized")}</p>
                     </div>
                   </div>
@@ -305,10 +325,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <Layers className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">{t("itemTypeLabel")}</p>
-                      <Badge variant="outline">
-                        {itemTypeLabel}
-                      </Badge>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("itemTypeLabel")}
+                      </p>
+                      <Badge variant="outline">{itemTypeLabel}</Badge>
                     </div>
                   </div>
 
@@ -317,7 +337,9 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <Ruler className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">{t("unitOfMeasureLabel")}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("unitOfMeasureLabel")}
+                      </p>
                       <p className="font-medium">{item.uom}</p>
                     </div>
                   </div>
@@ -329,7 +351,9 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                     <Package className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground">{t("itemNameLabel")}</p>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {t("itemNameLabel")}
+                    </p>
                     <p className="font-medium">{item.name}</p>
                     {item.chineseName && (
                       <p className="text-sm text-muted-foreground">{item.chineseName}</p>
@@ -344,8 +368,12 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <FileText className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">{t("descriptionLabel")}</p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("descriptionLabel")}
+                      </p>
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        {item.description}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -356,7 +384,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
             <div className="space-y-4">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
                     <ImageIcon className="h-4 w-4" />
                     {t("itemImageLabel")}
                   </CardTitle>
@@ -375,7 +403,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium">
                     <QrCode className="h-4 w-4" />
                     {t("barcodeLabel")}
                   </CardTitle>
@@ -394,12 +422,15 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       <p className="text-center text-sm text-muted-foreground">
                         {t("primaryBarcodeDescription")}
                       </p>
-                      <p className="text-center text-sm font-mono font-medium bg-muted px-3 py-2 rounded">
+                      <p className="rounded bg-muted px-3 py-2 text-center font-mono text-sm font-medium">
                         {item.primaryBarcode}
                       </p>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30" style={{ height: '240px' }}>
+                    <div
+                      className="flex items-center justify-center rounded-lg border border-dashed bg-muted/30"
+                      style={{ height: "240px" }}
+                    >
                       <div className="text-center text-muted-foreground">
                         <QrCode className="mx-auto mb-2 h-8 w-8" />
                         <p className="text-sm">{t("noBarcode")}</p>
@@ -415,24 +446,36 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">{t("dimensionsSectionTitle")}</CardTitle>
-                <CardDescription className="text-sm">{t("dimensionsSectionDescription")}</CardDescription>
+                <CardTitle className="text-base font-semibold">
+                  {t("dimensionsSectionTitle")}
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {t("dimensionsSectionDescription")}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("lengthLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("lengthLabel")}
+                  </span>
                   <span className="text-lg font-bold">{item.dimensions?.length ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("widthLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("widthLabel")}
+                  </span>
                   <span className="text-lg font-bold">{item.dimensions?.width ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("heightLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("heightLabel")}
+                  </span>
                   <span className="text-lg font-bold">{item.dimensions?.height ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between border-t pt-2">
-                  <span className="text-sm font-medium text-muted-foreground">{t("dimensionUnitLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("dimensionUnitLabel")}
+                  </span>
                   <span className="text-lg font-bold">{item.dimensions?.unit || "-"}</span>
                 </div>
               </CardContent>
@@ -440,27 +483,40 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">{t("pricingDetailsTitle")}</CardTitle>
-                <CardDescription className="text-sm">{t("pricingDetailsDescription")}</CardDescription>
+                <CardTitle className="text-base font-semibold">
+                  {t("pricingDetailsTitle")}
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {t("pricingDetailsDescription")}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("standardCostLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("standardCostLabel")}
+                  </span>
                   <span className="text-lg font-bold">
                     ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("listPriceLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("listPriceLabel")}
+                  </span>
                   <span className="text-lg font-bold">
                     ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
                   </span>
                 </div>
                 {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-sm font-medium text-muted-foreground">{t("profitMarginLabel")}</span>
+                  <div className="flex items-center justify-between border-t pt-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {t("profitMarginLabel")}
+                    </span>
                     <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
-                      {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(1)}%
+                      {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(
+                        1
+                      )}
+                      %
                     </span>
                   </div>
                 )}
@@ -469,21 +525,31 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">{t("inventoryManagement")}</CardTitle>
-                <CardDescription className="text-sm">{t("reorderSettingsDescription")}</CardDescription>
+                <CardTitle className="text-base font-semibold">
+                  {t("inventoryManagement")}
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {t("reorderSettingsDescription")}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("reorderLevelLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("reorderLevelLabel")}
+                  </span>
                   <span className="text-lg font-bold">{item.reorderLevel || "0"}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">{t("reorderQtyLabel")}</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("reorderQtyLabel")}
+                  </span>
                   <span className="text-lg font-bold">{item.reorderQty || "0"}</span>
                 </div>
                 {item.inTransit !== undefined && item.inTransit > 0 && (
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-sm font-medium text-muted-foreground">{t("inTransitLabel")}</span>
+                  <div className="flex items-center justify-between border-t pt-2">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {t("inTransitLabel")}
+                    </span>
                     <span className="text-lg font-bold text-amber-600 dark:text-amber-500">
                       {item.inTransit}
                     </span>

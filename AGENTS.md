@@ -1,6 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
+
 This repo contains a Next.js 15 ERP frontend with Supabase-backed data.
 
 - `src/app/` holds App Router route groups like `(auth)` and `(dashboard)`.
@@ -11,6 +12,7 @@ This repo contains a Next.js 15 ERP frontend with Supabase-backed data.
 - `docs/` includes architecture and implementation notes.
 
 ## Build, Test, and Development Commands
+
 Run these from the repo root:
 
 - `npm install` installs dependencies.
@@ -27,6 +29,7 @@ Supabase commands (repo root):
 - `supabase gen types typescript --local > src/types/database.types.ts` refreshes DB types.
 
 ## Coding Style & Naming Conventions
+
 - TypeScript only; prefer `type` over `interface`.
 - Avoid `any`; use `unknown` and narrow explicitly.
 - Use PascalCase for components, camelCase for functions/vars.
@@ -34,14 +37,17 @@ Supabase commands (repo root):
 - Formatting is enforced by Prettier and `prettier-plugin-tailwindcss`.
 
 ## Testing Guidelines
+
 There is no test runner configured in `package.json`. Use MSW mocks in `src/mocks/` for local API simulation and add tests only when introducing a harness. Keep ad-hoc scripts alongside existing `test-*.js` files in the repo root.
 
 ## Commit & Pull Request Guidelines
+
 Recent history follows Conventional Commits with scopes, e.g. `feat(inventory): ...`, `fix(admin): ...`, `feature(security): ...`. Keep messages concise and scoped.
 
 PRs should include a short summary, affected modules, screenshots for UI changes (desktop + mobile if relevant), and linked issues/docs when available.
 
 ## Database & API Notes
+
 - Verify table/column names in `supabase/migrations/` before writing Supabase queries.
 - The shared `apiClient` returns parsed JSON; avoid double-unwrapping response data.
 - If code expects a schema change that is not present in the current database, stop and report the exact mismatch clearly.
@@ -60,6 +66,7 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 - Treat raw backend error text as internal-only because exposing it can leak schema details, constraints, implementation internals, or security-sensitive information.
 
 ## Database Code Generation Rules
+
 - Auto-generated document codes must be generated at the database level, not in application code.
 - Use the shared database generator function plus `BEFORE INSERT` trigger pattern for any new code-bearing table.
 - The shared generator must accept a `code_prefix` and produce a fixed-width numeric suffix.
@@ -69,7 +76,6 @@ PRs should include a short summary, affected modules, screenshots for UI changes
 - Scope generated sequences by company unless there is a documented exception.
 - Application inserts must omit the generated code column so the trigger remains the single source of truth.
 - Do not backfill or rewrite historical codes unless explicitly required by the task.
-
 
 ## Insert-Only Fields
 
@@ -91,9 +97,11 @@ Reason:
 - This is a data-integrity rule, not just a style preference.
 
 ## Agent-Specific Instructions
+
 Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touching APIs, hooks, or data types.
 
 ## Implementation Quality Rules
+
 - Do not ship temporary fixes as the default implementation.
 - Default to production-grade solutions, even when addressing a narrow bug.
 - Do not patch code only to make the current symptom disappear; fix the underlying contract, data flow, or schema correctly.
@@ -101,6 +109,7 @@ Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touch
 - If a correct implementation depends on a migration, contract update, or broader refactor, surface that explicitly instead of masking it with fallback behavior.
 
 ## Data Loading & Scalability Rules
+
 - Never load all records at once.
 - Always fetch in small chunks per request (target range: 10-50 items).
 - For server-backed select, combobox, and autocomplete fields:
@@ -123,6 +132,7 @@ Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touch
 - Key pattern: cursor-based server-side pagination + virtual scrolling + lazy loading = smooth, scalable UI.
 
 ## Page Consistency Rules
+
 - Dashboard pages must render a stable page shell first: breadcrumb, page header, toolbar/filter row, then content region.
 - Use the inventory transformations list page as the visual baseline for page-level composition and responsive behavior.
 - Page headers must place title and subtitle on the left and actions on the right on desktop.

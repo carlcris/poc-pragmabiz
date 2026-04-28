@@ -128,18 +128,18 @@ export async function GET(request: NextRequest) {
     const formattedLoadLists = loadLists?.map((ll) => {
       const businessUnit = Array.isArray(ll.business_unit)
         ? ll.business_unit[0]
-        : ll.business_unit ?? null;
-      const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : ll.supplier ?? null;
-      const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : ll.warehouse ?? null;
+        : (ll.business_unit ?? null);
+      const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : (ll.supplier ?? null);
+      const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : (ll.warehouse ?? null);
       const createdByUser = Array.isArray(ll.created_by_user)
         ? ll.created_by_user[0]
-        : ll.created_by_user ?? null;
+        : (ll.created_by_user ?? null);
       const receivedByUser = Array.isArray(ll.received_by_user)
         ? ll.received_by_user[0]
-        : ll.received_by_user ?? null;
+        : (ll.received_by_user ?? null);
       const approvedByUser = Array.isArray(ll.approved_by_user)
         ? ll.approved_by_user[0]
-        : ll.approved_by_user ?? null;
+        : (ll.approved_by_user ?? null);
 
       return {
         id: ll.id,

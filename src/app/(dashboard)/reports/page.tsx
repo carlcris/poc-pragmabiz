@@ -175,13 +175,62 @@ export default function ReportsPage() {
         description: t("financialDescription"),
         icon: DollarSign,
         reports: [
-          { id: "pl-statement", name: t("plStatementName"), description: t("plStatementDescription"), status: "coming-soon", businessValue: t("plStatementValue"), icon: FileText },
-          { id: "balance-sheet", name: t("balanceSheetName"), description: t("balanceSheetDescription"), status: "coming-soon", businessValue: t("balanceSheetValue"), icon: BarChart3 },
-          { id: "cash-flow", name: t("cashFlowName"), description: t("cashFlowDescription"), status: "coming-soon", businessValue: t("cashFlowValue"), icon: DollarSign },
-          { id: "ar-aging", name: t("arAgingName"), description: t("arAgingDescription"), status: "coming-soon", businessValue: t("arAgingValue"), icon: Clock },
-          { id: "ap-aging", name: t("apAgingName"), description: t("apAgingDescription"), status: "coming-soon", businessValue: t("apAgingValue"), icon: Clock },
-          { id: "sales-profitability", name: t("salesProfitabilityName"), description: t("salesProfitabilityDescription"), status: "coming-soon", businessValue: t("salesProfitabilityValue"), icon: TrendingUp },
-          { id: "cogs-analysis", name: t("cogsAnalysisName"), description: t("cogsAnalysisDescription"), status: "coming-soon", businessValue: t("cogsAnalysisValue"), icon: BarChart3 },
+          {
+            id: "pl-statement",
+            name: t("plStatementName"),
+            description: t("plStatementDescription"),
+            status: "coming-soon",
+            businessValue: t("plStatementValue"),
+            icon: FileText,
+          },
+          {
+            id: "balance-sheet",
+            name: t("balanceSheetName"),
+            description: t("balanceSheetDescription"),
+            status: "coming-soon",
+            businessValue: t("balanceSheetValue"),
+            icon: BarChart3,
+          },
+          {
+            id: "cash-flow",
+            name: t("cashFlowName"),
+            description: t("cashFlowDescription"),
+            status: "coming-soon",
+            businessValue: t("cashFlowValue"),
+            icon: DollarSign,
+          },
+          {
+            id: "ar-aging",
+            name: t("arAgingName"),
+            description: t("arAgingDescription"),
+            status: "coming-soon",
+            businessValue: t("arAgingValue"),
+            icon: Clock,
+          },
+          {
+            id: "ap-aging",
+            name: t("apAgingName"),
+            description: t("apAgingDescription"),
+            status: "coming-soon",
+            businessValue: t("apAgingValue"),
+            icon: Clock,
+          },
+          {
+            id: "sales-profitability",
+            name: t("salesProfitabilityName"),
+            description: t("salesProfitabilityDescription"),
+            status: "coming-soon",
+            businessValue: t("salesProfitabilityValue"),
+            icon: TrendingUp,
+          },
+          {
+            id: "cogs-analysis",
+            name: t("cogsAnalysisName"),
+            description: t("cogsAnalysisDescription"),
+            status: "coming-soon",
+            businessValue: t("cogsAnalysisValue"),
+            icon: BarChart3,
+          },
         ],
       },
       {
@@ -199,10 +248,38 @@ export default function ReportsPage() {
             previewType: "shipments",
             icon: Truck,
           },
-          { id: "supplier-scorecard", name: t("supplierScorecardName"), description: t("supplierScorecardDescription"), status: "coming-soon", businessValue: t("supplierScorecardValue"), icon: CheckCircle2 },
-          { id: "po-variance", name: t("poVarianceName"), description: t("poVarianceDescription"), status: "coming-soon", businessValue: t("poVarianceValue"), icon: BarChart3 },
-          { id: "supplier-spend", name: t("supplierSpendName"), description: t("supplierSpendDescription"), status: "coming-soon", businessValue: t("supplierSpendValue"), icon: DollarSign },
-          { id: "price-variance", name: t("priceVarianceName"), description: t("priceVarianceDescription"), status: "coming-soon", businessValue: t("priceVarianceValue"), icon: TrendingUp },
+          {
+            id: "supplier-scorecard",
+            name: t("supplierScorecardName"),
+            description: t("supplierScorecardDescription"),
+            status: "coming-soon",
+            businessValue: t("supplierScorecardValue"),
+            icon: CheckCircle2,
+          },
+          {
+            id: "po-variance",
+            name: t("poVarianceName"),
+            description: t("poVarianceDescription"),
+            status: "coming-soon",
+            businessValue: t("poVarianceValue"),
+            icon: BarChart3,
+          },
+          {
+            id: "supplier-spend",
+            name: t("supplierSpendName"),
+            description: t("supplierSpendDescription"),
+            status: "coming-soon",
+            businessValue: t("supplierSpendValue"),
+            icon: DollarSign,
+          },
+          {
+            id: "price-variance",
+            name: t("priceVarianceName"),
+            description: t("priceVarianceDescription"),
+            status: "coming-soon",
+            businessValue: t("priceVarianceValue"),
+            icon: TrendingUp,
+          },
         ],
       },
       {
@@ -211,11 +288,48 @@ export default function ReportsPage() {
         description: t("operationsDescription"),
         icon: Truck,
         reports: [
-          { id: "delivery-performance", name: t("deliveryPerformanceName"), description: t("deliveryPerformanceDescription"), status: "coming-soon", businessValue: t("deliveryPerformanceValue"), icon: Truck },
-          { id: "picking-efficiency", name: t("pickingEfficiencyName"), description: t("pickingEfficiencyDescription"), status: "implemented", businessValue: t("pickingEfficiencyValue"), previewType: "picking-efficiency", icon: CheckCircle2 },
-          { id: "stock-transfer", name: t("stockTransferName"), description: t("stockTransferDescription"), status: "coming-soon", businessValue: t("stockTransferValue"), icon: Truck },
-          { id: "transformation-efficiency", name: t("transformationEfficiencyName"), description: t("transformationEfficiencyDescription"), status: "implemented", businessValue: t("transformationEfficiencyValue"), previewType: "transformation-efficiency", icon: Package },
-          { id: "rts-analysis", name: t("rtsAnalysisName"), description: t("rtsAnalysisDescription"), status: "coming-soon", businessValue: t("rtsAnalysisValue"), icon: ShoppingCart },
+          {
+            id: "delivery-performance",
+            name: t("deliveryPerformanceName"),
+            description: t("deliveryPerformanceDescription"),
+            status: "coming-soon",
+            businessValue: t("deliveryPerformanceValue"),
+            icon: Truck,
+          },
+          {
+            id: "picking-efficiency",
+            name: t("pickingEfficiencyName"),
+            description: t("pickingEfficiencyDescription"),
+            status: "implemented",
+            businessValue: t("pickingEfficiencyValue"),
+            previewType: "picking-efficiency",
+            icon: CheckCircle2,
+          },
+          {
+            id: "stock-transfer",
+            name: t("stockTransferName"),
+            description: t("stockTransferDescription"),
+            status: "coming-soon",
+            businessValue: t("stockTransferValue"),
+            icon: Truck,
+          },
+          {
+            id: "transformation-efficiency",
+            name: t("transformationEfficiencyName"),
+            description: t("transformationEfficiencyDescription"),
+            status: "implemented",
+            businessValue: t("transformationEfficiencyValue"),
+            previewType: "transformation-efficiency",
+            icon: Package,
+          },
+          {
+            id: "rts-analysis",
+            name: t("rtsAnalysisName"),
+            description: t("rtsAnalysisDescription"),
+            status: "coming-soon",
+            businessValue: t("rtsAnalysisValue"),
+            icon: ShoppingCart,
+          },
         ],
       },
       {
@@ -224,9 +338,30 @@ export default function ReportsPage() {
         description: t("executiveDescription"),
         icon: BarChart3,
         reports: [
-          { id: "executive-summary", name: t("executiveSummaryName"), description: t("executiveSummaryDescription"), status: "coming-soon", businessValue: t("executiveSummaryValue"), icon: BarChart3 },
-          { id: "period-comparison", name: t("periodComparisonName"), description: t("periodComparisonDescription"), status: "coming-soon", businessValue: t("periodComparisonValue"), icon: TrendingUp },
-          { id: "budget-actual", name: t("budgetActualName"), description: t("budgetActualDescription"), status: "coming-soon", businessValue: t("budgetActualValue"), icon: DollarSign },
+          {
+            id: "executive-summary",
+            name: t("executiveSummaryName"),
+            description: t("executiveSummaryDescription"),
+            status: "coming-soon",
+            businessValue: t("executiveSummaryValue"),
+            icon: BarChart3,
+          },
+          {
+            id: "period-comparison",
+            name: t("periodComparisonName"),
+            description: t("periodComparisonDescription"),
+            status: "coming-soon",
+            businessValue: t("periodComparisonValue"),
+            icon: TrendingUp,
+          },
+          {
+            id: "budget-actual",
+            name: t("budgetActualName"),
+            description: t("budgetActualDescription"),
+            status: "coming-soon",
+            businessValue: t("budgetActualValue"),
+            icon: DollarSign,
+          },
         ],
       },
       {
@@ -235,9 +370,30 @@ export default function ReportsPage() {
         description: t("auditDescription"),
         icon: FileText,
         reports: [
-          { id: "audit-trail", name: t("auditTrailName"), description: t("auditTrailDescription"), status: "coming-soon", businessValue: t("auditTrailValue"), icon: FileText },
-          { id: "document-status", name: t("documentStatusName"), description: t("documentStatusDescription"), status: "coming-soon", businessValue: t("documentStatusValue"), icon: Clock },
-          { id: "user-activity", name: t("userActivityName"), description: t("userActivityDescription"), status: "coming-soon", businessValue: t("userActivityValue"), icon: CheckCircle2 },
+          {
+            id: "audit-trail",
+            name: t("auditTrailName"),
+            description: t("auditTrailDescription"),
+            status: "coming-soon",
+            businessValue: t("auditTrailValue"),
+            icon: FileText,
+          },
+          {
+            id: "document-status",
+            name: t("documentStatusName"),
+            description: t("documentStatusDescription"),
+            status: "coming-soon",
+            businessValue: t("documentStatusValue"),
+            icon: Clock,
+          },
+          {
+            id: "user-activity",
+            name: t("userActivityName"),
+            description: t("userActivityDescription"),
+            status: "coming-soon",
+            businessValue: t("userActivityValue"),
+            icon: CheckCircle2,
+          },
         ],
       },
       {
@@ -246,8 +402,22 @@ export default function ReportsPage() {
         description: t("predictiveDescription"),
         icon: Sparkles,
         reports: [
-          { id: "demand-forecast", name: t("demandForecastName"), description: t("demandForecastDescription"), status: "coming-soon", businessValue: t("demandForecastValue"), icon: TrendingUp },
-          { id: "what-if-analysis", name: t("whatIfName"), description: t("whatIfDescription"), status: "coming-soon", businessValue: t("whatIfValue"), icon: Sparkles },
+          {
+            id: "demand-forecast",
+            name: t("demandForecastName"),
+            description: t("demandForecastDescription"),
+            status: "coming-soon",
+            businessValue: t("demandForecastValue"),
+            icon: TrendingUp,
+          },
+          {
+            id: "what-if-analysis",
+            name: t("whatIfName"),
+            description: t("whatIfDescription"),
+            status: "coming-soon",
+            businessValue: t("whatIfValue"),
+            icon: Sparkles,
+          },
         ],
       },
     ],
@@ -271,11 +441,13 @@ export default function ReportsPage() {
 
   const totalReports = reportCategories.reduce((sum, category) => sum + category.reports.length, 0);
   const implementedReports = reportCategories.reduce(
-    (sum, category) => sum + category.reports.filter((report) => report.status === "implemented").length,
+    (sum, category) =>
+      sum + category.reports.filter((report) => report.status === "implemented").length,
     0
   );
   const comingSoonReports = reportCategories.reduce(
-    (sum, category) => sum + category.reports.filter((report) => report.status === "coming-soon").length,
+    (sum, category) =>
+      sum + category.reports.filter((report) => report.status === "coming-soon").length,
     0
   );
 
@@ -365,7 +537,9 @@ export default function ReportsPage() {
                             <CardTitle className="text-base leading-tight">{report.name}</CardTitle>
                           </div>
                           <Badge variant={statusConfig[report.status].variant}>
-                            <StatusIcon className={`mr-1 h-3 w-3 ${statusConfig[report.status].color}`} />
+                            <StatusIcon
+                              className={`mr-1 h-3 w-3 ${statusConfig[report.status].color}`}
+                            />
                             {t(statusConfig[report.status].key)}
                           </Badge>
                         </div>
@@ -375,7 +549,8 @@ export default function ReportsPage() {
                       </CardHeader>
                       <CardContent className="mt-auto flex flex-1 flex-col justify-end space-y-2">
                         <p className="text-xs text-muted-foreground">
-                          <strong className="text-foreground">{t("valueLabel")}:</strong> {report.businessValue}
+                          <strong className="text-foreground">{t("valueLabel")}:</strong>{" "}
+                          {report.businessValue}
                         </p>
                         {usesPreviewDialog && (
                           <div className="pt-3">

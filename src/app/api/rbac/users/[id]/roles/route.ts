@@ -24,8 +24,14 @@ type BusinessUnitRow = {
 };
 
 type UserRoleWithJoins = UserRoleRow & {
-  roles?: Pick<RoleRow, "id" | "name" | "description"> | Pick<RoleRow, "id" | "name" | "description">[] | null;
-  business_units?: Pick<BusinessUnitRow, "id" | "name"> | Pick<BusinessUnitRow, "id" | "name">[] | null;
+  roles?:
+    | Pick<RoleRow, "id" | "name" | "description">
+    | Pick<RoleRow, "id" | "name" | "description">[]
+    | null;
+  business_units?:
+    | Pick<BusinessUnitRow, "id" | "name">
+    | Pick<BusinessUnitRow, "id" | "name">[]
+    | null;
 };
 
 // GET /api/rbac/users/[userId]/roles - Get user's roles
@@ -108,7 +114,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         id: role?.id,
         name: role?.name,
         description: role?.description,
-      business_unit_id: ur.business_unit_id,
+        business_unit_id: ur.business_unit_id,
         business_unit_name: businessUnit?.name || "Unknown Business Unit",
       };
     });

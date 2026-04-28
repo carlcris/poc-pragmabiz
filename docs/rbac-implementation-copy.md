@@ -4,15 +4,15 @@ This document reviews the current RBAC implementation (including UI layout) and 
 
 ## Review Findings (Issues/Risks)
 
-1) **High — Granular CRUD flags are ignored in permission checks.**
+1. **High — Granular CRUD flags are ignored in permission checks.**
    - The database functions `get_user_permissions` and `user_has_permission` aggregate flags from `permissions.can_*` instead of `role_permissions.can_*`, so toggling CRUD flags in the Role Permissions UI does not change effective permissions.
    - Evidence: `supabase/migrations/20251230000001_fix_permission_business_unit_filter.sql:18`, `supabase/migrations/20251230000001_fix_permission_business_unit_filter.sql:57`.
 
-2) **Medium — usePermissionDetail double-unwraps the API response.**
+2. **Medium — usePermissionDetail double-unwraps the API response.**
    - The hook returns `response.data.data`, but `apiClient` already returns parsed JSON; the permissions endpoint returns `{ data: Permission }`, so this resolves to `undefined` at runtime.
    - Evidence: `src/hooks/usePermissionsManagement.ts:61`.
 
-3) **Low — Role permissions management button is visible without edit permission.**
+3. **Low — Role permissions management button is visible without edit permission.**
    - The “Permissions” action on the Roles page isn’t wrapped in an edit guard, so a user with view-only access can open the dialog and attempt changes (the API still blocks the save).
    - Evidence: `src/app/(dashboard)/admin/roles/page.tsx:199`.
 
@@ -124,6 +124,7 @@ This section mirrors the existing feature set and UI layout, while correcting th
 ### 9) Admin UI: Layout and Components (Same UI, Corrected Guards)
 
 #### Roles Page (`/admin/roles`)
+
 - **File**: `src/app/(dashboard)/admin/roles/page.tsx`.
 - **Layout**:
   - Title + subtitle on the left; Create Role button on the right.
@@ -142,6 +143,7 @@ This section mirrors the existing feature set and UI layout, while correcting th
   - **Permissions action should also be wrapped with `EditGuard`** to match edit capability.
 
 #### Users Page (`/admin/users`)
+
 - **File**: `src/app/(dashboard)/admin/users/page.tsx`.
 - **Layout**:
   - Title + subtitle; no create button.
@@ -156,6 +158,7 @@ This section mirrors the existing feature set and UI layout, while correcting th
   - Page wrapped by `ProtectedRoute(resource=users)`.
 
 #### UserRolesDialog
+
 - **File**: `src/components/admin/UserRolesDialog.tsx`.
 - **Layout**:
   - Two panels: Current Roles list + Assign New Role form.
@@ -163,6 +166,7 @@ This section mirrors the existing feature set and UI layout, while correcting th
   - Assign form uses two `Select` controls (Role + Business Unit) and a full-width action button.
 
 #### RolePermissionsDialog
+
 - **File**: `src/components/admin/RolePermissionsDialog.tsx`.
 - **Layout**:
   - Search input + scrollable list of permissions.
@@ -173,6 +177,7 @@ This section mirrors the existing feature set and UI layout, while correcting th
   - CRUD flags for a role should actually affect permission checks (via corrected SQL functions).
 
 #### UserPermissionsDialog
+
 - **File**: `src/components/admin/UserPermissionsDialog.tsx`.
 - **Layout**:
   - Dialog header with badges for active permission count + email.

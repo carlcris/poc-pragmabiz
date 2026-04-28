@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Plus, Search, Pencil, Filter, FileText, Trash2, MoreVertical, Send, XCircle } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Pencil,
+  Filter,
+  FileText,
+  Trash2,
+  MoreVertical,
+  Send,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
@@ -189,14 +199,14 @@ export default function StockRequisitionsPage() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight whitespace-nowrap">
+          <h1 className="whitespace-nowrap text-lg font-semibold tracking-tight sm:text-xl">
             {t("title")}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+          <p className="whitespace-nowrap text-xs text-muted-foreground sm:text-sm">
             {t("subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateSR} className="w-full sm:w-auto flex-shrink-0">
+        <Button onClick={handleCreateSR} className="w-full flex-shrink-0 sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           <span className="sm:inline">{t("createAction")}</span>
         </Button>
@@ -263,7 +273,7 @@ export default function StockRequisitionsPage() {
           <div className="max-h-[calc(100vh-400px)] overflow-auto rounded-md border">
             <Table className="min-w-[800px]">
               <TableHeader className="sticky top-0 z-10 bg-background">
-                  <TableRow>
+                <TableRow>
                   <TableHead>{t("srNumber")}</TableHead>
                   <TableHead>{t("supplier")}</TableHead>
                   <TableHead>{t("requisitionDate")}</TableHead>
@@ -311,9 +321,7 @@ export default function StockRequisitionsPage() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : !data?.data || data.data.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             {t("emptyTitle")} {t("emptyDescription")}
@@ -358,12 +366,8 @@ export default function StockRequisitionsPage() {
                           <div className="text-xs text-muted-foreground">{sr.supplier?.code}</div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {formatDate(sr.requisitionDate)}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(sr.requiredByDate)}
-                      </TableCell>
+                      <TableCell>{formatDate(sr.requisitionDate)}</TableCell>
+                      <TableCell>{formatDate(sr.requiredByDate)}</TableCell>
                       <TableCell className="text-right font-medium">
                         {formatCurrency(sr.totalAmount)}
                       </TableCell>
@@ -378,7 +382,10 @@ export default function StockRequisitionsPage() {
                           {formatDate(sr.createdAt)}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
+                      <TableCell
+                        className="text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-1">
                           {sr.status === "draft" && (
                             <>

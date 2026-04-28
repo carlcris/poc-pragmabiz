@@ -210,7 +210,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute query
-    const { data: adjustments, error, count } = await query
+    const {
+      data: adjustments,
+      error,
+      count,
+    } = await query
       .order("adjustment_date", { ascending: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -465,9 +469,9 @@ export async function POST(request: NextRequest) {
       const difference = adjustedQty - item.currentQty;
       const totalCost = difference * item.unitCost;
 
-        return {
-          company_id: companyId,
-          adjustment_id: adjustment.id,
+      return {
+        company_id: companyId,
+        adjustment_id: adjustment.id,
         item_id: item.itemId,
         item_code: itemData?.item_code || "",
         item_name: itemData?.item_name || "",
@@ -480,10 +484,10 @@ export async function POST(request: NextRequest) {
         uom_id: item.uomId,
         uom_name: uomData?.code || "",
         reason: item.reason || null,
-          created_by: userId,
-          updated_by: userId,
-        };
-      });
+        created_by: userId,
+        updated_by: userId,
+      };
+    });
 
     const { error: itemsError } = await supabase
       .from("stock_adjustment_items")

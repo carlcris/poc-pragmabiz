@@ -115,12 +115,12 @@ export async function sendStockRequisitionEmail(data: StockRequisitionEmailData)
     const itemsTableRows = data.items
       .map(
         (item, index) => `
-        <tr style="${index % 2 === 0 ? 'background-color: #ffffff;' : 'background-color: #f9fafb;'}">
+        <tr style="${index % 2 === 0 ? "background-color: #ffffff;" : "background-color: #f9fafb;"}">
           <td style="padding: 14px 12px; text-align: left; font-size: 13px; color: #6b7280; font-family: 'Courier New', monospace; font-weight: 600;">${item.itemCode}</td>
           <td style="padding: 14px 12px; text-align: left; font-size: 14px; color: #111827; font-weight: 500;">${item.itemName}</td>
           <td style="padding: 14px 12px; text-align: right; font-size: 14px; color: #374151; font-weight: 600;">${item.requestedQty}</td>
           <td style="padding: 14px 12px; text-align: right; font-size: 14px; color: #1e3a8a; font-weight: 600;">${item.unitPrice}</td>
-          <td style="padding: 14px 12px; text-align: right; font-size: 15px; color: #1e3a8a; font-weight: 700; background-color: ${index % 2 === 0 ? '#eff6ff' : '#dbeafe'};">${item.totalPrice}</td>
+          <td style="padding: 14px 12px; text-align: right; font-size: 15px; color: #1e3a8a; font-weight: 700; background-color: ${index % 2 === 0 ? "#eff6ff" : "#dbeafe"};">${item.totalPrice}</td>
         </tr>
       `
       )

@@ -178,7 +178,11 @@ const asStatus = (value: string | null): ItemStatus | null => {
 
 const normalizeSearchTerm = (value: string | null) => value?.trim().toLowerCase() || "";
 
-const scoreSearchField = (fieldValue: string | null | undefined, search: string, baseScore: number) => {
+const scoreSearchField = (
+  fieldValue: string | null | undefined,
+  search: string,
+  baseScore: number
+) => {
   const normalizedField = fieldValue?.trim().toLowerCase() || "";
   if (!normalizedField || !search) return 0;
   if (normalizedField === search) return baseScore + 300;
@@ -204,12 +208,17 @@ const scoreItemSearchMatch = (
     scoreSearchField(item.description, search, 300)
   );
 
-const rankItemsBySearch = <T extends {
-  code: string;
-  name: string;
-  chineseName?: string;
-  description?: string;
-}>(items: T[], rawSearch: string | null) => {
+const rankItemsBySearch = <
+  T extends {
+    code: string;
+    name: string;
+    chineseName?: string;
+    description?: string;
+  },
+>(
+  items: T[],
+  rawSearch: string | null
+) => {
   const normalizedSearch = normalizeSearchTerm(rawSearch);
   if (!normalizedSearch) return items;
 
@@ -334,7 +343,10 @@ export async function GET(request: NextRequest) {
     const includeStats = searchParams.get("includeStats") === "true";
     const statsOnly = searchParams.get("statsOnly") === "true";
     const page = parsePositiveInt(searchParams.get("page"), 1);
-    const limit = Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+    const limit = Math.min(
+      parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE),
+      MAX_PAGE_SIZE
+    );
 
     if (!includeStock) {
       let query = supabase
@@ -428,7 +440,7 @@ export async function GET(request: NextRequest) {
 
     // "All Warehouses" aggregates across available warehouses.
     // Only scope by BU when a specific warehouse is selected.
-    const effectiveBusinessUnitId: string | null =  rawWarehouseId ?? null;;
+    const effectiveBusinessUnitId: string | null = rawWarehouseId ?? null;
 
     const statsRpcPayload = {
       p_company_id: companyId,
@@ -473,9 +485,14 @@ export async function GET(request: NextRequest) {
       p_limit: candidateLimit,
     };
 
-    const statsRpcPromise = includeStats ? supabase.rpc("get_items_enhanced_stats", statsRpcPayload) : null;
+    const statsRpcPromise = includeStats
+      ? supabase.rpc("get_items_enhanced_stats", statsRpcPayload)
+      : null;
 
-    const { data: rpcRows, error: rpcError } = await supabase.rpc("get_items_enhanced_page", rpcPayload);
+    const { data: rpcRows, error: rpcError } = await supabase.rpc(
+      "get_items_enhanced_page",
+      rpcPayload
+    );
 
     if (rpcError) {
       return NextResponse.json(
@@ -714,17 +731,28 @@ export async function POST(request: NextRequest) {
     });
 
     if (unitOptionInsertError) {
-      await supabase.from("items").delete().eq("id", (newItem as ItemRow).id).eq("company_id", companyId);
+      await supabase
+        .from("items")
+        .delete()
+        .eq("id", (newItem as ItemRow).id)
+        .eq("company_id", companyId);
       return NextResponse.json(
         { error: "Failed to create item base barcode", details: unitOptionInsertError.message },
         { status: 500 }
       );
     }
 
-    const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(supabase, companyId, [(newItem as ItemRow).id]);
+    const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(supabase, companyId, [
+      (newItem as ItemRow).id,
+    ]);
 
     return NextResponse.json(
-      { data: transformDbItem(newItem as ItemRow, unitOptionRowsByItemId.get((newItem as ItemRow).id) || []) },
+      {
+        data: transformDbItem(
+          newItem as ItemRow,
+          unitOptionRowsByItemId.get((newItem as ItemRow).id) || []
+        ),
+      },
       { status: 201 }
     );
   } catch {

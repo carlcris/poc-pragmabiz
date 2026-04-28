@@ -47,15 +47,19 @@ Keep existing:
 ### Tables
 
 1. `item_warehouse` (existing)
+
 - Aggregate stock per item + warehouse
 
 2. `item_location` (existing)
+
 - Aggregate stock per item + warehouse + `location (shelf/rack)`
 
 3. `item_batch` (new)
+
 - Aggregate stock per item + warehouse + batch
 
 4. `item_location_batch` (new)
+
 - Exact stock per item + warehouse + `location (shelf/rack)` + batch
 
 ## Stock consistency rules
@@ -357,31 +361,39 @@ Extend types to include batch-aware details without breaking current screens:
 ## Test plan (minimum cases)
 
 1. Partial pick across multiple batches
+
 - Item demand exceeds oldest batch but not total
 - Allocation should split across batches FIFO
 
 2. Partial pick across multiple `location (shelf/rack)` rows within same batch
+
 - Same batch stored on multiple shelves/racks
 - Allocation should split deterministically across locations
 
 3. Concurrent DN reservations / picks for same item
+
 - Two DNs or pick operations overlap for the same item
 - No overselling; aggregate reservation validation and dispatch locking should prevent negative stock
 
 3a. Concurrent pick confirm vs dispatch
+
 - Prevent dispatch from consuming partially-written pick rows (transaction + row locking + status checks)
 
 3b. Concurrent pick-list cancel vs dispatch
+
 - Pick-list cancellation reset must be rejected once any `dispatched_qty > 0`
 
 4. GRN receive into new batch vs explicit batch code
+
 - Ensure correct batch records and exact totals
 
 5. DN dispatch + DN receive preserves batch identity
+
 - Source dispatch by batch(s)
 - Destination receive reproduces same batch balances
 
 6. Store sale fulfilled by direct warehouse pickup (no store receipt)
+
 - Stock request created by store demand
 - Warehouse reserves aggregate qty, then picks/dispatches using actual batch + `location (shelf/rack)` scans
 - Store inventory remains unchanged
@@ -401,33 +413,40 @@ Extend types to include batch-aware details without breaking current screens:
 ## Final design decisions (confirmed)
 
 1. Batch uniqueness scope
+
 - `item + warehouse + batch_code` (with company scoping in implementation)
 
 2. GRN batch behavior
+
 - GRN always creates a new `batch_code`
 - App validates duplicate existence for the same `item + warehouse + batch_code` and raises an error if duplicated
 
 3. DN / transfer receiving batch behavior
+
 - Reuse `batch_code` from source actual pick rows
 - Reuse/preserve the original batch `receipt_date` across warehouses
 - Same `batch_code` must not appear with a different preserved `receipt_date`; raise error on mismatch
 - Upsert destination `item_batch`, `item_location_batch`, `item_location`, and update `item_warehouse`
 
 4. Cross-warehouse reuse policy
+
 - Reuse batch code in any transfer / stock request regardless of warehouse
 - Preserve original batch `receipt_date` across warehouses for FIFO
 
 5. Reservation timing
+
 - Aggregate reservation occurs during DN creation (current workflow)
 - Pick lists capture/confirm actual picked source rows rather than creating reservations
 
 6. Cancellation behavior
+
 - DN cancellation releases aggregate reservations and clears `delivery_note_item_picks`
 - Pick list cancellation does not cancel the DN and does not release DN aggregate reservation automatically
 - Pick list cancellation resets/clears `delivery_note_item_picks` but retains override suggestion values on the DN line
 - Pick list cancellation reset is allowed only before any dispatch has occurred
 
 7. Direct warehouse pickup status handling
+
 - `customer_pickup_from_warehouse` can still use `received` status for workflow compatibility
 - No store inventory receipt posting occurs in that flow
 - Use a dedicated completion transition path for that mode (do not call standard DN receive inventory posting)
@@ -435,11 +454,13 @@ Extend types to include batch-aware details without breaking current screens:
 ## Concurrency recommendations (implementation guidance)
 
 1. Locking
+
 - On pick confirm/edit: lock the target DN line (`delivery_note_items`) and validate DN status before writing `delivery_note_item_picks`
 - On dispatch: lock DN header, relevant DN lines, and affected inventory rows (`item_warehouse`, `item_batch`, `item_location`, `item_location_batch`)
 - On pick-list cancellation reset: lock DN lines and reject reset if any `dispatched_qty > 0`
 
 2. Pick row integrity
+
 - Enforce server-side cap: `SUM(delivery_note_item_picks.picked_qty)` per DN line must not exceed `delivery_note_items.allocated_qty`
 - Merge or validate duplicate scans deterministically:
   - merge when same `delivery_note_item_id` + same `picked_location_id` + same batch identity (`picked_batch_code` or `item_batch_id`) + same preserved `picked_batch_received_at`
@@ -447,5 +468,6 @@ Extend types to include batch-aware details without breaking current screens:
 - Allow edits only while DN is pre-dispatch
 
 3. Dispatch integrity
+
 - Before dispatch commit, verify pick-row totals reconcile with requested dispatch quantities
 - Dispatch should consume exactly from persisted pick rows, not recalculate source batch/location

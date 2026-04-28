@@ -105,15 +105,26 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const toItemLabel = (item: {
-  items?: { item_name: string | null; item_code: string | null } | null;
-  item_id: string;
-}, fallback: string) => item.items?.item_name || item.items?.item_code || item.item_id || fallback;
+const toItemLabel = (
+  item: {
+    items?: { item_name: string | null; item_code: string | null } | null;
+    item_id: string;
+  },
+  fallback: string
+) => item.items?.item_name || item.items?.item_code || item.item_id || fallback;
 
-const toUomLabel = (item: {
-  units_of_measure?: { code?: string | null; symbol: string | null; name: string | null } | null;
-  item_unit_options?: DbItemUnitOptionRow | DbItemUnitOptionRow[] | ItemUnitOption | ItemUnitOption[] | null;
-}, fallback: string) => {
+const toUomLabel = (
+  item: {
+    units_of_measure?: { code?: string | null; symbol: string | null; name: string | null } | null;
+    item_unit_options?:
+      | DbItemUnitOptionRow
+      | DbItemUnitOptionRow[]
+      | ItemUnitOption
+      | ItemUnitOption[]
+      | null;
+  },
+  fallback: string
+) => {
   const unitOption = Array.isArray(item.item_unit_options)
     ? item.item_unit_options[0]
     : item.item_unit_options;
@@ -188,7 +199,10 @@ export default function PickListsPage() {
     return filtered;
   }, [allPickLists, search]);
 
-  const selected = useMemo(() => pickLists.find((row) => row.id === detailId) || null, [detailId, pickLists]);
+  const selected = useMemo(
+    () => pickLists.find((row) => row.id === detailId) || null,
+    [detailId, pickLists]
+  );
 
   const getLinePickedQty = (itemId: string, fallback: number) =>
     Object.prototype.hasOwnProperty.call(itemQtyMap, itemId) ? itemQtyMap[itemId] : fallback;
@@ -299,9 +313,7 @@ export default function PickListsPage() {
           icon={ClipboardList}
           title={t("emptyTitle")}
           description={
-            search || statusFilter !== "all"
-              ? t("emptyFilteredDescription")
-              : t("emptyDescription")
+            search || statusFilter !== "all" ? t("emptyFilteredDescription") : t("emptyDescription")
           }
         />
       ) : (
@@ -321,7 +333,10 @@ export default function PickListsPage() {
               {pickLists.map((row) => {
                 const assignees = (row.pick_list_assignees || []).map((assignee) => {
                   const user = assignee.users;
-                  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
+                  const fullName = [user?.first_name, user?.last_name]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim();
                   return fullName || user?.email || assignee.user_id;
                 });
 
@@ -352,11 +367,15 @@ export default function PickListsPage() {
                     </TableCell>
                     <TableCell>{getStatusBadge(row.status, statusLabel(row.status))}</TableCell>
                     <TableCell className="max-w-60 truncate text-sm">
-                      {assignees.length > 0 ? assignees.join(", ") : (
+                      {assignees.length > 0 ? (
+                        assignees.join(", ")
+                      ) : (
                         <span className="text-muted-foreground">{t("noAssignees")}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">{formatDate(row.created_at, locale, t("noValue"))}</TableCell>
+                    <TableCell className="text-sm">
+                      {formatDate(row.created_at, locale, t("noValue"))}
+                    </TableCell>
                     <TableCell className="text-right" />
                   </TableRow>
                 );
@@ -384,8 +403,11 @@ export default function PickListsPage() {
               {selected?.pick_list_no || t("pickListDetails")}
             </DialogTitle>
             <DialogDescription>
-              {t("deliveryNoteLabel")} {selected?.delivery_notes?.dn_no || t("noValue")} | {t("statusLabel")}{" "}
-              {selected ? getStatusBadge(selected.status, statusLabel(selected.status)) : t("noValue")}
+              {t("deliveryNoteLabel")} {selected?.delivery_notes?.dn_no || t("noValue")} |{" "}
+              {t("statusLabel")}{" "}
+              {selected
+                ? getStatusBadge(selected.status, statusLabel(selected.status))
+                : t("noValue")}
             </DialogDescription>
           </DialogHeader>
 
@@ -414,7 +436,9 @@ export default function PickListsPage() {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">{t("created")}</div>
-                  <div className="font-medium">{formatDate(selected.created_at, locale, t("noValue"))}</div>
+                  <div className="font-medium">
+                    {formatDate(selected.created_at, locale, t("noValue"))}
+                  </div>
                 </div>
               </div>
 
@@ -425,7 +449,10 @@ export default function PickListsPage() {
                   <div className="flex flex-wrap gap-2">
                     {selected.pick_list_assignees.map((assignee) => {
                       const user = assignee.users;
-                      const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ").trim();
+                      const fullName = [user?.first_name, user?.last_name]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim();
                       const displayName = fullName || user?.email || t("unknown");
                       return (
                         <div
@@ -462,9 +489,15 @@ export default function PickListsPage() {
 
                         return (
                           <TableRow key={item.id}>
-                            <TableCell className="text-sm font-medium">{toItemLabel(item, t("unknown"))}</TableCell>
-                            <TableCell className="text-sm">{toUomLabel(item, t("noValue"))}</TableCell>
-                            <TableCell className="text-right font-medium">{allocated.toFixed(2)}</TableCell>
+                            <TableCell className="text-sm font-medium">
+                              {toItemLabel(item, t("unknown"))}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {toUomLabel(item, t("noValue"))}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {allocated.toFixed(2)}
+                            </TableCell>
                             <TableCell className="text-right">
                               <Input
                                 className="ml-auto w-28 text-right"
@@ -486,7 +519,7 @@ export default function PickListsPage() {
                               />
                             </TableCell>
                             <TableCell className="text-right">
-                              <span className={shortQty > 0 ? "text-orange-600 font-medium" : ""}>
+                              <span className={shortQty > 0 ? "font-medium text-orange-600" : ""}>
                                 {shortQty.toFixed(2)}
                               </span>
                             </TableCell>

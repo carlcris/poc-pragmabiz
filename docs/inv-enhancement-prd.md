@@ -66,9 +66,9 @@ Warehouse
 UI Example:
 
 Stretch Canvas
-  Variant: 8x12
-      Packaging: Carton (100)
-      Stock: 256 pcs (2.56 cartons)
+Variant: 8x12
+Packaging: Carton (100)
+Stock: 256 pcs (2.56 cartons)
 
 2.3 New Tables (minimal breaking)
 Table A. item_variants

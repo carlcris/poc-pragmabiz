@@ -163,14 +163,14 @@ export default function LoadListDetailPage() {
 
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return t("noValue");
-    return new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "2-digit" }).format(new Date(dateString));
+    return new Intl.DateTimeFormat(locale, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    }).format(new Date(dateString));
   };
 
-  const formatUser = (user?: {
-    firstName?: string;
-    lastName?: string;
-    email?: string;
-  }) => {
+  const formatUser = (user?: { firstName?: string; lastName?: string; email?: string }) => {
     if (!user) return t("noValue");
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
     return fullName || user.email || t("noValue");
@@ -236,9 +236,7 @@ export default function LoadListDetailPage() {
         </div>
       ) : error ? (
         <Card>
-          <CardContent className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </CardContent>
+          <CardContent className="py-8 text-center text-destructive">{t("loadError")}</CardContent>
         </Card>
       ) : !ll ? (
         <Card>
@@ -283,7 +281,8 @@ export default function LoadListDetailPage() {
                   <div>
                     <span className="text-muted-foreground">{t("businessUnit")}</span>
                     <div className="font-medium">
-                      {ll.businessUnit?.name || t("noValue")} ({ll.businessUnit?.code || t("noValue")})
+                      {ll.businessUnit?.name || t("noValue")} (
+                      {ll.businessUnit?.code || t("noValue")})
                     </div>
                   </div>
                   {ll.supplierLlNumber && (
@@ -331,11 +330,11 @@ export default function LoadListDetailPage() {
               {ll.notes && (
                 <div>
                   <span className="text-muted-foreground">{t("notes")}</span>
-                  <div className="font-medium mt-1">{ll.notes}</div>
+                  <div className="mt-1 font-medium">{ll.notes}</div>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-6 pt-4 border-t">
+              <div className="grid grid-cols-2 gap-6 border-t pt-4">
                 <div className="space-y-2">
                   <div>
                     <span className="text-muted-foreground">{t("createdBy")}</span>
@@ -407,26 +406,25 @@ export default function LoadListDetailPage() {
                           </TableCell>
                           <TableCell className="text-right">{item.loadListQty}</TableCell>
                           <TableCell className="text-right">
-                            {(item.loadListQty * (item.itemUnitOption?.qtyPerUnit ?? 1)).toLocaleString(
-                              locale,
-                              { maximumFractionDigits: 4 }
-                            )}
+                            {(
+                              item.loadListQty * (item.itemUnitOption?.qtyPerUnit ?? 1)
+                            ).toLocaleString(locale, { maximumFractionDigits: 4 })}
                           </TableCell>
                           <TableCell className="text-right">
                             <span
-                              className={item.receivedQty > 0 ? "text-green-600 font-medium" : ""}
+                              className={item.receivedQty > 0 ? "font-medium text-green-600" : ""}
                             >
                               {item.receivedQty}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            <span className={item.damagedQty > 0 ? "text-red-600 font-medium" : ""}>
+                            <span className={item.damagedQty > 0 ? "font-medium text-red-600" : ""}>
                               {item.damagedQty}
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
                             <span
-                              className={item.shortageQty > 0 ? "text-orange-600 font-medium" : ""}
+                              className={item.shortageQty > 0 ? "font-medium text-orange-600" : ""}
                             >
                               {item.shortageQty}
                             </span>
@@ -436,7 +434,9 @@ export default function LoadListDetailPage() {
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {formatCurrency(
-                              item.loadListQty * (item.itemUnitOption?.qtyPerUnit ?? 1) * item.unitPrice
+                              item.loadListQty *
+                                (item.itemUnitOption?.qtyPerUnit ?? 1) *
+                                item.unitPrice
                             )}
                           </TableCell>
                         </TableRow>
@@ -472,9 +472,7 @@ export default function LoadListDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("confirmDescription")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("confirmDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
@@ -535,9 +533,7 @@ export default function LoadListDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("arrivedTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("arrivedDescription")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("arrivedDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
@@ -556,9 +552,7 @@ export default function LoadListDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("reverseArrivalTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("reverseArrivalDescription")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("reverseArrivalDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancelBack")}</AlertDialogCancel>
@@ -577,9 +571,7 @@ export default function LoadListDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("receivedTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("receivedDescription")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("receivedDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
@@ -596,11 +588,11 @@ export default function LoadListDetailPage() {
 
       {/* Link Stock Requisitions Dialog */}
       {ll && (
-      <LinkStockRequisitionsDialog
-        open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
-        loadList={ll}
-      />
+        <LinkStockRequisitionsDialog
+          open={linkDialogOpen}
+          onOpenChange={setLinkDialogOpen}
+          loadList={ll}
+        />
       )}
     </div>
   );

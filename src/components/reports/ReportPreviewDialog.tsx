@@ -21,10 +21,7 @@ import {
   type StockMovementFilters,
   type StockValuationFilters,
 } from "@/hooks/useStockReports";
-import {
-  useShipmentsReport,
-  type ShipmentStageFilter,
-} from "@/hooks/useShipmentsReport";
+import { useShipmentsReport, type ShipmentStageFilter } from "@/hooks/useShipmentsReport";
 import {
   useStockAgingReport,
   type StockAgingAgeBucket,
@@ -46,7 +43,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type SupportedReportPreviewType =
   | "inventory"
@@ -67,7 +70,11 @@ type ReportPreviewDialogProps = {
 type ReportPreviewPanelProps = {
   open: boolean;
   reportName: string;
-  onPreviewStateChange: (state: { url: string | null; isGenerating: boolean; fileName: string }) => void;
+  onPreviewStateChange: (state: {
+    url: string | null;
+    isGenerating: boolean;
+    fileName: string;
+  }) => void;
 };
 
 type PreviewFrameProps = {
@@ -224,7 +231,8 @@ function InventoryReportPreview({
     if (!open || warehouseId || warehouses.length === 0) return;
 
     const currentContextWarehouse =
-      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit?.id) ?? warehouses[0];
+      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit?.id) ??
+      warehouses[0];
     setWarehouseId(currentContextWarehouse.id);
   }, [currentBusinessUnit?.id, open, warehouseId, warehouses]);
 
@@ -306,70 +314,69 @@ function InventoryReportPreview({
         </div>
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("itemSearch")}</label>
-          <Input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder={t("searchPlaceholder")}
-          />
+            <label className="text-sm font-medium">{t("itemSearch")}</label>
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+            />
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("warehouse")}</label>
-          <Select value={warehouseId} onValueChange={setWarehouseId}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("selectWarehouse")} />
-            </SelectTrigger>
-            <SelectContent>
-              {warehouses.map((warehouse) => (
-                <SelectItem key={warehouse.id} value={warehouse.id}>
-                  {warehouse.code} - {warehouse.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("warehouse")}</label>
+            <Select value={warehouseId} onValueChange={setWarehouseId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("selectWarehouse")} />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((warehouse) => (
+                  <SelectItem key={warehouse.id} value={warehouse.id}>
+                    {warehouse.code} - {warehouse.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("category")}</label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("allCategories")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allCategories")}</SelectItem>
-              {categories.map((itemCategory) => (
-                <SelectItem key={itemCategory.id} value={itemCategory.name}>
-                  {itemCategory.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("category")}</label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allCategories")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allCategories")}</SelectItem>
+                {categories.map((itemCategory) => (
+                  <SelectItem key={itemCategory.id} value={itemCategory.name}>
+                    {itemCategory.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("status")}</label>
-          <Select value={stockStatus} onValueChange={(value) => setStockStatus(value as InventoryStockStatus)}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("allStatuses")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allStatuses")}</SelectItem>
-              <SelectItem value="on_hand">{t("on_hand")}</SelectItem>
-              <SelectItem value="available">{t("available")}</SelectItem>
-              <SelectItem value="allocated">{t("allocated")}</SelectItem>
-              <SelectItem value="in_transit">{t("in_transit")}</SelectItem>
-              <SelectItem value="zero">{t("zero")}</SelectItem>
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("status")}</label>
+            <Select
+              value={stockStatus}
+              onValueChange={(value) => setStockStatus(value as InventoryStockStatus)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("allStatuses")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allStatuses")}</SelectItem>
+                <SelectItem value="on_hand">{t("on_hand")}</SelectItem>
+                <SelectItem value="available">{t("available")}</SelectItem>
+                <SelectItem value="allocated">{t("allocated")}</SelectItem>
+                <SelectItem value="in_transit">{t("in_transit")}</SelectItem>
+                <SelectItem value="zero">{t("zero")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="mt-auto pt-6">
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              reportQuery.isFetching ||
-              isGeneratingPreview ||
-              !warehouseId
-            }
+            disabled={reportQuery.isFetching || isGeneratingPreview || !warehouseId}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -531,55 +538,55 @@ function StockAgingReportPreview({
         </div>
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("itemSearch")}</label>
-          <Input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder={t("searchPlaceholder")}
-          />
+            <label className="text-sm font-medium">{t("itemSearch")}</label>
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+            />
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("category")}</label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("allCategories")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allCategories")}</SelectItem>
-              {categories.map((itemCategory) => (
-                <SelectItem key={itemCategory.id} value={itemCategory.name}>
-                  {itemCategory.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("category")}</label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allCategories")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allCategories")}</SelectItem>
+                {categories.map((itemCategory) => (
+                  <SelectItem key={itemCategory.id} value={itemCategory.name}>
+                    {itemCategory.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("ageBucket")}</label>
-          <Select value={ageBucket} onValueChange={(value) => setAgeBucket(value as StockAgingAgeBucket)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="90_plus">{t("bucket90Plus")}</SelectItem>
-              <SelectItem value="all">{t("allAges")}</SelectItem>
-              <SelectItem value="0_30">{t("bucket0to30")}</SelectItem>
-              <SelectItem value="31_60">{t("bucket31to60")}</SelectItem>
-              <SelectItem value="61_90">{t("bucket61to90")}</SelectItem>
-              <SelectItem value="91_180">{t("bucket91to180")}</SelectItem>
-              <SelectItem value="181_plus">{t("bucket181Plus")}</SelectItem>
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("ageBucket")}</label>
+            <Select
+              value={ageBucket}
+              onValueChange={(value) => setAgeBucket(value as StockAgingAgeBucket)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="90_plus">{t("bucket90Plus")}</SelectItem>
+                <SelectItem value="all">{t("allAges")}</SelectItem>
+                <SelectItem value="0_30">{t("bucket0to30")}</SelectItem>
+                <SelectItem value="31_60">{t("bucket31to60")}</SelectItem>
+                <SelectItem value="61_90">{t("bucket61to90")}</SelectItem>
+                <SelectItem value="91_180">{t("bucket91to180")}</SelectItem>
+                <SelectItem value="181_plus">{t("bucket181Plus")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="mt-auto pt-6">
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              reportQuery.isFetching ||
-              isGeneratingPreview
-            }
+            disabled={reportQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -711,52 +718,52 @@ function ShipmentsReportPreview({
         </div>
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("search")}</label>
-          <Input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder={t("searchPlaceholder")}
-          />
+            <label className="text-sm font-medium">{t("search")}</label>
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+            />
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("supplier")}</label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger>
-              <SelectValue placeholder={t("allSuppliers")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allSuppliers")}</SelectItem>
-              {suppliers.map((supplier) => (
-                <SelectItem key={supplier.id} value={supplier.id}>
-                  {supplier.code} - {supplier.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("supplier")}</label>
+            <Select value={supplierId} onValueChange={setSupplierId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allSuppliers")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allSuppliers")}</SelectItem>
+                {suppliers.map((supplier) => (
+                  <SelectItem key={supplier.id} value={supplier.id}>
+                    {supplier.code} - {supplier.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
-          <label className="text-sm font-medium">{t("shipmentStage")}</label>
-          <Select value={shipmentStage} onValueChange={(value) => setShipmentStage(value as ShipmentStageFilter)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("allStages")}</SelectItem>
-              <SelectItem value="incoming">{t("incoming")}</SelectItem>
-              <SelectItem value="in_transit">{t("inTransit")}</SelectItem>
-              <SelectItem value="arrived">{t("arrived")}</SelectItem>
-            </SelectContent>
-          </Select>
+            <label className="text-sm font-medium">{t("shipmentStage")}</label>
+            <Select
+              value={shipmentStage}
+              onValueChange={(value) => setShipmentStage(value as ShipmentStageFilter)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allStages")}</SelectItem>
+                <SelectItem value="incoming">{t("incoming")}</SelectItem>
+                <SelectItem value="in_transit">{t("inTransit")}</SelectItem>
+                <SelectItem value="arrived">{t("arrived")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="mt-auto pt-6">
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              reportQuery.isFetching ||
-              isGeneratingPreview
-            }
+            disabled={reportQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -917,17 +924,17 @@ function StockReportsPreview({
       ]);
 
       const blob = await pdf(
-          <StockValuationReportPDF
-            title={t("valuationTab")}
-            subtitle={t("subtitle")}
-            generatedAtLabel={tReports("generatedAt")}
+        <StockValuationReportPDF
+          title={t("valuationTab")}
+          subtitle={t("subtitle")}
+          generatedAtLabel={tReports("generatedAt")}
           itemLabel={t("item")}
           warehouseLabel={t("warehouse")}
           categoryLabel={t("category")}
-            qtyOnHandLabel={t("qtyOnHand")}
-            unitCostLabel={t("unitCost")}
-            totalValueLabel={t("totalValue")}
-            noValueLabel="--"
+          qtyOnHandLabel={t("qtyOnHand")}
+          unitCostLabel={t("unitCost")}
+          totalValueLabel={t("totalValue")}
+          noValueLabel="--"
           pageSummary={tReports("previewRowCount", {
             count: formatNumber(data.data.length),
           })}
@@ -970,16 +977,29 @@ function StockReportsPreview({
             <>
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("startDate")}</label>
-                <Input type="date" value={movementStartDate} onChange={(event) => setMovementStartDate(event.target.value)} />
+                <Input
+                  type="date"
+                  value={movementStartDate}
+                  onChange={(event) => setMovementStartDate(event.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("endDate")}</label>
-                <Input type="date" value={movementEndDate} onChange={(event) => setMovementEndDate(event.target.value)} />
+                <Input
+                  type="date"
+                  value={movementEndDate}
+                  onChange={(event) => setMovementEndDate(event.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("groupBy")}</label>
-                <Select value={movementGroupBy} onValueChange={(value) => setMovementGroupBy(value as StockMovementGroupBy)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={movementGroupBy}
+                  onValueChange={(value) => setMovementGroupBy(value as StockMovementGroupBy)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="item">{t("byItem")}</SelectItem>
                     <SelectItem value="warehouse">{t("byWarehouse")}</SelectItem>
@@ -990,7 +1010,9 @@ function StockReportsPreview({
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("warehouse")}</label>
                 <Select value={movementWarehouseId} onValueChange={setMovementWarehouseId}>
-                  <SelectTrigger><SelectValue placeholder={t("allWarehouses")} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("allWarehouses")} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                     {warehouses.map((warehouse) => (
@@ -1004,7 +1026,9 @@ function StockReportsPreview({
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("item")}</label>
                 <Select value={movementItemId} onValueChange={setMovementItemId}>
-                  <SelectTrigger><SelectValue placeholder={t("allItems")} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("allItems")} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("allItems")}</SelectItem>
                     {items.map((item) => (
@@ -1020,8 +1044,13 @@ function StockReportsPreview({
             <>
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("groupBy")}</label>
-                <Select value={valuationGroupBy} onValueChange={(value) => setValuationGroupBy(value as StockValuationGroupBy)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={valuationGroupBy}
+                  onValueChange={(value) => setValuationGroupBy(value as StockValuationGroupBy)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="item">{t("byItem")}</SelectItem>
                     <SelectItem value="warehouse">{t("byWarehouse")}</SelectItem>
@@ -1033,7 +1062,9 @@ function StockReportsPreview({
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("warehouse")}</label>
                 <Select value={valuationWarehouseId} onValueChange={setValuationWarehouseId}>
-                  <SelectTrigger><SelectValue placeholder={t("allWarehouses")} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("allWarehouses")} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                     {warehouses.map((warehouse) => (
@@ -1047,7 +1078,9 @@ function StockReportsPreview({
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("item")}</label>
                 <Select value={valuationItemId} onValueChange={setValuationItemId}>
-                  <SelectTrigger><SelectValue placeholder={t("allItems")} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("allItems")} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("allItems")}</SelectItem>
                     {items.map((item) => (
@@ -1061,7 +1094,9 @@ function StockReportsPreview({
               <div className="space-y-2">
                 <label className="text-sm font-medium">{t("category")}</label>
                 <Select value={valuationCategory} onValueChange={setValuationCategory}>
-                  <SelectTrigger><SelectValue placeholder={t("allCategories")} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("allCategories")} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t("allCategories")}</SelectItem>
                     {categories.map((category) => (
@@ -1079,10 +1114,7 @@ function StockReportsPreview({
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              activeQuery.isFetching ||
-              isGeneratingPreview
-            }
+            disabled={activeQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1121,7 +1153,9 @@ function ItemLocationBatchReportPreview({
   const locale = useLocale();
   const [warehouseId, setWarehouseId] = useState("all");
   const [itemId, setItemId] = useState("all");
-  const [stockStatus, setStockStatus] = useState<"all" | "zero" | "available_only" | "reserved">("all");
+  const [stockStatus, setStockStatus] = useState<"all" | "zero" | "available_only" | "reserved">(
+    "all"
+  );
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"updated_at" | "qty_on_hand" | "received_at">("updated_at");
@@ -1221,7 +1255,9 @@ function ItemLocationBatchReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("warehouse")}</label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger><SelectValue placeholder={t("allWarehouses")} /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allWarehouses")} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                 {warehouses.map((warehouse) => (
@@ -1235,7 +1271,9 @@ function ItemLocationBatchReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("item")}</label>
             <Select value={itemId} onValueChange={setItemId}>
-              <SelectTrigger><SelectValue placeholder={t("allItems")} /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allItems")} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allItems")}</SelectItem>
                 {items.map((item) => (
@@ -1248,8 +1286,13 @@ function ItemLocationBatchReportPreview({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("stockStatus")}</label>
-            <Select value={stockStatus} onValueChange={(value) => setStockStatus(value as typeof stockStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={stockStatus}
+              onValueChange={(value) => setStockStatus(value as typeof stockStatus)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("all")}</SelectItem>
                 <SelectItem value="available_only">{t("availableOnly")}</SelectItem>
@@ -1261,7 +1304,9 @@ function ItemLocationBatchReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("sortBy")}</label>
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="updated_at">{t("updatedAt")}</SelectItem>
                 <SelectItem value="qty_on_hand">{t("qtyOnHand")}</SelectItem>
@@ -1271,8 +1316,13 @@ function ItemLocationBatchReportPreview({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("sortOrder")}</label>
-            <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as typeof sortOrder)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={sortOrder}
+              onValueChange={(value) => setSortOrder(value as typeof sortOrder)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="desc">{t("descending")}</SelectItem>
                 <SelectItem value="asc">{t("ascending")}</SelectItem>
@@ -1292,10 +1342,7 @@ function ItemLocationBatchReportPreview({
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              reportQuery.isFetching ||
-              isGeneratingPreview
-            }
+            disabled={reportQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1337,7 +1384,8 @@ function PickingEfficiencyReportPreview({
   const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [warehouseId, setWarehouseId] = useState("all");
   const [pickerUserId, setPickerUserId] = useState("all");
-  const [groupBy, setGroupBy] = useState<NonNullable<PickingEfficiencyFilters["groupBy"]>>("picker");
+  const [groupBy, setGroupBy] =
+    useState<NonNullable<PickingEfficiencyFilters["groupBy"]>>("picker");
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const { data: usersData } = useUsers({ page: 1, limit: 50, isActive: true });
   const warehouses = warehousesData?.data || [];
@@ -1419,16 +1467,26 @@ function PickingEfficiencyReportPreview({
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("startDate")}</label>
-            <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("endDate")}</label>
-            <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("warehouse")}</label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger><SelectValue placeholder={t("allWarehouses")} /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allWarehouses")} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                 {warehouses.map((warehouse) => (
@@ -1442,12 +1500,15 @@ function PickingEfficiencyReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("picker")}</label>
             <Select value={pickerUserId} onValueChange={setPickerUserId}>
-              <SelectTrigger><SelectValue placeholder={t("allPickers")} /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allPickers")} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allPickers")}</SelectItem>
                 {users.map((user) => (
                   <SelectItem key={user.id} value={user.id}>
-                    {[user.first_name, user.last_name].filter(Boolean).join(" ").trim() || user.email}
+                    {[user.first_name, user.last_name].filter(Boolean).join(" ").trim() ||
+                      user.email}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -1456,7 +1517,9 @@ function PickingEfficiencyReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("primaryTable")}</label>
             <Select value={groupBy} onValueChange={(value) => setGroupBy(value as typeof groupBy)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="picker">{t("byPicker")}</SelectItem>
                 <SelectItem value="warehouse">{t("byWarehouse")}</SelectItem>
@@ -1468,10 +1531,7 @@ function PickingEfficiencyReportPreview({
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              reportQuery.isFetching ||
-              isGeneratingPreview
-            }
+            disabled={reportQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1514,9 +1574,15 @@ function TransformationEfficiencyReportPreview({
   const [warehouseId, setWarehouseId] = useState("all");
   const [templateId, setTemplateId] = useState("all");
   const [groupBy, setGroupBy] = useState<"template" | "warehouse">("template");
-  const [status, setStatus] = useState<"COMPLETED" | "PREPARING" | "DRAFT" | "CANCELLED" | "ALL">("COMPLETED");
+  const [status, setStatus] = useState<"COMPLETED" | "PREPARING" | "DRAFT" | "CANCELLED" | "ALL">(
+    "COMPLETED"
+  );
   const { data: warehousesData } = useWarehouses({ limit: 50 });
-  const { data: templatesData } = useTransformationTemplates({ page: 1, limit: 50, isActive: true });
+  const { data: templatesData } = useTransformationTemplates({
+    page: 1,
+    limit: 50,
+    isActive: true,
+  });
   const warehouses = warehousesData?.data || [];
   const templates = templatesData?.data || [];
   const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
@@ -1596,16 +1662,26 @@ function TransformationEfficiencyReportPreview({
         <div className="mt-4 space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("startDate")}</label>
-            <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("endDate")}</label>
-            <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("warehouse")}</label>
             <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger><SelectValue placeholder={t("allWarehouses")} /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allWarehouses")} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allWarehouses")}</SelectItem>
                 {warehouses.map((warehouse) => (
@@ -1619,7 +1695,9 @@ function TransformationEfficiencyReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("template")}</label>
             <Select value={templateId} onValueChange={setTemplateId}>
-              <SelectTrigger><SelectValue placeholder={t("allTemplates")} /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allTemplates")} />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("allTemplates")}</SelectItem>
                 {templates.map((template) => (
@@ -1633,7 +1711,9 @@ function TransformationEfficiencyReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("status")}</label>
             <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="COMPLETED">{t("completed")}</SelectItem>
                 <SelectItem value="PREPARING">{t("preparing")}</SelectItem>
@@ -1646,7 +1726,9 @@ function TransformationEfficiencyReportPreview({
           <div className="space-y-2">
             <label className="text-sm font-medium">{t("primaryTable")}</label>
             <Select value={groupBy} onValueChange={(value) => setGroupBy(value as typeof groupBy)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="template">{t("byTemplate")}</SelectItem>
                 <SelectItem value="warehouse">{t("byWarehouse")}</SelectItem>
@@ -1658,10 +1740,7 @@ function TransformationEfficiencyReportPreview({
           <Button
             className="w-full"
             onClick={handlePreview}
-            disabled={
-              reportQuery.isFetching ||
-              isGeneratingPreview
-            }
+            disabled={reportQuery.isFetching || isGeneratingPreview}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

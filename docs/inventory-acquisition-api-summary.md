@@ -10,6 +10,7 @@
 All database tables have been created and migrated successfully:
 
 #### Core Tables Created:
+
 - **stock_requisitions** - Main requisition header
 - **stock_requisition_items** - Requisition line items with auto-calculated outstanding_qty
 - **load_lists** - Supplier shipment documents
@@ -23,6 +24,7 @@ All database tables have been created and migrated successfully:
 - **rts_items** - Return line items
 
 #### Schema Enhancements:
+
 - ✅ Added `in_transit` field to `item_warehouse` table
 - ✅ Proper foreign keys and cascading deletes
 - ✅ Check constraints for data integrity
@@ -38,6 +40,7 @@ All database tables have been created and migrated successfully:
 ### 2. Resource Registration (100% Complete)
 
 Added to `src/constants/resources.ts`:
+
 - ✅ `STOCK_REQUISITIONS` - "stock_requisitions"
 - ✅ `LOAD_LISTS` - "load_lists"
 - ✅ `GOODS_RECEIPT_NOTES` - "goods_receipt_notes"
@@ -53,12 +56,14 @@ With proper metadata for RBAC system.
 #### Endpoints Created:
 
 **GET /api/stock-requisitions**
+
 - List all requisitions with pagination
 - Filters: status, supplier, business unit, date range, search
 - Returns nested supplier, business unit, and user data
 - Response format: `{ data: [], pagination: {} }`
 
 **POST /api/stock-requisitions**
+
 - Create new requisition with line items
 - Auto-generates SR number (format: `SR-YYYY-####`)
 - Validates required fields (supplier, items)
@@ -66,23 +71,27 @@ With proper metadata for RBAC system.
 - Creates line items atomically (rollback on failure)
 
 **GET /api/stock-requisitions/[id]**
+
 - Get single requisition with full details
 - Includes nested items with product information
 - Shows fulfilled_qty and outstanding_qty per item
 - Returns 404 if not found or not in user's company
 
 **PUT /api/stock-requisitions/[id]**
+
 - Update requisition (draft only)
 - Updates header and replaces all line items
 - Validates status (only draft can be edited)
 - Recalculates total amount
 
 **DELETE /api/stock-requisitions/[id]**
+
 - Soft delete (sets deleted_at timestamp)
 - Only draft requisitions can be deleted
 - Validates status before deletion
 
 **PATCH /api/stock-requisitions/[id]/status**
+
 - Change requisition status
 - Status flow: draft → submitted → partially_fulfilled → fulfilled
 - Cannot change cancelled or fulfilled requisitions
@@ -101,6 +110,7 @@ With proper metadata for RBAC system.
 #### Endpoints Created:
 
 **GET /api/load-lists**
+
 - List all load lists with pagination
 - Filters: status, supplier, warehouse, business unit, date range, search
 - Search: ll_number, supplier_ll_number, container_number, seal_number
@@ -108,29 +118,34 @@ With proper metadata for RBAC system.
 - Response format: `{ data: [], pagination: {} }`
 
 **POST /api/load-lists**
+
 - Create new load list with line items
 - Auto-generates LL number (format: `LL-YYYY-####`)
 - Validates required fields (supplier, warehouse, items)
 - Creates line items atomically (rollback on failure)
 
 **GET /api/load-lists/[id]**
+
 - Get single load list with full details
 - Includes nested items with product information
 - Shows received_qty, damaged_qty, shortage_qty per item
 - Returns workflow tracking (received_by, approved_by, dates)
 
 **PUT /api/load-lists/[id]**
+
 - Update load list (draft/confirmed only)
 - Updates header and replaces line items (draft only)
 - Validates status before allowing edit
 - Cannot edit items after status is beyond confirmed
 
 **DELETE /api/load-lists/[id]**
+
 - Soft delete (sets deleted_at timestamp)
 - Only draft/confirmed load lists can be deleted
 - Validates status before deletion
 
 **PATCH /api/load-lists/[id]/status** ⭐ **Critical - Inventory Updates**
+
 - Change load list status with inventory updates
 - **Status flow:** draft → confirmed → in_transit → arrived → receiving → pending_approval → received
 - **Inventory Logic:**
@@ -153,6 +168,7 @@ With proper metadata for RBAC system.
 #### Endpoints Created:
 
 **POST /api/load-lists/[id]/link-requisitions**
+
 - Link load list items to stock requisition items (N:N)
 - Accepts array of links: `[{ loadListItemId, drItemId, fulfilledQty }]`
 - **Validations:**
@@ -169,6 +185,7 @@ With proper metadata for RBAC system.
 - Atomic transaction (all links succeed or all fail)
 
 **GET /api/load-lists/[id]/link-requisitions**
+
 - Get all linked requisitions for a load list
 - Returns nested data: LL items, SR items, SRs
 - Shows fulfillment progress per link
@@ -180,12 +197,14 @@ With proper metadata for RBAC system.
 ## 🔑 Key Features Implemented
 
 ### 1. Auto-Generated Document Numbers
+
 - **SR:** `SR-YYYY-####` (year-based sequence)
 - **LL:** `LL-YYYY-####` (year-based sequence)
 - Resets sequence at new year
 - Prevents duplicates with database constraints
 
 ### 2. Inventory In-Transit Tracking
+
 - **Status Change Logic:**
   ```
   Confirmed → In Transit: in_transit += load_list_qty
@@ -197,6 +216,7 @@ With proper metadata for RBAC system.
 - Atomic updates within status change transaction
 
 ### 3. Fulfillment Tracking (N:N Relationship)
+
 - Multiple SRs can be fulfilled by multiple LLs
 - Junction table tracks exact fulfillment per link
 - **Auto-calculated fields:**
@@ -207,6 +227,7 @@ With proper metadata for RBAC system.
   - SR becomes `fulfilled` when all items have fulfilled_qty = requested_qty
 
 ### 4. Permission-Based Access Control
+
 - Uses `requirePermission()` middleware
 - Checks RBAC permissions for each endpoint
 - Resource-level permissions:
@@ -215,12 +236,14 @@ With proper metadata for RBAC system.
 - Company isolation via RLS policies
 
 ### 5. Business Unit Context
+
 - Uses `createServerClientWithBU()` for BU-aware queries
 - Filters data by user's company
 - Links documents to current business unit
 - Multi-BU support built-in
 
 ### 6. Data Validation
+
 - Required fields validation
 - Status transition validation
 - Quantity validation (no over-fulfillment)
@@ -228,6 +251,7 @@ With proper metadata for RBAC system.
 - Status-dependent edit/delete rules
 
 ### 7. Error Handling
+
 - Graceful error messages
 - Transaction rollback on failure
 - Console logging for debugging
@@ -238,6 +262,7 @@ With proper metadata for RBAC system.
 ## 📊 API Response Formats
 
 ### Success Response (List)
+
 ```json
 {
   "data": [...],
@@ -251,6 +276,7 @@ With proper metadata for RBAC system.
 ```
 
 ### Success Response (Single)
+
 ```json
 {
   "id": "uuid",
@@ -262,6 +288,7 @@ With proper metadata for RBAC system.
 ```
 
 ### Error Response
+
 ```json
 {
   "error": "Error message"
@@ -269,6 +296,7 @@ With proper metadata for RBAC system.
 ```
 
 ### Status Change Response
+
 ```json
 {
   "id": "uuid",
@@ -283,24 +311,28 @@ With proper metadata for RBAC system.
 ## 🎯 Next Steps (Remaining Work)
 
 ### Frontend Components (Priority: High)
+
 - Stock Requisition list/form/detail views
 - Load List list/form/detail views
 - SR to LL linking interface
 - Status workflow UI components
 
 ### Business Logic Workflows (Priority: High)
+
 - GRN auto-creation when LL status → "Arrived"
 - GRN receiving form with variance tracking
 - GRN approval workflow
 - Stock entry creation on approval
 
 ### Phase 2: Receiving Workflow
+
 - GRN API endpoints
 - Damaged items API
 - Barcode generation logic
 - Warehouse location assignment
 
 ### Phase 3-6: Advanced Features
+
 - Barcode printing functionality
 - Notification system
 - In Transit & LIFO reports
@@ -313,6 +345,7 @@ With proper metadata for RBAC system.
 ### 1. API Testing with Postman/Thunder Client
 
 **Create Stock Requisition:**
+
 ```
 POST /api/stock-requisitions
 {
@@ -325,6 +358,7 @@ POST /api/stock-requisitions
 ```
 
 **Create Load List:**
+
 ```
 POST /api/load-lists
 {
@@ -339,6 +373,7 @@ POST /api/load-lists
 ```
 
 **Link SR to LL:**
+
 ```
 POST /api/load-lists/{ll-id}/link-requisitions
 {
@@ -353,6 +388,7 @@ POST /api/load-lists/{ll-id}/link-requisitions
 ```
 
 **Change LL Status to In Transit:**
+
 ```
 PATCH /api/load-lists/{ll-id}/status
 {
@@ -361,7 +397,9 @@ PATCH /api/load-lists/{ll-id}/status
 ```
 
 ### 2. Verify Inventory Updates
+
 After changing LL status to `in_transit`, check:
+
 ```sql
 SELECT item_id, warehouse_id, in_transit, current_stock
 FROM item_warehouse
@@ -369,7 +407,9 @@ WHERE item_id = 'your-item-id';
 ```
 
 ### 3. Test Fulfillment Tracking
+
 After linking SR to LL, verify:
+
 ```sql
 SELECT requested_qty, fulfilled_qty, outstanding_qty
 FROM stock_requisition_items
@@ -395,23 +435,28 @@ WHERE id = 'your-dr-item-id';
 ## 📚 Files Created
 
 ### Database Migrations
+
 - `supabase/migrations/20260131000000_add_inventory_acquisition_tables.sql`
 
 ### Constants
+
 - `src/constants/resources.ts` (updated)
 
 ### API Routes - Stock Requisitions
+
 - `src/app/api/stock-requisitions/route.ts`
 - `src/app/api/stock-requisitions/[id]/route.ts`
 - `src/app/api/stock-requisitions/[id]/status/route.ts`
 
 ### API Routes - Load Lists
+
 - `src/app/api/load-lists/route.ts`
 - `src/app/api/load-lists/[id]/route.ts`
 - `src/app/api/load-lists/[id]/status/route.ts`
 - `src/app/api/load-lists/[id]/link-requisitions/route.ts`
 
 ### Documentation
+
 - `docs/inventory-acquisition-workflow.md` (plan)
 - `docs/inventory-acquisition-todo.md` (tracking)
 - `docs/inventory-acquisition-api-summary.md` (this file)
@@ -427,9 +472,11 @@ WHERE id = 'your-dr-item-id';
 **All UI components created with full CRUD functionality**
 
 #### Stock Requisitions Module
+
 **Created:** 2026-02-01
 
 **List Page:** `src/app/(dashboard)/purchasing/stock-requisitions/page.tsx`
+
 - ✅ Searchable table with SR number, supplier, dates, amount, status
 - ✅ Multi-filter support (status, supplier)
 - ✅ Pagination with DataTablePagination component
@@ -438,6 +485,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ Create new SR button
 
 **Form Dialog:** `src/components/stock-requisitions/StockRequisitionFormDialog.tsx`
+
 - ✅ Supplier and date selection
 - ✅ Dynamic line items with add/remove functionality
 - ✅ Item selection with quantity and unit price
@@ -446,6 +494,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ Create and Edit modes
 
 **Detail Page:** `src/app/(dashboard)/purchasing/stock-requisitions/[id]/page.tsx`
+
 - ✅ Complete SR header information
 - ✅ Supplier and business unit details
 - ✅ Line items table with fulfillment tracking (requested, fulfilled, outstanding quantities)
@@ -454,6 +503,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ Confirmation dialogs for status changes
 
 **API Client & Hooks:**
+
 - ✅ `src/lib/api/stock-requisitions.ts` - Full API client
 - ✅ `src/hooks/useStockRequisitions.ts` - React Query hooks for all operations
 - ✅ `src/types/stock-requisition.ts` - Complete TypeScript types
@@ -461,9 +511,11 @@ WHERE id = 'your-dr-item-id';
 ---
 
 #### Load Lists Module
+
 **Created:** 2026-02-01
 
 **List Page:** `src/app/(dashboard)/purchasing/load-lists/page.tsx`
+
 - ✅ Advanced table with LL number, supplier, warehouse, container/seal, dates, status
 - ✅ Triple-filter support (status, supplier, warehouse)
 - ✅ Arrival date display (estimated vs actual)
@@ -472,6 +524,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ View/Edit/Delete actions (status-dependent)
 
 **Form Dialog:** `src/components/load-lists/LoadListFormDialog.tsx`
+
 - ✅ Supplier and warehouse selection
 - ✅ Shipping details (container number, seal number, supplier LL number)
 - ✅ Load date and estimated arrival date
@@ -480,6 +533,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ Form validation
 
 **Detail Page:** `src/app/(dashboard)/purchasing/load-lists/[id]/page.tsx`
+
 - ✅ Complete LL header with shipment details
 - ✅ Warehouse and supplier information
 - ✅ Line items table with variance tracking (load list qty, received, damaged, shortage)
@@ -494,6 +548,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ Confirmation dialogs for all status changes
 
 **SR to LL Linking Component:** `src/components/load-lists/LinkRequisitionsDialog.tsx` ⭐
+
 - ✅ Search and filter stock requisitions from same supplier
 - ✅ Shows only submitted/partially_fulfilled SRs with outstanding items
 - ✅ Multi-select interface for linking LL items to SR items
@@ -503,6 +558,7 @@ WHERE id = 'your-dr-item-id';
 - ✅ Atomic transaction (all links succeed or all fail)
 
 **API Client & Hooks:**
+
 - ✅ `src/lib/api/load-lists.ts` - Complete API client including linking
 - ✅ `src/hooks/useLoadLists.ts` - React Query hooks for CRUD + linking
 - ✅ `src/types/load-list.ts` - Complete TypeScript types
@@ -510,9 +566,11 @@ WHERE id = 'your-dr-item-id';
 ---
 
 #### Navigation Integration
+
 **Updated:** 2026-02-01
 
 **Sidebar Menu:** `src/components/layout/Sidebar.tsx`
+
 - ✅ Added "Stock Requisitions" menu item under Purchasing
 - ✅ Added "Load Lists" menu item under Purchasing
 - ✅ Permission-based access control (RBAC integration)
@@ -527,6 +585,7 @@ WHERE id = 'your-dr-item-id';
 We have successfully implemented a **complete full-stack solution** for the Inventory Acquisition workflow, including:
 
 ### Backend (Previously completed)
+
 - ✅ Complete database schema with 11 tables and relationships
 - ✅ Full CRUD operations for Stock Requisitions (6 endpoints)
 - ✅ Full CRUD operations for Load Lists (6 endpoints)
@@ -537,6 +596,7 @@ We have successfully implemented a **complete full-stack solution** for the Inve
 - ✅ Business Unit context integration
 
 ### Frontend (Newly completed)
+
 - ✅ Stock Requisitions module (list, form, detail pages)
 - ✅ Load Lists module (list, form, detail pages)
 - ✅ SR to LL linking interface with search and validation
@@ -547,6 +607,7 @@ We have successfully implemented a **complete full-stack solution** for the Inve
 - ✅ Navigation menu integration
 
 ### Key Features
+
 - ✅ Auto-generated document numbers (SR-YYYY-####, LL-YYYY-####)
 - ✅ Inventory in-transit tracking (auto-updates on status changes)
 - ✅ Fulfillment tracking (N:N relationship management)

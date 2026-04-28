@@ -106,7 +106,7 @@ export function BoxAssignmentQueueWidget() {
             <Package className="h-4 w-4" />
             <span>{t("itemsPending")}</span>
           </div>
-          <p className="mt-2 text-xl sm:text-2xl font-bold">{data.count}</p>
+          <p className="mt-2 text-xl font-bold sm:text-2xl">{data.count}</p>
         </div>
 
         {/* Queue Items */}
@@ -119,22 +119,20 @@ export function BoxAssignmentQueueWidget() {
                 href={`/purchasing/grns/${item.grnId}/boxes`}
                 className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
               >
-                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-medium">{item.grnNumber}</span>
-                    <Badge variant="outline" className="text-xs flex-shrink-0">
+                    <Badge variant="outline" className="flex-shrink-0 text-xs">
                       {item.itemCode}
                     </Badge>
                   </div>
-                  <span className="text-xs text-muted-foreground truncate">{item.itemName}</span>
+                  <span className="truncate text-xs text-muted-foreground">{item.itemName}</span>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Package className="h-3 w-3 flex-shrink-0" />
-                    <span>
-                      {t("unitsReceived", { count: item.receivedQty })}
-                    </span>
+                    <span>{t("unitsReceived", { count: item.receivedQty })}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-shrink-0 items-center gap-2">
                   <Button size="sm" variant="default">
                     {t("assign")}
                   </Button>

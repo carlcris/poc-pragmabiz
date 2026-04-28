@@ -187,8 +187,8 @@ export default function ReorderManagementPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg sm:text-xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground">{t("subtitle")}</p>
+        <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{t("title")}</h1>
+        <p className="text-xs text-muted-foreground sm:text-sm">{t("subtitle")}</p>
       </div>
 
       {/* Statistics Cards */}
@@ -238,7 +238,9 @@ export default function ReorderManagementPage() {
       {/* Tabs for Suggestions and Alerts */}
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="suggestions">{t("reorderSuggestionsTab", { count: suggestions.length })}</TabsTrigger>
+          <TabsTrigger value="suggestions">
+            {t("reorderSuggestionsTab", { count: suggestions.length })}
+          </TabsTrigger>
           <TabsTrigger value="alerts">{t("activeAlertsTab", { count: alerts.length })}</TabsTrigger>
         </TabsList>
 
@@ -314,7 +316,9 @@ export default function ReorderManagementPage() {
                             <span className="ml-2 font-medium">{suggestion.suggestedQuantity}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">{t("estimatedCostShort")}:</span>
+                            <span className="text-muted-foreground">
+                              {t("estimatedCostShort")}:
+                            </span>
                             <span className="ml-2 font-medium">
                               {formatCurrency(suggestion.estimatedCost)}
                             </span>
@@ -480,7 +484,8 @@ export default function ReorderManagementPage() {
                           <TableCell>
                             <div className="font-medium text-red-600">{alert.currentStock}</div>
                             <div className="text-xs text-muted-foreground">
-                              {t("minLabel")}: {alert.minimumLevel} | {t("reorderShort")}: {alert.reorderPoint}
+                              {t("minLabel")}: {alert.minimumLevel} | {t("reorderShort")}:{" "}
+                              {alert.reorderPoint}
                             </div>
                           </TableCell>
                           <TableCell className="max-w-md">{alert.message}</TableCell>
