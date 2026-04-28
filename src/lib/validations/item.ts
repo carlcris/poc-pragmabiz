@@ -14,6 +14,7 @@ type ItemValidationKey =
   | "categoryRequired"
   | "standardCostMin"
   | "listPriceMin"
+  | "dimensionMin"
   | "reorderLevelMin"
   | "reorderQtyMin";
 
@@ -29,6 +30,14 @@ export const createItemFormSchema = (t: ItemValidationTranslator) =>
     name: z.string().min(1, t("nameRequired")).max(200, t("nameMax")),
     chineseName: z.string().max(200, t("chineseNameMax")).optional(),
     description: z.string().max(1000, t("descriptionMax")).optional(),
+    dimensions: z
+      .object({
+        length: z.number().min(0, t("dimensionMin")).optional(),
+        width: z.number().min(0, t("dimensionMin")).optional(),
+        height: z.number().min(0, t("dimensionMin")).optional(),
+        unit: z.string().max(20).optional(),
+      })
+      .optional(),
     itemType: itemTypeEnum,
     uom: z.string().min(1, t("uomRequired")),
     category: z.string().min(1, t("categoryRequired")),

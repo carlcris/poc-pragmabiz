@@ -8,15 +8,22 @@ import {
   Search,
   Pencil,
   Filter,
-  Eye,
   FileText,
   CheckCircle,
   XCircle,
   Clock,
   Send,
   ShoppingCart,
+  MoreVertical,
 } from "lucide-react";
-import { useQuotations, useConvertToOrder, useChangeQuotationStatus } from "@/hooks/useQuotations";
+import { toast } from "sonner";
+import {
+  useQuotations,
+  useConvertToOrder,
+  useChangeQuotationStatus,
+  useConfirmQuotation,
+} from "@/hooks/useQuotations";
+import { quotationsApi } from "@/lib/api/quotations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -52,17 +59,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useRouter } from "next/navigation";
 import type { Quotation, QuotationStatus } from "@/types/quotation";
 
-const QuotationFormDialog = dynamic(
-  () => import("@/components/quotations/QuotationFormDialog").then((mod) => mod.QuotationFormDialog),
-  { ssr: false }
-);
 const QuotationViewDialog = dynamic(
-  () => import("@/components/quotations/QuotationViewDialog").then((mod) => mod.QuotationViewDialog),
+  () =>
+    import("@/components/quotations/QuotationViewDialog").then((mod) => mod.QuotationViewDialog),
   { ssr: false }
 );
 
@@ -72,38 +75,55 @@ export default function QuotationsPage() {
   const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadedQuotations, setLoadedQuotations] = useState<Quotation[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [quotationToConvert, setQuotationToConvert] = useState<Quotation | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [quotationToConfirm, setQuotationToConfirm] = useState<Quotation | null>(null);
 
   const { formatCurrency } = useCurrency();
   const router = useRouter();
   const convertToOrder = useConvertToOrder();
   const changeStatus = useChangeQuotationStatus();
+  const confirmQuotation = useConfirmQuotation();
 
-  const { data, isLoading, error } = useQuotations({
+  const { data, isLoading, isFetching, error } = useQuotations({
     search,
     status: statusFilter as QuotationStatus | "all",
-    page,
+    cursor,
     limit: pageSize,
   });
 
-  const quotations = data?.data || [];
+  const quotations = loadedQuotations;
   const pagination = data?.pagination;
 
   useEffect(() => {
+    const nextSearch = searchInput.trim();
+    if (nextSearch === search) return;
+
     const timeout = window.setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
+      setSearch(nextSearch);
+      setCursor(null);
+      setLoadedQuotations([]);
     }, 400);
 
     return () => window.clearTimeout(timeout);
-  }, [searchInput]);
+  }, [searchInput, search]);
+
+  useEffect(() => {
+    if (!data) return;
+
+    setLoadedQuotations((current) => {
+      const nextRows = cursor ? [...current, ...data.data] : data.data;
+      const rowsById = new Map(nextRows.map((quotation) => [quotation.id, quotation]));
+      return Array.from(rowsById.values());
+    });
+  }, [cursor, data]);
 
   const getStatusIcon = (status: QuotationStatus) => {
     switch (status) {
@@ -156,21 +176,40 @@ export default function QuotationsPage() {
 
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value);
-    setPage(1);
+    setCursor(null);
+    setLoadedQuotations([]);
+  };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setCursor(null);
+    setLoadedQuotations([]);
   };
 
   const handleCreateQuotation = () => {
-    setSelectedQuotation(null);
-    setDialogOpen(true);
+    router.push("/sales/quotations/create");
+  };
+
+  const loadFullQuotation = async (quotation: Quotation) => {
+    try {
+      return await quotationsApi.getQuotation(quotation.id);
+    } catch (fetchError) {
+      toast.error(
+        fetchError instanceof Error ? fetchError.message : "Failed to load quotation details"
+      );
+      return null;
+    }
   };
 
   const handleEditQuotation = (quotation: Quotation) => {
-    setSelectedQuotation(quotation);
-    setDialogOpen(true);
+    router.push(`/sales/quotations/${quotation.id}/edit`);
   };
 
-  const handleViewQuotation = (quotation: Quotation) => {
-    setSelectedQuotation(quotation);
+  const handleViewQuotation = async (quotation: Quotation) => {
+    const fullQuotation = await loadFullQuotation(quotation);
+    if (!fullQuotation) return;
+
+    setSelectedQuotation(fullQuotation);
     setViewDialogOpen(true);
   };
 
@@ -184,23 +223,49 @@ export default function QuotationsPage() {
 
     try {
       await convertToOrder.mutateAsync(quotationToConvert.id);
+      toast.success("Quotation converted to order successfully");
       setConvertDialogOpen(false);
       setQuotationToConvert(null);
 
-      // Navigate to sales orders page or show success message
       router.push(`/sales/orders`);
-    } catch {
-      // Error is handled by the mutation hook with toast
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to convert quotation to order");
       setConvertDialogOpen(false);
       setQuotationToConvert(null);
     }
   };
 
   const handleChangeStatus = async (quotationId: string, newStatus: string) => {
+    if (newStatus === "accepted") {
+      const quotation = quotations.find((candidate) => candidate.id === quotationId) || null;
+      setQuotationToConfirm(quotation);
+      setConfirmDialogOpen(true);
+      return;
+    }
+
     try {
       await changeStatus.mutateAsync({ id: quotationId, status: newStatus });
-    } catch {
-      // Error is handled by the mutation hook with toast
+      toast.success("Quotation status updated successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update quotation status");
+    }
+  };
+
+  const handleConfirmQuotation = async () => {
+    if (!quotationToConfirm) return;
+
+    try {
+      const result = await confirmQuotation.mutateAsync({
+        id: quotationToConfirm.id,
+        warehouseId: null,
+      });
+      toast.success(
+        `Quotation confirmed. Draft invoice ${result.draftInvoice.invoiceCode} was created.`
+      );
+      setConfirmDialogOpen(false);
+      setQuotationToConfirm(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to confirm quotation");
     }
   };
 
@@ -266,14 +331,30 @@ export default function QuotationsPage() {
           </Select>
         </div>
 
-        {isLoading ? (
+        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <div>
+            {pagination
+              ? t("itemsCount", { count: String(pagination.total) })
+              : t("itemsCount", { count: "0" })}
+          </div>
+          <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {isLoading && quotations.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : quotations.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (
@@ -293,7 +374,20 @@ export default function QuotationsPage() {
                 </TableHeader>
                 <TableBody>
                   {quotations.map((quotation) => (
-                    <TableRow key={quotation.id}>
+                    <TableRow
+                      key={quotation.id}
+                      role="button"
+                      tabIndex={0}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewQuotation(quotation)}
+                      onKeyDown={(event) => {
+                        if (event.currentTarget !== event.target) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleViewQuotation(quotation);
+                        }
+                      }}
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(quotation.status)}
@@ -327,50 +421,21 @@ export default function QuotationsPage() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(quotation.status)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        onClick={(event) => event.stopPropagation()}
+                      >
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewQuotation(quotation)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
                           {(quotation.status === "draft" || quotation.status === "sent") && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
+                              className="h-8 px-2"
                               onClick={() => handleEditQuotation(quotation)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>{tCommon("edit")}</span>
                             </Button>
-                          )}
-                          {canChangeStatus(quotation.status) && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={changeStatus.isPending}
-                                >
-                                  {t("changeStatus")}
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {getAvailableStatuses(quotation.status).map((status) => {
-                                  const Icon = status.icon;
-                                  return (
-                                    <DropdownMenuItem
-                                      key={status.value}
-                                      onClick={() => handleChangeStatus(quotation.id, status.value)}
-                                    >
-                                      <Icon className="mr-2 h-4 w-4" />
-                                      {status.label}
-                                    </DropdownMenuItem>
-                                  );
-                                })}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           )}
                           {quotation.status === "accepted" && !quotation.salesOrderId && (
                             <Button
@@ -388,6 +453,35 @@ export default function QuotationsPage() {
                               {t("converted")}
                             </Badge>
                           )}
+                          {canChangeStatus(quotation.status) && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  disabled={changeStatus.isPending}
+                                  aria-label={t("changeStatus")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {getAvailableStatuses(quotation.status).map((status) => {
+                                  const Icon = status.icon;
+                                  return (
+                                    <DropdownMenuItem
+                                      key={status.value}
+                                      onClick={() => handleChangeStatus(quotation.id, status.value)}
+                                    >
+                                      <Icon className="mr-2 h-4 w-4" />
+                                      <span>{status.label}</span>
+                                    </DropdownMenuItem>
+                                  );
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -396,29 +490,20 @@ export default function QuotationsPage() {
               </Table>
             </div>
 
-            {pagination && pagination.total > 0 && (
-              <div className="mt-4">
-                <DataTablePagination
-                  currentPage={page}
-                  totalPages={pagination.totalPages}
-                  pageSize={pageSize}
-                  totalItems={pagination.total}
-                  onPageChange={setPage}
-                  onPageSizeChange={setPageSize}
-                />
+            {pagination?.hasMore && (
+              <div className="mt-4 flex justify-center">
+                <Button
+                  variant="outline"
+                  onClick={() => setCursor(pagination.nextCursor)}
+                  disabled={isFetching || !pagination.nextCursor}
+                >
+                  {isFetching ? tCommon("loading") : tCommon("loadMore")}
+                </Button>
               </div>
             )}
           </>
         )}
       </div>
-
-      {dialogOpen && (
-        <QuotationFormDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          quotation={selectedQuotation}
-        />
-      )}
 
       {viewDialogOpen && (
         <QuotationViewDialog
@@ -454,6 +539,28 @@ export default function QuotationsPage() {
               disabled={convertToOrder.isPending}
             >
               {convertToOrder.isPending ? t("converting") : t("convertAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm quotation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirming {quotationToConfirm?.quotationNumber ?? "this quotation"} will mark the
+              quotation as accepted and draft a sales invoice. Job orders are created later from
+              the sales order.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmQuotation}
+              disabled={confirmQuotation.isPending}
+            >
+              {confirmQuotation.isPending ? "Confirming..." : "Confirm quotation"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -92,6 +92,12 @@ function EditItemContent({ params }: EditItemPageProps) {
       name: "",
       chineseName: "",
       description: "",
+      dimensions: {
+        length: 0,
+        width: 0,
+        height: 0,
+        unit: "",
+      },
       itemType: "raw_material",
       uom: "",
       category: "",
@@ -111,6 +117,12 @@ function EditItemContent({ params }: EditItemPageProps) {
         name: item.name,
         chineseName: item.chineseName || "",
         description: item.description || "",
+        dimensions: {
+          length: item.dimensions?.length ?? 0,
+          width: item.dimensions?.width ?? 0,
+          height: item.dimensions?.height ?? 0,
+          unit: item.dimensions?.unit || "",
+        },
         itemType: item.itemType,
         uom: item.uom,
         category: item.category,
@@ -136,6 +148,12 @@ function EditItemContent({ params }: EditItemPageProps) {
         data: {
           ...updateData,
           description: updateData.description || "",
+          dimensions: {
+            length: updateData.dimensions?.length ?? 0,
+            width: updateData.dimensions?.width ?? 0,
+            height: updateData.dimensions?.height ?? 0,
+            unit: updateData.dimensions?.unit || "",
+          },
           standardCost: updateData.standardCost ?? 0,
           reorderLevel: updateData.reorderLevel ?? 0,
           reorderQty: updateData.reorderQty ?? 0,
@@ -286,6 +304,94 @@ function EditItemContent({ params }: EditItemPageProps) {
                       </FormItem>
                     )}
                   />
+                </div>
+
+                {/* Dimensions */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold">{t("dimensionsSectionTitle")}</h3>
+
+                  <div className="grid grid-cols-4 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="dimensions.length"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("lengthLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={t("dimensionPlaceholder")}
+                              {...field}
+                              value={field.value ?? 0}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="dimensions.width"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("widthLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={t("dimensionPlaceholder")}
+                              {...field}
+                              value={field.value ?? 0}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="dimensions.height"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("heightLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={t("dimensionPlaceholder")}
+                              {...field}
+                              value={field.value ?? 0}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="dimensions.unit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("dimensionUnitLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={t("dimensionUnitPlaceholder")}
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 {/* Classification and Unit */}

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { UpdateInvoiceRequest, CreateInvoiceRequest } from "@/types/invoice";
+import { syncSalesOrderInvoiceStatus } from "@/app/api/invoices/_shared";
 
 // GET /api/invoices/[id]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -74,6 +75,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         items:item_id (
           item_code,
           item_name
+        ),
+        units_of_measure:uom_id (
+          code,
+          name
         )
       `
       )
@@ -108,6 +113,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           description: item.item_description || "",
           quantity: parseFloat(item.quantity),
           uomId: item.uom_id,
+          uomCode: item.units_of_measure?.code || "",
           unitPrice: parseFloat(item.rate),
           discount: parseFloat(item.discount_percent),
           taxRate: parseFloat(item.tax_percent),
@@ -325,25 +331,6 @@ export async function DELETE(
       );
     }
 
-    // If invoice was created from a sales order, revert the sales order status
-    if (invoice.sales_order_id) {
-      const { error: orderUpdateError } = await supabase
-        .from("sales_orders")
-        .update({
-          status: "confirmed",
-          updated_by: user.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", invoice.sales_order_id);
-
-      if (orderUpdateError) {
-        return NextResponse.json(
-          { error: "Failed to update related sales order" },
-          { status: 500 }
-        );
-      }
-    }
-
     // Soft delete invoice items
     const { error: itemsDeleteError } = await supabase
       .from("sales_invoice_items")
@@ -394,6 +381,21 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json({ error: "Failed to delete invoice" }, { status: 500 });
+    }
+
+    if (invoice.sales_order_id) {
+      const salesOrderSync = await syncSalesOrderInvoiceStatus({
+        supabase,
+        salesOrderId: invoice.sales_order_id,
+        userId: user.id,
+      });
+
+      if (!salesOrderSync.ok) {
+        return NextResponse.json(
+          { error: salesOrderSync.error },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({ success: true });

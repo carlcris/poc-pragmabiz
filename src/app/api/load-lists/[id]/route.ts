@@ -357,10 +357,7 @@ export async function PUT(
 
     if (updateError) {
       console.error("Error updating load list:", updateError);
-      return NextResponse.json(
-        { error: updateError.message || "Failed to update load list" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to update load list" }, { status: 500 });
     }
 
     // Update line items if provided and status is draft

@@ -16,10 +16,12 @@ const normalizeCustomerFilters = (filters?: CustomerFilters): CustomerFilters | 
 };
 
 export function useCustomers(filters?: CustomerFilters) {
-  const normalizedFilters = normalizeCustomerFilters(filters);
+  const { enabled, ...restFilters } = (filters ?? {}) as CustomerFilters & { enabled?: boolean };
+  const normalizedFilters = normalizeCustomerFilters(restFilters);
   return useQuery({
     queryKey: [CUSTOMERS_QUERY_KEY, normalizedFilters],
     queryFn: () => customersApi.getCustomers(normalizedFilters),
+    enabled: enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

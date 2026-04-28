@@ -1,3 +1,5 @@
+import type { FrameQuotationComponent, FrameQuotationConfiguration } from "@/types/quotation";
+
 export type SalesOrderStatus =
   | "draft"
   | "confirmed"
@@ -15,12 +17,37 @@ export interface SalesOrderLineItem {
   description: string;
   quantity: number;
   uomId: string; // Unit of measure ID
+  uomCode?: string;
+  uomName?: string;
   unitPrice: number;
   discount: number; // Percentage
   taxRate: number; // Percentage
   lineTotal: number;
+  skipInventory?: boolean;
+  available?: number;
+  reorderPoint?: number;
   quantityShipped?: number;
   quantityDelivered?: number;
+  frameConfiguration?: FrameQuotationConfiguration | null;
+  frameComponents?: FrameQuotationComponent[];
+  manufacturing?: {
+    required: boolean;
+    status:
+      | "needs_job_order"
+      | "job_order_ready"
+      | "ready"
+      | "in_progress"
+      | "quality_check"
+      | "on_hold"
+      | "ready_for_release"
+      | "cancelled";
+    label: string;
+    jobOrderId?: string;
+    jobOrderCode?: string;
+    manufacturingOrderId?: string;
+    manufacturingOrderCode?: string;
+    operationName?: string;
+  } | null;
 }
 
 export interface SalesOrder {
@@ -50,6 +77,12 @@ export interface SalesOrder {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  hasFrameJobEligibleItems?: boolean;
+  frameJobOrder?: {
+    id: string;
+    jobOrderCode: string;
+    status: string;
+  } | null;
 }
 
 export interface CreateSalesOrderRequest {

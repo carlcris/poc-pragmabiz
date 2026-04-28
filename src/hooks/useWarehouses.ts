@@ -16,10 +16,12 @@ const normalizeWarehouseFilters = (filters?: WarehouseFilters): WarehouseFilters
 };
 
 export function useWarehouses(filters?: WarehouseFilters) {
-  const normalizedFilters = normalizeWarehouseFilters(filters);
+  const { enabled, ...restFilters } = (filters ?? {}) as WarehouseFilters & { enabled?: boolean };
+  const normalizedFilters = normalizeWarehouseFilters(restFilters);
   return useQuery({
     queryKey: [WAREHOUSES_QUERY_KEY, normalizedFilters],
     queryFn: () => warehousesApi.getWarehouses(normalizedFilters),
+    enabled: enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { User } from "@/types/auth";
 import type { UserPermissions } from "@/types/rbac";
 import { useAuthStore } from "@/stores/authStore";
@@ -37,7 +38,11 @@ export function DashboardShell({
   const setPermissions = usePermissionStore((state) => state.setPermissions);
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
   const [hasMounted, setHasMounted] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const sidebarOpen = hasMounted ? isSidebarOpen : true;
+  const isManufacturingFloorFullscreen =
+    pathname === "/manufacturing/floor" && searchParams.get("fullscreen") === "1";
 
   // Hydrate auth store from server-rendered user/session to avoid post-mount auth flicker.
   useEffect(() => {
@@ -67,18 +72,25 @@ export function DashboardShell({
   return (
     <BusinessUnitProvider>
       <div className="flex h-screen min-h-0 flex-col overflow-hidden">
-        <Sidebar
-          initialPermissions={initialPermissions}
-          initialBusinessUnitName={initialBusinessUnitName}
-        />
+        {!isManufacturingFloorFullscreen ? (
+          <Sidebar
+            initialPermissions={initialPermissions}
+            initialBusinessUnitName={initialBusinessUnitName}
+          />
+        ) : null}
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col overflow-hidden transition-[margin] duration-300",
-            sidebarOpen ? "md:ml-64" : "md:ml-20"
+            !isManufacturingFloorFullscreen && (sidebarOpen ? "md:ml-64" : "md:ml-20")
           )}
         >
-          <Header />
-          <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background p-4 sm:p-6">
+          {!isManufacturingFloorFullscreen ? <Header /> : null}
+          <main
+            className={cn(
+              "min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background",
+              isManufacturingFloorFullscreen ? "p-0" : "p-4 sm:p-6"
+            )}
+          >
             {children}
           </main>
         </div>

@@ -31,6 +31,8 @@ const PAGE_RESOURCE_MAP: Record<string, Resource> = {
   "/inventory/stock": "stock_transfers",
   "/inventory/adjustments": "stock_adjustments",
   "/inventory/transformations": "stock_transformations",
+  "/manufacturing/orders": "stock_transformations",
+  "/manufacturing/floor": "stock_transformations",
   "/inventory/reorder": "reorder_management",
   "/purchasing/suppliers": "suppliers",
   "/purchasing/orders": "purchase_orders",

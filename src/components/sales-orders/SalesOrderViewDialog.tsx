@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useSalesOrderPaymentSummary } from "@/hooks/useSalesOrders";
 import { SalesOrderPDF } from "./SalesOrderPDF";
-import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
+import type { SalesOrder, SalesOrderLineItem, SalesOrderStatus } from "@/types/sales-order";
 import { useState, useEffect } from "react";
 
 interface SalesOrderViewDialogProps {
@@ -203,6 +203,25 @@ export function SalesOrderViewDialog({
     }
   };
 
+  const getManufacturingStatusBadge = (manufacturing: SalesOrderLineItem["manufacturing"]) => {
+    if (!manufacturing?.required) return null;
+
+    if (manufacturing.status === "ready_for_release") {
+      return <Badge className="bg-green-600">{manufacturing.label}</Badge>;
+    }
+    if (manufacturing.status === "in_progress" || manufacturing.status === "quality_check") {
+      return <Badge className="bg-blue-600">{manufacturing.label}</Badge>;
+    }
+    if (manufacturing.status === "on_hold") {
+      return <Badge variant="destructive">{manufacturing.label}</Badge>;
+    }
+    if (manufacturing.status === "needs_job_order") {
+      return <Badge variant="secondary">{manufacturing.label}</Badge>;
+    }
+
+    return <Badge variant="outline">{manufacturing.label}</Badge>;
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(locale, {
       year: "numeric",
@@ -210,6 +229,8 @@ export function SalesOrderViewDialog({
       day: "numeric",
     });
   };
+
+  const hasManufacturingLines = salesOrder.lineItems.some((item) => item.manufacturing?.required);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -219,7 +240,9 @@ export function SalesOrderViewDialog({
             <DialogTitle>{t("title")}</DialogTitle>
             {getStatusBadge(salesOrder.status)}
           </div>
-          <DialogDescription>{t("description", { number: salesOrder.orderNumber })}</DialogDescription>
+          <DialogDescription>
+            {t("description", { number: salesOrder.orderNumber })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -286,6 +309,7 @@ export function SalesOrderViewDialog({
                 <thead className="bg-muted">
                   <tr>
                     <th className="p-3 text-left">Item</th>
+                    {hasManufacturingLines ? <th className="p-3 text-left">Production</th> : null}
                     <th className="p-3 text-right">Quantity</th>
                     <th className="p-3 text-center">Unit</th>
                     <th className="p-3 text-right">Unit Price</th>
@@ -307,10 +331,29 @@ export function SalesOrderViewDialog({
                             </div>
                           )}
                         </td>
+                        {hasManufacturingLines ? (
+                          <td className="p-3">
+                            {item.manufacturing?.required ? (
+                              <div className="space-y-1">
+                                {getManufacturingStatusBadge(item.manufacturing)}
+                                <div className="text-xs text-muted-foreground">
+                                  {[
+                                    item.manufacturing.jobOrderCode,
+                                    item.manufacturing.manufacturingOrderCode,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" • ")}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Not required</span>
+                            )}
+                          </td>
+                        ) : null}
                         <td className="p-3 text-right">{item.quantity}</td>
                         <td className="p-3 text-center">
                           <span className="text-muted-foreground">
-                            {item.uomId || "—"}
+                            {item.uomCode || item.uomId || "—"}
                           </span>
                         </td>
                         <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>

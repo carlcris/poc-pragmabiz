@@ -134,7 +134,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
             <DialogTitle>{t("title")}</DialogTitle>
             {getStatusBadge(invoice.status)}
           </div>
-          <DialogDescription>{t("description", { number: invoice.invoiceNumber })}</DialogDescription>
+          <DialogDescription>
+            {t("description", { number: invoice.invoiceNumber })}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -187,7 +189,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                 )}
                 <div>
                   <span className="text-muted-foreground">{t("paymentTerms")}:</span>
-                  <div className="font-medium">{invoice.paymentTerms || t("defaultPaymentTerms")}</div>
+                  <div className="font-medium">
+                    {invoice.paymentTerms || t("defaultPaymentTerms")}
+                  </div>
                 </div>
               </div>
             </div>
@@ -234,17 +238,23 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                         <div className="font-medium">{item.itemName}</div>
                         <div className="text-xs text-muted-foreground">{item.itemCode}</div>
                         {item.description && (
-                          <div className="mt-1 text-xs text-muted-foreground">{item.description}</div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {item.description}
+                          </div>
                         )}
                       </td>
                       <td className="p-3 text-right">{item.quantity}</td>
                       <td className="p-3 text-center">
-                        <span className="text-muted-foreground">{item.uomId || t("notAvailable")}</span>
+                        <span className="text-muted-foreground">
+                          {item.uomCode || item.uomId || t("notAvailable")}
+                        </span>
                       </td>
                       <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>
                       <td className="p-3 text-right">{item.discount}%</td>
                       <td className="p-3 text-right">{item.taxRate}%</td>
-                      <td className="p-3 text-right font-medium">{formatCurrency(item.lineTotal)}</td>
+                      <td className="p-3 text-right font-medium">
+                        {formatCurrency(item.lineTotal)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -260,7 +270,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("discount")}:</span>
-                <span className="font-medium text-red-600">-{formatCurrency(invoice.totalDiscount)}</span>
+                <span className="font-medium text-red-600">
+                  -{formatCurrency(invoice.totalDiscount)}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("tax")}:</span>
@@ -273,7 +285,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t("amountPaid")}:</span>
-                <span className="font-medium text-green-600">{formatCurrency(invoice.amountPaid)}</span>
+                <span className="font-medium text-green-600">
+                  {formatCurrency(invoice.amountPaid)}
+                </span>
               </div>
               <div className="flex justify-between text-base font-bold">
                 <span className="text-orange-600">{t("amountDue")}:</span>
@@ -288,7 +302,9 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
               <div>
                 <div className="mb-3 flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  <h3 className="text-sm font-semibold">{t("paymentHistory", { count: payments.length })}</h3>
+                  <h3 className="text-sm font-semibold">
+                    {t("paymentHistory", { count: payments.length })}
+                  </h3>
                 </div>
                 <div className="overflow-hidden rounded-lg border">
                   <table className="w-full text-sm">
@@ -304,7 +320,8 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                     <tbody>
                       {(() => {
                         const sortedPayments = [...payments].sort(
-                          (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()
+                          (a, b) =>
+                            new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()
                         );
 
                         let remainingBalance = invoice.totalAmount;
@@ -317,18 +334,26 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                             <tr key={payment.id} className="border-t">
                               <td className="p-3">{formatDate(payment.paymentDate)}</td>
                               <td className="p-3">
-                                <div className="font-medium">{payment.paymentCode || t("notAvailable")}</div>
+                                <div className="font-medium">
+                                  {payment.paymentCode || t("notAvailable")}
+                                </div>
                                 {payment.reference && (
                                   <div className="text-xs text-muted-foreground">
                                     {t("reference", { value: payment.reference })}
                                   </div>
                                 )}
                                 {payment.notes && (
-                                  <div className="mt-1 text-xs text-muted-foreground">{payment.notes}</div>
+                                  <div className="mt-1 text-xs text-muted-foreground">
+                                    {payment.notes}
+                                  </div>
                                 )}
                               </td>
-                              <td className="p-3 capitalize">{payment.paymentMethod.replace(/_/g, " ")}</td>
-                              <td className="p-3 text-right font-medium text-green-600">{formatCurrency(payment.amount)}</td>
+                              <td className="p-3 capitalize">
+                                {payment.paymentMethod.replace(/_/g, " ")}
+                              </td>
+                              <td className="p-3 text-right font-medium text-green-600">
+                                {formatCurrency(payment.amount)}
+                              </td>
                               <td className="p-3 text-right font-medium">
                                 <span className={balanceAfterPayment === 0 ? "text-green-600" : ""}>
                                   {formatCurrency(balanceAfterPayment)}
@@ -352,13 +377,17 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
                 {invoice.paymentTerms && (
                   <div>
                     <h3 className="mb-2 text-sm font-semibold">{t("termsConditions")}</h3>
-                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">{invoice.paymentTerms}</p>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {invoice.paymentTerms}
+                    </p>
                   </div>
                 )}
                 {invoice.notes && (
                   <div>
                     <h3 className="mb-2 text-sm font-semibold">{t("notes")}</h3>
-                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">{invoice.notes}</p>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {invoice.notes}
+                    </p>
                   </div>
                 )}
               </div>
@@ -367,7 +396,11 @@ export function InvoiceViewDialog({ open, onOpenChange, invoice }: InvoiceViewDi
         </div>
 
         <DialogFooter>
-          <Button onClick={handleDownloadPDF} variant="default" disabled={isGeneratingPDF || isPrinting}>
+          <Button
+            onClick={handleDownloadPDF}
+            variant="default"
+            disabled={isGeneratingPDF || isPrinting}
+          >
             <Download className="mr-2 h-4 w-4" />
             {isGeneratingPDF ? t("generatingPdf") : t("downloadPdf")}
           </Button>

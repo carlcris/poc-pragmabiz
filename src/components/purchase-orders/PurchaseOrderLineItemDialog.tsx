@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -24,16 +23,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useItems } from "@/hooks/useItems";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
   createPurchaseOrderLineItemSchema,
@@ -61,10 +53,15 @@ export function PurchaseOrderLineItemDialog({
 }: PurchaseOrderLineItemDialogProps) {
   const t = useTranslations("purchaseOrderLineItemDialog");
   const tValidation = useTranslations("purchaseOrderValidation");
-  const { data: itemsData } = useItems({ limit: 50, includeStock: true });
+  const [itemSearch, setItemSearch] = useState("");
+  const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
+  const { data: itemsData, isLoading: isItemsLoading } = useItems({
+    search: debouncedItemSearch || undefined,
+    limit: 5,
+    includeStock: true,
+  });
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
-  const [itemOpen, setItemOpen] = useState(false);
   const lineItemSchema = createPurchaseOrderLineItemSchema((key) => tValidation(key));
 
   const form = useForm<PurchaseOrderLineItemInput>({
@@ -80,6 +77,9 @@ export function PurchaseOrderLineItemDialog({
       taxPercent: 0,
     },
   });
+  const selectedItemId = form.watch("itemId");
+  const { data: selectedItemResponse } = useItem(selectedItemId);
+  const selectedItem = items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
 
   useEffect(() => {
     if (open && item) {
@@ -149,80 +149,49 @@ export function PurchaseOrderLineItemDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>{t("itemLabel")}</FormLabel>
-                  <Popover open={itemOpen} onOpenChange={setItemOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={itemOpen}
-                          className={cn(
-                            "w-full justify-between",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value
-                            ? (() => {
-                                const selectedItem = items.find((i) => i.id === field.value);
-                                return selectedItem
-                                  ? `${selectedItem.code} - ${selectedItem.name}`
-                                  : t("selectItem");
-                              })()
-                            : t("searchItem")}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[520px] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t("searchByCodeOrName")} />
-                        <CommandList className="max-h-[260px] overflow-y-auto">
-                          <CommandEmpty>{t("noItemFound")}</CommandEmpty>
-                          <CommandGroup>
-                            {items
-                              .filter((i) => i.isActive)
-                              .map((item) => (
-                                <CommandItem
-                                  key={item.id}
-                                  value={`${item.code} ${item.name}`}
-                                  onSelect={() => {
-                                    field.onChange(item.id);
-                                    handleItemSelect(item.id);
-                                    setItemOpen(false);
-                                  }}
-                                  className="flex items-center gap-2"
-                                >
-                                  <Check
-                                    className={cn(
-                                      "h-4 w-4",
-                                      field.value === item.id ? "opacity-100" : "opacity-0"
-                                    )}
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="font-medium">{item.code}</span>
-                                      <span className="truncate text-sm text-muted-foreground">
-                                        {item.name}
-                                      </span>
-                                    </div>
-                                    <div className="mt-0.5 text-xs text-muted-foreground">
-                                      {t("onHand")}:{" "}
-                                      {("onHand" in item ? item.onHand ?? 0 : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom ?? "" : ""} • {t("available")}:{" "}
-                                      {("available" in item ? item.available ?? 0 : 0).toFixed(2)}{" "}
-                                      {"uom" in item ? item.uom ?? "" : ""}
-                                    </div>
-                                  </div>
-                                  <div className="ml-4 flex-shrink-0 text-sm font-semibold">
-                                    {formatCurrency(item.listPrice)}
-                                  </div>
-                                </CommandItem>
-                              ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <AsyncSearchCombobox
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handleItemSelect(value);
+                      }}
+                      searchValue={itemSearch}
+                      onSearchValueChange={setItemSearch}
+                      options={items.filter((entry) => entry.isActive)}
+                      selectedOption={selectedItem}
+                      getOptionValue={(entry) => entry.id}
+                      getOptionLabel={(entry) => `${entry.code} - ${entry.name}`}
+                      getOptionSearchValue={(entry) => `${entry.code} ${entry.name}`}
+                      placeholder={t("searchItem")}
+                      searchPlaceholder={t("searchByCodeOrName")}
+                      emptyMessage={t("noItemFound")}
+                      isLoading={isItemsLoading}
+                      popoverClassName="w-[520px]"
+                      renderOption={(entry, selected) => (
+                        <div className="flex items-center gap-2">
+                          <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{entry.code}</span>
+                              <span className="truncate text-sm text-muted-foreground">
+                                {entry.name}
+                              </span>
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {t("onHand")}: {("onHand" in entry ? entry.onHand ?? 0 : 0).toFixed(2)}{" "}
+                              {"uom" in entry ? entry.uom ?? "" : ""} • {t("available")}:{" "}
+                              {("available" in entry ? entry.available ?? 0 : 0).toFixed(2)}{" "}
+                              {"uom" in entry ? entry.uom ?? "" : ""}
+                            </div>
+                          </div>
+                          <div className="ml-4 flex-shrink-0 text-sm font-semibold">
+                            {formatCurrency(entry.listPrice)}
+                          </div>
+                        </div>
+                      )}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

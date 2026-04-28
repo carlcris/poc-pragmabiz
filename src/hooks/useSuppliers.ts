@@ -18,10 +18,12 @@ const normalizeSupplierFilters = (filters?: SupplierFilters): SupplierFilters | 
 
 export function useSuppliers(filters?: SupplierFilters) {
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
-  const normalizedFilters = normalizeSupplierFilters(filters);
+  const { enabled, ...restFilters } = (filters ?? {}) as SupplierFilters & { enabled?: boolean };
+  const normalizedFilters = normalizeSupplierFilters(restFilters);
   return useQuery({
     queryKey: [SUPPLIERS_QUERY_KEY, currentBusinessUnitId ?? null, normalizedFilters],
     queryFn: () => suppliersApi.getSuppliers(normalizedFilters),
+    enabled: enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

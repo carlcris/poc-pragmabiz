@@ -5,6 +5,7 @@ import type { Item, UpdateItemRequest } from "@/types/item";
 import type { Database } from "@/types/database.types";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
 import {
   getPrimaryItemUnitOption,
   sortItemUnitOptions,
@@ -48,6 +49,35 @@ type DbUoM = {
   id: string;
   code: string;
   name: string;
+};
+
+const normalizeDimensions = (value: unknown): Item["dimensions"] | null => {
+  if (!value || typeof value !== "object") return null;
+
+  const candidate = value as Record<string, unknown>;
+  const toNumber = (input: unknown) => {
+    const parsed = typeof input === "number" ? input : Number(input);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const length = toNumber(candidate.length);
+  const width = toNumber(candidate.width);
+  const height = toNumber(candidate.height);
+  const unit =
+    typeof candidate.unit === "string" && candidate.unit.trim().length > 0
+      ? candidate.unit.trim()
+      : undefined;
+
+  if (!length && !width && !height && !unit) {
+    return null;
+  }
+
+  return {
+    ...(length ? { length } : {}),
+    ...(width ? { width } : {}),
+    ...(height ? { height } : {}),
+    ...(unit ? { unit } : {}),
+  };
 };
 type ItemRow = DbItem & {
   item_category: DbItemCategory | null;
@@ -298,6 +328,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updateData.purchase_price = body.standardCost.toString();
     }
     if (body.listPrice !== undefined) updateData.sales_price = body.listPrice.toString();
+    if (body.dimensions !== undefined) updateData.dimensions = normalizeDimensions(body.dimensions);
     if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl;
     if (body.isActive !== undefined) updateData.is_active = body.isActive;
 
@@ -419,17 +450,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           );
         }
       } else {
-        const { error: baseInsertError } = await supabase.from("item_unit_options").insert({
-          company_id: existing.company_id,
-          item_id: id,
-          uom_id: resolvedUomId,
-          qty_per_unit: 1,
-          is_base: true,
-          is_default: true,
-          is_active: true,
-          sort_order: 0,
-          created_by: user.id,
-          updated_by: user.id,
+        const { error: baseInsertError } = await insertItemUnitOptionWithRetry({
+          supabase,
+          payload: {
+            company_id: existing.company_id,
+            item_id: id,
+            uom_id: resolvedUomId,
+            qty_per_unit: 1,
+            is_base: true,
+            is_default: true,
+            is_active: true,
+            sort_order: 0,
+            created_by: user.id,
+            updated_by: user.id,
+          },
         });
 
         if (baseInsertError) {

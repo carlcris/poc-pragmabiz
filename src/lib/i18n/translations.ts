@@ -38,6 +38,7 @@ export type TranslationKeys = {
     add: string;
     item: string;
     items: string;
+    customer: string;
     warehouse: string;
     select: string;
     search_: string;
@@ -53,6 +54,7 @@ export type TranslationKeys = {
     deactivate: string;
     usageCount: string;
     locked: string;
+    loadMore: string;
   };
   forms: {
     required: string;
@@ -155,6 +157,14 @@ export type TranslationKeys = {
     goToLastPage: string;
   };
   navigation: Record<string, string>;
+  manufacturingFloorPage: {
+    title: string;
+    subtitle: string;
+  };
+  frameJobOrdersPage: {
+    title: string;
+    subtitle: string;
+  };
   warehousesPage: {
     title: string;
     subtitle: string;
@@ -1010,6 +1020,7 @@ export type TranslationKeys = {
     billingTab: string;
     shippingTab: string;
     paymentTab: string;
+    termsTab: string;
     customerCode: string;
     customerCodePlaceholder: string;
     customerType: string;
@@ -1192,12 +1203,16 @@ export type TranslationKeys = {
     itemsCount: string;
     confirm: string;
     invoice: string;
+    createJobOrder: string;
+    viewJobOrder: string;
     selectWarehouseTitle: string;
     selectWarehouseDescription: string;
+    selectJobOrderWarehouseDescription: string;
     selectWarehouse: string;
     selectLocationOptional: string;
     selectWarehouseFirst: string;
     converting: string;
+    creatingJobOrder: string;
     createInvoice: string;
     draft: string;
     confirmed: string;
@@ -1231,6 +1246,7 @@ export type TranslationKeys = {
     addItem: string;
     noItems: string;
     noItemsDescription: string;
+    inventoryWarning: string;
     qty: string;
     unit: string;
     price: string;
@@ -1389,6 +1405,7 @@ export type TranslationKeys = {
     itemSearchPlaceholder: string;
     noItemFound: string;
     stockLabel: string;
+    inventoryWarning: string;
     description: string;
     quantity: string;
     unitPrice: string;
@@ -1850,6 +1867,14 @@ export type TranslationKeys = {
     itemNameLabel: string;
     chineseNameLabel: string;
     descriptionLabel: string;
+    dimensionsSectionTitle: string;
+    dimensionsSectionDescription: string;
+    lengthLabel: string;
+    widthLabel: string;
+    heightLabel: string;
+    dimensionUnitLabel: string;
+    dimensionPlaceholder: string;
+    dimensionUnitPlaceholder: string;
     itemImageLabel: string;
     classificationAndUnit: string;
     categoryLabel: string;
@@ -1965,6 +1990,7 @@ export type TranslationKeys = {
     categoryRequired: string;
     standardCostMin: string;
     listPriceMin: string;
+    dimensionMin: string;
     reorderLevelMin: string;
     reorderQtyMin: string;
   };
@@ -2613,6 +2639,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       add: "Add",
       item: "Item",
       items: "Items",
+      customer: "Customer",
       warehouse: "Warehouse",
       select: "Select",
       search_: "Search...",
@@ -2628,6 +2655,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deactivate: "Deactivate",
       usageCount: "Usage Count",
       locked: "(locked)",
+      loadMore: "Load more",
     },
     forms: {
       required: "This field is required",
@@ -2747,7 +2775,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Notes": "Delivery Notes",
       "Pick Lists": "Pick Lists",
       "Stock Transformations": "Stock Transformations",
+      Manufacturing: "Manufacturing",
+      Orders: "Orders",
+      Production: "Production",
       "Reorder Management": "Reorder Management",
+      Sales: "Sales",
+      "Point of Sale": "Point of Sale",
+      "POS Transactions": "POS Transactions",
+      Customers: "Customers",
+      Quotations: "Quotations",
+      "Job Orders": "Job Orders",
+      "Sales Orders": "Sales Orders",
+      Invoices: "Invoices",
       Purchasing: "Purchasing",
       Overview: "Overview",
       Suppliers: "Suppliers",
@@ -2793,6 +2832,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Load List Details": "Load List Details",
       "GRN Details": "GRN Details",
     },
+    manufacturingFloorPage: {
+      title: "Production",
+      subtitle: "Manage production job orders",
+    },
     warehousesPage: {
       title: "Warehouse Management",
       subtitle: "Manage warehouse locations and storage facilities",
@@ -2809,7 +2852,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteTitle: "Delete Warehouse",
       deleteDescription: "Are you sure you want to delete this warehouse?",
       deleteDescriptionWithName:
-        "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        'Are you sure you want to delete "{name}"? This action cannot be undone.',
       deleteSuccess: "Warehouse deleted successfully",
       deleteError: "Failed to delete warehouse",
     },
@@ -2961,10 +3004,12 @@ export const translations: Record<Locale, TranslationKeys> = {
     accessDeniedPage: {
       title: "Access Denied",
       resourceNeedAll: "You need permission to access all of the following resources: {resources}",
-      resourceNeedOne: "You need permission to access at least one of the following resources: {resources}",
+      resourceNeedOne:
+        "You need permission to access at least one of the following resources: {resources}",
       resourceNeedView: "You need view permission for {resource}",
       noPermission: "You do not have permission to access this resource",
-      supportMessage: "If you believe this is an error, please contact your system administrator to request access.",
+      supportMessage:
+        "If you believe this is an error, please contact your system administrator to request access.",
       goBack: "Go Back",
       goHome: "Go to Home",
       logout: "Logout",
@@ -3180,7 +3225,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       description: "Aggregated permissions from all roles assigned to this user",
       activePermissions: "{count} active permissions",
       searchPlaceholder: "Search permissions by resource...",
-      noSearchResults: "No permissions match your search \"{query}\"",
+      noSearchResults: 'No permissions match your search "{query}"',
       noPermissions: "This user has no permissions assigned.",
       resource: "Resource",
       showingSummary: "Showing {filtered} of {total} permissions",
@@ -3201,11 +3246,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       custom: "Custom",
       permissions: "Permissions",
       cannotDeleteSystemRoles: "Cannot delete system roles",
-      roleDeletedSuccess: "Role \"{name}\" deleted successfully",
+      roleDeletedSuccess: 'Role "{name}" deleted successfully',
       roleDeletedError: "Failed to delete role",
       deleteTitle: "Are you sure?",
       deleteDescription:
-        "This will permanently delete the role \"{name}\". This action cannot be undone.",
+        'This will permanently delete the role "{name}". This action cannot be undone.',
       deleting: "Deleting...",
     },
     adminRolePermissionsDialog: {
@@ -3214,7 +3259,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Select permissions and customize which actions this role can perform for each resource.",
       systemRole: "System Role",
       searchPlaceholder: "Search permissions by resource or description...",
-      noSearchResults: "No permissions match your search \"{query}\"",
+      noSearchResults: 'No permissions match your search "{query}"',
       noPermissionsInSystem: "No permissions found in the system.",
       available: "Available:",
       assignedSummary: "{assigned} of {total} permissions assigned",
@@ -3234,13 +3279,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       copyPermissionsFrom: "Copy Permissions From (Optional)",
       selectRolePlaceholder: "Select a role to copy permissions from",
       system: "(System)",
-      copySummary: "Will copy {count} permissions from \"{name}\"",
+      copySummary: 'Will copy {count} permissions from "{name}"',
       creating: "Creating...",
       createRole: "Create Role",
       roleNameRequired: "Role name is required",
-      roleCreatedSuccess: "Role \"{name}\" created successfully",
-      roleCreatedWithCopySuccess:
-        "Role \"{name}\" created with permissions copied from \"{source}\"",
+      roleCreatedSuccess: 'Role "{name}" created successfully',
+      roleCreatedWithCopySuccess: 'Role "{name}" created with permissions copied from "{source}"',
       roleCreateError: "Failed to create role",
     },
     adminEditRoleDialog: {
@@ -3253,7 +3297,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       updating: "Updating...",
       updateRole: "Update Role",
       roleNameRequired: "Role name is required",
-      roleUpdatedSuccess: "Role \"{name}\" updated successfully",
+      roleUpdatedSuccess: 'Role "{name}" updated successfully',
       roleUpdateError: "Failed to update role",
     },
     adminSettings: {
@@ -3405,8 +3449,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         receiptCustomizationTitle: "Receipt Customization",
         receiptCustomizationDescription: "Customize receipts for this business unit",
         receiptHeader: "Receipt Header",
-        receiptHeaderPlaceholder:
-          "NYC Downtown Store\n456 Broadway, Floor 2\nNew York, NY 10013",
+        receiptHeaderPlaceholder: "NYC Downtown Store\n456 Broadway, Floor 2\nNew York, NY 10013",
         receiptHeaderDescription: "Text to appear at the top of receipts",
         receiptFooter: "Receipt Footer",
         receiptFooterPlaceholder: "Thank you for shopping with us!",
@@ -3581,20 +3624,17 @@ export const translations: Record<Locale, TranslationKeys> = {
         purchaseOrderRequireApprovalDescription:
           "Purchase orders require approval before processing",
         approvalThreshold: "Approval Threshold",
-        purchaseOrderApprovalThresholdDescription:
-          "Require approval for PO above this amount",
+        purchaseOrderApprovalThresholdDescription: "Require approval for PO above this amount",
         autoApproveBelow: "Auto-Approve Below",
         autoApproveBelowDescription: "Automatically approve PO below this amount",
         stockRequestApprovalTitle: "Stock Request Approval",
         stockRequestApprovalDescription: "Configure approval workflows for stock requests",
-        stockRequestRequireApprovalDescription:
-          "Stock requests require approval before processing",
+        stockRequestRequireApprovalDescription: "Stock requests require approval before processing",
         stockRequestApprovalThresholdDescription:
           "Require approval for stock requests above this value",
         deliveryNoteApprovalTitle: "Delivery Note Approval",
         deliveryNoteApprovalDescription: "Configure approval workflows for delivery notes",
-        deliveryNoteRequireApprovalDescription:
-          "Delivery notes require approval before processing",
+        deliveryNoteRequireApprovalDescription: "Delivery notes require approval before processing",
         notificationSettingsTitle: "Notification Settings",
         notificationSettingsDescription: "Configure email notifications for workflows",
         sendEmailNotifications: "Send Email Notifications",
@@ -3648,7 +3688,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteTitle: "Delete Customer",
       deleteDescription: "Are you sure you want to delete this customer?",
       deleteDescriptionWithName:
-        "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        'Are you sure you want to delete "{name}"? This action cannot be undone.',
       deleteSuccess: "Customer deleted successfully",
       deleteError: "Failed to delete customer",
     },
@@ -3661,6 +3701,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       billingTab: "Billing",
       shippingTab: "Shipping",
       paymentTab: "Payment",
+      termsTab: "Terms",
       customerCode: "Customer Code",
       customerCodePlaceholder: "CUST-001",
       customerType: "Customer Type",
@@ -3720,8 +3761,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     customerValidation: {
       customerCodeRequired: "Customer code is required",
-      customerCodeFormat:
-        "Code must contain only uppercase letters, numbers, and hyphens",
+      customerCodeFormat: "Code must contain only uppercase letters, numbers, and hyphens",
       customerNameRequired: "Customer name is required",
       invalidEmail: "Invalid email address",
       phoneRequired: "Phone is required",
@@ -3786,8 +3826,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       phonePlaceholder: "+63 912 345 6789",
       commissionRate: "Commission Rate (%)",
       commissionRatePlaceholder: "5.00",
-      commissionRateDescription:
-        "Percentage of sales this employee will earn as commission",
+      commissionRateDescription: "Percentage of sales this employee will earn as commission",
       activeStatus: "Active Status",
       activeStatusDescription: "Inactive employees cannot be assigned to new invoices",
       creatingSuccess: "Employee created successfully",
@@ -3808,7 +3847,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       assignedTerritories: "Assigned Territories",
       addTerritory: "Add Territory",
       noTerritories: "No territories assigned yet",
-      noTerritoriesDescription: "Click \"Add Territory\" to assign one",
+      noTerritoriesDescription: 'Click "Add Territory" to assign one',
       primary: "Primary",
       removePrimary: "Remove Primary",
       setAsPrimary: "Set as Primary",
@@ -3845,13 +3884,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemsCount: "{count} items",
       confirm: "Confirm",
       invoice: "Invoice",
+      createJobOrder: "Create Job Order",
+      viewJobOrder: "View Job Order",
       selectWarehouseTitle: "Select Warehouse",
       selectWarehouseDescription:
         "Choose the warehouse from which stock will be deducted for this invoice.",
+      selectJobOrderWarehouseDescription:
+        "Choose the warehouse from which frame materials will be reserved for this job order.",
       selectWarehouse: "Select a warehouse",
       selectLocationOptional: "Select a location (optional)",
       selectWarehouseFirst: "Select warehouse first",
       converting: "Converting...",
+      creatingJobOrder: "Creating...",
       createInvoice: "Create Invoice",
       draft: "Draft",
       confirmed: "Confirmed",
@@ -3860,6 +3904,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       delivered: "Delivered",
       invoiced: "Invoiced",
       cancelled: "Cancelled",
+    },
+    frameJobOrdersPage: {
+      title: "Job Orders",
+      subtitle: "Track and manage production job requests",
     },
     salesOrderForm: {
       customerRequired: "Customer is required",
@@ -3884,7 +3932,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "Manage products or services in this order",
       addItem: "Add Item",
       noItems: "No items added yet.",
-      noItemsDescription: "Click \"Add Item\" to get started.",
+      noItemsDescription: 'Click "Add Item" to get started.',
+      inventoryWarning:
+        "Requested quantity exceeds available stock. You can still create the order.",
       qty: "Qty",
       unit: "Unit",
       price: "Price",
@@ -3980,7 +4030,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       convertWillLabel: "This will:",
       convertBulletCreateOrder: "Create a new sales order with all quotation details",
       convertBulletCopyItems: "Copy all line items to the sales order",
-      convertBulletStatus: "Update the quotation status to \"Ordered\"",
+      convertBulletStatus: 'Update the quotation status to "Ordered"',
       convertBulletLink: "Link the quotation to the new sales order",
       convertCannotUndo: "This action cannot be undone.",
       converting: "Converting...",
@@ -4012,7 +4062,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "Manage products or services in this quotation",
       addItem: "Add Item",
       noItems: "No items added yet.",
-      noItemsDescription: "Click \"Add Item\" to get started.",
+      noItemsDescription: 'Click "Add Item" to get started.',
       qty: "Qty",
       unit: "Unit",
       price: "Price",
@@ -4043,6 +4093,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearchPlaceholder: "Search by code or name...",
       noItemFound: "No item found.",
       stockLabel: "Stock",
+      inventoryWarning:
+        "Requested quantity {requested} exceeds available stock {available} {uom}. You can still save this line item.",
       description: "Description",
       quantity: "Quantity",
       unitPrice: "Unit Price",
@@ -4117,7 +4169,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       sendTitle: "Send Invoice to Customer",
       sendDescription: "Are you sure you want to send invoice {invoiceNumber} to {customerName}?",
       sendDescriptionBody:
-        "This will update the invoice status to \"Sent\" and the customer will be able to view and pay the invoice.",
+        'This will update the invoice status to "Sent" and the customer will be able to view and pay the invoice.',
       sending: "Sending...",
       sendAction: "Send Invoice",
       cancel: "Cancel",
@@ -4130,7 +4182,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteDescription:
         "Are you sure you want to delete invoice {invoiceNumber}? This will permanently delete the draft invoice and all its line items.",
       deleteLinkedSalesOrderNotice:
-        "The linked sales order will be reverted back to \"Confirmed\" status so it can be converted to a new invoice.",
+        'The linked sales order will be reverted back to "Confirmed" status so it can be converted to a new invoice.',
       deleting: "Deleting...",
       deleteAction: "Delete Invoice",
       draft: "Draft",
@@ -4175,7 +4227,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "Manage products or services in this invoice",
       addItem: "Add Item",
       noItems: "No items added yet.",
-      noItemsDescription: "Click \"Add Item\" to get started.",
+      noItemsDescription: 'Click "Add Item" to get started.',
       item: "Item",
       qty: "Qty",
       unit: "Unit",
@@ -4470,7 +4522,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteTitle: "Delete Item",
       deleteDescription: "Are you sure you want to delete this item?",
       deleteDescriptionWithName:
-        "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
+        'Are you sure you want to delete "{name}"? This action cannot be undone.',
       deleteSuccess: "Item deleted successfully",
       deleteError: "Failed to delete item",
       noDataToExport: "No data to export",
@@ -4513,6 +4565,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemNameLabel: "Item Name *",
       chineseNameLabel: "Chinese Name",
       descriptionLabel: "Description",
+      dimensionsSectionTitle: "Dimensions",
+      dimensionsSectionDescription: "Stored item dimensions used by downstream calculations",
+      lengthLabel: "Length",
+      widthLabel: "Width",
+      heightLabel: "Height",
+      dimensionUnitLabel: "Dimension Unit",
+      dimensionPlaceholder: "0.00",
+      dimensionUnitPlaceholder: "mm",
       itemImageLabel: "Item Image",
       classificationAndUnit: "Classification & Unit of Measure",
       categoryLabel: "Category *",
@@ -4549,13 +4609,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       noImage: "No image",
       barcodeLabel: "Barcode",
       primaryBarcodeDescription: "Base unit barcode generated for this item.",
-      barcodeGeneratedDescription: "The base-unit barcode is generated automatically and cannot be edited here.",
+      barcodeGeneratedDescription:
+        "The base-unit barcode is generated automatically and cannot be edited here.",
       noBarcode: "No barcode",
       unitOptionsTitle: "Unit Options",
       unitOptionsDescription: "Item-specific units, quantities, and barcodes.",
       addUnitOption: "Add Unit Option",
       editUnitOption: "Edit Unit Option",
-      unitOptionDialogDescription: "Configure item-specific quantity and default behavior for this unit option.",
+      unitOptionDialogDescription:
+        "Configure item-specific quantity and default behavior for this unit option.",
       noUnitOptions: "No unit options available.",
       noUnitOptionsDescription: "Add your first unit option to get started.",
       unitLabel: "Unit",
@@ -4592,7 +4654,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderSettingsDescription: "Reorder settings and thresholds",
       inTransitLabel: "In Transit",
       itemImageDescription: "Upload or update the item image",
-      qrCodeReadonlyDescription: "SKU QR code is generated automatically and cannot be edited here.",
+      qrCodeReadonlyDescription:
+        "SKU QR code is generated automatically and cannot be edited here.",
       noQrCodeAvailable: "No QR code available",
       workflowInfo:
         "Fill in the basic item information below. After saving, you will be able to add pricing tiers and location details.",
@@ -4629,6 +4692,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       categoryRequired: "Category is required",
       standardCostMin: "Standard cost must be 0 or greater",
       listPriceMin: "List price must be 0 or greater",
+      dimensionMin: "Dimension must be 0 or greater",
       reorderLevelMin: "Reorder level must be 0 or greater",
       reorderQtyMin: "Reorder quantity must be 0 or greater",
     },
@@ -4692,7 +4756,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteTitle: "Delete Price",
       deleteDescription: "Are you sure you want to delete this price?",
       deleteDescriptionWithName:
-        "Are you sure you want to delete the price ₱{price} for \"{name}\"? This action cannot be undone.",
+        'Are you sure you want to delete the price ₱{price} for "{name}"? This action cannot be undone.',
     },
     priceFormDialog: {
       editTitle: "Edit Price",
@@ -5023,14 +5087,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       receive: "Receive",
       void: "Void",
       createDialogTitle: "Create Delivery Note",
-      createDialogDescription: "Select source business unit, then choose stock-request lines for allocation.",
+      createDialogDescription:
+        "Select source business unit, then choose stock-request lines for allocation.",
       requestSourceBusinessUnit: "Request Source Business Unit",
       selectSourceBusinessUnit: "Select source business unit",
       fulfillmentMode: "Fulfillment Mode",
       selectFulfillmentMode: "Select fulfillment mode",
       transferToStore: "Transfer to Store",
       customerPickupWarehouse: "Customer Pickup (Warehouse)",
-      fulfillmentModeHint: "Customer pickup skips destination inventory receive posting and uses direct pickup completion.",
+      fulfillmentModeHint:
+        "Customer pickup skips destination inventory receive posting and uses direct pickup completion.",
       notes: "Notes",
       sourceBuLabel: "Source BU:",
       eligibleLabel: "Eligible:",
@@ -5076,15 +5142,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       confirmReceive: "Confirm Receive",
       confirmVoid: "Confirm Void",
       unknownWarehouse: "Unknown warehouse",
-      createError: "Unable to create delivery note. Please review allocated quantities and try again.",
+      createError:
+        "Unable to create delivery note. Please review allocated quantities and try again.",
       confirmTitle: "Confirm Delivery Note",
       queuePickingTitle: "Queue Picking",
       dispatchTitle: "Dispatch Delivery Note",
       receiveTitle: "Receive Delivery Note",
       voidTitle: "Void Delivery Note",
       confirmDescription: "Review the details below, then confirm this delivery note.",
-      queuePickingDescription: "Review this delivery note, assign pickers, then create the pick list.",
-      dispatchDescription: "Review the details and confirm dispatch. Dispatched quantities will use picked quantities.",
+      queuePickingDescription:
+        "Review this delivery note, assign pickers, then create the pick list.",
+      dispatchDescription:
+        "Review the details and confirm dispatch. Dispatched quantities will use picked quantities.",
       receiveDescription: "Review the details and confirm receive.",
       voidDescription: "Review the details and confirm void.",
     },
@@ -5113,7 +5182,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       dispatchedQty: "Dispatched",
       actions: "Actions",
       pickingControl: "Picking Control",
-      pickingControlDescription: "Picking progress and status transitions are managed on the Pick Lists page.",
+      pickingControlDescription:
+        "Picking progress and status transitions are managed on the Pick Lists page.",
       openPickLists: "Open Pick Lists",
       dispatchInformation: "Dispatch Information",
       driverName: "Driver Name",
@@ -5137,7 +5207,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       timeline: "Timeline",
       byUser: "by {user}",
       createPickList: "Create Pick List",
-      createPickListDescription: "Assign pickers for {code}. Picker assignment is owned by the pick list.",
+      createPickListDescription:
+        "Assign pickers for {code}. Picker assignment is owned by the pick list.",
       assignPickers: "Assign Pickers",
       searchNameOrEmail: "Search name or email...",
       noMatchingUsers: "No matching users",
@@ -5165,9 +5236,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       editQty: "Edit Qty",
       voidItem: "Void Item",
       addItems: "Add Items",
-      addItemsDescription: "Add allocatable stock-request items to this delivery note and create a new pick list.",
+      addItemsDescription:
+        "Add allocatable stock-request items to this delivery note and create a new pick list.",
       adjustItem: "Adjust Dispatched Item",
-      adjustItemDescription: "Reduce the dispatched quantity or set it to zero to void the line and reverse inventory.",
+      adjustItemDescription:
+        "Reduce the dispatched quantity or set it to zero to void the line and reverse inventory.",
       newDispatchedQty: "New Dispatched Quantity",
       reason: "Reason",
       reasonOptional: "Reason (optional)",
@@ -5236,7 +5309,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     reorderManagementPage: {
       title: "Reorder Management",
-      subtitle: "Monitor stock levels, manage reorder suggestions, and configure automated restocking",
+      subtitle:
+        "Monitor stock levels, manage reorder suggestions, and configure automated restocking",
       noMatchingItemsForAlerts: "No matching items found for the selected alerts.",
       highPriority: "High Priority",
       mediumPriority: "Medium Priority",
@@ -5260,7 +5334,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderSuggestionsTab: "Reorder Suggestions ({count})",
       activeAlertsTab: "Active Alerts ({count})",
       reorderSuggestions: "Reorder Suggestions",
-      reorderSuggestionsDescription: "Review and approve automatic reorder suggestions based on stock levels",
+      reorderSuggestionsDescription:
+        "Review and approve automatic reorder suggestions based on stock levels",
       noReorderSuggestions: "No reorder suggestions at this time",
       allItemsAdequatelyStocked: "All items are adequately stocked",
       itemCode: "Item Code",
@@ -5276,7 +5351,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       approve: "Approve",
       reject: "Reject",
       stockLevelAlerts: "Stock Level Alerts",
-      stockLevelAlertsDescription: "Critical and warning alerts for items requiring immediate attention",
+      stockLevelAlertsDescription:
+        "Critical and warning alerts for items requiring immediate attention",
       createPurchaseOrder: "Create Purchase Order",
       severity: "Severity",
       item: "Item",
@@ -5356,7 +5432,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       failedLoadDelayedShipments: "Failed to load delayed shipments",
       noDelayedShipments: "No delayed shipments",
       allDeliveriesOnTrack: "All deliveries are on track!",
-      criticalDelaysAlert: "{count} critical delays (7+ days overdue). Immediate attention required.",
+      criticalDelaysAlert:
+        "{count} critical delays (7+ days overdue). Immediate attention required.",
       overdueShipments: "Overdue Shipments",
       mostOverdueFirst: "Most Overdue First",
       expected: "Expected",
@@ -5397,7 +5474,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       spaceUtilizationMetrics: "Space utilization metrics",
       failedLoadCapacityData: "Failed to load capacity data",
       noCapacityDataAvailable: "No capacity data available",
-      warehouseAtCapacityAlert: "Warehouse is at {value}% capacity. Consider expanding or optimizing storage.",
+      warehouseAtCapacityAlert:
+        "Warehouse is at {value}% capacity. Consider expanding or optimizing storage.",
       utilization: "Utilization",
       total: "Total",
       occupied: "Occupied",
@@ -5414,7 +5492,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       failedLoadDamagedItemsData: "Failed to load damaged items data",
       noDamagedItemsThisMonth: "No damaged items this month",
       excellentQualityRecord: "Excellent quality record!",
-      highDamageCountDetected: "High damage count detected ({count} items). Review quality with suppliers.",
+      highDamageCountDetected:
+        "High damage count detected ({count} items). Review quality with suppliers.",
       bySupplier: "By Supplier",
       byType: "By Type",
       broken: "Broken",
@@ -5649,8 +5728,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       editTitle: "Edit Stock Requisition",
       createTitle: "New Stock Requisition",
       editDescription: "Update requisition details and modify line items",
-      createDescription:
-        "Create a new requisition by filling in supplier details and adding items",
+      createDescription: "Create a new requisition by filling in supplier details and adding items",
       generalTab: "General",
       itemsTab: "Items",
       basicInformation: "Basic Information",
@@ -5692,7 +5770,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       total: "TOTAL",
       noItemsTitle: "No items added yet",
       noItemsDescription:
-        "Start by selecting an item, entering quantity and price, then click \"Add Item\"",
+        'Start by selecting an item, entering quantity and price, then click "Add Item"',
       footerSummary: "{count} {label} • Total: {total}",
       saving: "Saving...",
       cancel: "Cancel",
@@ -5856,7 +5934,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "Manage items to purchase in this order",
       addItem: "Add Item",
       noItemsTitle: "No items added yet.",
-      noItemsDescription: "Click \"Add Item\" to get started.",
+      noItemsDescription: 'Click "Add Item" to get started.',
       item: "Item",
       qty: "Qty",
       unit: "Unit",
@@ -6141,14 +6219,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       previewPlaceholder: "Set your report filters, then click Preview to generate the PDF.",
       generatingPreview: "Generating PDF preview...",
       previewDialogTitle: "Preview {report}",
-      previewDialogDescription: "Set report filters, then preview the generated PDF before exporting or printing.",
+      previewDialogDescription:
+        "Set report filters, then preview the generated PDF before exporting or printing.",
       previewFrameTitle: "{report} PDF Preview",
       valueLabel: "Value",
       noReportsFound: "No reports found",
       noReportsFoundDescription: "Try adjusting your search query",
       roadmapTitle: "Report Development Roadmap",
       roadmapDescription:
-        "We're continuously expanding our reporting capabilities. Reports marked as \"Coming Soon\" are prioritized based on business impact and will be delivered in phases over the next 12-15 months. Critical and high-priority reports will be implemented first.",
+        'We\'re continuously expanding our reporting capabilities. Reports marked as "Coming Soon" are prioritized based on business impact and will be delivered in phases over the next 12-15 months. Critical and high-priority reports will be implemented first.',
       inventoryName: "Inventory & Warehouse",
       inventoryDescription: "Optimize stock levels, reduce waste, and improve warehouse efficiency",
       stockReportsName: "Stock Reports",
@@ -6162,7 +6241,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       inventoryReportName: "Inventory Report",
       inventoryReportDescription:
         "Review warehouse stock balances by item, category, status, and warehouse",
-      inventoryReportValue: "Operational visibility into on-hand, allocated, available, and in-transit stock",
+      inventoryReportValue:
+        "Operational visibility into on-hand, allocated, available, and in-transit stock",
       stockTurnoverName: "Stock Turnover Report",
       stockTurnoverDescription:
         "Measure inventory efficiency and identify capital utilization opportunities",
@@ -6186,8 +6266,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLocationBatchName: "Item Location (Location + Batch)",
       itemLocationBatchDescription:
         "Exact stock balances by warehouse location and batch, including location batch SKU",
-      itemLocationBatchValue:
-        "Operational visibility for picking, putaway, and batch control",
+      itemLocationBatchValue: "Operational visibility for picking, putaway, and batch control",
       financialName: "Financial & Profitability",
       financialDescription: "Complete financial statements and profitability analysis",
       plStatementName: "Profit & Loss Statement",
@@ -6204,16 +6283,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       arAgingDescription: "Track customer payment performance and manage collections",
       arAgingValue: "20-30% reduction in DSO",
       apAgingName: "Accounts Payable Aging",
-      apAgingDescription:
-        "Manage supplier payment obligations and optimize payment timing",
+      apAgingDescription: "Manage supplier payment obligations and optimize payment timing",
       apAgingValue: "5-10% improvement in working capital",
       salesProfitabilityName: "Sales Profitability Report",
       salesProfitabilityDescription:
         "True profit analysis by invoice, customer, item, and employee",
       salesProfitabilityValue: "15-25% improvement in overall margin",
       cogsAnalysisName: "COGS Analysis Report",
-      cogsAnalysisDescription:
-        "Detailed cost of goods sold breakdown and variance analysis",
+      cogsAnalysisDescription: "Detailed cost of goods sold breakdown and variance analysis",
       cogsAnalysisValue: "Better cost control and pricing decisions",
       purchasingName: "Purchasing & Suppliers",
       purchasingDescription: "Supplier performance tracking and procurement optimization",
@@ -6241,54 +6318,44 @@ export const translations: Record<Locale, TranslationKeys> = {
       deliveryPerformanceDescription: "Monitor logistics efficiency and delivery reliability",
       deliveryPerformanceValue: "20-35% improvement in delivery performance",
       pickingEfficiencyName: "Picking Efficiency Report",
-      pickingEfficiencyDescription:
-        "Measure warehouse picking productivity and accuracy",
+      pickingEfficiencyDescription: "Measure warehouse picking productivity and accuracy",
       pickingEfficiencyValue: "25-40% improvement in picking productivity",
       stockTransferName: "Stock Transfer Analysis",
-      stockTransferDescription:
-        "Understand inter-warehouse movements and optimize stocking levels",
+      stockTransferDescription: "Understand inter-warehouse movements and optimize stocking levels",
       stockTransferValue: "20-40% reduction in inter-warehouse transfers",
       transformationEfficiencyName: "Transformation Efficiency",
       transformationEfficiencyDescription:
         "Monitor manufacturing/processing operations and optimize yields",
       transformationEfficiencyValue: "10-25% improvement in yield",
       rtsAnalysisName: "Return to Supplier Analysis",
-      rtsAnalysisDescription:
-        "Track quality issues and manage supplier accountability",
+      rtsAnalysisDescription: "Track quality issues and manage supplier accountability",
       rtsAnalysisValue: "Improve supplier quality",
       executiveName: "Executive Dashboards",
       executiveDescription: "High-level business overview and strategic insights",
       executiveSummaryName: "Executive Summary Dashboard",
-      executiveSummaryDescription:
-        "One-page business overview for executive decision-making",
+      executiveSummaryDescription: "One-page business overview for executive decision-making",
       executiveSummaryValue: "Quick executive decision-making",
       periodComparisonName: "Period-over-Period Comparison",
       periodComparisonDescription: "Track business growth and identify trends",
       periodComparisonValue: "Understand business trajectory",
       budgetActualName: "Budget vs Actual Report",
-      budgetActualDescription:
-        "Financial planning and control through budget tracking",
+      budgetActualDescription: "Financial planning and control through budget tracking",
       budgetActualValue: "Financial discipline and control",
       auditName: "Audit & Compliance",
       auditDescription: "System activity tracking and compliance reporting",
       auditTrailName: "Audit Trail Report",
-      auditTrailDescription:
-        "Track all system changes for security, compliance, and investigation",
+      auditTrailDescription: "Track all system changes for security, compliance, and investigation",
       auditTrailValue: "Security monitoring and compliance",
       documentStatusName: "Document Status Tracking",
-      documentStatusDescription:
-        "Monitor document workflow compliance and identify bottlenecks",
+      documentStatusDescription: "Monitor document workflow compliance and identify bottlenecks",
       documentStatusValue: "Process efficiency improvement",
       userActivityName: "User Activity Report",
-      userActivityDescription:
-        "Monitor system usage for license optimization and security",
+      userActivityDescription: "Monitor system usage for license optimization and security",
       userActivityValue: "License optimization and security",
       predictiveName: "Predictive Analytics",
-      predictiveDescription:
-        "Forecasting and scenario planning for strategic decisions",
+      predictiveDescription: "Forecasting and scenario planning for strategic decisions",
       demandForecastName: "Demand Forecasting Report",
-      demandForecastDescription:
-        "Predict future sales for proactive inventory planning",
+      demandForecastDescription: "Predict future sales for proactive inventory planning",
       demandForecastValue: "20-30% inventory optimization",
       whatIfName: "What-If Analysis Tools",
       whatIfDescription: "Scenario planning and strategic decision support",
@@ -6296,8 +6363,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     stockReportsPage: {
       title: "Stock Reports",
-      subtitle:
-        "Comprehensive inventory reports for movement and valuation analysis",
+      subtitle: "Comprehensive inventory reports for movement and valuation analysis",
       movementTab: "Stock Movement",
       valuationTab: "Stock Valuation",
       filters: "Filters",
@@ -6732,8 +6798,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     transformationEfficiencyReportPage: {
       title: "Transformation Efficiency",
-      subtitle:
-        "Monitor transformation throughput, yield, waste, cycle time, and cost variance.",
+      subtitle: "Monitor transformation throughput, yield, waste, cycle time, and cost variance.",
       filters: "Filters",
       startDate: "Start Date",
       endDate: "End Date",
@@ -6809,8 +6874,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       receivedAt: "Batch Received At",
       descending: "Descending",
       ascending: "Ascending",
-      searchPlaceholder:
-        "Search item, SKU, batch code, location, or location batch SKU...",
+      searchPlaceholder: "Search item, SKU, batch code, location, or location batch SKU...",
       search: "Search",
       reset: "Reset",
       loadError: "Failed to load item location batch report.",
@@ -6876,7 +6940,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       edit: "Edit",
       confirm: "Confirm",
       confirmTitle: "Confirm Load List",
-      confirmDescription: "Are you sure you want to confirm {code}? Once confirmed, items cannot be modified.",
+      confirmDescription:
+        "Are you sure you want to confirm {code}? Once confirmed, items cannot be modified.",
       confirming: "Confirming...",
       confirmSuccess: "Load List confirmed successfully",
       confirmError: "Failed to confirm load list",
@@ -6966,7 +7031,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     linkStockRequisitionsDialog: {
       title: "Link Stock Requisitions",
-      description: "Link load list items to stock requisition items to track fulfillment for {supplier}",
+      description:
+        "Link load list items to stock requisition items to track fulfillment for {supplier}",
       outstandingTitle: "Outstanding Stock Requisitions",
       itemsAvailable: "{count} items available",
       noOutstandingItems: "No items with outstanding qty",
@@ -7046,24 +7112,30 @@ export const translations: Record<Locale, TranslationKeys> = {
       total: "Total",
       noLineItems: "No line items found",
       confirmTitle: "Confirm Load List",
-      confirmDescription: "Are you sure you want to confirm this load list? Once confirmed, items cannot be modified.",
+      confirmDescription:
+        "Are you sure you want to confirm this load list? Once confirmed, items cannot be modified.",
       confirming: "Confirming...",
       inTransitTitle: "Mark as In Transit",
-      inTransitDescription: "This will mark the load list as in transit and update inventory in-transit quantities.",
+      inTransitDescription:
+        "This will mark the load list as in transit and update inventory in-transit quantities.",
       estimatedArrivalDateLabel: "Estimated Arrival Date",
       linerNameLabel: "Liner",
       linerNamePlaceholder: "Shipping line or liner",
       saveAndMarkInTransit: "Save and Mark In Transit",
       updating: "Updating...",
       arrivedTitle: "Mark as Arrived",
-      arrivedDescription: "This will mark the load list as arrived at the warehouse. You can then proceed with receiving.",
+      arrivedDescription:
+        "This will mark the load list as arrived at the warehouse. You can then proceed with receiving.",
       reverseArrivalTitle: "Reverse Arrival",
-      reverseArrivalDescription: "This will move the load list back to in transit and delete the untouched draft GRN that was auto-created on arrival.",
+      reverseArrivalDescription:
+        "This will move the load list back to in transit and delete the untouched draft GRN that was auto-created on arrival.",
       confirmReverseArrival: "Reverse to In Transit",
       receivedTitle: "Mark as Received",
-      receivedDescription: "This will mark the load list as received and update inventory stock levels. This action cannot be undone.",
+      receivedDescription:
+        "This will mark the load list as received and update inventory stock levels. This action cannot be undone.",
       cancelTitle: "Cancel Load List",
-      cancelDescription: "Are you sure you want to cancel this load list? This action cannot be undone.",
+      cancelDescription:
+        "Are you sure you want to cancel this load list? This action cannot be undone.",
       cancelBack: "No, go back",
       cancelling: "Cancelling...",
       confirmCancel: "Yes, cancel",
@@ -7453,7 +7525,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "Add items to request",
       addItem: "Add Item",
       noItems: "No items added yet.",
-      noItemsDescription: "Click \"Add Item\" to get started.",
+      noItemsDescription: 'Click "Add Item" to get started.',
       item: "Item",
       qty: "Qty",
       unit: "Unit",
@@ -7598,6 +7670,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       add: "添加",
       item: "物品",
       items: "物品",
+      customer: "客户",
       warehouse: "仓库",
       select: "选择",
       search_: "搜索...",
@@ -7613,6 +7686,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deactivate: "停用",
       usageCount: "使用次数",
       locked: "(已锁定)",
+      loadMore: "加载更多",
     },
     forms: {
       required: "此字段为必填项",
@@ -7730,7 +7804,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Notes": "送货单",
       "Pick Lists": "拣货单",
       "Stock Transformations": "库存转换",
+      Manufacturing: "制造",
+      Orders: "工单",
+      Production: "生产",
       "Reorder Management": "补货管理",
+      Sales: "销售",
+      "Point of Sale": "销售点",
+      "POS Transactions": "POS 交易",
+      Customers: "客户",
+      Quotations: "报价单",
+      "Job Orders": "工单",
+      "Sales Orders": "销售订单",
+      Invoices: "发票",
       Purchasing: "采购",
       Overview: "概览",
       Suppliers: "供应商",
@@ -7776,6 +7861,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Load List Details": "装载单详情",
       "GRN Details": "收货单详情",
     },
+    manufacturingFloorPage: {
+      title: "生产",
+      subtitle: "管理生产工单",
+    },
     warehousesPage: {
       title: "仓库管理",
       subtitle: "管理仓库位置和存储设施",
@@ -7791,8 +7880,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       locations: "库位",
       deleteTitle: "删除仓库",
       deleteDescription: "确定要删除此仓库吗？",
-      deleteDescriptionWithName:
-        "确定要删除“{name}”吗？此操作无法撤销。",
+      deleteDescriptionWithName: "确定要删除“{name}”吗？此操作无法撤销。",
       deleteSuccess: "仓库删除成功",
       deleteError: "删除仓库失败",
     },
@@ -8163,7 +8251,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       description: "汇总该用户所有已分配角色的权限",
       activePermissions: "{count} 项有效权限",
       searchPlaceholder: "按资源搜索权限...",
-      noSearchResults: "没有权限匹配搜索 \"{query}\"",
+      noSearchResults: '没有权限匹配搜索 "{query}"',
       noPermissions: "该用户尚未分配任何权限。",
       resource: "资源",
       showingSummary: "显示 {filtered} / {total} 项权限",
@@ -8195,7 +8283,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       description: "选择权限并自定义该角色对每个资源可执行的操作。",
       systemRole: "系统角色",
       searchPlaceholder: "按资源或描述搜索权限...",
-      noSearchResults: "没有权限匹配搜索 \"{query}\"",
+      noSearchResults: '没有权限匹配搜索 "{query}"',
       noPermissionsInSystem: "系统中未找到权限。",
       available: "可用：",
       assignedSummary: "已分配 {assigned} / {total} 项权限",
@@ -8632,6 +8720,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       billingTab: "账单",
       shippingTab: "收货",
       paymentTab: "付款",
+      termsTab: "条款",
       customerCode: "客户编码",
       customerCodePlaceholder: "CUST-001",
       customerType: "客户类型",
@@ -8814,12 +8903,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemsCount: "{count} 个项目",
       confirm: "确认",
       invoice: "发票",
+      createJobOrder: "创建工单",
+      viewJobOrder: "查看工单",
       selectWarehouseTitle: "选择仓库",
       selectWarehouseDescription: "选择该发票扣减库存所使用的仓库。",
+      selectJobOrderWarehouseDescription: "选择该工单预留框料所使用的仓库。",
       selectWarehouse: "选择仓库",
       selectLocationOptional: "选择库位（可选）",
       selectWarehouseFirst: "请先选择仓库",
       converting: "转换中...",
+      creatingJobOrder: "创建中...",
       createInvoice: "创建发票",
       draft: "草稿",
       confirmed: "已确认",
@@ -8828,6 +8921,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       delivered: "已交付",
       invoiced: "已开票",
       cancelled: "已取消",
+    },
+    frameJobOrdersPage: {
+      title: "工单",
+      subtitle: "跟踪和管理生产工单请求",
     },
     salesOrderForm: {
       customerRequired: "客户为必填项",
@@ -8853,6 +8950,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addItem: "添加项目",
       noItems: "尚未添加项目。",
       noItemsDescription: "点击“添加项目”开始。",
+      inventoryWarning: "请求数量超过可用库存。仍可创建该订单。",
       qty: "数量",
       unit: "单位",
       price: "价格",
@@ -9011,6 +9109,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemSearchPlaceholder: "按编码或名称搜索...",
       noItemFound: "未找到项目。",
       stockLabel: "库存",
+      inventoryWarning:
+        "请求数量 {requested} 超过可用库存 {available} {uom}。仍可保存该行项目。",
       description: "描述",
       quantity: "数量",
       unitPrice: "单价",
@@ -9095,8 +9195,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancelAction: "取消发票",
       deleteTitle: "删除草稿发票",
       deleteDescription: "确定要删除发票 {invoiceNumber} 吗？这将永久删除草稿发票及其所有行项目。",
-      deleteLinkedSalesOrderNotice:
-        "关联的销售订单将恢复为“已确认”状态，以便再次转换为新发票。",
+      deleteLinkedSalesOrderNotice: "关联的销售订单将恢复为“已确认”状态，以便再次转换为新发票。",
       deleting: "删除中...",
       deleteAction: "删除发票",
       draft: "草稿",
@@ -9458,8 +9557,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemDetailsDescription: "查看商品信息、价格层级和库存位置。",
       editItemDescription: "更新商品信息并在各标签中管理价格层级。",
       addItemDetailsDescription: "商品创建成功。继续在价格和库位标签中完成设置。",
-      createNewItemDescription:
-        "填写基础商品信息以创建新商品。保存后即可添加价格和库位信息。",
+      createNewItemDescription: "填写基础商品信息以创建新商品。保存后即可添加价格和库位信息。",
       createPageDescription: "添加新商品到库存",
       updatePageDescription: "更新商品信息",
       generalTab: "常规",
@@ -9475,6 +9573,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemNameLabel: "商品名称 *",
       chineseNameLabel: "中文名称",
       descriptionLabel: "描述",
+      dimensionsSectionTitle: "尺寸",
+      dimensionsSectionDescription: "用于下游计算的商品尺寸",
+      lengthLabel: "长度",
+      widthLabel: "宽度",
+      heightLabel: "高度",
+      dimensionUnitLabel: "尺寸单位",
+      dimensionPlaceholder: "0.00",
+      dimensionUnitPlaceholder: "毫米",
       itemImageLabel: "商品图片",
       classificationAndUnit: "分类与计量单位",
       categoryLabel: "分类 *",
@@ -9590,6 +9696,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       categoryRequired: "分类为必填项",
       standardCostMin: "标准成本必须大于或等于0",
       listPriceMin: "标价必须大于或等于0",
+      dimensionMin: "尺寸必须大于或等于0",
       reorderLevelMin: "补货水平必须大于或等于0",
       reorderQtyMin: "补货数量必须大于或等于0",
     },
@@ -10257,8 +10364,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       refresh: "刷新",
       warehouseOperations: "仓库运营",
       warehouseOperationsDescription: "实时运营队列与仓容状态",
-      footerAutoRefresh:
-        "仪表板会根据不同组件每 2-5 分钟自动刷新。点击刷新可立即更新。",
+      footerAutoRefresh: "仪表板会根据不同组件每 2-5 分钟自动刷新。点击刷新可立即更新。",
     },
     purchasingOverviewWidgets: {
       anErrorOccurred: "发生错误",
@@ -12028,7 +12134,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       submitMissingReceivedQty: "提交前请为所有收货单商品输入收货数量。",
       approve: "批准",
       approveTitle: "批准收货单",
-      approveDescription: "确定要批准 {grnNumber} 吗？这将创建库存记录并更新库存水平。此操作无法撤销。",
+      approveDescription:
+        "确定要批准 {grnNumber} 吗？这将创建库存记录并更新库存水平。此操作无法撤销。",
       approving: "批准中...",
       approveSuccess: "收货单批准成功",
       approveError: "批准收货单失败",
@@ -12106,7 +12213,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       additionalNotes: "附加备注",
       noNotes: "暂无备注。",
       approveTitle: "批准收货单",
-      approveDescription: "确定要批准 {grnNumber} 吗？这将创建库存记录并更新库存水平。此操作无法撤销。",
+      approveDescription:
+        "确定要批准 {grnNumber} 吗？这将创建库存记录并更新库存水平。此操作无法撤销。",
       approvalNotes: "审批备注（可选）",
       approvalNotesPlaceholder: "添加审批备注...",
       approving: "批准中...",
@@ -12463,5 +12571,5 @@ export const translations: Record<Locale, TranslationKeys> = {
       noLinkedDeliveryNotes: "尚无关联送货单。",
       noValue: "--",
     },
-  }
+  },
 };

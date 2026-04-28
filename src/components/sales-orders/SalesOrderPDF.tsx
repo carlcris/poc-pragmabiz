@@ -241,13 +241,13 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({
             <Text style={styles.title}>SALES ORDER</Text>
             <Text style={styles.orderNumber}>Order #{salesOrder.orderNumber}</Text>
           </View>
-            {qrCodeDataUrl && (
-              <View style={styles.qrCodeContainer}>
-                {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                <Image style={styles.qrCode} src={qrCodeDataUrl} />
-                <Text style={styles.qrCodeLabel}>Scan for details</Text>
-              </View>
-            )}
+          {qrCodeDataUrl && (
+            <View style={styles.qrCodeContainer}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image style={styles.qrCode} src={qrCodeDataUrl} />
+              <Text style={styles.qrCodeLabel}>Scan for details</Text>
+            </View>
+          )}
         </View>
 
         {/* Order Details and Customer Info */}
@@ -320,7 +320,9 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({
                 )}
               </View>
               <Text style={[styles.tableCell, styles.qtyCol]}>{item.quantity}</Text>
-              <Text style={[styles.tableCell, styles.unitCol]}>{item.uomId || "-"}</Text>
+              <Text style={[styles.tableCell, styles.unitCol]}>
+                {item.uomCode || item.uomId || "-"}
+              </Text>
               <Text style={[styles.tableCell, styles.priceCol]}>
                 {formatCurrency(item.unitPrice)}
               </Text>

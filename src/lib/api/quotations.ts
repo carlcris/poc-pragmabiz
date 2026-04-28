@@ -6,15 +6,22 @@ import type {
 } from "@/types/quotation";
 import { apiClient } from "@/lib/api";
 
-export interface QuotationsResponse {
+export type QuotationsResponse = {
   data: Quotation[];
   pagination: {
     total: number;
-    page: number;
     limit: number;
-    totalPages: number;
+    nextCursor: string | null;
+    hasMore: boolean;
   };
-}
+};
+
+export type ConfirmQuotationResponse = {
+  success: boolean;
+  quotationId: string;
+  frameJobOrder: { id: string; jobOrderCode: string | null } | null;
+  draftInvoice: { id: string; invoiceCode: string };
+};
 
 export const quotationsApi = {
   async getQuotations(filters?: QuotationFilters): Promise<QuotationsResponse> {
@@ -25,7 +32,7 @@ export const quotationsApi = {
     if (filters?.customerId) params.customerId = filters.customerId;
     if (filters?.dateFrom) params.dateFrom = filters.dateFrom;
     if (filters?.dateTo) params.dateTo = filters.dateTo;
-    if (filters?.page) params.page = filters.page;
+    if (filters?.cursor) params.cursor = filters.cursor;
     if (filters?.limit) params.limit = filters.limit;
 
     return apiClient.get<QuotationsResponse>("/api/quotations", { params });
@@ -63,5 +70,11 @@ export const quotationsApi = {
 
   async changeStatus(id: string, status: string): Promise<Quotation> {
     return apiClient.patch<Quotation>(`/api/quotations/${id}/status`, { status });
+  },
+
+  async confirm(id: string, warehouseId?: string | null): Promise<ConfirmQuotationResponse> {
+    return apiClient.post<ConfirmQuotationResponse>(`/api/quotations/${id}/confirm`, {
+      warehouseId,
+    });
   },
 };

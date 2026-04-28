@@ -1,6 +1,47 @@
 export type QuotationStatus = "draft" | "sent" | "accepted" | "rejected" | "expired" | "ordered";
 
-export interface QuotationLineItem {
+export type FrameServiceFeeMode = "per_frame" | "per_order" | "size_based" | "service_type" | "manual";
+
+export type FrameInvoiceDisplayMode = "summary" | "components" | "both";
+
+export type FrameComponentType = "molding" | "material" | "accessory";
+
+export type FrameQuotationComponent = {
+  id?: string;
+  componentType: FrameComponentType;
+  source: "auto" | "manual";
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  description: string;
+  qtyPerFrame: number;
+  totalQuantity: number;
+  uomId: string;
+  uomCode?: string;
+  unitRate: number;
+  totalAmount: number;
+  roundingMode?: "none" | "ceil_per_order";
+  sortOrder?: number;
+};
+
+export type FrameQuotationConfiguration = {
+  id?: string;
+  width: number;
+  height: number;
+  fixedAllowance: number;
+  moldingItemId?: string;
+  moldingItemCode?: string;
+  moldingItemName?: string;
+  moldingStickLength?: number;
+  moldingSticksRequired?: number;
+  serviceFeeMode: FrameServiceFeeMode;
+  serviceType?: string;
+  serviceFeeAmount: number;
+  totalServiceFee: number;
+  invoiceDisplayMode: FrameInvoiceDisplayMode;
+};
+
+export type QuotationLineItem = {
   id: string;
   itemId: string;
   itemCode?: string; // Joined from items table
@@ -8,6 +49,8 @@ export interface QuotationLineItem {
   description: string;
   quantity: number;
   uomId: string;
+  uomCode?: string;
+  uomName?: string;
   unitPrice: number;
   discount: number; // Percentage
   discountAmount: number;
@@ -15,9 +58,11 @@ export interface QuotationLineItem {
   taxAmount: number;
   lineTotal: number;
   sortOrder?: number;
-}
+  frameConfiguration?: FrameQuotationConfiguration | null;
+  frameComponents?: FrameQuotationComponent[];
+};
 
-export interface Quotation {
+export type Quotation = {
   id: string;
   companyId: string;
   quotationNumber: string; // Maps to quotation_code in DB
@@ -28,6 +73,8 @@ export interface Quotation {
   validUntil: string;
   status: QuotationStatus;
   salesOrderId?: string; // Reference to converted sales order
+  frameJobOrderId?: string;
+  draftInvoiceId?: string;
   lineItems: QuotationLineItem[];
   subtotal: number;
   totalDiscount: number; // Maps to discount_amount in DB
@@ -44,9 +91,9 @@ export interface Quotation {
   createdByName?: string; // Joined from users table
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface CreateQuotationItemRequest {
+export type CreateQuotationItemRequest = {
   itemId: string;
   description?: string;
   quantity: number;
@@ -58,10 +105,12 @@ export interface CreateQuotationItemRequest {
   taxAmount?: number;
   sortOrder?: number;
   notes?: string;
-}
+  frameConfiguration?: FrameQuotationConfiguration | null;
+  frameComponents?: FrameQuotationComponent[];
+};
 
-export interface CreateQuotationRequest {
-  quotationCode: string;
+export type CreateQuotationRequest = {
+  quotationCode?: string;
   customerId: string;
   quotationDate: string;
   validUntil?: string;
@@ -69,23 +118,23 @@ export interface CreateQuotationRequest {
   items: CreateQuotationItemRequest[];
   termsConditions?: string;
   notes?: string;
-}
+};
 
-export interface UpdateQuotationRequest {
+export type UpdateQuotationRequest = {
   quotationDate?: string;
   validUntil?: string;
   status?: QuotationStatus;
   items?: CreateQuotationItemRequest[];
   termsConditions?: string;
   notes?: string;
-}
+};
 
-export interface QuotationFilters {
+export type QuotationFilters = {
   search?: string;
   status?: QuotationStatus | "all";
   customerId?: string;
   dateFrom?: string;
   dateTo?: string;
-  page?: number;
+  cursor?: string | null;
   limit?: number;
-}
+};

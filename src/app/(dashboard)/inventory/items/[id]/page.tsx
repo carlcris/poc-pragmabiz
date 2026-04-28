@@ -415,6 +415,31 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
+                <CardTitle className="text-base font-semibold">{t("dimensionsSectionTitle")}</CardTitle>
+                <CardDescription className="text-sm">{t("dimensionsSectionDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("lengthLabel")}</span>
+                  <span className="text-lg font-bold">{item.dimensions?.length ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("widthLabel")}</span>
+                  <span className="text-lg font-bold">{item.dimensions?.width ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">{t("heightLabel")}</span>
+                  <span className="text-lg font-bold">{item.dimensions?.height ?? 0}</span>
+                </div>
+                <div className="flex items-center justify-between border-t pt-2">
+                  <span className="text-sm font-medium text-muted-foreground">{t("dimensionUnitLabel")}</span>
+                  <span className="text-lg font-bold">{item.dimensions?.unit || "-"}</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-base font-semibold">{t("pricingDetailsTitle")}</CardTitle>
                 <CardDescription className="text-sm">{t("pricingDetailsDescription")}</CardDescription>
               </CardHeader>

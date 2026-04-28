@@ -293,10 +293,7 @@ export async function POST(request: NextRequest) {
 
     if (llError) {
       console.error("Error creating load list:", llError);
-      return NextResponse.json(
-        { error: llError.message || "Failed to create load list" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create load list" }, { status: 500 });
     }
 
     // Create line items

@@ -183,6 +183,7 @@ export async function GET(request: NextRequest) {
           description: item.item_description || "",
           quantity: parseFloat(item.quantity),
           uomId: item.uom_id,
+          uomCode: item.units_of_measure?.code || "",
           unitPrice: parseFloat(item.rate),
           discount: parseFloat(item.discount_percent),
           taxRate: parseFloat(item.tax_percent),

@@ -4,16 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, ChevronsUpDown, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
+import { Check, Plus, Trash2, FileText, Package, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import {
   useCreateStockRequisition,
   useUpdateStockRequisition,
 } from "@/hooks/useStockRequisitions";
-import { useSuppliers } from "@/hooks/useSuppliers";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useSupplier, useSuppliers } from "@/hooks/useSuppliers";
 import { useItem, useItems } from "@/hooks/useItems";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -29,15 +29,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import {
   Select,
   SelectContent,
@@ -93,15 +85,26 @@ export function StockRequisitionFormDialog({
   const { formatCurrency } = useCurrency();
   const createMutation = useCreateStockRequisition();
   const updateMutation = useUpdateStockRequisition();
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const [itemSearch, setItemSearch] = useState("");
+  const debouncedSupplierSearch = useDebouncedValue(supplierSearch.trim());
+  const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
   const srFormSchema = useMemo(
     () => createStockRequisitionFormSchema((key) => tValidation(key)),
     [tValidation]
   );
 
-  const { data: suppliersData } = useSuppliers({ limit: 50 });
+  const { data: suppliersData, isLoading: isSuppliersLoading } = useSuppliers({
+    search: debouncedSupplierSearch || undefined,
+    status: "active",
+    limit: 5,
+  });
   const suppliers = suppliersData?.data || [];
 
-  const { data: itemsData } = useItems({ limit: 50 });
+  const { data: itemsData, isLoading: isItemsLoading } = useItems({
+    search: debouncedItemSearch || undefined,
+    limit: 5,
+  });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
 
   // Line items state
@@ -110,7 +113,6 @@ export function StockRequisitionFormDialog({
   const [selectedUnitOptionId, setSelectedUnitOptionId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
-  const [itemOpen, setItemOpen] = useState(false);
   const [addItemError, setAddItemError] = useState("");
   const [activeTab, setActiveTab] = useState("general");
   const { data: selectedItemResponse } = useItem(selectedItemId);
@@ -136,6 +138,10 @@ export function StockRequisitionFormDialog({
     resolver: zodResolver(srFormSchema),
     defaultValues,
   });
+  const selectedSupplierId = form.watch("supplierId");
+  const { data: selectedSupplierData } = useSupplier(selectedSupplierId);
+  const selectedSupplier =
+    suppliers.find((supplier) => supplier.id === selectedSupplierId) ?? selectedSupplierData ?? null;
 
   // Calculate total
   const totalAmount = useMemo(() => {
@@ -375,20 +381,24 @@ export function StockRequisitionFormDialog({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel className="text-xs font-semibold text-gray-700 tracking-wide">{t("supplierLabel")}</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                  <SelectTrigger className="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500">
-                                    <SelectValue placeholder={t("selectSupplier")} />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {suppliers.map((supplier) => (
-                                    <SelectItem key={supplier.id} value={supplier.id}>
-                                      {supplier.name} ({supplier.code})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <AsyncSearchCombobox
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                  searchValue={supplierSearch}
+                                  onSearchValueChange={setSupplierSearch}
+                                  options={suppliers}
+                                  selectedOption={selectedSupplier}
+                                  getOptionValue={(supplier) => supplier.id}
+                                  getOptionLabel={(supplier) => `${supplier.name} (${supplier.code})`}
+                                  getOptionSearchValue={(supplier) => `${supplier.code} ${supplier.name}`}
+                                  placeholder={t("selectSupplier")}
+                                  searchPlaceholder={t("selectSupplier")}
+                                  emptyMessage={t("selectSupplier")}
+                                  isLoading={isSuppliersLoading}
+                                  buttonClassName="h-10 text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -457,82 +467,52 @@ export function StockRequisitionFormDialog({
                       <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
                       <div className="min-w-0">
                         <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("itemLabel")}</label>
-                        <Popover open={itemOpen} onOpenChange={setItemOpen}>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              aria-expanded={itemOpen}
-                              className={cn(
-                                "w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400",
-                                !selectedItemId && "text-muted-foreground"
-                              )}
-                            >
-                              <span className="min-w-0 truncate text-left">
-                                {selectedItemId
-                                  ? (() => {
-                                      const selectedItem = items.find(
-                                        (item) => item.id === selectedItemId
-                                      );
-                                      return selectedItem
-                                        ? `${selectedItem.code} - ${selectedItem.name}`
-                                        : t("selectItem");
-                                    })()
-                                  : t("searchItemPlaceholder")}
-                              </span>
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[520px] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder={t("searchItemByCodeOrName")} />
-                              <CommandList className="max-h-[280px] overflow-y-auto">
-                                <CommandEmpty>{t("noItemFound")}</CommandEmpty>
-                                <CommandGroup>
-                                  {items
-                                    .filter((item) => item.isActive)
-                                    .map((item) => (
-                                      <CommandItem
-                                        key={item.id}
-                                        value={`${item.code} ${item.name}`}
-                                        onSelect={() => {
-                                          setSelectedItemId(item.id);
-                                          const cost =
-                                            item.purchasePrice ??
-                                            item.standardCost ??
-                                            item.listPrice ??
-                                            0;
-                                          setSelectedUnitOptionId("");
-                                          setPrice(Number(cost).toFixed(2));
-                                          setItemOpen(false);
-                                          setAddItemError("");
-                                        }}
-                                        className="flex items-start gap-2 py-2"
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mt-0.5 h-4 w-4 shrink-0",
-                                            selectedItemId === item.id
-                                              ? "opacity-100"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                          <div className="font-medium">{item.code}</div>
-                                          <div className="text-sm text-muted-foreground whitespace-normal break-words leading-snug">
-                                            {item.name}
-                                          </div>
-                                        </div>
-                                        <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
-                                          {formatCurrency(item.listPrice)}
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                        <AsyncSearchCombobox
+                          value={selectedItemId}
+                          onValueChange={(value) => {
+                            setSelectedItemId(value);
+                            const selectedItem = items.find((item) => item.id === value);
+                            const cost =
+                              selectedItem?.purchasePrice ??
+                              selectedItem?.standardCost ??
+                              selectedItem?.listPrice ??
+                              0;
+                            setSelectedUnitOptionId("");
+                            setPrice(Number(cost).toFixed(2));
+                            setAddItemError("");
+                          }}
+                          searchValue={itemSearch}
+                          onSearchValueChange={setItemSearch}
+                          options={items.filter((item) => item.isActive)}
+                          selectedOption={selectedItemDetail ?? null}
+                          getOptionValue={(item) => item.id}
+                          getOptionLabel={(item) => `${item.code} - ${item.name}`}
+                          getOptionSearchValue={(item) => `${item.code} ${item.name}`}
+                          placeholder={t("searchItemPlaceholder")}
+                          searchPlaceholder={t("searchItemByCodeOrName")}
+                          emptyMessage={t("noItemFound")}
+                          isLoading={isItemsLoading}
+                          buttonClassName="w-full min-w-0 justify-between h-10 text-sm bg-white border-gray-300 hover:border-purple-400"
+                          popoverClassName="w-[520px]"
+                          renderOption={(item, selected) => (
+                            <div className="flex w-full items-start justify-between gap-3 py-2">
+                              <div className="flex min-w-0 items-start gap-2">
+                              <Check
+                                className={`mt-0.5 h-4 w-4 shrink-0 ${selected ? "opacity-100" : "opacity-0"}`}
+                              />
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-medium">{item.code}</div>
+                                  <div className="text-sm text-muted-foreground whitespace-normal break-words leading-snug">
+                                    {item.name}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
+                                {formatCurrency(item.listPrice)}
+                              </div>
+                            </div>
+                          )}
+                        />
                       </div>
                         <div className="min-w-0">
                           <label className="block text-xs font-semibold text-gray-700 tracking-wide mb-2">{t("unitLabel")}</label>

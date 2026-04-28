@@ -7,7 +7,8 @@ import { useTranslations } from "next-intl";
 import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import { useCreatePurchaseOrder, useUpdatePurchaseOrder } from "@/hooks/usePurchaseOrders";
-import { useSuppliers } from "@/hooks/useSuppliers";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useSupplier, useSuppliers } from "@/hooks/useSuppliers";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,13 +28,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -43,6 +37,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { PurchaseOrder } from "@/types/purchase-order";
 import {
@@ -76,8 +71,14 @@ export function PurchaseOrderFormDialog({
   const createMutation = useCreatePurchaseOrder();
   const updateMutation = useUpdatePurchaseOrder();
   const purchaseOrderFormSchema = createPurchaseOrderFormSchema((key) => tValidation(key));
+  const [supplierSearch, setSupplierSearch] = useState("");
+  const debouncedSupplierSearch = useDebouncedValue(supplierSearch.trim());
 
-  const { data: suppliersData } = useSuppliers({ limit: 50 });
+  const { data: suppliersData, isLoading: isSuppliersLoading } = useSuppliers({
+    search: debouncedSupplierSearch || undefined,
+    status: "active",
+    limit: 5,
+  });
   const suppliers = suppliersData?.data || [];
 
   // Line items state
@@ -111,6 +112,10 @@ export function PurchaseOrderFormDialog({
     resolver: zodResolver(purchaseOrderFormSchema),
     defaultValues,
   });
+  const selectedSupplierId = form.watch("supplierId");
+  const { data: selectedSupplierData } = useSupplier(selectedSupplierId);
+  const selectedSupplier =
+    suppliers.find((supplier) => supplier.id === selectedSupplierId) ?? selectedSupplierData ?? null;
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -308,28 +313,26 @@ export function PurchaseOrderFormDialog({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("supplierLabel")}</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            handleSupplierChange(value);
-                          }}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("selectSupplier")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {suppliers
-                              .filter((s) => s.status === "active")
-                              .map((supplier) => (
-                                <SelectItem key={supplier.id} value={supplier.id}>
-                                  {supplier.code} - {supplier.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <AsyncSearchCombobox
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleSupplierChange(value);
+                            }}
+                            searchValue={supplierSearch}
+                            onSearchValueChange={setSupplierSearch}
+                            options={suppliers}
+                            selectedOption={selectedSupplier}
+                            getOptionValue={(supplier) => supplier.id}
+                            getOptionLabel={(supplier) => `${supplier.code} - ${supplier.name}`}
+                            getOptionSearchValue={(supplier) => `${supplier.code} ${supplier.name}`}
+                            placeholder={t("selectSupplier")}
+                            searchPlaceholder={t("selectSupplier")}
+                            emptyMessage={t("selectSupplier")}
+                            isLoading={isSuppliersLoading}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}

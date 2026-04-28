@@ -24,7 +24,9 @@ export type ItemUnitOption = {
   sortOrder: number;
 };
 
-export interface Item {
+export type ItemCustomFields = Record<string, unknown>;
+
+export type Item = {
   id: string;
   companyId: string;
   code: string;
@@ -36,6 +38,7 @@ export interface Item {
   description: string;
   dimensions?: ItemDimensions | null;
   itemType: ItemType;
+  customFields?: ItemCustomFields | null;
   uom: string;
   uomId: string;
   category: string;
@@ -53,14 +56,15 @@ export interface Item {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
+};
 
-export interface CreateItemRequest {
+export type CreateItemRequest = {
   companyId: string;
   code: string;
   name: string;
   chineseName?: string;
   description: string;
+  dimensions?: ItemDimensions | null;
   itemType: ItemType;
   uom: string;
   category: string;
@@ -71,12 +75,13 @@ export interface CreateItemRequest {
   reorderQty: number;
   imageUrl?: string;
   isActive: boolean;
-}
+};
 
-export interface UpdateItemRequest {
+export type UpdateItemRequest = {
   name?: string;
   chineseName?: string;
   description?: string;
+  dimensions?: ItemDimensions | null;
   itemType?: ItemType;
   uom?: string;
   category?: string;
@@ -87,9 +92,9 @@ export interface UpdateItemRequest {
   reorderQty?: number;
   imageUrl?: string;
   isActive?: boolean;
-}
+};
 
-export interface ItemsListResponse {
+export type ItemsListResponse = {
   data: Item[];
   pagination: {
     page: number;
@@ -97,17 +102,17 @@ export interface ItemsListResponse {
     total: number;
     totalPages: number;
   };
-}
+};
 
-export interface ItemResponse {
+export type ItemResponse = {
   data: Item;
-}
+};
 
-export interface ItemFilters {
+export type ItemFilters = {
   search?: string;
   category?: string;
   itemType?: ItemType;
   isActive?: boolean;
   page?: number;
   limit?: number;
-}
+};

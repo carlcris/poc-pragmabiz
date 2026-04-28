@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import {
@@ -8,7 +9,6 @@ import {
   Search,
   Pencil,
   Filter,
-  Eye,
   FileText,
   CheckCircle,
   XCircle,
@@ -16,8 +16,14 @@ import {
   Package,
   Clock,
   Receipt,
+  ClipboardList,
 } from "lucide-react";
-import { useSalesOrders, useConvertToInvoice, useConfirmOrder } from "@/hooks/useSalesOrders";
+import {
+  useSalesOrders,
+  useConvertToInvoice,
+  useConfirmOrder,
+  useCreateFrameJobOrder,
+} from "@/hooks/useSalesOrders";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -56,12 +62,18 @@ import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
 import type { WarehouseLocation } from "@/types/inventory-location";
 
 const SalesOrderFormDialog = dynamic(
-  () => import("@/components/sales-orders/SalesOrderFormDialog").then((mod) => mod.SalesOrderFormDialog),
+  () =>
+    import("@/components/sales-orders/SalesOrderFormDialog").then(
+      (mod) => mod.SalesOrderFormDialog
+    ),
   { ssr: false }
 );
 
 const SalesOrderViewDialog = dynamic(
-  () => import("@/components/sales-orders/SalesOrderViewDialog").then((mod) => mod.SalesOrderViewDialog),
+  () =>
+    import("@/components/sales-orders/SalesOrderViewDialog").then(
+      (mod) => mod.SalesOrderViewDialog
+    ),
   { ssr: false }
 );
 
@@ -73,18 +85,19 @@ export default function SalesOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
+  const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
 
   const { formatCurrency } = useCurrency();
   const router = useRouter();
   const convertToInvoice = useConvertToInvoice();
   const confirmOrder = useConfirmOrder();
+  const createFrameJobOrder = useCreateFrameJobOrder();
 
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
@@ -166,14 +179,8 @@ export default function SalesOrdersPage() {
     setPage(1);
   };
 
-  const handleCreateOrder = () => {
-    setSelectedOrder(null);
-    setDialogOpen(true);
-  };
-
   const handleEditOrder = (order: SalesOrder) => {
     setSelectedOrder(order);
-    setDialogOpen(true);
   };
 
   const handleViewOrder = (order: SalesOrder) => {
@@ -183,6 +190,15 @@ export default function SalesOrdersPage() {
 
   const handleConvertToInvoice = (order: SalesOrder) => {
     setOrderToInvoice(order);
+    setOrderToCreateJobOrder(null);
+    setSelectedWarehouse("");
+    setSelectedLocation("");
+    setWarehouseDialogOpen(true);
+  };
+
+  const handleCreateJobOrder = (order: SalesOrder) => {
+    setOrderToCreateJobOrder(order);
+    setOrderToInvoice(null);
     setSelectedWarehouse("");
     setSelectedLocation("");
     setWarehouseDialogOpen(true);
@@ -205,6 +221,21 @@ export default function SalesOrdersPage() {
     }
   };
 
+  const handleConfirmJobOrderCreation = async () => {
+    if (!orderToCreateJobOrder || !selectedWarehouse) return;
+
+    try {
+      const result = await createFrameJobOrder.mutateAsync({
+        orderId: orderToCreateJobOrder.id,
+        warehouseId: selectedWarehouse,
+      });
+      setWarehouseDialogOpen(false);
+      router.push(`/sales/frame-job-orders/${result.frameJobOrder.id}`);
+    } catch {
+      // Error is handled by the mutation hook with toast
+    }
+  };
+
   const handleConfirmOrder = async (order: SalesOrder) => {
     try {
       await confirmOrder.mutateAsync(order.id);
@@ -213,6 +244,13 @@ export default function SalesOrdersPage() {
     }
   };
 
+  const canCreateFrameJobOrder = (order: SalesOrder) =>
+    !order.frameJobOrder &&
+    order.hasFrameJobEligibleItems &&
+    (order.status === "confirmed" ||
+      order.status === "in_progress" ||
+      order.status === "invoiced");
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -220,9 +258,11 @@ export default function SalesOrdersPage() {
           <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
           <p className="text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button onClick={handleCreateOrder}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("createOrder")}
+        <Button asChild>
+          <Link href="/sales/orders/create">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("createOrder")}
+          </Link>
         </Button>
       </div>
 
@@ -303,7 +343,8 @@ export default function SalesOrdersPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-16" />
+                        <Skeleton className="h-8 w-16" />
                         <Skeleton className="h-8 w-8" />
                       </div>
                     </TableCell>
@@ -313,9 +354,7 @@ export default function SalesOrdersPage() {
             </Table>
           </div>
         ) : error ? (
-          <div className="py-8 text-center text-destructive">
-            {t("loadError")}
-          </div>
+          <div className="py-8 text-center text-destructive">{t("loadError")}</div>
         ) : orders.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">{t("empty")}</div>
         ) : (
@@ -335,7 +374,11 @@ export default function SalesOrdersPage() {
                 </TableHeader>
                 <TableBody>
                   {orders.map((order) => (
-                    <TableRow key={order.id}>
+                    <TableRow
+                      key={order.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewOrder(order)}
+                    >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(order.status)}
@@ -372,28 +415,30 @@ export default function SalesOrdersPage() {
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => handleViewOrder(order)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                        <div
+                          className="flex justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           {(order.status === "draft" || order.status === "confirmed") && (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
+                              className="h-8 px-2"
                               onClick={() => handleEditOrder(order)}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>{tCommon("edit")}</span>
                             </Button>
                           )}
                           {order.status === "draft" && (
                             <Button
                               variant="default"
                               size="sm"
+                              className="h-8 bg-green-600 px-2 hover:bg-green-700"
                               onClick={() => handleConfirmOrder(order)}
-                              className="bg-green-600 hover:bg-green-700"
                               disabled={confirmOrder.isPending}
                             >
-                              <CheckCircle className="mr-1 h-4 w-4" />
+                              <CheckCircle className="mr-2 h-4 w-4" />
                               {t("confirm")}
                             </Button>
                           )}
@@ -401,14 +446,34 @@ export default function SalesOrdersPage() {
                             <Button
                               variant="default"
                               size="sm"
+                              className="h-8 px-2"
                               onClick={() => handleConvertToInvoice(order)}
-                              className="bg-blue-600 hover:bg-blue-700"
                               disabled={convertToInvoice.isPending}
                             >
-                              <Receipt className="mr-1 h-4 w-4" />
+                              <Receipt className="mr-2 h-4 w-4" />
                               {t("invoice")}
                             </Button>
                           )}
+                          {canCreateFrameJobOrder(order) ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => handleCreateJobOrder(order)}
+                              disabled={createFrameJobOrder.isPending}
+                            >
+                              <ClipboardList className="mr-2 h-4 w-4" />
+                              <span>{t("createJobOrder")}</span>
+                            </Button>
+                          ) : null}
+                          {order.frameJobOrder ? (
+                            <Button variant="outline" size="sm" className="h-8 px-2" asChild>
+                              <Link href={`/sales/frame-job-orders/${order.frameJobOrder.id}`}>
+                                <ClipboardList className="mr-2 h-4 w-4" />
+                                <span>{t("viewJobOrder")}</span>
+                              </Link>
+                            </Button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -433,10 +498,12 @@ export default function SalesOrdersPage() {
         )}
       </div>
 
-      {dialogOpen && (
+      {selectedOrder && (
         <SalesOrderFormDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          open={!!selectedOrder}
+          onOpenChange={(open) => {
+            if (!open) setSelectedOrder(null);
+          }}
           salesOrder={selectedOrder}
         />
       )}
@@ -454,7 +521,9 @@ export default function SalesOrdersPage() {
           <DialogHeader>
             <DialogTitle>{t("selectWarehouseTitle")}</DialogTitle>
             <DialogDescription>
-              {t("selectWarehouseDescription")}
+              {orderToCreateJobOrder
+                ? t("selectJobOrderWarehouseDescription")
+                : t("selectWarehouseDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -504,10 +573,22 @@ export default function SalesOrdersPage() {
               {tCommon("cancel")}
             </Button>
             <Button
-              onClick={handleConfirmInvoiceConversion}
-              disabled={!selectedWarehouse || convertToInvoice.isPending}
+              onClick={
+                orderToCreateJobOrder ? handleConfirmJobOrderCreation : handleConfirmInvoiceConversion
+              }
+              disabled={
+                !selectedWarehouse ||
+                convertToInvoice.isPending ||
+                createFrameJobOrder.isPending
+              }
             >
-              {convertToInvoice.isPending ? t("converting") : t("createInvoice")}
+              {orderToCreateJobOrder
+                ? createFrameJobOrder.isPending
+                  ? t("creatingJobOrder")
+                  : t("createJobOrder")
+                : convertToInvoice.isPending
+                  ? t("converting")
+                  : t("createInvoice")}
             </Button>
           </DialogFooter>
         </DialogContent>

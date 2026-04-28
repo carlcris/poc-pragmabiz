@@ -210,6 +210,17 @@ When implementing changes:
 3. Do not add short-term workaround code that is knowingly meant to be cleaned up later unless the user explicitly asks for a temporary measure.
 4. If the correct fix requires a migration, contract update, or broader implementation step, state that clearly and implement the proper path rather than masking it with a shortcut.
 
+### Server-Backed Select Rule
+
+**CRITICAL: Do not fake searchable selects by preloading large option lists and filtering them in the client.**
+
+For select, combobox, and autocomplete controls backed by server data:
+
+1. Initial load must fetch only the top `5` results.
+2. When the user types, send the search term to the API/database and render the returned results.
+3. Do not rely on client-side filtering over an arbitrary prefetched subset for server-backed option sets.
+4. Treat the backend query as the source of truth for searchable option lists.
+
 ### API Error Exposure Rule
 
 **CRITICAL: Do not return raw database, Supabase, or internal exception messages directly to API clients.**

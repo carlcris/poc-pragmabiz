@@ -103,6 +103,12 @@ Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touch
 ## Data Loading & Scalability Rules
 - Never load all records at once.
 - Always fetch in small chunks per request (target range: 10-50 items).
+- For server-backed select, combobox, and autocomplete fields:
+  - initial open/load must fetch only the top `5` results
+  - once the user types, the field must query the API/database with the search term instead of filtering a prefetched client-side list
+  - do not preload large option sets "just in case"
+  - do not implement local search over stale in-memory results for server data
+  - searchable option controls must use server-side filtering as the source of truth
 - Use cursor-based server-side pagination.
 - Hard rule: Never implement sorting or filtering in the frontend for server data lists.
 - Always implement sorting and filtering at the database/API query level.

@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,18 +23,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useItems } from "@/hooks/useItems";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useItem, useItems } from "@/hooks/useItems";
 
 const transformationItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
@@ -68,12 +60,13 @@ export function TransformationItemDialog({
   mode = "add",
   type,
 }: TransformationItemDialogProps) {
-  // Fetch items
-  const { data: itemsData, isLoading: isLoadingItems } = useItems({ limit: 50 });
+  const [itemSearch, setItemSearch] = useState("");
+  const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
+  const { data: itemsData, isLoading: isLoadingItems } = useItems({
+    search: debouncedItemSearch || undefined,
+    limit: 5,
+  });
   const items = itemsData?.data || [];
-
-  // Item combobox state
-  const [itemOpen, setItemOpen] = useState(false);
 
   const form = useForm<TransformationItemFormValues>({
     resolver: zodResolver(transformationItemSchema),
@@ -89,6 +82,10 @@ export function TransformationItemDialog({
       notes: "",
     },
   });
+  const selectedItemId = form.watch("itemId");
+  const { data: selectedItemResponse } = useItem(selectedItemId);
+  const selectedItem =
+    items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
 
   // Reset form when dialog opens/closes or item changes
   useEffect(() => {
@@ -126,9 +123,6 @@ export function TransformationItemDialog({
     onOpenChange(false);
   };
 
-  const selectedItemId = form.watch("itemId");
-  const selectedItem = items.find((i) => i.id === selectedItemId);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -152,52 +146,33 @@ export function TransformationItemDialog({
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Item *</FormLabel>
-                  <Popover open={itemOpen} onOpenChange={setItemOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn("justify-between", !field.value && "text-muted-foreground")}
-                        >
-                          {field.value
-                            ? `${selectedItem?.code} - ${selectedItem?.name}`
-                            : "Select item..."}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[500px] p-0">
-                      <Command>
-                        <CommandInput placeholder="Search items..." />
-                        <CommandList>
-                          <CommandEmpty>
-                            {isLoadingItems ? "Loading items..." : "No items found."}
-                          </CommandEmpty>
-                          <CommandGroup>
-                            {items.map((item) => (
-                              <CommandItem
-                                key={item.id}
-                                value={`${item.code} ${item.name}`}
-                                onSelect={() => {
-                                  handleItemSelect(item.id);
-                                  setItemOpen(false);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    item.id === field.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {item.code} - {item.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <AsyncSearchCombobox
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handleItemSelect(value);
+                      }}
+                      searchValue={itemSearch}
+                      onSearchValueChange={setItemSearch}
+                      options={items}
+                      selectedOption={selectedItem}
+                      getOptionValue={(entry) => entry.id}
+                      getOptionLabel={(entry) => `${entry.code} - ${entry.name}`}
+                      getOptionSearchValue={(entry) => `${entry.code} ${entry.name}`}
+                      placeholder="Select item..."
+                      searchPlaceholder="Search items..."
+                      emptyMessage="No items found."
+                      isLoading={isLoadingItems}
+                      popoverClassName="w-[500px]"
+                      renderOption={(entry, selected) => (
+                        <div className="flex items-center gap-2">
+                          <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
+                          <span>{entry.code} - {entry.name}</span>
+                        </div>
+                      )}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

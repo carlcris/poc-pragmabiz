@@ -1,125 +1,65 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
-import type { Quotation, QuotationLineItem, CreateQuotationRequest } from "@/types/quotation";
+import type { CreateQuotationRequest, QuotationLineItem } from "@/types/quotation";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import {
+  asRpcClient,
+  fetchQuotationById,
+  getClientErrorMessage,
+  logQuotationError,
+  transformDbQuotation,
+  transformDbQuotationItem,
+  type DbQuotationItemWithJoins,
+  type DbQuotationWithJoins,
+} from "./_shared";
 
-type DbQuotation = {
+type QuotationCursor = {
+  quotationDate: string;
+  createdAt: string;
   id: string;
-  company_id: string;
-  quotation_code: string;
-  customer_id: string;
-  quotation_date: string;
-  valid_until: string | null;
-  status: string;
-  sales_order_id: string | null;
-  subtotal: number | string | null;
-  discount_amount: number | string | null;
-  tax_amount: number | string | null;
-  total_amount: number | string | null;
-  terms_conditions: string | null;
-  notes: string | null;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-};
-type DbQuotationItem = {
-  id: string;
-  quotation_id: string;
-  item_id: string;
-  item_description: string | null;
-  quantity: number | string;
-  uom_id: string | null;
-  rate: number | string;
-  discount_percent: number | string | null;
-  discount_amount: number | string | null;
-  tax_percent: number | string | null;
-  tax_amount: number | string | null;
-  line_total: number | string;
-  sort_order: number | null;
-};
-type DbCustomer = { id: string; customer_name: string | null; email: string | null };
-type DbItem = { id: string; item_code: string | null; item_name: string | null };
-type DbUser = { id: string; first_name: string | null; last_name: string | null };
-type DbUoM = { id: string; code: string | null; name: string | null };
-
-type DbQuotationWithJoins = DbQuotation & {
-  customers?: DbCustomer | DbCustomer[] | null;
-  users?: DbUser | DbUser[] | null;
 };
 
-type DbQuotationItemWithJoins = DbQuotationItem & {
-  items?: DbItem | DbItem[] | null;
-  units_of_measure?: DbUoM | DbUoM[] | null;
+const MAX_LIMIT = 50;
+
+const parseLimit = (value: string | null) => {
+  const parsed = Number.parseInt(value || "10", 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 10;
+  return Math.min(parsed, MAX_LIMIT);
 };
 
-type QuotationItemInput = CreateQuotationRequest["items"][number];
+const encodeCursor = (cursor: QuotationCursor) => {
+  return Buffer.from(JSON.stringify(cursor), "utf-8").toString("base64url");
+};
 
-// Transform database quotation to frontend type
-function transformDbQuotation(
-  dbQuotation: DbQuotationWithJoins,
-  items?: QuotationLineItem[]
-): Quotation {
-  const customer = Array.isArray(dbQuotation.customers)
-    ? dbQuotation.customers[0]
-    : dbQuotation.customers;
-  const user = Array.isArray(dbQuotation.users) ? dbQuotation.users[0] : dbQuotation.users;
-  return {
-    id: dbQuotation.id,
-    companyId: dbQuotation.company_id,
-    quotationNumber: dbQuotation.quotation_code,
-    customerId: dbQuotation.customer_id,
-    customerName: customer?.customer_name || undefined,
-    customerEmail: customer?.email || undefined,
-    quotationDate: dbQuotation.quotation_date,
-    validUntil: dbQuotation.valid_until || "",
-    status: dbQuotation.status as Quotation["status"],
-    salesOrderId: dbQuotation.sales_order_id || undefined,
-    lineItems: items || [],
-    subtotal: Number(dbQuotation.subtotal) || 0,
-    totalDiscount: Number(dbQuotation.discount_amount) || 0,
-    totalTax: Number(dbQuotation.tax_amount) || 0,
-    totalAmount: Number(dbQuotation.total_amount) || 0,
-    terms: dbQuotation.terms_conditions || "",
-    notes: dbQuotation.notes || "",
-    createdBy: dbQuotation.created_by || "",
-    createdByName: user
-      ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
-      : undefined,
-    createdAt: dbQuotation.created_at,
-    updatedAt: dbQuotation.updated_at,
-  };
-}
+const decodeCursor = (value: string | null): QuotationCursor | null => {
+  if (!value) return null;
 
-// Transform database quotation item to frontend type
-function transformDbQuotationItem(dbItem: DbQuotationItemWithJoins): QuotationLineItem {
-  const item = Array.isArray(dbItem.items) ? dbItem.items[0] : dbItem.items;
-  return {
-    id: dbItem.id,
-    itemId: dbItem.item_id,
-    itemCode: item?.item_code || undefined,
-    itemName: item?.item_name || undefined,
-    description: dbItem.item_description || "",
-    quantity: Number(dbItem.quantity),
-    uomId: dbItem.uom_id || "",
-    unitPrice: Number(dbItem.rate),
-    discount: Number(dbItem.discount_percent) || 0,
-    discountAmount: Number(dbItem.discount_amount) || 0,
-    taxRate: Number(dbItem.tax_percent) || 0,
-    taxAmount: Number(dbItem.tax_amount) || 0,
-    lineTotal: Number(dbItem.line_total),
-    sortOrder: dbItem.sort_order || 0,
-  };
-}
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf-8")) as Partial<QuotationCursor>;
+    if (
+      typeof parsed.quotationDate === "string" &&
+      typeof parsed.createdAt === "string" &&
+      typeof parsed.id === "string"
+    ) {
+      return {
+        quotationDate: parsed.quotationDate,
+        createdAt: parsed.createdAt,
+        id: parsed.id,
+      };
+    }
+  } catch {}
 
-// GET /api/quotations - List quotations with filters
+  return null;
+};
+
+// GET /api/quotations - List quotations with server-side filters and cursor pagination
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.SALES_QUOTATIONS, "view");
 
     const { supabase } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -129,17 +69,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get query parameters
     const searchParams = request.nextUrl.searchParams;
-    const search = searchParams.get("search");
+    const search = searchParams.get("search")?.trim();
     const status = searchParams.get("status");
     const customerId = searchParams.get("customerId");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const limit = parseLimit(searchParams.get("limit"));
+    const cursor = decodeCursor(searchParams.get("cursor"));
 
-    // Build query for quotations
     let query = supabase
       .from("sales_quotations")
       .select(
@@ -160,9 +98,10 @@ export async function GET(request: NextRequest) {
       )
       .is("deleted_at", null)
       .order("quotation_date", { ascending: false })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1);
 
-    // Apply filters
     if (search) {
       query = query.or(`quotation_code.ilike.%${search}%,notes.ilike.%${search}%`);
     }
@@ -183,83 +122,90 @@ export async function GET(request: NextRequest) {
       query = query.lte("quotation_date", dateTo);
     }
 
-    // Pagination
-    const from = (page - 1) * limit;
-    const to = from + limit - 1;
-    query = query.range(from, to);
+    if (cursor) {
+      query = query.or(
+        `quotation_date.lt.${cursor.quotationDate},and(quotation_date.eq.${cursor.quotationDate},created_at.lt.${cursor.createdAt}),and(quotation_date.eq.${cursor.quotationDate},created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`
+      );
+    }
 
-    const { data: quotations, error, count } = await query;
+    const { data: rawQuotations, error, count } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      logQuotationError("Error fetching quotations:", error);
+      return NextResponse.json({ error: "Failed to load quotations" }, { status: 500 });
     }
 
-    if (!quotations) {
-      return NextResponse.json({
-        data: [],
-        pagination: {
-          total: 0,
-          page,
-          limit,
-          totalPages: 0,
-        },
-      });
-    }
+    const rows = (rawQuotations || []) as DbQuotationWithJoins[];
+    const hasMore = rows.length > limit;
+    const quotations = hasMore ? rows.slice(0, limit) : rows;
+    const quotationIds = quotations.map((quotation) => quotation.id);
+    let itemsByQuotation: Record<string, QuotationLineItem[]> = {};
 
-    // Fetch items for each quotation
-    const quotationIds = quotations.map((q) => q.id);
-    const { data: items, error: itemsError } = await supabase
-      .from("sales_quotation_items")
-      .select(
+    if (quotationIds.length > 0) {
+      const { data: items, error: itemsError } = await supabase
+        .from("sales_quotation_items")
+        .select(
+          `
+          *,
+          items (
+            id,
+            item_code,
+            item_name
+          ),
+          units_of_measure (
+            id,
+            code,
+            name
+          )
         `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
         )
-      `
-      )
-      .in("quotation_id", quotationIds)
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true });
+        .in("quotation_id", quotationIds)
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true });
 
-    if (itemsError) {
+      if (itemsError) {
+        logQuotationError("Error fetching quotation items:", itemsError);
+        return NextResponse.json({ error: "Failed to load quotations" }, { status: 500 });
+      }
+
+      itemsByQuotation =
+        (items as DbQuotationItemWithJoins[] | null)?.reduce(
+          (acc, item) => {
+            if (!acc[item.quotation_id]) {
+              acc[item.quotation_id] = [];
+            }
+            acc[item.quotation_id].push(transformDbQuotationItem(item));
+            return acc;
+          },
+          {} as Record<string, QuotationLineItem[]>
+        ) || {};
     }
 
-    // Group items by quotation
-    const itemsByQuotation =
-      (items as DbQuotationItemWithJoins[] | null)?.reduce(
-        (acc, item) => {
-          if (!acc[item.quotation_id]) {
-            acc[item.quotation_id] = [];
-          }
-          acc[item.quotation_id].push(transformDbQuotationItem(item));
-          return acc;
-        },
-        {} as Record<string, QuotationLineItem[]>
-      ) || {};
-
-    // Transform to frontend format
     const transformedData = quotations.map((quotation) =>
-      transformDbQuotation(quotation as DbQuotationWithJoins, itemsByQuotation[quotation.id] || [])
+      transformDbQuotation(quotation, itemsByQuotation[quotation.id] || [])
     );
+
+    const lastQuotation = quotations[quotations.length - 1];
+    const nextCursor =
+      hasMore && lastQuotation
+        ? encodeCursor({
+            quotationDate: lastQuotation.quotation_date,
+            createdAt: lastQuotation.created_at,
+            id: lastQuotation.id,
+          })
+        : null;
 
     return NextResponse.json({
       data: transformedData,
       pagination: {
         total: count || 0,
-        page,
         limit,
-        totalPages: Math.ceil((count || 0) / limit),
+        nextCursor,
+        hasMore,
       },
     });
-  } catch {
+  } catch (error) {
+    logQuotationError("Unexpected quotation list error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -271,7 +217,6 @@ export async function POST(request: NextRequest) {
 
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -285,20 +230,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    // Get user's company_id from users table
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     const body: CreateQuotationRequest = await request.json();
 
-    // Validate required fields
     if (!body.customerId || !body.quotationDate || !body.items || body.items.length === 0) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
@@ -311,146 +244,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate totals
-    let subtotal = 0;
-    let totalDiscount = 0;
-    let totalTax = 0;
+    const { data: quotationId, error: rpcError } = await asRpcClient(supabase).rpc(
+      "create_sales_quotation_transaction",
+      {
+        p_customer_id: body.customerId,
+        p_quotation_date: body.quotationDate,
+        p_valid_until: body.validUntil || null,
+        p_price_list_id: body.priceListId || null,
+        p_terms_conditions: body.termsConditions || null,
+        p_notes: body.notes || null,
+        p_business_unit_id: currentBusinessUnitId,
+        p_items: body.items,
+      }
+    );
 
-    const itemsWithCalculations = body.items.map((item: QuotationItemInput) => {
-      const itemSubtotal = Number(item.quantity) * item.rate;
-      const discountAmount =
-        item.discountAmount || (itemSubtotal * (item.discountPercent || 0)) / 100;
-      const taxableAmount = itemSubtotal - discountAmount;
-      const taxAmount = item.taxAmount || (taxableAmount * (item.taxPercent || 0)) / 100;
-      const lineTotal = taxableAmount + taxAmount;
-
-      subtotal += itemSubtotal;
-      totalDiscount += discountAmount;
-      totalTax += taxAmount;
-
-      return {
-        ...item,
-        discountAmount,
-        taxAmount,
-        lineTotal,
-      };
-    });
-
-    const totalAmount = subtotal - totalDiscount + totalTax;
-
-    // business_unit_id from JWT - set by auth hook
-    // Create quotation header
-    const { data: quotation, error: quotationError } = await supabase
-      .from("sales_quotations")
-      .insert({
-        company_id: userData.company_id,
-        business_unit_id: currentBusinessUnitId,
-        quotation_date: body.quotationDate,
-        customer_id: body.customerId,
-        valid_until: body.validUntil,
-        price_list_id: body.priceListId,
-        subtotal: subtotal.toFixed(4),
-        discount_amount: totalDiscount.toFixed(4),
-        tax_amount: totalTax.toFixed(4),
-        total_amount: totalAmount.toFixed(4),
-        status: "draft",
-        notes: body.notes,
-        terms_conditions: body.termsConditions,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (quotationError || !quotation) {
+    if (rpcError || typeof quotationId !== "string") {
+      logQuotationError("Error creating quotation:", rpcError);
       return NextResponse.json(
-        { error: quotationError?.message || "Failed to create quotation" },
+        { error: getClientErrorMessage(rpcError, "Failed to create quotation") },
         { status: 500 }
       );
     }
 
-    // Create quotation items
-    const itemsToInsert = itemsWithCalculations.map((item, index) => ({
-      company_id: userData.company_id,
-      quotation_id: quotation.id,
-      item_id: item.itemId,
-      item_description: item.description,
-      quantity: item.quantity,
-      uom_id: item.uomId,
-      rate: item.rate,
-      discount_percent: item.discountPercent || 0,
-      discount_amount: item.discountAmount,
-      tax_percent: item.taxPercent || 0,
-      tax_amount: item.taxAmount,
-      line_total: item.lineTotal,
-      sort_order: item.sortOrder || index,
-      notes: item.notes,
-      created_by: user.id,
-      updated_by: user.id,
-    }));
+    const { quotation, error: fetchError } = await fetchQuotationById(supabase, quotationId);
 
-    const { error: itemsError } = await supabase
-      .from("sales_quotation_items")
-      .insert(itemsToInsert);
-
-    if (itemsError) {
-      // Rollback: delete the quotation
-      await supabase.from("sales_quotations").delete().eq("id", quotation.id);
-      return NextResponse.json(
-        { error: itemsError.message || "Failed to create quotation items" },
-        { status: 500 }
-      );
+    if (fetchError || !quotation) {
+      logQuotationError("Error fetching created quotation:", fetchError);
+      return NextResponse.json({ error: "Quotation was created but could not be loaded" }, { status: 500 });
     }
 
-    // Fetch the complete quotation with joins
-    const { data: completeQuotation } = await supabase
-      .from("sales_quotations")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
-      .eq("id", quotation.id)
-      .single();
-
-    const { data: quotationItems } = await supabase
-      .from("sales_quotation_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        )
-      `
-      )
-      .eq("quotation_id", quotation.id)
-      .order("sort_order", { ascending: true });
-
-    const items =
-      (quotationItems as DbQuotationItemWithJoins[] | null)?.map((item) =>
-        transformDbQuotationItem(item)
-      ) || [];
-    const result = transformDbQuotation(completeQuotation as DbQuotationWithJoins, items);
-
-    return NextResponse.json(result, { status: 201 });
-  } catch {
+    return NextResponse.json(quotation, { status: 201 });
+  } catch (error) {
+    logQuotationError("Unexpected quotation create error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

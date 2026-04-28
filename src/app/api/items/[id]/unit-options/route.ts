@@ -5,6 +5,7 @@ import {
   transformItemUnitOptionRow,
   type DbItemUnitOptionRow,
 } from "@/lib/items/itemUnitOptions";
+import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
 
 const ITEM_UNIT_OPTION_SELECT = `
   id,
@@ -163,9 +164,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    const { data: inserted, error: insertError } = await supabase
-      .from("item_unit_options")
-      .insert({
+    const { data: inserted, error: insertError } = await insertItemUnitOptionWithRetry<DbItemUnitOptionRow>({
+      supabase,
+      payload: {
         company_id: companyId,
         item_id: itemId,
         uom_id: body.uomId,
@@ -177,9 +178,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         sort_order: 0,
         created_by: user.id,
         updated_by: user.id,
-      })
-      .select(ITEM_UNIT_OPTION_SELECT)
-      .single();
+      },
+      select: ITEM_UNIT_OPTION_SELECT,
+    });
 
     if (insertError) {
       return NextResponse.json(

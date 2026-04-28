@@ -3,13 +3,30 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
-import { Plus, Search, Pencil, Filter, Building2, User, Landmark, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  Plus,
+  Search,
+  Pencil,
+  Filter,
+  Building2,
+  User,
+  Landmark,
+  Trash2,
+  MoreVertical,
+} from "lucide-react";
 import { useCustomers, useDeleteCustomer } from "@/hooks/useCustomers";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -43,6 +60,7 @@ const ConfirmDialog = dynamic(
 );
 
 function CustomersPageContent() {
+  const router = useRouter();
   const t = useTranslations("customersPage");
   const tCommon = useTranslations("common");
   const [searchInput, setSearchInput] = useState("");
@@ -108,6 +126,10 @@ function CustomersPageContent() {
   const handleEditCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
     setDialogOpen(true);
+  };
+
+  const handleViewCustomer = (customer: Customer) => {
+    router.push(`/sales/customers/${customer.id}`);
   };
 
   const handleDeleteCustomer = (customer: Customer) => {
@@ -274,7 +296,11 @@ function CustomersPageContent() {
                 </TableHeader>
                 <TableBody>
                   {customers.map((customer) => (
-                    <TableRow key={customer.id}>
+                    <TableRow
+                      key={customer.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleViewCustomer(customer)}
+                    >
                       <TableCell className="font-medium">{customer.code}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -320,25 +346,45 @@ function CustomersPageContent() {
                         </StatusText>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
+                        <div
+                          className="flex justify-end gap-2"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           <EditGuard resource={RESOURCES.CUSTOMERS}>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
+                              className="h-8 px-2"
                               onClick={() => handleEditCustomer(customer)}
+                              aria-label={tCommon("edit")}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>{tCommon("edit")}</span>
                             </Button>
                           </EditGuard>
                           <DeleteGuard resource={RESOURCES.CUSTOMERS}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteCustomer(customer)}
-                              disabled={deleteCustomer.isPending}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={tCommon("actions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteCustomer(customer)}
+                                  disabled={deleteCustomer.isPending}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>{tCommon("delete")}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </DeleteGuard>
                         </div>
                       </TableCell>

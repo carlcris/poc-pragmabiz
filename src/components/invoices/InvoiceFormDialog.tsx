@@ -10,8 +10,9 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import { useCreateInvoice, useUpdateInvoice } from "@/hooks/useInvoices";
-import { useCustomers } from "@/hooks/useCustomers";
-import { useWarehouses } from "@/hooks/useWarehouses";
+import { useCustomer, useCustomers } from "@/hooks/useCustomers";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useWarehouse, useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +31,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import {
   Select,
   SelectContent,
@@ -75,11 +77,23 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
     success: t("updateSuccess"),
     error: t("updateError"),
   });
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [warehouseSearch, setWarehouseSearch] = useState("");
+  const debouncedCustomerSearch = useDebouncedValue(customerSearch.trim());
+  const debouncedWarehouseSearch = useDebouncedValue(warehouseSearch.trim());
 
-  const { data: customersData } = useCustomers({ limit: 50 });
+  const { data: customersData, isLoading: isCustomersLoading } = useCustomers({
+    search: debouncedCustomerSearch || undefined,
+    isActive: true,
+    limit: 5,
+  });
   const customers = customersData?.data || [];
 
-  const { data: warehousesData } = useWarehouses({ limit: 50 });
+  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({
+    search: debouncedWarehouseSearch || undefined,
+    isActive: true,
+    limit: 5,
+  });
   const warehouses = warehousesData?.data || [];
 
   const [lineItems, setLineItems] = useState<LineItemFormValues[]>([]);
@@ -104,7 +118,16 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
     defaultValues,
   });
 
+  const selectedCustomerId = form.watch("customerId");
   const selectedWarehouseId = form.watch("warehouseId");
+  const { data: selectedCustomerData } = useCustomer(selectedCustomerId);
+  const { data: selectedWarehouseData } = useWarehouse(selectedWarehouseId || "");
+  const selectedCustomer =
+    customers.find((customer) => customer.id === selectedCustomerId) ?? selectedCustomerData ?? null;
+  const selectedWarehouse =
+    warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) ??
+    selectedWarehouseData?.data ??
+    null;
 
   const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
     queryKey: ["warehouse-locations", selectedWarehouseId],
@@ -283,20 +306,23 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("customer")} *</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("selectCustomer")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {customers.filter((customer) => customer.isActive).map((customer) => (
-                              <SelectItem key={customer.id} value={customer.id}>
-                                {customer.code} - {customer.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <AsyncSearchCombobox
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            searchValue={customerSearch}
+                            onSearchValueChange={setCustomerSearch}
+                            options={customers.filter((customer) => customer.isActive)}
+                            selectedOption={selectedCustomer}
+                            getOptionValue={(customer) => customer.id}
+                            getOptionLabel={(customer) => `${customer.code} - ${customer.name}`}
+                            getOptionSearchValue={(customer) => `${customer.code} ${customer.name}`}
+                            placeholder={t("selectCustomer")}
+                            searchPlaceholder={t("selectCustomer")}
+                            emptyMessage={t("selectCustomer")}
+                            isLoading={isCustomersLoading}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -308,21 +334,23 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>{t("warehouseOptional")}</FormLabel>
-                        <Select onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)} value={field.value || "__none__"}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("selectWarehouse")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="__none__">{t("none")}</SelectItem>
-                            {warehouses.filter((warehouse) => warehouse.isActive).map((warehouse) => (
-                              <SelectItem key={warehouse.id} value={warehouse.id}>
-                                {warehouse.code} - {warehouse.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <FormControl>
+                          <AsyncSearchCombobox
+                            value={field.value || ""}
+                            onValueChange={field.onChange}
+                            searchValue={warehouseSearch}
+                            onSearchValueChange={setWarehouseSearch}
+                            options={warehouses.filter((warehouse) => warehouse.isActive)}
+                            selectedOption={selectedWarehouse}
+                            getOptionValue={(warehouse) => warehouse.id}
+                            getOptionLabel={(warehouse) => `${warehouse.code} - ${warehouse.name}`}
+                            getOptionSearchValue={(warehouse) => `${warehouse.code} ${warehouse.name}`}
+                            placeholder={t("selectWarehouse")}
+                            searchPlaceholder={t("selectWarehouse")}
+                            emptyMessage={t("selectWarehouse")}
+                            isLoading={isWarehousesLoading}
+                          />
+                        </FormControl>
                         <p className="text-sm text-muted-foreground">{t("warehouseHelp")}</p>
                         <FormMessage />
                       </FormItem>

@@ -2,6 +2,7 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { syncSalesOrderInvoiceStatus } from "@/app/api/invoices/_shared";
 
 // POST /api/invoices/[id]/cancel
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     if (invoice.status === "cancelled") {
-      return NextResponse.json({ error: "Invoice is already cancelled" }, { status: 400 });
+      if (invoice.sales_order_id) {
+        const salesOrderSync = await syncSalesOrderInvoiceStatus({
+          supabase,
+          salesOrderId: invoice.sales_order_id,
+          userId: user.id,
+        });
+
+        if (!salesOrderSync.ok) {
+          return NextResponse.json({ error: salesOrderSync.error }, { status: 500 });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Invoice is already cancelled",
+      });
     }
 
     // Update status to cancelled
@@ -53,6 +69,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (updateError) {
       return NextResponse.json({ error: "Failed to cancel invoice" }, { status: 500 });
+    }
+
+    if (invoice.sales_order_id) {
+      const salesOrderSync = await syncSalesOrderInvoiceStatus({
+        supabase,
+        salesOrderId: invoice.sales_order_id,
+        userId: user.id,
+      });
+
+      if (!salesOrderSync.ok) {
+        return NextResponse.json({ error: salesOrderSync.error }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ success: true, message: "Invoice cancelled successfully" });

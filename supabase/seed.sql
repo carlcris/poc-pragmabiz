@@ -1874,3 +1874,322 @@ VALUES
 ('2eb613b0-3e29-4f18-bead-532f7393aef4','1e10e2dd-655e-41e0-a508-edfd660a9bcf','SUP-019','Artboard Supplies Mindanao','Juan Dela Cruz','juan@artboardsupplies.ph','+63-82-456-7890','+63-917-456-7890','www.artboardsupplies.ph','345-678-901-003','MacArthur Highway, Matina',NULL,'Davao City','Davao del Sur','Philippines','8000',NULL,NULL,NULL,NULL,NULL,NULL,'net_30',2500000,0,NULL,NULL,NULL,'active','Matboards, backing boards, and mounting supplies','2026-04-12 08:56:34.664422','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-04-12 08:56:34.664422','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL,1,NULL,'d5d09f49-c3d7-4f24-aca9-57bea45e0a54','english'),
 ('76971a71-dedd-4677-905b-468f30176f6e','1e10e2dd-655e-41e0-a508-edfd660a9bcf','SUP-020','Old Frame Trading Co.','Miguel Torres','miguel@oldframes.ph','+63-82-000-0000',NULL,NULL,'789-012-345-007','456 Old Market Road',NULL,'Davao City','Davao del Sur','Philippines','8000',NULL,NULL,NULL,NULL,NULL,NULL,'cod',NULL,0,NULL,NULL,NULL,'inactive','No longer active - switched to other suppliers','2026-04-12 08:56:34.664422','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-04-12 08:56:34.664422','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL,1,NULL,'d5d09f49-c3d7-4f24-aca9-57bea45e0a54','english'),
 ('2624362b-c796-41b6-b678-3cf644331c54','1e10e2dd-655e-41e0-a508-edfd660a9bcf','SUP-021','Packaging Solutions Davao','Ana Reyes','ana@packagingsolutions.ph','+63-82-678-9012','+63-917-678-9012','www.packagingsolutions.ph','567-890-123-005','Panacan Industrial Area',NULL,'Davao City','Davao del Sur','Philippines','8000',NULL,NULL,NULL,NULL,NULL,NULL,'net_15',300000,0,NULL,NULL,NULL,'active','Bubble wrap, corner protectors, and packaging materials','2026-04-12 08:56:34.664422','5745e13c-ab07-48b7-9db7-24372b16f5a9','2026-04-12 08:56:34.664422','5745e13c-ab07-48b7-9db7-24372b16f5a9',NULL,1,NULL,'d5d09f49-c3d7-4f24-aca9-57bea45e0a54','english');
+
+
+INSERT INTO "public"."items"("id","company_id","item_code","item_name","item_name_cn","description","dimensions","purchase_price","sales_price","cost_price","category_id","uom_id","item_type","is_stock_item","track_serial","track_batch","weight","weight_uom","default_warehouse","is_active","created_at","created_by","updated_at","updated_by","deleted_at","version","custom_fields","image_url")
+VALUES
+('e85407e0-f42a-4f65-a211-d659ae61dd9b','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1001','DOUBLE ADHESIVE TAPE 3/8','1 CM 双面胶','DOUBLE ADHESIVE TAPE 3/8',NULL,50,100,50,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('6c4c1282-ca95-4cfb-be58-ffd75313622f','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1002','DOUBLE ADHESIVE TAPE 24"','62 CM 双面胶','DOUBLE ADHESIVE TAPE 24"',NULL,50,100,50,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('1b96d8d6-d285-436d-aeba-fd30ea283963','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1003','PHOTOTACK #1 CROSS','十字膜','PHOTOTACK #1 CROSS',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('8c874487-be6a-4aa8-926e-163655d4cefb','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1004','PHOTOTACK #2 CLOTHBOUND','油画膜','PHOTOTACK #2 CLOTHBOUND',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('f15f8f88-d771-42b4-b783-7b8850733fdc','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1005','PHOTOTACK #5 PEARL','磨砂膜','PHOTOTACK #5 PEARL',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('122bb1d0-605d-4636-9530-160557c0b6b8','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1006','PHOTOTACK #7 DIAMOND','钻石膜','PHOTOTACK #7 DIAMOND',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('c3636de1-884a-4b0a-848a-6e0e789d31cd','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1007','PHOTOTACK #11 GLOSSY','水透膜','PHOTOTACK #11 GLOSSY',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('d28241a2-d3f7-4203-8a23-c83ddc8d65d8','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1008','PHOTOTACK #17 LAZER',NULL,'PHOTOTACK #17 LAZER',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('264334c5-58bc-4be9-8b2b-f1b6ab2d93de','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1009','PHOTOTACK #18 ROUGH LEATHER','皮纹膜','PHOTOTACK #18 ROUGH LEATHER',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('3720538d-5f8e-4025-b47e-1a854575604c','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1010','PHOTOTACK #13 DOUBLE SIDED TRANSPARENCY 24"','PET超透明双面胶','PHOTOTACK #13 DOUBLE SIDED TRANSPARENCY 24"',NULL,25,50,25,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-02-20 06:36:35.483649',NULL,NULL,1,NULL,NULL),
+('e0c0cb2a-f1d7-4c78-8be5-82fdf98a981d','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1012','SHRINK FILM PLASTIC 14"','14寸收缩膜','SHRINK FILM PLASTIC 14"',NULL,45,90,45,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:04.953059',NULL,NULL,1,NULL,NULL),
+('345f93f6-2e90-4793-952b-558636b0e988','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1013','SHRINK FILM PLASTIC 16"','16寸收缩膜','SHRINK FILM PLASTIC 16"',NULL,50,100,50,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('167885fa-fdc4-4d9c-9440-4b0cf71fa81d','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1014','SHRINK FILM PLASTIC 18"','18寸收缩膜','SHRINK FILM PLASTIC 18"',NULL,50,100,50,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('3cbeab1b-b5c6-468f-92ab-3e7ca943cc76','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1015','SHRINK FILM PLASTIC 22"','22寸收缩膜','SHRINK FILM PLASTIC 22"',NULL,50,100,50,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('56e36aa6-b289-4229-ae7f-2df77b635f9b','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1016','D-RINGS MEDIUM BLACK','黑A906粗中三角','D-RINGS MEDIUM BLACK',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 11:02:41.031391',NULL,NULL,1,NULL,NULL),
+('a3b8347d-5aae-4686-af30-56afdbfb7431','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1017','D-RINGS MEDIUM GOLD','金A906粗中三角','D-RINGS MEDIUM GOLD',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 11:03:37.583037',NULL,NULL,1,NULL,NULL),
+('cd68d860-f3a0-450d-b00b-f225f55118b8','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1018','D-RINGS MEDIUM SILVER','银A906粗中三角','D-RINGS MEDIUM SILVER',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('5e236429-c786-45a5-b9f6-1ee4c5d4cec5','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1019','D-RINGS 1 HOLE BIG','银大三角','D-RINGS 1 HOLE BIG',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('a73d7bc8-f089-44b2-afe5-e188b905679e','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1020','D-RINGS 1 HOLE HEART SHAPE','单孔粗丝707','D-RINGS 1 HOLE HEART SHAPE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('146e1459-7db4-4868-9c51-6f892acd6a75','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1021','D-RINGS 2 HOLE HEART SHAPE','709粗丝大吊环','D-RINGS 2 HOLE HEART SHAPE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('cdc46368-4610-4f50-b26d-6def509496eb','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1022','D-RINGS 3 HOLE HEART SHAPE ','三孔粗丝711挂','D-RINGS 3 HOLE HEART SHAPE ',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('6f35cb75-de29-43eb-b192-8fee36255aa4','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1023','D RINGS 2 HOLE HORIZONTAL EXTRA LARGE','银大方三角双面','D RINGS 2 HOLE HORIZONTAL EXTRA LARGE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('05147814-061f-467f-8d04-24bf7fc0570c','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1024','D RINGS 2 HOLE VERTICAL','银双面平头挂','D RINGS 2 HOLE VERTICAL',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('427fa17c-4bb2-4222-8c7a-15c7ac64578c','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1025','D RINGS 2 HOLE ARROW TYPE','小弯头三角挂','D RINGS 2 HOLE ARROW TYPE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('a1e0d320-0c37-4301-9624-46b1d9621e64','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1026','D RINGS 3 HOLE ARROW TYPE','三孔弯头挂','D RINGS 3 HOLE ARROW TYPE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('111b93d4-9bb3-4f9f-833c-f4c924cb2120','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1027','CLIP HANGER BLACK','S纸版扣','CLIP HANGER BLACK',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('d9fd77d0-d688-4345-9b09-ee6525aa9292','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1028','BUTTERFLY HANGER SILVER','4孔压型挂','BUTTERFLY HANGER SILVER',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('b532275c-20cf-403e-a5b0-921e0317e646','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1029','SAWTOOTH FOLDABLE HINGED 3 HOLD GOLD','金大门较扣','SAWTOOTH FOLDABLE HINGED 3 HOLD GOLD',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('98a647cf-cef1-4b6b-b76e-b34bf9ca79b4','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1030','SAWTOOTH HANGER BLACK 2 HOLE','黑大老虎扣','SAWTOOTH HANGER BLACK 2 HOLE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('a8383a7d-9201-4905-a8ff-801f125c3725','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1031','SAWTOOTH HANGER GOLD 2 HOLE','金大老虎扣','SAWTOOTH HANGER GOLD 2 HOLE',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('764a803c-1f90-4713-8304-2089d4a4ae5d','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1032','SAWTOOTH GOLD SMALL','金厚单面直条挂','SAWTOOTH GOLD SMALL',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('b79d9c0f-f21a-4d09-9601-24fe4f68b4f5','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1033','TOP HANGER SILVER','银横直条加厚','TOP HANGER SILVER',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL),
+('a70e8308-c278-4e75-b9da-158ed887fa06','1e10e2dd-655e-41e0-a508-edfd660a9bcf','ITM-1034','SIDE HANGER SILVER BIG','银大暗挂','SIDE HANGER SILVER BIG',NULL,10,30,10,'2d55cdd1-8321-4383-9c75-b44f1b9d855b','3c85b916-e9bd-492a-b770-b9af41c9c1f3','raw_material',TRUE,FALSE,FALSE,NULL,NULL,NULL,TRUE,'2026-08-02 21:01:02',NULL,'2026-04-21 10:50:21.234825',NULL,NULL,1,NULL,NULL);
+
+INSERT INTO "public"."item_unit_options"("id","company_id","item_id","uom_id","option_label","qty_per_unit","barcode","is_base","is_default","is_active","sort_order","created_at","created_by","updated_at","updated_by","deleted_at","version")
+VALUES
+('028d90e2-0ba7-4d1e-ab44-5dbe8a093a26','1e10e2dd-655e-41e0-a508-edfd660a9bcf','b79d9c0f-f21a-4d09-9601-24fe4f68b4f5','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'5335387755',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('10a53917-c92d-48a2-adde-d17529a94653','1e10e2dd-655e-41e0-a508-edfd660a9bcf','122bb1d0-605d-4636-9530-160557c0b6b8','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'1524445001',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('12736e33-cbf7-4077-96df-571c41f3b553','1e10e2dd-655e-41e0-a508-edfd660a9bcf','1b96d8d6-d285-436d-aeba-fd30ea283963','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'4161643914',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('156e3af8-e2a1-44aa-915a-1d63c562f69b','1e10e2dd-655e-41e0-a508-edfd660a9bcf','345f93f6-2e90-4793-952b-558636b0e988','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'6250047175',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('18ca4bd7-5ac4-4204-b041-fc3e0d66587c','1e10e2dd-655e-41e0-a508-edfd660a9bcf','e0c0cb2a-f1d7-4c78-8be5-82fdf98a981d','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'3795780146',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('1bf109f5-9cc4-4e39-8210-1ed9c31cc3cc','1e10e2dd-655e-41e0-a508-edfd660a9bcf','6c4c1282-ca95-4cfb-be58-ffd75313622f','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'1707376885',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('1f073b09-5986-4ad7-b412-5aacb44b01c4','1e10e2dd-655e-41e0-a508-edfd660a9bcf','d9fd77d0-d688-4345-9b09-ee6525aa9292','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'3064052610',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('26c4e124-c315-4cdf-b1a0-6760baeaa42e','1e10e2dd-655e-41e0-a508-edfd660a9bcf','5e236429-c786-45a5-b9f6-1ee4c5d4cec5','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'0975649349',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('3d506049-d9fc-4a5f-a1bd-135c496a4132','1e10e2dd-655e-41e0-a508-edfd660a9bcf','167885fa-fdc4-4d9c-9440-4b0cf71fa81d','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'8704314204',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('44cb093f-7362-47d1-a8c7-06b2759d0573','1e10e2dd-655e-41e0-a508-edfd660a9bcf','111b93d4-9bb3-4f9f-833c-f4c924cb2120','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'0609785581',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('51f6c57d-3c2b-4b10-bacb-d4f48ce5bcb3','1e10e2dd-655e-41e0-a508-edfd660a9bcf','cdc46368-4610-4f50-b26d-6def509496eb','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'8338450436',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('5af4268c-2ad0-409d-83cc-ab9bb284b13d','1e10e2dd-655e-41e0-a508-edfd660a9bcf','146e1459-7db4-4868-9c51-6f892acd6a75','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'5884183407',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('5ef0bb39-acc7-4993-8c1b-7b49201c44a1','1e10e2dd-655e-41e0-a508-edfd660a9bcf','8c874487-be6a-4aa8-926e-163655d4cefb','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'6615910943',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('5f3eafe1-fa16-45ab-9d91-8fa8872c7dc6','1e10e2dd-655e-41e0-a508-edfd660a9bcf','a8383a7d-9201-4905-a8ff-801f125c3725','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'0426853697',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('63bc960a-c934-4ecd-91e7-25924f48f7bb','1e10e2dd-655e-41e0-a508-edfd660a9bcf','98a647cf-cef1-4b6b-b76e-b34bf9ca79b4','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'7972586668',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('6560d043-d992-4d01-93f2-d7214949a22f','1e10e2dd-655e-41e0-a508-edfd660a9bcf','56e36aa6-b289-4229-ae7f-2df77b635f9b','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'3612848262',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('66579377-ebe8-4247-9403-f306abae02c7','1e10e2dd-655e-41e0-a508-edfd660a9bcf','c3636de1-884a-4b0a-848a-6e0e789d31cd','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'3978712030',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('68835b8a-c122-4c3e-be24-e086497a44c3','1e10e2dd-655e-41e0-a508-edfd660a9bcf','e85407e0-f42a-4f65-a211-d659ae61dd9b','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'9253109856',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('6bfe66f3-de74-4932-a12e-61dbea78e481','1e10e2dd-655e-41e0-a508-edfd660a9bcf','6f35cb75-de29-43eb-b192-8fee36255aa4','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'0792717465',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('6c282699-760c-4e7e-ba72-f27072055a20','1e10e2dd-655e-41e0-a508-edfd660a9bcf','3720538d-5f8e-4025-b47e-1a854575604c','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'1341513117',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('71deda23-81dc-480f-bf4a-a1be6853b4b2','1e10e2dd-655e-41e0-a508-edfd660a9bcf','b532275c-20cf-403e-a5b0-921e0317e646','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'5518319639',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('72b93ab4-5b1f-4d91-900b-5cf62978071f','1e10e2dd-655e-41e0-a508-edfd660a9bcf','764a803c-1f90-4713-8304-2089d4a4ae5d','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'2881120726',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('8f7b1b7c-9b8c-4f7c-a443-89c015a890a2','1e10e2dd-655e-41e0-a508-edfd660a9bcf','cd68d860-f3a0-450d-b00b-f225f55118b8','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'8521382320',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('988d76a0-f066-436b-99a6-09e8cf1d4d05','1e10e2dd-655e-41e0-a508-edfd660a9bcf','a3b8347d-5aae-4686-af30-56afdbfb7431','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'6067115291',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('a5778cbd-dab5-467b-b242-24f20b0d6917','1e10e2dd-655e-41e0-a508-edfd660a9bcf','a1e0d320-0c37-4301-9624-46b1d9621e64','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'8155518552',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('ab95d563-bc44-41db-88df-62ce1b856cd3','1e10e2dd-655e-41e0-a508-edfd660a9bcf','05147814-061f-467f-8d04-24bf7fc0570c','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'3246984494',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('ae49f39f-4856-4f9d-993f-e2d0bdc17ce9','1e10e2dd-655e-41e0-a508-edfd660a9bcf','3cbeab1b-b5c6-468f-92ab-3e7ca943cc76','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'1158581233',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('bfa3fbb1-74e9-4f4f-9dd5-9b0c15d5a77d','1e10e2dd-655e-41e0-a508-edfd660a9bcf','a70e8308-c278-4e75-b9da-158ed887fa06','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'7789654784',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('c2fde7fd-7866-45f4-af5e-07e0f21e52de','1e10e2dd-655e-41e0-a508-edfd660a9bcf','264334c5-58bc-4be9-8b2b-f1b6ab2d93de','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'8887246088',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('cdb971d6-e220-41df-8976-ef607b386d22','1e10e2dd-655e-41e0-a508-edfd660a9bcf','a73d7bc8-f089-44b2-afe5-e188b905679e','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'3429916378',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('d55d611d-c879-4764-abf7-530de2884fff','1e10e2dd-655e-41e0-a508-edfd660a9bcf','d28241a2-d3f7-4203-8a23-c83ddc8d65d8','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'6432979059',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('d5e1d538-79f1-4200-b186-8a92f7cc33ef','1e10e2dd-655e-41e0-a508-edfd660a9bcf','427fa17c-4bb2-4222-8c7a-15c7ac64578c','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'5701251523',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1),
+('e93d9faa-817a-4514-ae7c-c1de4d4e6f75','1e10e2dd-655e-41e0-a508-edfd660a9bcf','f15f8f88-d771-42b4-b783-7b8850733fdc','3c85b916-e9bd-492a-b770-b9af41c9c1f3',NULL,1,'9070177972',TRUE,TRUE,TRUE,0,'2026-04-21 12:28:22.107912',NULL,'2026-04-21 12:28:22.107912',NULL,NULL,1);
+
+SELECT setval(
+  'public.item_unit_option_barcode_seq',
+  GREATEST((SELECT COUNT(*) FROM public.item_unit_options), 1),
+  (SELECT COUNT(*) FROM public.item_unit_options) > 0
+);
+
+
+
+
+BEGIN;
+
+DO $$
+DECLARE
+  v_company_id CONSTANT UUID := '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
+  v_warehouse_id CONSTANT UUID := 'b4dd7da9-4a6f-418c-98b4-6a05520eb6c5';
+  v_location_id UUID;
+  v_current_stock CONSTANT NUMERIC := 100;
+  v_reorder_level CONSTANT NUMERIC := 50;
+  v_reorder_quantity CONSTANT NUMERIC := 100;
+  v_max_quantity CONSTANT NUMERIC := 1000;
+  v_seed_user_id UUID;
+  v_missing_target_count INTEGER;
+  v_conflict_codes TEXT;
+BEGIN
+  SELECT u.id
+  INTO v_seed_user_id
+  FROM public.users u
+  WHERE u.company_id = v_company_id
+    AND u.deleted_at IS NULL
+  ORDER BY u.created_at ASC
+  LIMIT 1;
+
+  IF v_seed_user_id IS NULL THEN
+    RAISE EXCEPTION 'No active user found for company %', v_company_id;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.warehouses w
+    WHERE w.id = v_warehouse_id
+      AND w.company_id = v_company_id
+      AND w.deleted_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Warehouse % does not exist for company %', v_warehouse_id, v_company_id;
+  END IF;
+
+  SELECT wl.id
+  INTO v_location_id
+  FROM public.warehouse_locations wl
+  WHERE wl.company_id = v_company_id
+    AND wl.warehouse_id = v_warehouse_id
+    AND wl.deleted_at IS NULL
+  ORDER BY
+    CASE WHEN wl.code = 'MAIN' THEN 0 ELSE 1 END,
+    wl.created_at ASC,
+    wl.id ASC
+  LIMIT 1;
+
+  IF v_location_id IS NULL THEN
+    RAISE EXCEPTION
+      'No active warehouse location found for warehouse % in company %',
+      v_warehouse_id,
+      v_company_id;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_missing_target_count
+  FROM public.items i
+  WHERE i.company_id = v_company_id
+    AND i.deleted_at IS NULL
+    AND i.item_code ILIKE 'ITM%';
+
+  IF v_missing_target_count = 0 THEN
+    RAISE EXCEPTION 'No active items found for company % with item_code ILIKE ITM%%', v_company_id;
+  END IF;
+
+  SELECT string_agg(sample.item_code, ', ' ORDER BY sample.item_code)
+  INTO v_conflict_codes
+  FROM (
+    SELECT DISTINCT i.item_code
+    FROM public.items i
+    INNER JOIN public.item_batch ib
+      ON ib.item_id = i.id
+     AND ib.company_id = v_company_id
+     AND ib.warehouse_id = v_warehouse_id
+     AND ib.deleted_at IS NULL
+     AND ib.batch_code <> ('OPENING-' || i.item_code)
+    WHERE i.company_id = v_company_id
+      AND i.deleted_at IS NULL
+      AND i.item_code ILIKE 'ITM%'
+    ORDER BY i.item_code
+    LIMIT 10
+  ) AS sample;
+
+  IF v_conflict_codes IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Cannot seed warehouse stock because some target items already have other active batches in this warehouse. Sample item_code(s): %',
+      v_conflict_codes;
+  END IF;
+
+  CREATE TEMP TABLE tmp_target_itm_items ON COMMIT DROP AS
+  SELECT
+    i.id AS item_id,
+    i.item_code,
+    i.company_id
+  FROM public.items i
+  WHERE i.company_id = v_company_id
+    AND i.deleted_at IS NULL
+    AND i.item_code ILIKE 'ITM%';
+
+  INSERT INTO public.item_warehouse (
+    company_id,
+    item_id,
+    warehouse_id,
+    reorder_level,
+    reorder_quantity,
+    max_quantity,
+    current_stock,
+    is_active,
+    default_location_id,
+    created_by,
+    updated_by
+  )
+  SELECT
+    t.company_id,
+    t.item_id,
+    v_warehouse_id,
+    v_reorder_level,
+    v_reorder_quantity,
+    v_max_quantity,
+    v_current_stock,
+    TRUE,
+    v_location_id,
+    v_seed_user_id,
+    v_seed_user_id
+  FROM tmp_target_itm_items t
+  ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE
+  SET
+    reorder_level = EXCLUDED.reorder_level,
+    reorder_quantity = EXCLUDED.reorder_quantity,
+    max_quantity = EXCLUDED.max_quantity,
+    current_stock = EXCLUDED.current_stock,
+    is_active = EXCLUDED.is_active,
+    default_location_id = EXCLUDED.default_location_id,
+    deleted_at = NULL,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP;
+
+  INSERT INTO public.item_location (
+    company_id,
+    item_id,
+    warehouse_id,
+    location_id,
+    qty_on_hand,
+    qty_reserved,
+    created_by,
+    updated_by
+  )
+  SELECT
+    t.company_id,
+    t.item_id,
+    v_warehouse_id,
+    v_location_id,
+    v_current_stock,
+    0,
+    v_seed_user_id,
+    v_seed_user_id
+  FROM tmp_target_itm_items t
+  ON CONFLICT (company_id, item_id, warehouse_id, location_id) DO UPDATE
+  SET
+    qty_on_hand = EXCLUDED.qty_on_hand,
+    qty_reserved = EXCLUDED.qty_reserved,
+    deleted_at = NULL,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP;
+
+  INSERT INTO public.item_batch (
+    company_id,
+    item_id,
+    warehouse_id,
+    batch_code,
+    received_at,
+    qty_on_hand,
+    qty_reserved,
+    created_by,
+    updated_by
+  )
+  SELECT
+    t.company_id,
+    t.item_id,
+    v_warehouse_id,
+    'OPENING-' || t.item_code,
+    CURRENT_TIMESTAMP,
+    v_current_stock,
+    0,
+    v_seed_user_id,
+    v_seed_user_id
+  FROM tmp_target_itm_items t
+  ON CONFLICT (company_id, item_id, warehouse_id, batch_code) DO UPDATE
+  SET
+    qty_on_hand = EXCLUDED.qty_on_hand,
+    qty_reserved = EXCLUDED.qty_reserved,
+    deleted_at = NULL,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP;
+
+  INSERT INTO public.item_location_batch (
+    company_id,
+    item_id,
+    warehouse_id,
+    location_id,
+    item_batch_id,
+    qty_on_hand,
+    qty_reserved,
+    created_by,
+    updated_by
+  )
+  SELECT
+    t.company_id,
+    t.item_id,
+    v_warehouse_id,
+    v_location_id,
+    ib.id,
+    v_current_stock,
+    0,
+    v_seed_user_id,
+    v_seed_user_id
+  FROM tmp_target_itm_items t
+  INNER JOIN public.item_batch ib
+    ON ib.company_id = t.company_id
+   AND ib.item_id = t.item_id
+   AND ib.warehouse_id = v_warehouse_id
+   AND ib.batch_code = ('OPENING-' || t.item_code)
+   AND ib.deleted_at IS NULL
+  ON CONFLICT (company_id, item_id, warehouse_id, location_id, item_batch_id) DO UPDATE
+  SET
+    qty_on_hand = EXCLUDED.qty_on_hand,
+    qty_reserved = EXCLUDED.qty_reserved,
+    deleted_at = NULL,
+    updated_by = EXCLUDED.updated_by,
+    updated_at = CURRENT_TIMESTAMP;
+END
+$$;
+
+COMMIT;

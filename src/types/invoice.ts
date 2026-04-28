@@ -8,6 +8,7 @@ export interface InvoiceLineItem {
   description: string;
   quantity: number;
   uomId: string;
+  uomCode?: string;
   unitPrice: number;
   discount: number; // Percentage
   taxRate: number; // Percentage

@@ -5,7 +5,6 @@ import type {
   UpdateQuotationRequest,
   QuotationFilters,
 } from "@/types/quotation";
-import { toast } from "sonner";
 
 const QUOTATIONS_KEY = "quotations";
 
@@ -13,7 +12,7 @@ export function useQuotations(filters?: QuotationFilters) {
   return useQuery({
     queryKey: [QUOTATIONS_KEY, filters],
     queryFn: () => quotationsApi.getQuotations(filters),
-    placeholderData: keepPreviousData,
+    placeholderData: filters?.cursor ? undefined : keepPreviousData,
   });
 }
 
@@ -32,10 +31,6 @@ export function useCreateQuotation() {
     mutationFn: (data: CreateQuotationRequest) => quotationsApi.createQuotation(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
-      toast.success("Quotation created successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to create quotation");
     },
   });
 }
@@ -48,10 +43,6 @@ export function useUpdateQuotation() {
       quotationsApi.updateQuotation(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
-      toast.success("Quotation updated successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update quotation");
     },
   });
 }
@@ -63,10 +54,6 @@ export function useDeleteQuotation() {
     mutationFn: (id: string) => quotationsApi.deleteQuotation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
-      toast.success("Quotation deleted successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to delete quotation");
     },
   });
 }
@@ -78,10 +65,6 @@ export function useConvertToOrder() {
     mutationFn: (id: string) => quotationsApi.convertToOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
-      toast.success("Quotation converted to order successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to convert quotation to order");
     },
   });
 }
@@ -94,10 +77,18 @@ export function useChangeQuotationStatus() {
       quotationsApi.changeStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
-      toast.success("Quotation status updated successfully");
     },
-    onError: (error: Error) => {
-      toast.error(error.message || "Failed to update quotation status");
+  });
+}
+
+export function useConfirmQuotation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, warehouseId }: { id: string; warehouseId?: string | null }) =>
+      quotationsApi.confirm(id, warehouseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
     },
   });
 }

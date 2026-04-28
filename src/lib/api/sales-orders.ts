@@ -121,6 +121,28 @@ export const salesOrdersApi = {
     return response.json();
   },
 
+  async createFrameJobOrder(
+    id: string,
+    warehouseId: string
+  ): Promise<{
+    success: boolean;
+    salesOrderId: string;
+    frameJobOrder: { id: string; jobOrderCode: string };
+  }> {
+    const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/create-frame-job-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ warehouseId }),
+    });
+    if (!response.ok) {
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Failed to create job order" }));
+      throw new Error(error.error || "Failed to create job order");
+    }
+    return response.json();
+  },
+
   async getPaymentSummary(id: string): Promise<SalesOrderPaymentSummary> {
     const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/payment-summary`);
     if (!response.ok) throw new Error("Failed to fetch payment summary");

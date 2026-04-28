@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
+import { Check } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,14 +24,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useItems } from "@/hooks/useItems";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 
 const createLineItemSchema = (
@@ -74,11 +71,15 @@ export function StockAdjustmentLineItemDialog({
   const t = useTranslations("stockAdjustmentLineItemDialog");
   const tValidation = useTranslations("stockAdjustmentLineItemValidation");
   const locale = useLocale();
-  const { data: itemsData } = useItems({ limit: 50 });
+  const [itemSearch, setItemSearch] = useState("");
+  const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
+  const { data: itemsData, isLoading: isItemsLoading } = useItems({
+    search: debouncedItemSearch || undefined,
+    limit: 5,
+  });
   const items = useMemo(() => itemsData?.data || [], [itemsData?.data]);
   const { formatCurrency } = useCurrency();
   const [uomLabel, setUomLabel] = useState<string>("");
-  const [itemSearch, setItemSearch] = useState("");
   const lineItemSchema = createLineItemSchema((key) => tValidation(key));
 
   const form = useForm<StockAdjustmentLineItemFormValues>({
@@ -116,6 +117,9 @@ export function StockAdjustmentLineItemDialog({
   }, [open, item, form]);
 
   const watchedItemId = form.watch("itemId");
+  const { data: selectedItemResponse } = useItem(watchedItemId);
+  const selectedItem =
+    items.find((candidate) => candidate.id === watchedItemId) ?? selectedItemResponse?.data ?? null;
 
   useEffect(() => {
     if (!watchedItemId) {
@@ -214,55 +218,41 @@ export function StockAdjustmentLineItemDialog({
                 control={form.control}
                 name="itemId"
                 render={({ field }) => (
-                  <FormItem>
+                <FormItem>
                     <FormLabel className="text-sm font-medium text-gray-700">
                       {t("itemLabel")} <span className="text-red-500">*</span>
                     </FormLabel>
-                    <Select
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        handleItemSelect(value);
-                      }}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder={t("chooseItem")} />
-                        </SelectTrigger>
-                      </FormControl>
-                    <SelectContent>
-                      <div className="p-2">
-                        <Input
-                          placeholder={t("searchByCodeOrName")}
-                          value={itemSearch}
-                          onChange={(e) => setItemSearch(e.target.value)}
-                          className="h-9"
-                        />
-                      </div>
-                      {items
-                        .filter((i) => i.isActive)
-                        .filter((item) => {
-                          if (!itemSearch.trim()) return true;
-                          const term = itemSearch.trim().toLowerCase();
-                          return (
-                            item.code.toLowerCase().includes(term) ||
-                            item.name.toLowerCase().includes(term)
-                          );
-                        })
-                        .map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xs text-gray-500">{item.code}</span>
-                              <span>•</span>
-                              <span>{item.name}</span>
-                              </div>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                    <FormControl>
+                      <AsyncSearchCombobox
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          void handleItemSelect(value);
+                        }}
+                        searchValue={itemSearch}
+                        onSearchValueChange={setItemSearch}
+                        options={items.filter((entry) => entry.isActive)}
+                        selectedOption={selectedItem}
+                        getOptionValue={(entry) => entry.id}
+                        getOptionLabel={(entry) => `${entry.code} - ${entry.name}`}
+                        getOptionSearchValue={(entry) => `${entry.code} ${entry.name}`}
+                        placeholder={t("chooseItem")}
+                        searchPlaceholder={t("searchByCodeOrName")}
+                        emptyMessage={t("chooseItem")}
+                        isLoading={isItemsLoading}
+                        renderOption={(entry, selected) => (
+                          <div className="flex items-center gap-2">
+                            <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
+                            <span className="font-mono text-xs text-gray-500">{entry.code}</span>
+                            <span>•</span>
+                            <span>{entry.name}</span>
+                          </div>
+                        )}
+                      />
+                    </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
               />
 
               {/* Current Stock Display */}

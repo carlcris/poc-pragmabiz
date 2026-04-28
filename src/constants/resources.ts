@@ -29,6 +29,7 @@ export const RESOURCES = {
   STOCK_TRANSFERS: "stock_transfers",
   STOCK_TRANSACTIONS: "stock_transactions",
   STOCK_TRANSFORMATIONS: "stock_transformations",
+  MANUFACTURING: "manufacturing",
   REORDER_MANAGEMENT: "reorder_management",
 
   // ============================================================================
@@ -185,6 +186,12 @@ export const RESOURCE_METADATA: ResourceMetadata[] = [
     key: RESOURCES.STOCK_TRANSFORMATIONS,
     name: "Stock Transformations",
     description: "Transform items into other items",
+    category: "Inventory",
+  },
+  {
+    key: RESOURCES.MANUFACTURING,
+    name: "Manufacturing",
+    description: "Manage orders and production execution",
     category: "Inventory",
   },
   {

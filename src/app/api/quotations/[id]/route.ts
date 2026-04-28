@@ -1,120 +1,14 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
-import type { Quotation, QuotationLineItem, UpdateQuotationRequest } from "@/types/quotation";
+import type { UpdateQuotationRequest } from "@/types/quotation";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
-
-type DbQuotation = {
-  id: string;
-  company_id: string;
-  quotation_code: string;
-  customer_id: string;
-  quotation_date: string;
-  valid_until: string | null;
-  status: string;
-  sales_order_id: string | null;
-  subtotal: number | string | null;
-  discount_amount: number | string | null;
-  tax_amount: number | string | null;
-  total_amount: number | string | null;
-  terms_conditions: string | null;
-  notes: string | null;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-};
-type DbQuotationItem = {
-  id: string;
-  quotation_id: string;
-  item_id: string;
-  item_description: string | null;
-  quantity: number | string;
-  uom_id: string | null;
-  rate: number | string;
-  discount_percent: number | string | null;
-  discount_amount: number | string | null;
-  tax_percent: number | string | null;
-  tax_amount: number | string | null;
-  line_total: number | string;
-  sort_order: number | null;
-};
-type DbCustomer = { id: string; customer_name: string | null; email: string | null };
-type DbItem = { id: string; item_code: string | null; item_name: string | null };
-type DbUser = { id: string; first_name: string | null; last_name: string | null };
-type DbUoM = { id: string; code: string | null; name: string | null };
-
-type DbQuotationWithJoins = DbQuotation & {
-  customers?: DbCustomer | DbCustomer[] | null;
-  users?: DbUser | DbUser[] | null;
-};
-
-type DbQuotationItemWithJoins = DbQuotationItem & {
-  items?: DbItem | DbItem[] | null;
-  units_of_measure?: DbUoM | DbUoM[] | null;
-};
-
-type QuotationItemInput = NonNullable<UpdateQuotationRequest["items"]>[number];
-
-type QuotationHeaderUpdate = Partial<DbQuotation> & {
-  updated_by: string;
-};
-
-// Transform database quotation to frontend type
-function transformDbQuotation(
-  dbQuotation: DbQuotationWithJoins,
-  items?: QuotationLineItem[]
-): Quotation {
-  const customer = Array.isArray(dbQuotation.customers)
-    ? dbQuotation.customers[0]
-    : dbQuotation.customers;
-  const user = Array.isArray(dbQuotation.users) ? dbQuotation.users[0] : dbQuotation.users;
-  return {
-    id: dbQuotation.id,
-    companyId: dbQuotation.company_id,
-    quotationNumber: dbQuotation.quotation_code,
-    customerId: dbQuotation.customer_id,
-    customerName: customer?.customer_name || undefined,
-    customerEmail: customer?.email || undefined,
-    quotationDate: dbQuotation.quotation_date,
-    validUntil: dbQuotation.valid_until || "",
-    status: dbQuotation.status as Quotation["status"],
-    salesOrderId: dbQuotation.sales_order_id || undefined,
-    lineItems: items || [],
-    subtotal: Number(dbQuotation.subtotal) || 0,
-    totalDiscount: Number(dbQuotation.discount_amount) || 0,
-    totalTax: Number(dbQuotation.tax_amount) || 0,
-    totalAmount: Number(dbQuotation.total_amount) || 0,
-    terms: dbQuotation.terms_conditions || "",
-    notes: dbQuotation.notes || "",
-    createdBy: dbQuotation.created_by || "",
-    createdByName: user
-      ? `${user.first_name || ""} ${user.last_name || ""}`.trim()
-      : undefined,
-    createdAt: dbQuotation.created_at,
-    updatedAt: dbQuotation.updated_at,
-  };
-}
-
-// Transform database quotation item to frontend type
-function transformDbQuotationItem(dbItem: DbQuotationItemWithJoins): QuotationLineItem {
-  const item = Array.isArray(dbItem.items) ? dbItem.items[0] : dbItem.items;
-  return {
-    id: dbItem.id,
-    itemId: dbItem.item_id,
-    itemCode: item?.item_code || undefined,
-    itemName: item?.item_name || undefined,
-    description: dbItem.item_description || "",
-    quantity: Number(dbItem.quantity),
-    uomId: dbItem.uom_id || "",
-    unitPrice: Number(dbItem.rate),
-    discount: Number(dbItem.discount_percent) || 0,
-    discountAmount: Number(dbItem.discount_amount) || 0,
-    taxRate: Number(dbItem.tax_percent) || 0,
-    taxAmount: Number(dbItem.tax_amount) || 0,
-    lineTotal: Number(dbItem.line_total),
-    sortOrder: dbItem.sort_order || 0,
-  };
-}
+import {
+  asRpcClient,
+  fetchQuotationById,
+  getClientErrorMessage,
+  logQuotationError,
+} from "../_shared";
 
 // GET /api/quotations/[id] - Get single quotation
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -124,7 +18,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -134,69 +27,16 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch quotation with joins
-    const { data: quotation, error } = await supabase
-      .from("sales_quotations")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single();
+    const { quotation, error } = await fetchQuotationById(supabase, id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!quotation) {
+    if (error || !quotation) {
+      logQuotationError("Error fetching quotation:", error);
       return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
     }
 
-    // Fetch quotation items
-    const { data: items, error: itemsError } = await supabase
-      .from("sales_quotation_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        )
-      `
-      )
-      .eq("quotation_id", id)
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true });
-
-    if (itemsError) {
-      return NextResponse.json({ error: itemsError.message }, { status: 500 });
-    }
-
-    const transformedItems =
-      (items as DbQuotationItemWithJoins[] | null)?.map((item) => transformDbQuotationItem(item)) ||
-      [];
-    const result = transformDbQuotation(quotation as DbQuotationWithJoins, transformedItems);
-
-    return NextResponse.json(result);
-  } catch {
+    return NextResponse.json(quotation);
+  } catch (error) {
+    logQuotationError("Unexpected quotation fetch error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -209,7 +49,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -219,189 +58,48 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user's company_id from users table
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("company_id")
-      .eq("id", user.id)
-      .single();
-
-    if (userError || !userData) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     const body: UpdateQuotationRequest = await request.json();
 
-    // Fetch existing quotation to check status
-    const { data: existingQuotation, error: fetchError } = await supabase
-      .from("sales_quotations")
-      .select("status, company_id")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single();
-
-    if (fetchError || !existingQuotation) {
-      return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
+    if (!body.quotationDate || !body.items || body.items.length === 0) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Business rule: Only drafts can be edited
-    if (existingQuotation.status !== "draft") {
-      return NextResponse.json({ error: "Only draft quotations can be edited" }, { status: 400 });
+    if (body.status) {
+      return NextResponse.json(
+        { error: "Quotation status must be changed through the status endpoint" },
+        { status: 400 }
+      );
     }
 
-    // Build update object for header
-    const headerUpdate: QuotationHeaderUpdate = {
-      updated_by: user.id,
-    };
-
-    if (body.quotationDate) headerUpdate.quotation_date = body.quotationDate;
-    if (body.validUntil !== undefined) headerUpdate.valid_until = body.validUntil;
-    if (body.status) headerUpdate.status = body.status;
-    if (body.notes !== undefined) headerUpdate.notes = body.notes;
-    if (body.termsConditions !== undefined) headerUpdate.terms_conditions = body.termsConditions;
-
-    // If items are being updated, recalculate totals
-    if (body.items && body.items.length > 0) {
-      let subtotal = 0;
-      let totalDiscount = 0;
-      let totalTax = 0;
-
-      const itemsWithCalculations = body.items.map((item: QuotationItemInput) => {
-        const itemSubtotal = Number(item.quantity) * item.rate;
-        const discountAmount =
-          item.discountAmount || (itemSubtotal * (item.discountPercent || 0)) / 100;
-        const taxableAmount = itemSubtotal - discountAmount;
-        const taxAmount = item.taxAmount || (taxableAmount * (item.taxPercent || 0)) / 100;
-        const lineTotal = taxableAmount + taxAmount;
-
-        subtotal += itemSubtotal;
-        totalDiscount += discountAmount;
-        totalTax += taxAmount;
-
-        return {
-          ...item,
-          discountAmount,
-          taxAmount,
-          lineTotal,
-        };
-      });
-
-      const totalAmount = subtotal - totalDiscount + totalTax;
-
-      headerUpdate.subtotal = subtotal.toFixed(4);
-      headerUpdate.discount_amount = totalDiscount.toFixed(4);
-      headerUpdate.tax_amount = totalTax.toFixed(4);
-      headerUpdate.total_amount = totalAmount.toFixed(4);
-
-      // Update header
-      const { error: updateError } = await supabase
-        .from("sales_quotations")
-        .update(headerUpdate)
-        .eq("id", id);
-
-      if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
+    const { data: quotationId, error: rpcError } = await asRpcClient(supabase).rpc(
+      "update_sales_quotation_transaction",
+      {
+        p_quotation_id: id,
+        p_quotation_date: body.quotationDate,
+        p_valid_until: body.validUntil || null,
+        p_terms_conditions: body.termsConditions || null,
+        p_notes: body.notes || null,
+        p_items: body.items,
       }
+    );
 
-      // Delete existing items (soft delete)
-      const { error: deleteError } = await supabase
-        .from("sales_quotation_items")
-        .update({ deleted_at: new Date().toISOString() })
-        .eq("quotation_id", id);
-
-      if (deleteError) {
-        return NextResponse.json({ error: deleteError.message }, { status: 500 });
-      }
-
-      // Insert new items
-      const itemsToInsert = itemsWithCalculations.map((item, index) => ({
-        company_id: userData.company_id,
-        quotation_id: id,
-        item_id: item.itemId,
-        item_description: item.description,
-        quantity: item.quantity,
-        uom_id: item.uomId,
-        rate: item.rate,
-        discount_percent: item.discountPercent || 0,
-        discount_amount: item.discountAmount,
-        tax_percent: item.taxPercent || 0,
-        tax_amount: item.taxAmount,
-        line_total: item.lineTotal,
-        sort_order: item.sortOrder || index,
-        notes: item.notes,
-        created_by: user.id,
-        updated_by: user.id,
-      }));
-
-      const { error: insertError } = await supabase
-        .from("sales_quotation_items")
-        .insert(itemsToInsert);
-
-      if (insertError) {
-        return NextResponse.json({ error: insertError.message }, { status: 500 });
-      }
-    } else {
-      // Update header only (no items changed)
-      const { error: updateError } = await supabase
-        .from("sales_quotations")
-        .update(headerUpdate)
-        .eq("id", id);
-
-      if (updateError) {
-        return NextResponse.json({ error: updateError.message }, { status: 500 });
-      }
+    if (rpcError || typeof quotationId !== "string") {
+      logQuotationError("Error updating quotation:", rpcError);
+      const message = getClientErrorMessage(rpcError, "Failed to update quotation");
+      const status = message === "Quotation not found" ? 404 : 400;
+      return NextResponse.json({ error: message }, { status });
     }
 
-    // Fetch the updated quotation with joins
-    const { data: updatedQuotation } = await supabase
-      .from("sales_quotations")
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        ),
-        users:created_by (
-          id,
-          first_name,
-          last_name
-        )
-      `
-      )
-      .eq("id", id)
-      .single();
+    const { quotation, error: fetchError } = await fetchQuotationById(supabase, quotationId);
 
-    const { data: quotationItems } = await supabase
-      .from("sales_quotation_items")
-      .select(
-        `
-        *,
-        items (
-          id,
-          item_code,
-          item_name
-        ),
-        units_of_measure (
-          id,
-          code,
-          name
-        )
-      `
-      )
-      .eq("quotation_id", id)
-      .is("deleted_at", null)
-      .order("sort_order", { ascending: true });
+    if (fetchError || !quotation) {
+      logQuotationError("Error fetching updated quotation:", fetchError);
+      return NextResponse.json({ error: "Quotation was updated but could not be loaded" }, { status: 500 });
+    }
 
-    const items =
-      (quotationItems as DbQuotationItemWithJoins[] | null)?.map((item) =>
-        transformDbQuotationItem(item)
-      ) || [];
-    const result = transformDbQuotation(updatedQuotation as DbQuotationWithJoins, items);
-
-    return NextResponse.json(result);
-  } catch {
+    return NextResponse.json(quotation);
+  } catch (error) {
+    logQuotationError("Unexpected quotation update error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -417,7 +115,6 @@ export async function DELETE(
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -427,48 +124,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch existing quotation to check status
-    const { data: existingQuotation, error: fetchError } = await supabase
-      .from("sales_quotations")
-      .select("status")
-      .eq("id", id)
-      .is("deleted_at", null)
-      .single();
+    const { error: rpcError } = await asRpcClient(supabase).rpc(
+      "delete_sales_quotation_transaction",
+      {
+        p_quotation_id: id,
+      }
+    );
 
-    if (fetchError || !existingQuotation) {
-      return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
-    }
-
-    // Business rule: Only drafts can be deleted
-    if (existingQuotation.status !== "draft") {
-      return NextResponse.json({ error: "Only draft quotations can be deleted" }, { status: 400 });
-    }
-
-    // Soft delete the quotation
-    const { error: deleteError } = await supabase
-      .from("sales_quotations")
-      .update({
-        deleted_at: new Date().toISOString(),
-        updated_by: user.id,
-      })
-      .eq("id", id);
-
-    if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
-    }
-
-    // Soft delete associated items
-    const { error: itemsDeleteError } = await supabase
-      .from("sales_quotation_items")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("quotation_id", id);
-
-    if (itemsDeleteError) {
-      return NextResponse.json({ error: itemsDeleteError.message }, { status: 500 });
+    if (rpcError) {
+      logQuotationError("Error deleting quotation:", rpcError);
+      const message = getClientErrorMessage(rpcError, "Failed to delete quotation");
+      const status = message === "Quotation not found" ? 404 : 400;
+      return NextResponse.json({ error: message }, { status });
     }
 
     return NextResponse.json({ message: "Quotation deleted successfully" });
-  } catch {
+  } catch (error) {
+    logQuotationError("Unexpected quotation delete error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

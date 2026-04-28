@@ -112,7 +112,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   });
   const { data: searchedItemsData } = useItems({
     search: debouncedItemSearch.trim(),
-    limit: 25,
+    limit: 5,
     enabled: open && activeTab === "items" && isSearchingItems,
   });
   const items = useMemo(

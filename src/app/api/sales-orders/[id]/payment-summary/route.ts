@@ -40,6 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       .select("id, invoice_code, total_amount, amount_paid, amount_due, status")
       .eq("company_id", userData.company_id)
       .eq("sales_order_id", salesOrderId)
+      .neq("status", "cancelled")
       .is("deleted_at", null);
 
     if (invoicesError) {

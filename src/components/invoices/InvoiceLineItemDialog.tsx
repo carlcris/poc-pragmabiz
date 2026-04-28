@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { z } from "zod";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,15 +25,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Textarea } from "@/components/ui/textarea";
-import { useItems } from "@/hooks/useItems";
+import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import {
   createInvoiceLineItemSchema,
@@ -58,7 +55,12 @@ export function InvoiceLineItemDialog({
   mode = "add",
 }: InvoiceLineItemDialogProps) {
   const t = useTranslations("invoiceLineItemDialog");
-  const { data: itemsData } = useItems({ limit: 50 });
+  const [itemSearch, setItemSearch] = useState("");
+  const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
+  const { data: itemsData, isLoading: isItemsLoading } = useItems({
+    search: debouncedItemSearch || undefined,
+    limit: 5,
+  });
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
   const lineItemSchema = createInvoiceLineItemSchema((key) => t(key));
@@ -78,6 +80,9 @@ export function InvoiceLineItemDialog({
       taxRate: 0,
     },
   });
+  const selectedItemId = form.watch("itemId");
+  const { data: selectedItemResponse } = useItem(selectedItemId);
+  const selectedItem = items.find((entry) => entry.id === selectedItemId) ?? selectedItemResponse?.data ?? null;
 
   useEffect(() => {
     if (open && item) {
@@ -147,28 +152,32 @@ export function InvoiceLineItemDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t("item")} *</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      handleItemSelect(value);
-                    }}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("selectItem")} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {items
-                        .filter((entry) => entry.isActive)
-                        .map((entry) => (
-                          <SelectItem key={entry.id} value={entry.id}>
-                            {entry.code} - {entry.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <AsyncSearchCombobox
+                      value={field.value}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handleItemSelect(value);
+                      }}
+                      searchValue={itemSearch}
+                      onSearchValueChange={setItemSearch}
+                      options={items.filter((entry) => entry.isActive)}
+                      selectedOption={selectedItem}
+                      getOptionValue={(entry) => entry.id}
+                      getOptionLabel={(entry) => `${entry.code} - ${entry.name}`}
+                      getOptionSearchValue={(entry) => `${entry.code} ${entry.name}`}
+                      placeholder={t("selectItem")}
+                      searchPlaceholder={t("selectItem")}
+                      emptyMessage={t("selectItem")}
+                      isLoading={isItemsLoading}
+                      renderOption={(entry, selected) => (
+                        <div className="flex items-center gap-2">
+                          <Check className={`h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`} />
+                          <span>{entry.code} - {entry.name}</span>
+                        </div>
+                      )}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

@@ -2,6 +2,26 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { fetchQuotationById, logQuotationError } from "../../_shared";
+import type { QuotationStatus } from "@/types/quotation";
+
+const validManualStatuses: QuotationStatus[] = ["sent", "accepted", "rejected", "expired"];
+
+const getInvalidTransitionMessage = (currentStatus: string, nextStatus: string) => {
+  if (currentStatus === "draft" && ["sent", "accepted", "rejected"].includes(nextStatus)) {
+    return null;
+  }
+
+  if (currentStatus === "sent" && ["accepted", "rejected", "expired"].includes(nextStatus)) {
+    return null;
+  }
+
+  if (nextStatus === "ordered") {
+    return "Accepted quotations must be converted to orders through the conversion endpoint";
+  }
+
+  return `Cannot change status from ${currentStatus} to ${nextStatus}`;
+};
 
 // PATCH /api/quotations/[id]/status
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,20 +29,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     await requirePermission(RESOURCES.SALES_QUOTATIONS, "edit");
 
     const { id: quotationId } = await params;
-    const { status } = await request.json();
+    const { status } = (await request.json()) as { status?: string };
 
     if (!status) {
       return NextResponse.json({ error: "Status is required" }, { status: 400 });
     }
 
-    const validStatuses = ["draft", "sent", "accepted", "rejected", "expired", "ordered"];
-    if (!validStatuses.includes(status)) {
+    if (!validManualStatuses.includes(status as QuotationStatus)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
     const { supabase } = await createServerClientWithBU();
 
-    // Check authentication
     const {
       data: { user },
       error: authError,
@@ -32,10 +50,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch current quotation
     const { data: quotation, error: fetchError } = await supabase
       .from("sales_quotations")
-      .select("*")
+      .select("status")
       .eq("id", quotationId)
       .is("deleted_at", null)
       .single();
@@ -44,93 +61,41 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Quotation not found" }, { status: 404 });
     }
 
-    // Validate status transitions - allow manual flagging for draft and sent
-    const currentStatus = quotation.status;
-
-    // Allow flexible transitions from draft and sent statuses
-    if (currentStatus === "draft") {
-      // From draft, can go to: sent, accepted, rejected
-      if (!["sent", "accepted", "rejected"].includes(status)) {
-        return NextResponse.json(
-          { error: `Cannot change status from draft to ${status}` },
-          { status: 400 }
-        );
-      }
-    } else if (currentStatus === "sent") {
-      // From sent, can go to: accepted, rejected, expired
-      if (!["accepted", "rejected", "expired"].includes(status)) {
-        return NextResponse.json(
-          { error: `Cannot change status from sent to ${status}` },
-          { status: 400 }
-        );
-      }
-    } else if (currentStatus === "accepted") {
-      // From accepted, can only go to ordered (via conversion)
-      if (status !== "ordered") {
-        return NextResponse.json(
-          { error: "Accepted quotations can only be converted to orders" },
-          { status: 400 }
-        );
-      }
-    } else {
-      // rejected, expired, ordered are final states
-      return NextResponse.json(
-        { error: `Cannot change status from ${currentStatus}` },
-        { status: 400 }
-      );
+    const currentStatus = quotation.status || "draft";
+    const invalidMessage = getInvalidTransitionMessage(currentStatus, status);
+    if (invalidMessage) {
+      return NextResponse.json({ error: invalidMessage }, { status: 400 });
     }
 
-    // Update quotation status
-    const { data: updatedQuotation, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from("sales_quotations")
       .update({
         status,
         updated_by: user.id,
-        updated_at: new Date().toISOString(),
       })
-      .eq("id", quotationId)
-      .select(
-        `
-        *,
-        customers:customer_id (
-          id,
-          customer_name,
-          email
-        )
-      `
-      )
-      .single();
+      .eq("id", quotationId);
 
     if (updateError) {
+      logQuotationError("Error updating quotation status:", updateError);
       return NextResponse.json({ error: "Failed to update quotation status" }, { status: 500 });
     }
 
-    // Format the response to match the Quotation type
-    const formattedQuotation = {
-      id: updatedQuotation.id,
-      companyId: updatedQuotation.company_id,
-      quotationNumber: updatedQuotation.quotation_code,
-      quotationDate: updatedQuotation.quotation_date,
-      customerId: updatedQuotation.customer_id,
-      customerName: updatedQuotation.customers?.customer_name || "",
-      customerEmail: updatedQuotation.customers?.email || "",
-      validUntil: updatedQuotation.valid_until,
-      priceListId: updatedQuotation.price_list_id,
-      subtotal: parseFloat(updatedQuotation.subtotal),
-      discountAmount: parseFloat(updatedQuotation.discount_amount),
-      taxAmount: parseFloat(updatedQuotation.tax_amount),
-      totalAmount: parseFloat(updatedQuotation.total_amount),
-      status: updatedQuotation.status,
-      notes: updatedQuotation.notes,
-      termsConditions: updatedQuotation.terms_conditions,
-      salesOrderId: updatedQuotation.sales_order_id,
-      createdAt: updatedQuotation.created_at,
-      updatedAt: updatedQuotation.updated_at,
-      lineItems: [],
-    };
+    const { quotation: updatedQuotation, error: updatedFetchError } = await fetchQuotationById(
+      supabase,
+      quotationId
+    );
 
-    return NextResponse.json(formattedQuotation);
-  } catch {
+    if (updatedFetchError || !updatedQuotation) {
+      logQuotationError("Error fetching updated quotation status:", updatedFetchError);
+      return NextResponse.json(
+        { error: "Quotation status was updated but could not be loaded" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(updatedQuotation);
+  } catch (error) {
+    logQuotationError("Unexpected quotation status error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

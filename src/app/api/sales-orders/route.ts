@@ -1,6 +1,7 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SalesOrder, SalesOrderLineItem, CreateSalesOrderRequest } from "@/types/sales-order";
+import type { FrameQuotationComponent, FrameQuotationConfiguration } from "@/types/quotation";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
@@ -33,6 +34,7 @@ type DbSalesOrderItem = {
   id: string;
   order_id: string;
   item_id: string;
+  skip_inventory: boolean | null;
   item_description: string | null;
   quantity: number | string;
   uom_id: string | null;
@@ -55,6 +57,77 @@ type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
   items?: DbItem | DbItem[] | null;
   units_of_measure?: DbUoM | DbUoM[] | null;
 };
+type DbSalesOrderItemConfiguration = {
+  id: string;
+  order_item_id: string;
+  width: number | string;
+  height: number | string;
+  fixed_allowance: number | string | null;
+  molding_item_id: string | null;
+  molding_stick_length: number | string | null;
+  molding_sticks_required: number | string | null;
+  service_fee_mode: string;
+  service_type: string | null;
+  service_fee_amount: number | string | null;
+  total_service_fee: number | string | null;
+  invoice_display_mode: string;
+  items?: DbItem | DbItem[] | null;
+};
+type DbSalesOrderItemComponent = {
+  id: string;
+  order_item_id: string;
+  component_type: string;
+  source: string;
+  item_id: string;
+  description: string | null;
+  qty_per_frame: number | string;
+  total_quantity: number | string;
+  uom_id: string;
+  unit_rate: number | string;
+  total_amount: number | string;
+  rounding_mode: string | null;
+  sort_order: number | null;
+  items?: DbItem | DbItem[] | null;
+  units_of_measure?: DbUoM | DbUoM[] | null;
+};
+type DbFrameJobOrderSummary = {
+  id: string;
+  sales_order_id: string;
+  job_order_code: string;
+  status: string;
+};
+type DbFrameJobOrderItemSummary = {
+  job_order_id: string;
+  sales_order_item_id: string | null;
+};
+type DbManufacturingOrderSummary = {
+  id: string;
+  frame_job_order_id: string | null;
+  manufacturing_order_code: string;
+  status: string;
+};
+type DbManufacturingOperationSummary = {
+  id: string;
+  manufacturing_order_id: string;
+  operation_name: string;
+  operation_type: string;
+  status: string;
+  sequence_no: number;
+};
+type DbSalesOrderFrameConfigSummary = {
+  order_item_id: string;
+};
+type LineManufacturingContext = {
+  eligibleItemIds: Set<string>;
+  itemOrderById: Map<string, string>;
+  frameJobOrderBySalesOrderId: Map<string, { id: string; jobOrderCode: string; status: string }>;
+  frameJobOrderItemBySalesOrderItemId: Map<string, DbFrameJobOrderItemSummary>;
+  manufacturingOrderByJobOrderId: Map<
+    string,
+    { id: string; manufacturingOrderCode: string; status: string }
+  >;
+  operationByManufacturingOrderId: Map<string, DbManufacturingOperationSummary>;
+};
 type SalesOrderLineItemInput = Omit<
   SalesOrderLineItem,
   "id" | "lineTotal" | "quantityShipped" | "quantityDelivered"
@@ -67,6 +140,32 @@ type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
   quantityDelivered?: number;
 };
 
+const asFrameServiceFeeMode = (value: string): FrameQuotationConfiguration["serviceFeeMode"] => {
+  switch (value) {
+    case "per_order":
+    case "size_based":
+    case "service_type":
+    case "manual":
+      return value;
+    default:
+      return "per_frame";
+  }
+};
+
+const asFrameInvoiceDisplayMode = (
+  value: string
+): FrameQuotationConfiguration["invoiceDisplayMode"] => {
+  return value === "components" || value === "both" ? value : "summary";
+};
+
+const asFrameComponentType = (value: string): FrameQuotationComponent["componentType"] => {
+  return value === "molding" || value === "accessory" ? value : "material";
+};
+
+const asFrameComponentSource = (value: string): FrameQuotationComponent["source"] => {
+  return value === "manual" ? "manual" : "auto";
+};
+
 // Transform database sales order to frontend type
 function transformDbSalesOrder(
   dbOrder: DbSalesOrder & {
@@ -76,9 +175,11 @@ function transformDbSalesOrder(
   },
   items?: SalesOrderLineItem[]
 ): SalesOrder {
-  const customer = Array.isArray(dbOrder.customers) ? dbOrder.customers[0] ?? null : dbOrder.customers;
+  const customer = Array.isArray(dbOrder.customers)
+    ? (dbOrder.customers[0] ?? null)
+    : dbOrder.customers;
   const quotation = Array.isArray(dbOrder.sales_quotations)
-    ? dbOrder.sales_quotations[0] ?? null
+    ? (dbOrder.sales_quotations[0] ?? null)
     : dbOrder.sales_quotations;
 
   return {
@@ -112,8 +213,15 @@ function transformDbSalesOrder(
 }
 
 // Transform database sales order item to frontend type
-function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): SalesOrderLineItem {
-  const item = Array.isArray(dbItem.items) ? dbItem.items[0] ?? null : dbItem.items;
+function transformDbSalesOrderItem(
+  dbItem: DbSalesOrderItemWithRelations,
+  configuration?: DbSalesOrderItemConfiguration | null,
+  components: DbSalesOrderItemComponent[] = []
+): SalesOrderLineItem {
+  const item = Array.isArray(dbItem.items) ? (dbItem.items[0] ?? null) : dbItem.items;
+  const moldingItem = Array.isArray(configuration?.items)
+    ? (configuration?.items[0] ?? null)
+    : configuration?.items;
 
   return {
     id: dbItem.id,
@@ -123,13 +231,128 @@ function transformDbSalesOrderItem(dbItem: DbSalesOrderItemWithRelations): Sales
     description: dbItem.item_description || "",
     quantity: Number(dbItem.quantity),
     uomId: dbItem.uom_id || "",
+    uomCode:
+      (Array.isArray(dbItem.units_of_measure)
+        ? dbItem.units_of_measure[0]?.code
+        : dbItem.units_of_measure?.code) || "",
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
     taxRate: Number(dbItem.tax_percent) || 0,
     lineTotal: Number(dbItem.line_total),
+    skipInventory: dbItem.skip_inventory ?? false,
     quantityShipped: Number(dbItem.quantity_shipped) || 0,
     quantityDelivered: Number(dbItem.quantity_delivered) || 0,
+    frameConfiguration: configuration
+      ? {
+          id: configuration.id,
+          width: Number(configuration.width),
+          height: Number(configuration.height),
+          fixedAllowance: Number(configuration.fixed_allowance) || 0,
+          moldingItemId: configuration.molding_item_id || undefined,
+          moldingItemCode: moldingItem?.item_code || undefined,
+          moldingItemName: moldingItem?.item_name || undefined,
+          moldingStickLength: configuration.molding_stick_length
+            ? Number(configuration.molding_stick_length)
+            : undefined,
+          moldingSticksRequired: configuration.molding_sticks_required
+            ? Number(configuration.molding_sticks_required)
+            : undefined,
+          serviceFeeMode: asFrameServiceFeeMode(configuration.service_fee_mode),
+          serviceType: configuration.service_type || undefined,
+          serviceFeeAmount: Number(configuration.service_fee_amount) || 0,
+          totalServiceFee: Number(configuration.total_service_fee) || 0,
+          invoiceDisplayMode: asFrameInvoiceDisplayMode(configuration.invoice_display_mode),
+        }
+      : null,
+    frameComponents: components.map((component) => {
+      const componentItem = Array.isArray(component.items) ? component.items[0] : component.items;
+      const uom = Array.isArray(component.units_of_measure)
+        ? component.units_of_measure[0]
+        : component.units_of_measure;
+      return {
+        id: component.id,
+        componentType: asFrameComponentType(component.component_type),
+        source: asFrameComponentSource(component.source),
+        itemId: component.item_id,
+        itemCode: componentItem?.item_code || undefined,
+        itemName: componentItem?.item_name || undefined,
+        description: component.description || "",
+        qtyPerFrame: Number(component.qty_per_frame),
+        totalQuantity: Number(component.total_quantity),
+        uomId: component.uom_id,
+        uomCode: uom?.code || undefined,
+        unitRate: Number(component.unit_rate),
+        totalAmount: Number(component.total_amount),
+        roundingMode: component.rounding_mode === "ceil_per_order" ? "ceil_per_order" : "none",
+        sortOrder: component.sort_order || 0,
+      };
+    }),
   };
+}
+
+function getLineManufacturingStatus(
+  lineItemId: string,
+  context: LineManufacturingContext
+): SalesOrderLineItem["manufacturing"] {
+  if (!context.eligibleItemIds.has(lineItemId)) return null;
+
+  const orderId = context.itemOrderById.get(lineItemId);
+  const jobOrder = orderId ? context.frameJobOrderBySalesOrderId.get(orderId) : null;
+
+  if (!jobOrder) {
+    return {
+      required: true,
+      status: "needs_job_order",
+      label: "Needs Job Order",
+    };
+  }
+
+  const jobOrderItem = context.frameJobOrderItemBySalesOrderItemId.get(lineItemId);
+  const manufacturingOrder = context.manufacturingOrderByJobOrderId.get(
+    jobOrderItem?.job_order_id || jobOrder.id
+  );
+
+  if (!manufacturingOrder) {
+    return {
+      required: true,
+      status: "job_order_ready",
+      label: "Job Order Ready",
+      jobOrderId: jobOrder.id,
+      jobOrderCode: jobOrder.jobOrderCode,
+    };
+  }
+
+  const operation = context.operationByManufacturingOrderId.get(manufacturingOrder.id);
+  const base = {
+    required: true,
+    jobOrderId: jobOrder.id,
+    jobOrderCode: jobOrder.jobOrderCode,
+    manufacturingOrderId: manufacturingOrder.id,
+    manufacturingOrderCode: manufacturingOrder.manufacturingOrderCode,
+    operationName: operation?.operation_name,
+  };
+
+  if (manufacturingOrder.status === "completed") {
+    return { ...base, status: "ready_for_release", label: "Ready for Release" };
+  }
+  if (manufacturingOrder.status === "quality_check") {
+    return {
+      ...base,
+      status: "quality_check",
+      label: operation?.operation_name || "Quality Check",
+    };
+  }
+  if (manufacturingOrder.status === "in_progress") {
+    return { ...base, status: "in_progress", label: operation?.operation_name || "In Production" };
+  }
+  if (manufacturingOrder.status === "on_hold") {
+    return { ...base, status: "on_hold", label: "On Hold" };
+  }
+  if (manufacturingOrder.status === "cancelled") {
+    return { ...base, status: "cancelled", label: "Cancelled" };
+  }
+
+  return { ...base, status: "ready", label: "Ready for Production" };
 }
 
 // GET /api/sales-orders - List sales orders with filters
@@ -257,30 +480,194 @@ export async function GET(request: NextRequest) {
     if (itemsError) {
     }
 
-    // Group items by order
+    const orderItemIds = (items || []).map((item) => item.id);
+    const { data: frameConfigurations } =
+      orderItemIds.length > 0
+        ? await supabase
+            .from("sales_order_item_configurations")
+            .select(
+              `
+              *,
+              items:molding_item_id (
+                id,
+                item_code,
+                item_name
+              )
+            `
+            )
+            .in("order_item_id", orderItemIds)
+            .is("deleted_at", null)
+        : { data: [] };
+    const configurationsByItemId = new Map(
+      ((frameConfigurations || []) as DbSalesOrderItemConfiguration[]).map((configuration) => [
+        configuration.order_item_id,
+        configuration,
+      ])
+    );
+    const { data: frameComponents } =
+      orderItemIds.length > 0
+        ? await supabase
+            .from("sales_order_item_components")
+            .select(
+              `
+              *,
+              items:item_id (
+                id,
+                item_code,
+                item_name
+              ),
+              units_of_measure:uom_id (
+                id,
+                code,
+                name
+              )
+            `
+            )
+            .in("order_item_id", orderItemIds)
+            .is("deleted_at", null)
+            .order("sort_order", { ascending: true })
+        : { data: [] };
+    const componentsByItemId = new Map<string, DbSalesOrderItemComponent[]>();
+    for (const component of (frameComponents || []) as DbSalesOrderItemComponent[]) {
+      const existing = componentsByItemId.get(component.order_item_id) || [];
+      existing.push(component);
+      componentsByItemId.set(component.order_item_id, existing);
+    }
+
+    const frameEligibleOrderIds = new Set<string>();
+    const frameEligibleItemIds = new Set<string>();
+    const itemOrderById = new Map((items || []).map((item) => [item.id, item.order_id]));
+    for (const configuration of (frameConfigurations || []) as DbSalesOrderFrameConfigSummary[]) {
+      const orderId = itemOrderById.get(configuration.order_item_id);
+      if (orderId) frameEligibleOrderIds.add(orderId);
+      frameEligibleItemIds.add(configuration.order_item_id);
+    }
+
+    const { data: frameJobOrders } = await supabase
+      .from("frame_job_orders")
+      .select("id, sales_order_id, job_order_code, status")
+      .in("sales_order_id", orderIds)
+      .neq("status", "cancelled")
+      .is("deleted_at", null);
+
+    const frameJobOrderBySalesOrderId = new Map(
+      ((frameJobOrders || []) as DbFrameJobOrderSummary[]).map((jobOrder) => [
+        jobOrder.sales_order_id,
+        {
+          id: jobOrder.id,
+          jobOrderCode: jobOrder.job_order_code,
+          status: jobOrder.status,
+        },
+      ])
+    );
+
+    const frameJobOrderIds = ((frameJobOrders || []) as DbFrameJobOrderSummary[]).map(
+      (jobOrder) => jobOrder.id
+    );
+    const { data: frameJobOrderItems } =
+      frameJobOrderIds.length > 0
+        ? await supabase
+            .from("frame_job_order_items")
+            .select("job_order_id, sales_order_item_id")
+            .in("job_order_id", frameJobOrderIds)
+            .is("deleted_at", null)
+        : { data: [] };
+
+    const frameJobOrderItemBySalesOrderItemId = new Map(
+      ((frameJobOrderItems || []) as DbFrameJobOrderItemSummary[])
+        .filter((item) => item.sales_order_item_id)
+        .map((item) => [item.sales_order_item_id as string, item])
+    );
+
+    const { data: manufacturingOrders } =
+      frameJobOrderIds.length > 0
+        ? await supabase
+            .from("manufacturing_orders")
+            .select("id, frame_job_order_id, manufacturing_order_code, status")
+            .in("frame_job_order_id", frameJobOrderIds)
+            .neq("status", "cancelled")
+            .is("deleted_at", null)
+        : { data: [] };
+
+    const manufacturingOrderByJobOrderId = new Map(
+      ((manufacturingOrders || []) as DbManufacturingOrderSummary[])
+        .filter((order) => order.frame_job_order_id)
+        .map((order) => [
+          order.frame_job_order_id as string,
+          {
+            id: order.id,
+            manufacturingOrderCode: order.manufacturing_order_code,
+            status: order.status,
+          },
+        ])
+    );
+
+    const manufacturingOrderIds = (
+      (manufacturingOrders || []) as DbManufacturingOrderSummary[]
+    ).map((order) => order.id);
+    const { data: manufacturingOperations } =
+      manufacturingOrderIds.length > 0
+        ? await supabase
+            .from("manufacturing_operations")
+            .select(
+              "id, manufacturing_order_id, operation_name, operation_type, status, sequence_no"
+            )
+            .in("manufacturing_order_id", manufacturingOrderIds)
+            .is("deleted_at", null)
+            .order("sequence_no", { ascending: true })
+        : { data: [] };
+
+    const operationByManufacturingOrderId = new Map<string, DbManufacturingOperationSummary>();
+    for (const operation of (manufacturingOperations || []) as DbManufacturingOperationSummary[]) {
+      const current = operationByManufacturingOrderId.get(operation.manufacturing_order_id);
+      if (!current || current.status !== "in_progress") {
+        operationByManufacturingOrderId.set(operation.manufacturing_order_id, operation);
+      }
+      if (operation.status === "in_progress") {
+        operationByManufacturingOrderId.set(operation.manufacturing_order_id, operation);
+      }
+    }
+
+    const manufacturingContext: LineManufacturingContext = {
+      eligibleItemIds: frameEligibleItemIds,
+      itemOrderById,
+      frameJobOrderBySalesOrderId,
+      frameJobOrderItemBySalesOrderItemId,
+      manufacturingOrderByJobOrderId,
+      operationByManufacturingOrderId,
+    };
+
     const itemsByOrder =
       (items as DbSalesOrderItemWithRelations[] | null)?.reduce(
         (acc, item) => {
           if (!acc[item.order_id]) {
             acc[item.order_id] = [];
           }
-          acc[item.order_id].push(transformDbSalesOrderItem(item));
+          const transformedItem = transformDbSalesOrderItem(
+            item,
+            configurationsByItemId.get(item.id) || null,
+            componentsByItemId.get(item.id) || []
+          );
+          transformedItem.manufacturing = getLineManufacturingStatus(item.id, manufacturingContext);
+          acc[item.order_id].push(transformedItem);
           return acc;
         },
         {} as Record<string, SalesOrderLineItem[]>
       ) || {};
 
     // Transform to frontend format
-    const transformedData = orders.map((order) =>
-      transformDbSalesOrder(
+    const transformedData = orders.map((order) => ({
+      ...transformDbSalesOrder(
         order as DbSalesOrder & {
           customers?: DbCustomer | DbCustomer[] | null;
           users?: DbUser | DbUser[] | null;
           sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
         },
         itemsByOrder[order.id] || []
-      )
-    );
+      ),
+      hasFrameJobEligibleItems: frameEligibleOrderIds.has(order.id),
+      frameJobOrder: frameJobOrderBySalesOrderId.get(order.id) || null,
+    }));
 
     return NextResponse.json({
       data: transformedData,
@@ -411,6 +798,7 @@ export async function POST(request: NextRequest) {
       company_id: userData.company_id,
       order_id: order.id,
       item_id: item.itemId,
+      skip_inventory: item.skipInventory ?? !!item.frameConfiguration,
       item_description: item.description,
       quantity: item.quantity,
       uom_id: item.uomId,
@@ -425,15 +813,97 @@ export async function POST(request: NextRequest) {
       updated_by: user.id,
     }));
 
-    const { error: itemsError } = await supabase.from("sales_order_items").insert(itemsToInsert);
+    const { data: insertedItems, error: itemsError } = await supabase
+      .from("sales_order_items")
+      .insert(itemsToInsert)
+      .select("id, sort_order");
 
-    if (itemsError) {
+    if (itemsError || !insertedItems) {
       // Rollback: delete the order
       await supabase.from("sales_orders").delete().eq("id", order.id);
       return NextResponse.json(
         { error: itemsError.message || "Failed to create sales order items" },
         { status: 500 }
       );
+    }
+
+    const orderItemIdBySortOrder = new Map(
+      insertedItems.map((item) => [item.sort_order || 0, item.id] as const)
+    );
+    const configurationRows = itemsWithCalculations.flatMap((item, index) =>
+      item.frameConfiguration
+        ? [
+            {
+              company_id: userData.company_id,
+              order_item_id: orderItemIdBySortOrder.get(index),
+              quotation_configuration_id: null,
+              width: item.frameConfiguration.width,
+              height: item.frameConfiguration.height,
+              fixed_allowance: item.frameConfiguration.fixedAllowance || 0,
+              molding_item_id: item.frameConfiguration.moldingItemId || null,
+              molding_stick_length: item.frameConfiguration.moldingStickLength || null,
+              molding_sticks_required: item.frameConfiguration.moldingSticksRequired || null,
+              service_fee_mode: item.frameConfiguration.serviceFeeMode,
+              service_type: item.frameConfiguration.serviceType || null,
+              service_fee_amount: item.frameConfiguration.serviceFeeAmount || 0,
+              total_service_fee: item.frameConfiguration.totalServiceFee || 0,
+              invoice_display_mode: item.frameConfiguration.invoiceDisplayMode,
+              created_by: user.id,
+              updated_by: user.id,
+            },
+          ]
+        : []
+    );
+
+    if (configurationRows.length > 0) {
+      const { data: insertedConfigurations, error: configurationError } = await supabase
+        .from("sales_order_item_configurations")
+        .insert(configurationRows.filter((row) => row.order_item_id))
+        .select("id, order_item_id");
+
+      if (configurationError) {
+        await supabase.from("sales_orders").delete().eq("id", order.id);
+        return NextResponse.json({ error: "Failed to create sales order item configurations" }, { status: 500 });
+      }
+
+      const configurationIdByOrderItemId = new Map(
+        (insertedConfigurations || []).map((row) => [row.order_item_id, row.id] as const)
+      );
+      const componentRows = itemsWithCalculations.flatMap((item, index) => {
+        const orderItemId = orderItemIdBySortOrder.get(index);
+        const configurationId = orderItemId ? configurationIdByOrderItemId.get(orderItemId) : null;
+        if (!orderItemId || !configurationId || !item.frameComponents?.length) return [];
+        return item.frameComponents.map((component, componentIndex) => ({
+          company_id: userData.company_id,
+          order_item_id: orderItemId,
+          configuration_id: configurationId,
+          quotation_component_id: null,
+          component_type: component.componentType,
+          source: component.source,
+          item_id: component.itemId,
+          description: component.description,
+          qty_per_frame: component.qtyPerFrame,
+          total_quantity: component.totalQuantity,
+          uom_id: component.uomId,
+          unit_rate: component.unitRate,
+          total_amount: component.totalAmount,
+          rounding_mode: component.roundingMode || "none",
+          sort_order: component.sortOrder ?? componentIndex,
+          created_by: user.id,
+          updated_by: user.id,
+        }));
+      });
+
+      if (componentRows.length > 0) {
+        const { error: componentError } = await supabase
+          .from("sales_order_item_components")
+          .insert(componentRows);
+
+        if (componentError) {
+          await supabase.from("sales_orders").delete().eq("id", order.id);
+          return NextResponse.json({ error: "Failed to create sales order item components" }, { status: 500 });
+        }
+      }
     }
 
     // Fetch the complete order with joins
@@ -480,9 +950,68 @@ export async function POST(request: NextRequest) {
       .eq("order_id", order.id)
       .order("sort_order", { ascending: true });
 
+    const createdOrderItemIds = (orderItems || []).map((item) => item.id);
+    const { data: createdConfigurations } =
+      createdOrderItemIds.length > 0
+        ? await supabase
+            .from("sales_order_item_configurations")
+            .select(
+              `
+              *,
+              items:molding_item_id (
+                id,
+                item_code,
+                item_name
+              )
+            `
+            )
+            .in("order_item_id", createdOrderItemIds)
+            .is("deleted_at", null)
+        : { data: [] };
+    const createdConfigurationsByItemId = new Map(
+      ((createdConfigurations || []) as DbSalesOrderItemConfiguration[]).map((configuration) => [
+        configuration.order_item_id,
+        configuration,
+      ])
+    );
+    const { data: createdComponents } =
+      createdOrderItemIds.length > 0
+        ? await supabase
+            .from("sales_order_item_components")
+            .select(
+              `
+              *,
+              items:item_id (
+                id,
+                item_code,
+                item_name
+              ),
+              units_of_measure:uom_id (
+                id,
+                code,
+                name
+              )
+            `
+            )
+            .in("order_item_id", createdOrderItemIds)
+            .is("deleted_at", null)
+            .order("sort_order", { ascending: true })
+        : { data: [] };
+    const createdComponentsByItemId = new Map<string, DbSalesOrderItemComponent[]>();
+    for (const component of (createdComponents || []) as DbSalesOrderItemComponent[]) {
+      const existing = createdComponentsByItemId.get(component.order_item_id) || [];
+      existing.push(component);
+      createdComponentsByItemId.set(component.order_item_id, existing);
+    }
+
     const items =
-      orderItems?.map((item) => transformDbSalesOrderItem(item as DbSalesOrderItemWithRelations)) ||
-      [];
+      orderItems?.map((item) =>
+        transformDbSalesOrderItem(
+          item as DbSalesOrderItemWithRelations,
+          createdConfigurationsByItemId.get(item.id) || null,
+          createdComponentsByItemId.get(item.id) || []
+        )
+      ) || [];
     const result = transformDbSalesOrder(
       completeOrder as DbSalesOrder & {
         customers?: DbCustomer | DbCustomer[] | null;

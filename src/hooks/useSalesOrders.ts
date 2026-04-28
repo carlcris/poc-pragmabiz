@@ -155,6 +155,23 @@ export function useConvertToInvoice() {
   });
 }
 
+export function useCreateFrameJobOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ orderId, warehouseId }: { orderId: string; warehouseId: string }) =>
+      salesOrdersApi.createFrameJobOrder(orderId, warehouseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["frame-job-orders"] });
+      toast.success("Job order created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create job order");
+    },
+  });
+}
+
 export function useSalesOrderPaymentSummary(salesOrderId: string) {
   return useQuery({
     queryKey: [SALES_ORDERS_KEY, salesOrderId, "payment-summary"],

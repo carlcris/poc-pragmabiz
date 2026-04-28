@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingBag,
+  ShoppingCart,
   FileText,
   Shield,
   Menu,
@@ -24,6 +25,8 @@ import {
   Users,
   Building2,
   PackageCheck,
+  Factory,
+  ChefHat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
@@ -45,7 +48,12 @@ const menuItems = [
     icon: Package,
     href: "/inventory/items",
     children: [
-      { title: "Item Master", href: "/inventory/items", resource: RESOURCES.ITEMS as Resource, icon: Package },
+      {
+        title: "Item Master",
+        href: "/inventory/items",
+        resource: RESOURCES.ITEMS as Resource,
+        icon: Package,
+      },
       {
         title: "Warehouses",
         href: "/inventory/warehouses",
@@ -96,19 +104,74 @@ const menuItems = [
       },
     ],
   },
-  // {
-  //   title: "Sales",
-  //   icon: ShoppingCart,
-  //   href: "/sales",
-  //   children: [
-  //     { title: "Point of Sale", href: "/sales/pos", resource: RESOURCES.POS as Resource },
-  //     { title: "POS Transactions", href: "/sales/pos/transactions", resource: RESOURCES.POS as Resource },
-  //     { title: "Customers", href: "/sales/customers", resource: RESOURCES.CUSTOMERS as Resource },
-  //     { title: "Quotations", href: "/sales/quotations", resource: RESOURCES.SALES_QUOTATIONS as Resource },
-  //     { title: "Sales Orders", href: "/sales/orders", resource: RESOURCES.SALES_ORDERS as Resource },
-  //     { title: "Invoices", href: "/sales/invoices", resource: RESOURCES.SALES_INVOICES as Resource },
-  //   ],
-  // },
+  {
+    title: "Sales",
+    icon: ShoppingCart,
+    href: "/sales",
+    children: [
+      {
+        title: "Point of Sale",
+        href: "/sales/pos",
+        resource: RESOURCES.POS as Resource,
+        icon: ShoppingCart,
+      },
+      {
+        title: "POS Transactions",
+        href: "/sales/pos/transactions",
+        resource: RESOURCES.POS as Resource,
+        icon: FileText,
+      },
+      {
+        title: "Customers",
+        href: "/sales/customers",
+        resource: RESOURCES.CUSTOMERS as Resource,
+        icon: Users,
+      },
+      {
+        title: "Quotations",
+        href: "/sales/quotations",
+        resource: RESOURCES.SALES_QUOTATIONS as Resource,
+        icon: FileText,
+      },
+      {
+        title: "Sales Orders",
+        href: "/sales/orders",
+        resource: RESOURCES.SALES_ORDERS as Resource,
+        icon: ClipboardList,
+      },
+      {
+        title: "Invoices",
+        href: "/sales/invoices",
+        resource: RESOURCES.SALES_INVOICES as Resource,
+        icon: FileText,
+      },
+            {
+        title: "Job Orders",
+        href: "/sales/frame-job-orders",
+        resource: RESOURCES.SALES_QUOTATIONS as Resource,
+        icon: ClipboardList,
+      },
+    ],
+  },
+  {
+    title: "Manufacturing",
+    icon: Factory,
+    href: "/manufacturing/orders",
+    children: [
+      {
+        title: "Orders",
+        href: "/manufacturing/orders",
+        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
+        icon: Factory,
+      },
+      {
+        title: "Production",
+        href: "/manufacturing/floor",
+        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
+        icon: ChefHat,
+      },
+    ],
+  },
   {
     title: "Purchasing",
     icon: ShoppingBag,
@@ -177,7 +240,12 @@ const menuItems = [
     icon: FileText,
     href: "/reports",
     children: [
-      { title: "Reports Directory", href: "/reports", resource: RESOURCES.REPORTS as Resource, icon: LayoutDashboard },
+      {
+        title: "Reports Directory",
+        href: "/reports",
+        resource: RESOURCES.REPORTS as Resource,
+        icon: LayoutDashboard,
+      },
       //{ title: "Sales Analytics", href: "/reports/sales-analytics", resource: RESOURCES.REPORTS as Resource },
       //{ title: "Commission Reports", href: "/reports/commission", resource: RESOURCES.REPORTS as Resource },
     ],
@@ -213,11 +281,7 @@ export function Sidebar({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
   const isOpen = useSidebarStore((state) => state.isOpen);
-  const {
-    isLoading: permissionsLoading,
-    permissions,
-    error: permissionsError,
-  } = usePermissions();
+  const { isLoading: permissionsLoading, permissions, error: permissionsError } = usePermissions();
 
   // Ensure first client render matches server-rendered HTML to avoid hydration mismatch.
   // After mount, switch to live client permission state (with server snapshot as fallback).
@@ -225,9 +289,12 @@ export function Sidebar({
     setHasMounted(true);
   }, []);
 
-  const effectivePermissions = hasMounted ? permissions ?? initialPermissions : initialPermissions;
+  const effectivePermissions = hasMounted
+    ? (permissions ?? initialPermissions)
+    : initialPermissions;
   const sidebarOpen = hasMounted ? isOpen : true;
-  const canViewResource = (resource: Resource) => Boolean(effectivePermissions?.[resource]?.can_view);
+  const canViewResource = (resource: Resource) =>
+    Boolean(effectivePermissions?.[resource]?.can_view);
 
   // Don't render menu items until permissions are loaded
   // If cached permissions exist (persisted), render immediately and refresh in background.
@@ -243,7 +310,12 @@ export function Sidebar({
       style={{ backgroundColor: "#240032" }}
     >
       <div className="border-b border-white/10 p-4 md:p-6">
-        <div className={cn("flex items-center gap-4", sidebarOpen ? "justify-between" : "md:justify-center")}>
+        <div
+          className={cn(
+            "flex items-center gap-4",
+            sidebarOpen ? "justify-between" : "md:justify-center"
+          )}
+        >
           <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white/15 via-white/10 to-white/5 shadow-[0_12px_30px_rgba(15,23,42,0.35)] ring-1 ring-white/15">
             <Image
               src="/achlers_circle.png"
@@ -296,138 +368,159 @@ export function Sidebar({
                   <div key={i} className="space-y-2">
                     <div className="flex items-center gap-3 rounded-md px-3 py-2.5">
                       <div className="h-5 w-5 rounded bg-white/10"></div>
-                      <div className={cn("h-4 max-w-[120px] flex-1 rounded bg-white/10", !sidebarOpen && "hidden md:hidden")}></div>
+                      <div
+                        className={cn(
+                          "h-4 max-w-[120px] flex-1 rounded bg-white/10",
+                          !sidebarOpen && "hidden md:hidden"
+                        )}
+                      ></div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className={cn("px-3 py-4 text-sm text-white/70", !sidebarOpen && "hidden md:hidden")}>Unable to load menu permissions.</div>
+              <div
+                className={cn(
+                  "px-3 py-4 text-sm text-white/70",
+                  !sidebarOpen && "hidden md:hidden"
+                )}
+              >
+                Unable to load menu permissions.
+              </div>
             )
           ) : (
             <>
               {/* Mobile and Desktop Expanded view - show full menu with text */}
               <div className={cn(!sidebarOpen && "hidden md:hidden")}>
                 {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isParentActive = !item.children && pathname === item.href;
+                  const Icon = item.icon;
+                  const isParentActive = !item.children && pathname === item.href;
 
-              if (item.children) {
-                const visibleChildren = item.children.filter((child) => canViewResource(child.resource));
-                if (visibleChildren.length === 0) {
-                  return null;
-                }
+                  if (item.children) {
+                    const visibleChildren = item.children.filter((child) =>
+                      canViewResource(child.resource)
+                    );
+                    if (visibleChildren.length === 0) {
+                      return null;
+                    }
 
-                return (
-                  <div key={item.href} className="pt-2">
-                    <div className="px-3 pb-1">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
-                        {t(item.title)}
+                    return (
+                      <div key={item.href} className="pt-2">
+                        <div className="px-3 pb-1">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">
+                            {t(item.title)}
+                          </div>
+                        </div>
+                        <div className="space-y-1 pl-4">
+                          {visibleChildren.map((child) => {
+                            const ChildIcon = child.icon;
+                            return (
+                              <Link
+                                key={child.href}
+                                href={child.href}
+                                onClick={() => setIsMobileOpen(false)}
+                                className={cn(
+                                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                                  pathname === child.href
+                                    ? "bg-white/20 font-medium text-white"
+                                    : "text-gray-300 hover:bg-white/10 hover:text-white"
+                                )}
+                              >
+                                {ChildIcon && <ChildIcon className="h-4 w-4" />}
+                                {t(child.title)}
+                              </Link>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1 pl-4">
-                      {visibleChildren.map((child) => {
-                        const ChildIcon = child.icon;
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            onClick={() => setIsMobileOpen(false)}
-                            className={cn(
-                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                              pathname === child.href
-                                ? "bg-white/20 font-medium text-white"
-                                : "text-gray-300 hover:bg-white/10 hover:text-white"
-                            )}
-                          >
-                            {ChildIcon && <ChildIcon className="h-4 w-4" />}
-                            {t(child.title)}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }
+                    );
+                  }
 
-              if (canViewResource(item.resource!)) {
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      isParentActive
-                        ? "bg-white/20 font-medium text-white"
-                        : "text-gray-300 hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {t(item.title)}
-                  </Link>
-                );
-              }
+                  if (canViewResource(item.resource!)) {
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsMobileOpen(false)}
+                        className={cn(
+                          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                          isParentActive
+                            ? "bg-white/20 font-medium text-white"
+                            : "text-gray-300 hover:bg-white/10 hover:text-white"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {t(item.title)}
+                      </Link>
+                    );
+                  }
 
-              return null;
+                  return null;
                 })}
               </div>
 
               {/* Desktop Collapsed view - show only icons */}
-              <div className={cn("hidden", !sidebarOpen && "md:flex md:flex-col md:items-center md:space-y-2 md:py-4")}>
-              {menuItems.map((item) => {
-                const Icon = item.icon;
+              <div
+                className={cn(
+                  "hidden",
+                  !sidebarOpen && "md:flex md:flex-col md:items-center md:space-y-2 md:py-4"
+                )}
+              >
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
 
-                if (item.children) {
-                  const visibleChildren = item.children.filter((child) => canViewResource(child.resource));
-                  if (visibleChildren.length === 0) {
-                    return null;
+                  if (item.children) {
+                    const visibleChildren = item.children.filter((child) =>
+                      canViewResource(child.resource)
+                    );
+                    if (visibleChildren.length === 0) {
+                      return null;
+                    }
+
+                    // For parent items with children, show all child icons
+                    return visibleChildren.map((child) => {
+                      const ChildIcon = child.icon;
+                      if (!ChildIcon) return null;
+
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          title={t(child.title)}
+                          className={cn(
+                            "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
+                            pathname === child.href
+                              ? "bg-white/20 text-white"
+                              : "text-gray-300 hover:bg-white/10 hover:text-white"
+                          )}
+                        >
+                          <ChildIcon className="h-5 w-5" />
+                        </Link>
+                      );
+                    });
                   }
 
-                  // For parent items with children, show all child icons
-                  return visibleChildren.map((child) => {
-                    const ChildIcon = child.icon;
-                    if (!ChildIcon) return null;
-
+                  if (canViewResource(item.resource!)) {
+                    const isActive = pathname === item.href;
                     return (
                       <Link
-                        key={child.href}
-                        href={child.href}
-                        title={t(child.title)}
+                        key={item.href}
+                        href={item.href}
+                        title={t(item.title)}
                         className={cn(
                           "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
-                          pathname === child.href
+                          isActive
                             ? "bg-white/20 text-white"
                             : "text-gray-300 hover:bg-white/10 hover:text-white"
                         )}
                       >
-                        <ChildIcon className="h-5 w-5" />
+                        <Icon className="h-5 w-5" />
                       </Link>
                     );
-                  });
-                }
+                  }
 
-                if (canViewResource(item.resource!)) {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      title={t(item.title)}
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-md transition-colors",
-                        isActive
-                          ? "bg-white/20 text-white"
-                          : "text-gray-300 hover:bg-white/10 hover:text-white"
-                      )}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </Link>
-                  );
-                }
-
-                return null;
-              })}
+                  return null;
+                })}
               </div>
             </>
           )}

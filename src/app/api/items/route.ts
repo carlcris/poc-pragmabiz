@@ -5,6 +5,7 @@ import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import type { CreateItemRequest, Item } from "@/types/item";
 import type { Database } from "@/types/database.types";
+import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
 import {
   getPrimaryItemUnitOption,
   sortItemUnitOptions,
@@ -37,6 +38,7 @@ export interface ItemWithStock {
   purchasePrice?: number;
   listPrice: number;
   itemType: string;
+  customFields?: Record<string, unknown> | null;
   isActive: boolean;
   imageUrl?: string;
 }
@@ -56,6 +58,7 @@ type ItemsRpcRow = {
   purchase_price: number;
   sales_price: number;
   item_type: string;
+  custom_fields: Record<string, unknown> | null;
   is_active: boolean | null;
   image_url: string | null;
   on_hand: number;
@@ -89,6 +92,7 @@ type DbItem = {
   purchase_price: number | string | null;
   sales_price: number | string | null;
   image_url: string | null;
+  custom_fields: Record<string, unknown> | null;
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
@@ -127,7 +131,31 @@ const parseOptionalBoolean = (raw: string | null): boolean | null => {
   return null;
 };
 
-const toNumber = (value: number | string | null | undefined): number => {
+const normalizeDimensions = (value: unknown): Item["dimensions"] | null => {
+  if (!value || typeof value !== "object") return null;
+
+  const candidate = value as Record<string, unknown>;
+  const length = toNumber(candidate.length);
+  const width = toNumber(candidate.width);
+  const height = toNumber(candidate.height);
+  const unit =
+    typeof candidate.unit === "string" && candidate.unit.trim().length > 0
+      ? candidate.unit.trim()
+      : undefined;
+
+  if (!length && !width && !height && !unit) {
+    return null;
+  }
+
+  return {
+    ...(length ? { length } : {}),
+    ...(width ? { width } : {}),
+    ...(height ? { height } : {}),
+    ...(unit ? { unit } : {}),
+  };
+};
+
+const toNumber = (value: unknown): number => {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
@@ -146,6 +174,55 @@ const asStatus = (value: string | null): ItemStatus | null => {
     return value;
   }
   return null;
+};
+
+const normalizeSearchTerm = (value: string | null) => value?.trim().toLowerCase() || "";
+
+const scoreSearchField = (fieldValue: string | null | undefined, search: string, baseScore: number) => {
+  const normalizedField = fieldValue?.trim().toLowerCase() || "";
+  if (!normalizedField || !search) return 0;
+  if (normalizedField === search) return baseScore + 300;
+  if (normalizedField.startsWith(search)) return baseScore + 200;
+  if (normalizedField.split(/\s+/).some((part) => part.startsWith(search))) return baseScore + 120;
+  if (normalizedField.includes(search)) return baseScore;
+  return 0;
+};
+
+const scoreItemSearchMatch = (
+  search: string,
+  item: {
+    code: string;
+    name: string;
+    chineseName?: string;
+    description?: string;
+  }
+) =>
+  Math.max(
+    scoreSearchField(item.code, search, 500),
+    scoreSearchField(item.name, search, 450),
+    scoreSearchField(item.chineseName, search, 400),
+    scoreSearchField(item.description, search, 300)
+  );
+
+const rankItemsBySearch = <T extends {
+  code: string;
+  name: string;
+  chineseName?: string;
+  description?: string;
+}>(items: T[], rawSearch: string | null) => {
+  const normalizedSearch = normalizeSearchTerm(rawSearch);
+  if (!normalizedSearch) return items;
+
+  return [...items].sort((left, right) => {
+    const scoreDifference =
+      scoreItemSearchMatch(normalizedSearch, right) - scoreItemSearchMatch(normalizedSearch, left);
+    if (scoreDifference !== 0) return scoreDifference;
+
+    const nameOrder = left.name.localeCompare(right.name);
+    if (nameOrder !== 0) return nameOrder;
+
+    return left.code.localeCompare(right.code);
+  });
 };
 
 const fetchItemUnitOptionsByItemId = async (
@@ -221,6 +298,7 @@ const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     description: dbItem.description || "",
     dimensions: dbItem.dimensions || null,
     itemType: dbItem.item_type as Item["itemType"],
+    customFields: dbItem.custom_fields || null,
     uom: uom?.code || "",
     uomId: dbItem.uom_id,
     category: category?.name || "",
@@ -302,8 +380,9 @@ export async function GET(request: NextRequest) {
         query = query.eq("is_active", isActive);
       }
 
-      const from = (page - 1) * limit;
-      const to = from + limit - 1;
+      const candidateLimit = search && page === 1 ? Math.max(limit, 100) : limit;
+      const from = (page - 1) * candidateLimit;
+      const to = from + candidateLimit - 1;
       query = query.range(from, to).order("item_name", { ascending: true });
 
       const { data, error, count } = await query;
@@ -324,11 +403,12 @@ export async function GET(request: NextRequest) {
       const items = fetchedItems.map((item) =>
         transformDbItem(item, unitOptionRowsByItemId.get(item.id) || [])
       );
+      const rankedItems = search && page === 1 ? rankItemsBySearch(items, search) : items;
       const total = count || 0;
       const totalPages = Math.ceil(total / limit);
 
       return NextResponse.json({
-        data: items,
+        data: search && page === 1 ? rankedItems.slice(0, limit) : rankedItems,
         pagination: {
           page,
           limit,
@@ -385,10 +465,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const candidateLimit = search && page === 1 ? Math.max(limit, 100) : limit;
+
     const rpcPayload = {
       ...statsRpcPayload,
       p_page: page,
-      p_limit: limit,
+      p_limit: candidateLimit,
     };
 
     const statsRpcPromise = includeStats ? supabase.rpc("get_items_enhanced_stats", statsRpcPayload) : null;
@@ -437,16 +519,19 @@ export async function GET(request: NextRequest) {
       purchasePrice: row.purchase_price,
       listPrice: row.sales_price,
       itemType: row.item_type,
+      customFields: row.custom_fields || null,
       isActive: row.is_active ?? true,
       imageUrl: row.image_url || undefined,
     }));
+    const rankedItemsWithStock =
+      search && page === 1 ? rankItemsBySearch(itemsWithStock, search) : itemsWithStock;
 
     const total = rows.length > 0 ? toNumber(rows[0].total_count) : 0;
     const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
 
     if (!includeStats) {
       return NextResponse.json({
-        data: itemsWithStock,
+        data: search && page === 1 ? rankedItemsWithStock.slice(0, limit) : rankedItemsWithStock,
         pagination: {
           page,
           limit,
@@ -468,7 +553,7 @@ export async function GET(request: NextRequest) {
     const statsRow = ((statsRows || [])[0] || null) as ItemsStatsRow | null;
 
     return NextResponse.json({
-      data: itemsWithStock,
+      data: search && page === 1 ? rankedItemsWithStock.slice(0, limit) : rankedItemsWithStock,
       pagination: {
         page,
         limit,
@@ -566,6 +651,7 @@ export async function POST(request: NextRequest) {
       item_name: body.name,
       item_name_cn: body.chineseName || null,
       description: body.description || null,
+      dimensions: normalizeDimensions(body.dimensions),
       item_type: body.itemType,
       uom_id: uomData.id,
       category_id: categoryId,
@@ -611,17 +697,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error: unitOptionInsertError } = await supabase.from("item_unit_options").insert({
-      company_id: companyId,
-      item_id: (newItem as ItemRow).id,
-      uom_id: uomData.id,
-      qty_per_unit: 1,
-      is_base: true,
-      is_default: true,
-      is_active: true,
-      sort_order: 0,
-      created_by: userId,
-      updated_by: userId,
+    const { error: unitOptionInsertError } = await insertItemUnitOptionWithRetry({
+      supabase,
+      payload: {
+        company_id: companyId,
+        item_id: (newItem as ItemRow).id,
+        uom_id: uomData.id,
+        qty_per_unit: 1,
+        is_base: true,
+        is_default: true,
+        is_active: true,
+        sort_order: 0,
+        created_by: userId,
+        updated_by: userId,
+      },
     });
 
     if (unitOptionInsertError) {
