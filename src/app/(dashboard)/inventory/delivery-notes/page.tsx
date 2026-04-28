@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Plus,
   Search,
@@ -159,6 +160,9 @@ const resolveActivePickList = (deliveryNote: DeliveryNote): DeliveryNotePickList
 
   return active.find((row) => row.status !== "cancelled") || active[0] || null;
 };
+
+const getMutationErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
 
 export default function DeliveryNotesPage() {
   const router = useRouter();
@@ -725,10 +729,12 @@ export default function DeliveryNotesPage() {
         })),
       });
 
+      toast.success("Delivery note created");
       setCreateOpen(false);
       resetCreateState();
     } catch (error) {
-      const message = error instanceof Error ? error.message : t("createError");
+      const message = getMutationErrorMessage(error, t("createError"));
+      toast.error(message);
       setCreateValidationError(message);
     }
   };
@@ -757,7 +763,13 @@ export default function DeliveryNotesPage() {
         return;
       }
 
-      await confirmMutation.mutateAsync(actionDn.id);
+      try {
+        await confirmMutation.mutateAsync(actionDn.id);
+        toast.success("Delivery note confirmed");
+      } catch (error) {
+        toast.error(getMutationErrorMessage(error, "Failed to confirm delivery note"));
+        return;
+      }
     }
 
     if (actionType === "queue_picking") {
@@ -768,11 +780,16 @@ export default function DeliveryNotesPage() {
       const pickerUserIds = Array.from(selectedQueuePickerIds);
       if (pickerUserIds.length === 0) return;
 
-      await createPickListMutation.mutateAsync({
-        dnId: actionDn.id,
-        pickerUserIds,
-        notes: queueNotes.trim() || undefined,
-      });
+      try {
+        await createPickListMutation.mutateAsync({
+          dnId: actionDn.id,
+          pickerUserIds,
+          notes: queueNotes.trim() || undefined,
+        });
+      } catch (error) {
+        toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
+        return;
+      }
     }
 
     if (actionType === "dispatch") {
@@ -780,23 +797,29 @@ export default function DeliveryNotesPage() {
         return;
       }
 
-      await dispatchMutation.mutateAsync({
-        id: actionDn.id,
-        data: {
-          driverName: driverName.trim() || undefined,
-          notes: dispatchNotes.trim() || undefined,
-          items: actionItems
-            .filter((item) => !item.is_voided)
-            .map((item) => ({
-              deliveryNoteItemId: item.id,
-              dispatchQty: Math.max(
-                0,
-                Number(item.picked_qty || 0) - Number(item.dispatched_qty || 0)
-              ),
-            }))
-            .filter((item) => item.dispatchQty > 0),
-        },
-      });
+      try {
+        await dispatchMutation.mutateAsync({
+          id: actionDn.id,
+          data: {
+            driverName: driverName.trim() || undefined,
+            notes: dispatchNotes.trim() || undefined,
+            items: actionItems
+              .filter((item) => !item.is_voided)
+              .map((item) => ({
+                deliveryNoteItemId: item.id,
+                dispatchQty: Math.max(
+                  0,
+                  Number(item.picked_qty || 0) - Number(item.dispatched_qty || 0)
+                ),
+              }))
+              .filter((item) => item.dispatchQty > 0),
+          },
+        });
+        toast.success("Delivery note dispatched");
+      } catch (error) {
+        toast.error(getMutationErrorMessage(error, "Failed to dispatch delivery note"));
+        return;
+      }
     }
 
     if (actionType === "receive") {
@@ -804,24 +827,36 @@ export default function DeliveryNotesPage() {
         return;
       }
 
-      await receiveMutation.mutateAsync({
-        id: actionDn.id,
-        fulfillmentMode: actionDn.fulfillment_mode || "transfer_to_store",
-        data: {
-          notes: receiveNotes.trim() || undefined,
-          items: actionItems.map((item) => ({
-            deliveryNoteItemId: item.id,
-            receivedQty: Number(item.dispatched_qty || 0),
-          })),
-        },
-      });
+      try {
+        await receiveMutation.mutateAsync({
+          id: actionDn.id,
+          fulfillmentMode: actionDn.fulfillment_mode || "transfer_to_store",
+          data: {
+            notes: receiveNotes.trim() || undefined,
+            items: actionItems.map((item) => ({
+              deliveryNoteItemId: item.id,
+              receivedQty: Number(item.dispatched_qty || 0),
+            })),
+          },
+        });
+        toast.success("Delivery note received");
+      } catch (error) {
+        toast.error(getMutationErrorMessage(error, "Failed to receive delivery note"));
+        return;
+      }
     }
 
     if (actionType === "void") {
-      await voidMutation.mutateAsync({
-        id: actionDn.id,
-        reason: voidReason.trim() || undefined,
-      });
+      try {
+        await voidMutation.mutateAsync({
+          id: actionDn.id,
+          reason: voidReason.trim() || undefined,
+        });
+        toast.success("Delivery note voided");
+      } catch (error) {
+        toast.error(getMutationErrorMessage(error, "Failed to void delivery note"));
+        return;
+      }
     }
 
     setActionOpen(false);

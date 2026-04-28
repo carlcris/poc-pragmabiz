@@ -31,6 +31,7 @@ import { ItemLedgerTab } from "@/components/items/ledger/ItemLedgerTab";
 import { ItemBarcodeImage } from "@/components/items/barcode/ItemBarcodeImage";
 import { ItemImage } from "@/components/items/ItemImage";
 import { ItemUnitOptionsCard } from "@/components/items/unit-options/ItemUnitOptionsCard";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard } from "@/components/permissions/PermissionGuard";
@@ -216,14 +217,56 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
     }
 
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <p className="mb-2 text-red-500">{t("errorLoadingTitle")}</p>
-          <p className="text-sm text-gray-500">{(error as Error)?.message || t("itemNotFound")}</p>
-          <Button asChild className="mt-4">
-            <Link href="/inventory/items">{t("backToItems")}</Link>
-          </Button>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
+              {t("errorLoadingTitle")}
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{t("itemNotFound")}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button asChild variant="outline">
+              <Link href="/inventory/items">{t("backToItems")}</Link>
+            </Button>
+          </div>
         </div>
+
+        <div className="grid gap-4 md:grid-cols-4">
+          <MetricCard title={t("availableQtyLabel")} icon={Package} value="--" />
+          <MetricCard title={t("reservedQtyLabel")} icon={Lock} value="--" />
+          <MetricCard title={t("onHandLabel")} icon={Warehouse} value="--" />
+          <MetricCard title={t("inTransitLabel")} icon={Truck} value="--" />
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
+            <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+            <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
+            <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
+            <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className={tabPanelClassName}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
+                <CardDescription className="text-sm">
+                  {t("itemInformationDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EmptyStatePanel
+                  icon={Package}
+                  title={t("errorLoadingTitle")}
+                  description={(error as Error)?.message || t("itemNotFound")}
+                  className="min-h-[320px]"
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }

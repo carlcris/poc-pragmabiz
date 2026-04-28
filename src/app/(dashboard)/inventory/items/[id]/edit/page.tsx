@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { Loader2, QrCode } from "lucide-react";
+import { AlertCircle, QrCode } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
@@ -23,9 +23,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
 import Link from "next/link";
@@ -50,6 +52,9 @@ function EditItemContent({ params }: EditItemPageProps) {
   const { data: uomsData } = useUnitsOfMeasure();
 
   const item = itemResponse?.data;
+  const isItemLoading = isLoading && !item;
+  const hasLoadError = !isItemLoading && (Boolean(error) || !item);
+  const primaryBarcode = item?.primaryBarcode ?? null;
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedUom, setSelectedUom] = useState("");
   const categories = useMemo(() => categoriesData?.data || [], [categoriesData?.data]);
@@ -170,28 +175,6 @@ function EditItemContent({ params }: EditItemPageProps) {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (error || !item) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <div className="text-center">
-          <p className="mb-2 text-red-500">Error loading item</p>
-          <p className="text-sm text-gray-500">{(error as Error)?.message || "Item not found"}</p>
-          <Button asChild className="mt-4">
-            <Link href="/inventory/items">Back to Items</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -206,6 +189,97 @@ function EditItemContent({ params }: EditItemPageProps) {
 
       {/* Form */}
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        {isItemLoading ? (
+          <>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-64" />
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {Array.from({ length: 4 }, (_, sectionIndex) => (
+                  <div key={sectionIndex} className="space-y-4">
+                    <Skeleton className="h-5 w-36" />
+                    <div className="grid grid-cols-2 gap-4">
+                      {Array.from({ length: sectionIndex === 0 ? 4 : 2 }, (_, fieldIndex) => (
+                        <div key={fieldIndex} className="space-y-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <Skeleton className="h-16 w-full rounded-lg" />
+                <div className="flex items-center gap-4 pt-4">
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-32" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-48" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="aspect-square w-full rounded-lg" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-52" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-[215px] w-full rounded-lg" />
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : hasLoadError ? (
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
+                <CardDescription className="text-sm">
+                  {t("itemInformationEditDescription")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EmptyStatePanel
+                  icon={AlertCircle}
+                  title="Error loading item"
+                  description={(error as Error)?.message || "Item not found"}
+                  className="min-h-[360px]"
+                />
+                <div className="mt-4 flex justify-center">
+                  <Button asChild>
+                    <Link href="/inventory/items">Back to Items</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold">{t("itemImageLabel")}</CardTitle>
+                  <CardDescription className="text-sm">{t("itemImageDescription")}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex aspect-square items-center justify-center rounded-lg border border-dashed bg-muted/30">
+                    <AlertCircle className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : (
+          <>
         {/* Left Column - Main Form */}
         <Card>
           <CardHeader>
@@ -610,7 +684,7 @@ function EditItemContent({ params }: EditItemPageProps) {
                         <ImageUpload
                           value={field.value}
                           onChange={field.onChange}
-                          itemId={item.id}
+                          itemId={itemId}
                         />
                       </FormControl>
                       <FormMessage />
@@ -629,21 +703,18 @@ function EditItemContent({ params }: EditItemPageProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {item.primaryBarcode ? (
+              {primaryBarcode ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-white p-4">
                     <div className="flex h-[200px] items-center justify-center rounded-md border border-dashed border-slate-200 bg-slate-50 px-4">
-                      <ItemBarcodeImage
-                        value={item.primaryBarcode}
-                        alt={`Barcode ${item.primaryBarcode}`}
-                      />
+                      <ItemBarcodeImage value={primaryBarcode} alt={`Barcode ${primaryBarcode}`} />
                     </div>
                   </div>
                   <p className="text-center text-sm text-muted-foreground">
                     {t("primaryBarcodeDescription")}
                   </p>
                   <p className="rounded bg-muted px-3 py-2 text-center font-mono text-sm font-medium">
-                    {item.primaryBarcode}
+                    {primaryBarcode}
                   </p>
                 </div>
               ) : (
@@ -655,6 +726,8 @@ function EditItemContent({ params }: EditItemPageProps) {
             </CardContent>
           </Card>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

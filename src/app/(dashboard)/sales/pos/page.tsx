@@ -5,20 +5,14 @@ import { useTranslations } from "next-intl";
 import { AlertCircle, Banknote, CreditCard, Search, Smartphone, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
-import { useCustomers } from "@/hooks/useCustomers";
+import { useCustomer, useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
 import { useCurrency } from "@/hooks/useCurrency";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -37,12 +31,52 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ItemWithStock } from "@/app/api/items/route";
+import type { Customer } from "@/types/customer";
 import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
+
+const LOOKUP_PAGE_SIZE = 5;
+const SEARCH_DEBOUNCE_MS = 250;
+
+type POSCartLine = POSCartItem & {
+  availableStock: number;
+};
 
 export default function POSPage() {
   const t = useTranslations("posPage");
-  const [search, setSearch] = useState("");
-  const [cart, setCart] = useState<POSCartItem[]>([]);
+  const walkInCustomerOption = useMemo<Customer>(
+    () => ({
+      id: "walk-in",
+      companyId: "",
+      customerType: "individual",
+      code: "WALK-IN",
+      name: t("walkInCustomer"),
+      email: "",
+      phone: "",
+      billingAddress: "",
+      billingCity: "",
+      billingState: "",
+      billingPostalCode: "",
+      billingCountry: "",
+      shippingAddress: "",
+      shippingCity: "",
+      shippingState: "",
+      shippingPostalCode: "",
+      shippingCountry: "",
+      paymentTerms: "cash",
+      creditLimit: 0,
+      currentBalance: 0,
+      notes: "",
+      isActive: true,
+      createdAt: "",
+      updatedAt: "",
+    }),
+    [t]
+  );
+  const [itemSearchInput, setItemSearchInput] = useState("");
+  const [debouncedItemSearch, setDebouncedItemSearch] = useState("");
+  const [customerSearchInput, setCustomerSearchInput] = useState("");
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
+  const [cart, setCart] = useState<POSCartLine[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("walk-in");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountReceived, setAmountReceived] = useState("");
@@ -50,26 +84,51 @@ export default function POSPage() {
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
 
   const { formatCurrency } = useCurrency();
-  const { data: itemsData, isLoading: itemsLoading } = useItems({
-    search,
+  const { data: itemsData, isLoading: itemsLoading, isFetching: itemsFetching } = useItems({
+    search: debouncedItemSearch || undefined,
     page: 1,
-    limit: 100,
+    limit: LOOKUP_PAGE_SIZE,
     includeStock: true,
   });
-  const { data: customersData, isLoading: customersLoading } = useCustomers({ page: 1, limit: 50 });
+  const { data: customersData, isLoading: customersLoading, isFetching: customersFetching } =
+    useCustomers({
+    search: debouncedCustomerSearch || undefined,
+    page: 1,
+    limit: LOOKUP_PAGE_SIZE,
+  });
+  const { data: selectedCustomer } = useCustomer(
+    selectedCustomerId !== "walk-in" ? selectedCustomerId : ""
+  );
   const createTransaction = useCreatePOSTransaction({
     success: t("transactionSuccess"),
     error: t("transactionError"),
   });
 
   const items = useMemo(() => (itemsData?.data || []) as ItemWithStock[], [itemsData]);
-  const customers = customersData?.data || [];
+  const customers = useMemo(() => customersData?.data || [], [customersData]);
+  const selectedCustomerOption = selectedCustomerId === "walk-in" ? null : (selectedCustomer ?? null);
 
   const itemStockMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, number>(cart.map((item) => [item.itemId, item.availableStock]));
     items.forEach((item) => map.set(item.id, item.available));
     return map;
-  }, [items]);
+  }, [cart, items]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedItemSearch(itemSearchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [itemSearchInput]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedCustomerSearch(customerSearchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [customerSearchInput]);
 
   const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
   const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
@@ -131,6 +190,7 @@ export default function POSPage() {
       const newCart = [...cart];
       newCart[existingItemIndex] = {
         ...newCart[existingItemIndex],
+        availableStock: item.available,
         quantity: newQty,
         lineTotal:
           newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
@@ -149,12 +209,14 @@ export default function POSPage() {
           unitPrice: item.listPrice,
           discount: 0,
           lineTotal: item.listPrice,
+          availableStock: item.available,
         },
       ]);
     }
 
     setItemSearchOpen(false);
-    setSearch("");
+    setItemSearchInput("");
+    setDebouncedItemSearch("");
   };
 
   const removeFromCart = (index: number) =>
@@ -225,8 +287,9 @@ export default function POSPage() {
 
     await createTransaction.mutateAsync({
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
-      items: cart.map(({ id, ...item }) => {
+      items: cart.map(({ id, availableStock, ...item }) => {
         void id;
+        void availableStock;
         return item;
       }),
       payments: [payment],
@@ -262,7 +325,16 @@ export default function POSPage() {
         </div>
 
         <div className="flex gap-2">
-          <Popover open={itemSearchOpen} onOpenChange={setItemSearchOpen}>
+          <Popover
+            open={itemSearchOpen}
+            onOpenChange={(open) => {
+              setItemSearchOpen(open);
+              if (!open) {
+                setItemSearchInput("");
+                setDebouncedItemSearch("");
+              }
+            }}
+          >
             <PopoverTrigger asChild>
               <Button variant="outline" className="flex-1 justify-start">
                 <Search className="mr-2 h-4 w-4" />
@@ -270,14 +342,14 @@ export default function POSPage() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[600px] p-0" align="start">
-              <Command>
+              <Command shouldFilter={false}>
                 <CommandInput
                   placeholder={t("searchItems")}
-                  value={search}
-                  onValueChange={setSearch}
+                  value={itemSearchInput}
+                  onValueChange={setItemSearchInput}
                 />
                 <CommandList>
-                  {itemsLoading ? (
+                  {itemsLoading || itemsFetching ? (
                     <CommandGroup>
                       {[1, 2, 3, 4, 5].map((i) => (
                         <div key={i} className="px-2 py-3">
@@ -297,7 +369,6 @@ export default function POSPage() {
                       <CommandGroup>
                         {items
                           .filter((item) => item.isActive)
-                          .slice(0, 20)
                           .map((item) => {
                             const isOutOfStock = item.available <= 0;
                             const isLowStock =
@@ -432,19 +503,37 @@ export default function POSPage() {
             {customersLoading ? (
               <Skeleton className="h-10 w-full" />
             ) : (
-              <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("walkInCustomer")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="walk-in">{t("walkInCustomer")}</SelectItem>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <AsyncSearchCombobox<Customer>
+                value={selectedCustomerId}
+                onValueChange={setSelectedCustomerId}
+                searchValue={customerSearchInput}
+                onSearchValueChange={setCustomerSearchInput}
+                options={[walkInCustomerOption, ...customers]}
+                selectedOption={
+                  selectedCustomerId === "walk-in" ? walkInCustomerOption : selectedCustomerOption
+                }
+                getOptionValue={(customer) => customer.id}
+                getOptionLabel={(customer) => customer.name}
+                getOptionSearchValue={(customer) => `${customer.code} ${customer.name}`.trim()}
+                renderOption={(customer, selected) => (
+                  <div className="flex w-full items-start gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium">{customer.name}</div>
+                      {customer.id !== "walk-in" ? (
+                        <div className="text-xs text-muted-foreground">
+                          {customer.code}
+                          {customer.email ? ` • ${customer.email}` : ""}
+                        </div>
+                      ) : null}
+                    </div>
+                    {selected ? <span className="text-xs text-primary">Selected</span> : null}
+                  </div>
+                )}
+                placeholder={t("walkInCustomer")}
+                searchPlaceholder={t("searchPlaceholder")}
+                emptyMessage="No customers found"
+                isLoading={customersFetching}
+              />
             )}
           </CardContent>
         </Card>
