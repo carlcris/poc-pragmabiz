@@ -2192,4 +2192,9 @@ BEGIN
 END
 $$;
 
+INSERT INTO "public"."units_of_measure"("id","company_id","code","name","symbol","is_base_unit","is_active","created_at","created_by","updated_at","updated_by","deleted_at","version")
+VALUES
+('0adbf2f3-bae6-4abc-a773-66891d9f2c2a','1e10e2dd-655e-41e0-a508-edfd660a9bcf','STICK','Stick','stick',FALSE,TRUE,'2026-02-20 01:54:02.288286',NULL,'2026-02-20 02:29:46.822541',NULL,NULL,1);
+
 COMMIT;
+

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
+  AlertTriangle,
   BadgeDollarSign,
   Banknote,
   Building2,
@@ -15,17 +16,17 @@ import {
   MapPin,
   Pencil,
   Phone,
-  ShieldCheck,
   Truck,
   UserRound,
 } from "lucide-react";
-import { useCustomer } from "@/hooks/useCustomers";
+import { useCustomer, useCustomerLedger } from "@/hooks/useCustomers";
 import { useCurrency } from "@/hooks/useCurrency";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CustomerLedgerTab } from "@/components/customers/CustomerLedgerTab";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard } from "@/components/permissions/PermissionGuard";
 import { MetricCard } from "@/components/shared/MetricCard";
@@ -84,6 +85,13 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const tCommon = useTranslations("common");
   const { formatCurrency } = useCurrency();
   const { data: customer, isLoading, error } = useCustomer(customerId);
+  const { data: accountSummaryData, isLoading: isAccountSummaryLoading } = useCustomerLedger(
+    customerId,
+    {
+      limit: 1,
+      enabled: !!customer,
+    }
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -124,10 +132,10 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
           <Skeleton className="h-10 w-32" />
         </div>
         <div className="grid gap-4 md:grid-cols-4">
-          <MetricCard title={tCommon("status")} icon={ShieldCheck} isLoading />
-          <MetricCard title={tForm("customerType")} icon={Building2} isLoading />
-          <MetricCard title={tPage("creditLimit")} icon={BadgeDollarSign} isLoading />
-          <MetricCard title={tPage("balance")} icon={Banknote} isLoading />
+          <MetricCard title="Outstanding Balance" icon={Banknote} isLoading />
+          <MetricCard title="Active Invoices" icon={FileText} isLoading />
+          <MetricCard title="Overdue Invoices" icon={AlertTriangle} isLoading />
+          <MetricCard title="Available Credit" icon={CreditCard} isLoading />
         </div>
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           {[1, 2].map((panel) => (
@@ -175,6 +183,9 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
     customer.shippingPostalCode,
     customer.shippingCountry,
   ]);
+  const ledgerSummary = accountSummaryData?.summary;
+  const outstandingBalance = ledgerSummary?.closingBalance ?? customer.currentBalance;
+  const availableCredit = Math.max((customer.creditLimit ?? 0) - outstandingBalance, 0);
 
   return (
     <div className="space-y-6">
@@ -197,29 +208,40 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
 
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard
-          title={tCommon("status")}
-          icon={ShieldCheck}
-          value={getStatusLabel(customer.isActive)}
-        />
-        <MetricCard
-          title={tForm("customerType")}
-          icon={Building2}
-          value={getCustomerTypeLabel(customer.customerType)}
+          title="Outstanding Balance"
+          icon={Banknote}
+          value={formatCurrency(outstandingBalance)}
+          isLoading={isAccountSummaryLoading}
+          skeletonCaption
+          caption={`${ledgerSummary?.activeInvoiceCount ?? 0} active invoices`}
+          valueClassName={
+            outstandingBalance > 0 ? "text-2xl font-bold text-orange-600" : "text-2xl font-bold"
+          }
         />
         <MetricCard
           title={tPage("creditLimit")}
           icon={BadgeDollarSign}
           value={formatCurrency(customer.creditLimit ?? 0)}
+          caption={`${getPaymentTermsLabel(customer.paymentTerms)} terms`}
         />
         <MetricCard
-          title={tPage("balance")}
-          icon={Banknote}
-          value={formatCurrency(customer.currentBalance)}
-          valueClassName={
-            customer.currentBalance > 0
-              ? "text-2xl font-bold text-orange-600"
-              : "text-2xl font-bold"
+          title="Overdue Invoices"
+          icon={AlertTriangle}
+          value={String(ledgerSummary?.overdueInvoiceCount ?? 0)}
+          isLoading={isAccountSummaryLoading}
+          caption="Requires collection follow-up"
+          iconClassName={
+            (ledgerSummary?.overdueInvoiceCount ?? 0) > 0
+              ? "h-4 w-4 text-orange-600"
+              : "h-4 w-4 text-muted-foreground"
           }
+        />
+        <MetricCard
+          title="Available Credit"
+          icon={CreditCard}
+          value={formatCurrency(availableCredit)}
+          isLoading={isAccountSummaryLoading}
+          caption={`${formatCurrency(customer.creditLimit ?? 0)} limit`}
         />
       </div>
 
@@ -228,6 +250,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
           <TabsTrigger value="overview">{tForm("generalTab")}</TabsTrigger>
           <TabsTrigger value="addresses">{tForm("billingTab")}</TabsTrigger>
           <TabsTrigger value="payment">{tForm("termsTab")}</TabsTrigger>
+          <TabsTrigger value="ledger">Ledger</TabsTrigger>
           <TabsTrigger value="notes">{tForm("notes")}</TabsTrigger>
         </TabsList>
 
@@ -364,6 +387,10 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ledger" className="mt-4 min-h-[34rem]">
+          <CustomerLedgerTab customerId={customerId} enabled={activeTab === "ledger"} />
         </TabsContent>
 
         <TabsContent value="notes" className="mt-4 min-h-[34rem]">

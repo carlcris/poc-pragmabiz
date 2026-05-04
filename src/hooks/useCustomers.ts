@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { customersApi } from "@/lib/api/customers";
 import type {
+  CustomerLedgerFilters,
   CustomerFilters,
   CreateCustomerRequest,
   UpdateCustomerRequest,
@@ -31,6 +32,22 @@ export function useCustomer(id: string) {
     queryKey: [CUSTOMERS_QUERY_KEY, id],
     queryFn: () => customersApi.getCustomer(id),
     enabled: !!id,
+  });
+}
+
+type CustomerLedgerQueryFilters = CustomerLedgerFilters & {
+  enabled?: boolean;
+};
+
+export function useCustomerLedger(id: string, filters?: CustomerLedgerQueryFilters) {
+  const { enabled, ...restFilters } = (filters ?? {}) as CustomerLedgerFilters & {
+    enabled?: boolean;
+  };
+
+  return useQuery({
+    queryKey: [CUSTOMERS_QUERY_KEY, id, "ledger", restFilters],
+    queryFn: () => customersApi.getCustomerLedger(id, restFilters),
+    enabled: (enabled ?? true) && !!id,
   });
 }
 

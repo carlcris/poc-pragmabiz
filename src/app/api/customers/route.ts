@@ -38,7 +38,7 @@ type DbCustomer = {
 };
 
 // Transform database customer to frontend Customer type
-function transformDbCustomer(dbCustomer: DbCustomer): Customer {
+function transformDbCustomer(dbCustomer: DbCustomer, currentBalance = 0): Customer {
   return {
     id: dbCustomer.id,
     companyId: dbCustomer.company_id,
@@ -67,13 +67,44 @@ function transformDbCustomer(dbCustomer: DbCustomer): Customer {
     contactPersonPhone: dbCustomer.contact_phone || undefined,
     paymentTerms: (dbCustomer.payment_terms as PaymentTerms | null) || "net_30",
     creditLimit: Number(dbCustomer.credit_limit || 0),
-    currentBalance: 0, // This would need to be calculated from invoices
+    currentBalance,
     notes: "",
     isActive: dbCustomer.is_active ?? true,
     createdAt: dbCustomer.created_at,
     updatedAt: dbCustomer.updated_at,
   };
 }
+
+const getCustomerBalances = async (
+  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  companyId: string,
+  customerIds: string[]
+): Promise<Map<string, number>> => {
+  const balances = new Map<string, number>();
+  if (customerIds.length === 0) return balances;
+
+  const { data, error } = await supabase
+    .from("sales_invoices")
+    .select("customer_id, amount_due")
+    .eq("company_id", companyId)
+    .in("customer_id", customerIds)
+    .is("deleted_at", null)
+    .not("status", "in", "(draft,cancelled)");
+
+  if (error) {
+    console.error("Failed to calculate customer balances:", error);
+    return balances;
+  }
+
+  (data || []).forEach((row) => {
+    balances.set(
+      row.customer_id,
+      (balances.get(row.customer_id) || 0) + Number(row.amount_due || 0)
+    );
+  });
+
+  return balances;
+};
 
 // GET /api/customers - List customers with filters
 export async function GET(request: NextRequest) {
@@ -85,7 +116,7 @@ export async function GET(request: NextRequest) {
     const unauthorized = await requireLookupDataAccess(RESOURCES.CUSTOMERS);
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, companyId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -95,6 +126,10 @@ export async function GET(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!companyId) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
     // Get query parameters
@@ -137,10 +172,18 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Failed to fetch customers:", error);
+      return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 });
     }
 
-    const customers = (data || []).map(transformDbCustomer);
+    const balanceByCustomerId = await getCustomerBalances(
+      supabase,
+      companyId,
+      (data || []).map((customer) => customer.id)
+    );
+    const customers = (data || []).map((customer) =>
+      transformDbCustomer(customer, balanceByCustomerId.get(customer.id) || 0)
+    );
 
     return NextResponse.json({
       data: customers,
@@ -263,7 +306,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Failed to create customer:", error);
+      return NextResponse.json({ error: "Failed to create customer" }, { status: 500 });
     }
 
     return NextResponse.json(transformDbCustomer(data), { status: 201 });

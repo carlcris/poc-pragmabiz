@@ -84,14 +84,21 @@ export default function POSPage() {
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
 
   const { formatCurrency } = useCurrency();
-  const { data: itemsData, isLoading: itemsLoading, isFetching: itemsFetching } = useItems({
+  const {
+    data: itemsData,
+    isLoading: itemsLoading,
+    isFetching: itemsFetching,
+  } = useItems({
     search: debouncedItemSearch || undefined,
     page: 1,
     limit: LOOKUP_PAGE_SIZE,
     includeStock: true,
   });
-  const { data: customersData, isLoading: customersLoading, isFetching: customersFetching } =
-    useCustomers({
+  const {
+    data: customersData,
+    isLoading: customersLoading,
+    isFetching: customersFetching,
+  } = useCustomers({
     search: debouncedCustomerSearch || undefined,
     page: 1,
     limit: LOOKUP_PAGE_SIZE,
@@ -106,7 +113,8 @@ export default function POSPage() {
 
   const items = useMemo(() => (itemsData?.data || []) as ItemWithStock[], [itemsData]);
   const customers = useMemo(() => customersData?.data || [], [customersData]);
-  const selectedCustomerOption = selectedCustomerId === "walk-in" ? null : (selectedCustomer ?? null);
+  const selectedCustomerOption =
+    selectedCustomerId === "walk-in" ? null : (selectedCustomer ?? null);
 
   const itemStockMap = useMemo(() => {
     const map = new Map<string, number>(cart.map((item) => [item.itemId, item.availableStock]));
@@ -531,7 +539,7 @@ export default function POSPage() {
                 )}
                 placeholder={t("walkInCustomer")}
                 searchPlaceholder={t("searchPlaceholder")}
-                emptyMessage="No customers found"
+                emptyMessage={t("noCustomersFound")}
                 isLoading={customersFetching}
               />
             )}

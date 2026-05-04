@@ -35,7 +35,11 @@ type SupportedReportPreviewType =
   | "stock"
   | "item-location-batch"
   | "picking-efficiency"
-  | "transformation-efficiency";
+  | "transformation-efficiency"
+  | "customer-ledger"
+  | "accounts-receivable-aging"
+  | "fast-moving-products"
+  | "slow-moving-products";
 
 type Report = {
   id: string;
@@ -119,6 +123,24 @@ export default function ReportsPage() {
             icon: BarChart3,
           },
           {
+            id: "fast-moving-products",
+            name: t("fastMovingProductsName"),
+            description: t("fastMovingProductsDescription"),
+            status: "implemented",
+            businessValue: t("fastMovingProductsValue"),
+            previewType: "fast-moving-products",
+            icon: TrendingUp,
+          },
+          {
+            id: "slow-moving-products",
+            name: t("slowMovingProductsName"),
+            description: t("slowMovingProductsDescription"),
+            status: "implemented",
+            businessValue: t("slowMovingProductsValue"),
+            previewType: "slow-moving-products",
+            icon: Clock,
+          },
+          {
             id: "stock-turnover",
             name: t("stockTurnoverName"),
             description: t("stockTurnoverDescription"),
@@ -200,11 +222,21 @@ export default function ReportsPage() {
             icon: DollarSign,
           },
           {
+            id: "customer-ledger",
+            name: t("customerLedgerName"),
+            description: t("customerLedgerDescription"),
+            status: "implemented",
+            businessValue: t("customerLedgerValue"),
+            previewType: "customer-ledger",
+            icon: FileText,
+          },
+          {
             id: "ar-aging",
             name: t("arAgingName"),
             description: t("arAgingDescription"),
-            status: "coming-soon",
+            status: "implemented",
             businessValue: t("arAgingValue"),
+            previewType: "accounts-receivable-aging",
             icon: Clock,
           },
           {

@@ -1,6 +1,8 @@
 import { apiClient } from "@/lib/api";
 import type {
   Customer,
+  CustomerLedgerFilters,
+  CustomerLedgerResponse,
   CreateCustomerRequest,
   UpdateCustomerRequest,
   CustomerFilters,
@@ -24,6 +26,28 @@ export const customersApi = {
   // Get single customer by ID
   async getCustomer(id: string): Promise<Customer> {
     return apiClient.get<Customer>(`/api/customers/${id}`);
+  },
+
+  // Get customer ledger entries and account summary
+  async getCustomerLedger(
+    id: string,
+    filters?: CustomerLedgerFilters
+  ): Promise<CustomerLedgerResponse> {
+    const params = new URLSearchParams();
+
+    if (filters?.dateFrom) params.append("dateFrom", filters.dateFrom);
+    if (filters?.dateTo) params.append("dateTo", filters.dateTo);
+    if (filters?.sourceType && filters.sourceType !== "all") {
+      params.append("sourceType", filters.sourceType);
+    }
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.page) params.append("page", filters.page.toString());
+    if (filters?.limit) params.append("limit", filters.limit.toString());
+
+    const query = params.toString();
+    return apiClient.get<CustomerLedgerResponse>(
+      `/api/customers/${id}/ledger${query ? `?${query}` : ""}`
+    );
   },
 
   // Create new customer

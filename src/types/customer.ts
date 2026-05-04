@@ -98,6 +98,60 @@ export interface CustomerFilters {
   limit?: number;
 }
 
+export type CustomerLedgerSourceType = "all" | "invoice" | "payment" | "pos";
+
+export type CustomerLedgerFilters = {
+  dateFrom?: string;
+  dateTo?: string;
+  sourceType?: CustomerLedgerSourceType;
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type CustomerLedgerEntry = {
+  id: string;
+  sortKey: string;
+  sourceType: Exclude<CustomerLedgerSourceType, "all">;
+  sourceId: string;
+  documentNumber: string;
+  eventAt: string;
+  dueDate?: string;
+  status: string;
+  description: string;
+  debit: number;
+  credit: number;
+  amount: number;
+  balanceEffect: number;
+  runningBalance: number;
+  paymentMethod?: string;
+  reference?: string;
+};
+
+export type CustomerLedgerSummary = {
+  openingBalance: number;
+  closingBalance: number;
+  periodDebits: number;
+  periodCredits: number;
+  invoiceCharges: number;
+  paymentsReceived: number;
+  posSales: number;
+  activeInvoiceCount: number;
+  overdueInvoiceCount: number;
+  lastActivityAt?: string;
+};
+
+export type CustomerLedgerResponse = {
+  data: CustomerLedgerEntry[];
+  summary: CustomerLedgerSummary;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
 export interface CustomerListResponse {
   data: Customer[];
   pagination: {

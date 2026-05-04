@@ -38,7 +38,7 @@ type DbCustomer = {
 };
 
 // Transform database customer to frontend Customer type
-function transformDbCustomer(dbCustomer: DbCustomer): Customer {
+function transformDbCustomer(dbCustomer: DbCustomer, currentBalance = 0): Customer {
   return {
     id: dbCustomer.id,
     companyId: dbCustomer.company_id,
@@ -67,13 +67,34 @@ function transformDbCustomer(dbCustomer: DbCustomer): Customer {
     contactPersonPhone: dbCustomer.contact_phone || undefined,
     paymentTerms: (dbCustomer.payment_terms as PaymentTerms | null) || "net_30",
     creditLimit: Number(dbCustomer.credit_limit || 0),
-    currentBalance: 0, // This would need to be calculated from invoices
+    currentBalance,
     notes: "",
     isActive: dbCustomer.is_active ?? true,
     createdAt: dbCustomer.created_at,
     updatedAt: dbCustomer.updated_at,
   };
 }
+
+const getCustomerBalance = async (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  customerId: string
+): Promise<number> => {
+  const { data, error } = await supabase
+    .from("sales_invoices")
+    .select("amount_due")
+    .eq("company_id", companyId)
+    .eq("customer_id", customerId)
+    .is("deleted_at", null)
+    .not("status", "in", "(draft,cancelled)");
+
+  if (error) {
+    console.error("Failed to calculate customer balance:", error);
+    return 0;
+  }
+
+  return (data || []).reduce((sum, row) => sum + Number(row.amount_due || 0), 0);
+};
 
 // GET /api/customers/[id] - Get single customer
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -107,10 +128,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         return NextResponse.json({ error: "Customer not found" }, { status: 404 });
       }
 
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Failed to fetch customer:", error);
+      return NextResponse.json({ error: "Failed to fetch customer" }, { status: 500 });
     }
 
-    return NextResponse.json(transformDbCustomer(data));
+    const currentBalance = await getCustomerBalance(supabase, data.company_id, data.id);
+
+    return NextResponse.json(transformDbCustomer(data, currentBalance));
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -222,10 +246,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Failed to update customer:", error);
+      return NextResponse.json({ error: "Failed to update customer" }, { status: 500 });
     }
 
-    return NextResponse.json(transformDbCustomer(data));
+    const currentBalance = await getCustomerBalance(supabase, data.company_id, data.id);
+
+    return NextResponse.json(transformDbCustomer(data, currentBalance));
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

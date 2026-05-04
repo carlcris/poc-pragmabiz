@@ -3,13 +3,24 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Download, Eye, Loader2, Printer } from "lucide-react";
+import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { useCustomers, useCustomerLedger } from "@/hooks/useCustomers";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useItemLocationBatchReport } from "@/hooks/useItemLocationBatchReport";
 import { useItems } from "@/hooks/useItems";
 import {
+  useAccountsReceivableAgingReport,
+  type AccountsReceivableAgingBucket,
+} from "@/hooks/useAccountsReceivableAgingReport";
+import {
   usePickingEfficiencyReport,
   type PickingEfficiencyFilters,
 } from "@/hooks/usePickingEfficiencyReport";
+import {
+  useProductMovementReport,
+  type ProductMovementReportType,
+} from "@/hooks/useProductMovementReport";
 import {
   useInventoryReport,
   type InventoryReportSortBy,
@@ -50,6 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Customer, CustomerLedgerSourceType } from "@/types/customer";
 
 type SupportedReportPreviewType =
   | "inventory"
@@ -58,7 +70,11 @@ type SupportedReportPreviewType =
   | "stock"
   | "item-location-batch"
   | "picking-efficiency"
-  | "transformation-efficiency";
+  | "transformation-efficiency"
+  | "customer-ledger"
+  | "accounts-receivable-aging"
+  | "fast-moving-products"
+  | "slow-moving-products";
 
 type ReportPreviewDialogProps = {
   open: boolean;
@@ -764,6 +780,679 @@ function ShipmentsReportPreview({
             className="w-full"
             onClick={handlePreview}
             disabled={reportQuery.isFetching || isGeneratingPreview}
+          >
+            {isGeneratingPreview ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="mr-2 h-4 w-4" />
+            )}
+            {tReports("preview")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex h-full min-h-0 flex-col gap-4">
+        <PreviewFrame
+          url={previewUrl}
+          isGenerating={isGeneratingPreview}
+          emptyLabel={tReports("previewPlaceholder")}
+          loadingLabel={tReports("generatingPreview")}
+          title={tReports("previewFrameTitle", { report: reportName })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ProductMovementReportPreview({
+  open,
+  reportName,
+  movementType,
+  onPreviewStateChange,
+}: {
+  open: boolean;
+  reportName: string;
+  movementType: ProductMovementReportType;
+  onPreviewStateChange: ReportPreviewPanelProps["onPreviewStateChange"];
+}) {
+  const tReports = useTranslations("reportsPage");
+  const t = useTranslations("productMovementReportsPage");
+  const locale = useLocale();
+  const { formatCurrency } = useCurrency();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  );
+  const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
+  const [categoryId, setCategoryId] = useState("all");
+  const { data: categoriesData } = useItemCategories();
+  const categories = categoriesData?.data || [];
+  const selectedCategory = categories.find((category) => category.id === categoryId) ?? null;
+  const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
+    usePdfPreviewState(open);
+
+  const reportQuery = useProductMovementReport({
+    enabled: false,
+    movementType,
+    page: 1,
+    limit: 50,
+    dateFrom,
+    dateTo,
+    categoryId: categoryId === "all" ? undefined : categoryId,
+    search: search || undefined,
+  });
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  useEffect(() => {
+    replacePreviewUrl(null);
+  }, [categoryId, dateFrom, dateTo, movementType, replacePreviewUrl, search]);
+
+  useEffect(() => {
+    onPreviewStateChange({
+      url: previewUrl,
+      isGenerating: isGeneratingPreview,
+      fileName: `${movementType}-moving-products-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  }, [isGeneratingPreview, movementType, onPreviewStateChange, previewUrl]);
+
+  const formatNumber = (value: number, digits = 0) =>
+    new Intl.NumberFormat(locale, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(Number.isFinite(value) ? value : 0);
+
+  const handlePreview = async () => {
+    setIsGeneratingPreview(true);
+    try {
+      const { data } = await reportQuery.refetch();
+      if (!data) return;
+
+      const [{ pdf }, { ProductMovementReportPDF }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/reports/ProductMovementReportPDF"),
+      ]);
+
+      const blob = await pdf(
+        <ProductMovementReportPDF
+          title={movementType === "fast" ? t("fastTitle") : t("slowTitle")}
+          subtitle={movementType === "fast" ? t("fastSubtitle") : t("slowSubtitle")}
+          generatedAtLabel={tReports("generatedAt")}
+          periodLabel={t("period")}
+          categoryLabel={t("category")}
+          searchLabel={t("search")}
+          allCategoriesLabel={t("allCategories")}
+          noValueLabel={t("noValue")}
+          rankLabel={t("rank")}
+          itemLabel={t("item")}
+          categoryColumnLabel={t("category")}
+          soldQtyLabel={t("soldQty")}
+          revenueLabel={t("revenue")}
+          velocityLabel={t("velocity")}
+          stockLabel={t("stock")}
+          stockValueLabel={t("stockValue")}
+          daysCoverLabel={t("daysCover")}
+          lastSoldLabel={t("lastSold")}
+          totalProductsLabel={t("totalProducts")}
+          totalQtySoldLabel={t("totalQtySold")}
+          totalRevenueLabel={t("totalRevenue")}
+          stockValueAtRiskLabel={movementType === "fast" ? t("stockValue") : t("stockValueAtRisk")}
+          averageVelocityLabel={t("averageVelocity")}
+          pageSummary={t("pageOfTotal", {
+            page: formatNumber(data.pagination.page),
+            totalPages: formatNumber(data.pagination.totalPages),
+            total: formatNumber(data.pagination.total),
+          })}
+          periodValue={`${dateFrom} - ${dateTo}`}
+          categoryValue={selectedCategory?.name || null}
+          searchValue={search || null}
+          totalProductsValue={formatNumber(data.summary.rowCount)}
+          totalQtySoldValue={formatNumber(data.summary.totalQuantitySold, 2)}
+          totalRevenueValue={formatCurrency(data.summary.totalRevenue)}
+          stockValueAtRiskValue={formatCurrency(data.summary.totalStockValue)}
+          averageVelocityValue={formatNumber(data.summary.averageDailyQuantity, 2)}
+          rows={data.data}
+          formatCurrency={formatCurrency}
+          formatNumber={formatNumber}
+        />
+      ).toBlob();
+
+      replacePreviewUrl(URL.createObjectURL(blob));
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  return (
+    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+        <div className="space-y-1">
+          <h3 className="font-semibold">{tReports("reportSettings")}</h3>
+        </div>
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("search")}</label>
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("startDate")}</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("endDate")}</label>
+            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("category")}</label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger>
+                <SelectValue placeholder={t("allCategories")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allCategories")}</SelectItem>
+                {categories.map((itemCategory) => (
+                  <SelectItem key={itemCategory.id} value={itemCategory.id}>
+                    {itemCategory.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-auto pt-6">
+          <Button
+            className="w-full"
+            onClick={handlePreview}
+            disabled={reportQuery.isFetching || isGeneratingPreview}
+          >
+            {isGeneratingPreview ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="mr-2 h-4 w-4" />
+            )}
+            {tReports("preview")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex h-full min-h-0 flex-col gap-4">
+        <PreviewFrame
+          url={previewUrl}
+          isGenerating={isGeneratingPreview}
+          emptyLabel={tReports("previewPlaceholder")}
+          loadingLabel={tReports("generatingPreview")}
+          title={tReports("previewFrameTitle", { report: reportName })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function AccountsReceivableAgingReportPreview({
+  open,
+  reportName,
+  onPreviewStateChange,
+}: {
+  open: boolean;
+  reportName: string;
+  onPreviewStateChange: ReportPreviewPanelProps["onPreviewStateChange"];
+}) {
+  const tReports = useTranslations("reportsPage");
+  const t = useTranslations("accountsReceivableAgingReportPage");
+  const locale = useLocale();
+  const { formatCurrency } = useCurrency();
+  const [customerSearchInput, setCustomerSearchInput] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
+  const [bucket, setBucket] = useState<AccountsReceivableAgingBucket>("all");
+  const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
+    usePdfPreviewState(open);
+
+  const { data: customersData, isLoading: isCustomersLoading } = useCustomers({
+    search: customerSearch || undefined,
+    page: 1,
+    limit: 5,
+    isActive: true,
+  });
+  const customers = customersData?.data || [];
+
+  const reportQuery = useAccountsReceivableAgingReport({
+    enabled: false,
+    asOfDate,
+    customerId: customerId || undefined,
+    bucket,
+    search: search || undefined,
+    page: 1,
+    limit: 50,
+  });
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setCustomerSearch(customerSearchInput.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [customerSearchInput]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchInput]);
+
+  useEffect(() => {
+    replacePreviewUrl(null);
+  }, [asOfDate, bucket, customerId, replacePreviewUrl, search]);
+
+  useEffect(() => {
+    onPreviewStateChange({
+      url: previewUrl,
+      isGenerating: isGeneratingPreview,
+      fileName: `accounts-receivable-aging-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  }, [isGeneratingPreview, onPreviewStateChange, previewUrl]);
+
+  const formatNumber = (value: number, digits = 0) =>
+    new Intl.NumberFormat(locale, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(Number.isFinite(value) ? value : 0);
+
+  const getBucketLabel = (value: AccountsReceivableAgingBucket) => {
+    if (value === "current") return t("current");
+    if (value === "1_30") return t("days1To30");
+    if (value === "31_60") return t("days31To60");
+    if (value === "61_90") return t("days61To90");
+    if (value === "90_plus") return t("days90Plus");
+    return t("allBuckets");
+  };
+
+  const handleCustomerChange = (nextCustomerId: string) => {
+    setCustomerId(nextCustomerId);
+    setSelectedCustomer(customers.find((customer) => customer.id === nextCustomerId) ?? null);
+  };
+
+  const clearCustomer = () => {
+    setCustomerId("");
+    setSelectedCustomer(null);
+  };
+
+  const handlePreview = async () => {
+    setIsGeneratingPreview(true);
+    try {
+      const { data } = await reportQuery.refetch();
+      if (!data) return;
+
+      const [{ pdf }, { AccountsReceivableAgingReportPDF }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/reports/AccountsReceivableAgingReportPDF"),
+      ]);
+
+      const blob = await pdf(
+        <AccountsReceivableAgingReportPDF
+          title={t("title")}
+          subtitle={t("subtitle")}
+          generatedAtLabel={tReports("generatedAt")}
+          asOfDateLabel={t("asOfDate")}
+          customerLabel={t("customer")}
+          bucketLabel={t("bucket")}
+          allCustomersLabel={t("allCustomers")}
+          customersLabel={t("customers")}
+          invoicesLabel={t("invoices")}
+          totalBalanceLabel={t("totalBalance")}
+          currentLabel={t("current")}
+          days1To30Label={t("days1To30")}
+          days31To60Label={t("days31To60")}
+          days61To90Label={t("days61To90")}
+          days90PlusLabel={t("days90Plus")}
+          invoiceDateLabel={t("invoiceDate")}
+          dueDateLabel={t("dueDate")}
+          daysOverdueLabel={t("daysOverdue")}
+          balanceLabel={t("balance")}
+          pageSummary={t("pageOfTotal", {
+            page: formatNumber(data.pagination.page),
+            totalPages: formatNumber(data.pagination.totalPages),
+            total: formatNumber(data.pagination.total),
+          })}
+          asOfDateValue={asOfDate}
+          customerValue={
+            selectedCustomer ? `${selectedCustomer.code} - ${selectedCustomer.name}` : null
+          }
+          bucketValue={getBucketLabel(bucket)}
+          summary={data.summary}
+          rows={data.data}
+          formatCurrency={formatCurrency}
+          formatNumber={formatNumber}
+        />
+      ).toBlob();
+
+      replacePreviewUrl(URL.createObjectURL(blob));
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  return (
+    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+        <div className="space-y-1">
+          <h3 className="font-semibold">{tReports("reportSettings")}</h3>
+        </div>
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("asOfDate")}</label>
+            <Input
+              type="date"
+              value={asOfDate}
+              onChange={(event) => setAsOfDate(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("customer")}</label>
+            <div className="flex gap-2">
+              <AsyncSearchCombobox<Customer>
+                value={customerId}
+                onValueChange={handleCustomerChange}
+                searchValue={customerSearchInput}
+                onSearchValueChange={setCustomerSearchInput}
+                options={customers}
+                selectedOption={selectedCustomer}
+                getOptionValue={(customer) => customer.id}
+                getOptionLabel={(customer) => `${customer.code} - ${customer.name}`}
+                getOptionSearchValue={(customer) =>
+                  `${customer.code} ${customer.name} ${customer.email} ${customer.phone}`
+                }
+                placeholder={t("allCustomers")}
+                searchPlaceholder={t("customerSearchPlaceholder")}
+                emptyMessage={t("customerEmpty")}
+                loadingMessage={t("customerLoading")}
+                isLoading={isCustomersLoading}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearCustomer}
+                disabled={!customerId}
+                className="shrink-0"
+              >
+                {t("clear")}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("bucket")}</label>
+            <Select
+              value={bucket}
+              onValueChange={(value) => setBucket(value as AccountsReceivableAgingBucket)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("allBuckets")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allBuckets")}</SelectItem>
+                <SelectItem value="current">{t("current")}</SelectItem>
+                <SelectItem value="1_30">{t("days1To30")}</SelectItem>
+                <SelectItem value="31_60">{t("days31To60")}</SelectItem>
+                <SelectItem value="61_90">{t("days61To90")}</SelectItem>
+                <SelectItem value="90_plus">{t("days90Plus")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("search")}</label>
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder={t("searchPlaceholder")}
+            />
+          </div>
+        </div>
+        <div className="mt-auto pt-6">
+          <Button
+            className="w-full"
+            onClick={handlePreview}
+            disabled={reportQuery.isFetching || isGeneratingPreview}
+          >
+            {isGeneratingPreview ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Eye className="mr-2 h-4 w-4" />
+            )}
+            {tReports("preview")}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex h-full min-h-0 flex-col gap-4">
+        <PreviewFrame
+          url={previewUrl}
+          isGenerating={isGeneratingPreview}
+          emptyLabel={tReports("previewPlaceholder")}
+          loadingLabel={tReports("generatingPreview")}
+          title={tReports("previewFrameTitle", { report: reportName })}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CustomerLedgerReportPreview({
+  open,
+  reportName,
+  onPreviewStateChange,
+}: {
+  open: boolean;
+  reportName: string;
+  onPreviewStateChange: ReportPreviewPanelProps["onPreviewStateChange"];
+}) {
+  const tReports = useTranslations("reportsPage");
+  const t = useTranslations("customerLedgerReportsPage");
+  const locale = useLocale();
+  const { formatCurrency } = useCurrency();
+  const [customerSearchInput, setCustomerSearchInput] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerId, setCustomerId] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [dateFrom, setDateFrom] = useState(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  );
+  const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
+  const [sourceType, setSourceType] = useState<CustomerLedgerSourceType>("all");
+  const { previewUrl, isGeneratingPreview, setIsGeneratingPreview, replacePreviewUrl } =
+    usePdfPreviewState(open);
+
+  const { data: customersData, isLoading: isCustomersLoading } = useCustomers({
+    search: customerSearch || undefined,
+    page: 1,
+    limit: 5,
+    isActive: true,
+  });
+  const customers = customersData?.data || [];
+
+  const reportQuery = useCustomerLedger(customerId, {
+    enabled: false,
+    dateFrom,
+    dateTo,
+    sourceType,
+    page: 1,
+    limit: 50,
+  });
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setCustomerSearch(customerSearchInput.trim());
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [customerSearchInput]);
+
+  useEffect(() => {
+    replacePreviewUrl(null);
+  }, [customerId, dateFrom, dateTo, sourceType, replacePreviewUrl]);
+
+  useEffect(() => {
+    onPreviewStateChange({
+      url: previewUrl,
+      isGenerating: isGeneratingPreview,
+      fileName: `customer-ledger-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+    });
+  }, [isGeneratingPreview, onPreviewStateChange, previewUrl]);
+
+  const formatNumber = (value: number, digits = 0) =>
+    new Intl.NumberFormat(locale, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(Number.isFinite(value) ? value : 0);
+
+  const getSourceLabel = () => {
+    if (sourceType === "invoice") return t("invoices");
+    if (sourceType === "payment") return t("payments");
+    if (sourceType === "pos") return t("pos");
+    return t("allSources");
+  };
+
+  const handleCustomerChange = (nextCustomerId: string) => {
+    setCustomerId(nextCustomerId);
+    setSelectedCustomer(customers.find((customer) => customer.id === nextCustomerId) ?? null);
+  };
+
+  const handlePreview = async () => {
+    if (!customerId || !selectedCustomer) return;
+
+    setIsGeneratingPreview(true);
+    try {
+      const { data } = await reportQuery.refetch();
+      if (!data) return;
+
+      const [{ pdf }, { CustomerLedgerReportPDF }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("@/components/reports/CustomerLedgerReportPDF"),
+      ]);
+
+      const blob = await pdf(
+        <CustomerLedgerReportPDF
+          title={t("title")}
+          subtitle={t("subtitle")}
+          generatedAtLabel={tReports("generatedAt")}
+          customerLabel={t("customer")}
+          periodLabel={t("period")}
+          sourceLabel={t("source")}
+          openingBalanceLabel={t("openingBalance")}
+          periodDebitsLabel={t("periodDebits")}
+          periodCreditsLabel={t("periodCredits")}
+          closingBalanceLabel={t("closingBalance")}
+          dateLabel={t("date")}
+          documentLabel={t("document")}
+          typeLabel={t("source")}
+          descriptionLabel={t("description")}
+          debitLabel={t("debit")}
+          creditLabel={t("credit")}
+          balanceLabel={t("balance")}
+          noValueLabel="--"
+          pageSummary={t("pageOfTotal", {
+            page: formatNumber(data.pagination.page),
+            totalPages: formatNumber(data.pagination.totalPages),
+            total: formatNumber(data.pagination.total),
+          })}
+          customerValue={`${selectedCustomer.code} - ${selectedCustomer.name}`}
+          periodValue={`${dateFrom} - ${dateTo}`}
+          sourceValue={getSourceLabel()}
+          summary={data.summary}
+          rows={data.data}
+          formatCurrency={formatCurrency}
+        />
+      ).toBlob();
+
+      replacePreviewUrl(URL.createObjectURL(blob));
+    } finally {
+      setIsGeneratingPreview(false);
+    }
+  };
+
+  return (
+    <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="flex h-full min-h-0 flex-col rounded-lg border bg-muted/20 p-4">
+        <div className="space-y-1">
+          <h3 className="font-semibold">{tReports("reportSettings")}</h3>
+        </div>
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("customer")}</label>
+            <AsyncSearchCombobox<Customer>
+              value={customerId}
+              onValueChange={handleCustomerChange}
+              searchValue={customerSearchInput}
+              onSearchValueChange={setCustomerSearchInput}
+              options={customers}
+              selectedOption={selectedCustomer}
+              getOptionValue={(customer) => customer.id}
+              getOptionLabel={(customer) => `${customer.code} - ${customer.name}`}
+              getOptionSearchValue={(customer) =>
+                `${customer.code} ${customer.name} ${customer.email} ${customer.phone}`
+              }
+              placeholder={t("customerPlaceholder")}
+              searchPlaceholder={t("customerSearchPlaceholder")}
+              emptyMessage={t("customerEmpty")}
+              loadingMessage={t("customerLoading")}
+              isLoading={isCustomersLoading}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("startDate")}</label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("endDate")}</label>
+            <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("source")}</label>
+            <Select
+              value={sourceType}
+              onValueChange={(value) => setSourceType(value as CustomerLedgerSourceType)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("allSources")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allSources")}</SelectItem>
+                <SelectItem value="invoice">{t("invoices")}</SelectItem>
+                <SelectItem value="payment">{t("payments")}</SelectItem>
+                <SelectItem value="pos">{t("pos")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="mt-auto pt-6">
+          <Button
+            className="w-full"
+            onClick={handlePreview}
+            disabled={reportQuery.isFetching || isGeneratingPreview || !customerId}
           >
             {isGeneratingPreview ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1840,6 +2529,36 @@ export function ReportPreviewDialog({
           )}
           {reportType === "transformation-efficiency" && (
             <TransformationEfficiencyReportPreview
+              open={open}
+              reportName={reportName}
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "fast-moving-products" && (
+            <ProductMovementReportPreview
+              open={open}
+              reportName={reportName}
+              movementType="fast"
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "slow-moving-products" && (
+            <ProductMovementReportPreview
+              open={open}
+              reportName={reportName}
+              movementType="slow"
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "customer-ledger" && (
+            <CustomerLedgerReportPreview
+              open={open}
+              reportName={reportName}
+              onPreviewStateChange={setPreviewState}
+            />
+          )}
+          {reportType === "accounts-receivable-aging" && (
+            <AccountsReceivableAgingReportPreview
               open={open}
               reportName={reportName}
               onPreviewStateChange={setPreviewState}
