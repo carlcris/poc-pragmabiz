@@ -233,7 +233,7 @@ export default function CustomerDisplayPage() {
               </div>
 
               <div className="flex items-center justify-between text-2xl">
-                <span className="text-muted-foreground">VAT (12%)</span>
+                <span className="text-muted-foreground">VAT (12% incl.)</span>
                 <span className="font-bold text-foreground">{formatCurrency(tax)}</span>
               </div>
 

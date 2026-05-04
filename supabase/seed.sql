@@ -1695,7 +1695,6 @@ SET
   updated_at = CURRENT_TIMESTAMP;
 
 COMMIT;
-
 -- Backfill existing rows before adding NOT NULL / uniqueness constraints.
 UPDATE item_location_batch
 SET
@@ -2197,4 +2196,3 @@ VALUES
 ('0adbf2f3-bae6-4abc-a773-66891d9f2c2a','1e10e2dd-655e-41e0-a508-edfd660a9bcf','STICK','Stick','stick',FALSE,TRUE,'2026-02-20 01:54:02.288286',NULL,'2026-02-20 02:29:46.822541',NULL,NULL,1);
 
 COMMIT;
-

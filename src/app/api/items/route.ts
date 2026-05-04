@@ -330,7 +330,7 @@ export async function GET(request: NextRequest) {
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search")?.trim() || null;
@@ -438,9 +438,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid warehouse filter" }, { status: 400 });
     }
 
-    // "All Warehouses" aggregates across available warehouses.
-    // Only scope by BU when a specific warehouse is selected.
-    const effectiveBusinessUnitId: string | null = rawWarehouseId ?? null;
+    // "All Warehouses" aggregates across the current business unit. A specific
+    // warehouse still remains scoped by the same business unit context.
+    const effectiveBusinessUnitId: string | null = currentBusinessUnitId;
 
     const statsRpcPayload = {
       p_company_id: companyId,

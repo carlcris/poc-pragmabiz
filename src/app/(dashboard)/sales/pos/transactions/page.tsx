@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { format } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
-import { Eye, Printer, Search, XCircle } from "lucide-react";
+import { MoreVertical, Printer, Search, XCircle } from "lucide-react";
 import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusText } from "@/components/shared/StatusText";
 import {
   AlertDialog,
@@ -302,7 +308,11 @@ export default function POSTransactionsPage() {
               </TableHeader>
               <TableBody>
                 {transactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
+                  <TableRow
+                    key={transaction.id}
+                    className="cursor-pointer"
+                    onClick={() => setSelectedTransactionId(transaction.id)}
+                  >
                     <TableCell className="font-mono font-medium">
                       {transaction.transactionNumber}
                     </TableCell>
@@ -322,38 +332,47 @@ export default function POSTransactionsPage() {
                       {formatCurrency(transaction.totalAmount)}
                     </TableCell>
                     <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       <div className="flex justify-end gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => setSelectedTransactionId(transaction.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          title={t("printReceipt")}
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation();
                             setReceiptTransactionId(transaction.id);
                             setShowReceiptPanel(true);
                           }}
                         >
-                          <Printer className="h-4 w-4" />
+                          <Printer className="mr-2 h-4 w-4" />
+                          {t("print")}
                         </Button>
                         {transaction.status === "completed" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title={t("voidTransaction")}
-                            onClick={() => {
-                              setTransactionToVoid(transaction);
-                              setShowAdminPinDialog(true);
-                            }}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label={t("moreActions")}
+                                className="h-8 w-8"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setTransactionToVoid(transaction);
+                                  setShowAdminPinDialog(true);
+                                }}
+                              >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                {t("voidTransaction")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
                       </div>
                     </TableCell>

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import { reversePOSTransaction } from "@/services/accounting/posPosting";
-import { reversePOSStockTransaction } from "@/services/inventory/posStockService";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import type { Tables } from "@/types/supabase";
@@ -14,6 +12,27 @@ type POSTransactionQueryRow = POSTransactionRow & {
   pos_transaction_items: POSTransactionItemRow[];
   pos_transaction_payments: POSTransactionPaymentRow[];
 };
+
+type VoidPOSTransactionBody = {
+  reason?: unknown;
+};
+
+function mapVoidPOSError(message?: string): { error: string; status: number } {
+  switch (message) {
+    case "POS_VOID_TRANSACTION_NOT_FOUND":
+      return { error: "Transaction not found", status: 404 };
+    case "POS_VOID_ALREADY_VOIDED":
+      return { error: "Transaction is already voided", status: 400 };
+    case "POS_VOID_UNSUPPORTED_STATUS":
+      return { error: "Only completed transactions can be voided", status: 400 };
+    case "POS_VOID_UNAUTHORIZED":
+      return { error: "Unauthorized", status: 403 };
+    case "POS_VOID_ORIGINAL_JOURNAL_LINES_NOT_FOUND":
+      return { error: "Failed to reverse transaction accounting", status: 500 };
+    default:
+      return { error: "Failed to void transaction", status: 500 };
+  }
+}
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -31,10 +50,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user details including van_warehouse_id
+    // Get user details for company scoping.
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("company_id, van_warehouse_id")
+      .select("company_id")
       .eq("id", user.id)
       .single();
 
@@ -42,32 +61,36 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get the transaction to verify it exists and belongs to the company
-    const { data: transaction, error: fetchError } = await supabase
-      .from("pos_transactions")
-      .select("id, status, company_id, transaction_code")
-      .eq("id", id)
-      .eq("company_id", userData.company_id)
-      .single();
-
-    if (fetchError || !transaction) {
-      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+    let requestBody: VoidPOSTransactionBody = {};
+    try {
+      requestBody = (await request.json()) as VoidPOSTransactionBody;
+    } catch {
+      requestBody = {};
     }
 
-    // Check if transaction is already voided
-    if (transaction.status === "voided") {
-      return NextResponse.json({ error: "Transaction is already voided" }, { status: 400 });
+    const voidReason = typeof requestBody.reason === "string" ? requestBody.reason : null;
+
+    const { error: voidError } = await supabase.rpc("void_pos_transaction", {
+      p_transaction_id: id,
+      p_company_id: userData.company_id,
+      p_user_id: user.id,
+      p_business_unit_id: currentBusinessUnitId,
+      p_void_reason: voidReason,
+    });
+
+    if (voidError) {
+      console.error("Failed to void POS transaction", {
+        transactionId: id,
+        code: voidError.code,
+        message: voidError.message,
+      });
+
+      const mappedError = mapVoidPOSError(voidError.message);
+      return NextResponse.json({ error: mappedError.error }, { status: mappedError.status });
     }
 
-    // Update transaction status to voided
-    const { data: voidedTransactionData, error: voidError } = await supabase
+    const { data: voidedTransactionData, error: fetchVoidedError } = await supabase
       .from("pos_transactions")
-      .update({
-        status: "voided",
-        updated_by: user.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
       .select(
         `
         id,
@@ -106,53 +129,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         )
       `
       )
+      .eq("id", id)
+      .eq("company_id", userData.company_id)
       .single();
 
-    if (voidError) {
+    if (fetchVoidedError || !voidedTransactionData) {
       return NextResponse.json({ error: "Failed to void transaction" }, { status: 500 });
     }
+
     const voidedTransaction = voidedTransactionData as POSTransactionQueryRow;
-
-    // ============================================================================
-    // POST-VOID PROCESSING: Reverse Stock & Accounting Entries
-    // ============================================================================
-
-    const warnings: string[] = [];
-
-    // 1. Reverse stock transaction (if warehouse assigned)
-    if (userData.van_warehouse_id) {
-      try {
-        const stockReversalResult = await reversePOSStockTransaction(
-          userData.company_id,
-          currentBusinessUnitId!,
-          user.id,
-          id,
-          transaction.transaction_code,
-          userData.van_warehouse_id
-        );
-
-        if (stockReversalResult.success) {
-        } else {
-          warnings.push(`Stock reversal failed: ${stockReversalResult.error}`);
-        }
-      } catch {
-        warnings.push("Stock reversal failed");
-      }
-    } else {
-      warnings.push("No warehouse assigned - stock reversal skipped");
-    }
-
-    // 2. Reverse GL entries (both sale and COGS)
-    try {
-      const glReversalResult = await reversePOSTransaction(userData.company_id, user.id, id);
-
-      if (glReversalResult.success) {
-      } else {
-        warnings.push(`GL reversal failed: ${glReversalResult.error}`);
-      }
-    } catch {
-      warnings.push("GL reversal failed");
-    }
 
     // ============================================================================
     // RETURN RESPONSE
@@ -196,11 +181,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       updatedAt: voidedTransaction.updated_at,
     };
 
-    return NextResponse.json({
-      data: transformedTransaction,
-      warnings: warnings.length > 0 ? warnings : undefined,
-    });
-  } catch {
+    return NextResponse.json(transformedTransaction);
+  } catch (error) {
+    console.error("POS void transaction API error", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

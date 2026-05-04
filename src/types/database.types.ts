@@ -8214,6 +8214,16 @@ export type Database = {
         }[];
       };
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };
+      void_pos_transaction: {
+        Args: {
+          p_business_unit_id?: string | null;
+          p_company_id: string;
+          p_transaction_id: string;
+          p_user_id: string;
+          p_void_reason?: string | null;
+        };
+        Returns: Json;
+      };
       generate_document_code: {
         Args: { p_code_prefix: string; p_company_id: string; p_digits?: number };
         Returns: string;

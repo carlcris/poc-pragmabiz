@@ -70,6 +70,14 @@ AS $$
     WHERE pt.company_id = p_company_id
       AND pt.customer_id = p_customer_id
       AND pt.status = 'completed'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.sales_invoices linked_si
+        WHERE linked_si.company_id = p_company_id
+          AND linked_si.deleted_at IS NULL
+          AND linked_si.status <> 'cancelled'
+          AND linked_si.custom_fields ->> 'posTransactionId' = pt.id::text
+      )
   ),
   entries AS (
     SELECT * FROM invoice_entries
@@ -243,6 +251,14 @@ AS $$
     WHERE pt.company_id = p_company_id
       AND pt.customer_id = p_customer_id
       AND pt.status = 'completed'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.sales_invoices linked_si
+        WHERE linked_si.company_id = p_company_id
+          AND linked_si.deleted_at IS NULL
+          AND linked_si.status <> 'cancelled'
+          AND linked_si.custom_fields ->> 'posTransactionId' = pt.id::text
+      )
   ),
   entries AS (
     SELECT * FROM invoice_entries
@@ -328,6 +344,10 @@ COMMENT ON FUNCTION public.get_customer_ledger_entries(UUID, UUID, DATE, DATE, T
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_customer_activity
   ON public.sales_invoices(company_id, customer_id, invoice_date, id)
   WHERE deleted_at IS NULL AND status NOT IN ('draft', 'cancelled');
+
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_pos_transaction_link
+  ON public.sales_invoices(company_id, ((custom_fields ->> 'posTransactionId')))
+  WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_invoice_payments_company_date_invoice
   ON public.invoice_payments(company_id, payment_date, invoice_id)

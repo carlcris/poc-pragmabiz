@@ -3,18 +3,16 @@
 import { format } from "date-fns";
 import { useLocale, useTranslations } from "next-intl";
 import { Printer } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import type { POSTransaction } from "@/types/pos";
 
 type TransactionDetailsDialogProps = {
@@ -53,142 +51,167 @@ export function TransactionDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <DialogTitle>{t("title")}</DialogTitle>
-            <Button variant="outline" size="sm">
-              <Printer className="mr-2 h-4 w-4" />
-              {t("printReceipt")}
-            </Button>
+            {getStatusBadge(transaction.status)}
           </div>
+          <DialogDescription>
+            {transaction.transactionNumber}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Transaction Information */}
+          <div className="grid grid-cols-2 gap-6">
             <div>
-              <div className="text-sm text-muted-foreground">{t("transactionNumber")}</div>
-              <div className="font-mono font-medium">{transaction.transactionNumber}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">{t("dateTime")}</div>
-              <div className="font-medium">{formatDateTime(transaction.transactionDate)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">{t("cashier")}</div>
-              <div className="font-medium">{transaction.cashierName}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">{t("customer")}</div>
-              <div className="font-medium">
-                {transaction.customerName || (
-                  <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>
-                )}
+              <h3 className="mb-3 text-sm font-semibold">{t("transactionInformation")}</h3>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">{t("transactionNumber")}</span>
+                  <div className="font-mono font-medium">{transaction.transactionNumber}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t("dateTime")}</span>
+                  <div className="font-medium">{formatDateTime(transaction.transactionDate)}</div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">{t("cashier")}</span>
+                  <div className="font-medium">{transaction.cashierName}</div>
+                </div>
               </div>
             </div>
+
             <div>
-              <div className="text-sm text-muted-foreground">{t("status")}</div>
-              <div>{getStatusBadge(transaction.status)}</div>
+              <h3 className="mb-3 text-sm font-semibold">{t("customerInformation")}</h3>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">{t("customer")}</span>
+                  <div className="font-medium">
+                    {transaction.customerName || (
+                      <span className="italic text-muted-foreground">{t("walkInCustomer")}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <Separator />
+          <hr className="border-t" />
 
+          {/* Line Items */}
           <div>
-            <h3 className="mb-3 font-semibold">{t("items")}</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("item")}</TableHead>
-                  <TableHead className="text-right">{t("quantity")}</TableHead>
-                  <TableHead className="text-right">{t("unitPrice")}</TableHead>
-                  <TableHead className="text-right">{t("discount")}</TableHead>
-                  <TableHead className="text-right">{t("total")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transaction.items.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <div className="font-medium">{item.itemName}</div>
-                      <div className="text-sm text-muted-foreground">{item.itemCode}</div>
-                    </TableCell>
-                    <TableCell className="text-right">{item.quantity}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.unitPrice)}</TableCell>
-                    <TableCell className="text-right">
-                      {item.discount > 0 ? `${item.discount}%` : t("notAvailable")}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(item.lineTotal)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <h3 className="mb-3 text-sm font-semibold">{t("items")}</h3>
+            <div className="overflow-hidden rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="p-3 text-left">{t("item")}</th>
+                    <th className="p-3 text-right">{t("quantity")}</th>
+                    <th className="p-3 text-right">{t("unitPrice")}</th>
+                    <th className="p-3 text-right">{t("discount")}</th>
+                    <th className="p-3 text-right">{t("total")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transaction.items.map((item, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="p-3">
+                        <div className="font-medium">{item.itemName}</div>
+                        <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                      </td>
+                      <td className="p-3 text-right">{item.quantity}</td>
+                      <td className="p-3 text-right">{formatCurrency(item.unitPrice)}</td>
+                      <td className="p-3 text-right">
+                        {item.discount > 0 ? `${item.discount}%` : t("notAvailable")}
+                      </td>
+                      <td className="p-3 text-right font-medium">
+                        {formatCurrency(item.lineTotal)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <Separator />
+          <hr className="border-t" />
 
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t("subtotal")}</span>
-              <span className="font-medium">{formatCurrency(transaction.subtotal)}</span>
-            </div>
-            {transaction.totalDiscount > 0 && (
-              <div className="flex justify-between text-red-600">
-                <span>{t("discount")}</span>
-                <span>-{formatCurrency(transaction.totalDiscount)}</span>
-              </div>
-            )}
-            {transaction.totalTax > 0 && (
+          {/* Summary */}
+          <div className="flex justify-end">
+            <div className="w-64 space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  {t("tax", { rate: transaction.taxRate })}
-                </span>
-                <span className="font-medium">{formatCurrency(transaction.totalTax)}</span>
+                <span className="text-muted-foreground">{t("subtotal")}</span>
+                <span className="font-medium">{formatCurrency(transaction.subtotal)}</span>
               </div>
-            )}
-            <Separator />
-            <div className="flex justify-between text-lg">
-              <span className="font-semibold">{t("totalAmount")}</span>
-              <span className="font-bold">{formatCurrency(transaction.totalAmount)}</span>
+              {transaction.totalDiscount > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>{t("discount")}</span>
+                  <span className="font-medium">-{formatCurrency(transaction.totalDiscount)}</span>
+                </div>
+              )}
+              {transaction.totalTax > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t("tax", { rate: transaction.taxRate })}
+                  </span>
+                  <span className="font-medium">{formatCurrency(transaction.totalTax)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-2 text-lg font-bold">
+                <span>{t("totalAmount")}</span>
+                <span>{formatCurrency(transaction.totalAmount)}</span>
+              </div>
             </div>
           </div>
 
-          <Separator />
-
+          {/* Payment Details */}
           <div>
-            <h3 className="mb-3 font-semibold">{t("payment")}</h3>
-            <div className="space-y-2">
+            <h3 className="mb-3 text-sm font-semibold">{t("payment")}</h3>
+            <div className="space-y-2 text-sm">
               {transaction.payments.map((payment, index) => (
                 <div key={index} className="flex justify-between">
                   <span className="capitalize text-muted-foreground">{payment.method}</span>
                   <span className="font-medium">{formatCurrency(payment.amount)}</span>
                 </div>
               ))}
-              <div className="flex justify-between">
+              <div className="flex justify-between border-t pt-2">
                 <span className="text-muted-foreground">{t("amountPaid")}</span>
                 <span className="font-medium">{formatCurrency(transaction.amountPaid)}</span>
               </div>
               {transaction.changeAmount > 0 && (
-                <div className="flex justify-between text-green-600">
+                <div className="flex justify-between font-medium text-green-600">
                   <span>{t("change")}</span>
-                  <span className="font-medium">{formatCurrency(transaction.changeAmount)}</span>
+                  <span>{formatCurrency(transaction.changeAmount)}</span>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Notes */}
           {transaction.notes && (
             <>
-              <Separator />
+              <hr className="border-t" />
               <div>
-                <h3 className="mb-2 font-semibold">{t("notes")}</h3>
-                <p className="text-sm text-muted-foreground">{transaction.notes}</p>
+                <h3 className="mb-2 text-sm font-semibold">{t("notes")}</h3>
+                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                  {transaction.notes}
+                </p>
               </div>
             </>
           )}
         </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {t("close")}
+          </Button>
+          <Button variant="default">
+            <Printer className="mr-2 h-4 w-4" />
+            {t("printReceipt")}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

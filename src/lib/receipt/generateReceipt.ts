@@ -199,8 +199,8 @@ export async function generateReceiptPDF(transaction: POSTransaction): Promise<s
     // Show discount if any
     if (item.discount > 0) {
       doc.setFontSize(8);
-      const discountAmount = (item.quantity * item.unitPrice * item.discount) / 100;
-      const discountText = `  Disc (${item.discount}%)`;
+      const discountAmount = item.discount;
+      const discountText = "  Disc";
       doc.text(discountText, MARGIN, yPos);
       const discountValueText = "-" + formatCurrency(discountAmount).replace("PHP", "").trim();
       const discountValueWidth = doc.getTextWidth(discountValueText);
@@ -225,7 +225,11 @@ export async function generateReceiptPDF(transaction: POSTransaction): Promise<s
   }
 
   if (transaction.totalTax > 0) {
-    addTwoColumn(`Tax (${transaction.taxRate}%):`, formatCurrency(transaction.totalTax), yPos);
+    addTwoColumn(
+      `Tax (${transaction.taxRate}% incl.):`,
+      formatCurrency(transaction.totalTax),
+      yPos
+    );
     yPos += smallLineHeight;
   }
 

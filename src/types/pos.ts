@@ -46,6 +46,7 @@ export interface POSTransaction {
 
 export interface POSTransactionCreate {
   customerId?: string;
+  warehouseId?: string;
   items: Omit<POSCartItem, "id">[];
   payments: POSPayment[];
   notes?: string;

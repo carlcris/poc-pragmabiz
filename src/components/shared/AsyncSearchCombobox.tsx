@@ -153,7 +153,7 @@ export function AsyncSearchCombobox<T>({
                   return (
                     <CommandItem
                       key={optionValue}
-                      value={getOptionSearchValue?.(option) ?? optionLabel}
+                      value={optionValue}
                       className={cn("w-full", renderOption && "items-stretch")}
                       onSelect={() => {
                         onValueChange(optionValue);

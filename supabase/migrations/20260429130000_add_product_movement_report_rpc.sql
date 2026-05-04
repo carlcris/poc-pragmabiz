@@ -92,6 +92,14 @@ AS $$
      AND pt.transaction_date >= (s.date_from::timestamp AT TIME ZONE 'UTC')
      AND pt.transaction_date < ((s.date_to + 1)::timestamp AT TIME ZONE 'UTC')
      AND (p_business_unit_id IS NULL OR pt.business_unit_id = p_business_unit_id)
+     AND NOT EXISTS (
+       SELECT 1
+       FROM public.sales_invoices linked_si
+       WHERE linked_si.company_id = p_company_id
+         AND linked_si.deleted_at IS NULL
+         AND linked_si.status <> 'cancelled'
+         AND linked_si.custom_fields ->> 'posTransactionId' = pt.id::text
+     )
     INNER JOIN public.pos_transaction_items pti
       ON pti.pos_transaction_id = pt.id
   ),
@@ -250,6 +258,10 @@ CREATE INDEX IF NOT EXISTS idx_sales_invoice_items_company_invoice_item_report
 CREATE INDEX IF NOT EXISTS idx_sales_invoices_company_bu_date_report
   ON public.sales_invoices(company_id, business_unit_id, invoice_date, id)
   WHERE deleted_at IS NULL AND status NOT IN ('draft', 'cancelled');
+
+CREATE INDEX IF NOT EXISTS idx_sales_invoices_pos_transaction_link_report
+  ON public.sales_invoices(company_id, ((custom_fields ->> 'posTransactionId')))
+  WHERE deleted_at IS NULL;
 
 CREATE INDEX IF NOT EXISTS idx_pos_transactions_company_bu_date_report
   ON public.pos_transactions(company_id, business_unit_id, transaction_date, id)

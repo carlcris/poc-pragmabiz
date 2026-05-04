@@ -1733,6 +1733,8 @@ export type TranslationKeys = {
     empty: string;
     walkInCustomer: string;
     itemsCount: string;
+    print: string;
+    moreActions: string;
     printReceipt: string;
     voidTransaction: string;
     adminPinTitle: string;
@@ -1768,6 +1770,8 @@ export type TranslationKeys = {
   };
   posTransactionDetailsDialog: {
     title: string;
+    transactionInformation: string;
+    customerInformation: string;
     printReceipt: string;
     transactionNumber: string;
     dateTime: string;
@@ -1791,6 +1795,7 @@ export type TranslationKeys = {
     completed: string;
     voided: string;
     notAvailable: string;
+    close: string;
   };
   itemsPage: {
     title: string;
@@ -4387,7 +4392,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       billSummary: "Bill Summary",
       items: "Items",
       subtotal: "Subtotal",
-      vat: "VAT (12%)",
+      vat: "VAT (12% incl.)",
       proceedToPayment: "Proceed to Payment",
       paymentMethod: "Payment Method",
       cash: "Cash",
@@ -4432,6 +4437,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "No transactions yet",
       walkInCustomer: "Walk-in Customer",
       itemsCount: "{count} items",
+      print: "Print",
+      moreActions: "More actions",
       printReceipt: "Print Receipt",
       voidTransaction: "Void Transaction",
       adminPinTitle: "Administrator Verification Required",
@@ -4468,6 +4475,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     posTransactionDetailsDialog: {
       title: "Transaction Details",
+      transactionInformation: "Transaction Information",
+      customerInformation: "Customer Information",
       printReceipt: "Print Receipt",
       transactionNumber: "Transaction Number",
       dateTime: "Date & Time",
@@ -4482,7 +4491,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       discount: "Discount",
       total: "Total",
       subtotal: "Subtotal",
-      tax: "Tax ({rate}%)",
+      tax: "Tax ({rate}% incl.)",
       totalAmount: "Total Amount",
       payment: "Payment",
       amountPaid: "Amount Paid",
@@ -4491,6 +4500,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       completed: "Completed",
       voided: "Voided",
       notAvailable: "-",
+      close: "Close",
     },
     itemsPage: {
       title: "Inventory Master",
@@ -9518,7 +9528,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       billSummary: "账单汇总",
       items: "商品数",
       subtotal: "小计",
-      vat: "增值税 (12%)",
+      vat: "增值税 (含 12%)",
       proceedToPayment: "前往付款",
       paymentMethod: "付款方式",
       cash: "现金",
@@ -9562,6 +9572,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "暂无交易",
       walkInCustomer: "散客",
       itemsCount: "{count} 件商品",
+      print: "打印",
+      moreActions: "更多操作",
       printReceipt: "打印小票",
       voidTransaction: "作废交易",
       adminPinTitle: "需要管理员验证",
@@ -9597,6 +9609,8 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     posTransactionDetailsDialog: {
       title: "交易详情",
+      transactionInformation: "交易信息",
+      customerInformation: "客户信息",
       printReceipt: "打印小票",
       transactionNumber: "交易号",
       dateTime: "日期和时间",
@@ -9611,7 +9625,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       discount: "折扣",
       total: "总计",
       subtotal: "小计",
-      tax: "税额 ({rate}%)",
+      tax: "税额 (含 {rate}%)",
       totalAmount: "总金额",
       payment: "付款",
       amountPaid: "已付金额",
@@ -9620,6 +9634,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       completed: "已完成",
       voided: "已作废",
       notAvailable: "-",
+      close: "关闭",
     },
     itemsPage: {
       title: "库存主数据",

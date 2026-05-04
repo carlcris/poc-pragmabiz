@@ -5,10 +5,13 @@ import { useTranslations } from "next-intl";
 import { AlertCircle, Banknote, CreditCard, Search, Smartphone, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useItems } from "@/hooks/useItems";
+import { useWarehouses } from "@/hooks/useWarehouses";
 import { useCustomer, useCustomers } from "@/hooks/useCustomers";
 import { useCreatePOSTransaction } from "@/hooks/usePos";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { calculatePOSLineTotal, calculatePOSTotals } from "@/lib/pos/totals";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -84,6 +87,22 @@ export default function POSPage() {
   const [itemSearchOpen, setItemSearchOpen] = useState(false);
 
   const { formatCurrency } = useCurrency();
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const hasBusinessUnitHydrated = useBusinessUnitStore((state) => state.hasHydrated);
+  const isBusinessUnitLoading = useBusinessUnitStore((state) => state.isLoading);
+  const { data: warehousesData, isLoading: isWarehousesLoading } = useWarehouses({ limit: 50 });
+  const warehouses = useMemo(
+    () => warehousesData?.data?.filter((warehouse) => warehouse.isActive) || [],
+    [warehousesData?.data]
+  );
+  const currentBusinessUnitWarehouseId = useMemo(() => {
+    if (!currentBusinessUnit?.id) return undefined;
+    return warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id;
+  }, [currentBusinessUnit?.id, warehouses]);
+  const isBusinessUnitScopeReady = hasBusinessUnitHydrated && !isBusinessUnitLoading;
+  const isWarehouseScopeReady =
+    !currentBusinessUnit?.id || (!!currentBusinessUnitWarehouseId && !isWarehousesLoading);
+  const areItemQueriesEnabled = isBusinessUnitScopeReady && isWarehouseScopeReady;
   const {
     data: itemsData,
     isLoading: itemsLoading,
@@ -92,7 +111,9 @@ export default function POSPage() {
     search: debouncedItemSearch || undefined,
     page: 1,
     limit: LOOKUP_PAGE_SIZE,
+    warehouseId: currentBusinessUnitWarehouseId,
     includeStock: true,
+    enabled: areItemQueriesEnabled,
   });
   const {
     data: customersData,
@@ -113,6 +134,15 @@ export default function POSPage() {
 
   const items = useMemo(() => (itemsData?.data || []) as ItemWithStock[], [itemsData]);
   const customers = useMemo(() => customersData?.data || [], [customersData]);
+  const customerOptions = useMemo(
+    () => [
+      walkInCustomerOption,
+      ...customers.filter(
+        (customer) => customer.id !== "walk-in" && customer.code.toUpperCase() !== "WALK-IN"
+      ),
+    ],
+    [customers, walkInCustomerOption]
+  );
   const selectedCustomerOption =
     selectedCustomerId === "walk-in" ? null : (selectedCustomer ?? null);
 
@@ -138,11 +168,7 @@ export default function POSPage() {
     return () => window.clearTimeout(timeoutId);
   }, [customerSearchInput]);
 
-  const subtotal = cart.reduce((sum, item) => sum + item.lineTotal, 0);
-  const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
-  const taxRate = 0.12;
-  const totalTax = Math.round((subtotal - totalDiscount) * taxRate);
-  const totalAmount = subtotal - totalDiscount + totalTax;
+  const { subtotal, totalDiscount, totalTax, totalAmount } = calculatePOSTotals(cart);
   const received = parseFloat(amountReceived) || 0;
   const changeAmount = received - totalAmount;
 
@@ -200,8 +226,11 @@ export default function POSPage() {
         ...newCart[existingItemIndex],
         availableStock: item.available,
         quantity: newQty,
-        lineTotal:
-          newQty * newCart[existingItemIndex].unitPrice - newCart[existingItemIndex].discount,
+        lineTotal: calculatePOSLineTotal({
+          quantity: newQty,
+          unitPrice: newCart[existingItemIndex].unitPrice,
+          discount: newCart[existingItemIndex].discount,
+        }),
       };
       setCart(newCart);
     } else {
@@ -253,7 +282,11 @@ export default function POSPage() {
     newCart[index] = {
       ...newCart[index],
       quantity: newQuantity,
-      lineTotal: newQuantity * newCart[index].unitPrice - newCart[index].discount,
+      lineTotal: calculatePOSLineTotal({
+        quantity: newQuantity,
+        unitPrice: newCart[index].unitPrice,
+        discount: newCart[index].discount,
+      }),
     };
     setCart(newCart);
   };
@@ -263,13 +296,22 @@ export default function POSPage() {
     newCart[index] = {
       ...newCart[index],
       discount,
-      lineTotal: newCart[index].quantity * newCart[index].unitPrice - discount,
+      lineTotal: calculatePOSLineTotal({
+        quantity: newCart[index].quantity,
+        unitPrice: newCart[index].unitPrice,
+        discount,
+      }),
     };
     setCart(newCart);
   };
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+
+    if (!currentBusinessUnitWarehouseId) {
+      toast.error("POS warehouse is not available for the current business unit");
+      return;
+    }
 
     const stockIssues: string[] = [];
     for (const cartItem of cart) {
@@ -295,6 +337,7 @@ export default function POSPage() {
 
     await createTransaction.mutateAsync({
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
+      warehouseId: currentBusinessUnitWarehouseId,
       items: cart.map(({ id, availableStock, ...item }) => {
         void id;
         void availableStock;
@@ -385,7 +428,7 @@ export default function POSPage() {
                             return (
                               <CommandItem
                                 key={item.id}
-                                value={item.name}
+                                value={item.id}
                                 onSelect={() => addToCart(item)}
                                 disabled={isOutOfStock}
                                 className={
@@ -516,7 +559,7 @@ export default function POSPage() {
                 onValueChange={setSelectedCustomerId}
                 searchValue={customerSearchInput}
                 onSearchValueChange={setCustomerSearchInput}
-                options={[walkInCustomerOption, ...customers]}
+                options={customerOptions}
                 selectedOption={
                   selectedCustomerId === "walk-in" ? walkInCustomerOption : selectedCustomerOption
                 }
