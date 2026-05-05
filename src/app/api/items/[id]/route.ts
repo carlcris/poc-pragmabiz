@@ -84,6 +84,10 @@ type ItemRow = DbItem & {
   unit_of_measure: DbUoM | null;
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const isUuid = (value: string): boolean => UUID_REGEX.test(value);
+
 const ITEM_DETAIL_SELECT = `
   *,
   item_category:item_categories!items_category_id_fkey (
@@ -189,6 +193,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params;
+    if (!isUuid(id)) {
+      return NextResponse.json({ error: "Invalid item id" }, { status: 400 });
+    }
 
     // Fetch item
     const { data: fetchedItem, error } = await supabase
@@ -293,6 +300,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const { id } = await params;
+    if (!isUuid(id)) {
+      return NextResponse.json({ error: "Invalid item id" }, { status: 400 });
+    }
+
     const body: UpdateItemRequest = await request.json();
 
     // Check if item exists
@@ -507,6 +518,9 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    if (!isUuid(id)) {
+      return NextResponse.json({ error: "Invalid item id" }, { status: 400 });
+    }
 
     // Check if item exists
     const { data: existing } = await supabase

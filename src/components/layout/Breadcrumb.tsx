@@ -25,7 +25,10 @@ export function Breadcrumb() {
   const deliveryNoteId = isDeliveryNoteDetail ? lastSegment : "";
   const isItemCreate = pathname === "/inventory/items/create";
   const isItemDetail =
-    parentSegment === "items" && pathSegments.length >= 3 && lastSegment !== "edit";
+    parentSegment === "items" &&
+    pathSegments.length >= 3 &&
+    lastSegment !== "edit" &&
+    !isItemCreate;
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
   const isSupplierDetail =
     pathSegments[0] === "purchasing" && parentSegment === "suppliers" && pathSegments.length >= 3;
