@@ -68,6 +68,12 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
     : null;
   const formatQuantity = (value: number | undefined) =>
     new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(value ?? 0);
+  const formatImportCurrency = (amount: number, currency: string) =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
 
   if (error || !item) {
     if (isItemLoading) {
@@ -550,6 +556,16 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                     ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
                   </span>
                 </div>
+                {item.importCost != null && item.importCurrency ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {t("importCostLabel")}
+                    </span>
+                    <span className="text-lg font-bold">
+                      {formatImportCurrency(item.importCost, item.importCurrency)}
+                    </span>
+                  </div>
+                ) : null}
                 {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
                   <div className="flex items-center justify-between border-t pt-2">
                     <span className="text-sm font-medium text-muted-foreground">

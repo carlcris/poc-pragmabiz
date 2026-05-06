@@ -14,6 +14,19 @@ const normalizeOptionalDate = (value: unknown) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const normalizeCurrency = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : null;
+};
+
+const resolveRequestCurrency = (value: unknown) => {
+  if (value == null || value === "") return "PHP";
+  const normalized = normalizeCurrency(value);
+  if (!normalized) return null;
+  return normalized;
+};
+
 type LoadListItemRow = {
   id: string;
   item_id: string;
@@ -116,6 +129,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         actual_arrival_date,
         load_date,
         status,
+        currency,
         created_by,
         received_by,
         approved_by,
@@ -226,6 +240,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       actualArrivalDate: ll.actual_arrival_date,
       loadDate: ll.load_date,
       status: ll.status,
+      currency: normalizeCurrency(ll.currency) ?? "PHP",
       createdBy: ll.created_by,
       createdByUser: createdByUser
         ? {
@@ -319,7 +334,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Check if load list exists
     const { data: existingLL, error: fetchError } = await supabase
       .from("load_lists")
-      .select("id, status")
+      .select("id, status, currency")
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
@@ -339,6 +354,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
     const loadDate = normalizeOptionalDate(body.loadDate);
+    const currency =
+      body.currency === undefined ? existingLL.currency : resolveRequestCurrency(body.currency);
+
+    if (!currency) {
+      return NextResponse.json(
+        { error: "Currency must be a 3-letter currency code" },
+        { status: 400 }
+      );
+    }
 
     if (body.items && body.items.length === 0) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
@@ -357,11 +381,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         liner_name: body.linerName,
         estimated_arrival_date: estimatedArrivalDate,
         load_date: loadDate,
+        currency,
         notes: body.notes,
         updated_by: userId,
       })
       .eq("id", id)
-      .select("id, ll_number, status")
+      .select("id, ll_number, status, currency")
       .single();
 
     if (updateError) {
@@ -419,6 +444,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       id: ll.id,
       llNumber: ll.ll_number,
       status: ll.status,
+      currency: ll.currency,
     });
   } catch (error) {
     console.error("Internal server error:", error);

@@ -44,6 +44,8 @@ export type Item = {
   category: string;
   standardCost: number;
   purchasePrice?: number;
+  importCost?: number | null;
+  importCurrency?: string | null;
   listPrice: number;
   onHand?: number;
   allocated?: number;
@@ -70,6 +72,8 @@ export type CreateItemRequest = {
   category: string;
   standardCost: number;
   purchasePrice?: number;
+  importCost?: number | null;
+  importCurrency?: string | null;
   listPrice: number;
   reorderLevel: number;
   reorderQty: number;
@@ -87,6 +91,8 @@ export type UpdateItemRequest = {
   category?: string;
   standardCost?: number;
   purchasePrice?: number;
+  importCost?: number | null;
+  importCurrency?: string | null;
   listPrice?: number;
   reorderLevel?: number;
   reorderQty?: number;

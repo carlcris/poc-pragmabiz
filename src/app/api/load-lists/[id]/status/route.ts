@@ -413,6 +413,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
               delivery_date: deliveryDate,
               status: "draft",
               notes: `Auto-created from Load List ${ll.ll_number}`,
+              received_by: userId,
               created_by: userId,
               updated_by: userId,
             })

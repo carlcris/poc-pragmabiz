@@ -121,6 +121,16 @@ export default function StockRequisitionsPage() {
     }).format(new Date(value));
   };
 
+  const formatRequisitionAmount = (amount: number, currencyCode?: string | null) => {
+    if (!currencyCode) return formatCurrency(amount);
+
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
+  };
+
   const getStatusBadge = (status: StockRequisitionStatus) => {
     switch (status) {
       case "draft":
@@ -369,7 +379,7 @@ export default function StockRequisitionsPage() {
                       <TableCell>{formatDate(sr.requisitionDate)}</TableCell>
                       <TableCell>{formatDate(sr.requiredByDate)}</TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatCurrency(sr.totalAmount)}
+                        {formatRequisitionAmount(sr.totalAmount, sr.currency)}
                       </TableCell>
                       <TableCell className="text-center">{getStatusBadge(sr.status)}</TableCell>
                       <TableCell>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useLoadLists, useDeleteLoadList, useUpdateLoadListStatus } from "@/hooks/useLoadLists";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -64,6 +65,21 @@ const LoadListFormDialog = dynamic(
   { ssr: false }
 );
 
+const formatLoadListCurrency = (amount: number, currencyCode: string, locale: string) => {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
+  } catch {
+    return `${currencyCode} ${amount.toLocaleString(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+};
+
 export default function LoadListsPage() {
   const t = useTranslations("loadListsPage");
   const locale = useLocale();
@@ -97,10 +113,18 @@ export default function LoadListsPage() {
   });
 
   const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
-  const suppliers = suppliersData?.data || [];
+  const suppliers = useMemo(() => suppliersData?.data || [], [suppliersData?.data]);
 
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
-  const warehouses = warehousesData?.data || [];
+  const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
+
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
+  const defaultWarehouseId = useMemo(() => {
+    if (!currentBusinessUnit?.id) return "";
+    return (
+      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id || ""
+    );
+  }, [currentBusinessUnit?.id, warehouses]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -340,6 +364,7 @@ export default function LoadListsPage() {
                   <TableHead>{t("warehouse")}</TableHead>
                   <TableHead>{t("containerSeal")}</TableHead>
                   <TableHead>{t("batch")}</TableHead>
+                  <TableHead className="text-right">{t("totalAmount")}</TableHead>
                   <TableHead>{t("arrivalDate")}</TableHead>
                   <TableHead className="text-center">{t("status")}</TableHead>
                   <TableHead>{t("createdBy")}</TableHead>
@@ -363,6 +388,9 @@ export default function LoadListsPage() {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="ml-auto h-4 w-20" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
@@ -404,6 +432,7 @@ export default function LoadListsPage() {
                     <TableHead>{t("warehouse")}</TableHead>
                     <TableHead>{t("containerSeal")}</TableHead>
                     <TableHead>{t("batch")}</TableHead>
+                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
                     <TableHead>{t("arrivalDate")}</TableHead>
                     <TableHead className="text-center">{t("status")}</TableHead>
                     <TableHead>{t("createdBy")}</TableHead>
@@ -455,6 +484,11 @@ export default function LoadListsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">{ll.batchNumber || t("noValue")}</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="text-sm font-medium tabular-nums">
+                          {formatLoadListCurrency(ll.totalAmount ?? 0, ll.currency, locale)}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div>
@@ -572,7 +606,12 @@ export default function LoadListsPage() {
       </div>
 
       {dialogOpen && (
-        <LoadListFormDialog open={dialogOpen} onOpenChange={setDialogOpen} loadList={selectedLL} />
+        <LoadListFormDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          loadList={selectedLL}
+          defaultWarehouseId={defaultWarehouseId}
+        />
       )}
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

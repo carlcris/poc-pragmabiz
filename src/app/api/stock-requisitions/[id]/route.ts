@@ -8,6 +8,17 @@ import {
 } from "../line-item-unit-options";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
+const normalizeCurrency = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const resolveRequestCurrency = (value: unknown) => normalizeCurrency(value) ?? "PHP";
+
+const validateCurrency = (currency: string) =>
+  /^[A-Z]{3}$/.test(currency) ? null : "Currency must be a 3-letter currency code";
+
 // GET /api/stock-requisitions/[id]
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -16,7 +27,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Fetch stock requisition with related data
     const { data: sr, error } = await supabase
@@ -60,6 +75,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       )
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -188,6 +204,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : null,
       status: sr.status,
       notes: sr.notes,
+      currency: normalizeCurrency(sr.currency) ?? "PHP",
       totalAmount: formattedItems.reduce((sum, item) => sum + item.totalPrice, 0),
       items: formattedItems,
       createdAt: sr.created_at,
@@ -219,8 +236,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const body = await request.json();
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Check if stock requisition exists and is in draft status
     const { data: existingSR, error: fetchError } = await supabase
@@ -228,6 +249,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       .select("id, status")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -242,6 +264,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     if (body.items && body.items.length === 0) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    }
+    const currency = resolveRequestCurrency(body.currency);
+    const currencyValidationError = validateCurrency(currency);
+    if (currencyValidationError) {
+      return NextResponse.json({ error: currencyValidationError }, { status: 400 });
     }
 
     let resolvedLineItems = body.items;
@@ -277,9 +304,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         required_by_date: body.requiredByDate || null,
         notes: body.notes,
         total_amount: totalAmount,
+        currency,
         updated_by: userId,
       })
       .eq("id", id)
+      .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .select()
       .single();
 
@@ -352,7 +382,11 @@ export async function DELETE(
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Check if stock requisition exists
     const { data: existingSR, error: fetchError } = await supabase
@@ -360,6 +394,7 @@ export async function DELETE(
       .select("id, status")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -382,7 +417,9 @@ export async function DELETE(
         deleted_at: new Date().toISOString(),
         updated_by: userId,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId);
 
     if (deleteError) {
       console.error("Error deleting stock requisition:", deleteError);

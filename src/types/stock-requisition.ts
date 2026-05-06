@@ -60,6 +60,7 @@ export type StockRequisition = {
   requiredByDate?: string;
   status: StockRequisitionStatus;
   totalAmount: number;
+  currency: string;
   notes?: string;
   items: StockRequisitionItem[];
   createdBy: string;
@@ -77,6 +78,7 @@ export type StockRequisition = {
 
 export type CreateStockRequisitionRequest = {
   supplierId: string;
+  currency?: string | null;
   requisitionDate?: string;
   requiredByDate?: string;
   notes?: string;

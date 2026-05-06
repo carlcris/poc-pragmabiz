@@ -67,7 +67,51 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
+import type { Item } from "@/types/item";
 import type { LoadList } from "@/types/load-list";
+
+type LoadListCostSource = Pick<
+  Item,
+  "importCost" | "importCurrency" | "purchasePrice" | "standardCost" | "listPrice"
+>;
+
+const getDefaultLoadListUnitCost = (item?: LoadListCostSource | null) =>
+  item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
+
+const normalizeCurrencyCode = (value?: string | null) => {
+  if (!value) return null;
+  const normalized = value.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : null;
+};
+
+const getDefaultLoadListCostCurrency = (
+  item: LoadListCostSource | null | undefined,
+  fallbackCurrency: string
+) => {
+  if (item?.importCost != null) {
+    return normalizeCurrencyCode(item.importCurrency) ?? fallbackCurrency;
+  }
+
+  return fallbackCurrency;
+};
+
+const formatCurrencyAmount = (amount: number, currencyCode: string, locale: string) => {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
+  } catch {
+    return `${currencyCode} ${amount.toLocaleString(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+};
+
+const getNarrowCurrencySymbol = (currencyCode: string, locale: string) =>
+  formatCurrencyAmount(0, currencyCode, locale).replace(/[\d\s.,]/g, "") || currencyCode;
 
 type LineItem = {
   itemId: string;
@@ -79,6 +123,7 @@ type LineItem = {
   qtyPerUnit: number;
   loadListQty: number;
   unitPrice: number;
+  unitPriceCurrency: string;
   notes?: string;
 };
 
@@ -86,14 +131,20 @@ type LoadListFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loadList?: LoadList | null;
+  defaultWarehouseId?: string;
 };
 
-export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFormDialogProps) {
+export function LoadListFormDialog({
+  open,
+  onOpenChange,
+  loadList,
+  defaultWarehouseId = "",
+}: LoadListFormDialogProps) {
   const t = useTranslations("loadListForm");
   const tValidation = useTranslations("loadListValidation");
   const locale = useLocale();
   const isEditMode = !!loadList;
-  const { formatCurrency } = useCurrency();
+  const { currentCurrency } = useCurrency();
   const createMutation = useCreateLoadList();
   const updateMutation = useUpdateLoadList();
   const { data: loadListDetails } = useLoadList(loadList?.id ?? "");
@@ -139,6 +190,11 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     null;
   const selectedItemRecord =
     selectedItemDetail || items.find((item) => item.id === selectedItemId) || null;
+  const selectedUnitCostCurrency = getDefaultLoadListCostCurrency(
+    selectedItemRecord,
+    currentCurrency.code
+  );
+  const selectedUnitCostSymbol = getNarrowCurrencySymbol(selectedUnitCostCurrency, locale);
   const selectedQtyPerUnit = selectedUnitOption?.qtyPerUnit ?? 1;
   const selectedUomLabel =
     selectedUnitOption?.displayLabel ||
@@ -159,7 +215,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
   const defaultValues = useMemo<LoadListFormValues>(
     () => ({
       supplierId: "",
-      warehouseId: "",
+      warehouseId: defaultWarehouseId,
       supplierLlNumber: "",
       containerNumber: "",
       sealNumber: "",
@@ -169,7 +225,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       loadDate: new Date().toISOString().split("T")[0],
       notes: "",
     }),
-    []
+    [defaultWarehouseId]
   );
 
   const form = useForm<LoadListFormValues>({
@@ -184,6 +240,8 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       0
     );
   }, [lineItems]);
+  const loadListCurrency = lineItems[0]?.unitPriceCurrency ?? currentCurrency.code;
+  const formattedTotalAmount = formatCurrencyAmount(totalAmount, loadListCurrency, locale);
 
   // Reset form when dialog opens/closes or LL changes
   useEffect(() => {
@@ -212,6 +270,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
           qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
           loadListQty: item.loadListQty,
           unitPrice: item.unitPrice,
+          unitPriceCurrency: resolvedLoadList.currency ?? currentCurrency.code,
           notes: item.notes,
         })) || [];
       setLineItems(formLineItems);
@@ -227,7 +286,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       setUnitCost("");
       setActiveTab("general");
     }
-  }, [open, resolvedLoadList, form, defaultValues]);
+  }, [open, resolvedLoadList, form, defaultValues, currentCurrency.code]);
 
   useEffect(() => {
     if (!selectedItemDetail) {
@@ -279,6 +338,14 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       return;
     }
 
+    const unitPriceCurrency = getDefaultLoadListCostCurrency(selectedItem, currentCurrency.code);
+    const existingCurrency = lineItems[0]?.unitPriceCurrency;
+
+    if (existingCurrency && existingCurrency !== unitPriceCurrency) {
+      toast.error(t("mixedCurrencyNotAllowed"));
+      return;
+    }
+
     const newItem: LineItem = {
       itemId: selectedItemId,
       itemCode: selectedItem.code,
@@ -289,6 +356,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
       qtyPerUnit: selectedQtyPerUnit,
       loadListQty: parseFloat(quantity),
       unitPrice: parseFloat(unitCost),
+      unitPriceCurrency,
     };
 
     setLineItems([...lineItems, newItem]);
@@ -312,6 +380,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
 
     try {
       const requestData = {
+        currency: loadListCurrency,
         supplierId: values.supplierId,
         warehouseId: values.warehouseId,
         supplierLlNumber: values.supplierLlNumber,
@@ -355,8 +424,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
     if (!selectedItemId) return;
     const selectedItem = selectedItemRecord;
     if (!selectedItem) return;
-    const cost =
-      selectedItem.purchasePrice ?? selectedItem.standardCost ?? selectedItem.listPrice ?? 0;
+    const cost = getDefaultLoadListUnitCost(selectedItem);
     setUnitCost(Number(cost).toFixed(2));
   }, [selectedItemId, selectedItemRecord]);
 
@@ -693,11 +761,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                       key={item.id}
                                       value={item.id}
                                       onSelect={() => {
-                                        const cost =
-                                          item.purchasePrice ??
-                                          item.standardCost ??
-                                          item.listPrice ??
-                                          0;
+                                        const cost = getDefaultLoadListUnitCost(item);
                                         setSelectedItemId(item.id);
                                         setSelectedUnitOptionId("");
                                         setUnitCost(Number(cost).toFixed(2));
@@ -720,11 +784,13 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                         </div>
                                       </div>
                                       <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
-                                        {formatCurrency(
-                                          item.purchasePrice ??
-                                            item.standardCost ??
-                                            item.listPrice ??
-                                            0
+                                        {formatCurrencyAmount(
+                                          getDefaultLoadListUnitCost(item),
+                                          getDefaultLoadListCostCurrency(
+                                            item,
+                                            currentCurrency.code
+                                          ),
+                                          locale
                                         )}
                                       </div>
                                     </CommandItem>
@@ -809,21 +875,26 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                       <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
                         {t("unitCostLabel")}
                       </label>
-                      <Input
-                        key={`unit-cost-${selectedItemId}`}
-                        type="text"
-                        inputMode="decimal"
-                        pattern="^-?\\d*(\\.\\d{0,2})?$"
-                        placeholder={t("unitCostPlaceholder")}
-                        value={unitCost}
-                        onChange={(e) => {
-                          const next = e.target.value;
-                          if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
-                            setUnitCost(next);
-                          }
-                        }}
-                        className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
-                      />
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                          {selectedUnitCostSymbol}
+                        </span>
+                        <Input
+                          key={`unit-cost-${selectedItemId}`}
+                          type="text"
+                          inputMode="decimal"
+                          pattern="^-?\\d*(\\.\\d{0,2})?$"
+                          placeholder={t("unitCostPlaceholder")}
+                          value={unitCost}
+                          onChange={(e) => {
+                            const next = e.target.value;
+                            if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
+                              setUnitCost(next);
+                            }
+                          }}
+                          className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
                     </div>
                     <div className="flex items-end">
                       <Button
@@ -901,11 +972,17 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                                   })}
                                 </TableCell>
                                 <TableCell className="py-2 text-right text-xs tabular-nums text-gray-700">
-                                  {formatCurrency(item.unitPrice)}
+                                  {formatCurrencyAmount(
+                                    item.unitPrice,
+                                    item.unitPriceCurrency,
+                                    locale
+                                  )}
                                 </TableCell>
                                 <TableCell className="py-2 text-right text-xs font-semibold tabular-nums text-purple-600">
-                                  {formatCurrency(
-                                    item.loadListQty * item.qtyPerUnit * item.unitPrice
+                                  {formatCurrencyAmount(
+                                    item.loadListQty * item.qtyPerUnit * item.unitPrice,
+                                    item.unitPriceCurrency,
+                                    locale
                                   )}
                                 </TableCell>
                                 <TableCell className="py-2">
@@ -941,7 +1018,7 @@ export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFor
                           </div>
                           <div className="text-right">
                             <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-2xl font-bold text-transparent">
-                              {formatCurrency(totalAmount)}
+                              {formattedTotalAmount}
                             </p>
                           </div>
                         </div>

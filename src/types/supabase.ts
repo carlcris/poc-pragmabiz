@@ -1691,6 +1691,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string | null;
+          currency: string;
           deleted_at: string | null;
           id: string;
           invoice_id: string;
@@ -1708,6 +1709,7 @@ export type Database = {
           company_id: string;
           created_at?: string;
           created_by?: string | null;
+          currency?: string;
           deleted_at?: string | null;
           id?: string;
           invoice_id: string;
@@ -1725,6 +1727,7 @@ export type Database = {
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
+          currency?: string;
           deleted_at?: string | null;
           id?: string;
           invoice_id?: string;
@@ -2364,6 +2367,8 @@ export type Database = {
           dimensions: Json | null;
           id: string;
           image_url: string | null;
+          import_cost: number | null;
+          import_currency: string | null;
           is_active: boolean | null;
           is_stock_item: boolean | null;
           item_code: string;
@@ -2396,6 +2401,8 @@ export type Database = {
           dimensions?: Json | null;
           id?: string;
           image_url?: string | null;
+          import_cost?: number | null;
+          import_currency?: string | null;
           is_active?: boolean | null;
           is_stock_item?: boolean | null;
           item_code: string;
@@ -2428,6 +2435,8 @@ export type Database = {
           dimensions?: Json | null;
           id?: string;
           image_url?: string | null;
+          import_cost?: number | null;
+          import_currency?: string | null;
           is_active?: boolean | null;
           is_stock_item?: boolean | null;
           item_code?: string;
@@ -2777,6 +2786,7 @@ export type Database = {
           container_number: string | null;
           created_at: string;
           created_by: string;
+          currency: string;
           deleted_at: string | null;
           estimated_arrival_date: string | null;
           id: string;
@@ -2805,6 +2815,7 @@ export type Database = {
           container_number?: string | null;
           created_at?: string;
           created_by: string;
+          currency?: string;
           deleted_at?: string | null;
           estimated_arrival_date?: string | null;
           id?: string;
@@ -2833,6 +2844,7 @@ export type Database = {
           container_number?: string | null;
           created_at?: string;
           created_by?: string;
+          currency?: string;
           deleted_at?: string | null;
           estimated_arrival_date?: string | null;
           id?: string;
@@ -5681,6 +5693,7 @@ export type Database = {
           company_id: string;
           created_at: string;
           created_by: string | null;
+          currency: string;
           deleted_at: string | null;
           id: string;
           notes: string | null;
@@ -5700,6 +5713,7 @@ export type Database = {
           company_id: string;
           created_at?: string;
           created_by?: string | null;
+          currency?: string;
           deleted_at?: string | null;
           id?: string;
           notes?: string | null;
@@ -5719,6 +5733,7 @@ export type Database = {
           company_id?: string;
           created_at?: string;
           created_by?: string | null;
+          currency?: string;
           deleted_at?: string | null;
           id?: string;
           notes?: string | null;
@@ -8015,6 +8030,8 @@ export type Database = {
           estimated_arrival_date: string;
           id: string;
           image_url: string;
+          import_cost: number | null;
+          import_currency: string | null;
           in_transit: number;
           is_active: boolean;
           item_code: string;

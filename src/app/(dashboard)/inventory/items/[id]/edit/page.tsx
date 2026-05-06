@@ -30,6 +30,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
+import { COMMON_IMPORT_CURRENCIES } from "@/constants/currencies";
 import Link from "next/link";
 import { ImageUpload } from "@/components/ui/image-upload";
 import { ItemBarcodeImage } from "@/components/items/barcode/ItemBarcodeImage";
@@ -111,6 +112,8 @@ function EditItemContent({ params }: EditItemPageProps) {
       uom: "",
       category: "",
       standardCost: 0,
+      importCost: null,
+      importCurrency: null,
       listPrice: 0,
       reorderLevel: 0,
       reorderQty: 0,
@@ -136,6 +139,8 @@ function EditItemContent({ params }: EditItemPageProps) {
         uom: item.uom,
         category: item.category,
         standardCost: item.standardCost,
+        importCost: item.importCost ?? null,
+        importCurrency: item.importCurrency ?? null,
         listPrice: item.listPrice,
         reorderLevel: item.reorderLevel,
         reorderQty: item.reorderQty,
@@ -164,6 +169,8 @@ function EditItemContent({ params }: EditItemPageProps) {
             unit: updateData.dimensions?.unit || "",
           },
           standardCost: updateData.standardCost ?? 0,
+          importCost: updateData.importCost ?? null,
+          importCurrency: updateData.importCost == null ? null : updateData.importCurrency,
           reorderLevel: updateData.reorderLevel ?? 0,
           reorderQty: updateData.reorderQty ?? 0,
         },
@@ -470,6 +477,7 @@ function EditItemContent({ params }: EditItemPageProps) {
                       )}
                     />
                   </div>
+
                 </div>
 
                 {/* Classification and Unit */}
@@ -535,6 +543,7 @@ function EditItemContent({ params }: EditItemPageProps) {
                       )}
                     />
                   </div>
+
                 </div>
 
                 {/* Pricing */}
@@ -576,6 +585,59 @@ function EditItemContent({ params }: EditItemPageProps) {
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="importCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("importCostLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={t("importCostPlaceholder")}
+                              {...field}
+                              value={field.value ?? ""}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === "" ? null : parseFloat(e.target.value) || 0
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>{t("importCostDescription")}</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="importCurrency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("importCurrencyLabel")}</FormLabel>
+                          <FormControl>
+                            <select
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                              value={field.value ?? ""}
+                              onChange={(event) => field.onChange(event.target.value || null)}
+                            >
+                              <option value="">{t("selectImportCurrency")}</option>
+                              {COMMON_IMPORT_CURRENCIES.map((currency) => (
+                                <option key={currency} value={currency}>
+                                  {currency}
+                                </option>
+                              ))}
+                            </select>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

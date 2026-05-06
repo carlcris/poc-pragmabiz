@@ -117,6 +117,16 @@ export default function StockRequisitionDetailPage() {
     return fullName || user.email || t("noValue");
   };
 
+  const formatRequisitionAmount = (amount: number, currencyCode?: string | null) => {
+    if (!currencyCode) return formatCurrency(amount);
+
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
+  };
+
   const handleDownloadPDF = async () => {
     if (!sr) return;
 
@@ -129,7 +139,7 @@ export default function StockRequisitionDetailPage() {
         supplierName: sr.supplier?.name || t("unknownSupplier"),
         requisitionDate: formatDate(sr.requisitionDate),
         requiredByDate: sr.requiredByDate ? formatDate(sr.requiredByDate) : undefined,
-        totalAmount: formatCurrency(sr.totalAmount),
+        totalAmount: formatRequisitionAmount(sr.totalAmount, sr.currency),
         items: (sr.items || []).map((item) => ({
           itemCode: item.item?.code || t("na"),
           itemName:
@@ -137,8 +147,8 @@ export default function StockRequisitionDetailPage() {
               ? item.item?.chineseName || item.item?.name || t("unknownItem")
               : item.item?.name || t("unknownItem"),
           requestedQty: item.requestedQty,
-          unitPrice: formatCurrency(item.unitPrice),
-          totalPrice: formatCurrency(item.totalPrice),
+          unitPrice: formatRequisitionAmount(item.unitPrice, sr.currency),
+          totalPrice: formatRequisitionAmount(item.totalPrice, sr.currency),
         })),
         notes: sr.notes || undefined,
         createdBy: formatUser(sr.createdByUser),
@@ -300,7 +310,7 @@ export default function StockRequisitionDetailPage() {
                   <div>
                     <span className="text-muted-foreground">{getLabel("totalAmount")}</span>
                     <div className="text-lg font-bold text-primary">
-                      {formatCurrency(sr.totalAmount)}
+                      {formatRequisitionAmount(sr.totalAmount, sr.currency)}
                     </div>
                   </div>
                   {sr.notes && (
@@ -378,10 +388,10 @@ export default function StockRequisitionDetailPage() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(item.unitPrice)}
+                            {formatRequisitionAmount(item.unitPrice, sr.currency)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(item.totalPrice)}
+                            {formatRequisitionAmount(item.totalPrice, sr.currency)}
                           </TableCell>
                         </TableRow>
                       ))

@@ -63,6 +63,12 @@ export function PurchaseOrderLineItemDialog({
   const items = itemsData?.data || [];
   const { formatCurrency } = useCurrency();
   const lineItemSchema = createPurchaseOrderLineItemSchema((key) => tValidation(key));
+  const formatImportCurrency = (amount: number, currency: string) =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
 
   const form = useForm<PurchaseOrderLineItemInput>({
     resolver: zodResolver(lineItemSchema),
@@ -102,11 +108,12 @@ export function PurchaseOrderLineItemDialog({
   const handleItemSelect = (itemId: string) => {
     const selectedItem = items.find((i) => i.id === itemId);
     if (selectedItem) {
+      const purchaseRate =
+        selectedItem.importCost ?? selectedItem.standardCost ?? selectedItem.listPrice;
       form.setValue("itemId", selectedItem.id);
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
-      // Use cost price for purchase orders (if available)
-      form.setValue("rate", selectedItem.standardCost || selectedItem.listPrice);
+      form.setValue("rate", purchaseRate);
       form.setValue("uomId", selectedItem.uomId);
     }
   };
@@ -186,7 +193,9 @@ export function PurchaseOrderLineItemDialog({
                             </div>
                           </div>
                           <div className="ml-4 flex-shrink-0 text-sm font-semibold">
-                            {formatCurrency(entry.listPrice)}
+                            {entry.importCost != null && entry.importCurrency
+                              ? formatImportCurrency(entry.importCost, entry.importCurrency)
+                              : formatCurrency(entry.standardCost ?? entry.listPrice)}
                           </div>
                         </div>
                       )}

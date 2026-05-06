@@ -36,6 +36,8 @@ export interface ItemWithStock {
   uomId: string;
   standardCost: number;
   purchasePrice?: number;
+  importCost?: number | null;
+  importCurrency?: string | null;
   listPrice: number;
   itemType: string;
   customFields?: Record<string, unknown> | null;
@@ -56,6 +58,8 @@ type ItemsRpcRow = {
   uom_code: string | null;
   cost_price: number;
   purchase_price: number;
+  import_cost: number | null;
+  import_currency: string | null;
   sales_price: number;
   item_type: string;
   custom_fields: Record<string, unknown> | null;
@@ -90,6 +94,8 @@ type DbItem = {
   uom_id: string;
   cost_price: number | string | null;
   purchase_price: number | string | null;
+  import_cost: number | string | null;
+  import_currency: string | null;
   sales_price: number | string | null;
   image_url: string | null;
   custom_fields: Record<string, unknown> | null;
@@ -158,6 +164,34 @@ const normalizeDimensions = (value: unknown): Item["dimensions"] | null => {
 const toNumber = (value: unknown): number => {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeImportCurrency = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeImportCost = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const validateImportCostFields = (importCost: number | null, importCurrency: string | null) => {
+  if (importCost !== null && importCost < 0) {
+    return "Import cost must be 0 or greater";
+  }
+
+  if (importCost !== null && !importCurrency) {
+    return "Import currency is required when import cost is provided";
+  }
+
+  if (importCurrency && !/^[A-Z]{3}$/.test(importCurrency)) {
+    return "Import currency must be a 3-letter currency code";
+  }
+
+  return null;
 };
 
 const isUuid = (value: string | null): value is string => !!value && UUID_REGEX.test(value);
@@ -313,6 +347,8 @@ const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     category: category?.name || "",
     standardCost: Number(dbItem.cost_price) || 0,
     purchasePrice: Number(dbItem.purchase_price) || 0,
+    importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
+    importCurrency: dbItem.import_currency,
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0,
     reorderQty: 0,
@@ -534,6 +570,8 @@ export async function GET(request: NextRequest) {
       uomId: row.uom_id || "",
       standardCost: row.cost_price,
       purchasePrice: row.purchase_price,
+      importCost: row.import_cost == null ? null : Number(row.import_cost),
+      importCurrency: row.import_currency,
       listPrice: row.sales_price,
       itemType: row.item_type,
       customFields: row.custom_fields || null,
@@ -599,6 +637,13 @@ export async function POST(request: NextRequest) {
     const { supabase, companyId, userId } = context;
 
     const body: CreateItemRequest = await request.json();
+    const importCost = normalizeImportCost(body.importCost);
+    const importCurrency = normalizeImportCurrency(body.importCurrency);
+    const importValidationError = validateImportCostFields(importCost, importCurrency);
+
+    if (importValidationError) {
+      return NextResponse.json({ error: importValidationError }, { status: 400 });
+    }
 
     if (!body.code || !body.name || !body.itemType || !body.uom) {
       return NextResponse.json(
@@ -675,6 +720,8 @@ export async function POST(request: NextRequest) {
       cost_price: body.standardCost?.toString(),
       sales_price: body.listPrice?.toString(),
       purchase_price: body.standardCost?.toString(),
+      import_cost: importCost,
+      import_currency: importCost === null ? null : importCurrency,
       image_url: body.imageUrl || null,
       is_stock_item: body.itemType !== "service",
       is_active: body.isActive ?? true,

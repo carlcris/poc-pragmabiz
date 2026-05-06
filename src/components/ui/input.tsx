@@ -42,12 +42,16 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     );
     const [displayValue, setDisplayValue] = React.useState<string>(() => toDisplayValue(value));
     const [isFocused, setIsFocused] = React.useState(false);
+    const [hasLocalNumericEdit, setHasLocalNumericEdit] = React.useState(false);
 
     React.useEffect(() => {
       if (!isNumeric) {
         return;
       }
-      if (isFocused || isIncompleteNumeric(displayValue)) {
+      if (isFocused && hasLocalNumericEdit) {
+        return;
+      }
+      if (hasLocalNumericEdit && isIncompleteNumeric(displayValue)) {
         return;
       }
       if (numericEqualsDisplay(value, displayValue)) {
@@ -62,6 +66,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       displayValue,
       isNumeric,
       isFocused,
+      hasLocalNumericEdit,
       numericEqualsDisplay,
       toDisplayValue,
       isIncompleteNumeric,
@@ -78,6 +83,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         return;
       }
 
+      setHasLocalNumericEdit(true);
       setDisplayValue(nextValue);
       if (isIncompleteNumeric(nextValue)) {
         return;
@@ -89,6 +95,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     const handleFocus: React.FocusEventHandler<HTMLInputElement> = (event) => {
       if (isNumeric) {
         setIsFocused(true);
+        setHasLocalNumericEdit(false);
       }
       onFocus?.(event);
     };
@@ -96,6 +103,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
     const handleBlur: React.FocusEventHandler<HTMLInputElement> = (event) => {
       if (isNumeric) {
         setIsFocused(false);
+        setHasLocalNumericEdit(false);
         if (!numericEqualsDisplay(value, displayValue) && !isIncompleteNumeric(displayValue)) {
           setDisplayValue(toDisplayValue(value));
         }

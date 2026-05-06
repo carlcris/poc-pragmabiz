@@ -44,7 +44,51 @@ import {
   createStockRequisitionFormSchema,
   type StockRequisitionFormValues,
 } from "@/lib/validations/stock-requisition";
+import type { Item } from "@/types/item";
 import type { StockRequisition } from "@/types/stock-requisition";
+
+type RequisitionCostSource = Pick<
+  Item,
+  "importCost" | "purchasePrice" | "standardCost" | "listPrice"
+>;
+
+const getDefaultRequisitionUnitCost = (item: RequisitionCostSource | null | undefined): number => {
+  const cost = item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
+  const parsed = Number(cost);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getDefaultRequisitionCostCurrency = (
+  item: (RequisitionCostSource & { importCurrency?: string | null }) | null | undefined
+): string | null => (item?.importCost != null ? (item.importCurrency ?? null) : null);
+
+const getNarrowCurrencySymbol = (currencyCode: string, fallback: string): string => {
+  try {
+    const currencyPart = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+      .formatToParts(0)
+      .find((part) => part.type === "currency");
+
+    return currencyPart?.value || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const formatImportUnitCost = (amount: number, currencyCode: string): string =>
+  new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency: currencyCode,
+    currencyDisplay: "narrowSymbol",
+  }).format(amount);
+
+const getLineItemCurrencyKey = (lineItem: Pick<LineItem, "unitPriceCurrency">): string | null =>
+  lineItem.unitPriceCurrency ?? null;
 
 type LineItem = {
   itemId: string;
@@ -56,6 +100,7 @@ type LineItem = {
   qtyPerUnit: number;
   requestedQty: number;
   unitPrice: number;
+  unitPriceCurrency?: string | null;
   notes?: string;
 };
 
@@ -74,7 +119,7 @@ export function StockRequisitionFormDialog({
   const tValidation = useTranslations("stockRequisitionValidation");
   const locale = useLocale();
   const isEditMode = !!stockRequisition;
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, currentCurrency } = useCurrency();
   const createMutation = useCreateStockRequisition();
   const updateMutation = useUpdateStockRequisition();
   const [supplierSearch, setSupplierSearch] = useState("");
@@ -114,6 +159,23 @@ export function StockRequisitionFormDialog({
     unitOptions.find((option) => option.id === selectedUnitOptionId) ||
     selectedItemDetail?.unitOptions?.find((option) => option.id === selectedUnitOptionId) ||
     null;
+  const selectedCostItem =
+    selectedItemDetail ?? items.find((item) => item.id === selectedItemId) ?? null;
+  const selectedImportCurrency = getDefaultRequisitionCostCurrency(selectedCostItem);
+  const selectedCostCurrency = selectedImportCurrency ?? currentCurrency.code;
+  const selectedUnitCostSymbol = getNarrowCurrencySymbol(
+    selectedCostCurrency,
+    selectedCostCurrency
+  );
+  const formatRequisitionUnitCost = (
+    item: (RequisitionCostSource & { importCurrency?: string | null }) | null | undefined
+  ) => {
+    const amount = getDefaultRequisitionUnitCost(item);
+    const currencyCode = getDefaultRequisitionCostCurrency(item) ?? currentCurrency.code;
+    return currencyCode === currentCurrency.code
+      ? formatCurrency(amount)
+      : formatImportUnitCost(amount, currencyCode);
+  };
 
   // Default values
   const defaultValues = useMemo<StockRequisitionFormValues>(
@@ -137,13 +199,27 @@ export function StockRequisitionFormDialog({
     selectedSupplierData ??
     null;
 
-  // Calculate total
-  const totalAmount = useMemo(() => {
-    return lineItems.reduce(
-      (sum, item) => sum + item.requestedQty * item.qtyPerUnit * item.unitPrice,
-      0
-    );
+  // Calculate totals without adding different currencies together.
+  const totalAmountsByCurrency = useMemo(() => {
+    const totals = new Map<string | null, number>();
+    for (const item of lineItems) {
+      const currencyKey = getLineItemCurrencyKey(item);
+      const lineTotal = item.requestedQty * item.qtyPerUnit * item.unitPrice;
+      totals.set(currencyKey, (totals.get(currencyKey) ?? 0) + lineTotal);
+    }
+    return Array.from(totals.entries()).map(([currencyCode, amount]) => ({
+      currencyCode,
+      amount,
+    }));
   }, [lineItems]);
+  const formatLineItemAmount = (amount: number, currencyCode?: string | null) =>
+    currencyCode ? formatImportUnitCost(amount, currencyCode) : formatCurrency(amount);
+  const formattedTotalAmount =
+    totalAmountsByCurrency.length > 0
+      ? totalAmountsByCurrency
+          .map(({ amount, currencyCode }) => formatLineItemAmount(amount, currencyCode))
+          .join(" + ")
+      : formatCurrency(0);
 
   const derivedTotalQty = selectedUnitOption
     ? Number(quantity || 0) * selectedUnitOption.qtyPerUnit
@@ -151,12 +227,10 @@ export function StockRequisitionFormDialog({
 
   useEffect(() => {
     if (!selectedItemId) return;
-    const selectedItem = items.find((item) => item.id === selectedItemId);
+    const selectedItem = selectedCostItem;
     if (!selectedItem) return;
-    const cost =
-      selectedItem.purchasePrice ?? selectedItem.standardCost ?? selectedItem.listPrice ?? 0;
-    setPrice(Number(cost).toFixed(2));
-  }, [items, selectedItemId]);
+    setPrice(getDefaultRequisitionUnitCost(selectedItem).toFixed(2));
+  }, [selectedCostItem, selectedItemId]);
 
   // Reset form when dialog opens/closes or SR changes
   useEffect(() => {
@@ -179,6 +253,7 @@ export function StockRequisitionFormDialog({
           qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
           requestedQty: item.requestedQty,
           unitPrice: item.unitPrice,
+          unitPriceCurrency: stockRequisition.currency ?? currentCurrency.code,
           notes: item.notes,
         })) || [];
       setLineItems(formLineItems);
@@ -192,7 +267,7 @@ export function StockRequisitionFormDialog({
       setAddItemError("");
       setActiveTab("general");
     }
-  }, [open, stockRequisition, form, defaultValues]);
+  }, [open, stockRequisition, form, defaultValues, currentCurrency.code]);
 
   useEffect(() => {
     if (!selectedItemDetail) {
@@ -229,7 +304,7 @@ export function StockRequisitionFormDialog({
       return;
     }
 
-    const selectedItem = items.find((i) => i.id === selectedItemId);
+    const selectedItem = selectedCostItem;
     if (!selectedItem) {
       setAddItemError(t("itemNotFound"));
       return;
@@ -237,6 +312,13 @@ export function StockRequisitionFormDialog({
 
     if (!selectedUnitOption) {
       setAddItemError(t("unitNotFound"));
+      return;
+    }
+
+    const selectedCurrency = selectedCostCurrency;
+    const existingCurrency = lineItems[0] ? getLineItemCurrencyKey(lineItems[0]) : selectedCurrency;
+    if (lineItems.length > 0 && existingCurrency !== selectedCurrency) {
+      setAddItemError(t("mixedCurrencyNotAllowed"));
       return;
     }
 
@@ -250,6 +332,7 @@ export function StockRequisitionFormDialog({
       qtyPerUnit: selectedUnitOption.qtyPerUnit,
       requestedQty: parseFloat(quantity),
       unitPrice: parseFloat(price),
+      unitPriceCurrency: selectedCurrency,
     };
 
     setLineItems([...lineItems, newItem]);
@@ -269,10 +352,16 @@ export function StockRequisitionFormDialog({
       toast.error(t("lineItemsRequired"));
       return;
     }
+    const firstCurrency = lineItems[0] ? getLineItemCurrencyKey(lineItems[0]) : null;
+    if (lineItems.some((item) => getLineItemCurrencyKey(item) !== firstCurrency)) {
+      toast.error(t("mixedCurrencyNotAllowed"));
+      return;
+    }
 
     try {
       const requestData = {
         supplierId: values.supplierId,
+        currency: firstCurrency ?? currentCurrency.code,
         requisitionDate: values.requisitionDate,
         requiredByDate: values.requiredByDate,
         notes: values.notes,
@@ -497,13 +586,8 @@ export function StockRequisitionFormDialog({
                             onValueChange={(value) => {
                               setSelectedItemId(value);
                               const selectedItem = items.find((item) => item.id === value);
-                              const cost =
-                                selectedItem?.purchasePrice ??
-                                selectedItem?.standardCost ??
-                                selectedItem?.listPrice ??
-                                0;
                               setSelectedUnitOptionId("");
-                              setPrice(Number(cost).toFixed(2));
+                              setPrice(getDefaultRequisitionUnitCost(selectedItem).toFixed(2));
                               setAddItemError("");
                             }}
                             searchValue={itemSearch}
@@ -533,7 +617,7 @@ export function StockRequisitionFormDialog({
                                   </div>
                                 </div>
                                 <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
-                                  {formatCurrency(item.listPrice)}
+                                  {formatRequisitionUnitCost(item)}
                                 </div>
                               </div>
                             )}
@@ -621,22 +705,27 @@ export function StockRequisitionFormDialog({
                           <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
                             {t("unitCostLabel")} *
                           </label>
-                          <Input
-                            key={`unit-price-${selectedItemId}`}
-                            type="text"
-                            inputMode="decimal"
-                            pattern="^-?\\d*(\\.\\d{0,2})?$"
-                            placeholder={t("unitPricePlaceholder")}
-                            value={price ?? ""}
-                            onChange={(e) => {
-                              const next = e.target.value;
-                              if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
-                                setPrice(next);
-                                setAddItemError("");
-                              }
-                            }}
-                            className="h-10 border-gray-300 bg-white text-sm focus:border-purple-500 focus:ring-purple-500"
-                          />
+                          <div className="relative">
+                            <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                              {selectedUnitCostSymbol}
+                            </span>
+                            <Input
+                              key={`unit-price-${selectedItemId}`}
+                              type="text"
+                              inputMode="decimal"
+                              pattern="^-?\\d*(\\.\\d{0,2})?$"
+                              placeholder={t("unitPricePlaceholder")}
+                              value={price ?? ""}
+                              onChange={(e) => {
+                                const next = e.target.value;
+                                if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
+                                  setPrice(next);
+                                  setAddItemError("");
+                                }
+                              }}
+                              className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
+                            />
+                          </div>
                         </div>
                         <div className="flex items-end">
                           <Button
@@ -690,7 +779,7 @@ export function StockRequisitionFormDialog({
                           <div className="text-right">
                             <p className="text-xs font-medium text-gray-500">{t("totalAmount")}</p>
                             <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">
-                              {formatCurrency(totalAmount)}
+                              {formattedTotalAmount}
                             </p>
                           </div>
                         </div>
@@ -747,11 +836,12 @@ export function StockRequisitionFormDialog({
                                   })}
                                 </TableCell>
                                 <TableCell className="py-3 text-right text-sm tabular-nums text-gray-700">
-                                  {formatCurrency(item.unitPrice)}
+                                  {formatLineItemAmount(item.unitPrice, item.unitPriceCurrency)}
                                 </TableCell>
                                 <TableCell className="py-3 text-right text-sm font-bold tabular-nums text-purple-600">
-                                  {formatCurrency(
-                                    item.requestedQty * item.qtyPerUnit * item.unitPrice
+                                  {formatLineItemAmount(
+                                    item.requestedQty * item.qtyPerUnit * item.unitPrice,
+                                    item.unitPriceCurrency
                                   )}
                                 </TableCell>
                                 <TableCell className="py-3">
@@ -799,7 +889,7 @@ export function StockRequisitionFormDialog({
                       {t("footerSummary", {
                         count: lineItems.length,
                         label: lineItems.length === 1 ? t("itemSingular") : t("itemPlural"),
-                        total: formatCurrency(totalAmount),
+                        total: formattedTotalAmount,
                       })}
                     </span>
                   )}

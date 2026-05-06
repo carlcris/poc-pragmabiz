@@ -12,8 +12,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
     const body = await request.json();
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Validate input
     if (!body.links || !Array.isArray(body.links) || body.links.length === 0) {
@@ -29,6 +33,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .select("id")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -70,7 +75,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           id,
           requested_qty,
           fulfilled_qty,
-        sr:stock_requisitions!inner(id, company_id, status)
+        sr:stock_requisitions!inner(id, company_id, business_unit_id, status)
       `
         )
         .eq("id", link.srItemId)
@@ -86,9 +91,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       // Verify SR belongs to same company
       const sr = Array.isArray(srItem.sr) ? srItem.sr[0] : srItem.sr;
 
-      if (!sr || sr.company_id !== companyId) {
+      if (!sr || sr.company_id !== companyId || sr.business_unit_id !== currentBusinessUnitId) {
         return NextResponse.json(
-          { error: "Stock requisition does not belong to your company" },
+          { error: "Stock requisition does not belong to your business unit" },
           { status: 403 }
         );
       }
@@ -185,13 +190,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     const { data: ll, error: llError } = await supabase
       .from("load_lists")
       .select("id")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 

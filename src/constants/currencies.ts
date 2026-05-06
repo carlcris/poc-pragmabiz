@@ -1,0 +1,17 @@
+export const COMMON_IMPORT_CURRENCIES = [
+  "CNY",
+  "EUR",
+  "JPY",
+  "USD",
+  "GBP",
+  "HKD",
+  "SGD",
+  "KRW",
+  "TWD",
+  "THB",
+  "MYR",
+  "IDR",
+  "VND",
+  "AUD",
+  "CAD",
+] as const;

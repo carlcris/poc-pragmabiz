@@ -25,6 +25,8 @@ type DbItem = {
   item_type: string;
   uom_id: string;
   cost_price: number | string | null;
+  import_cost: number | string | null;
+  import_currency: string | null;
   sales_price: number | string | null;
   image_url: string | null;
   is_active: boolean | null;
@@ -87,6 +89,34 @@ type ItemRow = DbItem & {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const isUuid = (value: string): boolean => UUID_REGEX.test(value);
+
+const normalizeImportCurrency = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const normalizeImportCost = (value: unknown): number | null => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const validateImportCostFields = (importCost: number | null, importCurrency: string | null) => {
+  if (importCost !== null && importCost < 0) {
+    return "Import cost must be 0 or greater";
+  }
+
+  if (importCost !== null && !importCurrency) {
+    return "Import currency is required when import cost is provided";
+  }
+
+  if (importCurrency && !/^[A-Z]{3}$/.test(importCurrency)) {
+    return "Import currency must be a 3-letter currency code";
+  }
+
+  return null;
+};
 
 const ITEM_DETAIL_SELECT = `
   *,
@@ -163,6 +193,8 @@ function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     uomId: dbItem.uom_id,
     category: dbItem.item_category?.name || "",
     standardCost: Number(dbItem.cost_price) || 0,
+    importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
+    importCurrency: dbItem.import_currency,
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0,
     reorderQty: 0,
@@ -305,6 +337,43 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body: UpdateItemRequest = await request.json();
+    const nextImportCost =
+      body.importCost !== undefined ? normalizeImportCost(body.importCost) : undefined;
+    const nextImportCurrency =
+      body.importCurrency !== undefined ? normalizeImportCurrency(body.importCurrency) : undefined;
+
+    if (nextImportCost !== undefined || nextImportCurrency !== undefined) {
+      const { data: currentImportFields, error: importFieldsError } = await supabase
+        .from("items")
+        .select("import_cost, import_currency")
+        .eq("id", id)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (importFieldsError) {
+        return NextResponse.json(
+          { error: "Failed to check item import cost", details: importFieldsError.message },
+          { status: 500 }
+        );
+      }
+
+      const effectiveImportCost =
+        nextImportCost !== undefined
+          ? nextImportCost
+          : normalizeImportCost(currentImportFields?.import_cost);
+      const effectiveImportCurrency =
+        nextImportCurrency !== undefined
+          ? nextImportCurrency
+          : normalizeImportCurrency(currentImportFields?.import_currency);
+      const importValidationError = validateImportCostFields(
+        effectiveImportCost,
+        effectiveImportCurrency
+      );
+
+      if (importValidationError) {
+        return NextResponse.json({ error: importValidationError }, { status: 400 });
+      }
+    }
 
     // Check if item exists
     const { data: existing, error: existError } = await supabase
@@ -339,6 +408,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updateData.purchase_price = body.standardCost.toString();
     }
     if (body.listPrice !== undefined) updateData.sales_price = body.listPrice.toString();
+    if (nextImportCost !== undefined) {
+      updateData.import_cost = nextImportCost;
+      if (nextImportCost === null) {
+        updateData.import_currency = null;
+      }
+    }
+    if (nextImportCurrency !== undefined) {
+      updateData.import_currency = nextImportCost === null ? null : nextImportCurrency;
+    }
     if (body.dimensions !== undefined) updateData.dimensions = normalizeDimensions(body.dimensions);
     if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl;
     if (body.isActive !== undefined) updateData.is_active = body.isActive;

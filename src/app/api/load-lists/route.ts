@@ -16,6 +16,41 @@ const normalizeOptionalDate = (value: unknown) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
+const normalizeCurrency = (value: unknown) => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(normalized) ? normalized : null;
+};
+
+const resolveRequestCurrency = (value: unknown) => {
+  if (value == null || value === "") return "PHP";
+  const normalized = normalizeCurrency(value);
+  if (!normalized) return null;
+  return normalized;
+};
+
+type LoadListItemSummaryRow = {
+  load_list_qty: number | string | null;
+  unit_price: number | string | null;
+  item_unit_options?:
+    | {
+        qty_per_unit: number | string | null;
+      }
+    | {
+        qty_per_unit: number | string | null;
+      }[]
+    | null;
+};
+
+const one = <T>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+
+const toNumber = (value: number | string | null | undefined) => {
+  if (value == null) return 0;
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 // GET /api/load-lists
 export async function GET(request: NextRequest) {
   try {
@@ -46,6 +81,7 @@ export async function GET(request: NextRequest) {
         actual_arrival_date,
         load_date,
         status,
+        currency,
         created_by,
         received_by,
         approved_by,
@@ -59,7 +95,12 @@ export async function GET(request: NextRequest) {
         business_unit:business_units(id, name, code),
         created_by_user:users!load_lists_created_by_fkey(id, email, first_name, last_name),
         received_by_user:users!load_lists_received_by_fkey(id, email, first_name, last_name),
-        approved_by_user:users!load_lists_approved_by_fkey(id, email, first_name, last_name)
+        approved_by_user:users!load_lists_approved_by_fkey(id, email, first_name, last_name),
+        items:load_list_items(
+          load_list_qty,
+          unit_price,
+          item_unit_options(qty_per_unit)
+        )
       `,
         { count: "exact" }
       )
@@ -140,6 +181,14 @@ export async function GET(request: NextRequest) {
       const approvedByUser = Array.isArray(ll.approved_by_user)
         ? ll.approved_by_user[0]
         : (ll.approved_by_user ?? null);
+      const totalAmount = ((ll.items as LoadListItemSummaryRow[] | null) ?? []).reduce(
+        (sum, item) => {
+          const unitOption = one(item.item_unit_options);
+          const qtyPerUnit = toNumber(unitOption?.qty_per_unit) || 1;
+          return sum + toNumber(item.load_list_qty) * qtyPerUnit * toNumber(item.unit_price);
+        },
+        0
+      );
 
       return {
         id: ll.id,
@@ -178,6 +227,8 @@ export async function GET(request: NextRequest) {
         actualArrivalDate: ll.actual_arrival_date,
         loadDate: ll.load_date,
         status: ll.status,
+        currency: normalizeCurrency(ll.currency) ?? "PHP",
+        totalAmount,
         createdBy: ll.created_by,
         createdByUser: createdByUser
           ? {
@@ -255,6 +306,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
+    const currency = resolveRequestCurrency(body.currency);
+    if (!currency) {
+      return NextResponse.json(
+        { error: "Currency must be a 3-letter currency code" },
+        { status: 400 }
+      );
+    }
+
     let resolvedLineItems;
     try {
       resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
@@ -284,6 +343,7 @@ export async function POST(request: NextRequest) {
         estimated_arrival_date: estimatedArrivalDate,
         load_date: loadDate,
         status: body.status || "draft",
+        currency,
         notes: body.notes,
         created_by: userId,
         updated_by: userId,
@@ -333,6 +393,7 @@ export async function POST(request: NextRequest) {
         id: ll.id,
         llNumber: ll.ll_number,
         status: ll.status,
+        currency: ll.currency,
       },
       { status: 201 }
     );

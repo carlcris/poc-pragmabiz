@@ -46,6 +46,21 @@ const LoadListFormDialog = dynamic(
   { ssr: false }
 );
 
+const formatLoadListCurrency = (amount: number, currencyCode: string, locale: string) => {
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      currencyDisplay: "narrowSymbol",
+    }).format(amount);
+  } catch {
+    return `${currencyCode} ${amount.toLocaleString(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+};
+
 export default function LoadListDetailPage() {
   const t = useTranslations("loadListDetailPage");
   const locale = useLocale();
@@ -56,7 +71,7 @@ export default function LoadListDetailPage() {
 
   const { data: ll, isLoading, error } = useLoadList(id);
   const updateStatusMutation = useUpdateLoadListStatus();
-  const { formatCurrency } = useCurrency();
+  const { currentCurrency } = useCurrency();
 
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [inTransitDialogOpen, setInTransitDialogOpen] = useState(false);
@@ -176,6 +191,9 @@ export default function LoadListDetailPage() {
     return fullName || user.email || t("noValue");
   };
 
+  const formatDocumentCurrency = (amount: number) =>
+    formatLoadListCurrency(amount, ll?.currency ?? currentCurrency.code, locale);
+
   return (
     <div className="container mx-auto space-y-6 p-6">
       <div className="flex items-center justify-between gap-4">
@@ -260,6 +278,10 @@ export default function LoadListDetailPage() {
                   <div>
                     <span className="text-muted-foreground">{t("status")}</span>
                     <div className="mt-1">{getStatusBadge(ll.status)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">{t("currency")}</span>
+                    <div className="font-medium">{ll.currency}</div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t("supplier")}</span>
@@ -430,10 +452,10 @@ export default function LoadListDetailPage() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatCurrency(item.unitPrice)}
+                            {formatDocumentCurrency(item.unitPrice)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {formatCurrency(
+                            {formatDocumentCurrency(
                               item.loadListQty *
                                 (item.itemUnitOption?.qtyPerUnit ?? 1) *
                                 item.unitPrice

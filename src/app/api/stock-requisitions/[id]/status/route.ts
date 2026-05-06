@@ -12,8 +12,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const body = await request.json();
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Validate status
     const validStatuses = ["draft", "submitted", "partially_fulfilled", "fulfilled", "cancelled"];
@@ -27,6 +31,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .select("id, status")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -61,6 +66,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         updated_by: userId,
       })
       .eq("id", id)
+      .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .select()
       .single();
 
@@ -85,6 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             requisition_date,
             required_by_date,
             total_amount,
+            currency,
             notes,
             supplier:suppliers!stock_requisitions_supplier_id_fkey (
               supplier_name,
@@ -115,6 +123,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           `
           )
           .eq("id", id)
+          .eq("company_id", companyId)
+          .eq("business_unit_id", currentBusinessUnitId)
           .single();
 
         if (fetchCompleteError || !srComplete) {
@@ -144,6 +154,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             const supplierLanguage = (supplier?.lang === "chinese" ? "chinese" : "english") as
               | "english"
               | "chinese";
+            const currency =
+              typeof srComplete.currency === "string" && /^[A-Z]{3}$/.test(srComplete.currency)
+                ? srComplete.currency
+                : "PHP";
+            const formatAmount = (amount: number | string | null | undefined) =>
+              new Intl.NumberFormat(supplierLanguage === "chinese" ? "zh-CN" : "en-US", {
+                style: "currency",
+                currency,
+                currencyDisplay: "narrowSymbol",
+              }).format(Number(amount ?? 0));
 
             const businessUnit = Array.isArray(srComplete.business_units)
               ? srComplete.business_units[0]
@@ -171,10 +191,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                     day: "numeric",
                   })
                 : undefined,
-              totalAmount: new Intl.NumberFormat("zh-CN", {
-                style: "currency",
-                currency: "CNY",
-              }).format(srComplete.total_amount || 0),
+              totalAmount: formatAmount(srComplete.total_amount),
               items: (
                 (srComplete.stock_requisition_items as Array<{
                   requested_qty?: number | string | null;
@@ -193,14 +210,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                     ? item.items?.item_name_cn || item.items?.item_name || "Unknown Item"
                     : item.items?.item_name || "Unknown Item",
                 requestedQty: Number(item.requested_qty ?? 0),
-                unitPrice: new Intl.NumberFormat("zh-CN", {
-                  style: "currency",
-                  currency: "CNY",
-                }).format(Number(item.unit_price ?? 0)),
-                totalPrice: new Intl.NumberFormat("zh-CN", {
-                  style: "currency",
-                  currency: "CNY",
-                }).format(Number(item.total_price ?? 0)),
+                unitPrice: formatAmount(item.unit_price),
+                totalPrice: formatAmount(item.total_price),
               })),
               notes: srComplete.notes || undefined,
               createdBy: createdByName,

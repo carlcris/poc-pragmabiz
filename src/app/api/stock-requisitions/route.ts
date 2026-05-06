@@ -8,6 +8,17 @@ import {
 } from "./line-item-unit-options";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 
+const normalizeCurrency = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
+const resolveRequestCurrency = (value: unknown) => normalizeCurrency(value) ?? "PHP";
+
+const validateCurrency = (currency: string) =>
+  /^[A-Z]{3}$/.test(currency) ? null : "Currency must be a 3-letter currency code";
+
 // GET /api/stock-requisitions
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +26,12 @@ export async function GET(request: NextRequest) {
     if (unauthorized) return unauthorized;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, companyId, currentBusinessUnitId } = context;
     const { searchParams } = new URL(request.url);
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Build query
     let query = supabase
@@ -60,6 +75,7 @@ export async function GET(request: NextRequest) {
         { count: "exact" }
       )
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null);
 
     // Apply filters
@@ -71,11 +87,6 @@ export async function GET(request: NextRequest) {
     const supplierId = searchParams.get("supplierId");
     if (supplierId) {
       query = query.eq("supplier_id", supplierId);
-    }
-
-    const businessUnitId = searchParams.get("businessUnitId");
-    if (businessUnitId) {
-      query = query.eq("business_unit_id", businessUnitId);
     }
 
     const search = searchParams.get("search");
@@ -224,6 +235,7 @@ export async function GET(request: NextRequest) {
           : null,
         status: sr.status,
         notes: sr.notes,
+        currency: normalizeCurrency(sr.currency) ?? "PHP",
         totalAmount: formattedItems.reduce((sum, item) => sum + item.totalPrice, 0),
         items: formattedItems,
         createdBy: sr.created_by,
@@ -276,6 +288,11 @@ export async function POST(request: NextRequest) {
 
     if (!body.items || body.items.length === 0) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    }
+    const currency = resolveRequestCurrency(body.currency);
+    const currencyValidationError = validateCurrency(currency);
+    if (currencyValidationError) {
+      return NextResponse.json({ error: currencyValidationError }, { status: 400 });
     }
 
     let resolvedLineItems;
@@ -339,6 +356,7 @@ export async function POST(request: NextRequest) {
         status: body.status || "draft",
         notes: body.notes,
         total_amount: totalAmount,
+        currency,
         created_by: userId,
         updated_by: userId,
       })

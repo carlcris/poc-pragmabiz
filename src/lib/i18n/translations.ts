@@ -1890,6 +1890,10 @@ export type TranslationKeys = {
     selectUom: string;
     pricingInformation: string;
     standardCostLabel: string;
+    importCostLabel: string;
+    importCurrencyLabel: string;
+    importCostDescription: string;
+    selectImportCurrency: string;
     listPriceLabel: string;
     availableQtyLabel: string;
     reservedQtyLabel: string;
@@ -1975,6 +1979,7 @@ export type TranslationKeys = {
     chineseNamePlaceholder: string;
     descriptionPlaceholder: string;
     standardCostPlaceholder: string;
+    importCostPlaceholder: string;
     listPricePlaceholder: string;
     reorderLevelPlaceholder: string;
     reorderQtyPlaceholder: string;
@@ -1996,6 +2001,8 @@ export type TranslationKeys = {
     uomRequired: string;
     categoryRequired: string;
     standardCostMin: string;
+    importCostMin: string;
+    importCurrencyRequired: string;
     listPriceMin: string;
     dimensionMin: string;
     reorderLevelMin: string;
@@ -4598,6 +4605,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectUom: "Select UOM",
       pricingInformation: "Pricing Information",
       standardCostLabel: "Unit Cost",
+      importCostLabel: "Import Cost",
+      importCurrencyLabel: "Import Currency",
+      importCostDescription: "Optional purchasing cost in the supplier/import currency.",
+      selectImportCurrency: "Select currency",
       listPriceLabel: "Selling Price *",
       availableQtyLabel: "Available Qty",
       reservedQtyLabel: "Reserved Qty",
@@ -4687,6 +4698,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       chineseNamePlaceholder: "Optional Chinese name",
       descriptionPlaceholder: "Enter description",
       standardCostPlaceholder: "0.00",
+      importCostPlaceholder: "0.00",
       listPricePlaceholder: "0.00",
       reorderLevelPlaceholder: "0",
       reorderQtyPlaceholder: "0",
@@ -4708,6 +4720,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       uomRequired: "Unit of measure is required",
       categoryRequired: "Category is required",
       standardCostMin: "Standard cost must be 0 or greater",
+      importCostMin: "Import cost must be 0 or greater",
+      importCurrencyRequired: "Import currency is required when import cost is provided",
       listPriceMin: "List price must be 0 or greater",
       dimensionMin: "Dimension must be 0 or greater",
       reorderLevelMin: "Reorder level must be 0 or greater",
@@ -5774,6 +5788,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       addItemMissingFields: "Please select an item and enter quantity and price",
       itemNotFound: "Item not found",
       unitNotFound: "Unit option not found",
+      mixedCurrencyNotAllowed:
+        "Stock requisitions cannot mix currencies. Create separate requisitions per currency.",
       itemAddedSuccess: "Item added successfully",
       lineItemsRequired: "Please add at least one line item",
       saveError: "Failed to save stock requisition",
@@ -7059,6 +7075,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       warehouse: "Warehouse",
       containerSeal: "Container / Seal",
       batch: "Batch",
+      currency: "Currency",
+      totalAmount: "Total Amount",
       arrivalDate: "Arrival Date",
       status: "Status",
       createdBy: "Created By",
@@ -7144,6 +7162,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       addItemError: "Please select an item and enter quantity and unit cost",
       itemNotFound: "Item not found",
       unitNotFound: "Unit option not found",
+      mixedCurrencyNotAllowed:
+        "Load lists cannot mix currencies. Create separate load lists per currency.",
       lineItemsRequired: "Please add at least one line item",
       itemsTitle: "Load List Items",
       noItemsTitle: "No items added yet",
@@ -7216,6 +7236,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       notFound: "Load list not found.",
       detailsTitle: "Load List Details",
       status: "Status:",
+      currency: "Currency:",
       supplier: "Supplier:",
       contact: "Contact:",
       warehouse: "Warehouse:",
@@ -9729,6 +9750,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectUom: "选择计量单位",
       pricingInformation: "价格信息",
       standardCostLabel: "单位成本",
+      importCostLabel: "进口成本",
+      importCurrencyLabel: "进口币种",
+      importCostDescription: "可选的供应商或进口币种采购成本。",
+      selectImportCurrency: "选择币种",
       listPriceLabel: "售价 *",
       availableQtyLabel: "可用数量",
       reservedQtyLabel: "预留数量",
@@ -9814,6 +9839,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       chineseNamePlaceholder: "可选中文名称",
       descriptionPlaceholder: "输入描述",
       standardCostPlaceholder: "0.00",
+      importCostPlaceholder: "0.00",
       listPricePlaceholder: "0.00",
       reorderLevelPlaceholder: "0",
       reorderQtyPlaceholder: "0",
@@ -9835,6 +9861,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       uomRequired: "计量单位为必填项",
       categoryRequired: "分类为必填项",
       standardCostMin: "标准成本必须大于或等于0",
+      importCostMin: "进口成本必须大于或等于0",
+      importCurrencyRequired: "填写进口成本时必须选择进口币种",
       listPriceMin: "标价必须大于或等于0",
       dimensionMin: "尺寸必须大于或等于0",
       reorderLevelMin: "补货水平必须大于或等于0",
@@ -10878,6 +10906,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addItemMissingFields: "请选择商品并输入数量和价格",
       itemNotFound: "未找到商品",
       unitNotFound: "未找到单位选项",
+      mixedCurrencyNotAllowed: "库存请购不能混用币种。请按币种分别创建请购。",
       itemAddedSuccess: "商品添加成功",
       lineItemsRequired: "请至少添加一个行项目",
       saveError: "保存库存请购失败",
@@ -12125,6 +12154,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       warehouse: "仓库",
       containerSeal: "集装箱 / 封条",
       batch: "批次",
+      currency: "币种",
+      totalAmount: "总金额",
       arrivalDate: "到达日期",
       status: "状态",
       createdBy: "创建人",
@@ -12208,6 +12239,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       addItemError: "请选择商品并输入数量和单价",
       itemNotFound: "未找到商品",
       unitNotFound: "未找到单位选项",
+      mixedCurrencyNotAllowed: "装载单不能混用币种。请按币种分别创建装载单。",
       lineItemsRequired: "请至少添加一个行项目",
       itemsTitle: "装载单商品",
       noItemsTitle: "尚未添加商品",
@@ -12279,6 +12311,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       notFound: "未找到装载单。",
       detailsTitle: "装载单详情",
       status: "状态：",
+      currency: "币种：",
       supplier: "供应商：",
       contact: "联系人：",
       warehouse: "仓库：",

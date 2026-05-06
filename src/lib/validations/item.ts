@@ -13,6 +13,8 @@ type ItemValidationKey =
   | "uomRequired"
   | "categoryRequired"
   | "standardCostMin"
+  | "importCostMin"
+  | "importCurrencyRequired"
   | "listPriceMin"
   | "dimensionMin"
   | "reorderLevelMin"
@@ -20,7 +22,7 @@ type ItemValidationKey =
 
 type ItemValidationTranslator = (key: ItemValidationKey) => string;
 
-export const createItemFormSchema = (t: ItemValidationTranslator) =>
+const createItemFormObjectSchema = (t: ItemValidationTranslator) =>
   z.object({
     code: z
       .string()
@@ -42,6 +44,8 @@ export const createItemFormSchema = (t: ItemValidationTranslator) =>
     uom: z.string().min(1, t("uomRequired")),
     category: z.string().min(1, t("categoryRequired")),
     standardCost: z.number().min(0, t("standardCostMin")).optional(),
+    importCost: z.number().min(0, t("importCostMin")).optional().nullable(),
+    importCurrency: z.string().trim().length(3).optional().nullable(),
     listPrice: z.number().min(0, t("listPriceMin")),
     reorderLevel: z.number().int().min(0, t("reorderLevelMin")).optional(),
     reorderQty: z.number().int().min(0, t("reorderQtyMin")).optional(),
@@ -49,13 +53,26 @@ export const createItemFormSchema = (t: ItemValidationTranslator) =>
     isActive: z.boolean().default(true),
   });
 
+const addImportCostRefinement = <T extends z.ZodTypeAny>(schema: T, t: ItemValidationTranslator) =>
+  schema.superRefine((value, context) => {
+    const itemValue = value as { importCost?: number | null; importCurrency?: string | null };
+    if (itemValue.importCost != null && !itemValue.importCurrency) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t("importCurrencyRequired"),
+        path: ["importCurrency"],
+      });
+    }
+  });
+
+export const createItemFormSchema = (t: ItemValidationTranslator) =>
+  addImportCostRefinement(createItemFormObjectSchema(t), t);
+
 export type ItemFormSchema = ReturnType<typeof createItemFormSchema>;
 export type ItemFormValues = z.infer<ItemFormSchema>;
 
 export const createCreateItemSchema = (t: ItemValidationTranslator) =>
-  createItemFormSchema(t).extend({
-    companyId: z.string().uuid(),
-  });
+  addImportCostRefinement(createItemFormObjectSchema(t).extend({ companyId: z.string().uuid() }), t);
 
 export const createUpdateItemSchema = (t: ItemValidationTranslator) =>
-  createItemFormSchema(t).partial().omit({ code: true });
+  addImportCostRefinement(createItemFormObjectSchema(t).partial().omit({ code: true }), t);

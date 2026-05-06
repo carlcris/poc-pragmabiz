@@ -35,6 +35,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
+import { COMMON_IMPORT_CURRENCIES } from "@/constants/currencies";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 function CreateItemContent() {
@@ -83,6 +84,8 @@ function CreateItemContent() {
       uom: "",
       category: "",
       standardCost: 0,
+      importCost: null,
+      importCurrency: null,
       listPrice: 0,
       reorderLevel: 0,
       reorderQty: 0,
@@ -128,6 +131,8 @@ function CreateItemContent() {
           unit: values.dimensions?.unit || "",
         },
         standardCost: values.standardCost ?? 0,
+        importCost: values.importCost ?? null,
+        importCurrency: values.importCost == null ? null : values.importCurrency,
         reorderLevel: values.reorderLevel ?? 0,
         reorderQty: values.reorderQty ?? 0,
         isActive: values.isActive ?? true,
@@ -351,6 +356,7 @@ function CreateItemContent() {
                       )}
                     />
                   </div>
+
                 </div>
 
                 {/* Classification and Unit */}
@@ -408,6 +414,7 @@ function CreateItemContent() {
                       )}
                     />
                   </div>
+
                 </div>
 
                 {/* Pricing */}
@@ -450,6 +457,64 @@ function CreateItemContent() {
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="importCost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("importCostLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              placeholder={t("importCostPlaceholder")}
+                              value={field.value ?? ""}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === "" ? null : parseFloat(e.target.value) || 0
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>{t("importCostDescription")}</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="importCurrency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("importCurrencyLabel")}</FormLabel>
+                          <Select
+                            onValueChange={(value) =>
+                              field.onChange(value === "__none" ? null : value)
+                            }
+                            value={field.value ?? "__none"}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={t("selectImportCurrency")} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="__none">{t("selectImportCurrency")}</SelectItem>
+                              {COMMON_IMPORT_CURRENCIES.map((currency) => (
+                                <SelectItem key={currency} value={currency}>
+                                  {currency}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

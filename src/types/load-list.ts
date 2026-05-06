@@ -66,6 +66,8 @@ export type LoadList = {
   actualArrivalDate?: string;
   loadDate?: string;
   status: LoadListStatus;
+  currency: string;
+  totalAmount?: number;
   notes?: string;
   items: LoadListItem[];
   createdBy: string;
@@ -107,6 +109,7 @@ export type CreateLoadListRequest = {
   linerName?: string;
   estimatedArrivalDate?: string;
   loadDate?: string;
+  currency?: string | null;
   notes?: string;
   items: {
     itemId: string;
