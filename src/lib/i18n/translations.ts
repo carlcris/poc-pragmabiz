@@ -834,6 +834,14 @@ export type TranslationKeys = {
       autoAllocationDescription: string;
       allowNegativeStock: string;
       allowNegativeStockDescription: string;
+      stockRequisitionDocumentTitle: string;
+      stockRequisitionDocumentDescription: string;
+      showSrPdfUnitPrice: string;
+      showSrPdfUnitPriceDescription: string;
+      showSrPdfLineTotal: string;
+      showSrPdfLineTotalDescription: string;
+      showSrPdfTotalAmount: string;
+      showSrPdfTotalAmountDescription: string;
       trackingTitle: string;
       trackingDescription: string;
       trackLotNumbers: string;
@@ -3528,6 +3536,16 @@ export const translations: Record<Locale, TranslationKeys> = {
         autoAllocationDescription: "Automatically allocate stock for orders",
         allowNegativeStock: "Allow Negative Stock",
         allowNegativeStockDescription: "Allow stock levels to go negative",
+        stockRequisitionDocumentTitle: "Stock Requisition PDF",
+        stockRequisitionDocumentDescription:
+          "Configure monetary fields shown on printed and downloaded stock requisitions",
+        showSrPdfUnitPrice: "Show Unit Price",
+        showSrPdfUnitPriceDescription: "Include the Unit Price column in stock requisition PDFs",
+        showSrPdfLineTotal: "Show Line Total",
+        showSrPdfLineTotalDescription: "Include the line Total column in stock requisition PDFs",
+        showSrPdfTotalAmount: "Show Total Amount",
+        showSrPdfTotalAmountDescription:
+          "Include the document Total Amount row in stock requisition PDFs",
         trackingTitle: "Tracking Settings",
         trackingDescription: "Configure lot numbers, serial numbers, and barcodes",
         trackLotNumbers: "Track Lot Numbers",
@@ -5733,6 +5751,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       view: "View",
       edit: "Edit",
       send: "Send",
+      print: "Print",
+      printSuccess: "Print preview opened",
+      printError: "Failed to print stock requisition",
       delete: "Delete",
       sendTitle: "Send Stock Requisition",
       sendDescription:
@@ -5753,6 +5774,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleting: "Deleting...",
       deleteSuccess: "Stock Requisition deleted successfully",
       deleteError: "Failed to delete stock requisition",
+      unknownSupplier: "Unknown Supplier",
+      unknownItem: "Unknown Item",
+      na: "N/A",
       noValue: "--",
     },
     stockRequisitionForm: {
@@ -5820,6 +5844,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     stockRequisitionDetailPage: {
       title: "Stock Requisition",
       downloadPdf: "Download PDF",
+      print: "Print",
       edit: "Edit",
       send: "Send",
       cancel: "Cancel",
@@ -5864,6 +5889,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancelError: "Failed to cancel stock requisition",
       pdfSuccess: "PDF downloaded successfully",
       pdfError: "Failed to generate PDF",
+      printSuccess: "Print preview opened",
+      printError: "Failed to print stock requisition",
       unknownSupplier: "Unknown Supplier",
       unknownItem: "Unknown Item",
       na: "N/A",
@@ -8689,6 +8716,14 @@ export const translations: Record<Locale, TranslationKeys> = {
         autoAllocationDescription: "自动为订单分配库存",
         allowNegativeStock: "允许负库存",
         allowNegativeStockDescription: "允许库存数量变为负数",
+        stockRequisitionDocumentTitle: "库存请购 PDF",
+        stockRequisitionDocumentDescription: "配置库存请购打印和下载文件中显示的金额字段",
+        showSrPdfUnitPrice: "显示单价",
+        showSrPdfUnitPriceDescription: "在库存请购 PDF 中包含单价列",
+        showSrPdfLineTotal: "显示行总计",
+        showSrPdfLineTotalDescription: "在库存请购 PDF 中包含行总计列",
+        showSrPdfTotalAmount: "显示总金额",
+        showSrPdfTotalAmountDescription: "在库存请购 PDF 中包含单据总金额行",
         trackingTitle: "跟踪设置",
         trackingDescription: "配置批号、序列号和条码",
         trackLotNumbers: "跟踪批号",
@@ -10854,6 +10889,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       view: "查看",
       edit: "编辑",
       send: "发送",
+      print: "打印",
+      printSuccess: "打印预览已打开",
+      printError: "打印库存请购失败",
       delete: "删除",
       sendTitle: "发送库存请购",
       sendDescription: "确定要发送此库存请购吗？发送后将无法编辑。",
@@ -10871,6 +10909,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleting: "删除中...",
       deleteSuccess: "库存请购删除成功",
       deleteError: "删除库存请购失败",
+      unknownSupplier: "未知供应商",
+      unknownItem: "未知商品",
+      na: "无",
       noValue: "--",
     },
     stockRequisitionForm: {
@@ -10936,6 +10977,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     stockRequisitionDetailPage: {
       title: "库存请购",
       downloadPdf: "下载 PDF",
+      print: "打印",
       edit: "编辑",
       send: "发送",
       cancel: "取消",
@@ -10978,6 +11020,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       cancelError: "取消库存请购失败",
       pdfSuccess: "PDF 下载成功",
       pdfError: "生成 PDF 失败",
+      printSuccess: "打印预览已打开",
+      printError: "打印库存请购失败",
       unknownSupplier: "未知供应商",
       unknownItem: "未知商品",
       na: "无",

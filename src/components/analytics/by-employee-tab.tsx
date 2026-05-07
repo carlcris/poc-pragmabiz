@@ -40,6 +40,8 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
   const t = useTranslations("analyticsByEmployeeTab");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByEmployee(filters);
+  const formatSensitiveCurrency = (amount: number | null | undefined) =>
+    typeof amount === "number" ? formatCurrency(amount) : "--";
 
   const employeeData = useMemo(() => data?.data || [], [data]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,8 +51,8 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
   const topEmployeesChartData = useMemo(() => {
     return employeeData.slice(0, 10).map((emp) => ({
       name: emp.employeeName.split(" ").slice(0, 2).join(" "),
-      sales: emp.totalSales,
-      commission: emp.totalCommission,
+      sales: emp.totalSales ?? 0,
+      commission: emp.totalCommission ?? 0,
       transactions: emp.transactionCount,
     }));
   }, [employeeData]);
@@ -59,7 +61,7 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
   const commissionDistributionData = useMemo(() => {
     return employeeData.slice(0, 5).map((emp) => ({
       name: emp.employeeName.split(" ").slice(0, 2).join(" "),
-      value: emp.totalCommission,
+      value: emp.totalCommission ?? 0,
     }));
   }, [employeeData]);
 
@@ -259,17 +261,17 @@ export function ByEmployeeTab({ filters }: ByEmployeeTabProps) {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {formatCurrency(employee.totalSales)}
+                        {formatSensitiveCurrency(employee.totalSales)}
                       </TableCell>
                       <TableCell className="text-right">{employee.transactionCount}</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(employee.averageOrderValue)}
+                        {formatSensitiveCurrency(employee.averageOrderValue)}
                       </TableCell>
                       <TableCell className="text-right font-medium text-green-600">
-                        {formatCurrency(employee.totalCommission)}
+                        {formatSensitiveCurrency(employee.totalCommission)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {employee.commissionRate}%
+                        {typeof employee.commissionRate === "number" ? `${employee.commissionRate}%` : "--"}
                       </TableCell>
                     </TableRow>
                   ))}

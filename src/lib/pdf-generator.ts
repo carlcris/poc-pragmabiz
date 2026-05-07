@@ -7,18 +7,25 @@ export interface StockRequisitionPDFData {
   supplierName: string;
   requisitionDate: string;
   requiredByDate?: string;
-  totalAmount: string;
+  showTotalAmount?: boolean;
+  totalAmount?: string;
+  showUnitPrice?: boolean;
+  showLineTotal?: boolean;
   items: Array<{
     itemCode: string;
     itemName: string;
     requestedQty: number;
-    unitPrice: string;
-    totalPrice: string;
+    unitPrice?: string;
+    totalPrice?: string;
   }>;
   notes?: string;
   createdBy: string;
   businessUnit?: string;
 }
+
+export type StockRequisitionPDFOptions = {
+  output?: "download" | "print";
+};
 
 const pdfTextByLanguage = {
   english: {
@@ -64,11 +71,17 @@ const pdfTextByLanguage = {
 } as const;
 
 /**
- * Generate and download Stock Requisition PDF
+ * Generate a Stock Requisition PDF for download or browser printing.
  */
-export async function generateStockRequisitionPDF(data: StockRequisitionPDFData) {
+export async function generateStockRequisitionPDF(
+  data: StockRequisitionPDFData,
+  options: StockRequisitionPDFOptions = {}
+) {
   const language = data.language === "chinese" ? "chinese" : "english";
   const t = pdfTextByLanguage[language];
+  const showTotalAmount = data.showTotalAmount === true;
+  const showUnitPrice = data.showUnitPrice === true;
+  const showLineTotal = data.showLineTotal === true;
   // Create a temporary container for the PDF content
   const container = document.createElement("div");
   container.style.position = "absolute";
@@ -86,8 +99,16 @@ export async function generateStockRequisitionPDF(data: StockRequisitionPDFData)
       <td style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280; font-family: 'Courier New', monospace; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${item.itemCode}</td>
       <td style="padding: 12px; text-align: left; font-size: 13px; color: #1f2937; font-weight: 500; border-bottom: 1px solid #e5e7eb;">${item.itemName}</td>
       <td style="padding: 12px; text-align: right; font-size: 13px; color: #1f2937; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${item.requestedQty}</td>
-      <td style="padding: 12px; text-align: right; font-size: 13px; color: #1f2937; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${item.unitPrice}</td>
-      <td style="padding: 12px; text-align: right; font-size: 13px; color: #1f2937; font-weight: 700; border-bottom: 1px solid #e5e7eb;">${item.totalPrice}</td>
+      ${
+        showUnitPrice
+          ? `<td style="padding: 12px; text-align: right; font-size: 13px; color: #1f2937; font-weight: 600; border-bottom: 1px solid #e5e7eb;">${item.unitPrice}</td>`
+          : ""
+      }
+      ${
+        showLineTotal
+          ? `<td style="padding: 12px; text-align: right; font-size: 13px; color: #1f2937; font-weight: 700; border-bottom: 1px solid #e5e7eb;">${item.totalPrice}</td>`
+          : ""
+      }
     </tr>
   `
     )
@@ -155,10 +176,16 @@ export async function generateStockRequisitionPDF(data: StockRequisitionPDFData)
               <td style="color: #6b7280; font-size: 13px; padding: 12px 0;">${t.requestedBy}</td>
               <td style="color: #1f2937; font-size: 13px; font-weight: 600; padding: 12px 0;">${data.createdBy}</td>
             </tr>
+            ${
+              showTotalAmount
+                ? `
             <tr>
               <td style="color: #6b7280; font-size: 13px; padding: 12px 0; font-weight: 700;">${t.totalAmount}</td>
               <td style="color: #1f2937; font-size: 20px; font-weight: 700; padding: 12px 0;">${data.totalAmount}</td>
             </tr>
+            `
+                : ""
+            }
           </table>
         </div>
 
@@ -170,8 +197,16 @@ export async function generateStockRequisitionPDF(data: StockRequisitionPDFData)
               <th style="padding: 12px; text-align: left; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.itemCode}</th>
               <th style="padding: 12px; text-align: left; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.itemName}</th>
               <th style="padding: 12px; text-align: right; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.quantity}</th>
-              <th style="padding: 12px; text-align: right; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.unitPrice}</th>
-              <th style="padding: 12px; text-align: right; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.total}</th>
+              ${
+                showUnitPrice
+                  ? `<th style="padding: 12px; text-align: right; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.unitPrice}</th>`
+                  : ""
+              }
+              ${
+                showLineTotal
+                  ? `<th style="padding: 12px; text-align: right; font-size: 11px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d5db;">${t.total}</th>`
+                  : ""
+              }
             </tr>
           </thead>
           <tbody>
@@ -233,7 +268,29 @@ export async function generateStockRequisitionPDF(data: StockRequisitionPDFData)
     const imgData = canvas.toDataURL("image/png");
     pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
-    // Download PDF
+    if (options.output === "print") {
+      const pdfUrl = URL.createObjectURL(pdf.output("blob"));
+      const printWindow = window.open(pdfUrl, "_blank");
+
+      if (!printWindow) {
+        URL.revokeObjectURL(pdfUrl);
+        throw new Error("Unable to open print window");
+      }
+
+      let didPrint = false;
+      const printPdf = () => {
+        if (didPrint || printWindow.closed) return;
+        didPrint = true;
+        printWindow.focus();
+        printWindow.print();
+        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+      };
+
+      printWindow.addEventListener("load", printPdf, { once: true });
+      window.setTimeout(printPdf, 500);
+      return;
+    }
+
     pdf.save(`Stock-Requisition-${data.srNumber}.pdf`);
   } finally {
     // Clean up

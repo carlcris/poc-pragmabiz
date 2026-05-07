@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { WAREHOUSE_DASHBOARD_QUERY_KEY } from "@/hooks/queryKeys";
 
 type User = {
   id: string;
@@ -112,6 +113,11 @@ export function useAssignRole() {
       // Invalidate user roles query
       queryClient.invalidateQueries({ queryKey: ["userRoles", variables.userId] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["purchasing-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
     },
   });
 }
@@ -140,6 +146,11 @@ export function useRemoveRole() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["userRoles", variables.userId] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["granular-capabilities"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["purchasing-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
     },
   });
 }

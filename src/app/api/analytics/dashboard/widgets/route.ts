@@ -10,6 +10,8 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import type { DashboardWidgetData } from "@/types/analytics";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 /**
  * GET /api/analytics/dashboard/widgets
@@ -18,7 +20,7 @@ import { RESOURCES } from "@/constants/resources";
 export async function GET() {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Get current user and company
     const {
@@ -41,6 +43,19 @@ export async function GET() {
     }
 
     const companyId = userData.company_id;
+    const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId ?? null);
+    const canViewTotalSales = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_TOTAL_SALES
+    );
+    const canViewTopAgentSales = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_TOP_AGENT_SALES
+    );
+    const canViewRecentActivityAmount = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_RECENT_ACTIVITY_AMOUNT
+    );
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
@@ -493,17 +508,28 @@ export async function GET() {
 
     const widgetData: DashboardWidgetData = {
       todaysSales: {
-        amount: todayAmount,
-        growth: growth,
+        amount: canViewTotalSales ? todayAmount : null,
+        growth: canViewTotalSales ? growth : null,
         transactions: todayTransactionCount,
       },
-      topAgent,
-      recentActivity,
+      topAgent: {
+        ...topAgent,
+        sales: canViewTopAgentSales ? topAgent.sales : null,
+      },
+      recentActivity: recentActivity.map((activity) => ({
+        ...activity,
+        amount: canViewRecentActivityAmount ? activity.amount : null,
+      })),
       reorderAlerts,
       stats: {
         activeSalesOrders,
         activePurchaseOrders,
         lowStockCount: reorderAlerts.length,
+      },
+      capabilities: {
+        canViewTotalSales,
+        canViewTopAgentSales,
+        canViewRecentActivityAmount,
       },
     };
 

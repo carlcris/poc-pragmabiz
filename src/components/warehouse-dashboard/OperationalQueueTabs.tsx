@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,11 +18,40 @@ type OperationalQueueTabsProps = {
   queues: DashboardQueues;
   isLoading: boolean;
   locale: string;
+  capabilities: {
+    canViewPickListQueue: boolean;
+    canViewIncomingDeliveriesQueue: boolean;
+    canViewStockRequestsQueue: boolean;
+  };
 };
 
-export const OperationalQueueTabs = ({ queues, isLoading, locale }: OperationalQueueTabsProps) => {
+export const OperationalQueueTabs = ({
+  queues,
+  isLoading,
+  locale,
+  capabilities,
+}: OperationalQueueTabsProps) => {
   const t = useTranslations("warehouseDashboard");
   const [activeTab, setActiveTab] = useState("pick-list");
+  const visibleTabs = useMemo(
+    () =>
+      [
+        capabilities.canViewPickListQueue ? "pick-list" : null,
+        capabilities.canViewIncomingDeliveriesQueue ? "incoming" : null,
+        capabilities.canViewStockRequestsQueue ? "requests" : null,
+      ].filter(Boolean) as string[],
+    [capabilities]
+  );
+
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.includes(activeTab)) {
+      setActiveTab(visibleTabs[0]);
+    }
+  }, [activeTab, visibleTabs]);
+
+  if (visibleTabs.length === 0 && !isLoading) {
+    return null;
+  }
 
   return (
     <Card>
@@ -34,75 +63,92 @@ export const OperationalQueueTabs = ({ queues, isLoading, locale }: OperationalQ
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="pick-list" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              {t("pickListTab", { count: queues.pick_list.length })}
-            </TabsTrigger>
-            <TabsTrigger value="incoming" className="flex items-center gap-2">
-              <TruckIcon className="h-4 w-4" />
-              {t("incomingTab", { count: queues.incoming_deliveries.length })}
-            </TabsTrigger>
-            <TabsTrigger value="requests" className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" />
-              {t("requestsTab", { count: queues.stock_requests.length })}
-            </TabsTrigger>
+          <TabsList
+            className="grid w-full"
+            style={{ gridTemplateColumns: `repeat(${visibleTabs.length || 1}, minmax(0, 1fr))` }}
+          >
+            {capabilities.canViewPickListQueue && (
+              <TabsTrigger value="pick-list" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                {t("pickListTab", { count: queues.pick_list.length })}
+              </TabsTrigger>
+            )}
+            {capabilities.canViewIncomingDeliveriesQueue && (
+              <TabsTrigger value="incoming" className="flex items-center gap-2">
+                <TruckIcon className="h-4 w-4" />
+                {t("incomingTab", { count: queues.incoming_deliveries.length })}
+              </TabsTrigger>
+            )}
+            {capabilities.canViewStockRequestsQueue && (
+              <TabsTrigger value="requests" className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" />
+                {t("requestsTab", { count: queues.stock_requests.length })}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Pick List Tab */}
-          <TabsContent value="pick-list" className="mt-4 space-y-2">
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-20 animate-pulse rounded bg-muted" />
-                ))}
-              </div>
-            ) : queues.pick_list.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">{t("noItemsToPick")}</p>
-            ) : (
-              queues.pick_list.map((item) => (
-                <PickListCard key={item.id} item={item} locale={locale} />
-              ))
-            )}
-          </TabsContent>
+          {capabilities.canViewPickListQueue && (
+            <TabsContent value="pick-list" className="mt-4 space-y-2">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-20 animate-pulse rounded bg-muted" />
+                  ))}
+                </div>
+              ) : queues.pick_list.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t("noItemsToPick")}
+                </p>
+              ) : (
+                queues.pick_list.map((item) => (
+                  <PickListCard key={item.id} item={item} locale={locale} />
+                ))
+              )}
+            </TabsContent>
+          )}
 
           {/* Incoming Deliveries Tab */}
-          <TabsContent value="incoming" className="mt-4 space-y-2">
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-20 animate-pulse rounded bg-muted" />
-                ))}
-              </div>
-            ) : queues.incoming_deliveries.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                {t("noIncomingDeliveries")}
-              </p>
-            ) : (
-              queues.incoming_deliveries.map((item) => (
-                <IncomingDeliveryCard key={item.id} item={item} locale={locale} />
-              ))
-            )}
-          </TabsContent>
+          {capabilities.canViewIncomingDeliveriesQueue && (
+            <TabsContent value="incoming" className="mt-4 space-y-2">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-20 animate-pulse rounded bg-muted" />
+                  ))}
+                </div>
+              ) : queues.incoming_deliveries.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t("noIncomingDeliveries")}
+                </p>
+              ) : (
+                queues.incoming_deliveries.map((item) => (
+                  <IncomingDeliveryCard key={item.id} item={item} locale={locale} />
+                ))
+              )}
+            </TabsContent>
+          )}
 
           {/* Stock Requests Tab */}
-          <TabsContent value="requests" className="mt-4 space-y-2">
-            {isLoading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-20 animate-pulse rounded bg-muted" />
-                ))}
-              </div>
-            ) : queues.stock_requests.length === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                {t("noPendingRequests")}
-              </p>
-            ) : (
-              queues.stock_requests.map((item) => (
-                <StockRequestCard key={item.id} item={item} locale={locale} />
-              ))
-            )}
-          </TabsContent>
+          {capabilities.canViewStockRequestsQueue && (
+            <TabsContent value="requests" className="mt-4 space-y-2">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-20 animate-pulse rounded bg-muted" />
+                  ))}
+                </div>
+              ) : queues.stock_requests.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t("noPendingRequests")}
+                </p>
+              ) : (
+                queues.stock_requests.map((item) => (
+                  <StockRequestCard key={item.id} item={item} locale={locale} />
+                ))
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </CardContent>
     </Card>

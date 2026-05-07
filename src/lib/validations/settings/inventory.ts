@@ -17,6 +17,9 @@ export const createInventorySettingsSchema = () =>
     track_lot_numbers: z.boolean().default(false),
     track_serial_numbers: z.boolean().default(false),
     barcode_format: z.string().max(50).optional().or(z.literal("")),
+    stock_requisition_pdf_show_unit_price: z.boolean().default(true),
+    stock_requisition_pdf_show_line_total: z.boolean().default(true),
+    stock_requisition_pdf_show_total_amount: z.boolean().default(true),
   });
 
 type InventorySettingsSchema = ReturnType<typeof createInventorySettingsSchema>;

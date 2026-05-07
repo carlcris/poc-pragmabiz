@@ -58,6 +58,14 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
   const { data: itemResponse, isLoading, error } = useItem(itemId);
   const item = itemResponse?.data;
+  const canViewPricingDetails = itemResponse?.capabilities?.canViewPricingDetails === true;
+
+  useEffect(() => {
+    if (!isLoading && !canViewPricingDetails && activeTab === "prices") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, canViewPricingDetails, isLoading]);
+
   const tabPanelClassName = "mt-4 min-h-[52rem] space-y-4";
   const isItemLoading = isLoading && !item;
   const itemTypeLabel = item?.itemType
@@ -97,7 +105,6 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList>
               <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
-              <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
               <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
               <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
               <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
@@ -175,10 +182,6 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="prices" className={tabPanelClassName}>
-              <PricesTab itemId={itemId} />
-            </TabsContent>
-
             <TabsContent value="unitOptions" className={tabPanelClassName}>
               <Card>
                 <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -248,7 +251,6 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
-            <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
             <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
             <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
             <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
@@ -257,7 +259,9 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <TabsContent value="overview" className={tabPanelClassName}>
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">{t("itemInformationTitle")}</CardTitle>
+                <CardTitle className="text-base font-semibold">
+                  {t("itemInformationTitle")}
+                </CardTitle>
                 <CardDescription className="text-sm">
                   {t("itemInformationDescription")}
                 </CardDescription>
@@ -323,7 +327,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
-          <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>
+          {canViewPricingDetails && <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>}
           <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
           <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
           <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
@@ -530,57 +534,59 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">
-                  {t("pricingDetailsTitle")}
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {t("pricingDetailsDescription")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {t("standardCostLabel")}
-                  </span>
-                  <span className="text-lg font-bold">
-                    ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {t("listPriceLabel")}
-                  </span>
-                  <span className="text-lg font-bold">
-                    ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
-                  </span>
-                </div>
-                {item.importCost != null && item.importCurrency ? (
+            {canViewPricingDetails && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold">
+                    {t("pricingDetailsTitle")}
+                  </CardTitle>
+                  <CardDescription className="text-sm">
+                    {t("pricingDetailsDescription")}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {t("importCostLabel")}
+                      {t("standardCostLabel")}
                     </span>
                     <span className="text-lg font-bold">
-                      {formatImportCurrency(item.importCost, item.importCurrency)}
+                      ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
                     </span>
                   </div>
-                ) : null}
-                {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
-                  <div className="flex items-center justify-between border-t pt-2">
+                  <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {t("profitMarginLabel")}
+                      {t("listPriceLabel")}
                     </span>
-                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
-                      {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(
-                        1
-                      )}
-                      %
+                    <span className="text-lg font-bold">
+                      ₱{item.listPrice != null ? item.listPrice.toFixed(2) : "0.00"}
                     </span>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  {item.importCost != null && item.importCurrency ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {t("importCostLabel")}
+                      </span>
+                      <span className="text-lg font-bold">
+                        {formatImportCurrency(item.importCost, item.importCurrency)}
+                      </span>
+                    </div>
+                  ) : null}
+                  {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
+                    <div className="flex items-center justify-between border-t pt-2">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {t("profitMarginLabel")}
+                      </span>
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
+                        {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(
+                          1
+                        )}
+                        %
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader>
@@ -619,10 +625,11 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           </div>
         </TabsContent>
 
-        {/* Prices Tab */}
-        <TabsContent value="prices" className={tabPanelClassName}>
-          <PricesTab itemId={itemId} />
-        </TabsContent>
+        {canViewPricingDetails && (
+          <TabsContent value="prices" className={tabPanelClassName}>
+            <PricesTab itemId={itemId} />
+          </TabsContent>
+        )}
 
         {/* Unit Options Tab */}
         <TabsContent value="unitOptions" className={tabPanelClassName}>

@@ -15,6 +15,13 @@ type Permission = {
   can_create: boolean;
   can_edit: boolean;
   can_delete: boolean;
+  parent_resource?: string | null;
+  surface?: string | null;
+  capability_key?: string | null;
+  capability_action?: string | null;
+  label?: string | null;
+  permission_group?: string | null;
+  is_granular?: boolean | null;
   created_at: string;
   updated_at: string;
 };

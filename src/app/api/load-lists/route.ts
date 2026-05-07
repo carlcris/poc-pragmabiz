@@ -6,6 +6,7 @@ import {
   LoadListLineValidationError,
   resolveLoadListLineUnitOptions,
 } from "./line-item-unit-options";
+import { resolveLoadListCapabilities } from "@/lib/load-lists/permissions";
 
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
@@ -58,8 +59,9 @@ export async function GET(request: NextRequest) {
     if (unauthorized) return unauthorized;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const { searchParams } = new URL(request.url);
+    const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
 
     // Build query
     let query = supabase
@@ -227,8 +229,12 @@ export async function GET(request: NextRequest) {
         actualArrivalDate: ll.actual_arrival_date,
         loadDate: ll.load_date,
         status: ll.status,
-        currency: normalizeCurrency(ll.currency) ?? "PHP",
-        totalAmount,
+        currency:
+          capabilities.canViewTotalAmount || capabilities.canViewUnitPrice
+            ? (normalizeCurrency(ll.currency) ?? "PHP")
+            : null,
+        totalAmount: capabilities.canViewTotalAmount ? totalAmount : null,
+        capabilities,
         createdBy: ll.created_by,
         createdByUser: createdByUser
           ? {
@@ -266,6 +272,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       data: formattedLoadLists,
+      capabilities,
       pagination: {
         total: count || 0,
         page,

@@ -72,6 +72,8 @@ export default function LoadListDetailPage() {
   const { data: ll, isLoading, error } = useLoadList(id);
   const updateStatusMutation = useUpdateLoadListStatus();
   const { currentCurrency } = useCurrency();
+  const canViewTotalAmount = ll?.capabilities?.canViewTotalAmount === true;
+  const canViewUnitPrice = ll?.capabilities?.canViewUnitPrice === true;
 
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [inTransitDialogOpen, setInTransitDialogOpen] = useState(false);
@@ -208,7 +210,7 @@ export default function LoadListDetailPage() {
         </div>
         {ll && (
           <div className="flex flex-wrap items-center gap-2">
-            {ll.status === "draft" && (
+            {ll.status === "draft" && canViewUnitPrice && (
               <>
                 <Button variant="outline" onClick={() => updateEditSearchParam(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
@@ -279,10 +281,12 @@ export default function LoadListDetailPage() {
                     <span className="text-muted-foreground">{t("status")}</span>
                     <div className="mt-1">{getStatusBadge(ll.status)}</div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">{t("currency")}</span>
-                    <div className="font-medium">{ll.currency}</div>
-                  </div>
+                  {(canViewTotalAmount || canViewUnitPrice) && (
+                    <div>
+                      <span className="text-muted-foreground">{t("currency")}</span>
+                      <div className="font-medium">{ll.currency}</div>
+                    </div>
+                  )}
                   <div>
                     <span className="text-muted-foreground">{t("supplier")}</span>
                     <div className="font-medium">
@@ -404,8 +408,12 @@ export default function LoadListDetailPage() {
                       <TableHead className="text-right">{t("receivedQty")}</TableHead>
                       <TableHead className="text-right">{t("damagedQty")}</TableHead>
                       <TableHead className="text-right">{t("shortageQty")}</TableHead>
-                      <TableHead className="text-right">{t("unitPrice")}</TableHead>
-                      <TableHead className="text-right">{t("total")}</TableHead>
+                      {canViewUnitPrice && (
+                        <TableHead className="text-right">{t("unitPrice")}</TableHead>
+                      )}
+                      {canViewTotalAmount && (
+                        <TableHead className="text-right">{t("total")}</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -451,21 +459,24 @@ export default function LoadListDetailPage() {
                               {item.shortageQty}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right">
-                            {formatDocumentCurrency(item.unitPrice)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatDocumentCurrency(
-                              item.loadListQty *
-                                (item.itemUnitOption?.qtyPerUnit ?? 1) *
-                                item.unitPrice
-                            )}
-                          </TableCell>
+                          {canViewUnitPrice && (
+                            <TableCell className="text-right">
+                              {formatDocumentCurrency(item.unitPrice ?? 0)}
+                            </TableCell>
+                          )}
+                          {canViewTotalAmount && (
+                            <TableCell className="text-right font-medium">
+                              {formatDocumentCurrency(item.totalPrice ?? 0)}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={8 + (canViewUnitPrice ? 1 : 0) + (canViewTotalAmount ? 1 : 0)}
+                          className="text-center text-muted-foreground"
+                        >
                           {t("noLineItems")}
                         </TableCell>
                       </TableRow>
@@ -478,7 +489,7 @@ export default function LoadListDetailPage() {
         </>
       )}
 
-      {ll ? (
+      {ll && canViewUnitPrice ? (
         <LoadListFormDialog
           open={editDialogOpen}
           onOpenChange={(open) => {

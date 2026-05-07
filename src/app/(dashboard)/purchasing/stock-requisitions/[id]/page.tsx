@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Download, FileText, Pencil } from "lucide-react";
+import { Download, FileText, Pencil, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useStockRequisition, useUpdateStockRequisitionStatus } from "@/hooks/useStockRequisitions";
 import { useCurrency } from "@/hooks/useCurrency";
-import type { StockRequisitionStatus } from "@/types/stock-requisition";
+import type { StockRequisition, StockRequisitionStatus } from "@/types/stock-requisition";
+import type { StockRequisitionPDFData } from "@/lib/pdf-generator";
 
 const StockRequisitionFormDialog = dynamic(
   () =>
@@ -50,6 +51,8 @@ export default function StockRequisitionDetailPage() {
   const { data: sr, isLoading, error } = useStockRequisition(id);
   const updateStatusMutation = useUpdateStockRequisitionStatus();
   const { formatCurrency } = useCurrency();
+  const canViewTotalAmount = sr?.capabilities?.canViewTotalAmount === true;
+  const canViewUnitCost = sr?.capabilities?.canViewUnitCost === true;
 
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -117,7 +120,8 @@ export default function StockRequisitionDetailPage() {
     return fullName || user.email || t("noValue");
   };
 
-  const formatRequisitionAmount = (amount: number, currencyCode?: string | null) => {
+  const formatRequisitionAmount = (amount: number | null, currencyCode?: string | null) => {
+    if (amount == null) return t("noValue");
     if (!currencyCode) return formatCurrency(amount);
 
     return new Intl.NumberFormat(locale, {
@@ -127,39 +131,74 @@ export default function StockRequisitionDetailPage() {
     }).format(amount);
   };
 
+  const buildStockRequisitionPDFData = (
+    stockRequisition: StockRequisition
+  ): StockRequisitionPDFData => {
+    const supplierLanguage = stockRequisition.supplier?.lang === "chinese" ? "chinese" : "english";
+    const showTotalAmount = stockRequisition.documentSettings?.showTotalAmount === true;
+    const showUnitPrice = stockRequisition.documentSettings?.showUnitPrice === true;
+    const showLineTotal = stockRequisition.documentSettings?.showLineTotal === true;
+    const documentCurrency = stockRequisition.documentCurrency ?? stockRequisition.currency;
+
+    return {
+      language: supplierLanguage,
+      srNumber: stockRequisition.srNumber,
+      supplierName: stockRequisition.supplier?.name || t("unknownSupplier"),
+      requisitionDate: formatDate(stockRequisition.requisitionDate),
+      requiredByDate: stockRequisition.requiredByDate
+        ? formatDate(stockRequisition.requiredByDate)
+        : undefined,
+      showTotalAmount,
+      totalAmount: showTotalAmount
+        ? formatRequisitionAmount(stockRequisition.documentTotalAmount ?? null, documentCurrency)
+        : undefined,
+      showUnitPrice,
+      showLineTotal,
+      items: (stockRequisition.items || []).map((item) => ({
+        itemCode: item.item?.code || t("na"),
+        itemName:
+          supplierLanguage === "chinese"
+            ? item.item?.chineseName || item.item?.name || t("unknownItem")
+            : item.item?.name || t("unknownItem"),
+        requestedQty: item.requestedQty,
+        unitPrice: showUnitPrice
+          ? formatRequisitionAmount(item.documentUnitPrice ?? null, documentCurrency)
+          : undefined,
+        totalPrice: showLineTotal
+          ? formatRequisitionAmount(item.documentTotalPrice ?? null, documentCurrency)
+          : undefined,
+      })),
+      notes: stockRequisition.notes || undefined,
+      createdBy: formatUser(stockRequisition.createdByUser),
+      businessUnit: stockRequisition.businessUnit?.name
+        ? `${stockRequisition.businessUnit.name} (${stockRequisition.businessUnit.code || ""})`
+        : undefined,
+    };
+  };
+
   const handleDownloadPDF = async () => {
     if (!sr) return;
 
     try {
       const { generateStockRequisitionPDF } = await import("@/lib/pdf-generator");
-      const supplierLanguage = sr.supplier?.lang === "chinese" ? "chinese" : "english";
-      await generateStockRequisitionPDF({
-        language: supplierLanguage,
-        srNumber: sr.srNumber,
-        supplierName: sr.supplier?.name || t("unknownSupplier"),
-        requisitionDate: formatDate(sr.requisitionDate),
-        requiredByDate: sr.requiredByDate ? formatDate(sr.requiredByDate) : undefined,
-        totalAmount: formatRequisitionAmount(sr.totalAmount, sr.currency),
-        items: (sr.items || []).map((item) => ({
-          itemCode: item.item?.code || t("na"),
-          itemName:
-            supplierLanguage === "chinese"
-              ? item.item?.chineseName || item.item?.name || t("unknownItem")
-              : item.item?.name || t("unknownItem"),
-          requestedQty: item.requestedQty,
-          unitPrice: formatRequisitionAmount(item.unitPrice, sr.currency),
-          totalPrice: formatRequisitionAmount(item.totalPrice, sr.currency),
-        })),
-        notes: sr.notes || undefined,
-        createdBy: formatUser(sr.createdByUser),
-        businessUnit: sr.businessUnit?.name
-          ? `${sr.businessUnit.name} (${sr.businessUnit.code || ""})`
-          : undefined,
-      });
+      await generateStockRequisitionPDF(buildStockRequisitionPDFData(sr));
       toast.success(t("pdfSuccess"));
     } catch (error) {
       console.error("Failed to generate PDF:", error);
       toast.error(t("pdfError"));
+    }
+  };
+
+  const handlePrintPDF = async () => {
+    if (!sr) return;
+
+    try {
+      const { generateStockRequisitionPDF } = await import("@/lib/pdf-generator");
+      await generateStockRequisitionPDF(buildStockRequisitionPDFData(sr), { output: "print" });
+      toast.success(t("printSuccess"));
+    } catch (error) {
+      console.error("Failed to print stock requisition:", error);
+      toast.error(t("printError"));
     }
   };
 
@@ -176,6 +215,10 @@ export default function StockRequisitionDetailPage() {
         </div>
         {sr && (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button variant="outline" onClick={handlePrintPDF}>
+              <Printer className="mr-2 h-4 w-4" />
+              {t("print")}
+            </Button>
             <Button variant="outline" onClick={handleDownloadPDF}>
               <Download className="mr-2 h-4 w-4" />
               {t("downloadPdf")}
@@ -307,12 +350,14 @@ export default function StockRequisitionDetailPage() {
                     <span className="text-muted-foreground">{getLabel("requiredByDate")}</span>
                     <div className="font-medium">{formatDate(sr.requiredByDate)}</div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">{getLabel("totalAmount")}</span>
-                    <div className="text-lg font-bold text-primary">
-                      {formatRequisitionAmount(sr.totalAmount, sr.currency)}
+                  {canViewTotalAmount && (
+                    <div>
+                      <span className="text-muted-foreground">{getLabel("totalAmount")}</span>
+                      <div className="text-lg font-bold text-primary">
+                        {formatRequisitionAmount(sr.totalAmount, sr.currency)}
+                      </div>
                     </div>
-                  </div>
+                  )}
                   {sr.notes && (
                     <div>
                       <span className="text-muted-foreground">{getLabel("notes")}</span>
@@ -341,8 +386,12 @@ export default function StockRequisitionDetailPage() {
                       <TableHead className="text-right">{t("totalQtyLabel")}</TableHead>
                       <TableHead className="text-right">{t("fulfilledQty")}</TableHead>
                       <TableHead className="text-right">{t("outstandingQty")}</TableHead>
-                      <TableHead className="text-right">{t("unitCostLabel")}</TableHead>
-                      <TableHead className="text-right">{t("total")}</TableHead>
+                      {canViewUnitCost && (
+                        <TableHead className="text-right">{t("unitCostLabel")}</TableHead>
+                      )}
+                      {canViewTotalAmount && (
+                        <TableHead className="text-right">{t("total")}</TableHead>
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -387,17 +436,24 @@ export default function StockRequisitionDetailPage() {
                               {item.outstandingQty}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right">
-                            {formatRequisitionAmount(item.unitPrice, sr.currency)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatRequisitionAmount(item.totalPrice, sr.currency)}
-                          </TableCell>
+                          {canViewUnitCost && (
+                            <TableCell className="text-right">
+                              {formatRequisitionAmount(item.unitPrice, sr.currency)}
+                            </TableCell>
+                          )}
+                          {canViewTotalAmount && (
+                            <TableCell className="text-right font-medium">
+                              {formatRequisitionAmount(item.totalPrice, sr.currency)}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={7 + (canViewUnitCost ? 1 : 0) + (canViewTotalAmount ? 1 : 0)}
+                          className="text-center text-muted-foreground"
+                        >
                           {t("noLineItems")}
                         </TableCell>
                       </TableRow>

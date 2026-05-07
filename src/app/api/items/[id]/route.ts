@@ -1,11 +1,13 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Item, UpdateItemRequest } from "@/types/item";
+import type { Item, ItemDetail, UpdateItemRequest } from "@/types/item";
 import type { Database } from "@/types/database.types";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 import {
   getPrimaryItemUnitOption,
   sortItemUnitOptions,
@@ -205,6 +207,24 @@ function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
   };
 }
 
+const maskItemPricingDetails = (item: Item, canViewPricingDetails: boolean): ItemDetail => {
+  if (canViewPricingDetails) {
+    return {
+      ...item,
+      importCost: item.importCost ?? null,
+      importCurrency: item.importCurrency ?? null,
+    };
+  }
+
+  return {
+    ...item,
+    standardCost: null,
+    importCost: null,
+    importCurrency: null,
+    listPrice: null,
+  };
+};
+
 // GET /api/items/[id] - Get single item
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -223,6 +243,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId);
+    const canViewPricingDetails = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.ITEM_DETAILS_PRICING_DETAILS
+    );
 
     const { id } = await params;
     if (!isUuid(id)) {
@@ -296,17 +321,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Transform and return
-    const item = {
-      ...transformDbItem(data as ItemRow, unitOptionRows),
-      onHand,
-      allocated,
-      available,
-      inTransit,
-      estimatedArrivalDate,
-      reorderLevel,
-      reorderQty,
-    };
-    return NextResponse.json({ data: item });
+    const item = maskItemPricingDetails(
+      {
+        ...transformDbItem(data as ItemRow, unitOptionRows),
+        onHand,
+        allocated,
+        available,
+        inTransit,
+        estimatedArrivalDate,
+        reorderLevel,
+        reorderQty,
+      },
+      canViewPricingDetails
+    );
+    return NextResponse.json({
+      data: item,
+      capabilities: {
+        canViewPricingDetails,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

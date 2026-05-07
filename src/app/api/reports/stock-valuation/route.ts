@@ -2,6 +2,8 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { canAccessCapability } from "@/services/permissions/permissionResolver";
 
 type ItemWarehouseRow = {
   item_id: string;
@@ -84,7 +86,7 @@ type ValuationGroup = {
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
     // Check authentication
@@ -95,6 +97,17 @@ export async function GET(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const canViewValuationReports = await canAccessCapability(
+      user.id,
+      GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS,
+      "view",
+      currentBusinessUnitId ?? null
+    );
+
+    if (!canViewValuationReports) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Get user's company

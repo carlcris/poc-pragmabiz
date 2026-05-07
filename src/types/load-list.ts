@@ -27,9 +27,14 @@ export type LoadListItem = {
   receivedQty: number;
   damagedQty: number;
   shortageQty: number;
-  unitPrice: number;
-  totalPrice: number;
+  unitPrice: number | null;
+  totalPrice: number | null;
   notes?: string;
+};
+
+export type LoadListCapabilities = {
+  canViewTotalAmount: boolean;
+  canViewUnitPrice: boolean;
 };
 
 export type LoadList = {
@@ -66,10 +71,11 @@ export type LoadList = {
   actualArrivalDate?: string;
   loadDate?: string;
   status: LoadListStatus;
-  currency: string;
-  totalAmount?: number;
+  currency: string | null;
+  totalAmount?: number | null;
   notes?: string;
   items: LoadListItem[];
+  capabilities?: LoadListCapabilities;
   createdBy: string;
   createdByUser?: {
     id: string;
@@ -142,6 +148,7 @@ export type LoadListFilters = {
 
 export type LoadListsResponse = {
   data: LoadList[];
+  capabilities?: LoadListCapabilities;
   pagination: {
     total: number;
     page: number;

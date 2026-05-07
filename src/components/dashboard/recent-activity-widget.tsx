@@ -11,6 +11,11 @@ export function RecentActivityWidget() {
   const { formatCurrency } = useCurrency();
 
   const recentActivity = data?.recentActivity || [];
+  const canViewRecentActivityAmount = data?.capabilities?.canViewRecentActivityAmount ?? false;
+
+  if (!isLoading && data && !canViewRecentActivityAmount) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -91,7 +96,7 @@ export function RecentActivityWidget() {
                 </div>
               </div>
               <div className="flex-shrink-0 text-right">
-                <p className="text-sm font-bold">{formatCurrency(activity.amount)}</p>
+                <p className="text-sm font-bold">{formatCurrency(activity.amount ?? 0)}</p>
                 <p className="text-xs text-muted-foreground">{activity.time}</p>
               </div>
             </div>

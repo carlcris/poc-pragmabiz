@@ -24,9 +24,23 @@ export type StockRequisitionItem = {
   requestedQty: number;
   fulfilledQty: number;
   outstandingQty: number;
-  unitPrice: number;
-  totalPrice: number;
+  unitPrice: number | null;
+  totalPrice: number | null;
+  documentUnitPrice?: number | null;
+  documentTotalPrice?: number | null;
   notes?: string;
+};
+
+export type StockRequisitionCapabilities = {
+  canViewTotalAmount: boolean;
+  canViewUnitCost: boolean;
+  canViewSupplierCostSummary: boolean;
+};
+
+export type StockRequisitionDocumentSettings = {
+  showUnitPrice: boolean;
+  showLineTotal: boolean;
+  showTotalAmount: boolean;
 };
 
 export type StockRequisition = {
@@ -59,10 +73,14 @@ export type StockRequisition = {
   };
   requiredByDate?: string;
   status: StockRequisitionStatus;
-  totalAmount: number;
-  currency: string;
+  totalAmount: number | null;
+  currency: string | null;
+  documentTotalAmount?: number | null;
+  documentCurrency?: string | null;
   notes?: string;
   items: StockRequisitionItem[];
+  capabilities?: StockRequisitionCapabilities;
+  documentSettings?: StockRequisitionDocumentSettings;
   createdBy: string;
   createdByUser?: {
     id: string;
@@ -87,7 +105,7 @@ export type CreateStockRequisitionRequest = {
     itemUnitOptionId?: string;
     uomId?: string;
     requestedQty: number;
-    unitPrice: number;
+    unitPrice?: number;
     notes?: string;
   }[];
 };
@@ -106,6 +124,8 @@ export type StockRequisitionFilters = {
 
 export type StockRequisitionsResponse = {
   data: StockRequisition[];
+  capabilities?: StockRequisitionCapabilities;
+  documentSettings?: StockRequisitionDocumentSettings;
   pagination: {
     total: number;
     page: number;

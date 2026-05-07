@@ -1,5 +1,5 @@
 import type { Resource } from "@/constants/resources";
-import type { PermissionAction, UserPermissions } from "@/types/rbac";
+import type { PermissionAction, ResourcePermission, UserPermissions } from "@/types/rbac";
 
 /**
  * Permission check result with detailed information
@@ -35,3 +35,13 @@ export type PermissionCacheEntry = {
  * Permission cache storage
  */
 export type PermissionCache = Map<string, PermissionCacheEntry>;
+
+export type UserCapabilityMap = Record<string, ResourcePermission>;
+
+export type CapabilityCacheEntry = {
+  capabilities: UserCapabilityMap;
+  timestamp: number;
+  businessUnitId: string | null;
+};
+
+export type CapabilityCache = Map<string, CapabilityCacheEntry>;

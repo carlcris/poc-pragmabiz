@@ -2,12 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 // GET /api/analytics/sales/overview - Summary KPIs
 export const GET = async (req: NextRequest) => {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, userId, currentBusinessUnitId } = await createServerClientWithBU();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const capabilities = await getUserCapabilities(userId, currentBusinessUnitId ?? null);
+    const canViewTotalSales = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_TOTAL_SALES
+    );
+    const canViewCommissions = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_COMMISSIONS
+    );
+    const canViewAverageOrderValue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_AVERAGE_ORDER_VALUE
+    );
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -38,10 +57,8 @@ export const GET = async (req: NextRequest) => {
     const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
-      return NextResponse.json(
-        { error: "Failed to fetch analytics data", details: invoicesError.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch sales overview analytics:", invoicesError);
+      return NextResponse.json({ error: "Failed to fetch analytics data" }, { status: 500 });
     }
 
     // Calculate KPIs
@@ -157,14 +174,26 @@ export const GET = async (req: NextRequest) => {
 
     return NextResponse.json({
       data: {
-        totalSales,
-        totalCommissions: totalCommission, // Use plural to match TypeScript interface
-        totalCommission, // Keep for backward compatibility
+        totalSales: canViewTotalSales ? totalSales : null,
+        totalCommissions: canViewCommissions ? totalCommission : null, // Use plural to match TypeScript interface
+        totalCommission: canViewCommissions ? totalCommission : null, // Keep for backward compatibility
         activeAgents: activeAgents || 0,
-        averageOrderValue,
+        averageOrderValue: canViewAverageOrderValue ? averageOrderValue : null,
         transactionCount,
-        trend,
-        topEmployees: topEmployeesWithNames,
+        trend: trend.map((item) => ({
+          ...item,
+          sales: canViewTotalSales ? item.sales : null,
+        })),
+        topEmployees: topEmployeesWithNames.map((employee) => ({
+          ...employee,
+          totalSales: canViewTotalSales ? employee.totalSales : null,
+          totalCommission: canViewCommissions ? employee.totalCommission : null,
+        })),
+        capabilities: {
+          canViewTotalSales,
+          canViewCommissions,
+          canViewAverageOrderValue,
+        },
       },
     });
   } catch {

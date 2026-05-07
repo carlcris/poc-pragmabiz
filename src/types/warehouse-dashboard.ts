@@ -8,6 +8,18 @@ export type DashboardData = {
   out_of_stocks: OutOfStockItem[];
   queues: DashboardQueues;
   last_stock_movements: StockMovementItem[];
+  capabilities?: WarehouseDashboardCapabilities;
+};
+
+export type WarehouseDashboardCapabilities = {
+  canViewStockValue: boolean;
+  canViewReorderValue: boolean;
+  canViewIncomingShipmentsCard: boolean;
+  canViewStockRequestsCard: boolean;
+  canViewPickListCard: boolean;
+  canViewPickListQueue: boolean;
+  canViewIncomingDeliveriesQueue: boolean;
+  canViewStockRequestsQueue: boolean;
 };
 
 export type DashboardSummary = {

@@ -55,6 +55,12 @@ export function InventorySettingsForm({ initialData }: InventorySettingsFormProp
       track_lot_numbers: initialData?.track_lot_numbers ?? false,
       track_serial_numbers: initialData?.track_serial_numbers ?? false,
       barcode_format: initialData?.barcode_format || "",
+      stock_requisition_pdf_show_unit_price:
+        initialData?.stock_requisition_pdf_show_unit_price ?? true,
+      stock_requisition_pdf_show_line_total:
+        initialData?.stock_requisition_pdf_show_line_total ?? true,
+      stock_requisition_pdf_show_total_amount:
+        initialData?.stock_requisition_pdf_show_total_amount ?? true,
     },
   });
 
@@ -214,6 +220,63 @@ export function InventorySettingsForm({ initialData }: InventorySettingsFormProp
                   <div className="space-y-0.5">
                     <FormLabel className="text-base">{t("allowNegativeStock")}</FormLabel>
                     <FormDescription>{t("allowNegativeStockDescription")}</FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Stock Requisition Document Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("stockRequisitionDocumentTitle")}</CardTitle>
+            <CardDescription>{t("stockRequisitionDocumentDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="stock_requisition_pdf_show_unit_price"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">{t("showSrPdfUnitPrice")}</FormLabel>
+                    <FormDescription>{t("showSrPdfUnitPriceDescription")}</FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="stock_requisition_pdf_show_line_total"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">{t("showSrPdfLineTotal")}</FormLabel>
+                    <FormDescription>{t("showSrPdfLineTotalDescription")}</FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="stock_requisition_pdf_show_total_amount"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">{t("showSrPdfTotalAmount")}</FormLabel>
+                    <FormDescription>{t("showSrPdfTotalAmountDescription")}</FormDescription>
                   </div>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />

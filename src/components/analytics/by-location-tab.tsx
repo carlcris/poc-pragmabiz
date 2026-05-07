@@ -40,6 +40,8 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
   const t = useTranslations("analyticsByLocationTab");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByLocation(filters);
+  const formatSensitiveCurrency = (amount: number | null | undefined) =>
+    typeof amount === "number" ? formatCurrency(amount) : "--";
 
   const locationData = useMemo(() => data?.data || [], [data]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -49,7 +51,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
   const topCitiesChartData = useMemo(() => {
     return locationData.slice(0, 10).map((loc) => ({
       name: loc.city,
-      sales: loc.totalSales,
+      sales: loc.totalSales ?? 0,
       transactions: loc.transactionCount,
       customers: loc.uniqueCustomers,
     }));
@@ -61,7 +63,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
 
     locationData.forEach((loc) => {
       const current = regionMap.get(loc.regionState) || 0;
-      regionMap.set(loc.regionState, current + loc.totalSales);
+      regionMap.set(loc.regionState, current + (loc.totalSales ?? 0));
     });
 
     return Array.from(regionMap.entries()).map(([region, sales]) => ({
@@ -232,11 +234,11 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                         <Badge variant="secondary">{location.regionState}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {formatCurrency(location.totalSales)}
+                        {formatSensitiveCurrency(location.totalSales)}
                       </TableCell>
                       <TableCell className="text-right">{location.transactionCount}</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(location.averageOrderValue)}
+                        {formatSensitiveCurrency(location.averageOrderValue)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
                         {location.uniqueCustomers}
@@ -246,7 +248,7 @@ export function ByLocationTab({ filters }: ByLocationTabProps) {
                           <div className="text-sm">
                             <div className="font-medium">{location.topEmployee.name}</div>
                             <div className="text-muted-foreground">
-                              {formatCurrency(location.topEmployee.sales)}
+                              {formatSensitiveCurrency(location.topEmployee.sales)}
                             </div>
                           </div>
                         ) : (

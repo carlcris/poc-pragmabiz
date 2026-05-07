@@ -11,6 +11,11 @@ export function TopAgentWidget() {
   const { formatCurrency } = useCurrency();
 
   const topAgent = data?.topAgent;
+  const canViewTopAgentSales = data?.capabilities?.canViewTopAgentSales ?? false;
+
+  if (!isLoading && data && !canViewTopAgentSales) {
+    return null;
+  }
 
   if (isLoading) {
     return (
@@ -70,7 +75,7 @@ export function TopAgentWidget() {
             <p className="truncate text-2xl font-bold">{topAgent.name}</p>
             <div className="mt-1 flex items-center gap-3">
               <p className="text-sm font-medium text-muted-foreground">
-                {formatCurrency(topAgent.sales)}
+                {formatCurrency(topAgent.sales ?? 0)}
               </p>
               <span className="text-muted-foreground">•</span>
               <p className="text-sm text-muted-foreground">{topAgent.transactions} transactions</p>

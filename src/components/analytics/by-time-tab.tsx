@@ -37,6 +37,8 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
   const t = useTranslations("analyticsByTimeTab");
   const { formatCurrency } = useCurrency();
   const { data, isLoading } = useSalesByTime(filters);
+  const formatSensitiveCurrency = (amount: number | null | undefined) =>
+    typeof amount === "number" ? formatCurrency(amount) : "--";
 
   const salesData = useMemo(() => data?.data || [], [data]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -177,14 +179,14 @@ export function ByTimeTab({ filters }: ByTimeTabProps) {
                         {format(new Date(item.date), "MMM dd, yyyy")}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        {formatCurrency(item.sales)}
+                        {formatSensitiveCurrency(item.sales)}
                       </TableCell>
                       <TableCell className="text-right">{item.transactions}</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrency(item.averageOrderValue)}
+                        {formatSensitiveCurrency(item.averageOrderValue)}
                       </TableCell>
                       <TableCell className="text-right text-muted-foreground">
-                        {formatCurrency(item.commissions)}
+                        {formatSensitiveCurrency(item.commissions)}
                       </TableCell>
                     </TableRow>
                   ))}

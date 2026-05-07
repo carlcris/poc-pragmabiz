@@ -17,10 +17,10 @@ export interface SalesAnalyticsFilters {
 
 // Overview KPIs
 export interface SalesOverview {
-  totalSales: number;
-  totalCommissions: number;
+  totalSales: number | null;
+  totalCommissions: number | null;
   activeAgents: number;
-  averageOrderValue: number;
+  averageOrderValue: number | null;
   transactionCount: number;
   period: {
     startDate: string;
@@ -30,15 +30,20 @@ export interface SalesOverview {
     previousPeriodSales: number;
     salesGrowthPercentage: number;
   };
+  capabilities?: {
+    canViewTotalSales: boolean;
+    canViewCommissions: boolean;
+    canViewAverageOrderValue: boolean;
+  };
 }
 
 // Sales by time
 export interface SalesByTime {
   date: string;
-  sales: number;
+  sales: number | null;
   transactions: number;
-  averageOrderValue: number;
-  commissions: number;
+  averageOrderValue: number | null;
+  commissions: number | null;
 }
 
 // Sales by employee
@@ -48,11 +53,11 @@ export interface SalesByEmployee {
   employeeName: string;
   role: string;
   territories: string[]; // Array of "City, Region"
-  totalSales: number;
-  totalCommission: number;
+  totalSales: number | null;
+  totalCommission: number | null;
   transactionCount: number;
-  averageOrderValue: number;
-  commissionRate: number;
+  averageOrderValue: number | null;
+  commissionRate: number | null;
   rank?: number;
 }
 
@@ -60,14 +65,14 @@ export interface SalesByEmployee {
 export interface SalesByLocation {
   city: string;
   regionState: string;
-  totalSales: number;
+  totalSales: number | null;
   transactionCount: number;
-  averageOrderValue: number;
+  averageOrderValue: number | null;
   uniqueCustomers: number;
   topEmployee?: {
     id: string;
     name: string;
-    sales: number;
+    sales: number | null;
   };
 }
 
@@ -145,8 +150,8 @@ export interface AnalyticsUpdate {
 // Dashboard widget data
 export interface DashboardWidgetData {
   todaysSales: {
-    amount: number;
-    growth: number; // Percentage vs yesterday
+    amount: number | null;
+    growth: number | null; // Percentage vs yesterday
     transactions: number;
   };
   mySales?: {
@@ -159,14 +164,14 @@ export interface DashboardWidgetData {
   topAgent: {
     employeeId: string;
     name: string;
-    sales: number;
+    sales: number | null;
     transactions: number;
   };
   recentActivity: Array<{
     id: string;
     time: string;
     customer: string;
-    amount: number;
+    amount: number | null;
     agent: string;
     location: string;
   }>;
@@ -182,6 +187,11 @@ export interface DashboardWidgetData {
     activeSalesOrders: number;
     activePurchaseOrders: number;
     lowStockCount: number;
+  };
+  capabilities?: {
+    canViewTotalSales: boolean;
+    canViewTopAgentSales: boolean;
+    canViewRecentActivityAmount: boolean;
   };
 }
 

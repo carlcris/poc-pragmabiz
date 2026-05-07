@@ -111,6 +111,8 @@ export default function LoadListsPage() {
     page,
     limit: pageSize,
   });
+  const canViewTotalAmount = data?.capabilities?.canViewTotalAmount === true;
+  const canViewUnitPrice = data?.capabilities?.canViewUnitPrice === true;
 
   const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
   const suppliers = useMemo(() => suppliersData?.data || [], [suppliersData?.data]);
@@ -266,10 +268,12 @@ export default function LoadListsPage() {
             {t("subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateLL} className="w-full flex-shrink-0 sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          {t("createAction")}
-        </Button>
+        {canViewUnitPrice && (
+          <Button onClick={handleCreateLL} className="w-full flex-shrink-0 sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("createAction")}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -364,7 +368,9 @@ export default function LoadListsPage() {
                   <TableHead>{t("warehouse")}</TableHead>
                   <TableHead>{t("containerSeal")}</TableHead>
                   <TableHead>{t("batch")}</TableHead>
-                  <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                  {canViewTotalAmount && (
+                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                  )}
                   <TableHead>{t("arrivalDate")}</TableHead>
                   <TableHead className="text-center">{t("status")}</TableHead>
                   <TableHead>{t("createdBy")}</TableHead>
@@ -389,9 +395,11 @@ export default function LoadListsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-4 w-20" />
-                    </TableCell>
+                    {canViewTotalAmount && (
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-20" />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <Skeleton className="h-4 w-24" />
                     </TableCell>
@@ -432,7 +440,9 @@ export default function LoadListsPage() {
                     <TableHead>{t("warehouse")}</TableHead>
                     <TableHead>{t("containerSeal")}</TableHead>
                     <TableHead>{t("batch")}</TableHead>
-                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                    {canViewTotalAmount && (
+                      <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                    )}
                     <TableHead>{t("arrivalDate")}</TableHead>
                     <TableHead className="text-center">{t("status")}</TableHead>
                     <TableHead>{t("createdBy")}</TableHead>
@@ -485,11 +495,17 @@ export default function LoadListsPage() {
                       <TableCell>
                         <div className="text-sm">{ll.batchNumber || t("noValue")}</div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="text-sm font-medium tabular-nums">
-                          {formatLoadListCurrency(ll.totalAmount ?? 0, ll.currency, locale)}
-                        </div>
-                      </TableCell>
+                      {canViewTotalAmount && (
+                        <TableCell className="text-right">
+                          <div className="text-sm font-medium tabular-nums">
+                            {formatLoadListCurrency(
+                              ll.totalAmount ?? 0,
+                              ll.currency ?? "PHP",
+                              locale
+                            )}
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div>
                           {ll.estimatedArrivalDate && (
@@ -521,18 +537,19 @@ export default function LoadListsPage() {
                           className="flex items-center justify-end gap-2"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {(ll.status === "draft" || ll.status === "confirmed") && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={() => handleEditLL(ll)}
-                              aria-label={t("edit")}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              <span>{t("edit")}</span>
-                            </Button>
-                          )}
+                          {canViewUnitPrice &&
+                            (ll.status === "draft" || ll.status === "confirmed") && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleEditLL(ll)}
+                                aria-label={t("edit")}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>{t("edit")}</span>
+                              </Button>
+                            )}
                           {ll.status === "draft" && (
                             <Button
                               variant="outline"

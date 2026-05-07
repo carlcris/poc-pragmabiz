@@ -2,12 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 // GET /api/analytics/sales/by-time - Time series data
 export const GET = async (req: NextRequest) => {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, userId, currentBusinessUnitId } = await createServerClientWithBU();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const capabilities = await getUserCapabilities(userId, currentBusinessUnitId ?? null);
+    const canViewTotalSales = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_TOTAL_SALES
+    );
+    const canViewCommissions = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_COMMISSIONS
+    );
+    const canViewAverageOrderValue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_AVERAGE_ORDER_VALUE
+    );
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -41,10 +60,8 @@ export const GET = async (req: NextRequest) => {
     const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
-      return NextResponse.json(
-        { error: "Failed to fetch analytics data", details: invoicesError.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch sales by time analytics:", invoicesError);
+      return NextResponse.json({ error: "Failed to fetch analytics data" }, { status: 500 });
     }
 
     // Group by date based on granularity
@@ -99,20 +116,26 @@ export const GET = async (req: NextRequest) => {
       .map((stat) => ({
         date: stat.period,
         period: stat.period,
-        sales: stat.totalSales,
-        totalSales: stat.totalSales,
-        commission: stat.totalCommission,
-        commissions: stat.totalCommission, // Alias for TypeScript compatibility
-        totalCommission: stat.totalCommission,
+        sales: canViewTotalSales ? stat.totalSales : null,
+        totalSales: canViewTotalSales ? stat.totalSales : null,
+        commission: canViewCommissions ? stat.totalCommission : null,
+        commissions: canViewCommissions ? stat.totalCommission : null, // Alias for TypeScript compatibility
+        totalCommission: canViewCommissions ? stat.totalCommission : null,
         transactions: stat.count,
         transactionCount: stat.count,
-        averageOrderValue: stat.count > 0 ? stat.totalSales / stat.count : 0,
+        averageOrderValue:
+          canViewAverageOrderValue && stat.count > 0 ? stat.totalSales / stat.count : null,
       }))
       .sort((a, b) => a.period.localeCompare(b.period));
 
     return NextResponse.json({
       data: timeArray,
       granularity,
+      capabilities: {
+        canViewTotalSales,
+        canViewCommissions,
+        canViewAverageOrderValue,
+      },
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

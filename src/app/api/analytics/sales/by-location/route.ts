@@ -2,12 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 // GET /api/analytics/sales/by-location - Location breakdown
 export const GET = async (req: NextRequest) => {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, userId, currentBusinessUnitId } = await createServerClientWithBU();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const capabilities = await getUserCapabilities(userId, currentBusinessUnitId ?? null);
+    const canViewTotalSales = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_TOTAL_SALES
+    );
+    const canViewAverageOrderValue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_AVERAGE_ORDER_VALUE
+    );
+    const canViewCommissions = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_COMMISSIONS
+    );
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -50,10 +69,8 @@ export const GET = async (req: NextRequest) => {
     const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
-      return NextResponse.json(
-        { error: "Failed to fetch analytics data", details: invoicesError.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch sales by location analytics:", invoicesError);
+      return NextResponse.json({ error: "Failed to fetch analytics data" }, { status: 500 });
     }
 
     type InvoiceRow = {
@@ -125,13 +142,19 @@ export const GET = async (req: NextRequest) => {
       .map((loc) => ({
         city: loc.city,
         regionState: loc.regionState,
-        totalSales: loc.totalSales,
-        totalCommission: loc.totalCommission,
+        rawTotalSales: loc.totalSales,
+        totalSales: canViewTotalSales ? loc.totalSales : null,
+        totalCommission: canViewCommissions ? loc.totalCommission : null,
         transactionCount: loc.count,
         uniqueCustomers: loc.customers.size,
-        averageOrderValue: loc.count > 0 ? loc.totalSales / loc.count : 0,
+        averageOrderValue:
+          canViewAverageOrderValue && loc.count > 0 ? loc.totalSales / loc.count : null,
       }))
-      .sort((a, b) => b.totalSales - a.totalSales);
+      .sort((a, b) => b.rawTotalSales - a.rawTotalSales)
+      .map(({ rawTotalSales, ...loc }) => {
+        void rawTotalSales;
+        return loc;
+      });
 
     // Apply pagination
     const from = (page - 1) * limit;
@@ -147,6 +170,11 @@ export const GET = async (req: NextRequest) => {
         totalPages: Math.ceil(locationArray.length / limit),
       },
       groupBy,
+      capabilities: {
+        canViewTotalSales,
+        canViewCommissions,
+        canViewAverageOrderValue,
+      },
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

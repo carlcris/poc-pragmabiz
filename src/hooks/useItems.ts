@@ -40,19 +40,25 @@ export interface ItemsWithStockResponse {
     totalPages: number;
   };
   statistics?: {
-    totalAvailableValue: number;
+    totalAvailableValue: number | null;
     lowStockCount: number;
     outOfStockCount: number;
     totalCount: number;
+  };
+  capabilities?: {
+    canViewTotalAvailableValue: boolean;
   };
 }
 
 export interface ItemsStatsResponse {
   statistics: {
-    totalAvailableValue: number;
+    totalAvailableValue: number | null;
     lowStockCount: number;
     outOfStockCount: number;
     totalCount: number;
+  };
+  capabilities?: {
+    canViewTotalAvailableValue: boolean;
   };
 }
 

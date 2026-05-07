@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   AlertCircle,
   TrendingUp,
+  type LucideIcon,
 } from "lucide-react";
 import { useDeleteItem, useItems, useItemsStats } from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
@@ -53,6 +54,8 @@ import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { EditGuard, DeleteGuard } from "@/components/permissions/PermissionGuard";
 import { ItemImage } from "@/components/items/ItemImage";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Item } from "@/types/item";
 
@@ -133,6 +136,9 @@ function ItemsPageContent() {
     includeStock: true,
     enabled: areItemQueriesEnabled,
   });
+  const { data: granularCapabilities = {} } = useGranularCapabilities([
+    GRANULAR_CAPABILITIES.ITEM_MASTER_TOTAL_AVAILABLE_VALUE,
+  ]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -159,6 +165,17 @@ function ItemsPageContent() {
   const outOfStockItems = statistics?.outOfStockCount;
   const totalValue = statistics?.totalAvailableValue;
   const totalItems = statistics?.totalCount;
+  const canViewTotalAvailableValue =
+    granularCapabilities[GRANULAR_CAPABILITIES.ITEM_MASTER_TOTAL_AVAILABLE_VALUE] === true;
+
+  type StatsCardConfig = {
+    title: string;
+    value: string | number;
+    description: string;
+    icon: LucideIcon;
+    iconColor: string;
+    filterValue?: "low_stock" | "out_of_stock";
+  };
 
   const stats = [
     {
@@ -168,13 +185,20 @@ function ItemsPageContent() {
       icon: Package,
       iconColor: "text-blue-600",
     },
-    {
-      title: t("totalAvailableValue"),
-      value: hasStatsError ? "—" : totalValue !== undefined ? formatCurrency(totalValue) : "—",
-      description: t("totalAvailableValueDescription"),
-      icon: TrendingUp,
-      iconColor: "text-green-600",
-    },
+    canViewTotalAvailableValue
+      ? {
+          title: t("totalAvailableValue"),
+          value:
+            hasStatsError || totalValue == null
+              ? "—"
+              : totalValue !== undefined
+                ? formatCurrency(totalValue)
+                : "—",
+          description: t("totalAvailableValueDescription"),
+          icon: TrendingUp,
+          iconColor: "text-green-600",
+        }
+      : null,
     {
       title: t("lowStock"),
       value: hasStatsError ? "—" : (lowStockItems ?? "—"),
@@ -191,7 +215,7 @@ function ItemsPageContent() {
       iconColor: "text-red-600",
       filterValue: "out_of_stock" as const,
     },
-  ];
+  ].filter((stat): stat is StatsCardConfig => Boolean(stat));
 
   const getStatusBadge = (status?: ItemWithStock["status"]) => {
     const variants: Record<ItemWithStock["status"], { label: string; className: string }> = {
@@ -333,11 +357,12 @@ function ItemsPageContent() {
       <div className="grid grid-cols-2 gap-2 md:grid-cols-2 md:gap-4 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
-          const isFilterCard = !!stat.filterValue;
-          const isActiveFilter = isFilterCard && statusFilter === stat.filterValue;
+          const filterValue = stat.filterValue;
+          const isFilterCard = Boolean(filterValue);
+          const isActiveFilter = filterValue ? statusFilter === filterValue : false;
           const handleToggleFilter = () => {
-            if (!isFilterCard) return;
-            const nextFilter = statusFilter === stat.filterValue ? "all" : stat.filterValue;
+            if (!filterValue) return;
+            const nextFilter = statusFilter === filterValue ? "all" : filterValue;
             setStatusFilter(nextFilter);
             setPage(1);
           };

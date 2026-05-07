@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { canAccessCapability } from "@/services/permissions/permissionResolver";
 import type {
   CustomerLedgerEntry,
   CustomerLedgerResponse,
@@ -133,10 +135,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (unauthorized) return unauthorized;
 
     const { id: customerId } = await params;
-    const { supabase, companyId } = await createServerClientWithBU();
+    const { supabase, userId, companyId, currentBusinessUnitId } = await createServerClientWithBU();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (!companyId) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
+    }
+
+    const canViewFinancialReports = await canAccessCapability(
+      userId,
+      GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS,
+      "view",
+      currentBusinessUnitId ?? null
+    );
+
+    if (!canViewFinancialReports) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { data: customer, error: customerError } = await supabase

@@ -37,6 +37,13 @@ type Permission = {
   can_create: boolean;
   can_edit: boolean;
   can_delete: boolean;
+  parent_resource?: string | null;
+  surface?: string | null;
+  capability_key?: string | null;
+  capability_action?: string | null;
+  label?: string | null;
+  permission_group?: string | null;
+  is_granular?: boolean | null;
 };
 
 type RolePermission = {
@@ -62,6 +69,108 @@ type RolePermissionsDialogProps = {
   role: Role;
 };
 
+type PermissionSection = {
+  key: string;
+  title: string;
+  modulePermission?: Permission;
+  childGroups: Array<{
+    title: string;
+    permissions: Permission[];
+  }>;
+};
+
+type PermissionSectionDraft = Omit<PermissionSection, "childGroups"> & {
+  childGroups: Map<string, Permission[]>;
+};
+
+const ACTION_FLAGS = ["can_view", "can_create", "can_edit", "can_delete"] as const;
+
+const getModuleTitle = (resource: string) => toProperCase(resource.replace(/[_-]+/g, " "));
+
+const getPermissionTitle = (permission: Permission) =>
+  permission.label?.trim() || getModuleTitle(permission.resource);
+
+const permissionMatchesSearch = (permission: Permission, query: string) => {
+  if (!query) return true;
+
+  const haystack = [
+    permission.resource,
+    permission.description,
+    permission.label,
+    permission.permission_group,
+    permission.parent_resource,
+    permission.surface,
+    permission.capability_key,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(query);
+};
+
+const groupPermissions = (permissions: Permission[], searchQuery: string): PermissionSection[] => {
+  const sections = new Map<string, PermissionSectionDraft>();
+
+  const ensureSection = (key: string) => {
+    const normalizedKey = key || "additional";
+    const existing = sections.get(normalizedKey);
+    if (existing) return existing;
+
+    const section: PermissionSectionDraft = {
+      key: normalizedKey,
+      title:
+        normalizedKey === "additional" ? "Additional Capabilities" : getModuleTitle(normalizedKey),
+      childGroups: new Map<string, Permission[]>(),
+    };
+    sections.set(normalizedKey, section);
+    return section;
+  };
+
+  permissions.forEach((permission) => {
+    if (permission.is_granular) {
+      const parentResource = permission.parent_resource || permission.resource.split(".")[0];
+      const section = ensureSection(parentResource);
+      const groupTitle =
+        permission.permission_group || getModuleTitle(permission.surface || "Capabilities");
+      const groupPermissions = section.childGroups.get(groupTitle) || [];
+      groupPermissions.push(permission);
+      section.childGroups.set(groupTitle, groupPermissions);
+      return;
+    }
+
+    const section = ensureSection(permission.resource);
+    section.modulePermission = permission;
+  });
+
+  return Array.from(sections.values())
+    .map((section) => {
+      const moduleMatches = section.modulePermission
+        ? permissionMatchesSearch(section.modulePermission, searchQuery)
+        : false;
+      const childGroups = Array.from(section.childGroups.entries())
+        .map(([title, permissions]) => ({
+          title,
+          permissions: permissions
+            .filter(
+              (permission) =>
+                !searchQuery || moduleMatches || permissionMatchesSearch(permission, searchQuery)
+            )
+            .sort((a, b) => getPermissionTitle(a).localeCompare(getPermissionTitle(b))),
+        }))
+        .filter((group) => group.permissions.length > 0);
+
+      return {
+        key: section.key,
+        title: section.title,
+        modulePermission: !searchQuery || moduleMatches ? section.modulePermission : undefined,
+        childGroups,
+      };
+    })
+    .filter((section) => section.modulePermission || section.childGroups.length > 0)
+    .sort((a, b) => a.title.localeCompare(b.title));
+};
+
 export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissionsDialogProps) {
   const t = useTranslations("adminRolePermissionsDialog");
   const tCommon = useTranslations("common");
@@ -77,20 +186,23 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
   const [searchQuery, setSearchQuery] = useState("");
 
   const allPermissions = useMemo(() => permissionsData?.data || [], [permissionsData?.data]);
-
-  // Filter permissions based on search query
-  const filteredPermissions = allPermissions.filter((permission: Permission) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      permission.resource.toLowerCase().includes(query) ||
-      permission.description?.toLowerCase().includes(query)
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const permissionSections = useMemo(
+    () => groupPermissions(allPermissions, normalizedSearchQuery),
+    [allPermissions, normalizedSearchQuery]
+  );
+  const shownPermissionCount = permissionSections.reduce((count, section) => {
+    const moduleCount = section.modulePermission ? 1 : 0;
+    const childCount = section.childGroups.reduce(
+      (total, group) => total + group.permissions.length,
+      0
     );
-  });
+    return count + moduleCount + childCount;
+  }, 0);
 
   // Initialize permission settings when role data loads
   useEffect(() => {
-    if (!roleData?.permissions || allPermissions.length === 0) {
+    if (!roleData?.permissions) {
       return;
     }
 
@@ -98,42 +210,57 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
       const settings = new Map<string, PermissionSettings>();
 
       roleData.permissions.forEach((rp: RolePermission) => {
-        const perm = allPermissions.find((p: Permission) => p.resource === rp.resource);
-        if (perm) {
-          settings.set(perm.id, {
-            permission_id: perm.id,
-            can_view: rp.can_view,
-            can_create: rp.can_create,
-            can_edit: rp.can_edit,
-            can_delete: rp.can_delete,
-          });
-        }
+        settings.set(rp.permission_id, {
+          permission_id: rp.permission_id,
+          can_view: rp.can_view,
+          can_create: rp.can_create,
+          can_edit: rp.can_edit,
+          can_delete: rp.can_delete,
+        });
       });
 
       setPermissionSettings(settings);
       setHasChanges(false);
     }
-  }, [roleData, allPermissions]);
+  }, [roleData]);
 
-  const isPermissionAssigned = (permissionId: string) => {
-    return permissionSettings.has(permissionId);
+  const isPermissionActionEnabled = (permissionId: string, flag: (typeof ACTION_FLAGS)[number]) => {
+    return permissionSettings.get(permissionId)?.[flag] ?? false;
   };
 
-  const togglePermission = (permissionId: string, permission: Permission) => {
+  const setModuleAction = (
+    section: PermissionSection,
+    flag: (typeof ACTION_FLAGS)[number],
+    checked: boolean
+  ) => {
+    if (!section.modulePermission) return;
+
     setPermissionSettings((prev) => {
       const newSettings = new Map(prev);
+      const current = newSettings.get(section.modulePermission!.id) ?? {
+        permission_id: section.modulePermission!.id,
+        can_view: false,
+        can_create: false,
+        can_edit: false,
+        can_delete: false,
+      };
 
-      if (newSettings.has(permissionId)) {
-        // Remove permission
-        newSettings.delete(permissionId);
+      const updated = {
+        ...current,
+        [flag]: checked,
+      };
+
+      if (updated.can_view || updated.can_create || updated.can_edit || updated.can_delete) {
+        newSettings.set(section.modulePermission!.id, updated);
       } else {
-        // Add permission with default CRUD flags from the permission definition
-        newSettings.set(permissionId, {
-          permission_id: permissionId,
-          can_view: permission.can_view,
-          can_create: permission.can_create,
-          can_edit: permission.can_edit,
-          can_delete: permission.can_delete,
+        newSettings.delete(section.modulePermission!.id);
+      }
+
+      if (flag === "can_view" && !checked) {
+        section.childGroups.forEach((group) => {
+          group.permissions.forEach((permission) => {
+            newSettings.delete(permission.id);
+          });
         });
       }
 
@@ -142,22 +269,38 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
     });
   };
 
-  const toggleCrudFlag = (
-    permissionId: string,
-    flag: "can_view" | "can_create" | "can_edit" | "can_delete"
-  ) => {
+  const toggleGranularPermission = (section: PermissionSection, permission: Permission) => {
     setPermissionSettings((prev) => {
       const newSettings = new Map(prev);
-      const current = newSettings.get(permissionId);
 
-      if (current) {
-        newSettings.set(permissionId, {
-          ...current,
-          [flag]: !current[flag],
+      if (newSettings.has(permission.id)) {
+        newSettings.delete(permission.id);
+      } else {
+        newSettings.set(permission.id, {
+          permission_id: permission.id,
+          can_view: permission.can_view,
+          can_create: permission.can_create,
+          can_edit: permission.can_edit,
+          can_delete: permission.can_delete,
         });
-        setHasChanges(true);
+
+        if (section.modulePermission?.can_view) {
+          const parentSettings = newSettings.get(section.modulePermission.id) ?? {
+            permission_id: section.modulePermission.id,
+            can_view: false,
+            can_create: false,
+            can_edit: false,
+            can_delete: false,
+          };
+
+          newSettings.set(section.modulePermission.id, {
+            ...parentSettings,
+            can_view: true,
+          });
+        }
       }
 
+      setHasChanges(true);
       return newSettings;
     });
   };
@@ -185,16 +328,13 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
       const settings = new Map<string, PermissionSettings>();
 
       roleData.permissions.forEach((rp: RolePermission) => {
-        const perm = allPermissions.find((p: Permission) => p.resource === rp.resource);
-        if (perm) {
-          settings.set(perm.id, {
-            permission_id: perm.id,
-            can_view: rp.can_view,
-            can_create: rp.can_create,
-            can_edit: rp.can_edit,
-            can_delete: rp.can_delete,
-          });
-        }
+        settings.set(rp.permission_id, {
+          permission_id: rp.permission_id,
+          can_view: rp.can_view,
+          can_create: rp.can_create,
+          can_edit: rp.can_edit,
+          can_delete: rp.can_delete,
+        });
       });
 
       setPermissionSettings(settings);
@@ -237,7 +377,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
-          ) : filteredPermissions.length === 0 ? (
+          ) : permissionSections.length === 0 ? (
             <div className="py-8 text-center text-muted-foreground">
               {searchQuery ? (
                 <>{t("noSearchResults", { query: searchQuery })}</>
@@ -246,101 +386,109 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredPermissions.map((permission: Permission) => {
-                const isAssigned = isPermissionAssigned(permission.id);
-                const settings = permissionSettings.get(permission.id);
+            <div className="space-y-4">
+              {permissionSections.map((section) => (
+                <section key={section.key} className="rounded-lg border bg-background">
+                  <div className="border-b px-4 py-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold">{section.title}</h3>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                          Module access and related granular controls
+                        </p>
+                      </div>
 
-                return (
-                  <div
-                    key={permission.id}
-                    className={cn(
-                      "rounded-lg border p-4 transition-colors",
-                      isAssigned ? "bg-accent/30" : "hover:bg-accent/10"
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Checkbox
-                        checked={isAssigned}
-                        onCheckedChange={() => togglePermission(permission.id, permission)}
-                        className="mt-1"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {toProperCase(permission.resource)}
-                          </span>
-                        </div>
-                        {permission.description && (
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {permission.description}
-                          </p>
-                        )}
+                      <div className="flex items-center gap-4">
+                        <Badge variant="outline" className="shrink-0">
+                          {section.childGroups.reduce(
+                            (total, group) => total + group.permissions.length,
+                            section.modulePermission ? 1 : 0
+                          )}{" "}
+                          permissions
+                        </Badge>
 
-                        {/* CRUD Checkboxes - Only show if permission is assigned */}
-                        {isAssigned && settings && (
-                          <div className="mt-3 flex items-center gap-6 pl-1">
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <Checkbox
-                                checked={settings.can_view}
-                                onCheckedChange={() => toggleCrudFlag(permission.id, "can_view")}
-                                disabled={!permission.can_view}
-                              />
-                              <span className="text-sm">{tCommon("view")}</span>
-                            </label>
+                        {section.modulePermission && (
+                          <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2">
+                            {ACTION_FLAGS.map((flag) => {
+                              const settings = permissionSettings.get(section.modulePermission!.id);
+                              const supported = section.modulePermission?.[flag] ?? false;
+                              const label =
+                                flag === "can_view"
+                                  ? tCommon("view")
+                                  : flag === "can_create"
+                                    ? tCommon("create")
+                                    : flag === "can_edit"
+                                      ? tCommon("edit")
+                                      : tCommon("delete");
 
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <Checkbox
-                                checked={settings.can_create}
-                                onCheckedChange={() => toggleCrudFlag(permission.id, "can_create")}
-                                disabled={!permission.can_create}
-                              />
-                              <span className="text-sm">{tCommon("create")}</span>
-                            </label>
-
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <Checkbox
-                                checked={settings.can_edit}
-                                onCheckedChange={() => toggleCrudFlag(permission.id, "can_edit")}
-                                disabled={!permission.can_edit}
-                              />
-                              <span className="text-sm">{tCommon("edit")}</span>
-                            </label>
-
-                            <label className="flex cursor-pointer items-center gap-2">
-                              <Checkbox
-                                checked={settings.can_delete}
-                                onCheckedChange={() => toggleCrudFlag(permission.id, "can_delete")}
-                                disabled={!permission.can_delete}
-                              />
-                              <span className="text-sm">{tCommon("delete")}</span>
-                            </label>
-                          </div>
-                        )}
-
-                        {/* Show available CRUD operations for reference */}
-                        {!isAssigned && (
-                          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{t("available")}</span>
-                            {permission.can_view && (
-                              <span className="text-green-600">{tCommon("view")}</span>
-                            )}
-                            {permission.can_create && (
-                              <span className="text-green-600">{tCommon("create")}</span>
-                            )}
-                            {permission.can_edit && (
-                              <span className="text-green-600">{tCommon("edit")}</span>
-                            )}
-                            {permission.can_delete && (
-                              <span className="text-green-600">{tCommon("delete")}</span>
-                            )}
+                              return (
+                                <label
+                                  key={flag}
+                                  className={cn(
+                                    "flex cursor-pointer items-center gap-1.5 text-sm",
+                                    !supported && "cursor-not-allowed opacity-40"
+                                  )}
+                                  title={!supported ? `${label} not available` : undefined}
+                                >
+                                  <Checkbox
+                                    checked={settings?.[flag] ?? false}
+                                    onCheckedChange={(checked) =>
+                                      setModuleAction(section, flag, checked === true)
+                                    }
+                                    disabled={!supported}
+                                  />
+                                  <span>{label}</span>
+                                </label>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                );
-              })}
+
+                  {section.childGroups.length > 0 && (
+                    <div className="space-y-4 px-4 py-4">
+                      {section.childGroups.map((group) => (
+                        <div key={group.title} className="space-y-2">
+                          <div className="grid gap-2 md:grid-cols-2">
+                            {group.permissions.map((permission) => (
+                              <label
+                                key={permission.id}
+                                className={cn(
+                                  "flex cursor-pointer items-start gap-3 rounded-md border px-3 py-3 transition-colors",
+                                  isPermissionActionEnabled(permission.id, "can_view")
+                                    ? "border-primary/30 bg-primary/5"
+                                    : "hover:bg-muted/40"
+                                )}
+                              >
+                                <Checkbox
+                                  checked={isPermissionActionEnabled(permission.id, "can_view")}
+                                  onCheckedChange={() =>
+                                    toggleGranularPermission(section, permission)
+                                  }
+                                  disabled={!permission.can_view}
+                                  className="mt-0.5"
+                                />
+                                <span className="min-w-0">
+                                  <span className="block text-sm font-medium">
+                                    {getPermissionTitle(permission)}
+                                  </span>
+                                  {permission.description && (
+                                    <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">
+                                      {permission.description}
+                                    </span>
+                                  )}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ))}
             </div>
           )}
         </div>
@@ -353,7 +501,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
             })}
             {searchQuery && (
               <span className="ml-2">
-                {t("shownSummary", { count: String(filteredPermissions.length) })}
+                {t("shownSummary", { count: String(shownPermissionCount) })}
               </span>
             )}
           </div>

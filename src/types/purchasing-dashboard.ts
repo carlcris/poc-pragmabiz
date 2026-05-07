@@ -6,6 +6,7 @@
  */
 
 import type { LoadListStatus } from "./load-list";
+import type { PurchasingDashboardCapabilities } from "@/constants/granular-permissions";
 
 // ============================================================================
 // WIDGET DATA TYPES
@@ -17,7 +18,8 @@ import type { LoadListStatus } from "./load-list";
  */
 export type OutstandingRequisitionsData = {
   count: number;
-  totalValue: number;
+  totalValue: number | null;
+  canViewValue: boolean;
   items: DashboardStockRequisition[];
 };
 
@@ -27,7 +29,8 @@ export type OutstandingRequisitionsData = {
  */
 export type DamagedItemsData = {
   count: number;
-  totalValue: number;
+  totalValue: number | null;
+  canViewValue: boolean;
   bySupplier: SupplierDamageStats[];
   byDamageType: DamageTypeStats[];
 };
@@ -36,7 +39,7 @@ export type SupplierDamageStats = {
   supplierId: string;
   supplierName: string;
   count: number;
-  value: number;
+  value: number | null;
 };
 
 export type DamageTypeStats = {
@@ -188,6 +191,7 @@ export type LocationAssignmentStatusData = {
  * Contains data for all requested widgets
  */
 export type PurchasingDashboardData = {
+  capabilities?: PurchasingDashboardCapabilities;
   outstandingRequisitions?: OutstandingRequisitionsData;
   damagedItemsThisMonth?: DamagedItemsData;
   expectedArrivalsThisWeek?: ExpectedArrivalsData;
@@ -269,7 +273,7 @@ export type DashboardStockRequisition = {
   id: string;
   sr_number: string;
   status: "draft" | "submitted" | "partially_fulfilled" | "fulfilled" | "cancelled";
-  total_amount: number;
+  total_amount: number | null;
   business_unit?: {
     id: string;
     name: string;

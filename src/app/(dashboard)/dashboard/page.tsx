@@ -3,7 +3,6 @@
 import { Package, ClipboardList, TruckIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useWarehouseDashboard } from "@/hooks/useWarehouseDashboard";
-import { useLoadLists } from "@/hooks/useLoadLists";
 import { useAuthStore } from "@/stores/authStore";
 import { SummaryCard } from "@/components/warehouse-dashboard/SummaryCard";
 import { InventoryHealthPanel } from "@/components/warehouse-dashboard/InventoryHealthPanel";
@@ -26,14 +25,26 @@ export default function WarehouseDashboardPage() {
   const t = useTranslations("dashboardPage");
   const locale = useLocale();
   const { data, isLoading, error, refetch } = useWarehouseDashboard();
-  const { data: inTransitLoadLists, isLoading: incomingShipmentsLoading } = useLoadLists({
-    status: "in_transit",
-    page: 1,
-    limit: 1,
-  });
   const user = useAuthStore((state) => state.user);
   const greeting = t(getGreetingKey());
-  const incomingShipmentsCount = inTransitLoadLists?.pagination.total || 0;
+  const canViewStockValue = data?.capabilities?.canViewStockValue ?? false;
+  const canViewReorderValue = data?.capabilities?.canViewReorderValue ?? false;
+  const canViewIncomingShipmentsCard =
+    data?.capabilities?.canViewIncomingShipmentsCard ?? false;
+  const canViewStockRequestsCard = data?.capabilities?.canViewStockRequestsCard ?? false;
+  const canViewPickListCard = data?.capabilities?.canViewPickListCard ?? false;
+  const canViewPickListQueue = data?.capabilities?.canViewPickListQueue ?? false;
+  const canViewIncomingDeliveriesQueue =
+    data?.capabilities?.canViewIncomingDeliveriesQueue ?? false;
+  const canViewStockRequestsQueue = data?.capabilities?.canViewStockRequestsQueue ?? false;
+  const canViewInventoryHealth = isLoading || canViewStockValue || canViewReorderValue;
+  const canViewSummaryCards =
+    isLoading || canViewIncomingShipmentsCard || canViewStockRequestsCard || canViewPickListCard;
+  const canViewOperationalQueue =
+    isLoading ||
+    canViewPickListQueue ||
+    canViewIncomingDeliveriesQueue ||
+    canViewStockRequestsQueue;
 
   if (error) {
     return (
@@ -62,85 +73,104 @@ export default function WarehouseDashboardPage() {
       </div>
 
       {/* Summary Cards - 3 columns */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </>
-        ) : (
-          <>
-            <SummaryCard
-              title={t("incomingShipments")}
-              count={incomingShipmentsLoading ? 0 : incomingShipmentsCount}
-              subtitle={t("inTransit")}
-              icon={TruckIcon}
-              iconColor="text-blue-600"
-              href="/purchasing/load-lists"
-            />
-            <SummaryCard
-              title={t("stockRequests")}
-              count={data?.summary.pending_stock_requests || 0}
-              subtitle={t("pending")}
-              icon={ClipboardList}
-              iconColor="text-orange-600"
-              href="/inventory/stock-requests"
-            />
-            <SummaryCard
-              title={t("pickList")}
-              count={data?.summary.pick_list_to_pick || 0}
-              subtitle={t("toPick")}
-              icon={Package}
-              iconColor="text-green-600"
-              href="/inventory/stock-requests"
-            />
-          </>
-        )}
-      </div>
+      {canViewSummaryCards && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {isLoading ? (
+            <>
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </>
+          ) : (
+            <>
+              {canViewIncomingShipmentsCard && (
+                <SummaryCard
+                  title={t("incomingShipments")}
+                  count={data?.summary.incoming_deliveries_today || 0}
+                  subtitle={t("inTransit")}
+                  icon={TruckIcon}
+                  iconColor="text-blue-600"
+                  href="/purchasing/load-lists"
+                />
+              )}
+              {canViewStockRequestsCard && (
+                <SummaryCard
+                  title={t("stockRequests")}
+                  count={data?.summary.pending_stock_requests || 0}
+                  subtitle={t("pending")}
+                  icon={ClipboardList}
+                  iconColor="text-orange-600"
+                  href="/inventory/stock-requests"
+                />
+              )}
+              {canViewPickListCard && (
+                <SummaryCard
+                  title={t("pickList")}
+                  count={data?.summary.pick_list_to_pick || 0}
+                  subtitle={t("toPick")}
+                  icon={Package}
+                  iconColor="text-green-600"
+                  href="/inventory/stock-requests"
+                />
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Inventory Health - 2 columns */}
-      <InventoryHealthPanel
-        lowStocks={data?.low_stocks || []}
-        outOfStocks={data?.out_of_stocks || []}
-        isLoading={isLoading}
-        locale={locale}
-      />
-
-      {/* Operational Queue - Tabs */}
-      <ClientOnly
-        fallback={
-          <div className="rounded-lg border bg-background p-6">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5 rounded-full" />
-              <Skeleton className="h-5 w-40" />
-            </div>
-            <div className="mt-4 space-y-3">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          </div>
-        }
-      >
-        <OperationalQueueTabs
-          queues={
-            data?.queues || {
-              pick_list: [],
-              incoming_deliveries: [],
-              stock_requests: [],
-            }
-          }
+      {canViewInventoryHealth && (
+        <InventoryHealthPanel
+          lowStocks={canViewReorderValue ? data?.low_stocks || [] : []}
+          outOfStocks={canViewStockValue ? data?.out_of_stocks || [] : []}
           isLoading={isLoading}
           locale={locale}
         />
-      </ClientOnly>
+      )}
+
+      {/* Operational Queue - Tabs */}
+      {canViewOperationalQueue && (
+        <ClientOnly
+          fallback={
+            <div className="rounded-lg border bg-background p-6">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5 rounded-full" />
+                <Skeleton className="h-5 w-40" />
+              </div>
+              <div className="mt-4 space-y-3">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            </div>
+          }
+        >
+          <OperationalQueueTabs
+            queues={
+              data?.queues || {
+                pick_list: [],
+                incoming_deliveries: [],
+                stock_requests: [],
+              }
+            }
+            isLoading={isLoading}
+            locale={locale}
+            capabilities={{
+              canViewPickListQueue: isLoading || canViewPickListQueue,
+              canViewIncomingDeliveriesQueue: isLoading || canViewIncomingDeliveriesQueue,
+              canViewStockRequestsQueue: isLoading || canViewStockRequestsQueue,
+            }}
+          />
+        </ClientOnly>
+      )}
 
       {/* Last 5 Stock Movements */}
-      <StockMovementsList
-        movements={data?.last_stock_movements || []}
-        isLoading={isLoading}
-        locale={locale}
-      />
+      {(isLoading || canViewStockValue) && (
+        <StockMovementsList
+          movements={data?.last_stock_movements || []}
+          isLoading={isLoading}
+          locale={locale}
+        />
+      )}
     </div>
   );
 }

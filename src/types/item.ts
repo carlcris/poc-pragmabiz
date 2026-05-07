@@ -60,6 +60,13 @@ export type Item = {
   updatedAt: string;
 };
 
+export type ItemDetail = Omit<Item, "standardCost" | "importCost" | "importCurrency" | "listPrice"> & {
+  standardCost: number | null;
+  importCost: number | null;
+  importCurrency: string | null;
+  listPrice: number | null;
+};
+
 export type CreateItemRequest = {
   companyId: string;
   code: string;
@@ -111,7 +118,10 @@ export type ItemsListResponse = {
 };
 
 export type ItemResponse = {
-  data: Item;
+  data: ItemDetail;
+  capabilities?: {
+    canViewPricingDetails?: boolean;
+  };
 };
 
 export type ItemFilters = {

@@ -1,6 +1,8 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import type { DashboardData, Priority } from "@/types/warehouse-dashboard";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 type PickListQueueRow = {
   id: string;
@@ -62,6 +64,41 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId ?? null);
+    const canViewStockValue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_STOCK_VALUE
+    );
+    const canViewReorderValue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_REORDER_VALUE
+    );
+    const canViewIncomingShipmentsCard = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_INCOMING_SHIPMENTS_CARD
+    );
+    const canViewStockRequestsCard = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_STOCK_REQUESTS_CARD
+    );
+    const canViewPickListCard = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_PICK_LIST_CARD
+    );
+    const canViewPickListQueue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_PICK_LIST_QUEUE
+    );
+    const canViewIncomingDeliveriesQueue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_INCOMING_DELIVERIES_QUEUE
+    );
+    const canViewStockRequestsQueue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.DASHBOARD_STOCK_REQUESTS_QUEUE
+    );
+    const canViewInventoryHealth = canViewStockValue || canViewReorderValue;
+
     // Get user's accessible business units
     const { data: userBUAccess } = await supabase
       .from("user_business_unit_access")
@@ -87,20 +124,24 @@ export async function GET() {
       stockMovementsResult,
     ] = await Promise.all([
       // Summary: Incoming deliveries (load lists in transit/receiving)
-      supabase
-        .from("load_lists")
-        .select("id", { count: "exact", head: true })
-        .in("business_unit_id", accessibleBUIds)
-        .in("status", ["in_transit", "receiving"])
-        .is("deleted_at", null),
+      canViewIncomingShipmentsCard
+        ? supabase
+            .from("load_lists")
+            .select("id", { count: "exact", head: true })
+            .in("business_unit_id", accessibleBUIds)
+            .in("status", ["in_transit", "receiving"])
+            .is("deleted_at", null)
+        : Promise.resolve({ count: 0, error: null }),
 
       // Summary: Pending stock requests
-      supabase
-        .from("stock_requests")
-        .select("id", { count: "exact", head: true })
-        .in("business_unit_id", scopedBUIds)
-        .in("status", ["submitted", "approved"])
-        .is("deleted_at", null),
+      canViewStockRequestsCard
+        ? supabase
+            .from("stock_requests")
+            .select("id", { count: "exact", head: true })
+            .in("business_unit_id", scopedBUIds)
+            .in("status", ["submitted", "approved"])
+            .is("deleted_at", null)
+        : Promise.resolve({ count: 0, error: null }),
 
       // Summary: Urgent stock requests needing attention
       supabase
@@ -112,36 +153,41 @@ export async function GET() {
         .is("deleted_at", null),
 
       // Summary: Active pick lists (pending + in progress + paused)
-      supabase
-        .from("pick_lists")
-        .select("id", { count: "exact", head: true })
-        .in("business_unit_id", scopedBUIds)
-        .in("status", ["pending", "in_progress", "paused"])
-        .is("deleted_at", null),
+      canViewPickListCard
+        ? supabase
+            .from("pick_lists")
+            .select("id", { count: "exact", head: true })
+            .in("business_unit_id", scopedBUIds)
+            .in("status", ["pending", "in_progress", "paused"])
+            .is("deleted_at", null)
+        : Promise.resolve({ count: 0, error: null }),
 
       // Inventory health (low + out of stock)
-      supabase
-        .from("item_warehouse")
-        .select(
-          `
-          item_id,
-          warehouse_id,
-          current_stock,
-          reorder_level,
-          warehouses!inner(business_unit_id),
-          warehouse_locations!item_warehouse_default_location_id_fkey(code),
-          items!inner(item_name, units_of_measure!inner(symbol))
-        `
-        )
-        .in("warehouses.business_unit_id", scopedBUIds)
-        .is("deleted_at", null)
-        .order("current_stock", { ascending: true }),
+      canViewInventoryHealth
+        ? supabase
+            .from("item_warehouse")
+            .select(
+              `
+              item_id,
+              warehouse_id,
+              current_stock,
+              reorder_level,
+              warehouses!inner(business_unit_id),
+              warehouse_locations!item_warehouse_default_location_id_fkey(code),
+              items!inner(item_name, units_of_measure!inner(symbol))
+            `
+            )
+            .in("warehouses.business_unit_id", scopedBUIds)
+            .is("deleted_at", null)
+            .order("current_stock", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
 
       // Pick list queue
-      supabase
-        .from("pick_lists")
-        .select(
-          `
+      canViewPickListQueue
+        ? supabase
+            .from("pick_lists")
+            .select(
+              `
           id,
           pick_list_no,
           created_at,
@@ -150,18 +196,20 @@ export async function GET() {
           users!pick_lists_created_by_fkey(email),
           pick_list_items(id)
         `
-        )
-        .in("business_unit_id", scopedBUIds)
-        .in("status", ["pending", "in_progress", "paused"])
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true })
-        .limit(12),
+            )
+            .in("business_unit_id", scopedBUIds)
+            .in("status", ["pending", "in_progress", "paused"])
+            .is("deleted_at", null)
+            .order("created_at", { ascending: true })
+            .limit(12)
+        : Promise.resolve({ data: [], error: null }),
 
       // Incoming deliveries queue (load lists)
-      supabase
-        .from("load_lists")
-        .select(
-          `
+      canViewIncomingDeliveriesQueue
+        ? supabase
+            .from("load_lists")
+            .select(
+              `
           id,
           ll_number,
           estimated_arrival_date,
@@ -169,18 +217,20 @@ export async function GET() {
           suppliers(supplier_name),
           load_list_items(id)
         `
-        )
-        .in("business_unit_id", accessibleBUIds)
-        .in("status", ["in_transit", "receiving"])
-        .is("deleted_at", null)
-        .order("estimated_arrival_date", { ascending: true })
-        .limit(12),
+            )
+            .in("business_unit_id", accessibleBUIds)
+            .in("status", ["in_transit", "receiving"])
+            .is("deleted_at", null)
+            .order("estimated_arrival_date", { ascending: true })
+            .limit(12)
+        : Promise.resolve({ data: [], error: null }),
 
       // Stock requests queue
-      supabase
-        .from("stock_requests")
-        .select(
-          `
+      canViewStockRequestsQueue
+        ? supabase
+            .from("stock_requests")
+            .select(
+              `
           id,
           request_code,
           request_date,
@@ -191,33 +241,36 @@ export async function GET() {
           users!stock_requests_created_by_fkey(email),
           stock_request_items(id)
         `
-        )
-        .in("business_unit_id", scopedBUIds)
-        .in("status", ["submitted", "approved"])
-        .is("deleted_at", null)
-        .order("priority", { ascending: false })
-        .order("request_date", { ascending: true })
-        .limit(12),
+            )
+            .in("business_unit_id", scopedBUIds)
+            .in("status", ["submitted", "approved"])
+            .is("deleted_at", null)
+            .order("priority", { ascending: false })
+            .order("request_date", { ascending: true })
+            .limit(12)
+        : Promise.resolve({ data: [], error: null }),
 
       // Last 5 stock movements
-      supabase
-        .from("stock_transaction_items")
-        .select(
-          `
-          quantity,
-          stock_transactions!inner(
-            transaction_type,
-            created_at,
-            business_unit_id,
-            users!stock_transactions_created_by_fkey(email)
-          ),
-          items!inner(item_name),
-          units_of_measure!inner(symbol)
-        `
-        )
-        .in("stock_transactions.business_unit_id", scopedBUIds)
-        .order("stock_transactions(created_at)", { ascending: false })
-        .limit(5),
+      canViewStockValue
+        ? supabase
+            .from("stock_transaction_items")
+            .select(
+              `
+              quantity,
+              stock_transactions!inner(
+                transaction_type,
+                created_at,
+                business_unit_id,
+                users!stock_transactions_created_by_fkey(email)
+              ),
+              items!inner(item_name),
+              units_of_measure!inner(symbol)
+            `
+            )
+            .in("stock_transactions.business_unit_id", scopedBUIds)
+            .order("stock_transactions(created_at)", { ascending: false })
+            .limit(5)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     // Check for errors
@@ -313,22 +366,26 @@ export async function GET() {
         pick_list_to_pick: pickListToPickResult.count || 0,
         urgent_stock_requests: urgentStockRequestsResult.count || 0,
       },
-      low_stocks: lowStocks.map((item) => ({
-        item_id: item.item_id,
-        item_name: item.item_name,
-        qty: item.qty,
-        uom: item.uom,
-        location_code: item.location_code,
-        reorder_level: item.reorder_level,
-      })),
-      out_of_stocks: outOfStocks.map((item) => ({
-        item_id: item.item_id,
-        item_name: item.item_name,
-        qty: item.qty,
-        uom: item.uom,
-        location_code: item.location_code,
-        last_moved_at: null, // TODO: derive from latest stock movement
-      })),
+      low_stocks: canViewReorderValue
+        ? lowStocks.map((item) => ({
+            item_id: item.item_id,
+            item_name: item.item_name,
+            qty: item.qty,
+            uom: item.uom,
+            location_code: item.location_code,
+            reorder_level: item.reorder_level,
+          }))
+        : [],
+      out_of_stocks: canViewStockValue
+        ? outOfStocks.map((item) => ({
+            item_id: item.item_id,
+            item_name: item.item_name,
+            qty: item.qty,
+            uom: item.uom,
+            location_code: item.location_code,
+            last_moved_at: null, // TODO: derive from latest stock movement
+          }))
+        : [],
       queues: {
         pick_list: pickListQueue.map((item) => ({
           id: item.id,
@@ -358,51 +415,46 @@ export async function GET() {
           required_date: item.required_date,
         })),
       },
-      last_stock_movements: stockMovements.map((item) => {
-        const transaction = Array.isArray(item.stock_transactions)
-          ? (item.stock_transactions[0] ?? null)
-          : (item.stock_transactions ?? null);
-        const user = Array.isArray(transaction?.users)
-          ? (transaction?.users[0] ?? null)
-          : (transaction?.users ?? null);
-        const itemRecord = Array.isArray(item.items)
-          ? (item.items[0] ?? null)
-          : (item.items ?? null);
-        const uomRecord = Array.isArray(item.units_of_measure)
-          ? (item.units_of_measure[0] ?? null)
-          : (item.units_of_measure ?? null);
+      last_stock_movements: canViewStockValue
+        ? stockMovements.map((item) => {
+            const transaction = Array.isArray(item.stock_transactions)
+              ? (item.stock_transactions[0] ?? null)
+              : (item.stock_transactions ?? null);
+            const user = Array.isArray(transaction?.users)
+              ? (transaction?.users[0] ?? null)
+              : (transaction?.users ?? null);
+            const itemRecord = Array.isArray(item.items)
+              ? (item.items[0] ?? null)
+              : (item.items ?? null);
+            const uomRecord = Array.isArray(item.units_of_measure)
+              ? (item.units_of_measure[0] ?? null)
+              : (item.units_of_measure ?? null);
 
-        return {
-          type: transaction?.transaction_type || "",
-          item_name: itemRecord?.item_name || "",
-          qty: item.quantity,
-          uom: uomRecord?.symbol || "",
-          performed_by: user?.email || "Unknown",
-          timestamp: transaction?.created_at || "",
-        };
-      }),
+            return {
+              type: transaction?.transaction_type || "",
+              item_name: itemRecord?.item_name || "",
+              qty: item.quantity,
+              uom: uomRecord?.symbol || "",
+              performed_by: user?.email || "Unknown",
+              timestamp: transaction?.created_at || "",
+            };
+          })
+        : [],
+      capabilities: {
+        canViewStockValue,
+        canViewReorderValue,
+        canViewIncomingShipmentsCard,
+        canViewStockRequestsCard,
+        canViewPickListCard,
+        canViewPickListQueue,
+        canViewIncomingDeliveriesQueue,
+        canViewStockRequestsQueue,
+      },
     };
 
     return NextResponse.json(dashboardData);
   } catch (error) {
     console.error("Error in warehouse-dashboard API:", error);
-
-    // Better error serialization
-    let errorDetails = "Unknown error";
-    if (error instanceof Error) {
-      errorDetails = error.message;
-    } else if (typeof error === "object" && error !== null) {
-      errorDetails = JSON.stringify(error);
-    } else {
-      errorDetails = String(error);
-    }
-
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: errorDetails,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

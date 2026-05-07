@@ -147,15 +147,17 @@ export function DamagedItemsWidget({ businessUnitId, warehouseId }: DamagedItems
             </div>
             <p className="mt-2 text-xl font-bold text-destructive sm:text-2xl">{data.count}</p>
           </div>
-          <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <TrendingDown className="h-4 w-4" />
-              <span>{t("totalValue")}</span>
+          {data.canViewValue && (
+            <div className="rounded-lg border bg-muted/50 p-3 sm:p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TrendingDown className="h-4 w-4" />
+                <span>{t("totalValue")}</span>
+              </div>
+              <p className="mt-2 text-xl font-bold text-destructive sm:text-2xl">
+                {formatCurrency(data.totalValue ?? 0)}
+              </p>
             </div>
-            <p className="mt-2 text-xl font-bold text-destructive sm:text-2xl">
-              {formatCurrency(data.totalValue)}
-            </p>
-          </div>
+          )}
         </div>
 
         {/* Charts */}

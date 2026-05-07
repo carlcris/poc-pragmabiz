@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { ReportPreviewDialog } from "@/components/reports/ReportPreviewDialog";
+import { GRANULAR_CAPABILITIES, PHASE_1_GRANULAR_CAPABILITY_KEYS } from "@/constants/granular-permissions";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +52,7 @@ type Report = {
   path?: string;
   previewType?: SupportedReportPreviewType;
   icon: LucideIcon;
+  requiredCapabilities?: string[];
 };
 
 type ReportCategory = {
@@ -86,6 +89,9 @@ export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [previewReport, setPreviewReport] = useState<Report | null>(null);
+  const { data: capabilities = {} } = useGranularCapabilities(PHASE_1_GRANULAR_CAPABILITY_KEYS);
+  const hasCapabilities = (keys: string[] | undefined) =>
+    !keys || keys.length === 0 || keys.every((key) => capabilities[key]);
 
   const reportCategories = useMemo<ReportCategory[]>(
     () => [
@@ -112,6 +118,7 @@ export default function ReportsPage() {
             businessValue: t("stockAgingValue"),
             previewType: "stock-aging",
             icon: Clock,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
           },
           {
             id: "inventory-report",
@@ -121,6 +128,7 @@ export default function ReportsPage() {
             businessValue: t("inventoryReportValue"),
             previewType: "inventory",
             icon: BarChart3,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
           },
           {
             id: "fast-moving-products",
@@ -130,6 +138,7 @@ export default function ReportsPage() {
             businessValue: t("fastMovingProductsValue"),
             previewType: "fast-moving-products",
             icon: TrendingUp,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_REVENUE_CARDS],
           },
           {
             id: "slow-moving-products",
@@ -139,6 +148,7 @@ export default function ReportsPage() {
             businessValue: t("slowMovingProductsValue"),
             previewType: "slow-moving-products",
             icon: Clock,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_REVENUE_CARDS],
           },
           {
             id: "stock-turnover",
@@ -147,6 +157,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("stockTurnoverValue"),
             icon: TrendingUp,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
           },
           {
             id: "reorder-analysis",
@@ -155,6 +166,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("reorderAnalysisValue"),
             icon: Package,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
           },
           {
             id: "warehouse-utilization",
@@ -171,6 +183,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("stockVarianceValue"),
             icon: CheckCircle2,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
           },
           {
             id: "batch-traceability",
@@ -204,6 +217,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("plStatementValue"),
             icon: FileText,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "balance-sheet",
@@ -212,6 +226,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("balanceSheetValue"),
             icon: BarChart3,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "cash-flow",
@@ -220,6 +235,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("cashFlowValue"),
             icon: DollarSign,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "customer-ledger",
@@ -229,6 +245,7 @@ export default function ReportsPage() {
             businessValue: t("customerLedgerValue"),
             previewType: "customer-ledger",
             icon: FileText,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "ar-aging",
@@ -238,6 +255,7 @@ export default function ReportsPage() {
             businessValue: t("arAgingValue"),
             previewType: "accounts-receivable-aging",
             icon: Clock,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "ap-aging",
@@ -246,6 +264,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("apAgingValue"),
             icon: Clock,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "sales-profitability",
@@ -254,6 +273,10 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("salesProfitabilityValue"),
             icon: TrendingUp,
+            requiredCapabilities: [
+              GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS,
+              GRANULAR_CAPABILITIES.REPORTS_REVENUE_CARDS,
+            ],
           },
           {
             id: "cogs-analysis",
@@ -262,6 +285,10 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("cogsAnalysisValue"),
             icon: BarChart3,
+            requiredCapabilities: [
+              GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS,
+              GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS,
+            ],
           },
         ],
       },
@@ -303,6 +330,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("supplierSpendValue"),
             icon: DollarSign,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.PURCHASING_SUPPLIER_SPEND],
           },
           {
             id: "price-variance",
@@ -311,6 +339,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("priceVarianceValue"),
             icon: TrendingUp,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_VALUATION_CARDS],
           },
         ],
       },
@@ -377,6 +406,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("executiveSummaryValue"),
             icon: BarChart3,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
           {
             id: "period-comparison",
@@ -385,6 +415,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("periodComparisonValue"),
             icon: TrendingUp,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_REVENUE_CARDS],
           },
           {
             id: "budget-actual",
@@ -393,6 +424,7 @@ export default function ReportsPage() {
             status: "coming-soon",
             businessValue: t("budgetActualValue"),
             icon: DollarSign,
+            requiredCapabilities: [GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS],
           },
         ],
       },
@@ -456,7 +488,14 @@ export default function ReportsPage() {
     [t]
   );
 
-  const filteredCategories = reportCategories
+  const visibleReportCategories = reportCategories
+    .map((category) => ({
+      ...category,
+      reports: category.reports.filter((report) => hasCapabilities(report.requiredCapabilities)),
+    }))
+    .filter((category) => category.reports.length > 0);
+
+  const filteredCategories = visibleReportCategories
     .map((category) => ({
       ...category,
       reports: category.reports.filter(
@@ -471,13 +510,16 @@ export default function ReportsPage() {
         : category.id === selectedCategory && category.reports.length > 0
     );
 
-  const totalReports = reportCategories.reduce((sum, category) => sum + category.reports.length, 0);
-  const implementedReports = reportCategories.reduce(
+  const totalReports = visibleReportCategories.reduce(
+    (sum, category) => sum + category.reports.length,
+    0
+  );
+  const implementedReports = visibleReportCategories.reduce(
     (sum, category) =>
       sum + category.reports.filter((report) => report.status === "implemented").length,
     0
   );
-  const comingSoonReports = reportCategories.reduce(
+  const comingSoonReports = visibleReportCategories.reduce(
     (sum, category) =>
       sum + category.reports.filter((report) => report.status === "coming-soon").length,
     0
@@ -495,7 +537,7 @@ export default function ReportsPage() {
           title={t("totalReports")}
           icon={FileText}
           value={String(totalReports)}
-          caption={t("totalReportsDescription", { count: reportCategories.length })}
+          caption={t("totalReportsDescription", { count: visibleReportCategories.length })}
         />
         <MetricCard
           title={t("availableNow")}
@@ -528,7 +570,7 @@ export default function ReportsPage() {
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
         <TabsList className="flex h-auto flex-wrap">
           <TabsTrigger value="all">{t("allReports")}</TabsTrigger>
-          {reportCategories.map((category) => (
+          {visibleReportCategories.map((category) => (
             <TabsTrigger key={category.id} value={category.id}>
               {category.name}
             </TabsTrigger>

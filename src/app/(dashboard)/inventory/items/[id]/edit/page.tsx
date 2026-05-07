@@ -53,6 +53,7 @@ function EditItemContent({ params }: EditItemPageProps) {
   const { data: uomsData } = useUnitsOfMeasure();
 
   const item = itemResponse?.data;
+  const canViewPricingDetails = itemResponse?.capabilities?.canViewPricingDetails === true;
   const isItemLoading = isLoading && !item;
   const hasLoadError = !isItemLoading && (Boolean(error) || !item);
   const primaryBarcode = item?.primaryBarcode ?? null;
@@ -138,10 +139,10 @@ function EditItemContent({ params }: EditItemPageProps) {
         itemType: item.itemType,
         uom: item.uom,
         category: item.category,
-        standardCost: item.standardCost,
+        standardCost: item.standardCost ?? 0,
         importCost: item.importCost ?? null,
         importCurrency: item.importCurrency ?? null,
-        listPrice: item.listPrice,
+        listPrice: item.listPrice ?? 0,
         reorderLevel: item.reorderLevel,
         reorderQty: item.reorderQty,
         imageUrl: item.imageUrl,
@@ -154,13 +155,21 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   const onSubmit = async (values: ItemFormInput) => {
     try {
-      const { code, ...updateData } = values;
+      const { code, standardCost, importCost, importCurrency, listPrice, ...updateData } = values;
       void code; // Code cannot be changed
 
       await updateItem.mutateAsync({
         id: itemId,
         data: {
           ...updateData,
+          ...(canViewPricingDetails
+            ? {
+                standardCost: standardCost ?? 0,
+                importCost: importCost ?? null,
+                importCurrency: importCost == null ? null : importCurrency,
+                listPrice: listPrice ?? 0,
+              }
+            : {}),
           description: updateData.description || "",
           dimensions: {
             length: updateData.dimensions?.length ?? 0,
@@ -168,9 +177,6 @@ function EditItemContent({ params }: EditItemPageProps) {
             height: updateData.dimensions?.height ?? 0,
             unit: updateData.dimensions?.unit || "",
           },
-          standardCost: updateData.standardCost ?? 0,
-          importCost: updateData.importCost ?? null,
-          importCurrency: updateData.importCost == null ? null : updateData.importCurrency,
           reorderLevel: updateData.reorderLevel ?? 0,
           reorderQty: updateData.reorderQty ?? 0,
         },
@@ -546,105 +552,106 @@ function EditItemContent({ params }: EditItemPageProps) {
 
                 </div>
 
-                {/* Pricing */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold">{t("pricingInformation")}</h3>
+                {canViewPricingDetails && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold">{t("pricingInformation")}</h3>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="standardCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("standardCostLabel")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder={t("standardCostPlaceholder")}
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="standardCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("standardCostLabel")}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("standardCostPlaceholder")}
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="listPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("listPriceLabel")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder={t("listPricePlaceholder")}
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="listPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("listPriceLabel")}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("listPricePlaceholder")}
+                                {...field}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="importCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("importCostLabel")}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder={t("importCostPlaceholder")}
+                                {...field}
+                                value={field.value ?? ""}
+                                onChange={(e) =>
+                                  field.onChange(
+                                    e.target.value === "" ? null : parseFloat(e.target.value) || 0
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormDescription>{t("importCostDescription")}</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="importCurrency"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("importCurrencyLabel")}</FormLabel>
+                            <FormControl>
+                              <select
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                value={field.value ?? ""}
+                                onChange={(event) => field.onChange(event.target.value || null)}
+                              >
+                                <option value="">{t("selectImportCurrency")}</option>
+                                {COMMON_IMPORT_CURRENCIES.map((currency) => (
+                                  <option key={currency} value={currency}>
+                                    {currency}
+                                  </option>
+                                ))}
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="importCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("importCostLabel")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              placeholder={t("importCostPlaceholder")}
-                              {...field}
-                              value={field.value ?? ""}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === "" ? null : parseFloat(e.target.value) || 0
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormDescription>{t("importCostDescription")}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="importCurrency"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("importCurrencyLabel")}</FormLabel>
-                          <FormControl>
-                            <select
-                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                              value={field.value ?? ""}
-                              onChange={(event) => field.onChange(event.target.value || null)}
-                            >
-                              <option value="">{t("selectImportCurrency")}</option>
-                              {COMMON_IMPORT_CURRENCIES.map((currency) => (
-                                <option key={currency} value={currency}>
-                                  {currency}
-                                </option>
-                              ))}
-                            </select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Inventory Management */}
                 <div className="space-y-4">

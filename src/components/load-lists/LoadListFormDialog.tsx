@@ -67,13 +67,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
 import { cn } from "@/lib/utils";
 import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
-import type { Item } from "@/types/item";
 import type { LoadList } from "@/types/load-list";
 
-type LoadListCostSource = Pick<
-  Item,
-  "importCost" | "importCurrency" | "purchasePrice" | "standardCost" | "listPrice"
->;
+type LoadListCostSource = {
+  importCost?: number | null;
+  importCurrency?: string | null;
+  purchasePrice?: number | null;
+  standardCost?: number | null;
+  listPrice?: number | null;
+};
 
 const getDefaultLoadListUnitCost = (item?: LoadListCostSource | null) =>
   item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
@@ -269,7 +271,7 @@ export function LoadListFormDialog({
           uomLabel: item.itemUnitOption?.displayLabel || item.uomCode || "",
           qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
           loadListQty: item.loadListQty,
-          unitPrice: item.unitPrice,
+          unitPrice: item.unitPrice ?? 0,
           unitPriceCurrency: resolvedLoadList.currency ?? currentCurrency.code,
           notes: item.notes,
         })) || [];

@@ -7,6 +7,13 @@ import {
   StockRequisitionLineValidationError,
 } from "../line-item-unit-options";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import { resolveStockRequisitionCapabilities } from "@/lib/stock-requisitions/permissions";
+import {
+  buildLineCostKey,
+  resolveStockRequisitionLineCosts,
+  type ResolvedCostLineItem,
+} from "@/lib/stock-requisitions/costs";
+import { resolveStockRequisitionDocumentSettings } from "@/lib/stock-requisitions/document-settings";
 
 const normalizeCurrency = (value: unknown): string | null => {
   if (typeof value !== "string") return null;
@@ -27,11 +34,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId, currentBusinessUnitId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
 
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
+
+    const capabilities = await resolveStockRequisitionCapabilities(userId, currentBusinessUnitId);
+    const documentSettings = await resolveStockRequisitionDocumentSettings(
+      supabase,
+      companyId,
+      currentBusinessUnitId
+    );
 
     // Fetch stock requisition with related data
     const { data: sr, error } = await supabase
@@ -137,6 +151,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const qtyPerUnit = Number(itemUnitOptionDetails?.qty_per_unit ?? 1) || 1;
         const requestedQty = Number(item.requested_qty ?? 0);
         const unitPrice = Number(item.unit_price ?? 0);
+        const totalPrice = requestedQty * qtyPerUnit * unitPrice;
 
         return {
           id: item.id,
@@ -157,8 +172,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               }
             : null,
           requestedQty,
-          unitPrice,
-          totalPrice: requestedQty * qtyPerUnit * unitPrice,
+          unitPrice: capabilities.canViewUnitCost ? unitPrice : null,
+          totalPrice: capabilities.canViewTotalAmount ? totalPrice : null,
+          documentUnitPrice: documentSettings.showUnitPrice ? unitPrice : null,
+          documentTotalPrice:
+            documentSettings.showLineTotal || documentSettings.showTotalAmount ? totalPrice : null,
           fulfilledQty: Number(item.fulfilled_qty ?? 0),
           outstandingQty: Number(item.outstanding_qty ?? 0),
           notes: item.notes,
@@ -204,9 +222,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         : null,
       status: sr.status,
       notes: sr.notes,
-      currency: normalizeCurrency(sr.currency) ?? "PHP",
-      totalAmount: formattedItems.reduce((sum, item) => sum + item.totalPrice, 0),
+      currency:
+        capabilities.canViewTotalAmount || capabilities.canViewUnitCost
+          ? (normalizeCurrency(sr.currency) ?? "PHP")
+          : null,
+      totalAmount: capabilities.canViewTotalAmount
+        ? formattedItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0)
+        : null,
+      documentCurrency:
+        documentSettings.showUnitPrice ||
+        documentSettings.showLineTotal ||
+        documentSettings.showTotalAmount
+          ? (normalizeCurrency(sr.currency) ?? "PHP")
+          : null,
+      documentTotalAmount: documentSettings.showTotalAmount
+        ? formattedItems.reduce((sum, item) => sum + (item.documentTotalPrice ?? 0), 0)
+        : null,
       items: formattedItems,
+      capabilities,
+      documentSettings,
       createdAt: sr.created_at,
       createdBy: sr.created_by,
       createdByUser: sr.created_by_user
@@ -243,10 +277,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
+    const capabilities = await resolveStockRequisitionCapabilities(userId, currentBusinessUnitId);
+
     // Check if stock requisition exists and is in draft status
     const { data: existingSR, error: fetchError } = await supabase
       .from("stock_requisitions")
-      .select("id, status")
+      .select("id, status, currency")
       .eq("id", id)
       .eq("company_id", companyId)
       .eq("business_unit_id", currentBusinessUnitId)
@@ -265,20 +301,75 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.items && body.items.length === 0) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
-    const currency = resolveRequestCurrency(body.currency);
-    const currencyValidationError = validateCurrency(currency);
+
+    if (
+      !capabilities.canViewUnitCost &&
+      (body.currency != null ||
+        body.items?.some((item: { unitPrice?: unknown }) => item.unitPrice !== undefined))
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const submittedCurrency = resolveRequestCurrency(body.currency);
+    const currencyValidationError = capabilities.canViewUnitCost
+      ? validateCurrency(submittedCurrency)
+      : null;
     if (currencyValidationError) {
       return NextResponse.json({ error: currencyValidationError }, { status: 400 });
     }
 
-    let resolvedLineItems = body.items;
+    let resolvedCostLines: ResolvedCostLineItem[] | null = null;
+    let currency = normalizeCurrency(existingSR.currency) ?? "PHP";
     if (body.items) {
       try {
-        resolvedLineItems = await resolveStockRequisitionLineUnitOptions(
+        const resolvedLineItems = await resolveStockRequisitionLineUnitOptions(
           supabase,
           companyId,
           body.items
         );
+        const preservedCosts = new Map<string, { unitPrice: number; currency: string }>();
+
+        if (!capabilities.canViewUnitCost) {
+          const { data: existingItems, error: existingItemsError } = await supabase
+            .from("stock_requisition_items")
+            .select("item_id, item_unit_option_id, unit_price")
+            .eq("sr_id", id);
+
+          if (existingItemsError) {
+            console.error("Error fetching existing stock requisition items:", existingItemsError);
+            return NextResponse.json(
+              { error: "Failed to update stock requisition" },
+              { status: 500 }
+            );
+          }
+
+          for (const item of existingItems || []) {
+            if (!item.item_unit_option_id) continue;
+            preservedCosts.set(
+              buildLineCostKey({
+                itemId: item.item_id,
+                item_unit_option_id: item.item_unit_option_id,
+              }),
+              {
+                unitPrice: Number(item.unit_price ?? 0),
+                currency,
+              }
+            );
+          }
+        }
+
+        const resolvedCosts = await resolveStockRequisitionLineCosts(
+          supabase,
+          companyId,
+          resolvedLineItems,
+          {
+            canUseSubmittedCost: capabilities.canViewUnitCost,
+            submittedCurrency,
+            preservedCosts,
+          }
+        );
+        resolvedCostLines = resolvedCosts.items;
+        currency = resolvedCosts.currency;
       } catch (error) {
         if (error instanceof StockRequisitionLineValidationError) {
           return NextResponse.json({ error: error.message }, { status: 400 });
@@ -287,13 +378,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
     }
 
-    // Calculate total amount
-    const totalAmount =
-      resolvedLineItems?.reduce(
-        (sum: number, item: { requestedQty: number; unitPrice: number; qty_per_unit: number }) =>
-          sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
-        0
-      ) || 0;
+    const resolvedCurrencyValidationError = validateCurrency(currency);
+    if (resolvedCurrencyValidationError) {
+      return NextResponse.json({ error: resolvedCurrencyValidationError }, { status: 400 });
+    }
+
+    const totalAmount = resolvedCostLines?.reduce(
+      (sum, item) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
+      0
+    );
 
     // Update stock requisition
     const { data: sr, error: updateError } = await supabase
@@ -303,8 +396,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         requisition_date: body.requisitionDate,
         required_by_date: body.requiredByDate || null,
         notes: body.notes,
-        total_amount: totalAmount,
-        currency,
+        ...(resolvedCostLines
+          ? {
+              total_amount: totalAmount,
+              currency,
+            }
+          : {}),
         updated_by: userId,
       })
       .eq("id", id)
@@ -315,37 +412,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     if (updateError) {
       console.error("Error updating stock requisition:", updateError);
-      return NextResponse.json(
-        { error: updateError.message || "Failed to update stock requisition" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to update stock requisition" }, { status: 500 });
     }
 
     // Update line items if provided
-    if (body.items && body.items.length > 0) {
+    if (resolvedCostLines && resolvedCostLines.length > 0) {
       // Delete existing items
       await supabase.from("stock_requisition_items").delete().eq("sr_id", id);
 
       // Insert new items
-      const itemsToInsert = resolvedLineItems.map(
-        (item: {
-          itemId: string;
-          item_unit_option_id: string;
-          uom_id: string;
-          requestedQty: number;
-          unitPrice: number;
-          notes?: string;
-        }) => ({
-          sr_id: id,
-          item_id: item.itemId,
-          item_unit_option_id: item.item_unit_option_id,
-          uom_id: item.uom_id,
-          requested_qty: item.requestedQty,
-          unit_price: item.unitPrice,
-          fulfilled_qty: 0,
-          notes: item.notes,
-        })
-      );
+      const itemsToInsert = resolvedCostLines.map((item) => ({
+        sr_id: id,
+        item_id: item.itemId,
+        item_unit_option_id: item.item_unit_option_id,
+        uom_id: item.uom_id,
+        requested_qty: item.requestedQty,
+        unit_price: item.unitPrice,
+        fulfilled_qty: 0,
+        notes: item.notes,
+      }));
 
       const { error: itemsError } = await supabase
         .from("stock_requisition_items")

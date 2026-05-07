@@ -22,9 +22,12 @@ export interface ItemsStockResponse {
     totalPages: number;
   };
   statistics?: {
-    totalAvailableValue: number;
+    totalAvailableValue: number | null;
     lowStockCount: number;
     outOfStockCount: number;
+  };
+  capabilities?: {
+    canViewTotalAvailableValue: boolean;
   };
 }
 

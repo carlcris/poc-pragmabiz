@@ -13,6 +13,7 @@ import {
   MoreVertical,
   Send,
   XCircle,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -60,7 +61,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { useCurrency } from "@/hooks/useCurrency";
+import { stockRequisitionsApi } from "@/lib/api/stock-requisitions";
 import type { StockRequisition, StockRequisitionStatus } from "@/types/stock-requisition";
+import type { StockRequisitionPDFData } from "@/lib/pdf-generator";
 
 const StockRequisitionFormDialog = dynamic(
   () =>
@@ -87,6 +90,7 @@ export default function StockRequisitionsPage() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [srToUpdateStatus, setSRToUpdateStatus] = useState<StockRequisition | null>(null);
   const [nextStatus, setNextStatus] = useState<"submitted" | "cancelled" | null>(null);
+  const [printingSRId, setPrintingSRId] = useState<string | null>(null);
 
   const { formatCurrency } = useCurrency();
   const deleteMutation = useDeleteStockRequisition();
@@ -99,6 +103,7 @@ export default function StockRequisitionsPage() {
     page,
     limit: pageSize,
   });
+  const canViewTotalAmount = data?.capabilities?.canViewTotalAmount === true;
 
   const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
   const suppliers = suppliersData?.data || [];
@@ -121,7 +126,8 @@ export default function StockRequisitionsPage() {
     }).format(new Date(value));
   };
 
-  const formatRequisitionAmount = (amount: number, currencyCode?: string | null) => {
+  const formatRequisitionAmount = (amount: number | null, currencyCode?: string | null) => {
+    if (amount == null) return t("noValue");
     if (!currencyCode) return formatCurrency(amount);
 
     return new Intl.NumberFormat(locale, {
@@ -129,6 +135,53 @@ export default function StockRequisitionsPage() {
       currency: currencyCode,
       currencyDisplay: "narrowSymbol",
     }).format(amount);
+  };
+
+  const formatUser = (user?: { firstName?: string; lastName?: string; email?: string }) => {
+    if (!user) return t("noValue");
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+    return fullName || user.email || t("noValue");
+  };
+
+  const buildStockRequisitionPDFData = (sr: StockRequisition): StockRequisitionPDFData => {
+    const supplierLanguage = sr.supplier?.lang === "chinese" ? "chinese" : "english";
+    const showTotalAmount = sr.documentSettings?.showTotalAmount === true;
+    const showUnitPrice = sr.documentSettings?.showUnitPrice === true;
+    const showLineTotal = sr.documentSettings?.showLineTotal === true;
+    const documentCurrency = sr.documentCurrency ?? sr.currency;
+
+    return {
+      language: supplierLanguage,
+      srNumber: sr.srNumber,
+      supplierName: sr.supplier?.name || t("unknownSupplier"),
+      requisitionDate: formatDate(sr.requisitionDate),
+      requiredByDate: sr.requiredByDate ? formatDate(sr.requiredByDate) : undefined,
+      showTotalAmount,
+      totalAmount: showTotalAmount
+        ? formatRequisitionAmount(sr.documentTotalAmount ?? null, documentCurrency)
+        : undefined,
+      showUnitPrice,
+      showLineTotal,
+      items: (sr.items || []).map((item) => ({
+        itemCode: item.item?.code || t("na"),
+        itemName:
+          supplierLanguage === "chinese"
+            ? item.item?.chineseName || item.item?.name || t("unknownItem")
+            : item.item?.name || t("unknownItem"),
+        requestedQty: item.requestedQty,
+        unitPrice: showUnitPrice
+          ? formatRequisitionAmount(item.documentUnitPrice ?? null, documentCurrency)
+          : undefined,
+        totalPrice: showLineTotal
+          ? formatRequisitionAmount(item.documentTotalPrice ?? null, documentCurrency)
+          : undefined,
+      })),
+      notes: sr.notes || undefined,
+      createdBy: formatUser(sr.createdByUser),
+      businessUnit: sr.businessUnit?.name
+        ? `${sr.businessUnit.name} (${sr.businessUnit.code || ""})`
+        : undefined,
+    };
   };
 
   const getStatusBadge = (status: StockRequisitionStatus) => {
@@ -160,6 +213,24 @@ export default function StockRequisitionsPage() {
 
   const handleViewSR = (sr: StockRequisition) => {
     router.push(`/purchasing/stock-requisitions/${sr.id}`);
+  };
+
+  const handlePrintSR = async (sr: StockRequisition) => {
+    setPrintingSRId(sr.id);
+
+    try {
+      const fullStockRequisition = await stockRequisitionsApi.getStockRequisition(sr.id);
+      const { generateStockRequisitionPDF } = await import("@/lib/pdf-generator");
+      await generateStockRequisitionPDF(buildStockRequisitionPDFData(fullStockRequisition), {
+        output: "print",
+      });
+      toast.success(t("printSuccess"));
+    } catch (err) {
+      console.error("Failed to print stock requisition:", err);
+      toast.error(t("printError"));
+    } finally {
+      setPrintingSRId(null);
+    }
   };
 
   const handleDeleteSR = (sr: StockRequisition) => {
@@ -288,7 +359,9 @@ export default function StockRequisitionsPage() {
                   <TableHead>{t("supplier")}</TableHead>
                   <TableHead>{t("requisitionDate")}</TableHead>
                   <TableHead>{t("requiredBy")}</TableHead>
-                  <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                  {canViewTotalAmount && (
+                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                  )}
                   <TableHead className="text-center">{t("status")}</TableHead>
                   <TableHead>{t("createdBy")}</TableHead>
                   <TableHead className="text-right">{t("actions")}</TableHead>
@@ -309,9 +382,11 @@ export default function StockRequisitionsPage() {
                     <TableCell>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Skeleton className="ml-auto h-4 w-20" />
-                    </TableCell>
+                    {canViewTotalAmount && (
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-20" />
+                      </TableCell>
+                    )}
                     <TableCell className="text-center">
                       <Skeleton className="mx-auto h-5 w-20 rounded-full" />
                     </TableCell>
@@ -346,7 +421,9 @@ export default function StockRequisitionsPage() {
                     <TableHead>{t("supplier")}</TableHead>
                     <TableHead>{t("requisitionDate")}</TableHead>
                     <TableHead>{t("requiredBy")}</TableHead>
-                    <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                    {canViewTotalAmount && (
+                      <TableHead className="text-right">{t("totalAmount")}</TableHead>
+                    )}
                     <TableHead className="text-center">{t("status")}</TableHead>
                     <TableHead>{t("createdBy")}</TableHead>
                     <TableHead className="text-right">{t("actions")}</TableHead>
@@ -378,9 +455,11 @@ export default function StockRequisitionsPage() {
                       </TableCell>
                       <TableCell>{formatDate(sr.requisitionDate)}</TableCell>
                       <TableCell>{formatDate(sr.requiredByDate)}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatRequisitionAmount(sr.totalAmount, sr.currency)}
-                      </TableCell>
+                      {canViewTotalAmount && (
+                        <TableCell className="text-right font-medium">
+                          {formatRequisitionAmount(sr.totalAmount, sr.currency)}
+                        </TableCell>
+                      )}
                       <TableCell className="text-center">{getStatusBadge(sr.status)}</TableCell>
                       <TableCell>
                         <div className="text-sm">
@@ -429,6 +508,13 @@ export default function StockRequisitionsPage() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    onClick={() => handlePrintSR(sr)}
+                                    disabled={printingSRId === sr.id}
+                                  >
+                                    <Printer className="h-4 w-4" />
+                                    <span>{t("print")}</span>
+                                  </DropdownMenuItem>
                                   {canCancelSR(sr) && (
                                     <DropdownMenuItem
                                       onClick={() => handleStatusAction(sr, "cancelled")}
@@ -449,7 +535,7 @@ export default function StockRequisitionsPage() {
                               </DropdownMenu>
                             </>
                           )}
-                          {sr.status !== "draft" && canCancelSR(sr) && (
+                          {sr.status !== "draft" && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -463,12 +549,21 @@ export default function StockRequisitionsPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onClick={() => handleStatusAction(sr, "cancelled")}
-                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handlePrintSR(sr)}
+                                  disabled={printingSRId === sr.id}
                                 >
-                                  <XCircle className="h-4 w-4" />
-                                  <span>{t("cancel")}</span>
+                                  <Printer className="h-4 w-4" />
+                                  <span>{t("print")}</span>
                                 </DropdownMenuItem>
+                                {canCancelSR(sr) && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleStatusAction(sr, "cancelled")}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                    <span>{t("cancel")}</span>
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}

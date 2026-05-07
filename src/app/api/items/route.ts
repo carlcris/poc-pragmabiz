@@ -3,9 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import type { CreateItemRequest, Item } from "@/types/item";
 import type { Database } from "@/types/database.types";
 import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 import {
   getPrimaryItemUnitOption,
   sortItemUnitOptions,
@@ -80,6 +82,10 @@ type ItemsStatsRow = {
   low_stock_count: number | string | null;
   out_of_stock_count: number | string | null;
   total_count: number | string | null;
+};
+
+type ItemMasterCapabilities = {
+  canViewTotalAvailableValue: boolean;
 };
 
 type DbItem = {
@@ -366,7 +372,7 @@ export async function GET(request: NextRequest) {
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId, currentBusinessUnitId } = context;
+    const { supabase, companyId, currentBusinessUnitId, userId } = context;
 
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search")?.trim() || null;
@@ -383,6 +389,13 @@ export async function GET(request: NextRequest) {
       parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE),
       MAX_PAGE_SIZE
     );
+    const capabilities = await getUserCapabilities(userId, currentBusinessUnitId);
+    const itemMasterCapabilities: ItemMasterCapabilities = {
+      canViewTotalAvailableValue: hasCapability(
+        capabilities,
+        GRANULAR_CAPABILITIES.ITEM_MASTER_TOTAL_AVAILABLE_VALUE
+      ),
+    };
 
     if (!includeStock) {
       let query = supabase
@@ -505,11 +518,14 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         statistics: {
-          totalAvailableValue: toNumber(statsRow?.total_available_value),
+          totalAvailableValue: itemMasterCapabilities.canViewTotalAvailableValue
+            ? toNumber(statsRow?.total_available_value)
+            : null,
           lowStockCount: toNumber(statsRow?.low_stock_count),
           outOfStockCount: toNumber(statsRow?.out_of_stock_count),
           totalCount: toNumber(statsRow?.total_count),
         },
+        capabilities: itemMasterCapabilities,
       });
     }
 
@@ -616,11 +632,14 @@ export async function GET(request: NextRequest) {
         totalPages,
       },
       statistics: {
-        totalAvailableValue: toNumber(statsRow?.total_available_value),
+        totalAvailableValue: itemMasterCapabilities.canViewTotalAvailableValue
+          ? toNumber(statsRow?.total_available_value)
+          : null,
         lowStockCount: toNumber(statsRow?.low_stock_count),
         outOfStockCount: toNumber(statsRow?.out_of_stock_count),
         totalCount: toNumber(statsRow?.total_count),
       },
+      capabilities: itemMasterCapabilities,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

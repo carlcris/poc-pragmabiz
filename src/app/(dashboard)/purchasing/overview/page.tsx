@@ -15,6 +15,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useWarehouses } from "@/hooks/useWarehouses";
+import { usePurchasingDashboardCapabilities } from "@/hooks/usePurchasingDashboard";
 import type { Warehouse as WarehouseType } from "@/types/warehouse";
 
 const widgetFallback = () => <div className="h-36 animate-pulse rounded-lg border bg-muted/50" />;
@@ -120,6 +121,28 @@ export default function PurchasingOverviewPage() {
 
   const warehouses = (warehousesData?.data || []) as WarehouseType[];
   const warehouseId = selectedWarehouse === "all" ? undefined : selectedWarehouse;
+  const { data: capabilities, isLoading: loadingCapabilities } = usePurchasingDashboardCapabilities(
+    {
+      warehouseId,
+      businessUnitId: currentBusinessUnit?.id,
+    }
+  );
+  const showOwnerOverview =
+    loadingCapabilities ||
+    capabilities?.canViewOutstandingRequisitions ||
+    capabilities?.canViewDamagedItems ||
+    capabilities?.canViewExpectedArrivals ||
+    capabilities?.canViewDelayedShipments;
+  const showWarehouseOperations =
+    loadingCapabilities ||
+    capabilities?.canViewTodaysReceivingQueue ||
+    capabilities?.canViewPendingApprovals ||
+    capabilities?.canViewBoxAssignmentQueue ||
+    capabilities?.canViewWarehouseCapacity ||
+    capabilities?.canViewActiveRequisitions ||
+    capabilities?.canViewIncomingDeliveries ||
+    capabilities?.canViewActiveContainers ||
+    capabilities?.canViewLocationAssignment;
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -156,40 +179,86 @@ export default function PurchasingOverviewPage() {
       </div>
 
       {/* Owner Overview */}
-      <section className="space-y-3 sm:space-y-4">
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-          <OutstandingRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
-          <DamagedItemsWidget businessUnitId={currentBusinessUnit?.id} />
-          <ExpectedArrivalsWidget businessUnitId={currentBusinessUnit?.id} />
-          <DelayedShipmentsWidget businessUnitId={currentBusinessUnit?.id} />
-        </div>
-      </section>
+      {showOwnerOverview && (
+        <section className="space-y-3 sm:space-y-4">
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewOutstandingRequisitions && (
+                  <OutstandingRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewDamagedItems && (
+                  <DamagedItemsWidget businessUnitId={currentBusinessUnit?.id} />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewExpectedArrivals && (
+                  <ExpectedArrivalsWidget businessUnitId={currentBusinessUnit?.id} />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewDelayedShipments && (
+                  <DelayedShipmentsWidget businessUnitId={currentBusinessUnit?.id} />
+                )}
+          </div>
+        </section>
+      )}
 
       {/* Warehouse Operations */}
-      <section className="space-y-3 sm:space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold sm:text-xl">{t("warehouseOperations")}</h2>
-          <p className="text-xs text-muted-foreground sm:text-sm">
-            {t("warehouseOperationsDescription")}
-          </p>
-        </div>
-        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <TodaysReceivingQueueWidget
-            warehouseId={warehouseId}
-            businessUnitId={currentBusinessUnit?.id}
-          />
-          <PendingApprovalsWidget />
-          <BoxAssignmentQueueWidget />
-          <WarehouseCapacityWidget warehouseId={warehouseId} />
-          <ActiveRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
-          <IncomingDeliveriesWidget
-            warehouseId={warehouseId}
-            businessUnitId={currentBusinessUnit?.id}
-          />
-          <ActiveContainersWidget businessUnitId={currentBusinessUnit?.id} />
-          <LocationAssignmentWidget />
-        </div>
-      </section>
+      {showWarehouseOperations && (
+        <section className="space-y-3 sm:space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold sm:text-xl">{t("warehouseOperations")}</h2>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              {t("warehouseOperationsDescription")}
+            </p>
+          </div>
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewTodaysReceivingQueue && (
+                  <TodaysReceivingQueueWidget
+                    warehouseId={warehouseId}
+                    businessUnitId={currentBusinessUnit?.id}
+                  />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewPendingApprovals && <PendingApprovalsWidget />}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewBoxAssignmentQueue && <BoxAssignmentQueueWidget />}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewWarehouseCapacity && (
+                  <WarehouseCapacityWidget warehouseId={warehouseId} />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewActiveRequisitions && (
+                  <ActiveRequisitionsWidget businessUnitId={currentBusinessUnit?.id} />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewIncomingDeliveries && (
+                  <IncomingDeliveriesWidget
+                    warehouseId={warehouseId}
+                    businessUnitId={currentBusinessUnit?.id}
+                  />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewActiveContainers && (
+                  <ActiveContainersWidget businessUnitId={currentBusinessUnit?.id} />
+                )}
+            {loadingCapabilities
+              ? widgetFallback()
+              : capabilities?.canViewLocationAssignment && <LocationAssignmentWidget />}
+          </div>
+        </section>
+      )}
 
       {/* Footer Info */}
       <div className="rounded-lg border bg-muted/50 p-3 text-center sm:p-4">

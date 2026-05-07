@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { canAccessCapability } from "@/services/permissions/permissionResolver";
 import type {
   AccountsReceivableAgingBucket,
   AccountsReceivableAgingReportResponse,
@@ -134,7 +136,17 @@ export async function GET(request: NextRequest) {
 
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId, currentBusinessUnitId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
+    const canViewFinancialReports = await canAccessCapability(
+      userId,
+      GRANULAR_CAPABILITIES.REPORTS_FINANCIAL_CARDS,
+      "view",
+      currentBusinessUnitId
+    );
+
+    if (!canViewFinancialReports) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const asOfDate = parseAsOfDate(searchParams.get("asOfDate"));

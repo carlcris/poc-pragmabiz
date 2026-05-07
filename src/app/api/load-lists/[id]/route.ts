@@ -7,6 +7,7 @@ import {
   resolveLoadListLineUnitOptions,
 } from "../line-item-unit-options";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import { resolveLoadListCapabilities } from "@/lib/load-lists/permissions";
 
 const normalizeOptionalDate = (value: unknown) => {
   if (typeof value !== "string") return null;
@@ -107,7 +108,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
+    const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
 
     // Fetch load list with related data
     const { data: ll, error } = await supabase
@@ -240,7 +242,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       actualArrivalDate: ll.actual_arrival_date,
       loadDate: ll.load_date,
       status: ll.status,
-      currency: normalizeCurrency(ll.currency) ?? "PHP",
+      currency:
+        capabilities.canViewTotalAmount || capabilities.canViewUnitPrice
+          ? (normalizeCurrency(ll.currency) ?? "PHP")
+          : null,
       createdBy: ll.created_by,
       createdByUser: createdByUser
         ? {
@@ -271,6 +276,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       receivedDate: ll.received_date,
       approvedDate: ll.approved_date,
       notes: ll.notes,
+      totalAmount: capabilities.canViewTotalAmount
+        ? (ll.items as LoadListItemRow[] | null)?.reduce((sum, item) => {
+            const unitDetails = Array.isArray(item.item_unit_options)
+              ? (item.item_unit_options[0] ?? null)
+              : (item.item_unit_options ?? null);
+            const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
+            return (
+              sum +
+              parseFloat(String(item.load_list_qty)) *
+                qtyPerUnit *
+                parseFloat(String(item.unit_price))
+            );
+          }, 0)
+        : null,
+      capabilities,
       items: (ll.items as LoadListItemRow[] | null)?.map((item) => {
         const itemDetails = Array.isArray(item.item) ? (item.item[0] ?? null) : (item.item ?? null);
         const unitDetails = Array.isArray(item.item_unit_options)
@@ -303,8 +323,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           receivedQty: parseFloat(String(item.received_qty)),
           damagedQty: parseFloat(String(item.damaged_qty)),
           shortageQty: parseFloat(String(item.shortage_qty)),
-          unitPrice,
-          totalPrice: loadListQty * qtyPerUnit * unitPrice,
+          unitPrice: capabilities.canViewUnitPrice ? unitPrice : null,
+          totalPrice: capabilities.canViewTotalAmount ? loadListQty * qtyPerUnit * unitPrice : null,
           notes: item.notes,
         };
       }),

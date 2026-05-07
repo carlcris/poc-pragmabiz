@@ -2,12 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 // GET /api/analytics/sales/by-employee - Employee performance
 export const GET = async (req: NextRequest) => {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, userId, currentBusinessUnitId } = await createServerClientWithBU();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const capabilities = await getUserCapabilities(userId, currentBusinessUnitId ?? null);
+    const canViewTotalSales = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_TOTAL_SALES
+    );
+    const canViewCommissions = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_COMMISSIONS
+    );
+    const canViewAverageOrderValue = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.SALES_ANALYTICS_AVERAGE_ORDER_VALUE
+    );
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -37,10 +56,8 @@ export const GET = async (req: NextRequest) => {
     const { data: invoices, error: invoicesError } = await query;
 
     if (invoicesError) {
-      return NextResponse.json(
-        { error: "Failed to fetch analytics data", details: invoicesError.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch sales by employee analytics:", invoicesError);
+      return NextResponse.json({ error: "Failed to fetch analytics data" }, { status: 500 });
     }
 
     // Aggregate by employee
@@ -126,6 +143,7 @@ export const GET = async (req: NextRequest) => {
           employeeCode: employee.employee_code,
           employeeName: `${employee.first_name} ${employee.last_name}`,
           role: employee.role,
+          rawTotalSales: emp.totalSales,
           commissionRate: Number(employee.commission_rate),
           territories: territoriesByEmployee[emp.id] || [],
           totalSales: emp.totalSales,
@@ -135,13 +153,20 @@ export const GET = async (req: NextRequest) => {
         };
       })
       .filter((emp): emp is NonNullable<typeof emp> => emp !== null)
-      .sort((a, b) => b.totalSales - a.totalSales);
+      .sort((a, b) => b.rawTotalSales - a.rawTotalSales);
 
     // Add rank
-    const rankedEmployees = employeePerformance.map((emp, index) => ({
-      ...emp,
-      rank: index + 1,
-    }));
+    const rankedEmployees = employeePerformance.map(({ rawTotalSales, ...emp }, index) => {
+      void rawTotalSales;
+      return {
+        ...emp,
+        commissionRate: canViewCommissions ? emp.commissionRate : null,
+        totalSales: canViewTotalSales ? emp.totalSales : null,
+        totalCommission: canViewCommissions ? emp.totalCommission : null,
+        averageOrderValue: canViewAverageOrderValue ? emp.averageOrderValue : null,
+        rank: index + 1,
+      };
+    });
 
     // Apply pagination
     const from = (page - 1) * limit;
@@ -155,6 +180,11 @@ export const GET = async (req: NextRequest) => {
         limit,
         total: rankedEmployees.length,
         totalPages: Math.ceil(rankedEmployees.length / limit),
+      },
+      capabilities: {
+        canViewTotalSales,
+        canViewCommissions,
+        canViewAverageOrderValue,
       },
     });
   } catch {

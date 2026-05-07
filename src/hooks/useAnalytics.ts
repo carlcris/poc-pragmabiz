@@ -77,7 +77,7 @@ export function useDashboardWidgets() {
   return useQuery({
     queryKey: [ANALYTICS_QUERY_KEY, "dashboard-widgets"],
     queryFn: () => analyticsApi.getDashboardWidgets(),
-    staleTime: 2 * 60 * 1000, // 2 minutes (more frequent updates for dashboard)
+    staleTime: 0,
     refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
   });
 }

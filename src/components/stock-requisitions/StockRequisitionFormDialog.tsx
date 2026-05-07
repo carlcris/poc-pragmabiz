@@ -40,26 +40,31 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import {
   createStockRequisitionFormSchema,
   type StockRequisitionFormValues,
 } from "@/lib/validations/stock-requisition";
-import type { Item } from "@/types/item";
 import type { StockRequisition } from "@/types/stock-requisition";
 
-type RequisitionCostSource = Pick<
-  Item,
-  "importCost" | "purchasePrice" | "standardCost" | "listPrice"
->;
+type RequisitionCostSource = {
+  importCost?: number | null;
+  importCurrency?: string | null;
+  purchasePrice?: number | null;
+  standardCost?: number | null;
+  listPrice?: number | null;
+};
 
 const getDefaultRequisitionUnitCost = (item: RequisitionCostSource | null | undefined): number => {
-  const cost = item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
+  const cost =
+    item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
   const parsed = Number(cost);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const getDefaultRequisitionCostCurrency = (
-  item: (RequisitionCostSource & { importCurrency?: string | null }) | null | undefined
+  item: RequisitionCostSource | null | undefined
 ): string | null => (item?.importCost != null ? (item.importCurrency ?? null) : null);
 
 const getNarrowCurrencySymbol = (currencyCode: string, fallback: string): string => {
@@ -110,6 +115,11 @@ type StockRequisitionFormDialogProps = {
   stockRequisition?: StockRequisition | null;
 };
 
+const STOCK_REQUISITION_COST_CAPABILITY_KEYS = [
+  GRANULAR_CAPABILITIES.STOCK_REQUISITIONS_TOTAL_AMOUNT,
+  GRANULAR_CAPABILITIES.STOCK_REQUISITIONS_UNIT_COST,
+] as const;
+
 export function StockRequisitionFormDialog({
   open,
   onOpenChange,
@@ -120,6 +130,16 @@ export function StockRequisitionFormDialog({
   const locale = useLocale();
   const isEditMode = !!stockRequisition;
   const { formatCurrency, currentCurrency } = useCurrency();
+  const { data: granularCapabilities } = useGranularCapabilities(
+    STOCK_REQUISITION_COST_CAPABILITY_KEYS
+  );
+  const canViewTotalAmount =
+    stockRequisition?.capabilities?.canViewTotalAmount ??
+    granularCapabilities?.[GRANULAR_CAPABILITIES.STOCK_REQUISITIONS_TOTAL_AMOUNT] === true;
+  const canViewUnitCost =
+    stockRequisition?.capabilities?.canViewUnitCost ??
+    granularCapabilities?.[GRANULAR_CAPABILITIES.STOCK_REQUISITIONS_UNIT_COST] === true;
+  const canShowFormAmounts = canViewTotalAmount && canViewUnitCost;
   const createMutation = useCreateStockRequisition();
   const updateMutation = useUpdateStockRequisition();
   const [supplierSearch, setSupplierSearch] = useState("");
@@ -154,6 +174,14 @@ export function StockRequisitionFormDialog({
   const [activeTab, setActiveTab] = useState("general");
   const { data: selectedItemResponse } = useItem(selectedItemId);
   const selectedItemDetail = selectedItemResponse?.data;
+  const itemOptions = useMemo(() => {
+    const activeItems = items.filter((item) => item.isActive);
+    if (!selectedItemDetail || activeItems.some((item) => item.id === selectedItemDetail.id)) {
+      return activeItems;
+    }
+
+    return [selectedItemDetail, ...activeItems];
+  }, [items, selectedItemDetail]);
   const unitOptions = (selectedItemDetail?.unitOptions || []).filter((option) => option.isActive);
   const selectedUnitOption =
     unitOptions.find((option) => option.id === selectedUnitOptionId) ||
@@ -252,8 +280,10 @@ export function StockRequisitionFormDialog({
           uomLabel: item.itemUnitOption?.displayLabel || item.uomCode || "",
           qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
           requestedQty: item.requestedQty,
-          unitPrice: item.unitPrice,
-          unitPriceCurrency: stockRequisition.currency ?? currentCurrency.code,
+          unitPrice: item.unitPrice ?? 0,
+          unitPriceCurrency: canViewUnitCost
+            ? (stockRequisition.currency ?? currentCurrency.code)
+            : null,
           notes: item.notes,
         })) || [];
       setLineItems(formLineItems);
@@ -267,7 +297,7 @@ export function StockRequisitionFormDialog({
       setAddItemError("");
       setActiveTab("general");
     }
-  }, [open, stockRequisition, form, defaultValues, currentCurrency.code]);
+  }, [open, stockRequisition, form, defaultValues, currentCurrency.code, canViewUnitCost]);
 
   useEffect(() => {
     if (!selectedItemDetail) {
@@ -299,7 +329,7 @@ export function StockRequisitionFormDialog({
     setAddItemError("");
 
     // Validation
-    if (!selectedItemId || !selectedUnitOptionId || !quantity || !price) {
+    if (!selectedItemId || !selectedUnitOptionId || !quantity || (canViewUnitCost && !price)) {
       setAddItemError(t("addItemMissingFields"));
       return;
     }
@@ -315,9 +345,9 @@ export function StockRequisitionFormDialog({
       return;
     }
 
-    const selectedCurrency = selectedCostCurrency;
+    const selectedCurrency = canViewUnitCost ? selectedCostCurrency : null;
     const existingCurrency = lineItems[0] ? getLineItemCurrencyKey(lineItems[0]) : selectedCurrency;
-    if (lineItems.length > 0 && existingCurrency !== selectedCurrency) {
+    if (canViewUnitCost && lineItems.length > 0 && existingCurrency !== selectedCurrency) {
       setAddItemError(t("mixedCurrencyNotAllowed"));
       return;
     }
@@ -331,7 +361,7 @@ export function StockRequisitionFormDialog({
       uomLabel: selectedUnitOption.displayLabel,
       qtyPerUnit: selectedUnitOption.qtyPerUnit,
       requestedQty: parseFloat(quantity),
-      unitPrice: parseFloat(price),
+      unitPrice: canViewUnitCost ? parseFloat(price) : 0,
       unitPriceCurrency: selectedCurrency,
     };
 
@@ -353,7 +383,10 @@ export function StockRequisitionFormDialog({
       return;
     }
     const firstCurrency = lineItems[0] ? getLineItemCurrencyKey(lineItems[0]) : null;
-    if (lineItems.some((item) => getLineItemCurrencyKey(item) !== firstCurrency)) {
+    if (
+      canViewUnitCost &&
+      lineItems.some((item) => getLineItemCurrencyKey(item) !== firstCurrency)
+    ) {
       toast.error(t("mixedCurrencyNotAllowed"));
       return;
     }
@@ -361,7 +394,6 @@ export function StockRequisitionFormDialog({
     try {
       const requestData = {
         supplierId: values.supplierId,
-        currency: firstCurrency ?? currentCurrency.code,
         requisitionDate: values.requisitionDate,
         requiredByDate: values.requiredByDate,
         notes: values.notes,
@@ -370,9 +402,21 @@ export function StockRequisitionFormDialog({
           itemUnitOptionId: item.itemUnitOptionId,
           uomId: item.uomId,
           requestedQty: item.requestedQty,
-          unitPrice: item.unitPrice,
           notes: item.notes,
         })),
+        ...(canViewUnitCost
+          ? {
+              currency: firstCurrency ?? currentCurrency.code,
+              items: lineItems.map((item) => ({
+                itemId: item.itemId,
+                itemUnitOptionId: item.itemUnitOptionId,
+                uomId: item.uomId,
+                requestedQty: item.requestedQty,
+                unitPrice: item.unitPrice,
+                notes: item.notes,
+              })),
+            }
+          : {}),
       };
 
       if (isEditMode) {
@@ -576,7 +620,13 @@ export function StockRequisitionFormDialog({
                       </div>
                     </div>
                     <div className="bg-gradient-to-br from-purple-50/30 to-violet-50/30 p-5">
-                      <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
+                      <div
+                        className={
+                          canViewUnitCost
+                            ? "grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]"
+                            : "grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_160px]"
+                        }
+                      >
                         <div className="min-w-0">
                           <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
                             {t("itemLabel")}
@@ -592,7 +642,7 @@ export function StockRequisitionFormDialog({
                             }}
                             searchValue={itemSearch}
                             onSearchValueChange={setItemSearch}
-                            options={items.filter((item) => item.isActive)}
+                            options={itemOptions}
                             selectedOption={selectedItemDetail ?? null}
                             getOptionValue={(item) => item.id}
                             getOptionLabel={(item) => `${item.code} - ${item.name}`}
@@ -616,9 +666,11 @@ export function StockRequisitionFormDialog({
                                     </div>
                                   </div>
                                 </div>
-                                <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
-                                  {formatRequisitionUnitCost(item)}
-                                </div>
+                                {canViewUnitCost && (
+                                  <div className="flex-shrink-0 self-start pl-3 text-right text-sm font-semibold tabular-nums">
+                                    {formatRequisitionUnitCost(item)}
+                                  </div>
+                                )}
                               </div>
                             )}
                           />
@@ -701,32 +753,34 @@ export function StockRequisitionFormDialog({
                             className="h-10 border-gray-300 bg-gray-50 text-sm"
                           />
                         </div>
-                        <div className="min-w-0">
-                          <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                            {t("unitCostLabel")} *
-                          </label>
-                          <div className="relative">
-                            <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-gray-500">
-                              {selectedUnitCostSymbol}
-                            </span>
-                            <Input
-                              key={`unit-price-${selectedItemId}`}
-                              type="text"
-                              inputMode="decimal"
-                              pattern="^-?\\d*(\\.\\d{0,2})?$"
-                              placeholder={t("unitPricePlaceholder")}
-                              value={price ?? ""}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
-                                  setPrice(next);
-                                  setAddItemError("");
-                                }
-                              }}
-                              className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
-                            />
+                        {canViewUnitCost && (
+                          <div className="min-w-0">
+                            <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                              {t("unitCostLabel")} *
+                            </label>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                                {selectedUnitCostSymbol}
+                              </span>
+                              <Input
+                                key={`unit-price-${selectedItemId}`}
+                                type="text"
+                                inputMode="decimal"
+                                pattern="^-?\\d*(\\.\\d{0,2})?$"
+                                placeholder={t("unitPricePlaceholder")}
+                                value={price ?? ""}
+                                onChange={(e) => {
+                                  const next = e.target.value;
+                                  if (next === "" || /^-?\\d*(\\.\\d{0,2})?$/.test(next)) {
+                                    setPrice(next);
+                                    setAddItemError("");
+                                  }
+                                }}
+                                className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div className="flex items-end">
                           <Button
                             type="button"
@@ -776,12 +830,16 @@ export function StockRequisitionFormDialog({
                               {lineItems.length === 1 ? t("itemSingular") : t("itemPlural")}
                             </span>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-medium text-gray-500">{t("totalAmount")}</p>
-                            <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">
-                              {formattedTotalAmount}
-                            </p>
-                          </div>
+                          {canShowFormAmounts && (
+                            <div className="text-right">
+                              <p className="text-xs font-medium text-gray-500">
+                                {t("totalAmount")}
+                              </p>
+                              <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">
+                                {formattedTotalAmount}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="overflow-x-auto">
@@ -803,12 +861,16 @@ export function StockRequisitionFormDialog({
                               <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
                                 {t("totalQtyLabel")}
                               </TableHead>
-                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
-                                {t("unitCostLabel")}
-                              </TableHead>
-                              <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
-                                {t("total")}
-                              </TableHead>
+                              {canViewUnitCost && (
+                                <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
+                                  {t("unitCostLabel")}
+                                </TableHead>
+                              )}
+                              {canShowFormAmounts && (
+                                <TableHead className="h-10 text-right text-xs font-semibold text-gray-700">
+                                  {t("total")}
+                                </TableHead>
+                              )}
                               <TableHead className="h-10 w-[60px]"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -835,15 +897,19 @@ export function StockRequisitionFormDialog({
                                     maximumFractionDigits: 4,
                                   })}
                                 </TableCell>
-                                <TableCell className="py-3 text-right text-sm tabular-nums text-gray-700">
-                                  {formatLineItemAmount(item.unitPrice, item.unitPriceCurrency)}
-                                </TableCell>
-                                <TableCell className="py-3 text-right text-sm font-bold tabular-nums text-purple-600">
-                                  {formatLineItemAmount(
-                                    item.requestedQty * item.qtyPerUnit * item.unitPrice,
-                                    item.unitPriceCurrency
-                                  )}
-                                </TableCell>
+                                {canViewUnitCost && (
+                                  <TableCell className="py-3 text-right text-sm tabular-nums text-gray-700">
+                                    {formatLineItemAmount(item.unitPrice, item.unitPriceCurrency)}
+                                  </TableCell>
+                                )}
+                                {canShowFormAmounts && (
+                                  <TableCell className="py-3 text-right text-sm font-bold tabular-nums text-purple-600">
+                                    {formatLineItemAmount(
+                                      item.requestedQty * item.qtyPerUnit * item.unitPrice,
+                                      item.unitPriceCurrency
+                                    )}
+                                  </TableCell>
+                                )}
                                 <TableCell className="py-3">
                                   <Button
                                     type="button"
@@ -886,11 +952,15 @@ export function StockRequisitionFormDialog({
                 <div className="text-sm text-gray-500">
                   {lineItems.length > 0 && (
                     <span>
-                      {t("footerSummary", {
-                        count: lineItems.length,
-                        label: lineItems.length === 1 ? t("itemSingular") : t("itemPlural"),
-                        total: formattedTotalAmount,
-                      })}
+                      {canShowFormAmounts
+                        ? t("footerSummary", {
+                            count: lineItems.length,
+                            label: lineItems.length === 1 ? t("itemSingular") : t("itemPlural"),
+                            total: formattedTotalAmount,
+                          })
+                        : `${lineItems.length} ${
+                            lineItems.length === 1 ? t("itemSingular") : t("itemPlural")
+                          }`}
                     </span>
                   )}
                 </div>

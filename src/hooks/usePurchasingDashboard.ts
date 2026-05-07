@@ -23,6 +23,7 @@ import type {
   ActiveContainersData,
   LocationAssignmentStatusData,
 } from "@/types/purchasing-dashboard";
+import type { PurchasingDashboardCapabilities } from "@/constants/granular-permissions";
 
 /**
  * Main hook for fetching purchasing dashboard data
@@ -77,6 +78,53 @@ export const usePurchasingDashboard = (
   });
 };
 
+export const usePurchasingDashboardCapabilities = (
+  params?: Omit<DashboardQueryParams, "widgets">,
+  options?: Omit<UseQueryOptions<PurchasingDashboardCapabilities>, "queryKey" | "queryFn">
+) => {
+  return useQuery<PurchasingDashboardCapabilities>({
+    queryKey: ["purchasing-dashboard", "capabilities", params],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams({ widgets: "capabilities" });
+
+      if (params?.warehouseId) {
+        queryParams.append("warehouseId", params.warehouseId);
+      }
+      if (params?.businessUnitId) {
+        queryParams.append("businessUnitId", params.businessUnitId);
+      }
+
+      const response = await apiClient.get<PurchasingDashboardData>(
+        `/api/dashboard/purchasing?${queryParams}`
+      );
+
+      return (
+        response.capabilities ?? {
+          canViewStockRequisitionValue: false,
+          canViewDamagedItemsValue: false,
+          canViewSupplierSpend: false,
+          canViewOutstandingRequisitions: false,
+          canViewDamagedItems: false,
+          canViewExpectedArrivals: false,
+          canViewDelayedShipments: false,
+          canViewTodaysReceivingQueue: false,
+          canViewPendingApprovals: false,
+          canViewBoxAssignmentQueue: false,
+          canViewWarehouseCapacity: false,
+          canViewActiveRequisitions: false,
+          canViewIncomingDeliveries: false,
+          canViewActiveContainers: false,
+          canViewLocationAssignment: false,
+        }
+      );
+    },
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 5,
+    ...options,
+  });
+};
+
 // ============================================================================
 // INDIVIDUAL WIDGET HOOKS
 // ============================================================================
@@ -99,6 +147,7 @@ export const useOutstandingRequisitions = (
         response.outstandingRequisitions ?? {
           count: 0,
           totalValue: 0,
+          canViewValue: false,
           items: [],
         }
       );
@@ -128,6 +177,7 @@ export const useDamagedItemsThisMonth = (
         response.damagedItemsThisMonth ?? {
           count: 0,
           totalValue: 0,
+          canViewValue: false,
           bySupplier: [],
           byDamageType: [],
         }
@@ -146,15 +196,20 @@ export const useDamagedItemsThisMonth = (
  */
 export const useExpectedArrivalsThisWeek = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<ExpectedArrivalsData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<ExpectedArrivalsData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<ExpectedArrivalsData | undefined>({
+  return useQuery<ExpectedArrivalsData>({
     queryKey: ["purchasing-dashboard", "expectedArrivalsThisWeek", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=expectedArrivalsThisWeek${params?.warehouseId ? `&warehouseId=${params.warehouseId}` : ""}${params?.businessUnitId ? `&businessUnitId=${params.businessUnitId}` : ""}`
       );
-      return response.expectedArrivalsThisWeek;
+      return (
+        response.expectedArrivalsThisWeek ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,
@@ -169,15 +224,20 @@ export const useExpectedArrivalsThisWeek = (
  */
 export const useDelayedShipments = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<DelayedShipmentsData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<DelayedShipmentsData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<DelayedShipmentsData | undefined>({
+  return useQuery<DelayedShipmentsData>({
     queryKey: ["purchasing-dashboard", "delayedShipments", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=delayedShipments${params?.warehouseId ? `&warehouseId=${params.warehouseId}` : ""}${params?.businessUnitId ? `&businessUnitId=${params.businessUnitId}` : ""}`
       );
-      return response.delayedShipments;
+      return (
+        response.delayedShipments ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,
@@ -192,15 +252,20 @@ export const useDelayedShipments = (
  */
 export const useTodaysReceivingQueue = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<TodaysReceivingQueueData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<TodaysReceivingQueueData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<TodaysReceivingQueueData | undefined>({
+  return useQuery<TodaysReceivingQueueData>({
     queryKey: ["purchasing-dashboard", "todaysReceivingQueue", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=todaysReceivingQueue${params?.warehouseId ? `&warehouseId=${params.warehouseId}` : ""}${params?.businessUnitId ? `&businessUnitId=${params.businessUnitId}` : ""}`
       );
-      return response.todaysReceivingQueue;
+      return (
+        response.todaysReceivingQueue ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 1, // 1 minute - more frequent for operational data
     gcTime: 1000 * 60 * 5,
@@ -215,15 +280,20 @@ export const useTodaysReceivingQueue = (
  */
 export const usePendingApprovals = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<PendingApprovalsData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<PendingApprovalsData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<PendingApprovalsData | undefined>({
+  return useQuery<PendingApprovalsData>({
     queryKey: ["purchasing-dashboard", "pendingApprovals", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=pendingApprovals`
       );
-      return response.pendingApprovals;
+      return (
+        response.pendingApprovals ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 1,
     gcTime: 1000 * 60 * 5,
@@ -238,15 +308,20 @@ export const usePendingApprovals = (
  */
 export const useBoxAssignmentQueue = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<BoxAssignmentQueueData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<BoxAssignmentQueueData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<BoxAssignmentQueueData | undefined>({
+  return useQuery<BoxAssignmentQueueData>({
     queryKey: ["purchasing-dashboard", "boxAssignmentQueue", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=boxAssignmentQueue`
       );
-      return response.boxAssignmentQueue;
+      return (
+        response.boxAssignmentQueue ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,
@@ -291,15 +366,24 @@ export const useWarehouseCapacity = (
  */
 export const useActiveRequisitions = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<ActiveRequisitionsData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<ActiveRequisitionsData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<ActiveRequisitionsData | undefined>({
+  return useQuery<ActiveRequisitionsData>({
     queryKey: ["purchasing-dashboard", "activeRequisitions", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=activeRequisitions${params?.businessUnitId ? `&businessUnitId=${params.businessUnitId}` : ""}`
       );
-      return response.activeRequisitions;
+      return (
+        response.activeRequisitions ?? {
+          draft: 0,
+          submitted: 0,
+          partiallyFulfilled: 0,
+          fulfilled: 0,
+          cancelled: 0,
+          total: 0,
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,
@@ -314,15 +398,20 @@ export const useActiveRequisitions = (
  */
 export const useIncomingDeliveriesWithSRs = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<IncomingDeliveriesData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<IncomingDeliveriesData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<IncomingDeliveriesData | undefined>({
+  return useQuery<IncomingDeliveriesData>({
     queryKey: ["purchasing-dashboard", "incomingDeliveriesWithSRs", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=incomingDeliveriesWithSRs${params?.warehouseId ? `&warehouseId=${params.warehouseId}` : ""}${params?.businessUnitId ? `&businessUnitId=${params.businessUnitId}` : ""}`
       );
-      return response.incomingDeliveriesWithSRs;
+      return (
+        response.incomingDeliveriesWithSRs ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,
@@ -337,15 +426,20 @@ export const useIncomingDeliveriesWithSRs = (
  */
 export const useActiveContainers = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<ActiveContainersData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<ActiveContainersData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<ActiveContainersData | undefined>({
+  return useQuery<ActiveContainersData>({
     queryKey: ["purchasing-dashboard", "activeContainers", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=activeContainers${params?.businessUnitId ? `&businessUnitId=${params.businessUnitId}` : ""}`
       );
-      return response.activeContainers;
+      return (
+        response.activeContainers ?? {
+          count: 0,
+          items: [],
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,
@@ -360,15 +454,22 @@ export const useActiveContainers = (
  */
 export const useLocationAssignmentStatus = (
   params?: Omit<DashboardQueryParams, "widgets">,
-  options?: Omit<UseQueryOptions<LocationAssignmentStatusData | undefined>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<LocationAssignmentStatusData>, "queryKey" | "queryFn">
 ) => {
-  return useQuery<LocationAssignmentStatusData | undefined>({
+  return useQuery<LocationAssignmentStatusData>({
     queryKey: ["purchasing-dashboard", "locationAssignmentStatus", params],
     queryFn: async () => {
       const response = await apiClient.get<PurchasingDashboardData>(
         `/api/dashboard/purchasing?widgets=locationAssignmentStatus`
       );
-      return response.locationAssignmentStatus;
+      return (
+        response.locationAssignmentStatus ?? {
+          totalBoxes: 0,
+          assignedBoxes: 0,
+          unassignedBoxes: 0,
+          assignmentPercent: 0,
+        }
+      );
     },
     staleTime: 1000 * 60 * 2,
     gcTime: 1000 * 60 * 5,

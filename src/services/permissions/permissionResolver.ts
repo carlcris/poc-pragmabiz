@@ -4,8 +4,11 @@ import type { UserPermissions, PermissionAction } from "@/types/rbac";
 import type {
   PermissionCheckResult,
   RawPermissionRow,
+  CapabilityCache,
+  CapabilityCacheEntry,
   PermissionCache,
   PermissionCacheEntry,
+  UserCapabilityMap,
 } from "./types";
 
 // In-memory cache for permissions
@@ -13,7 +16,9 @@ import type {
 // Cache is explicitly invalidated on role/permission/user-role mutations.
 const CACHE_TTL = 5_000; // 5 seconds
 const permissionCache: PermissionCache = new Map();
+const capabilityCache: CapabilityCache = new Map();
 const inFlightPermissionFetches = new Map<string, Promise<UserPermissions>>();
+const inFlightCapabilityFetches = new Map<string, Promise<UserCapabilityMap>>();
 
 /**
  * Generate cache key for user permissions
@@ -44,6 +49,25 @@ function getFromCache(userId: string, businessUnitId: string | null): UserPermis
   return entry.permissions;
 }
 
+function isCapabilityCacheValid(entry: CapabilityCacheEntry): boolean {
+  return Date.now() - entry.timestamp < CACHE_TTL;
+}
+
+function getCapabilitiesFromCache(
+  userId: string,
+  businessUnitId: string | null
+): UserCapabilityMap | null {
+  const key = getCacheKey(userId, businessUnitId);
+  const entry = capabilityCache.get(key);
+
+  if (!entry || !isCapabilityCacheValid(entry)) {
+    capabilityCache.delete(key);
+    return null;
+  }
+
+  return entry.capabilities;
+}
+
 /**
  * Store permissions in cache
  */
@@ -55,6 +79,19 @@ function storeInCache(
   const key = getCacheKey(userId, businessUnitId);
   permissionCache.set(key, {
     permissions,
+    timestamp: Date.now(),
+    businessUnitId,
+  });
+}
+
+function storeCapabilitiesInCache(
+  userId: string,
+  businessUnitId: string | null,
+  capabilities: UserCapabilityMap
+): void {
+  const key = getCacheKey(userId, businessUnitId);
+  capabilityCache.set(key, {
+    capabilities,
     timestamp: Date.now(),
     businessUnitId,
   });
@@ -74,10 +111,14 @@ export function invalidatePermissionCache(userId?: string): void {
     });
     keysToDelete.forEach((key) => permissionCache.delete(key));
     keysToDelete.forEach((key) => inFlightPermissionFetches.delete(key));
+    keysToDelete.forEach((key) => capabilityCache.delete(key));
+    keysToDelete.forEach((key) => inFlightCapabilityFetches.delete(key));
   } else {
     // Clear entire cache
     permissionCache.clear();
+    capabilityCache.clear();
     inFlightPermissionFetches.clear();
+    inFlightCapabilityFetches.clear();
   }
 }
 
@@ -121,6 +162,28 @@ function aggregatePermissions(rawPermissions: RawPermissionRow[]): UserPermissio
   return permissions;
 }
 
+function aggregateCapabilities(rawPermissions: RawPermissionRow[]): UserCapabilityMap {
+  const capabilities: UserCapabilityMap = {};
+
+  rawPermissions.forEach((row) => {
+    const existing = capabilities[row.resource] ?? {
+      can_view: false,
+      can_create: false,
+      can_edit: false,
+      can_delete: false,
+    };
+
+    capabilities[row.resource] = {
+      can_view: existing.can_view || row.can_view,
+      can_create: existing.can_create || row.can_create,
+      can_edit: existing.can_edit || row.can_edit,
+      can_delete: existing.can_delete || row.can_delete,
+    };
+  });
+
+  return capabilities;
+}
+
 /**
  * Fetch user permissions from database using the helper function
  */
@@ -147,6 +210,24 @@ async function fetchUserPermissions(
   // The database function already does BOOL_OR aggregation
   // We just need to format it into our UserPermissions structure
   return aggregatePermissions(data as RawPermissionRow[]);
+}
+
+async function fetchUserCapabilities(
+  userId: string,
+  businessUnitId: string | null
+): Promise<UserCapabilityMap> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_user_permissions", {
+    p_user_id: userId,
+    p_business_unit_id: businessUnitId,
+  });
+
+  if (error || !data || data.length === 0) {
+    return {};
+  }
+
+  return aggregateCapabilities(data as RawPermissionRow[]);
 }
 
 /**
@@ -191,6 +272,69 @@ export async function getUserPermissions(
   } finally {
     inFlightPermissionFetches.delete(cacheKey);
   }
+}
+
+export async function getUserCapabilities(
+  userId: string,
+  businessUnitId: string | null = null
+): Promise<UserCapabilityMap> {
+  const cacheKey = getCacheKey(userId, businessUnitId);
+
+  const cached = getCapabilitiesFromCache(userId, businessUnitId);
+  if (cached) {
+    return cached;
+  }
+
+  const existingInFlight = inFlightCapabilityFetches.get(cacheKey);
+  if (existingInFlight) {
+    return existingInFlight;
+  }
+
+  const inFlight = (async () => {
+    const capabilities = await fetchUserCapabilities(userId, businessUnitId);
+    storeCapabilitiesInCache(userId, businessUnitId, capabilities);
+    return capabilities;
+  })();
+
+  inFlightCapabilityFetches.set(cacheKey, inFlight);
+
+  try {
+    return await inFlight;
+  } finally {
+    inFlightCapabilityFetches.delete(cacheKey);
+  }
+}
+
+export function hasCapability(
+  capabilities: UserCapabilityMap,
+  capability: string,
+  action: PermissionAction = "view"
+): boolean {
+  const permission = capabilities[capability];
+  if (!permission) return false;
+
+  switch (action) {
+    case "view":
+      return permission.can_view;
+    case "create":
+      return permission.can_create;
+    case "edit":
+      return permission.can_edit;
+    case "delete":
+      return permission.can_delete;
+    default:
+      return false;
+  }
+}
+
+export async function canAccessCapability(
+  userId: string,
+  capability: string,
+  action: PermissionAction = "view",
+  businessUnitId: string | null = null
+): Promise<boolean> {
+  const capabilities = await getUserCapabilities(userId, businessUnitId);
+  return hasCapability(capabilities, capability, action);
 }
 
 /**

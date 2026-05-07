@@ -42,6 +42,8 @@ export function OverviewTab({ filters }: OverviewTabProps) {
   const { data: employeeData, isLoading: employeeLoading } = useSalesByEmployee(filters);
   const { data: locationData, isLoading: locationLoading } = useSalesByLocation(filters);
   const { data: timeData, isLoading: timeLoading } = useSalesByTime(filters);
+  const formatSensitiveCurrency = (amount: number | null | undefined) =>
+    typeof amount === "number" ? formatCurrency(amount) : "--";
 
   const overview = overviewData?.data;
   const topEmployees = useMemo(() => employeeData?.data?.slice(0, 5) || [], [employeeData]);
@@ -69,7 +71,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
   const topLocationsChartData = useMemo(() => {
     return topLocations.map((loc) => ({
       name: loc.city,
-      value: loc.totalSales,
+      value: loc.totalSales ?? 0,
     }));
   }, [topLocations]);
 
@@ -82,7 +84,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title={t("totalSales")}
-          value={overview ? formatCurrency(overview.totalSales) : formatCurrency(0)}
+          value={overview ? formatSensitiveCurrency(overview.totalSales) : formatCurrency(0)}
           description={t("transactions", { count: overview?.transactionCount || 0 })}
           icon={DollarSign}
           iconColor="text-green-600"
@@ -99,7 +101,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
         />
         <KPICard
           title={t("totalCommissions")}
-          value={overview ? formatCurrency(overview.totalCommissions) : formatCurrency(0)}
+          value={overview ? formatSensitiveCurrency(overview.totalCommissions) : formatCurrency(0)}
           description={t("earnedByAllAgents")}
           icon={TrendingUp}
           iconColor="text-blue-600"
@@ -115,7 +117,7 @@ export function OverviewTab({ filters }: OverviewTabProps) {
         />
         <KPICard
           title={t("averageOrderValue")}
-          value={overview ? formatCurrency(overview.averageOrderValue) : formatCurrency(0)}
+          value={overview ? formatSensitiveCurrency(overview.averageOrderValue) : formatCurrency(0)}
           description={t("perTransaction")}
           icon={ShoppingCart}
           iconColor="text-orange-600"

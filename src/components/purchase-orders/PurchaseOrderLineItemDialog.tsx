@@ -109,7 +109,7 @@ export function PurchaseOrderLineItemDialog({
     const selectedItem = items.find((i) => i.id === itemId);
     if (selectedItem) {
       const purchaseRate =
-        selectedItem.importCost ?? selectedItem.standardCost ?? selectedItem.listPrice;
+        selectedItem.importCost ?? selectedItem.standardCost ?? selectedItem.listPrice ?? 0;
       form.setValue("itemId", selectedItem.id);
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
@@ -195,7 +195,7 @@ export function PurchaseOrderLineItemDialog({
                           <div className="ml-4 flex-shrink-0 text-sm font-semibold">
                             {entry.importCost != null && entry.importCurrency
                               ? formatImportCurrency(entry.importCost, entry.importCurrency)
-                              : formatCurrency(entry.standardCost ?? entry.listPrice)}
+                              : formatCurrency(entry.standardCost ?? entry.listPrice ?? 0)}
                           </div>
                         </div>
                       )}

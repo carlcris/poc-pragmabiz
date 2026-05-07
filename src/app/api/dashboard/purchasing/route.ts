@@ -2,6 +2,8 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 import type {
   PurchasingDashboardData,
   WidgetName,
@@ -10,6 +12,7 @@ import type {
   DashboardStockRequisition,
   DashboardGRN,
 } from "@/types/purchasing-dashboard";
+import type { PurchasingDashboardCapabilities } from "@/constants/granular-permissions";
 import type { LoadListStatus } from "@/types/load-list";
 
 /**
@@ -64,6 +67,69 @@ export async function GET(request: NextRequest) {
 
     const warehouseId = searchParams.get("warehouseId");
     const businessUnitId = searchParams.get("businessUnitId") || currentBusinessUnitId;
+    const userCapabilities = await getUserCapabilities(user.id, businessUnitId);
+    const dashboardCapabilities: PurchasingDashboardCapabilities = {
+      canViewStockRequisitionValue: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_SR_VALUE
+      ),
+      canViewDamagedItemsValue: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_DAMAGED_ITEMS_VALUE
+      ),
+      canViewSupplierSpend: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_SUPPLIER_SPEND
+      ),
+      canViewOutstandingRequisitions: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_OUTSTANDING_REQUISITIONS
+      ),
+      canViewDamagedItems: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_DAMAGED_ITEMS
+      ),
+      canViewExpectedArrivals: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_EXPECTED_ARRIVALS
+      ),
+      canViewDelayedShipments: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_DELAYED_SHIPMENTS
+      ),
+      canViewTodaysReceivingQueue: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_TODAYS_RECEIVING_QUEUE
+      ),
+      canViewPendingApprovals: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_PENDING_APPROVALS
+      ),
+      canViewBoxAssignmentQueue: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_BOX_ASSIGNMENT_QUEUE
+      ),
+      canViewWarehouseCapacity: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_WAREHOUSE_CAPACITY
+      ),
+      canViewActiveRequisitions: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_ACTIVE_REQUISITIONS
+      ),
+      canViewIncomingDeliveries: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_INCOMING_DELIVERIES
+      ),
+      canViewActiveContainers: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_ACTIVE_CONTAINERS
+      ),
+      canViewLocationAssignment: hasCapability(
+        userCapabilities,
+        GRANULAR_CAPABILITIES.PURCHASING_LOCATION_ASSIGNMENT
+      ),
+    };
 
     const damageTypes: DamageType[] = [
       "broken",
@@ -81,7 +147,9 @@ export async function GET(request: NextRequest) {
     };
 
     // Initialize response object
-    const dashboardData: PurchasingDashboardData = {};
+    const dashboardData: PurchasingDashboardData = {
+      capabilities: dashboardCapabilities,
+    };
 
     // Helper function to check if a widget is requested
     const shouldFetch = (widgetName: WidgetName): boolean => {
@@ -91,7 +159,10 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 1. Outstanding Requisitions
     // ========================================================================
-    if (shouldFetch("outstandingRequisitions")) {
+    if (
+      shouldFetch("outstandingRequisitions") &&
+      dashboardCapabilities.canViewOutstandingRequisitions
+    ) {
       let query = supabase
         .from("stock_requisitions")
         .select(
@@ -138,17 +209,22 @@ export async function GET(request: NextRequest) {
             id: row.id,
             sr_number: row.sr_number,
             status: row.status,
-            total_amount: Number(row.total_amount) || 0,
+            total_amount: dashboardCapabilities.canViewStockRequisitionValue
+              ? Number(row.total_amount) || 0
+              : null,
             business_unit: businessUnit,
             warehouse: null,
           };
         });
 
-        const totalValue = requisitions.reduce((sum, sr) => sum + sr.total_amount, 0);
+        const totalValue = dashboardCapabilities.canViewStockRequisitionValue
+          ? requisitions.reduce((sum, sr) => sum + (sr.total_amount ?? 0), 0)
+          : null;
 
         dashboardData.outstandingRequisitions = {
           count: count || 0,
           totalValue,
+          canViewValue: dashboardCapabilities.canViewStockRequisitionValue,
           items: requisitions,
         };
       }
@@ -157,7 +233,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 2. Damaged Items This Month
     // ========================================================================
-    if (shouldFetch("damagedItemsThisMonth")) {
+    if (shouldFetch("damagedItemsThisMonth") && dashboardCapabilities.canViewDamagedItems) {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const endOfMonth = new Date(
@@ -268,12 +344,13 @@ export async function GET(request: NextRequest) {
 
         dashboardData.damagedItemsThisMonth = {
           count: totalQty,
-          totalValue,
+          totalValue: dashboardCapabilities.canViewDamagedItemsValue ? totalValue : null,
+          canViewValue: dashboardCapabilities.canViewDamagedItemsValue,
           bySupplier: Array.from(supplierMap.values()).map((s) => ({
             supplierId: s.id,
             supplierName: s.name,
             count: s.count,
-            value: s.value,
+            value: dashboardCapabilities.canViewDamagedItemsValue ? s.value : null,
           })),
           byDamageType: Array.from(damageTypeMap.entries()).map(([type, count]) => ({
             damageType: normalizeDamageType(type),
@@ -286,7 +363,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 3. Expected Arrivals This Week
     // ========================================================================
-    if (shouldFetch("expectedArrivalsThisWeek")) {
+    if (shouldFetch("expectedArrivalsThisWeek") && dashboardCapabilities.canViewExpectedArrivals) {
       const now = new Date();
       const startOfWeek = new Date(now);
       startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
@@ -335,7 +412,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 4. Delayed Shipments
     // ========================================================================
-    if (shouldFetch("delayedShipments")) {
+    if (shouldFetch("delayedShipments") && dashboardCapabilities.canViewDelayedShipments) {
       const today = new Date().toISOString().split("T")[0];
 
       let query = supabase
@@ -376,7 +453,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 5. Today's Receiving Queue
     // ========================================================================
-    if (shouldFetch("todaysReceivingQueue")) {
+    if (shouldFetch("todaysReceivingQueue") && dashboardCapabilities.canViewTodaysReceivingQueue) {
       const today = new Date().toISOString().split("T")[0];
 
       let query = supabase
@@ -415,7 +492,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 6. Pending Approvals
     // ========================================================================
-    if (shouldFetch("pendingApprovals")) {
+    if (shouldFetch("pendingApprovals") && dashboardCapabilities.canViewPendingApprovals) {
       const query = supabase
         .from("grns")
         .select(
@@ -445,7 +522,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 7. Box Assignment Queue
     // ========================================================================
-    if (shouldFetch("boxAssignmentQueue")) {
+    if (shouldFetch("boxAssignmentQueue") && dashboardCapabilities.canViewBoxAssignmentQueue) {
       // Items that have been received but don't have box assignments yet
       const { data, error } = await supabase
         .from("grn_items")
@@ -509,7 +586,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 8. Warehouse Capacity
     // ========================================================================
-    if (shouldFetch("warehouseCapacity")) {
+    if (shouldFetch("warehouseCapacity") && dashboardCapabilities.canViewWarehouseCapacity) {
       let query = supabase
         .from("warehouse_locations")
         .select("id, is_occupied", { count: "exact" });
@@ -539,7 +616,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 9. Active Requisitions by Status
     // ========================================================================
-    if (shouldFetch("activeRequisitions")) {
+    if (shouldFetch("activeRequisitions") && dashboardCapabilities.canViewActiveRequisitions) {
       let query = supabase
         .from("stock_requisitions")
         .select("status", { count: "exact" })
@@ -580,7 +657,10 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 10. Incoming Deliveries with SRs
     // ========================================================================
-    if (shouldFetch("incomingDeliveriesWithSRs")) {
+    if (
+      shouldFetch("incomingDeliveriesWithSRs") &&
+      dashboardCapabilities.canViewIncomingDeliveries
+    ) {
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
 
@@ -660,7 +740,7 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 11. Active Containers
     // ========================================================================
-    if (shouldFetch("activeContainers")) {
+    if (shouldFetch("activeContainers") && dashboardCapabilities.canViewActiveContainers) {
       let query = supabase
         .from("load_lists")
         .select(
@@ -713,7 +793,10 @@ export async function GET(request: NextRequest) {
     // ========================================================================
     // 12. Location Assignment Status
     // ========================================================================
-    if (shouldFetch("locationAssignmentStatus")) {
+    if (
+      shouldFetch("locationAssignmentStatus") &&
+      dashboardCapabilities.canViewLocationAssignment
+    ) {
       const { data: boxes, error } = await supabase
         .from("grn_boxes")
         .select("id, warehouse_location_id", { count: "exact" });
