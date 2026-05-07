@@ -109,6 +109,9 @@ export type DeliveryNote = {
   void_reason: string | null;
   driver_name: string | null;
   driver_signature: string | null;
+  helper_name: string | null;
+  delivery_time: string | null;
+  plate_number: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
@@ -150,6 +153,9 @@ export type MarkDispatchReadyPayload = {
 export type DispatchDeliveryNotePayload = {
   driverName?: string;
   driverSignature?: string;
+  helperName?: string;
+  deliveryTime?: string;
+  plateNumber?: string;
   dispatchDate?: string;
   notes?: string;
   items?: Array<{

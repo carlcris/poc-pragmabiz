@@ -179,6 +179,9 @@ export default function DeliveryNotesPage() {
   const [queueNotes, setQueueNotes] = useState("");
   const [selectedQueuePickerIds, setSelectedQueuePickerIds] = useState<Set<string>>(new Set());
   const [driverName, setDriverName] = useState("");
+  const [helperName, setHelperName] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [plateNumber, setPlateNumber] = useState("");
   const [dispatchNotes, setDispatchNotes] = useState("");
   const [printingDnId, setPrintingDnId] = useState<string | null>(null);
   const [receiveNotes, setReceiveNotes] = useState("");
@@ -533,6 +536,9 @@ export default function DeliveryNotesPage() {
     setQueueNotes("");
     setSelectedQueuePickerIds(new Set());
     setDriverName("");
+    setHelperName("");
+    setDeliveryTime("");
+    setPlateNumber("");
     setDispatchNotes("");
     setReceiveNotes("");
     setVoidReason("");
@@ -802,6 +808,9 @@ export default function DeliveryNotesPage() {
           id: actionDn.id,
           data: {
             driverName: driverName.trim() || undefined,
+            helperName: helperName.trim() || undefined,
+            deliveryTime: deliveryTime || undefined,
+            plateNumber: plateNumber.trim() || undefined,
             notes: dispatchNotes.trim() || undefined,
             items: actionItems
               .filter((item) => !item.is_voided)
@@ -1445,6 +1454,32 @@ export default function DeliveryNotesPage() {
                       value={driverName}
                       onChange={(event) => setDriverName(event.target.value)}
                     />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">{t("helperName")}</Label>
+                      <Input
+                        placeholder={t("enterHelperName")}
+                        value={helperName}
+                        onChange={(event) => setHelperName(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">{t("deliveryTime")}</Label>
+                      <Input
+                        type="time"
+                        value={deliveryTime}
+                        onChange={(event) => setDeliveryTime(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">{t("plateNumber")}</Label>
+                      <Input
+                        placeholder={t("enterPlateNumber")}
+                        value={plateNumber}
+                        onChange={(event) => setPlateNumber(event.target.value)}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">{t("dispatchNotes")}</Label>

@@ -54,6 +54,11 @@ const formatDate = (value: string | null | undefined, locale: string) => {
   return new Date(value).toLocaleString(locale);
 };
 
+const formatDeliveryTime = (value: string | null | undefined) => {
+  if (!value) return "--";
+  return value.slice(0, 5);
+};
+
 const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
   const parsed = typeof value === "number" ? value : parseFloat(String(value));
@@ -101,6 +106,9 @@ export default function DeliveryNoteDetailPage() {
   const [receivedQtyMap, setReceivedQtyMap] = useState<Record<string, number>>({});
   const [driverName, setDriverName] = useState("");
   const [driverSignature, setDriverSignature] = useState("");
+  const [helperName, setHelperName] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState("");
+  const [plateNumber, setPlateNumber] = useState("");
   const [dispatchNotes, setDispatchNotes] = useState("");
   const [receiveNotes, setReceiveNotes] = useState("");
   const [voidReason, setVoidReason] = useState("");
@@ -366,6 +374,9 @@ export default function DeliveryNoteDetailPage() {
     const payload = {
       driverName: driverName.trim() || undefined,
       driverSignature: driverSignature.trim(),
+      helperName: helperName.trim() || undefined,
+      deliveryTime: deliveryTime || undefined,
+      plateNumber: plateNumber.trim() || undefined,
       notes: dispatchNotes.trim() || undefined,
       items: items.map((item) => ({
         deliveryNoteItemId: item.id,
@@ -547,6 +558,40 @@ export default function DeliveryNoteDetailPage() {
           )}
         </div>
       </div>
+
+      {dn &&
+        (dn.driver_name || dn.helper_name || dn.delivery_time || dn.plate_number) &&
+        dn.status !== "dispatch_ready" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("dispatchInformation")}</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">{t("driverName")}</div>
+                <div className="mt-1 text-sm font-medium">{dn.driver_name || t("noValue")}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">{t("helperName")}</div>
+                <div className="mt-1 text-sm font-medium">{dn.helper_name || t("noValue")}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {t("deliveryTime")}
+                </div>
+                <div className="mt-1 text-sm font-medium">
+                  {formatDeliveryTime(dn.delivery_time)}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {t("plateNumber")}
+                </div>
+                <div className="mt-1 text-sm font-medium">{dn.plate_number || t("noValue")}</div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {error && !dn ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5">
@@ -780,6 +825,38 @@ export default function DeliveryNoteDetailPage() {
                 value={driverName}
                 onChange={(event) => setDriverName(event.target.value)}
               />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t("helperName")}
+                </Label>
+                <Input
+                  placeholder={t("enterHelperName")}
+                  value={helperName}
+                  onChange={(event) => setHelperName(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t("deliveryTime")}
+                </Label>
+                <Input
+                  type="time"
+                  value={deliveryTime}
+                  onChange={(event) => setDeliveryTime(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  {t("plateNumber")}
+                </Label>
+                <Input
+                  placeholder={t("enterPlateNumber")}
+                  value={plateNumber}
+                  onChange={(event) => setPlateNumber(event.target.value)}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">

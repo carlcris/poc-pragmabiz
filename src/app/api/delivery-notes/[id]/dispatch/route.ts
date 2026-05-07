@@ -20,6 +20,9 @@ type RouteContext = {
 type DispatchBody = {
   driverName?: string;
   driverSignature?: string;
+  helperName?: string;
+  deliveryTime?: string;
+  plateNumber?: string;
   dispatchDate?: string;
   notes?: string;
   items?: Array<{
@@ -125,6 +128,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const dispatchDate = body.dispatchDate || new Date().toISOString().split("T")[0];
+    const deliveryTime =
+      typeof body.deliveryTime === "string" && /^\d{2}:\d{2}(:\d{2})?$/.test(body.deliveryTime)
+        ? body.deliveryTime
+        : null;
 
     const { error: postingError } = await auth.supabase.rpc("post_delivery_note_dispatch", {
       p_company_id: auth.companyId,
@@ -136,6 +143,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       p_driver_name: body.driverName || null,
       p_driver_signature: body.driverSignature?.trim() || null,
       p_items: dispatchItems,
+      p_helper_name: body.helperName?.trim() || null,
+      p_delivery_time: deliveryTime,
+      p_plate_number: body.plateNumber?.trim() || null,
     });
 
     if (postingError) {

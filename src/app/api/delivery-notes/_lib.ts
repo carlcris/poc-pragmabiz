@@ -37,6 +37,9 @@ type DeliveryNoteRow = {
   void_reason: string | null;
   driver_name: string | null;
   driver_signature: string | null;
+  helper_name: string | null;
+  delivery_time: string | null;
+  plate_number: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;

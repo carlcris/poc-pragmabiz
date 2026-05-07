@@ -347,6 +347,7 @@ const toNumber = (value: unknown) => {
 };
 
 const toText = (value?: string | null) => value || "--";
+const formatDeliveryTime = (value?: string | null) => (value ? value.slice(0, 5) : "--");
 
 export const DeliveryNotePDF: React.FC<DeliveryNotePDFProps> = ({
   deliveryNote,
@@ -448,6 +449,25 @@ export const DeliveryNotePDF: React.FC<DeliveryNotePDFProps> = ({
           <View style={styles.detailItem}>
             <Text style={styles.detailLabel}>Created:</Text>
             <Text style={styles.detailValue}>{formatDate(deliveryNote.created_at)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.detailsRow}>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Driver:</Text>
+            <Text style={styles.detailValue}>{toText(deliveryNote.driver_name)}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Helper:</Text>
+            <Text style={styles.detailValue}>{toText(deliveryNote.helper_name)}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Delivery Time:</Text>
+            <Text style={styles.detailValue}>{formatDeliveryTime(deliveryNote.delivery_time)}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Text style={styles.detailLabel}>Plate No.:</Text>
+            <Text style={styles.detailValue}>{toText(deliveryNote.plate_number)}</Text>
           </View>
         </View>
 
