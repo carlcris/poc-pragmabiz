@@ -43,6 +43,7 @@ type ItemWarehouseRow = {
   estimated_arrival_date: string | null;
   reorder_level: number | string | null;
   reorder_quantity: number | string | null;
+  max_quantity: number | string | null;
 };
 type DbItemCategory = {
   id: string;
@@ -200,6 +201,7 @@ function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0,
     reorderQty: 0,
+    maxStockLevel: 0,
     imageUrl: dbItem.image_url || undefined,
     isActive: dbItem.is_active ?? true,
     createdAt: dbItem.created_at,
@@ -280,13 +282,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     let available = 0;
     let reorderLevel = 0;
     let reorderQty = 0;
+    let maxStockLevel = 0;
     let inTransit = 0;
     let estimatedArrivalDate: string | null = null;
 
     let inventoryQuery = supabase
       .from("item_warehouse")
       .select(
-        "current_stock, reserved_stock, available_stock, in_transit, estimated_arrival_date, reorder_level, reorder_quantity, warehouses!inner(business_unit_id)"
+        "current_stock, reserved_stock, available_stock, in_transit, estimated_arrival_date, reorder_level, reorder_quantity, max_quantity, warehouses!inner(business_unit_id)"
       )
       .eq("item_id", id)
       .eq("company_id", data.company_id)
@@ -312,6 +315,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         inTransit += Number(row.in_transit || 0);
         reorderLevel = Math.max(reorderLevel, Number(row.reorder_level || 0));
         reorderQty = Math.max(reorderQty, Number(row.reorder_quantity || 0));
+        maxStockLevel += Number(row.max_quantity || 0);
         if (row.estimated_arrival_date) {
           if (!estimatedArrivalDate || row.estimated_arrival_date < estimatedArrivalDate) {
             estimatedArrivalDate = row.estimated_arrival_date;
@@ -331,6 +335,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         estimatedArrivalDate,
         reorderLevel,
         reorderQty,
+        maxStockLevel,
       },
       canViewPricingDetails
     );

@@ -60,6 +60,11 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const [toLocationId, setToLocationId] = useState<string>("");
   const [moveQty, setMoveQty] = useState<string>("");
   const [expandedLocations, setExpandedLocations] = useState<Set<string>>(new Set());
+  const [maxStockDialogOpen, setMaxStockDialogOpen] = useState(false);
+  const [selectedMaxStockLocation, setSelectedMaxStockLocation] = useState<ItemLocation | null>(
+    null
+  );
+  const [maxStockInput, setMaxStockInput] = useState("");
   const { data, isLoading, error } = useQuery<ItemLocationsResponse>({
     queryKey: ["item-locations", itemId],
     queryFn: async () => apiClient.get<ItemLocationsResponse>(`/api/items/${itemId}/locations`),
@@ -171,6 +176,44 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     },
   });
 
+  const updateMaxStock = useMutation({
+    mutationFn: async () => {
+      if (!selectedMaxStockLocation) {
+        throw new Error(t("selectWarehouseForMaxStock"));
+      }
+
+      const trimmedValue = maxStockInput.trim();
+      const maxQuantity = trimmedValue === "" ? null : Number(trimmedValue);
+      if (maxQuantity !== null && (!Number.isFinite(maxQuantity) || maxQuantity < 0)) {
+        throw new Error(t("enterValidMaxStock"));
+      }
+
+      return apiClient.patch(`/api/items/${itemId}/warehouse-settings`, {
+        warehouseId: selectedMaxStockLocation.warehouseId,
+        maxQuantity,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["item-locations", itemId] });
+      queryClient.invalidateQueries({ queryKey: ["items", itemId] });
+      queryClient.invalidateQueries({ queryKey: ["items"] });
+      toast.success(t("maxStockUpdated"));
+      setMaxStockDialogOpen(false);
+      setSelectedMaxStockLocation(null);
+      setMaxStockInput("");
+    },
+    onError: (mutationError) => {
+      const message = mutationError instanceof Error ? mutationError.message : t("maxStockError");
+      toast.error(message);
+    },
+  });
+
+  const openMaxStockDialog = (location: ItemLocation) => {
+    setSelectedMaxStockLocation(location);
+    setMaxStockInput(location.maxQuantity == null ? "" : String(location.maxQuantity));
+    setMaxStockDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -218,6 +261,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                   <TableHead className="text-right">{t("onHand")}</TableHead>
                   <TableHead className="text-right">{t("reserved")}</TableHead>
                   <TableHead className="text-right">{t("available")}</TableHead>
+                  <TableHead className="text-right">{t("maxStock")}</TableHead>
                   <TableHead className="text-right">{t("inTransit")}</TableHead>
                   <TableHead>{t("estArrival")}</TableHead>
                   <TableHead className="text-right">{tCommon("actions")}</TableHead>
@@ -279,6 +323,9 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                           {formatQty(location.qtyAvailable, locale)}
                         </TableCell>
                         <TableCell className="text-right">
+                          {location.maxQuantity == null ? "--" : formatQty(location.maxQuantity, locale)}
+                        </TableCell>
+                        <TableCell className="text-right">
                           {formatQty(location.inTransit || 0, locale)}
                         </TableCell>
                         <TableCell>
@@ -295,11 +342,18 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                           >
                             {t("setDefault")}
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openMaxStockDialog(location)}
+                          >
+                            {t("editMaxStock")}
+                          </Button>
                         </TableCell>
                       </TableRow>
                       {hasBatches && isExpanded && (
                         <TableRow>
-                          <TableCell colSpan={10} className="bg-muted/50 p-0">
+                          <TableCell colSpan={11} className="bg-muted/50 p-0">
                             <div className="px-4 py-2">
                               <Table>
                                 <TableHeader>
@@ -443,6 +497,49 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
             </Button>
             <Button onClick={() => moveStock.mutate()} disabled={moveStock.isPending}>
               {moveStock.isPending ? t("moving") : t("moveStock")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={maxStockDialogOpen}
+        onOpenChange={(open) => {
+          setMaxStockDialogOpen(open);
+          if (!open) {
+            setSelectedMaxStockLocation(null);
+            setMaxStockInput("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("maxStockDialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {selectedMaxStockLocation
+                ? t("maxStockDialogDescription", {
+                    warehouse: `${selectedMaxStockLocation.warehouseCode} - ${selectedMaxStockLocation.warehouseName}`,
+                  })
+                : t("maxStockDialogDescriptionFallback")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("maxStock")}</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.0001"
+              value={maxStockInput}
+              onChange={(event) => setMaxStockInput(event.target.value)}
+              placeholder={t("maxStockPlaceholder")}
+            />
+            <p className="text-xs text-muted-foreground">{t("maxStockHelp")}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMaxStockDialogOpen(false)}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={() => updateMaxStock.mutate()} disabled={updateMaxStock.isPending}>
+              {updateMaxStock.isPending ? t("saving") : t("saveMaxStock")}
             </Button>
           </DialogFooter>
         </DialogContent>

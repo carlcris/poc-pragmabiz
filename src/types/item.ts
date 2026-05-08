@@ -52,6 +52,7 @@ export type Item = {
   available?: number;
   reorderLevel: number;
   reorderQty: number;
+  maxStockLevel: number;
   inTransit?: number;
   estimatedArrivalDate?: string | null;
   imageUrl?: string;

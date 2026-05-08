@@ -31,6 +31,7 @@ export interface ItemWithStock {
   // Aggregated from item_warehouse.available_stock across the scoped warehouse set.
   available: number;
   reorderPoint: number;
+  maxStockLevel: number;
   inTransit: number;
   estimatedArrivalDate?: string | null;
   status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
@@ -71,6 +72,7 @@ type ItemsRpcRow = {
   allocated: number;
   available: number;
   reorder_point: number;
+  max_stock_level: number;
   in_transit: number;
   estimated_arrival_date: string | null;
   status: ItemStatus;
@@ -358,6 +360,7 @@ const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     listPrice: Number(dbItem.sales_price) || 0,
     reorderLevel: 0,
     reorderQty: 0,
+    maxStockLevel: 0,
     imageUrl: dbItem.image_url || undefined,
     isActive: dbItem.is_active ?? true,
     createdAt: dbItem.created_at,
@@ -579,6 +582,7 @@ export async function GET(request: NextRequest) {
       allocated: row.allocated,
       available: row.available,
       reorderPoint: row.reorder_point,
+      maxStockLevel: row.max_stock_level,
       inTransit: row.in_transit,
       estimatedArrivalDate: row.estimated_arrival_date,
       status: row.status,

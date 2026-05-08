@@ -1911,6 +1911,7 @@ export type TranslationKeys = {
     reorderLevelDescription: string;
     reorderQtyLabel: string;
     reorderQtyDescription: string;
+    maxStockLevelLabel: string;
     itemInformationTitle: string;
     itemInformationDescription: string;
     itemInformationCreateDescription: string;
@@ -2028,12 +2029,18 @@ export type TranslationKeys = {
     onHand: string;
     reserved: string;
     available: string;
+    maxStock: string;
     inTransit: string;
     estArrival: string;
     defaultBadge: string;
     setDefault: string;
+    editMaxStock: string;
     defaultUpdated: string;
     updateDefaultError: string;
+    maxStockUpdated: string;
+    maxStockError: string;
+    selectWarehouseForMaxStock: string;
+    enterValidMaxStock: string;
     selectWarehouseAndLocations: string;
     selectDifferentLocations: string;
     enterValidQuantity: string;
@@ -2051,9 +2058,16 @@ export type TranslationKeys = {
     selectDestinationLocation: string;
     quantityLabel: string;
     quantityPlaceholder: string;
+    maxStockDialogTitle: string;
+    maxStockDialogDescription: string;
+    maxStockDialogDescriptionFallback: string;
+    maxStockPlaceholder: string;
+    maxStockHelp: string;
+    saveMaxStock: string;
     unnamed: string;
     availableShort: string;
     cancel: string;
+    saving: string;
     moving: string;
   };
   itemPricesTab: {
@@ -4636,6 +4650,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderLevelDescription: "Alert when stock falls below this level",
       reorderQtyLabel: "Reorder Quantity",
       reorderQtyDescription: "Suggested quantity to reorder",
+      maxStockLevelLabel: "Max Stock Level",
       itemInformationTitle: "Item Information",
       itemInformationDescription: "Basic details about this item",
       itemInformationCreateDescription: "Fill in the details below to create a new item.",
@@ -4757,12 +4772,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       onHand: "On Hand",
       reserved: "Reserved",
       available: "Available",
+      maxStock: "Max Stock",
       inTransit: "In Transit",
       estArrival: "Est Arrival",
       defaultBadge: "Default",
       setDefault: "Set Default",
+      editMaxStock: "Set Max",
       defaultUpdated: "Default location updated",
       updateDefaultError: "Failed to update default location",
+      maxStockUpdated: "Max stock level updated",
+      maxStockError: "Failed to update max stock level",
+      selectWarehouseForMaxStock: "Select a warehouse to update max stock.",
+      enterValidMaxStock: "Enter a valid max stock level.",
       selectWarehouseAndLocations: "Select warehouse and locations to move stock.",
       selectDifferentLocations: "Select two different locations.",
       enterValidQuantity: "Enter a valid quantity to move.",
@@ -4780,9 +4801,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectDestinationLocation: "Select destination location",
       quantityLabel: "Quantity",
       quantityPlaceholder: "Enter quantity to move",
+      maxStockDialogTitle: "Set Max Stock",
+      maxStockDialogDescription: "Set the maximum stock threshold for {warehouse}.",
+      maxStockDialogDescriptionFallback: "Set the maximum stock threshold for this warehouse.",
+      maxStockPlaceholder: "Leave blank to disable",
+      maxStockHelp: "Items are marked as overstock when available stock exceeds this warehouse threshold.",
+      saveMaxStock: "Save Max Stock",
       unnamed: "Unnamed",
       availableShort: "Avail",
       cancel: "Cancel",
+      saving: "Saving...",
       moving: "Moving...",
     },
     itemPricesTab: {
@@ -9808,6 +9836,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderLevelDescription: "当库存低于该水平时提醒",
       reorderQtyLabel: "补货数量",
       reorderQtyDescription: "建议补货数量",
+      maxStockLevelLabel: "最高库存水平",
       itemInformationTitle: "商品信息",
       itemInformationDescription: "该商品的基本信息",
       itemInformationCreateDescription: "填写以下信息以创建新商品。",
@@ -9925,12 +9954,18 @@ export const translations: Record<Locale, TranslationKeys> = {
       onHand: "现有库存",
       reserved: "已预留",
       available: "可用数量",
+      maxStock: "最高库存",
       inTransit: "在途",
       estArrival: "预计到达",
       defaultBadge: "默认",
       setDefault: "设为默认",
+      editMaxStock: "设置最高",
       defaultUpdated: "默认库位已更新",
       updateDefaultError: "更新默认库位失败",
+      maxStockUpdated: "最高库存水平已更新",
+      maxStockError: "更新最高库存水平失败",
+      selectWarehouseForMaxStock: "请选择要更新最高库存的仓库。",
+      enterValidMaxStock: "请输入有效的最高库存水平。",
       selectWarehouseAndLocations: "请选择仓库和库位以移动库存。",
       selectDifferentLocations: "请选择两个不同的库位。",
       enterValidQuantity: "请输入有效的移动数量。",
@@ -9948,9 +9983,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectDestinationLocation: "选择目标库位",
       quantityLabel: "数量",
       quantityPlaceholder: "输入要移动的数量",
+      maxStockDialogTitle: "设置最高库存",
+      maxStockDialogDescription: "设置 {warehouse} 的最高库存阈值。",
+      maxStockDialogDescriptionFallback: "设置此仓库的最高库存阈值。",
+      maxStockPlaceholder: "留空则停用",
+      maxStockHelp: "当可用库存超过此仓库阈值时，商品会标记为库存过量。",
+      saveMaxStock: "保存最高库存",
       unnamed: "未命名",
       availableShort: "可用",
       cancel: "取消",
+      saving: "保存中...",
       moving: "移动中...",
     },
     itemPricesTab: {

@@ -8286,6 +8286,7 @@ export type Database = {
           category_id: string;
           category_name: string;
           cost_price: number;
+          custom_fields: Json | null;
           estimated_arrival_date: string;
           id: string;
           image_url: string;
@@ -8300,6 +8301,7 @@ export type Database = {
           on_hand: number;
           purchase_price: number;
           reorder_point: number;
+          max_stock_level: number;
           sales_price: number;
           status: string;
           total_count: number;

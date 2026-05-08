@@ -610,6 +610,12 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                   </span>
                   <span className="text-lg font-bold">{item.reorderQty || "0"}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {t("maxStockLevelLabel")}
+                  </span>
+                  <span className="text-lg font-bold">{item.maxStockLevel || "0"}</span>
+                </div>
                 {item.inTransit !== undefined && item.inTransit > 0 && (
                   <div className="flex items-center justify-between border-t pt-2">
                     <span className="text-sm font-medium text-muted-foreground">
