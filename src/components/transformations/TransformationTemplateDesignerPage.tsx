@@ -104,6 +104,13 @@ type SliceDialogSelection = {
   height: number;
 };
 
+type RectBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 const getItemPickerTitle = (mode: ItemPickerState["mode"]) =>
   mode === "parent"
     ? "Select Parent Sheet Item"
@@ -130,6 +137,70 @@ const CONTEXT_MENU_SAFE_MARGIN = 20;
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 const isClose = (a: number, b: number) => Math.abs(a - b) < EDGE_EPSILON;
 
+const rectsIntersect = (a: RectBounds, b: RectBounds) =>
+  a.x < b.x + b.width &&
+  a.x + a.width > b.x &&
+  a.y < b.y + b.height &&
+  a.y + a.height > b.y;
+
+const subtractRect = (section: SheetLayoutSection, cutout: RectBounds): SheetLayoutSection[] => {
+  if (!rectsIntersect(section, cutout)) {
+    return [section];
+  }
+
+  const sectionRight = section.x + section.width;
+  const sectionBottom = section.y + section.height;
+  const cutoutRight = cutout.x + cutout.width;
+  const cutoutBottom = cutout.y + cutout.height;
+  const overlapX1 = Math.max(section.x, cutout.x);
+  const overlapX2 = Math.min(sectionRight, cutoutRight);
+  const overlapY1 = Math.max(section.y, cutout.y);
+  const overlapY2 = Math.min(sectionBottom, cutoutBottom);
+  const pieces: SheetLayoutSection[] = [];
+
+  if (overlapY1 > section.y) {
+    pieces.push({
+      ...section,
+      id: crypto.randomUUID(),
+      height: overlapY1 - section.y,
+    });
+  }
+
+  if (overlapY2 < sectionBottom) {
+    pieces.push({
+      ...section,
+      id: crypto.randomUUID(),
+      y: overlapY2,
+      height: sectionBottom - overlapY2,
+    });
+  }
+
+  if (overlapX1 > section.x) {
+    pieces.push({
+      ...section,
+      id: crypto.randomUUID(),
+      width: overlapX1 - section.x,
+      y: overlapY1,
+      height: overlapY2 - overlapY1,
+    });
+  }
+
+  if (overlapX2 < sectionRight) {
+    pieces.push({
+      ...section,
+      id: crypto.randomUUID(),
+      x: overlapX2,
+      width: sectionRight - overlapX2,
+      y: overlapY1,
+      height: overlapY2 - overlapY1,
+    });
+  }
+
+  return pieces.filter(
+    (piece) => piece.width >= MIN_SECTION_SIZE && piece.height >= MIN_SECTION_SIZE
+  );
+};
+
 const getContextMenuPosition = (x: number, y: number) => {
   if (typeof window === "undefined") {
     return { x, y };
@@ -148,6 +219,7 @@ const getContextMenuPosition = (x: number, y: number) => {
 const parseItemDimensions = (
   dimensions: ItemDimensions | null | undefined
 ): { width: number; height: number; unit: SheetLayoutUnit | null } | null => {
+  console.log("Parsing item dimensions:", dimensions);
   if (!dimensions) return null;
 
   const width = Number(dimensions.width ?? dimensions.length ?? 0);
@@ -757,6 +829,20 @@ export function TransformationTemplateDesignerPage() {
     }
   };
 
+  const handleSwapSliceOrientation = () => {
+    const currentWidth = effectiveSliceWidthInput.trim();
+    const currentHeight = effectiveSliceHeightInput.trim();
+
+    if (!currentWidth && !currentHeight) {
+      return;
+    }
+
+    setSliceWidthInput(currentHeight);
+    setSliceHeightInput(currentWidth);
+    setSliceDialogError(null);
+    setErrorMessage(null);
+  };
+
   const getSvgPoint = (event: React.PointerEvent<SVGElement>) => {
     const svg = svgRef.current;
     if (!svg) return null;
@@ -1072,6 +1158,96 @@ export function TransformationTemplateDesignerPage() {
     commitSections(nextSections);
   };
 
+  const handleContextSwitchSliceOrientation = () => {
+    if (isCanvasLocked) {
+      setErrorMessage("Select a parent sheet item before editing the layout.");
+      return;
+    }
+    if (!selectedSection || selectedSection.type !== "piece") {
+      setContextMenu(null);
+      return;
+    }
+
+    const nextWidth = selectedSection.height;
+    const nextHeight = selectedSection.width;
+    if (isClose(nextWidth, selectedSection.width) && isClose(nextHeight, selectedSection.height)) {
+      setContextMenu(null);
+      return;
+    }
+
+    const plotBounds: RectBounds = {
+      x: selectedSection.x,
+      y: selectedSection.y,
+      width: Math.max(selectedSection.width, nextWidth),
+      height: Math.max(selectedSection.height, nextHeight),
+    };
+
+    if (
+      plotBounds.x + plotBounds.width > sheetWidth + EDGE_EPSILON ||
+      plotBounds.y + plotBounds.height > sheetHeight + EDGE_EPSILON
+    ) {
+      const message = "Swapped slice dimensions do not fit within the parent sheet.";
+      setErrorMessage(message);
+      toast.error(message);
+      setContextMenu(null);
+      return;
+    }
+
+    const intersectingSections = sections.filter((section) => rectsIntersect(section, plotBounds));
+    const blockingSection = intersectingSections.find(
+      (section) => section.id !== selectedSection.id && section.type === "piece"
+    );
+
+    if (blockingSection) {
+      const message = "Swapped slice dimensions overlap another plotted piece.";
+      setErrorMessage(message);
+      toast.error(message);
+      setContextMenu(null);
+      return;
+    }
+
+    const rotatedSliceSections = buildSliceSections(
+      {
+        id: crypto.randomUUID(),
+        x: plotBounds.x,
+        y: plotBounds.y,
+        width: plotBounds.width,
+        height: plotBounds.height,
+        label: "",
+        order: 0,
+        type: "leftover",
+      },
+      nextWidth,
+      nextHeight
+    );
+
+    if (rotatedSliceSections[0]) {
+      rotatedSliceSections[0] = {
+        ...rotatedSliceSections[0],
+        id: crypto.randomUUID(),
+        type: "piece",
+        mappedItem: selectedSection.mappedItem ?? null,
+      };
+    }
+
+    const nextSections = sections.flatMap((section) => {
+      if (section.id === selectedSection.id) {
+        return [];
+      }
+      if (!rectsIntersect(section, plotBounds)) {
+        return [section];
+      }
+      return subtractRect(section, plotBounds);
+    });
+
+    commitSections([...nextSections, ...rotatedSliceSections]);
+    setSelectedSectionId(rotatedSliceSections[0]?.id ?? null);
+    setContextMenu(null);
+    toast.success(
+      `Switched slice to ${nextWidth.toFixed(2)} x ${nextHeight.toFixed(2)} ${sheetUnit}`
+    );
+  };
+
   const handleDeleteSelectedCut = () => {
     if (isCanvasLocked) {
       setErrorMessage("Select a parent sheet item before editing the layout.");
@@ -1225,7 +1401,7 @@ export function TransformationTemplateDesignerPage() {
         const parsedDimensions = parseItemDimensions(itemResponse.data.dimensions);
 
         if (!parsedDimensions) {
-          setItemPickerError("The selected item does not have valid width and height dimensions.");
+          setItemPickerError("The selected item does not have valid width and height dimensions123.");
           return;
         }
 
@@ -1682,7 +1858,7 @@ export function TransformationTemplateDesignerPage() {
                 {interactionMode === "slice" && (
                   <div className="space-y-2 border-t pt-3">
                     <label className="text-xs font-medium">Quick Slice Dimensions</label>
-                    <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
                       <Input
                         inputMode="decimal"
                         value={sliceWidthInput}
@@ -1700,6 +1876,18 @@ export function TransformationTemplateDesignerPage() {
                       <div className="flex h-8 items-center justify-center rounded-md border px-2 text-xs text-muted-foreground">
                         {sheetUnit}
                       </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={handleSwapSliceOrientation}
+                        disabled={!effectiveSliceWidthInput && !effectiveSliceHeightInput}
+                        title="Swap slice orientation"
+                      >
+                        <RotateCw className="h-3.5 w-3.5" />
+                        <span className="sr-only">Swap slice orientation</span>
+                      </Button>
                     </div>
                     <Button
                       type="button"
@@ -2106,6 +2294,15 @@ export function TransformationTemplateDesignerPage() {
           <button
             type="button"
             className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+            onClick={handleContextSwitchSliceOrientation}
+            disabled={selectedSection?.type !== "piece"}
+          >
+            <RotateCw className="h-4 w-4 text-muted-foreground" />
+            Switch Orientation
+          </button>
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
             onClick={handleContextMarkLeftover}
             disabled={selectedSection?.type === "leftover" || !selectedSection}
           >
@@ -2156,7 +2353,7 @@ export function TransformationTemplateDesignerPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Dimensions</label>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px]">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_80px_40px]">
                 <input
                   type="text"
                   inputMode="decimal"
@@ -2178,6 +2375,18 @@ export function TransformationTemplateDesignerPage() {
                 <div className="flex h-10 items-center justify-center rounded-md border bg-muted px-3 text-sm font-medium text-muted-foreground">
                   {sheetUnit}
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10"
+                  onClick={handleSwapSliceOrientation}
+                  disabled={!effectiveSliceWidthInput && !effectiveSliceHeightInput}
+                  title="Swap slice orientation"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  <span className="sr-only">Swap slice orientation</span>
+                </Button>
               </div>
             </div>
 
