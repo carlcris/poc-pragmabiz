@@ -20,6 +20,7 @@ export const createInvoiceLineItemSchema = (t: (key: string) => string) =>
     discount: z.number().min(0, t("discountMin")).max(100, t("discountMax")),
     taxRate: z.number().min(0, t("taxMin")).max(100, t("taxMax")),
     uomId: z.string().min(1, t("uomRequired")),
+    uomCode: z.string().optional().default(""),
   });
 
 export const invoiceLineItemSchema = createInvoiceLineItemSchema((key) => key);

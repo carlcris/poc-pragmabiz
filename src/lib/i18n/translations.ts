@@ -1557,6 +1557,7 @@ export type TranslationKeys = {
     total: string;
     termsConditions: string;
     internalNotes: string;
+    cancel: string;
     saving: string;
     updateInvoice: string;
     createInvoice: string;
@@ -4291,6 +4292,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       total: "Total",
       termsConditions: "Terms & Conditions",
       internalNotes: "Internal Notes",
+      cancel: "Cancel",
       saving: "Saving...",
       updateInvoice: "Update Invoice",
       createInvoice: "Create Invoice",
@@ -9482,6 +9484,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       total: "总计",
       termsConditions: "条款和条件",
       internalNotes: "内部备注",
+      cancel: "取消",
       saving: "保存中...",
       updateInvoice: "更新发票",
       createInvoice: "创建发票",

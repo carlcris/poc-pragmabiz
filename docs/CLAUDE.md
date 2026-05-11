@@ -212,6 +212,13 @@ When implementing changes:
 3. Do not add short-term workaround code that is knowingly meant to be cleaned up later unless the user explicitly asks for a temporary measure.
 4. If the correct fix requires a migration, contract update, or broader implementation step, state that clearly and implement the proper path rather than masking it with a shortcut.
 
+Core Development Principles:
+
+1. Don’t assume. Don’t hide confusion. Surface tradeoffs.
+2. Minimum code that solves the problem. Nothing speculative.
+3. Touch only what you must. Clean up only your own mess.
+4. Define success criteria. Loop until verified.
+
 ### Server-Backed Select Rule
 
 **CRITICAL: Do not fake searchable selects by preloading large option lists and filtering them in the client.**

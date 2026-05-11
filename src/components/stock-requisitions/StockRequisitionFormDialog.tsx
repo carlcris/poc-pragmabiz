@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { FieldErrors, Path } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -263,6 +264,7 @@ export function StockRequisitionFormDialog({
   // Reset form when dialog opens/closes or SR changes
   useEffect(() => {
     if (open && stockRequisition) {
+      setActiveTab("general");
       form.reset({
         supplierId: stockRequisition.supplierId,
         requisitionDate: stockRequisition.requisitionDate.split("T")[0],
@@ -379,6 +381,7 @@ export function StockRequisitionFormDialog({
 
   async function onSubmit(values: StockRequisitionFormValues) {
     if (lineItems.length === 0) {
+      setActiveTab("items");
       toast.error(t("lineItemsRequired"));
       return;
     }
@@ -438,6 +441,21 @@ export function StockRequisitionFormDialog({
     }
   }
 
+  const handleInvalidSubmit = (errors: FieldErrors<StockRequisitionFormValues>) => {
+    const generalFields: Path<StockRequisitionFormValues>[] = [
+      "supplierId",
+      "requisitionDate",
+      "requiredByDate",
+      "notes",
+    ];
+
+    const firstGeneralError = generalFields.find((field) => errors[field]);
+    if (firstGeneralError) {
+      setActiveTab("general");
+      window.requestAnimationFrame(() => form.setFocus(firstGeneralError));
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[92vh] max-w-6xl flex-col gap-0 p-0">
@@ -458,7 +476,10 @@ export function StockRequisitionFormDialog({
         </div>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}

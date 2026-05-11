@@ -38,7 +38,16 @@ Supabase commands (repo root):
 
 ## Testing Guidelines
 
-There is no test runner configured in `package.json`. Use MSW mocks in `src/mocks/` for local API simulation and add tests only when introducing a harness. Keep ad-hoc scripts alongside existing `test-*.js` files in the repo root.
+There is no test runner configured in `package.json` yet. When introducing the test harness, use Jest with `next/jest`, React Testing Library, and MSW. Use MSW mocks in `src/mocks/` for local API simulation. Keep ad-hoc scripts alongside existing `test-*.js` files in the repo root until the formal harness exists.
+
+Every codebase update must consider test impact:
+
+- When changing existing behavior, update the affected tests in the same change.
+- When adding a new feature, add equivalent tests that cover the expected behavior, edge cases, and important failure paths.
+- If a correct test cannot be added because the harness does not exist yet, document the missing test coverage clearly in the task completion notes and prefer adding the harness before expanding untested behavior.
+- At task completion, run post-flight testing for the affected module first, then broader checks as appropriate.
+- Post-flight testing should be the narrowest reliable command that validates the changed area. Examples: a specific Jest test file once available, `npm run lint`, `npm run build`, or a targeted migration validation for database changes.
+- Do not treat lint/build as a replacement for feature tests once a relevant test harness exists.
 
 ## Commit & Pull Request Guidelines
 
@@ -99,6 +108,13 @@ Reason:
 ## Agent-Specific Instructions
 
 Follow the safety and type-verification protocols in `docs/CLAUDE.md` when touching APIs, hooks, or data types.
+
+## Core Development Principles:
+
+1. Don’t assume. Don’t hide confusion. Surface tradeoffs.
+2. Minimum code that solves the problem. Nothing speculative.
+3. Touch only what you must. Clean up only your own mess.
+4. Define success criteria. Loop until verified.
 
 ## Implementation Quality Rules
 

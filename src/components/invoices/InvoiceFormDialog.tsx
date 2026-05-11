@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { FieldErrors, Path } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -96,6 +97,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
 
   const [lineItems, setLineItems] = useState<LineItemFormValues[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("general");
   const [editingItem, setEditingItem] = useState<{
     index: number;
     item: LineItemFormValues;
@@ -176,6 +178,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
 
   useEffect(() => {
     if (open && invoice) {
+      setActiveTab("general");
       form.reset({
         customerId: invoice.customerId,
         warehouseId: invoice.warehouseId || "",
@@ -194,12 +197,14 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           uomId: item.uomId,
+          uomCode: item.uomCode || "",
           discount: item.discount,
           taxRate: item.taxRate,
           lineTotal: item.lineTotal,
         }))
       );
     } else if (open) {
+      setActiveTab("general");
       form.reset(defaultValues);
       setLineItems([]);
     }
@@ -223,6 +228,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
 
   const onSubmit = async (data: InvoiceFormInput) => {
     if (lineItems.length === 0) {
+      setActiveTab("items");
       toast.error(t("addLineItemRequired"));
       return;
     }
@@ -242,6 +248,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
           description: item.description,
           quantity: item.quantity,
           uomId: item.uomId,
+          uomCode: item.uomCode || "",
           unitPrice: item.unitPrice,
           discount: item.discount,
           taxRate: item.taxRate,
@@ -286,6 +293,30 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
     } catch {}
   };
 
+  const handleInvalidSubmit = (errors: FieldErrors<InvoiceFormInput>) => {
+    const generalFields: Path<InvoiceFormInput>[] = [
+      "customerId",
+      "warehouseId",
+      "locationId",
+      "invoiceDate",
+      "dueDate",
+    ];
+    const termsFields: Path<InvoiceFormInput>[] = ["terms", "notes"];
+
+    const firstGeneralError = generalFields.find((field) => errors[field]);
+    if (firstGeneralError) {
+      setActiveTab("general");
+      window.requestAnimationFrame(() => form.setFocus(firstGeneralError));
+      return;
+    }
+
+    const firstTermsError = termsFields.find((field) => errors[field]);
+    if (firstTermsError) {
+      setActiveTab("terms");
+      window.requestAnimationFrame(() => form.setFocus(firstTermsError));
+    }
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -298,8 +329,8 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <Tabs defaultValue="general" className="w-full">
+            <form onSubmit={form.handleSubmit(onSubmit, handleInvalidSubmit)} className="space-y-6">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="general">{t("generalTab")}</TabsTrigger>
                   <TabsTrigger value="items">
@@ -492,7 +523,7 @@ export function InvoiceFormDialog({ open, onOpenChange, invoice }: InvoiceFormDi
                                   <TableCell className="text-right">{item.quantity}</TableCell>
                                   <TableCell className="text-center">
                                     <span className="text-muted-foreground">
-                                      {item.uomId || "—"}
+                                      {item.uomCode || item.uomId || "—"}
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right">

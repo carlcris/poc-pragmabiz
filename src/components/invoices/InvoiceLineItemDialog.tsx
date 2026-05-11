@@ -73,6 +73,7 @@ export function InvoiceLineItemDialog({
       quantity: 1,
       unitPrice: 0,
       uomId: "",
+      uomCode: "",
       discount: 0,
       taxRate: 0,
     },
@@ -94,6 +95,7 @@ export function InvoiceLineItemDialog({
         quantity: 1,
         unitPrice: 0,
         uomId: "",
+        uomCode: "",
         discount: 0,
         taxRate: 0,
       });
@@ -111,6 +113,7 @@ export function InvoiceLineItemDialog({
     form.setValue("description", itemDescription);
     form.setValue("unitPrice", selectedItem.listPrice);
     form.setValue("uomId", selectedItem.uomId);
+    form.setValue("uomCode", selectedItem.uom);
   };
 
   const onSubmit = (data: LineItemFormInput) => {
