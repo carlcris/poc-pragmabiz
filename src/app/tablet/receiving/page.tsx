@@ -3,13 +3,17 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
+import { DeliveryNoteReceivingCard } from "@/components/tablet/DeliveryNoteReceivingCard";
 import { LoadListReceivingCard } from "@/components/tablet/LoadListReceivingCard";
+import { useDeliveryNotes } from "@/hooks/useDeliveryNotes";
 import { useLoadLists, useUpdateLoadListStatus } from "@/hooks/useLoadLists";
 import type { LoadListStatus } from "@/types/load-list";
-import { Loader2, Search, Filter } from "lucide-react";
+import { ClipboardList, Loader2, Search, Filter, Truck } from "lucide-react";
 
 export default function ReceivingPage() {
   type LoadListStatusFilter = "in_transit" | "arrived" | "receiving" | "all";
+  type ReceivingSource = "load_lists" | "delivery_notes";
+  const [source, setSource] = useState<ReceivingSource>("load_lists");
   const [statusFilter, setStatusFilter] = useState<LoadListStatusFilter>("in_transit");
   const [searchQuery, setSearchQuery] = useState("");
   const updateStatusMutation = useUpdateLoadListStatus();
@@ -32,9 +36,19 @@ export default function ReceivingPage() {
     page: 1,
     limit: 50,
   });
+  const {
+    data: deliveryNotesData,
+    isLoading: isLoadingDeliveryNotes,
+    error: deliveryNotesError,
+  } = useDeliveryNotes({
+    status: "dispatched",
+    search: searchQuery || undefined,
+  });
 
   const loadLists = data?.data || [];
   const pagination = data?.pagination;
+  const deliveryNotes = deliveryNotesData?.data || [];
+  const activeRecords = source === "load_lists" ? loadLists.length : deliveryNotes.length;
 
   const handleMarkArrived = async (loadListId: string) => {
     try {
@@ -61,29 +75,60 @@ export default function ReceivingPage() {
       <div className="space-y-4 p-6">
         {/* Filters */}
         <div className="space-y-3">
-          {/* Status Tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {statusOptions.map((status) => (
-              <button
-                key={status.value}
-                onClick={() => setStatusFilter(status.value)}
-                className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
-                  statusFilter === status.value
-                    ? "bg-primary text-white"
-                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {status.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setSource("load_lists")}
+              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all ${
+                source === "load_lists"
+                  ? "bg-white text-gray-950 shadow-sm"
+                  : "text-gray-600 hover:text-gray-950"
+              }`}
+            >
+              <Truck className="h-4 w-4" />
+              Load Lists
+            </button>
+            <button
+              type="button"
+              onClick={() => setSource("delivery_notes")}
+              className={`flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all ${
+                source === "delivery_notes"
+                  ? "bg-white text-gray-950 shadow-sm"
+                  : "text-gray-600 hover:text-gray-950"
+              }`}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Delivery Notes
+            </button>
           </div>
+
+          {/* Status Tabs */}
+          {source === "load_lists" && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {statusOptions.map((status) => (
+                <button
+                  key={status.value}
+                  onClick={() => setStatusFilter(status.value)}
+                  className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all active:scale-95 ${
+                    statusFilter === status.value
+                      ? "bg-primary text-white"
+                      : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {status.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by LL number..."
+              placeholder={
+                source === "load_lists" ? "Search by LL number..." : "Search by DN number..."
+              }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -92,7 +137,7 @@ export default function ReceivingPage() {
         </div>
 
         {/* Results Count */}
-        {pagination && (
+        {source === "load_lists" && pagination && (
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
               Showing {loadLists.length} of {pagination.total} load lists
@@ -105,7 +150,13 @@ export default function ReceivingPage() {
         )}
 
         {/* Loading State */}
-        {isLoading && (
+        {source === "delivery_notes" && (
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>Showing {activeRecords} delivery notes ready for receiving</span>
+          </div>
+        )}
+
+        {source === "load_lists" && isLoading && (
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
             <p className="text-gray-500">Loading load lists...</p>
@@ -113,7 +164,14 @@ export default function ReceivingPage() {
         )}
 
         {/* Error State */}
-        {error && (
+        {source === "delivery_notes" && isLoadingDeliveryNotes && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+            <p className="text-gray-500">Loading delivery notes...</p>
+          </div>
+        )}
+
+        {source === "load_lists" && error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
             <p className="font-semibold text-red-800">Error loading load lists</p>
             <p className="mt-1 text-sm text-red-600">
@@ -122,8 +180,19 @@ export default function ReceivingPage() {
           </div>
         )}
 
+        {source === "delivery_notes" && deliveryNotesError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="font-semibold text-red-800">Error loading delivery notes</p>
+            <p className="mt-1 text-sm text-red-600">
+              {deliveryNotesError instanceof Error
+                ? deliveryNotesError.message
+                : "An error occurred"}
+            </p>
+          </div>
+        )}
+
         {/* Load Lists List */}
-        {!isLoading && !error && loadLists.length > 0 && (
+        {source === "load_lists" && !isLoading && !error && loadLists.length > 0 && (
           <div className="space-y-3">
             {loadLists.map((loadList) => (
               <LoadListReceivingCard
@@ -136,8 +205,19 @@ export default function ReceivingPage() {
           </div>
         )}
 
+        {source === "delivery_notes" &&
+          !isLoadingDeliveryNotes &&
+          !deliveryNotesError &&
+          deliveryNotes.length > 0 && (
+            <div className="space-y-3">
+              {deliveryNotes.map((deliveryNote) => (
+                <DeliveryNoteReceivingCard key={deliveryNote.id} deliveryNote={deliveryNote} />
+              ))}
+            </div>
+          )}
+
         {/* Empty State */}
-        {!isLoading && !error && loadLists.length === 0 && (
+        {source === "load_lists" && !isLoading && !error && loadLists.length === 0 && (
           <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow">
             <div className="mb-4 text-gray-400">
               <svg
@@ -162,6 +242,21 @@ export default function ReceivingPage() {
             </p>
           </div>
         )}
+
+        {source === "delivery_notes" &&
+          !isLoadingDeliveryNotes &&
+          !deliveryNotesError &&
+          deliveryNotes.length === 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center shadow">
+              <ClipboardList className="mx-auto mb-4 h-16 w-16 text-gray-400" />
+              <h3 className="mb-2 text-lg font-semibold text-gray-900">No delivery notes found</h3>
+              <p className="text-gray-500">
+                {searchQuery
+                  ? "Try adjusting your search"
+                  : "No dispatched delivery notes are ready for receiving"}
+              </p>
+            </div>
+          )}
       </div>
     </div>
   );

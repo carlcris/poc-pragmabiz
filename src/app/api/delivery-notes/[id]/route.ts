@@ -17,7 +17,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await context.params;
-    const dn = await fetchDeliveryNote(auth.supabase, auth.companyId, id);
+    const dn = await fetchDeliveryNote(
+      auth.supabase,
+      auth.companyId,
+      id,
+      auth.currentBusinessUnitId
+    );
 
     if (!dn) {
       return NextResponse.json({ error: "Delivery note not found" }, { status: 404 });

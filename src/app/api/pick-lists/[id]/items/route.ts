@@ -78,7 +78,7 @@ const getPickSourceAvailability = async ({
 
   const { data: locationBatchRow, error: locationBatchError } = await supabase
     .from("item_location_batch")
-    .select("qty_on_hand")
+    .select("qty_on_hand, batch_location_sku")
     .eq("company_id", companyId)
     .eq("item_id", itemId)
     .eq("warehouse_id", warehouseId)
@@ -98,6 +98,10 @@ const getPickSourceAvailability = async ({
   return {
     locationBatchQty: toNumber(locationBatchRow.qty_on_hand as number | string),
     itemBatchQty: toNumber(itemBatchRow.qty_on_hand as number | string),
+    batchLocationSku:
+      typeof locationBatchRow.batch_location_sku === "string"
+        ? locationBatchRow.batch_location_sku.trim()
+        : null,
   };
 };
 
@@ -243,6 +247,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         suggested_pick_location_id?: string | null;
         suggested_pick_batch_code?: string | null;
         suggested_pick_batch_received_at?: string | null;
+        suggested_batch_location_sku?: string | null;
         item_unit_options?:
           | {
               qty_per_unit: number | string | null;
@@ -256,7 +261,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const { data: dnLineRows, error: dnLineError } = await auth.supabase
         .from("delivery_note_items")
         .select(
-          "id, item_id, fulfilling_warehouse_id, item_unit_option_id, allocated_qty, dispatched_qty, suggested_pick_location_id, suggested_pick_batch_code, suggested_pick_batch_received_at, item_unit_options!delivery_note_items_item_unit_option_id_fkey(qty_per_unit)"
+          "id, item_id, fulfilling_warehouse_id, item_unit_option_id, allocated_qty, dispatched_qty, suggested_pick_location_id, suggested_pick_batch_code, suggested_pick_batch_received_at, suggested_batch_location_sku, item_unit_options!delivery_note_items_item_unit_option_id_fkey(qty_per_unit)"
         )
         .eq("company_id", auth.companyId)
         .eq("dn_id", header.dn_id);
@@ -325,6 +330,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         let resolvedPickedLocationId = row.pickedLocationId;
         let resolvedPickedBatchCode = row.pickedBatchCode?.trim();
         let resolvedPickedBatchReceivedAt = row.pickedBatchReceivedAt;
+        let resolvedPickedBatchLocationSku: string | null =
+          typeof row.batchLocationSku === "string" && row.batchLocationSku.trim()
+            ? row.batchLocationSku.trim()
+            : null;
 
         if (!dnLine || !pickListItem) {
           return NextResponse.json(
@@ -483,6 +492,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           resolvedPickedLocationId = resolvedSource.location_id as string;
           resolvedPickedBatchCode = String(itemBatch.batch_code).trim();
           resolvedPickedBatchReceivedAt = String(itemBatch.received_at);
+          resolvedPickedBatchLocationSku =
+            typeof resolvedSource.batch_location_sku === "string"
+              ? resolvedSource.batch_location_sku.trim()
+              : null;
         }
 
         if (
@@ -546,6 +559,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               { status: 400 }
             );
           }
+          resolvedPickedBatchLocationSku =
+            resolvedPickedBatchLocationSku || sourceAvailability.batchLocationSku;
 
           const requiredBaseQty = nextPickedQty * qtyPerUnit;
           const maxBaseQty = Math.min(
@@ -615,6 +630,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               { status: 400 }
             );
           }
+          resolvedPickedBatchLocationSku =
+            resolvedPickedBatchLocationSku || sourceAvailability.batchLocationSku;
 
           const requiredBaseQty = pickQty * qtyPerUnit;
           const maxBaseQty = Math.min(
@@ -682,20 +699,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           .suggested_pick_batch_code;
         const suggestedLocationId = (dnLine as { suggested_pick_location_id?: string | null })
           .suggested_pick_location_id;
+        const suggestedBatchLocationSku = (
+          dnLine as { suggested_batch_location_sku?: string | null }
+        ).suggested_batch_location_sku;
         const isOverride =
           (suggestedLocationId && suggestedLocationId !== resolvedPickedLocationId) ||
-          (suggestedBatchCode && suggestedBatchCode !== resolvedPickedBatchCode);
+          (suggestedBatchCode && suggestedBatchCode !== resolvedPickedBatchCode) ||
+          (suggestedBatchLocationSku &&
+            suggestedBatchLocationSku !== resolvedPickedBatchLocationSku);
 
-        if (isOverride) {
+        if (isOverride || resolvedPickedBatchLocationSku) {
           const { error: updateSuggestionError } = await auth.supabase
             .from("delivery_note_items")
             .update({
               suggested_pick_location_id: resolvedPickedLocationId,
               suggested_pick_batch_code: resolvedPickedBatchCode,
               suggested_pick_batch_received_at: resolvedPickedBatchReceivedAt,
-              has_pick_source_override: true,
-              last_pick_source_override_at: nowIso,
-              last_pick_source_override_by: auth.userId,
+              suggested_batch_location_sku: resolvedPickedBatchLocationSku,
+              has_pick_source_override: isOverride,
+              last_pick_source_override_at: isOverride ? nowIso : null,
+              last_pick_source_override_by: isOverride ? auth.userId : null,
               updated_at: nowIso,
             })
             .eq("id", row.deliveryNoteItemId)

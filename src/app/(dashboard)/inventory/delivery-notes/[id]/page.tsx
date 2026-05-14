@@ -4,18 +4,31 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertCircle, Package2, Pencil, Plus, TrendingDown, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Package2,
+  Pencil,
+  Plus,
+  TrendingDown,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   useAddDeliveryNoteItems,
   useAdjustDispatchedDeliveryNoteItem,
+  useAcceptDeliveryNoteReceivingException,
+  useAcceptDeliveryNoteReceivingOverage,
   useConfirmDeliveryNote,
   useDeliveryNote,
   useDeliveryNoteAllocatableItems,
   useDispatchDeliveryNote,
   useReceiveDeliveryNote,
+  useRejectDeliveryNoteReceivingException,
+  useRejectDeliveryNoteReceivingOverage,
   useVoidDeliveryNote,
 } from "@/hooks/useDeliveryNotes";
+import type { ItemUnitOption } from "@/types/item";
 import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouse } from "@/hooks/useWarehouses";
@@ -65,6 +78,8 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const formatQty = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(2));
+
 const getMutationErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;
 
@@ -86,6 +101,10 @@ export default function DeliveryNoteDetailPage() {
   const dispatchMutation = useDispatchDeliveryNote();
   const receiveMutation = useReceiveDeliveryNote();
   const voidMutation = useVoidDeliveryNote();
+  const acceptExceptionMutation = useAcceptDeliveryNoteReceivingException();
+  const rejectExceptionMutation = useRejectDeliveryNoteReceivingException();
+  const acceptOverageMutation = useAcceptDeliveryNoteReceivingOverage();
+  const rejectOverageMutation = useRejectDeliveryNoteReceivingOverage();
   const { data: usersData } = useUsers();
 
   const [queueOpen, setQueueOpen] = useState(false);
@@ -114,6 +133,30 @@ export default function DeliveryNoteDetailPage() {
   const [voidReason, setVoidReason] = useState("");
 
   const items = useMemo(() => dn?.delivery_note_items || [], [dn?.delivery_note_items]);
+  const receivingExceptions = useMemo(
+    () => dn?.delivery_note_receiving_exceptions || [],
+    [dn?.delivery_note_receiving_exceptions]
+  );
+  const pendingReceivingExceptions = useMemo(
+    () => receivingExceptions.filter((exception) => exception.status === "pending_review"),
+    [receivingExceptions]
+  );
+  const showReceivingColumns = !!dn && dn.can_view_receiving_details !== false;
+  const showFulfillmentColumns = !showReceivingColumns;
+  const overageItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          showReceivingColumns &&
+          toNumber(item.receiving_variance_qty) > 0 &&
+          item.receiving_overage_review_status
+      ),
+    [items, showReceivingColumns]
+  );
+  const pendingOverageItems = useMemo(
+    () => overageItems.filter((item) => item.receiving_overage_review_status === "pending_review"),
+    [overageItems]
+  );
   const shellItemRows =
     isLoading && items.length === 0
       ? Array.from({ length: 4 }, (_, index) => `skeleton-${index}`)
@@ -220,6 +263,7 @@ export default function DeliveryNoteDetailPage() {
   type EmbeddedStockRequestItemRef = {
     item_unit_options?: DbItemUnitOptionRow | DbItemUnitOptionRow[] | null;
   };
+  type EmbeddedUnitOptionRef = ItemUnitOption | ItemUnitOption[];
 
   const one = <T,>(value: T | T[] | null | undefined): T | null =>
     Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -288,6 +332,35 @@ export default function DeliveryNoteDetailPage() {
     return ref?.code || ref?.symbol || ref?.name || t("unknownUnit");
   };
 
+  const exceptionItemLabel = (exception: (typeof receivingExceptions)[number]) => {
+    const row = exception as typeof exception & {
+      items?: EmbeddedItemRef | EmbeddedItemRef[] | null;
+    };
+    const ref = one(row.items);
+    return ref?.item_name || ref?.item_code || exception.item_id || t("unknownItem");
+  };
+
+  const exceptionCodeLabel = (exception: (typeof receivingExceptions)[number]) => {
+    const row = exception as typeof exception & {
+      items?: EmbeddedItemRef | EmbeddedItemRef[] | null;
+    };
+    const ref = one(row.items);
+    return ref?.item_code || exception.item_id || t("unknownItem");
+  };
+
+  const exceptionUomLabel = (exception: (typeof receivingExceptions)[number]) => {
+    const row = exception as typeof exception & {
+      item_unit_options?: EmbeddedUnitOptionRef | null;
+      units_of_measure?: EmbeddedUomRef | EmbeddedUomRef[] | null;
+    };
+    const unitOptionRef = one(row.item_unit_options);
+    const ref = one(row.units_of_measure);
+    if (unitOptionRef) {
+      return unitOptionRef.displayLabel || unitOptionRef.optionLabel || ref?.code || t("unknownUnit");
+    }
+    return ref?.code || ref?.symbol || ref?.name || t("unknownUnit");
+  };
+
   const requestLabel = (item: (typeof items)[number]) => {
     const row = item as typeof item & {
       stock_requests?: EmbeddedStockRequestRef | EmbeddedStockRequestRef[] | null;
@@ -308,12 +381,27 @@ export default function DeliveryNoteDetailPage() {
       ? receivedQtyMap[itemId]
       : fallback;
 
+  const getLineReceivedQty = (item: (typeof items)[number]) => {
+    const activeScans = (item.delivery_note_item_receiving_scans || []).filter(
+      (scan) => !scan.voided_at
+    );
+    if (activeScans.length > 0) {
+      return activeScans.reduce((sum, scan) => sum + toNumber(scan.accepted_qty), 0);
+    }
+
+    if (item.receiving_status && item.receiving_status !== "pending") {
+      return toNumber(item.dispatched_qty) + toNumber(item.receiving_variance_qty);
+    }
+
+    return toNumber(item.received_qty);
+  };
+
   const canQueuePicking =
     !!dn &&
     ["confirmed", "dispatched"].includes(dn.status) &&
     !activePickList &&
     hasPendingPickableLines;
-  const showItemActions = dn?.status === "dispatched";
+  const showItemActions = showFulfillmentColumns && dn?.status === "dispatched";
 
   const pageActions = dn ? (
     <>
@@ -414,6 +502,62 @@ export default function DeliveryNoteDetailPage() {
       toast.success("Delivery note received");
     } catch (error) {
       toast.error(getMutationErrorMessage(error, "Failed to receive delivery note"));
+    }
+  };
+
+  const acceptReceivingException = async (exceptionId: string) => {
+    if (!dn) return;
+    try {
+      await acceptExceptionMutation.mutateAsync({
+        id: dn.id,
+        exceptionId,
+        notes: "Accepted from delivery note detail review",
+      });
+      toast.success("Unexpected item accepted and posted to inventory");
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, "Failed to accept unexpected item"));
+    }
+  };
+
+  const rejectReceivingException = async (exceptionId: string) => {
+    if (!dn) return;
+    try {
+      await rejectExceptionMutation.mutateAsync({
+        id: dn.id,
+        exceptionId,
+        notes: "Rejected from delivery note detail review",
+      });
+      toast.success("Unexpected item rejected");
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, "Failed to reject unexpected item"));
+    }
+  };
+
+  const acceptReceivingOverage = async (itemId: string) => {
+    if (!dn) return;
+    try {
+      await acceptOverageMutation.mutateAsync({
+        id: dn.id,
+        itemId,
+        notes: "Accepted from delivery note overage review",
+      });
+      toast.success("Overage accepted and posted to inventory");
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, "Failed to accept overage"));
+    }
+  };
+
+  const rejectReceivingOverage = async (itemId: string) => {
+    if (!dn) return;
+    try {
+      await rejectOverageMutation.mutateAsync({
+        id: dn.id,
+        itemId,
+        notes: "Rejected from delivery note overage review",
+      });
+      toast.success("Overage rejected");
+    } catch (error) {
+      toast.error(getMutationErrorMessage(error, "Failed to reject overage"));
     }
   };
 
@@ -593,6 +737,34 @@ export default function DeliveryNoteDetailPage() {
           </Card>
         )}
 
+      {dn && showReceivingColumns && (dn.receiving_notes || dn.receiving_discrepancy_notes) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("receivingNotes")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {dn.receiving_notes && (
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {t("receiveNotes")}
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm">{dn.receiving_notes}</p>
+              </div>
+            )}
+            {dn.receiving_discrepancy_notes && (
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">
+                  {t("discrepancyNotes")}
+                </div>
+                <p className="mt-1 whitespace-pre-wrap text-sm">
+                  {dn.receiving_discrepancy_notes}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {error && !dn ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5">
           <EmptyStatePanel
@@ -613,29 +785,33 @@ export default function DeliveryNoteDetailPage() {
             value={dn ? String(items.length) : undefined}
             isLoading={!dn && isLoading}
           />
-          <MetricCard
-            title={t("totalAllocated")}
-            icon={Package2}
-            iconClassName="h-4 w-4 text-green-600"
-            value={
-              dn
-                ? items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2)
-                : undefined
-            }
-            isLoading={!dn && isLoading}
-          />
-          <MetricCard
-            title={t("totalShort")}
-            icon={TrendingDown}
-            iconClassName="h-4 w-4 text-orange-600"
-            value={
-              dn
-                ? items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2)
-                : undefined
-            }
-            valueClassName="text-2xl font-bold text-orange-600"
-            isLoading={!dn && isLoading}
-          />
+          {showFulfillmentColumns && (
+            <>
+              <MetricCard
+                title={t("totalAllocated")}
+                icon={Package2}
+                iconClassName="h-4 w-4 text-green-600"
+                value={
+                  dn
+                    ? items.reduce((sum, item) => sum + toNumber(item.allocated_qty), 0).toFixed(2)
+                    : undefined
+                }
+                isLoading={!dn && isLoading}
+              />
+              <MetricCard
+                title={t("totalShort")}
+                icon={TrendingDown}
+                iconClassName="h-4 w-4 text-orange-600"
+                value={
+                  dn
+                    ? items.reduce((sum, item) => sum + toNumber(item.short_qty), 0).toFixed(2)
+                    : undefined
+                }
+                valueClassName="text-2xl font-bold text-orange-600"
+                isLoading={!dn && isLoading}
+              />
+            </>
+          )}
         </div>
 
         <div className="min-h-[26rem] rounded-lg border bg-card">
@@ -650,10 +826,22 @@ export default function DeliveryNoteDetailPage() {
                   <TableHead className="font-semibold">{t("stockRequest")}</TableHead>
                   <TableHead className="font-semibold">{t("item")}</TableHead>
                   <TableHead className="font-semibold">{t("uom")}</TableHead>
-                  <TableHead className="text-right font-semibold">{t("allocated")}</TableHead>
-                  <TableHead className="text-right font-semibold">{t("picked")}</TableHead>
-                  <TableHead className="text-right font-semibold">{t("short")}</TableHead>
-                  <TableHead className="text-right font-semibold">{t("dispatchedQty")}</TableHead>
+                  {showFulfillmentColumns && (
+                    <>
+                      <TableHead className="text-right font-semibold">{t("allocated")}</TableHead>
+                      <TableHead className="text-right font-semibold">{t("picked")}</TableHead>
+                      <TableHead className="text-right font-semibold">{t("short")}</TableHead>
+                    </>
+                  )}
+                  <TableHead className="text-right font-semibold">
+                    {showReceivingColumns ? t("expected") : t("dispatchedQty")}
+                  </TableHead>
+                  {showReceivingColumns && (
+                    <>
+                      <TableHead className="text-right font-semibold">{t("received")}</TableHead>
+                      <TableHead className="text-right font-semibold">{t("variance")}</TableHead>
+                    </>
+                  )}
                   <TableHead className="font-semibold">{t("lineState")}</TableHead>
                   {showItemActions && (
                     <TableHead className="text-right font-semibold">{t("actions")}</TableHead>
@@ -676,21 +864,35 @@ export default function DeliveryNoteDetailPage() {
                         <TableCell>
                           <Skeleton className="h-6 w-16" />
                         </TableCell>
+                        {showFulfillmentColumns && (
+                          <>
+                            <TableCell className="text-right">
+                              <Skeleton className="ml-auto h-4 w-14" />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="ml-auto flex w-14 flex-col items-end gap-1">
+                                <Skeleton className="h-4 w-14" />
+                                <Skeleton className="h-3 w-10" />
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Skeleton className="ml-auto h-6 w-16" />
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell className="text-right">
                           <Skeleton className="ml-auto h-4 w-14" />
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="ml-auto flex w-14 flex-col items-end gap-1">
-                            <Skeleton className="h-4 w-14" />
-                            <Skeleton className="h-3 w-10" />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton className="ml-auto h-6 w-16" />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Skeleton className="ml-auto h-4 w-14" />
-                        </TableCell>
+                        {showReceivingColumns && (
+                          <>
+                            <TableCell className="text-right">
+                              <Skeleton className="ml-auto h-4 w-14" />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Skeleton className="ml-auto h-6 w-16" />
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell>
                           <Skeleton className="h-6 w-24" />
                         </TableCell>
@@ -706,6 +908,8 @@ export default function DeliveryNoteDetailPage() {
                       const pickedQty = toNumber(item.picked_qty);
                       const shortQty = toNumber(item.short_qty);
                       const dispatchedQty = toNumber(item.dispatched_qty);
+                      const receivedQty = getLineReceivedQty(item);
+                      const receivingVarianceQty = receivedQty - dispatchedQty;
                       const pickCompletion =
                         allocatedQty > 0 ? ((pickedQty / allocatedQty) * 100).toFixed(0) : 0;
 
@@ -727,30 +931,61 @@ export default function DeliveryNoteDetailPage() {
                               {uomLabel(item)}
                             </span>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="font-semibold">{allocatedQty.toFixed(2)}</div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="space-y-1">
-                              <div className="font-medium">{pickedQty.toFixed(2)}</div>
-                              <div className="text-xs text-muted-foreground">{pickCompletion}%</div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {shortQty > 0 ? (
-                              <div className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1">
-                                <TrendingDown className="h-3 w-3 text-orange-600" />
-                                <span className="font-semibold text-orange-600">
-                                  {shortQty.toFixed(2)}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">{shortQty.toFixed(2)}</span>
-                            )}
-                          </TableCell>
+                          {showFulfillmentColumns && (
+                            <>
+                              <TableCell className="text-right">
+                                <div className="font-semibold">{allocatedQty.toFixed(2)}</div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="space-y-1">
+                                  <div className="font-medium">{pickedQty.toFixed(2)}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {pickCompletion}%
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {shortQty > 0 ? (
+                                  <div className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1">
+                                    <TrendingDown className="h-3 w-3 text-orange-600" />
+                                    <span className="font-semibold text-orange-600">
+                                      {shortQty.toFixed(2)}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">
+                                    {shortQty.toFixed(2)}
+                                  </span>
+                                )}
+                              </TableCell>
+                            </>
+                          )}
                           <TableCell className="text-right">
                             <div className="font-medium">{dispatchedQty.toFixed(2)}</div>
                           </TableCell>
+                          {showReceivingColumns && (
+                            <>
+                              <TableCell className="text-right">
+                                <div className="font-medium">{formatQty(receivedQty)}</div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {receivingVarianceQty === 0 ? (
+                                  <span className="text-muted-foreground">0</span>
+                                ) : (
+                                  <span
+                                    className={
+                                      receivingVarianceQty < 0
+                                        ? "font-semibold text-amber-700"
+                                        : "font-semibold text-red-700"
+                                    }
+                                  >
+                                    {receivingVarianceQty > 0 ? "+" : ""}
+                                    {formatQty(receivingVarianceQty)}
+                                  </span>
+                                )}
+                              </TableCell>
+                            </>
+                          )}
                           <TableCell>
                             <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
                               {lineStateLabel(item)}
@@ -796,6 +1031,243 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
       </div>
+
+      {dn && showReceivingColumns && overageItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-700" />
+              Receiving Overages
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Over-received quantities are recorded from tablet receiving but posted separately
+              after review. Accepting adds only the extra quantity to inventory; rejecting creates no
+              stock movement.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendingOverageItems.length > 0 && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+                {pendingOverageItems.length} overage line
+                {pendingOverageItems.length === 1 ? "" : "s"} pending review.
+              </div>
+            )}
+
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead className="text-right">Expected</TableHead>
+                    <TableHead className="text-right">Received</TableHead>
+                    <TableHead className="text-right">Overage</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {overageItems.map((item) => {
+                    const expectedQty = toNumber(item.dispatched_qty);
+                    const receivedQty = getLineReceivedQty(item);
+                    const overageQty = Math.max(0, receivedQty - expectedQty);
+                    const isPending = item.receiving_overage_review_status === "pending_review";
+                    const isBusy =
+                      acceptOverageMutation.isPending || rejectOverageMutation.isPending;
+
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div className="font-medium">{itemLabel(item)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {requestLabel(item)}
+                          </div>
+                          {item.receiving_overage_review_notes && (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              {item.receiving_overage_review_notes}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                            {uomLabel(item)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">{formatQty(expectedQty)}</TableCell>
+                        <TableCell className="text-right">{formatQty(receivedQty)}</TableCell>
+                        <TableCell className="text-right font-semibold text-red-700">
+                          +{formatQty(overageQty)}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`rounded-md px-2 py-1 text-xs font-medium ${
+                              isPending
+                                ? "bg-amber-100 text-amber-900"
+                                : item.receiving_overage_review_status === "accepted"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {(item.receiving_overage_review_status || "pending_review").replace(
+                              "_",
+                              " "
+                            )}
+                          </span>
+                          {item.receiving_overage_posted_qty ? (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Posted {formatQty(toNumber(item.receiving_overage_posted_qty))}
+                            </div>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {isPending ? (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isBusy}
+                                onClick={() => rejectReceivingOverage(item.id)}
+                              >
+                                <XCircle className="mr-2 h-3.5 w-3.5" />
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={isBusy}
+                                onClick={() => acceptReceivingOverage(item.id)}
+                              >
+                                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                                Accept
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              {item.receiving_overage_reviewed_at
+                                ? formatDate(item.receiving_overage_reviewed_at, locale)
+                                : "--"}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {dn && showReceivingColumns && receivingExceptions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-700" />
+              Unexpected Items
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Unexpected scans are reviewed separately from normal delivery note receiving.
+              Accepting posts a separate inventory transaction; rejecting creates no stock movement.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendingReceivingExceptions.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {pendingReceivingExceptions.length} unexpected item
+                {pendingReceivingExceptions.length === 1 ? "" : "s"} pending review.
+              </div>
+            )}
+
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Box</TableHead>
+                    <TableHead className="text-right">Qty</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Scanned At</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {receivingExceptions.map((exception) => {
+                    const isPending = exception.status === "pending_review";
+                    const isBusy =
+                      acceptExceptionMutation.isPending || rejectExceptionMutation.isPending;
+                    return (
+                      <TableRow key={exception.id}>
+                        <TableCell>
+                          <div className="font-medium">{exceptionItemLabel(exception)}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {exceptionCodeLabel(exception)}
+                          </div>
+                          {exception.reason && (
+                            <div className="mt-1 text-xs text-amber-800">{exception.reason}</div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium">
+                            {exceptionUomLabel(exception)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{exception.box_id}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatQty(toNumber(exception.accepted_qty))}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`rounded-md px-2 py-1 text-xs font-medium ${
+                              isPending
+                                ? "bg-amber-100 text-amber-900"
+                                : exception.status === "accepted"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : "bg-muted text-muted-foreground"
+                            }`}
+                          >
+                            {exception.status.replace("_", " ")}
+                          </span>
+                        </TableCell>
+                        <TableCell>{formatDate(exception.scanned_at, locale)}</TableCell>
+                        <TableCell className="text-right">
+                          {isPending ? (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isBusy}
+                                onClick={() => rejectReceivingException(exception.id)}
+                              >
+                                <XCircle className="mr-2 h-3.5 w-3.5" />
+                                Reject
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={isBusy}
+                                onClick={() => acceptReceivingException(exception.id)}
+                              >
+                                <CheckCircle2 className="mr-2 h-3.5 w-3.5" />
+                                Accept
+                              </Button>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              {exception.reviewed_at
+                                ? formatDate(exception.reviewed_at, locale)
+                                : "--"}
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {dn && (dn.status === "queued_for_picking" || dn.status === "picking_in_progress") && (
         <Card>

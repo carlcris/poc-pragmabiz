@@ -376,32 +376,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: resolvedCurrencyValidationError }, { status: 400 });
     }
 
-    // Generate SR number
-    const { data: lastSR } = await supabase
-      .from("stock_requisitions")
-      .select("sr_number")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-
-    let nextNum = 1;
-    if (lastSR?.sr_number) {
-      const match = lastSR.sr_number.match(/SR-(\d{4})-(\d+)/);
-      if (match) {
-        const year = new Date().getFullYear();
-        const lastYear = parseInt(match[1]);
-        const lastNum = parseInt(match[2]);
-
-        if (year === lastYear) {
-          nextNum = lastNum + 1;
-        }
-      }
-    }
-
-    const currentYear = new Date().getFullYear();
-    const srNumber = `SR-${currentYear}-${String(nextNum).padStart(4, "0")}`;
-
     // Calculate total amount
     const totalAmount = resolvedCostLines.reduce(
       (sum: number, item) => sum + item.requestedQty * item.qty_per_unit * item.unitPrice,
@@ -414,7 +388,6 @@ export async function POST(request: NextRequest) {
       .insert({
         company_id: companyId,
         business_unit_id: currentBusinessUnitId,
-        sr_number: srNumber,
         supplier_id: body.supplierId,
         requisition_date: body.requisitionDate || new Date().toISOString().split("T")[0],
         required_by_date: body.requiredByDate || null,

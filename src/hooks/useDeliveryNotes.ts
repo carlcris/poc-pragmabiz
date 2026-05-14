@@ -6,20 +6,23 @@ import type {
   AddDeliveryNoteItemsPayload,
   AdjustDispatchedDeliveryNoteItemPayload,
   CreateDeliveryNotePayload,
+  DeliveryNoteListParams,
   DispatchDeliveryNotePayload,
   MarkDispatchReadyPayload,
   DeliveryNoteFulfillmentMode,
+  RecordDeliveryNoteReceivingScanPayload,
   ReceiveDeliveryNotePayload,
+  SubmitDeliveryNoteReceivingPayload,
 } from "@/types/delivery-note";
 
 export { DELIVERY_NOTES_QUERY_KEY };
 
-export function useDeliveryNotes(status?: string) {
+export function useDeliveryNotes(params?: string | DeliveryNoteListParams) {
   useInventoryRealtimeInvalidation([DELIVERY_NOTES_QUERY_KEY, PICK_LISTS_QUERY_KEY]);
 
   return useQuery({
-    queryKey: [DELIVERY_NOTES_QUERY_KEY, status],
-    queryFn: () => deliveryNotesApi.list(status),
+    queryKey: [DELIVERY_NOTES_QUERY_KEY, params],
+    queryFn: () => deliveryNotesApi.list(params),
   });
 }
 
@@ -140,6 +143,144 @@ export function useReceiveDeliveryNote() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+    },
+  });
+}
+
+export function useStartReceivingDeliveryNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => deliveryNotesApi.startReceiving(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, id] });
+    },
+  });
+}
+
+export function useRecordDeliveryNoteReceivingScan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: RecordDeliveryNoteReceivingScanPayload }) =>
+      deliveryNotesApi.recordReceivingScan(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
+    },
+  });
+}
+
+export function useVoidDeliveryNoteReceivingScan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, scanId, reason }: { id: string; scanId: string; reason?: string }) =>
+      deliveryNotesApi.voidReceivingScan(id, scanId, reason),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
+    },
+  });
+}
+
+export function useSubmitDeliveryNoteReceiving() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data?: SubmitDeliveryNoteReceivingPayload }) =>
+      deliveryNotesApi.submitReceiving(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+    },
+  });
+}
+
+export function useAcceptDeliveryNoteReceivingException() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      exceptionId,
+      notes,
+    }: {
+      id: string;
+      exceptionId: string;
+      notes?: string | null;
+    }) => deliveryNotesApi.acceptReceivingException(id, exceptionId, { notes }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+    },
+  });
+}
+
+export function useRejectDeliveryNoteReceivingException() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      exceptionId,
+      notes,
+    }: {
+      id: string;
+      exceptionId: string;
+      notes?: string | null;
+    }) => deliveryNotesApi.rejectReceivingException(id, exceptionId, { notes }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
+    },
+  });
+}
+
+export function useAcceptDeliveryNoteReceivingOverage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      itemId,
+      notes,
+    }: {
+      id: string;
+      itemId: string;
+      notes?: string | null;
+    }) => deliveryNotesApi.acceptReceivingOverage(id, itemId, { notes }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+    },
+  });
+}
+
+export function useRejectDeliveryNoteReceivingOverage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      itemId,
+      notes,
+    }: {
+      id: string;
+      itemId: string;
+      notes?: string | null;
+    }) => deliveryNotesApi.rejectReceivingOverage(id, itemId, { notes }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
     },
   });
 }

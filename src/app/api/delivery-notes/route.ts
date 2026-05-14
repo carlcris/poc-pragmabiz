@@ -34,6 +34,26 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const status = request.nextUrl.searchParams.get("status");
+    const requestingWarehouseId = request.nextUrl.searchParams.get("requestingWarehouseId");
+    const search = request.nextUrl.searchParams.get("search")?.trim();
+    const scopedWarehouseIds = auth.currentBusinessUnitId
+      ? await auth.supabase
+          .from("warehouses")
+          .select("id")
+          .eq("company_id", auth.companyId)
+          .eq("business_unit_id", auth.currentBusinessUnitId)
+          .is("deleted_at", null)
+      : null;
+
+    if (scopedWarehouseIds?.error) {
+      console.error("Error loading delivery note visibility warehouses:", scopedWarehouseIds.error);
+      return NextResponse.json({ error: "Failed to load delivery notes" }, { status: 500 });
+    }
+
+    const visibleWarehouseIds = (scopedWarehouseIds?.data || []).map((warehouse) => warehouse.id);
+    if (auth.currentBusinessUnitId && visibleWarehouseIds.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
 
     let query = auth.supabase
       .from("delivery_notes")
@@ -58,6 +78,17 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false });
 
     if (status) query = query.eq("status", status);
+    if (auth.currentBusinessUnitId) {
+      query = query.or(
+        `requesting_warehouse_id.in.(${visibleWarehouseIds.join(",")}),fulfilling_warehouse_id.in.(${visibleWarehouseIds.join(",")})`
+      );
+    }
+    if (requestingWarehouseId) {
+      query = query.eq("requesting_warehouse_id", requestingWarehouseId);
+    }
+    if (search) {
+      query = query.or(`dn_no.ilike.%${search}%,notes.ilike.%${search}%`);
+    }
 
     const { data, error } = await query;
     if (error) {
@@ -65,7 +96,13 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data: (data || []).map((row) => mapDeliveryNoteRecord(row as DeliveryNoteApiRecord)),
+      data: (data || []).map((row) => {
+        const record = row as DeliveryNoteApiRecord;
+        const canViewReceivingDetails = auth.currentBusinessUnitId
+          ? visibleWarehouseIds.includes(record.requesting_warehouse_id)
+          : true;
+        return mapDeliveryNoteRecord(record, canViewReceivingDetails);
+      }),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Internal server error";

@@ -14,12 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
-import { useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
+import { useBusinessUnits, useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
 import type { BusinessUnitWithAccess } from "@/types/business-unit";
 import { toProperCase } from "@/lib/string";
 import { apiClient } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
-import { WAREHOUSE_DASHBOARD_QUERY_KEY, PICK_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
+import {
+  DELIVERY_NOTES_QUERY_KEY,
+  PICK_LISTS_QUERY_KEY,
+  WAREHOUSE_DASHBOARD_QUERY_KEY,
+} from "@/hooks/queryKeys";
 
 type BusinessUnitSwitcherProps = {
   initialBusinessUnitName?: string | null;
@@ -54,6 +58,7 @@ export const BusinessUnitSwitcher = ({
     setAvailableBusinessUnits,
   } = useBusinessUnitStore();
   const queryClient = useQueryClient();
+  const businessUnitsQuery = useBusinessUnits();
   const { mutate: setContext, isPending } = useSetBusinessUnitContext({
     silent: variant === "tablet",
   });
@@ -66,6 +71,22 @@ export const BusinessUnitSwitcher = ({
     : null;
   const displayBusinessUnitName =
     resolvedCurrentBusinessUnit?.name || initialBusinessUnitName || null;
+
+  useEffect(() => {
+    const rows = businessUnitsQuery.data;
+    if (!rows) return;
+
+    setFallbackBusinessUnits(rows);
+    setAvailableBusinessUnits(rows);
+    setBootstrapError(null);
+    setIsBootstrapping(false);
+  }, [businessUnitsQuery.data, setAvailableBusinessUnits]);
+
+  useEffect(() => {
+    if (!businessUnitsQuery.error) return;
+    setIsBootstrapping(false);
+    setBootstrapError("Failed to load business units");
+  }, [businessUnitsQuery.error]);
 
   useEffect(() => {
     let active = true;
@@ -97,7 +118,7 @@ export const BusinessUnitSwitcher = ({
     return () => {
       active = false;
     };
-  }, [availableBusinessUnits.length, bootstrapAttempt, isBootstrapping, setAvailableBusinessUnits]);
+  }, [availableBusinessUnits.length, bootstrapAttempt, setAvailableBusinessUnits]);
 
   // Sort business units: default first, then alphabetically by name
   const sortedBusinessUnits = useMemo(() => {
@@ -199,6 +220,8 @@ export const BusinessUnitSwitcher = ({
     null;
   const selectedCompanyBusinessUnits = selectedCompany?.businessUnits ?? [];
   const displayLabel = displayBusinessUnitName;
+  const isBusinessUnitFetchLoading =
+    isBootstrapping || businessUnitsQuery.isLoading || (isLoading && effectiveBusinessUnits.length === 0);
 
   const handleSelect = (businessUnit: BusinessUnitWithAccess) => {
     if (businessUnit.id === resolvedCurrentBusinessUnit?.id) {
@@ -212,6 +235,7 @@ export const BusinessUnitSwitcher = ({
         if (variant === "tablet") {
           void queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
           void queryClient.invalidateQueries({ queryKey: ["loadLists"] });
+          void queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
           void queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
           return;
         }
@@ -339,7 +363,7 @@ export const BusinessUnitSwitcher = ({
       ));
     }
 
-    if (isBootstrapping) {
+    if (isBusinessUnitFetchLoading) {
       return (
         <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />

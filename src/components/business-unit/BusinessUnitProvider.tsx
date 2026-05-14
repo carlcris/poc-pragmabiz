@@ -10,21 +10,32 @@
 import { useEffect, useRef } from "react";
 import { useBusinessUnits, useSetBusinessUnitContext } from "@/hooks/useBusinessUnits";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import { useAuthStore } from "@/stores/authStore";
 
 type BusinessUnitProviderProps = {
   children: React.ReactNode;
 };
 
 export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isLoading);
+  const checkAuth = useAuthStore((state) => state.checkAuth);
   const { data: businessUnits, isLoading, error } = useBusinessUnits();
   const { currentBusinessUnit, setAvailableBusinessUnits, setCurrentBusinessUnit, setLoading } =
     useBusinessUnitStore();
   const { mutate: setContext } = useSetBusinessUnitContext({ silent: true });
   const hasInitialized = useRef(false);
+  const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
-    setLoading(isLoading);
-  }, [isLoading, setLoading]);
+    if (isAuthenticated || hasCheckedAuth.current) return;
+    hasCheckedAuth.current = true;
+    void checkAuth();
+  }, [checkAuth, isAuthenticated]);
+
+  useEffect(() => {
+    setLoading(isAuthLoading || isLoading);
+  }, [isAuthLoading, isLoading, setLoading]);
 
   // Initialize business unit when data is loaded
   useEffect(() => {

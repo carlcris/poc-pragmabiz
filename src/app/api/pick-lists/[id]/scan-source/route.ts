@@ -126,6 +126,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           suggested_pick_location_id,
           suggested_pick_batch_code,
           suggested_pick_batch_received_at,
+          suggested_batch_location_sku,
           items!delivery_note_items_item_id_fkey(item_code, item_name)
         )
       `

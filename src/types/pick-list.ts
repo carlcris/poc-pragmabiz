@@ -32,6 +32,7 @@ export type PickListItem = {
         suggested_pick_location_id: string | null;
         suggested_pick_batch_code: string | null;
         suggested_pick_batch_received_at: string | null;
+        suggested_batch_location_sku?: string | null;
         suggested_pick_location?:
           | {
               id: string;
@@ -50,6 +51,7 @@ export type PickListItem = {
         suggested_pick_location_id: string | null;
         suggested_pick_batch_code: string | null;
         suggested_pick_batch_received_at: string | null;
+        suggested_batch_location_sku?: string | null;
         suggested_pick_location?:
           | {
               id: string;
