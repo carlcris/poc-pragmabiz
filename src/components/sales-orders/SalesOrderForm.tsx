@@ -29,13 +29,22 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import { DataTableSkeletonRows } from "@/components/shared/DataTableSkeletonRows";
 import { useCurrency } from "@/hooks/useCurrency";
+import { quotationsApi, type AvailableQuotationLine } from "@/lib/api/quotations";
 import type { SalesOrder } from "@/types/sales-order";
 import type { CreateSalesOrderRequest } from "@/types/sales-order";
 import {
   QuotationLineItemDialog,
   type LineItemFormValues,
 } from "../quotations/QuotationLineItemDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const salesOrderFormSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
@@ -54,13 +63,43 @@ type SalesOrderFormInput = z.input<typeof salesOrderFormSchema>;
 
 type SalesOrderFormProps = {
   salesOrder?: SalesOrder | null;
+  initialValues?: SalesOrderFormInitialValues;
   onCancel?: () => void;
   onSuccess?: (salesOrder: SalesOrder) => void;
   submitLabel?: string;
 };
 
+export type SalesOrderFormInitialValues = Partial<SalesOrderFormInput> & {
+  lineItems?: SalesOrder["lineItems"];
+  lockCustomer?: boolean;
+};
+
+const mapSalesOrderLineItemToFormValues = (item: SalesOrder["lineItems"][number]) => ({
+  itemId: item.itemId,
+  itemCode: item.itemCode,
+  itemName: item.itemName,
+  quotationId: item.quotationId,
+  quotationNumber: item.quotationNumber,
+  quotationItemId: item.quotationItemId,
+  quotationRemainingQuantity: item.quotationRemainingQuantity,
+  description: item.description,
+  quantity: item.quantity,
+  unitPrice: item.unitPrice,
+  uomId: item.uomId,
+  uomCode: item.uomCode,
+  uomName: item.uomName,
+  discount: item.discount,
+  taxRate: item.taxRate,
+  available: item.available,
+  reorderPoint: item.reorderPoint,
+  skipInventory: item.skipInventory,
+  frameConfiguration: item.frameConfiguration,
+  frameComponents: item.frameComponents,
+});
+
 export function SalesOrderForm({
   salesOrder,
+  initialValues,
   onCancel,
   onSuccess,
   submitLabel,
@@ -83,27 +122,34 @@ export function SalesOrderForm({
 
   const [lineItems, setLineItems] = useState<LineItemFormValues[]>([]);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [quotationLinesOpen, setQuotationLinesOpen] = useState(false);
+  const [quotationLineSearch, setQuotationLineSearch] = useState("");
+  const debouncedQuotationLineSearch = useDebouncedValue(quotationLineSearch.trim());
+  const [quotationLinePage, setQuotationLinePage] = useState(1);
+  const [quotationLines, setQuotationLines] = useState<AvailableQuotationLine[]>([]);
+  const [quotationLinesHasMore, setQuotationLinesHasMore] = useState(false);
+  const [quotationLinesLoading, setQuotationLinesLoading] = useState(false);
   const [editingItem, setEditingItem] = useState<{
-    index: number;
+    index: number | null;
     item: LineItemFormValues;
   } | null>(null);
 
   const defaultValues = useMemo<SalesOrderFormInput>(
     () => ({
-      customerId: "",
+      customerId: initialValues?.customerId || "",
       orderDate: new Date().toISOString().split("T")[0],
       expectedDeliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0],
-      shippingAddress: "",
-      shippingCity: "",
-      shippingState: "",
-      shippingPostalCode: "",
-      shippingCountry: "",
-      paymentTerms: "Payment due within 30 days",
-      notes: "",
+      shippingAddress: initialValues?.shippingAddress || "",
+      shippingCity: initialValues?.shippingCity || "",
+      shippingState: initialValues?.shippingState || "",
+      shippingPostalCode: initialValues?.shippingPostalCode || "",
+      shippingCountry: initialValues?.shippingCountry || "",
+      paymentTerms: initialValues?.paymentTerms || "Payment due within 30 days",
+      notes: initialValues?.notes || "",
     }),
-    []
+    [initialValues]
   );
 
   const form = useForm<SalesOrderFormInput>({
@@ -116,6 +162,7 @@ export function SalesOrderForm({
     customers.find((customer) => customer.id === selectedCustomerId) ??
     selectedCustomerData ??
     null;
+  const isCustomerLocked = !isEditMode && !!initialValues?.lockCustomer;
 
   const totals = useMemo(() => {
     const subtotal = lineItems.reduce(
@@ -151,36 +198,22 @@ export function SalesOrderForm({
         paymentTerms: salesOrder.paymentTerms,
         notes: salesOrder.notes,
       });
-      setLineItems(
-        salesOrder.lineItems.map((item) => ({
-          itemId: item.itemId,
-          itemCode: item.itemCode,
-          itemName: item.itemName,
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          uomId: item.uomId,
-          uomCode: item.uomCode,
-          uomName: item.uomName,
-          discount: item.discount,
-          taxRate: item.taxRate,
-          available: item.available,
-          reorderPoint: item.reorderPoint,
-          skipInventory: item.skipInventory,
-          frameConfiguration: item.frameConfiguration,
-          frameComponents: item.frameComponents,
-        }))
-      );
+      setLineItems(salesOrder.lineItems.map(mapSalesOrderLineItemToFormValues));
       return;
     }
 
     form.reset(defaultValues);
-    setLineItems([]);
-  }, [salesOrder, form, defaultValues]);
+    setLineItems((initialValues?.lineItems || []).map(mapSalesOrderLineItemToFormValues));
+  }, [salesOrder, form, defaultValues, initialValues?.lineItems]);
 
   const handleAddItem = () => {
     setEditingItem(null);
     setItemDialogOpen(true);
+  };
+
+  const handleOpenQuotationLines = () => {
+    setQuotationLinePage(1);
+    setQuotationLinesOpen(true);
   };
 
   const handleEditItem = (index: number) => {
@@ -193,12 +226,94 @@ export function SalesOrderForm({
   };
 
   const handleSaveItem = (item: LineItemFormValues) => {
-    if (editingItem !== null) {
-      setLineItems((items) => items.map((it, i) => (i === editingItem.index ? item : it)));
-    } else {
-      setLineItems((items) => [...items, item]);
-    }
+    setLineItems((items) => {
+      if (editingItem?.index !== null && editingItem?.index !== undefined) {
+        return items.map((it, i) => (i === editingItem.index ? item : it));
+      }
+
+      const existingQuotationLineIndex = item.quotationItemId
+        ? items.findIndex((current) => current.quotationItemId === item.quotationItemId)
+        : -1;
+
+      if (existingQuotationLineIndex >= 0) {
+        return items.map((current, index) =>
+          index === existingQuotationLineIndex ? item : current
+        );
+      }
+
+      return [...items, item];
+    });
   };
+
+  const handleSelectQuotationLine = (line: AvailableQuotationLine) => {
+    const nextLine = mapQuotationLineToSalesOrderLine(line);
+    const existingIndex = lineItems.findIndex(
+      (item) => item.quotationItemId === line.quotationItemId
+    );
+
+    setEditingItem({ index: existingIndex >= 0 ? existingIndex : null, item: nextLine });
+    setQuotationLinesOpen(false);
+    setItemDialogOpen(true);
+  };
+
+  const mapQuotationLineToSalesOrderLine = (
+    line: AvailableQuotationLine,
+    quantity = line.quotationRemainingQuantity || line.quantity
+  ): LineItemFormValues => ({
+    itemId: line.itemId,
+    itemCode: line.itemCode,
+    itemName: line.itemName,
+    quotationId: line.quotationId,
+    quotationNumber: line.quotationNumber,
+    quotationItemId: line.quotationItemId,
+    quotationRemainingQuantity: line.quotationRemainingQuantity,
+    description: line.description,
+    quantity,
+    unitPrice: line.unitPrice,
+    uomId: line.uomId,
+    uomCode: line.uomCode,
+    uomName: line.uomName,
+    discount: line.discount,
+    taxRate: line.taxRate,
+    lineTotal: line.lineTotal,
+    skipInventory: !!line.frameConfiguration,
+    frameConfiguration: line.frameConfiguration,
+    frameComponents: line.frameComponents,
+  });
+
+  useEffect(() => {
+    if (!quotationLinesOpen || !selectedCustomerId) {
+      setQuotationLines([]);
+      return;
+    }
+
+    let isActive = true;
+    setQuotationLinesLoading(true);
+    quotationsApi
+      .getAvailableLines({
+        customerId: selectedCustomerId,
+        search: debouncedQuotationLineSearch || undefined,
+        page: quotationLinePage,
+        limit: 10,
+      })
+      .then((response) => {
+        if (!isActive) return;
+        setQuotationLines(response.data);
+        setQuotationLinesHasMore(response.pagination.hasMore);
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setQuotationLines([]);
+        setQuotationLinesHasMore(false);
+      })
+      .finally(() => {
+        if (isActive) setQuotationLinesLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [quotationLinesOpen, selectedCustomerId, debouncedQuotationLineSearch, quotationLinePage]);
 
   const onSubmit = async (data: SalesOrderFormInput) => {
     if (lineItems.length === 0) {
@@ -216,6 +331,10 @@ export function SalesOrderForm({
           itemId: item.itemId,
           itemCode: item.itemCode || "",
           itemName: item.itemName || "",
+          quotationId: item.quotationId || null,
+          quotationNumber: item.quotationNumber,
+          quotationItemId: item.quotationItemId || null,
+          quotationRemainingQuantity: item.quotationRemainingQuantity,
           description: item.description,
           quantity: item.quantity,
           uomId: item.uomId,
@@ -278,6 +397,7 @@ export function SalesOrderForm({
                         searchPlaceholder={t("customerSearchPlaceholder")}
                         emptyMessage={t("noCustomerFound")}
                         isLoading={isCustomersLoading}
+                        disabled={isCustomerLocked}
                         renderOption={(customer, selected) => (
                           <div className="flex items-start py-2">
                             <div
@@ -338,10 +458,22 @@ export function SalesOrderForm({
                 <h3 className="text-lg font-semibold">{t("lineItemsTitle")}</h3>
                 <p className="text-sm text-muted-foreground">{t("lineItemsDescription")}</p>
               </div>
-              <Button type="button" onClick={handleAddItem} size="sm">
-                <Plus className="mr-2 h-4 w-4" />
-                {t("addItem")}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleOpenQuotationLines}
+                  size="sm"
+                  disabled={!selectedCustomerId}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add from Quotation
+                </Button>
+                <Button type="button" onClick={handleAddItem} size="sm">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Inventory Item
+                </Button>
+              </div>
             </div>
 
             <div className="p-6">
@@ -387,6 +519,11 @@ export function SalesOrderForm({
                                   <div className="text-sm text-muted-foreground">
                                     {item.itemCode}
                                   </div>
+                                  {item.quotationNumber ? (
+                                    <div className="mt-1 text-xs text-muted-foreground">
+                                      From quotation {item.quotationNumber}
+                                    </div>
+                                  ) : null}
                                   {!item.skipInventory &&
                                   typeof item.available === "number" &&
                                   item.quantity > item.available ? (
@@ -610,11 +747,111 @@ export function SalesOrderForm({
 
       <QuotationLineItemDialog
         open={itemDialogOpen}
-        onOpenChange={setItemDialogOpen}
+        onOpenChange={(open) => {
+          setItemDialogOpen(open);
+          if (!open) setEditingItem(null);
+        }}
         onSave={handleSaveItem}
         item={editingItem?.item || null}
-        mode={editingItem ? "edit" : "add"}
+        mode={editingItem?.index === null ? "add" : editingItem ? "edit" : "add"}
       />
+
+      <Dialog
+        open={quotationLinesOpen}
+        onOpenChange={setQuotationLinesOpen}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Add from customer quotations</DialogTitle>
+            <DialogDescription>
+              Select accepted or partially ordered quotation lines for this customer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              value={quotationLineSearch}
+              onChange={(event) => {
+                setQuotationLineSearch(event.target.value);
+                setQuotationLinePage(1);
+              }}
+              placeholder="Search quotation number, item code, or item name..."
+            />
+            <div className="max-h-[420px] overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Quotation</TableHead>
+                    <TableHead>{tCommon("item")}</TableHead>
+                    <TableHead className="text-right">Remaining</TableHead>
+                    <TableHead className="text-right">{t("price")}</TableHead>
+                    <TableHead className="w-[100px] text-right">{tCommon("actions")}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quotationLinesLoading ? (
+                    <DataTableSkeletonRows
+                      rowCount={5}
+                      columnWidths={["w-28", "w-52", "w-20", "w-20", "w-16"]}
+                      rightAlignedColumns={[2, 3, 4]}
+                      actionColumnIndex={4}
+                    />
+                  ) : quotationLines.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                        No available quotation lines found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    quotationLines.map((line) => (
+                      <TableRow key={line.quotationItemId}>
+                        <TableCell className="font-medium">{line.quotationNumber}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{line.itemName}</div>
+                          <div className="text-xs text-muted-foreground">{line.itemCode}</div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {line.quotationRemainingQuantity} {line.uomCode || line.uomName}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(line.unitPrice)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => handleSelectQuotationLine(line)}
+                          >
+                            Add
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={quotationLinePage <= 1 || quotationLinesLoading}
+                onClick={() => setQuotationLinePage((page) => Math.max(1, page - 1))}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">Page {quotationLinePage}</span>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!quotationLinesHasMore || quotationLinesLoading}
+                onClick={() => setQuotationLinePage((page) => page + 1)}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

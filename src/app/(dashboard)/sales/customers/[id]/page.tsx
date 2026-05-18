@@ -3,40 +3,124 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   BadgeDollarSign,
   Banknote,
   Building2,
+  CheckCircle,
+  Clock,
+  ClipboardList,
   CreditCard,
+  Filter,
   FileText,
   Globe,
   Mail,
   MapPin,
+  MoreVertical,
+  Package,
   Pencil,
   Phone,
+  Receipt,
+  Search,
+  Send,
+  ShoppingCart,
   Truck,
   UserRound,
+  XCircle,
 } from "lucide-react";
 import { useCustomer, useCustomerLedger } from "@/hooks/useCustomers";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useChangeQuotationStatus, useConfirmQuotation, useQuotations } from "@/hooks/useQuotations";
+import {
+  useCancelOrder,
+  useConfirmOrder,
+  useConvertToInvoice,
+  useCreateFrameJobOrder,
+  useSalesOrders,
+} from "@/hooks/useSalesOrders";
+import { useWarehouses } from "@/hooks/useWarehouses";
+import { quotationsApi } from "@/lib/api/quotations";
+import { apiClient } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CustomerLedgerTab } from "@/components/customers/CustomerLedgerTab";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
-import { EditGuard } from "@/components/permissions/PermissionGuard";
+import { CreateGuard, EditGuard } from "@/components/permissions/PermissionGuard";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { StatusText } from "@/components/shared/StatusText";
+import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { RESOURCES } from "@/constants/resources";
 import type { Customer, PaymentTerms } from "@/types/customer";
+import type { Quotation, QuotationStatus } from "@/types/quotation";
+import type { SalesOrder, SalesOrderStatus } from "@/types/sales-order";
+import type { SalesOrderFormInitialValues } from "@/components/sales-orders/SalesOrderForm";
+import type { WarehouseLocation } from "@/types/inventory-location";
 import type { LucideIcon } from "lucide-react";
 
 const CustomerFormDialog = dynamic(
   () => import("@/components/customers/CustomerFormDialog").then((mod) => mod.CustomerFormDialog),
+  { ssr: false }
+);
+
+const QuotationViewDialog = dynamic(
+  () =>
+    import("@/components/quotations/QuotationViewDialog").then((mod) => mod.QuotationViewDialog),
+  { ssr: false }
+);
+
+const SalesOrderFormDialog = dynamic(
+  () =>
+    import("@/components/sales-orders/SalesOrderFormDialog").then(
+      (mod) => mod.SalesOrderFormDialog
+    ),
   { ssr: false }
 );
 
@@ -80,10 +164,14 @@ const formatAddress = (parts: Array<string | undefined>) => parts.filter(Boolean
 function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   const unwrappedParams = React.use(params);
   const customerId = unwrappedParams.id;
+  const locale = useLocale();
   const tPage = useTranslations("customersPage");
   const tForm = useTranslations("customerForm");
   const tCommon = useTranslations("common");
+  const tQuotations = useTranslations("quotationsPage");
+  const tOrders = useTranslations("salesOrdersPage");
   const { formatCurrency } = useCurrency();
+  const router = useRouter();
   const { data: customer, isLoading, error } = useCustomer(customerId);
   const { data: accountSummaryData, isLoading: isAccountSummaryLoading } = useCustomerLedger(
     customerId,
@@ -94,6 +182,87 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
   );
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [quotationCursor, setQuotationCursor] = useState<string | null>(null);
+  const [customerQuotations, setCustomerQuotations] = useState<Quotation[]>([]);
+  const [quotationViewOpen, setQuotationViewOpen] = useState(false);
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
+  const [salesOrderDialogOpen, setSalesOrderDialogOpen] = useState(false);
+  const [salesOrderInitialValues, setSalesOrderInitialValues] =
+    useState<SalesOrderFormInitialValues | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [quotationToConfirm, setQuotationToConfirm] = useState<Quotation | null>(null);
+  const [salesOrderSearch, setSalesOrderSearch] = useState("");
+  const [salesOrderPage, setSalesOrderPage] = useState(1);
+  const [salesOrderPageSize, setSalesOrderPageSize] = useState(10);
+  const [salesOrderStatusFilter, setSalesOrderStatusFilter] = useState<string>("all");
+  const [selectedSalesOrder, setSelectedSalesOrder] = useState<SalesOrder | null>(null);
+  const [salesOrderDialogMode, setSalesOrderDialogMode] = useState<"view" | "edit">("view");
+  const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
+  const [selectedWarehouse, setSelectedWarehouse] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
+  const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<SalesOrder | null>(null);
+  const changeStatus = useChangeQuotationStatus();
+  const confirmQuotation = useConfirmQuotation();
+  const confirmOrder = useConfirmOrder();
+  const convertToInvoice = useConvertToInvoice();
+  const createFrameJobOrder = useCreateFrameJobOrder();
+  const cancelOrder = useCancelOrder();
+
+  const {
+    data: quotationsData,
+    isLoading: isQuotationsLoading,
+    isFetching: isQuotationsFetching,
+    error: quotationsError,
+  } = useQuotations({
+    customerId,
+    cursor: quotationCursor,
+    limit: 10,
+  });
+
+  const {
+    data: salesOrdersData,
+    isLoading: isSalesOrdersLoading,
+    error: salesOrdersError,
+  } = useSalesOrders({
+    customerId,
+    search: salesOrderSearch,
+    status: salesOrderStatusFilter as SalesOrderStatus | "all",
+    page: salesOrderPage,
+    limit: salesOrderPageSize,
+  });
+
+  const customerSalesOrders = salesOrdersData?.data || [];
+  const salesOrderPagination = salesOrdersData?.pagination;
+  const { data: warehousesData } = useWarehouses({ limit: 50 });
+  const warehouses = warehousesData?.data || [];
+
+  const { data: locationsData } = useQuery<{ data: WarehouseLocation[] }>({
+    queryKey: ["warehouse-locations", selectedWarehouse],
+    queryFn: () => apiClient.get(`/api/warehouses/${selectedWarehouse}/locations`),
+    enabled: !!selectedWarehouse,
+  });
+
+  const locations = React.useMemo(
+    () => (locationsData?.data || []).filter((location) => location.isActive),
+    [locationsData]
+  );
+
+  React.useEffect(() => {
+    setQuotationCursor(null);
+    setCustomerQuotations([]);
+  }, [customerId]);
+
+  React.useEffect(() => {
+    if (!quotationsData) return;
+
+    setCustomerQuotations((current) => {
+      const nextRows = quotationCursor ? [...current, ...quotationsData.data] : quotationsData.data;
+      const rowsById = new Map(nextRows.map((quotation) => [quotation.id, quotation]));
+      return Array.from(rowsById.values());
+    });
+  }, [quotationCursor, quotationsData]);
 
   const getCustomerTypeLabel = (type: Customer["customerType"]) => {
     switch (type) {
@@ -120,6 +289,277 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
     };
     return terms ? labels[terms] : "-";
   };
+
+  const getQuotationStatus = (status: QuotationStatus) => {
+    switch (status) {
+      case "draft":
+        return <StatusText tone="muted">{tQuotations("draft")}</StatusText>;
+      case "sent":
+        return <StatusText tone="blue">{tQuotations("sent")}</StatusText>;
+      case "accepted":
+        return <StatusText tone="green">{tQuotations("accepted")}</StatusText>;
+      case "partially_ordered":
+        return <StatusText tone="yellow">{tQuotations("partiallyOrdered")}</StatusText>;
+      case "rejected":
+        return <StatusText tone="red">{tQuotations("rejected")}</StatusText>;
+      case "expired":
+        return <StatusText tone="orange">{tQuotations("expired")}</StatusText>;
+      case "ordered":
+        return <StatusText tone="purple">{tQuotations("ordered")}</StatusText>;
+    }
+  };
+
+  const getQuotationIcon = (status: QuotationStatus) => {
+    switch (status) {
+      case "sent":
+        return <Send className="h-4 w-4 text-blue-600" />;
+      case "accepted":
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "partially_ordered":
+        return <Clock className="h-4 w-4 text-amber-600" />;
+      case "rejected":
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      case "ordered":
+        return <ShoppingCart className="h-4 w-4 text-purple-600" />;
+      default:
+        return <FileText className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const formatQuotationDate = (value: string) =>
+    new Date(value).toLocaleDateString(locale, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
+  const openQuotation = async (quotation: Quotation) => {
+    try {
+      const fullQuotation = await quotationsApi.getQuotation(quotation.id);
+      setSelectedQuotation(fullQuotation);
+      setQuotationViewOpen(true);
+    } catch (fetchError) {
+      const message =
+        fetchError instanceof Error ? fetchError.message : "Failed to load quotation details";
+      setSelectedQuotation(null);
+      setQuotationViewOpen(false);
+      console.error(message);
+    }
+  };
+
+  const handleEditQuotation = (quotation: Quotation) => {
+    router.push(`/sales/quotations/${quotation.id}/edit`);
+  };
+
+  const canChangeQuotationStatus = (status: QuotationStatus) => {
+    return status === "draft" || status === "sent";
+  };
+
+  const getAvailableQuotationStatuses = (currentStatus: QuotationStatus) => {
+    const statuses = [];
+
+    if (currentStatus === "draft") {
+      statuses.push({ value: "sent", label: tQuotations("markAsSent"), icon: Send });
+      statuses.push({ value: "accepted", label: tQuotations("markAsAccepted"), icon: CheckCircle });
+      statuses.push({ value: "rejected", label: tQuotations("markAsRejected"), icon: XCircle });
+    } else if (currentStatus === "sent") {
+      statuses.push({ value: "accepted", label: tQuotations("markAsAccepted"), icon: CheckCircle });
+      statuses.push({ value: "rejected", label: tQuotations("markAsRejected"), icon: XCircle });
+    }
+
+    return statuses;
+  };
+
+  const handleChangeQuotationStatus = async (quotation: Quotation, newStatus: string) => {
+    if (newStatus === "accepted") {
+      setQuotationToConfirm(quotation);
+      setConfirmDialogOpen(true);
+      return;
+    }
+
+    try {
+      await changeStatus.mutateAsync({ id: quotation.id, status: newStatus });
+      toast.success("Quotation status updated successfully");
+    } catch (statusError) {
+      toast.error(
+        statusError instanceof Error ? statusError.message : "Failed to update quotation status"
+      );
+    }
+  };
+
+  const handleConfirmQuotation = async () => {
+    if (!quotationToConfirm) return;
+
+    try {
+      await confirmQuotation.mutateAsync({
+        id: quotationToConfirm.id,
+        warehouseId: null,
+      });
+      toast.success("Quotation confirmed");
+      setConfirmDialogOpen(false);
+      setQuotationToConfirm(null);
+    } catch (confirmError) {
+      toast.error(
+        confirmError instanceof Error ? confirmError.message : "Failed to confirm quotation"
+      );
+    }
+  };
+
+  const handleCreateSalesOrder = () => {
+    if (!customer) return;
+
+    setSalesOrderInitialValues({
+      customerId: customer.id,
+      lockCustomer: true,
+      orderDate: new Date().toISOString().split("T")[0],
+      expectedDeliveryDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      shippingAddress: customer.shippingAddress || customer.billingAddress,
+      shippingCity: customer.shippingCity || customer.billingCity,
+      shippingState: customer.shippingState || customer.billingState,
+      shippingPostalCode: customer.shippingPostalCode || customer.billingPostalCode,
+      shippingCountry: customer.shippingCountry || customer.billingCountry,
+      paymentTerms: getPaymentTermsLabel(customer.paymentTerms),
+      notes: "",
+      lineItems: [],
+    });
+    setSalesOrderDialogOpen(true);
+  };
+
+  const getSalesOrderStatusIcon = (status: SalesOrderStatus) => {
+    switch (status) {
+      case "draft":
+        return <FileText className="h-4 w-4 text-gray-600" />;
+      case "confirmed":
+        return <CheckCircle className="h-4 w-4 text-blue-600" />;
+      case "in_progress":
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      case "shipped":
+        return <Truck className="h-4 w-4 text-purple-600" />;
+      case "delivered":
+        return <Package className="h-4 w-4 text-green-600" />;
+      case "invoiced":
+        return <Receipt className="h-4 w-4 text-indigo-600" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4 text-red-600" />;
+    }
+  };
+
+  const getSalesOrderStatus = (status: SalesOrderStatus) => {
+    switch (status) {
+      case "draft":
+        return <StatusText tone="muted">{tOrders("draft")}</StatusText>;
+      case "confirmed":
+        return <StatusText tone="blue">{tOrders("confirmed")}</StatusText>;
+      case "in_progress":
+        return <StatusText tone="yellow">{tOrders("inProgress")}</StatusText>;
+      case "shipped":
+        return <StatusText tone="purple">{tOrders("shipped")}</StatusText>;
+      case "delivered":
+        return <StatusText tone="green">{tOrders("delivered")}</StatusText>;
+      case "invoiced":
+        return <StatusText tone="indigo">{tOrders("invoiced")}</StatusText>;
+      case "cancelled":
+        return <StatusText tone="red">{tOrders("cancelled")}</StatusText>;
+    }
+  };
+
+  const isSalesOrderOverdue = (expectedDeliveryDate: string, status: SalesOrderStatus) => {
+    if (status === "delivered" || status === "cancelled" || status === "invoiced") return false;
+    return new Date(expectedDeliveryDate) < new Date();
+  };
+
+  const handleSalesOrderStatusFilterChange = (value: string) => {
+    setSalesOrderStatusFilter(value);
+    setSalesOrderPage(1);
+  };
+
+  const handleViewSalesOrder = (order: SalesOrder) => {
+    setSelectedSalesOrder(order);
+    setSalesOrderDialogMode("view");
+    setSalesOrderDialogOpen(true);
+  };
+
+  const handleEditSalesOrder = (order: SalesOrder) => {
+    setSelectedSalesOrder(order);
+    setSalesOrderDialogMode("edit");
+    setSalesOrderDialogOpen(true);
+  };
+
+  const handleConvertSalesOrderToInvoice = (order: SalesOrder) => {
+    setOrderToInvoice(order);
+    setOrderToCreateJobOrder(null);
+    setSelectedWarehouse("");
+    setSelectedLocation("");
+    setWarehouseDialogOpen(true);
+  };
+
+  const handleCreateSalesOrderJobOrder = (order: SalesOrder) => {
+    setOrderToCreateJobOrder(order);
+    setOrderToInvoice(null);
+    setSelectedWarehouse("");
+    setSelectedLocation("");
+    setWarehouseDialogOpen(true);
+  };
+
+  const handleConfirmInvoiceConversion = async () => {
+    if (!orderToInvoice || !selectedWarehouse) return;
+
+    try {
+      await convertToInvoice.mutateAsync({
+        orderId: orderToInvoice.id,
+        warehouseId: selectedWarehouse,
+        locationId: selectedLocation || undefined,
+      });
+      setWarehouseDialogOpen(false);
+      router.push("/sales/invoices");
+    } catch {
+      // Mutation hook owns the toast.
+    }
+  };
+
+  const handleConfirmJobOrderCreation = async () => {
+    if (!orderToCreateJobOrder || !selectedWarehouse) return;
+
+    try {
+      const result = await createFrameJobOrder.mutateAsync({
+        orderId: orderToCreateJobOrder.id,
+        warehouseId: selectedWarehouse,
+      });
+      setWarehouseDialogOpen(false);
+      router.push(`/sales/frame-job-orders/${result.frameJobOrder.id}`);
+    } catch {
+      // Mutation hook owns the toast.
+    }
+  };
+
+  const handleConfirmSalesOrder = async (order: SalesOrder) => {
+    try {
+      await confirmOrder.mutateAsync(order.id);
+    } catch {
+      // Mutation hook owns the toast.
+    }
+  };
+
+  const handleConfirmCancelSalesOrder = async () => {
+    if (!orderToCancel) return;
+
+    try {
+      await cancelOrder.mutateAsync(orderToCancel.id);
+      setOrderToCancel(null);
+    } catch {
+      // Mutation hook owns the toast.
+    }
+  };
+
+  const canCreateFrameJobOrder = (order: SalesOrder) =>
+    !order.frameJobOrder &&
+    order.hasFrameJobEligibleItems &&
+    (order.status === "confirmed" || order.status === "in_progress" || order.status === "invoiced");
+
+  const canCancelSalesOrder = (order: SalesOrder) =>
+    order.status !== "cancelled" && order.status !== "invoiced";
 
   if (isLoading && !customer) {
     return (
@@ -245,14 +685,55 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
         />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">{tForm("generalTab")}</TabsTrigger>
-          <TabsTrigger value="addresses">{tForm("billingTab")}</TabsTrigger>
-          <TabsTrigger value="payment">{tForm("termsTab")}</TabsTrigger>
-          <TabsTrigger value="ledger">Ledger</TabsTrigger>
-          <TabsTrigger value="notes">{tForm("notes")}</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="border-b border-border/40 bg-gradient-to-r from-background via-muted/20 to-background">
+          <div className="container-fluid">
+            <TabsList className="h-auto w-full justify-start gap-2 rounded-none border-b-0 bg-transparent p-0 py-2">
+              <TabsTrigger
+                value="overview"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <UserRound className="h-4 w-4" />
+                {tForm("generalTab")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="payment"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <CreditCard className="h-4 w-4" />
+                {tForm("termsTab")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="quotations"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <FileText className="h-4 w-4" />
+                {tQuotations("title")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="sales-orders"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                {tOrders("title")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="ledger"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <Receipt className="h-4 w-4" />
+                Ledger
+              </TabsTrigger>
+              <TabsTrigger
+                value="notes"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <ClipboardList className="h-4 w-4" />
+                {tForm("notes")}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
 
         <TabsContent value="overview" className="mt-4 min-h-[34rem] space-y-4">
           <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -332,9 +813,7 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        <TabsContent value="addresses" className="mt-4 min-h-[34rem]">
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
@@ -393,6 +872,428 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
           <CustomerLedgerTab customerId={customerId} enabled={activeTab === "ledger"} />
         </TabsContent>
 
+        <TabsContent value="sales-orders" className="mt-4 min-h-[34rem]">
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">{tOrders("title")}</CardTitle>
+                <CardDescription>Sales orders created for this customer.</CardDescription>
+              </div>
+              <CreateGuard resource={RESOURCES.SALES_ORDERS}>
+                <Button type="button" onClick={handleCreateSalesOrder}>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  {tOrders("createOrder")}
+                </Button>
+              </CreateGuard>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder={tOrders("searchPlaceholder")}
+                    value={salesOrderSearch}
+                    onChange={(event) => {
+                      setSalesOrderSearch(event.target.value);
+                      setSalesOrderPage(1);
+                    }}
+                    className="pl-8"
+                  />
+                </div>
+                <Select
+                  value={salesOrderStatusFilter}
+                  onValueChange={handleSalesOrderStatusFilterChange}
+                >
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder={tCommon("status")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{tCommon("allStatuses")}</SelectItem>
+                    <SelectItem value="draft">{tOrders("draft")}</SelectItem>
+                    <SelectItem value="confirmed">{tOrders("confirmed")}</SelectItem>
+                    <SelectItem value="in_progress">{tOrders("inProgress")}</SelectItem>
+                    <SelectItem value="shipped">{tOrders("shipped")}</SelectItem>
+                    <SelectItem value="delivered">{tOrders("delivered")}</SelectItem>
+                    <SelectItem value="invoiced">{tOrders("invoiced")}</SelectItem>
+                    <SelectItem value="cancelled">{tOrders("cancelled")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isSalesOrdersLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((row) => (
+                    <Skeleton key={row} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : salesOrdersError ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  {tOrders("loadError")}
+                </div>
+              ) : customerSalesOrders.length === 0 ? (
+                <div className="rounded-lg border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                  {tOrders("empty")}
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{tOrders("orderNumber")}</TableHead>
+                          <TableHead>{tOrders("orderDate")}</TableHead>
+                          <TableHead>{tOrders("expectedDelivery")}</TableHead>
+                          <TableHead className="text-right">{tOrders("amount")}</TableHead>
+                          <TableHead>{tCommon("status")}</TableHead>
+                          <TableHead className="text-right">{tCommon("actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {customerSalesOrders.map((order) => (
+                          <TableRow
+                            key={order.id}
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleViewSalesOrder(order)}
+                            onKeyDown={(event) => {
+                              if (event.currentTarget !== event.target) return;
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                handleViewSalesOrder(order);
+                              }
+                            }}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                {getSalesOrderStatusIcon(order.status)}
+                                {order.orderNumber}
+                              </div>
+                            </TableCell>
+                            <TableCell>{formatQuotationDate(order.orderDate)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {formatQuotationDate(order.expectedDeliveryDate)}
+                                {isSalesOrderOverdue(order.expectedDeliveryDate, order.status) ? (
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-red-100 text-xs text-red-800"
+                                  >
+                                    {tOrders("overdue")}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="font-medium">{formatCurrency(order.totalAmount)}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {tOrders("itemsCount", {
+                                  count: String(order.lineItems.length),
+                                })}
+                              </div>
+                            </TableCell>
+                            <TableCell>{getSalesOrderStatus(order.status)}</TableCell>
+                            <TableCell
+                              className="text-right"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              <div className="flex justify-end gap-2">
+                                {(order.status === "draft" || order.status === "confirmed") ? (
+                                  <EditGuard resource={RESOURCES.SALES_ORDERS}>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => handleEditSalesOrder(order)}
+                                    >
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      {tCommon("edit")}
+                                    </Button>
+                                  </EditGuard>
+                                ) : null}
+                                {order.status === "draft" ? (
+                                  <EditGuard resource={RESOURCES.SALES_ORDERS}>
+                                    <Button
+                                      type="button"
+                                      variant="default"
+                                      size="sm"
+                                      className="h-8 bg-green-600 px-2 hover:bg-green-700"
+                                      onClick={() => handleConfirmSalesOrder(order)}
+                                      disabled={confirmOrder.isPending}
+                                    >
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      {tOrders("confirm")}
+                                    </Button>
+                                  </EditGuard>
+                                ) : null}
+                                {(order.status === "confirmed" ||
+                                  order.status === "in_progress") ? (
+                                  <CreateGuard resource={RESOURCES.SALES_INVOICES}>
+                                    <Button
+                                      type="button"
+                                      variant="default"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => handleConvertSalesOrderToInvoice(order)}
+                                      disabled={convertToInvoice.isPending}
+                                    >
+                                      <Receipt className="mr-2 h-4 w-4" />
+                                      {tOrders("invoice")}
+                                    </Button>
+                                  </CreateGuard>
+                                ) : null}
+                                {canCreateFrameJobOrder(order) ? (
+                                  <CreateGuard resource={RESOURCES.MANUFACTURING}>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => handleCreateSalesOrderJobOrder(order)}
+                                      disabled={createFrameJobOrder.isPending}
+                                    >
+                                      <ClipboardList className="mr-2 h-4 w-4" />
+                                      {tOrders("createJobOrder")}
+                                    </Button>
+                                  </CreateGuard>
+                                ) : null}
+                                {order.frameJobOrder ? (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 px-2"
+                                    asChild
+                                  >
+                                    <Link href={`/sales/frame-job-orders/${order.frameJobOrder.id}`}>
+                                      <ClipboardList className="mr-2 h-4 w-4" />
+                                      {tOrders("viewJobOrder")}
+                                    </Link>
+                                  </Button>
+                                ) : null}
+                                {canCancelSalesOrder(order) ? (
+                                  <EditGuard resource={RESOURCES.SALES_ORDERS}>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 w-8 p-0"
+                                          aria-label={tOrders("moreActions")}
+                                        >
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={() => setOrderToCancel(order)}
+                                        >
+                                          <XCircle className="mr-2 h-4 w-4" />
+                                          {tOrders("cancelOrder")}
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </EditGuard>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {salesOrderPagination && salesOrderPagination.total > 0 ? (
+                    <DataTablePagination
+                      currentPage={salesOrderPage}
+                      totalPages={salesOrderPagination.totalPages}
+                      pageSize={salesOrderPageSize}
+                      totalItems={salesOrderPagination.total}
+                      onPageChange={setSalesOrderPage}
+                      onPageSizeChange={setSalesOrderPageSize}
+                    />
+                  ) : null}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="quotations" className="mt-4 min-h-[34rem]">
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-base font-semibold">{tQuotations("title")}</CardTitle>
+                <CardDescription>Quotations created for this customer.</CardDescription>
+              </div>
+              <CreateGuard resource={RESOURCES.SALES_ORDERS}>
+                <Button type="button" onClick={handleCreateSalesOrder}>
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  {tQuotations("createSalesOrder")}
+                </Button>
+              </CreateGuard>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isQuotationsLoading && customerQuotations.length === 0 ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((row) => (
+                    <Skeleton key={row} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : quotationsError ? (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+                  {tQuotations("loadError")}
+                </div>
+              ) : customerQuotations.length === 0 ? (
+                <div className="rounded-lg border bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+                  {tQuotations("empty")}
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{tQuotations("quotationNumber")}</TableHead>
+                          <TableHead>{tQuotations("date")}</TableHead>
+                          <TableHead>{tQuotations("validUntil")}</TableHead>
+                          <TableHead className="text-right">{tQuotations("amount")}</TableHead>
+                          <TableHead>{tCommon("status")}</TableHead>
+                          <TableHead className="text-right">{tCommon("actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {customerQuotations.map((quotation) => (
+                          <TableRow
+                            key={quotation.id}
+                            role="button"
+                            tabIndex={0}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => openQuotation(quotation)}
+                            onKeyDown={(event) => {
+                              if (event.currentTarget !== event.target) return;
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                openQuotation(quotation);
+                              }
+                            }}
+                          >
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                {getQuotationIcon(quotation.status)}
+                                {quotation.quotationNumber}
+                              </div>
+                            </TableCell>
+                            <TableCell>{formatQuotationDate(quotation.quotationDate)}</TableCell>
+                            <TableCell>{formatQuotationDate(quotation.validUntil)}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="font-medium">
+                                {formatCurrency(quotation.totalAmount)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {tQuotations("itemsCount", {
+                                  count: String(quotation.lineItems.length),
+                                })}
+                              </div>
+                            </TableCell>
+                            <TableCell>{getQuotationStatus(quotation.status)}</TableCell>
+                          <TableCell
+                            className="text-right"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                              <div className="flex justify-end gap-2">
+                                {(quotation.status === "draft" || quotation.status === "sent") && (
+                                  <EditGuard resource={RESOURCES.SALES_QUOTATIONS}>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 px-2"
+                                      onClick={() => handleEditQuotation(quotation)}
+                                    >
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      {tCommon("edit")}
+                                    </Button>
+                                  </EditGuard>
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2"
+                                  onClick={() => openQuotation(quotation)}
+                                >
+                                  {tCommon("view")}
+                                </Button>
+                                {canChangeQuotationStatus(quotation.status) ? (
+                                  <EditGuard resource={RESOURCES.SALES_QUOTATIONS}>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-8 w-8 p-0"
+                                          disabled={changeStatus.isPending}
+                                          aria-label={tQuotations("changeStatus")}
+                                        >
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        {getAvailableQuotationStatuses(quotation.status).map(
+                                          (status) => {
+                                            const Icon = status.icon;
+                                            return (
+                                              <DropdownMenuItem
+                                                key={status.value}
+                                                onClick={() =>
+                                                  handleChangeQuotationStatus(
+                                                    quotation,
+                                                    status.value
+                                                  )
+                                                }
+                                              >
+                                                <Icon className="mr-2 h-4 w-4" />
+                                                <span>{status.label}</span>
+                                              </DropdownMenuItem>
+                                            );
+                                          }
+                                        )}
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </EditGuard>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {quotationsData?.pagination.hasMore && (
+                    <div className="flex justify-center">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={isQuotationsFetching || !quotationsData.pagination.nextCursor}
+                        onClick={() => setQuotationCursor(quotationsData.pagination.nextCursor)}
+                      >
+                        {isQuotationsFetching ? tCommon("loading") : tCommon("loadMore")}
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="notes" className="mt-4 min-h-[34rem]">
           <Card>
             <CardHeader>
@@ -423,6 +1324,155 @@ function CustomerDetailsContent({ params }: CustomerDetailsPageProps) {
       {editOpen ? (
         <CustomerFormDialog open={editOpen} onOpenChange={setEditOpen} customer={customer} />
       ) : null}
+      {quotationViewOpen ? (
+        <QuotationViewDialog
+          open={quotationViewOpen}
+          onOpenChange={setQuotationViewOpen}
+          quotation={selectedQuotation}
+        />
+      ) : null}
+      {salesOrderDialogOpen && (selectedSalesOrder || salesOrderInitialValues) ? (
+        <SalesOrderFormDialog
+          open={salesOrderDialogOpen}
+          onOpenChange={(open) => {
+            setSalesOrderDialogOpen(open);
+            if (!open) {
+              setSelectedSalesOrder(null);
+              setSalesOrderInitialValues(null);
+            }
+          }}
+          salesOrder={selectedSalesOrder}
+          initialMode={selectedSalesOrder ? salesOrderDialogMode : "edit"}
+          initialValues={salesOrderInitialValues ?? undefined}
+        />
+      ) : null}
+      <Dialog open={warehouseDialogOpen} onOpenChange={setWarehouseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tOrders("selectWarehouseTitle")}</DialogTitle>
+            <DialogDescription>
+              {orderToCreateJobOrder
+                ? tOrders("selectJobOrderWarehouseDescription")
+                : tOrders("selectWarehouseDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Select
+              value={selectedWarehouse}
+              onValueChange={(value) => {
+                setSelectedWarehouse(value);
+                setSelectedLocation("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={tOrders("selectWarehouse")} />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((warehouse) => (
+                  <SelectItem key={warehouse.id} value={warehouse.id}>
+                    {warehouse.code} - {warehouse.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="pb-2">
+            <Select
+              value={selectedLocation}
+              onValueChange={setSelectedLocation}
+              disabled={!selectedWarehouse}
+            >
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    selectedWarehouse
+                      ? tOrders("selectLocationOptional")
+                      : tOrders("selectWarehouseFirst")
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.code} {location.name ? `- ${location.name}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarehouseDialogOpen(false)}>
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              onClick={
+                orderToCreateJobOrder
+                  ? handleConfirmJobOrderCreation
+                  : handleConfirmInvoiceConversion
+              }
+              disabled={
+                !selectedWarehouse || convertToInvoice.isPending || createFrameJobOrder.isPending
+              }
+            >
+              {orderToCreateJobOrder
+                ? createFrameJobOrder.isPending
+                  ? tOrders("creatingJobOrder")
+                  : tOrders("createJobOrder")
+                : convertToInvoice.isPending
+                  ? tOrders("converting")
+                  : tOrders("createInvoice")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog
+        open={!!orderToCancel}
+        onOpenChange={(open) => {
+          if (!open) setOrderToCancel(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tOrders("cancelTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tOrders("cancelDescription", {
+                number: orderToCancel?.orderNumber ?? "this order",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancelSalesOrder}
+              disabled={cancelOrder.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelOrder.isPending ? tOrders("cancelling") : tOrders("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm quotation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirming {quotationToConfirm?.quotationNumber ?? "this quotation"} will mark the
+              quotation as accepted. Sales orders are created manually from the sales order module
+              or this customer quotation tab.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmQuotation}
+              disabled={confirmQuotation.isPending}
+            >
+              {confirmQuotation.isPending ? "Confirming..." : "Confirm quotation"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

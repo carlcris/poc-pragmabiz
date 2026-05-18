@@ -16,7 +16,6 @@ export type DbQuotation = {
   quotation_date: string;
   valid_until: string | null;
   status: string | null;
-  sales_order_id: string | null;
   frame_job_order_id?: string | null;
   draft_invoice_id?: string | null;
   subtotal: number | string | null;
@@ -36,6 +35,7 @@ export type DbQuotationItem = {
   item_id: string;
   item_description: string | null;
   quantity: number | string;
+  fulfilled_qty: number | string;
   uom_id: string | null;
   rate: number | string;
   discount_percent: number | string | null;
@@ -243,13 +243,18 @@ export const transformDbQuotationItem = (
       ? configuration.items[0]
       : configuration.items
     : null;
+  const quantity = Number(dbItem.quantity) || 0;
+  const fulfilledQuantity = Math.min(quantity, Number(dbItem.fulfilled_qty) || 0);
+
   return {
     id: dbItem.id,
     itemId: dbItem.item_id,
     itemCode: item?.item_code || undefined,
     itemName: item?.item_name || undefined,
     description: dbItem.item_description || "",
-    quantity: Number(dbItem.quantity),
+    quantity,
+    orderedQuantity: fulfilledQuantity,
+    remainingQuantity: Math.max(quantity - fulfilledQuantity, 0),
     uomId: dbItem.uom_id || "",
     uomCode: lineUom?.code || undefined,
     uomName: lineUom?.name || undefined,
@@ -327,7 +332,6 @@ export const transformDbQuotation = (
     quotationDate: dbQuotation.quotation_date,
     validUntil: dbQuotation.valid_until || "",
     status: (dbQuotation.status || "draft") as Quotation["status"],
-    salesOrderId: dbQuotation.sales_order_id || undefined,
     frameJobOrderId: dbQuotation.frame_job_order_id || undefined,
     draftInvoiceId: dbQuotation.draft_invoice_id || undefined,
     lineItems: items,

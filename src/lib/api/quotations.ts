@@ -3,6 +3,7 @@ import type {
   QuotationFilters,
   CreateQuotationRequest,
   UpdateQuotationRequest,
+  QuotationLineItem,
 } from "@/types/quotation";
 import { apiClient } from "@/lib/api";
 
@@ -19,8 +20,25 @@ export type QuotationsResponse = {
 export type ConfirmQuotationResponse = {
   success: boolean;
   quotationId: string;
-  frameJobOrder: { id: string; jobOrderCode: string | null } | null;
-  draftInvoice: { id: string; invoiceCode: string };
+  status: string;
+};
+
+export type AvailableQuotationLine = QuotationLineItem & {
+  quotationId: string;
+  quotationNumber: string;
+  quotationItemId: string;
+  quotationQuantity: number;
+  quotationOrderedQuantity: number;
+  quotationRemainingQuantity: number;
+};
+
+export type AvailableQuotationLinesResponse = {
+  data: AvailableQuotationLine[];
+  pagination: {
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  };
 };
 
 export const quotationsApi = {
@@ -42,6 +60,24 @@ export const quotationsApi = {
     return apiClient.get<Quotation>(`/api/quotations/${id}`);
   },
 
+  async getAvailableLines(filters: {
+    customerId: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<AvailableQuotationLinesResponse> {
+    const params: Record<string, string | number | undefined> = {
+      customerId: filters.customerId,
+      search: filters.search || undefined,
+      page: filters.page,
+      limit: filters.limit,
+    };
+
+    return apiClient.get<AvailableQuotationLinesResponse>("/api/quotations/available-lines", {
+      params,
+    });
+  },
+
   async createQuotation(data: CreateQuotationRequest): Promise<Quotation> {
     return apiClient.post<Quotation>("/api/quotations", data);
   },
@@ -52,18 +88,6 @@ export const quotationsApi = {
 
   async deleteQuotation(id: string): Promise<void> {
     return apiClient.delete<void>(`/api/quotations/${id}`);
-  },
-
-  async convertToOrder(id: string): Promise<{
-    success: boolean;
-    message: string;
-    salesOrder: { id: string; orderNumber: string };
-  }> {
-    return apiClient.post<{
-      success: boolean;
-      message: string;
-      salesOrder: { id: string; orderNumber: string };
-    }>(`/api/quotations/${id}/convert-to-sales-order`, {});
   },
 
   async changeStatus(id: string, status: string): Promise<Quotation> {

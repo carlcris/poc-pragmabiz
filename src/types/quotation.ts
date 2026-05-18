@@ -1,4 +1,11 @@
-export type QuotationStatus = "draft" | "sent" | "accepted" | "rejected" | "expired" | "ordered";
+export type QuotationStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "partially_ordered"
+  | "rejected"
+  | "expired"
+  | "ordered";
 
 export type FrameServiceFeeMode =
   | "per_frame"
@@ -53,6 +60,8 @@ export type QuotationLineItem = {
   itemName?: string; // Joined from items table
   description: string;
   quantity: number;
+  orderedQuantity?: number;
+  remainingQuantity?: number;
   uomId: string;
   uomCode?: string;
   uomName?: string;
@@ -77,7 +86,6 @@ export type Quotation = {
   quotationDate: string;
   validUntil: string;
   status: QuotationStatus;
-  salesOrderId?: string; // Reference to converted sales order
   frameJobOrderId?: string;
   draftInvoiceId?: string;
   lineItems: QuotationLineItem[];

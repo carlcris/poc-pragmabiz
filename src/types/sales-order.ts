@@ -9,11 +9,15 @@ export type SalesOrderStatus =
   | "invoiced"
   | "cancelled";
 
-export interface SalesOrderLineItem {
+export type SalesOrderLineItem = {
   id: string;
   itemId: string;
   itemCode: string;
   itemName: string;
+  quotationId?: string | null;
+  quotationNumber?: string;
+  quotationItemId?: string | null;
+  quotationRemainingQuantity?: number;
   description: string;
   quantity: number;
   uomId: string; // Unit of measure ID
@@ -48,17 +52,15 @@ export interface SalesOrderLineItem {
     manufacturingOrderCode?: string;
     operationName?: string;
   } | null;
-}
+};
 
-export interface SalesOrder {
+export type SalesOrder = {
   id: string;
   companyId: string;
   orderNumber: string;
   customerId: string;
   customerName: string;
   customerEmail: string;
-  quotationId?: string; // Optional reference to original quotation
-  quotationNumber?: string;
   orderDate: string;
   expectedDeliveryDate: string;
   status: SalesOrderStatus;
@@ -83,11 +85,10 @@ export interface SalesOrder {
     jobOrderCode: string;
     status: string;
   } | null;
-}
+};
 
-export interface CreateSalesOrderRequest {
+export type CreateSalesOrderRequest = {
   customerId: string;
-  quotationId?: string;
   orderDate: string;
   expectedDeliveryDate: string;
   lineItems: Omit<
@@ -101,13 +102,13 @@ export interface CreateSalesOrderRequest {
   shippingCountry: string;
   paymentTerms: string;
   notes: string;
-}
+};
 
-export interface UpdateSalesOrderRequest extends Partial<CreateSalesOrderRequest> {
+export type UpdateSalesOrderRequest = Partial<CreateSalesOrderRequest> & {
   status?: SalesOrderStatus;
-}
+};
 
-export interface SalesOrderFilters {
+export type SalesOrderFilters = {
   search?: string;
   status?: SalesOrderStatus | "all";
   customerId?: string;
@@ -115,9 +116,9 @@ export interface SalesOrderFilters {
   dateTo?: string;
   page?: number;
   limit?: number;
-}
+};
 
-export interface SalesOrderPaymentSummary {
+export type SalesOrderPaymentSummary = {
   invoices: {
     id: string;
     invoiceCode: string;
@@ -140,4 +141,4 @@ export interface SalesOrderPaymentSummary {
     totalPaid: number;
     totalDue: number;
   };
-}
+};

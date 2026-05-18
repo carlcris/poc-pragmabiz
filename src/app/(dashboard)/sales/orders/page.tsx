@@ -17,12 +17,14 @@ import {
   Clock,
   Receipt,
   ClipboardList,
+  MoreVertical,
 } from "lucide-react";
 import {
   useSalesOrders,
   useConvertToInvoice,
   useConfirmOrder,
   useCreateFrameJobOrder,
+  useCancelOrder,
 } from "@/hooks/useSalesOrders";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useRouter } from "next/navigation";
@@ -49,6 +51,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Table,
   TableBody,
   TableCell,
@@ -69,14 +87,6 @@ const SalesOrderFormDialog = dynamic(
   { ssr: false }
 );
 
-const SalesOrderViewDialog = dynamic(
-  () =>
-    import("@/components/sales-orders/SalesOrderViewDialog").then(
-      (mod) => mod.SalesOrderViewDialog
-    ),
-  { ssr: false }
-);
-
 export default function SalesOrdersPage() {
   const t = useTranslations("salesOrdersPage");
   const tCommon = useTranslations("common");
@@ -85,19 +95,22 @@ export default function SalesOrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [orderDialogMode, setOrderDialogMode] = useState<"view" | "edit">("view");
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [warehouseDialogOpen, setWarehouseDialogOpen] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [orderToInvoice, setOrderToInvoice] = useState<SalesOrder | null>(null);
   const [orderToCreateJobOrder, setOrderToCreateJobOrder] = useState<SalesOrder | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<SalesOrder | null>(null);
 
   const { formatCurrency } = useCurrency();
   const router = useRouter();
   const convertToInvoice = useConvertToInvoice();
   const confirmOrder = useConfirmOrder();
   const createFrameJobOrder = useCreateFrameJobOrder();
+  const cancelOrder = useCancelOrder();
 
   const { data: warehousesData } = useWarehouses({ limit: 50 });
   const warehouses = warehousesData?.data || [];
@@ -181,11 +194,14 @@ export default function SalesOrdersPage() {
 
   const handleEditOrder = (order: SalesOrder) => {
     setSelectedOrder(order);
+    setOrderDialogMode("edit");
+    setOrderDialogOpen(true);
   };
 
   const handleViewOrder = (order: SalesOrder) => {
     setSelectedOrder(order);
-    setViewDialogOpen(true);
+    setOrderDialogMode("view");
+    setOrderDialogOpen(true);
   };
 
   const handleConvertToInvoice = (order: SalesOrder) => {
@@ -244,10 +260,24 @@ export default function SalesOrdersPage() {
     }
   };
 
+  const handleConfirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+
+    try {
+      await cancelOrder.mutateAsync(orderToCancel.id);
+      setOrderToCancel(null);
+    } catch {
+      // Error is handled by the mutation hook with toast
+    }
+  };
+
   const canCreateFrameJobOrder = (order: SalesOrder) =>
     !order.frameJobOrder &&
     order.hasFrameJobEligibleItems &&
     (order.status === "confirmed" || order.status === "in_progress" || order.status === "invoiced");
+
+  const canCancelOrder = (order: SalesOrder) =>
+    order.status !== "cancelled" && order.status !== "invoiced";
 
   return (
     <div className="space-y-6">
@@ -382,11 +412,6 @@ export default function SalesOrdersPage() {
                           {getStatusIcon(order.status)}
                           <div>
                             <div>{order.orderNumber}</div>
-                            {order.quotationNumber && (
-                              <div className="text-xs text-muted-foreground">
-                                {t("fromQuotation", { number: order.quotationNumber })}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -472,6 +497,29 @@ export default function SalesOrdersPage() {
                               </Link>
                             </Button>
                           ) : null}
+                          {canCancelOrder(order) ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("moreActions")}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setOrderToCancel(order)}
+                                >
+                                  <XCircle className="mr-2 h-4 w-4" />
+                                  <span>{t("cancelOrder")}</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -498,19 +546,13 @@ export default function SalesOrdersPage() {
 
       {selectedOrder && (
         <SalesOrderFormDialog
-          open={!!selectedOrder}
+          open={orderDialogOpen}
           onOpenChange={(open) => {
+            setOrderDialogOpen(open);
             if (!open) setSelectedOrder(null);
           }}
           salesOrder={selectedOrder}
-        />
-      )}
-
-      {viewDialogOpen && (
-        <SalesOrderViewDialog
-          open={viewDialogOpen}
-          onOpenChange={setViewDialogOpen}
-          salesOrder={selectedOrder}
+          initialMode={orderDialogMode}
         />
       )}
 
@@ -591,6 +633,29 @@ export default function SalesOrdersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!orderToCancel} onOpenChange={(open) => !open && setOrderToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("cancelTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("cancelDescription", {
+                number: orderToCancel?.orderNumber || "",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancelOrder}
+              disabled={cancelOrder.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {cancelOrder.isPending ? t("cancelling") : t("confirmCancel")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -81,6 +81,10 @@ const lineItemSchema = z.object({
 type LineItemFormInput = z.input<typeof lineItemSchema>;
 export type LineItemFormValues = z.output<typeof lineItemSchema> & {
   lineTotal?: number;
+  quotationId?: string | null;
+  quotationNumber?: string;
+  quotationItemId?: string | null;
+  quotationRemainingQuantity?: number;
   skipInventory?: boolean;
   available?: number;
   reorderPoint?: number;
@@ -508,6 +512,16 @@ export function QuotationLineItemDialog({
     const frameComponents = isFrameJob ? frameComponentsForSave : [];
     onSave({
       ...parsed,
+      quotationId:
+        item?.quotationItemId && item.itemId === parsed.itemId ? item.quotationId : null,
+      quotationNumber:
+        item?.quotationItemId && item.itemId === parsed.itemId ? item.quotationNumber : undefined,
+      quotationItemId:
+        item?.quotationItemId && item.itemId === parsed.itemId ? item.quotationItemId : null,
+      quotationRemainingQuantity:
+        item?.quotationItemId && item.itemId === parsed.itemId
+          ? item.quotationRemainingQuantity
+          : undefined,
       unitPrice: isFrameJob ? frameUnitPrice : parsed.unitPrice,
       lineTotal,
       skipInventory: !!frameConfiguration,

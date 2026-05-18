@@ -332,12 +332,6 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                     <span className="text-muted-foreground">{t("email")}:</span>
                     <div className="font-medium">{quotation.customerEmail}</div>
                   </div>
-                  {quotation.salesOrderId && (
-                    <div>
-                      <span className="text-muted-foreground">{t("salesOrder")}:</span>
-                      <div className="font-medium">{quotation.salesOrderId}</div>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -408,6 +402,13 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                         <div className="text-xs text-muted-foreground">Quantity</div>
                         <div className="font-medium">
                           {formatNumber(item.quantity)} {item.uomCode || item.uomName || ""}
+                        </div>
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          {t("fulfilled")}
+                        </div>
+                        <div className="font-medium">
+                          {formatNumber(item.orderedQuantity ?? 0)}{" "}
+                          {item.uomCode || item.uomName || ""}
                         </div>
                       </div>
                       <div className="md:col-span-2 md:text-right">

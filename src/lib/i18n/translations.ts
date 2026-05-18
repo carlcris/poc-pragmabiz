@@ -1213,6 +1213,12 @@ export type TranslationKeys = {
     invoice: string;
     createJobOrder: string;
     viewJobOrder: string;
+    moreActions: string;
+    cancelOrder: string;
+    cancelTitle: string;
+    cancelDescription: string;
+    cancelling: string;
+    confirmCancel: string;
     selectWarehouseTitle: string;
     selectWarehouseDescription: string;
     selectJobOrderWarehouseDescription: string;
@@ -1294,6 +1300,7 @@ export type TranslationKeys = {
     deliveryAddress: string;
     lineItems: string;
     quantity: string;
+    fulfilled: string;
     unit: string;
     unitPrice: string;
     discount: string;
@@ -1339,6 +1346,7 @@ export type TranslationKeys = {
     empty: string;
     expiringSoon: string;
     itemsCount: string;
+    createSalesOrder: string;
     changeStatus: string;
     markAsSent: string;
     markAsAccepted: string;
@@ -1358,6 +1366,7 @@ export type TranslationKeys = {
     draft: string;
     sent: string;
     accepted: string;
+    partiallyOrdered: string;
     rejected: string;
     expired: string;
     ordered: string;
@@ -1440,6 +1449,7 @@ export type TranslationKeys = {
     billingAddress: string;
     lineItems: string;
     quantity: string;
+    fulfilled: string;
     unit: string;
     unitPrice: string;
     discount: string;
@@ -1453,6 +1463,7 @@ export type TranslationKeys = {
     draft: string;
     sent: string;
     accepted: string;
+    partiallyOrdered: string;
     rejected: string;
     expired: string;
     ordered: string;
@@ -3936,6 +3947,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       invoice: "Invoice",
       createJobOrder: "Create Job Order",
       viewJobOrder: "View Job Order",
+      moreActions: "More actions",
+      cancelOrder: "Cancel Order",
+      cancelTitle: "Cancel Sales Order",
+      cancelDescription:
+        "Cancel sales order {number}? Linked quotation line fulfillment will be released. Invoiced orders cannot be cancelled.",
+      cancelling: "Cancelling...",
+      confirmCancel: "Yes, cancel",
       selectWarehouseTitle: "Select Warehouse",
       selectWarehouseDescription:
         "Choose the warehouse from which stock will be deducted for this invoice.",
@@ -4024,6 +4042,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deliveryAddress: "Delivery Address",
       lineItems: "Line Items",
       quantity: "Quantity",
+      fulfilled: "Fulfilled",
       unit: "Unit",
       unitPrice: "Unit Price",
       discount: "Discount",
@@ -4069,6 +4088,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "No quotations found. Create your first quotation to get started.",
       expiringSoon: "Expiring Soon",
       itemsCount: "{count} items",
+      createSalesOrder: "Create Sales Order",
       changeStatus: "Change Status",
       markAsSent: "Mark as Sent",
       markAsAccepted: "Mark as Accepted",
@@ -4088,6 +4108,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       draft: "Draft",
       sent: "Sent",
       accepted: "Accepted",
+      partiallyOrdered: "Partially Ordered",
       rejected: "Rejected",
       expired: "Expired",
       ordered: "Ordered",
@@ -4171,6 +4192,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       billingAddress: "Billing Address",
       lineItems: "Line Items",
       quantity: "Quantity",
+      fulfilled: "Fulfilled",
       unit: "Unit",
       unitPrice: "Unit Price",
       discount: "Discount",
@@ -4184,6 +4206,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       draft: "Draft",
       sent: "Sent",
       accepted: "Accepted",
+      partiallyOrdered: "Partially Ordered",
       rejected: "Rejected",
       expired: "Expired",
       ordered: "Ordered",
@@ -9139,6 +9162,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       invoice: "发票",
       createJobOrder: "创建工单",
       viewJobOrder: "查看工单",
+      moreActions: "更多操作",
+      cancelOrder: "取消订单",
+      cancelTitle: "取消销售订单",
+      cancelDescription: "取消销售订单 {number}？关联报价行的履约数量将被释放。已开票订单不能取消。",
+      cancelling: "取消中...",
+      confirmCancel: "是，取消",
       selectWarehouseTitle: "选择仓库",
       selectWarehouseDescription: "选择该发票扣减库存所使用的仓库。",
       selectJobOrderWarehouseDescription: "选择该工单预留框料所使用的仓库。",
@@ -9224,6 +9253,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       deliveryAddress: "送货地址",
       lineItems: "行项目",
       quantity: "数量",
+      fulfilled: "已履约",
       unit: "单位",
       unitPrice: "单价",
       discount: "折扣",
@@ -9269,6 +9299,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       empty: "未找到报价单。创建第一张报价单以开始使用。",
       expiringSoon: "即将到期",
       itemsCount: "{count} 个项目",
+      createSalesOrder: "创建销售订单",
       changeStatus: "更改状态",
       markAsSent: "标记为已发送",
       markAsAccepted: "标记为已接受",
@@ -9288,6 +9319,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       draft: "草稿",
       sent: "已发送",
       accepted: "已接受",
+      partiallyOrdered: "部分下单",
       rejected: "已拒绝",
       expired: "已过期",
       ordered: "已下单",
@@ -9370,6 +9402,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       billingAddress: "账单地址",
       lineItems: "行项目",
       quantity: "数量",
+      fulfilled: "已履约",
       unit: "单位",
       unitPrice: "单价",
       discount: "折扣",
@@ -9383,6 +9416,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       draft: "草稿",
       sent: "已发送",
       accepted: "已接受",
+      partiallyOrdered: "部分下单",
       rejected: "已拒绝",
       expired: "已过期",
       ordered: "已下单",

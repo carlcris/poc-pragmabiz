@@ -58,17 +58,6 @@ export function useDeleteQuotation() {
   });
 }
 
-export function useConvertToOrder() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => quotationsApi.convertToOrder(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUOTATIONS_KEY] });
-    },
-  });
-}
-
 export function useChangeQuotationStatus() {
   const queryClient = useQueryClient();
 

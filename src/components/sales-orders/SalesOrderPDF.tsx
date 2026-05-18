@@ -285,12 +285,6 @@ export const SalesOrderPDF: React.FC<SalesOrderPDFProps> = ({
               <Text style={styles.label}>Expected Delivery:</Text>
               <Text style={styles.value}>{formatDate(salesOrder.expectedDeliveryDate)}</Text>
             </View>
-            {salesOrder.quotationNumber && (
-              <View>
-                <Text style={styles.label}>Quotation:</Text>
-                <Text style={styles.value}>{salesOrder.quotationNumber}</Text>
-              </View>
-            )}
           </View>
         </View>
 

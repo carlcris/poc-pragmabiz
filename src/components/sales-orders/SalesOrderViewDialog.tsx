@@ -259,12 +259,6 @@ export function SalesOrderViewDialog({
                   <span className="text-muted-foreground">{t("email")}:</span>
                   <div className="font-medium">{salesOrder.customerEmail}</div>
                 </div>
-                {salesOrder.quotationNumber && (
-                  <div>
-                    <span className="text-muted-foreground">{t("quotation")}:</span>
-                    <div className="font-medium">{salesOrder.quotationNumber}</div>
-                  </div>
-                )}
               </div>
             </div>
 

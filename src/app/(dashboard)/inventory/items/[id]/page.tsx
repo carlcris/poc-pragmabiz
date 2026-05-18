@@ -324,14 +324,50 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">{t("overviewTab")}</TabsTrigger>
-          {canViewPricingDetails && <TabsTrigger value="prices">{t("pricesTab")}</TabsTrigger>}
-          <TabsTrigger value="unitOptions">{t("unitOptionsTab")}</TabsTrigger>
-          <TabsTrigger value="ledger">{t("ledgerTab")}</TabsTrigger>
-          <TabsTrigger value="locations">{t("locationsTab")}</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="border-b border-border/40 bg-gradient-to-r from-background via-muted/20 to-background">
+          <div className="container-fluid">
+            <TabsList className="h-auto w-full justify-start gap-2 rounded-none border-b-0 bg-transparent p-0 py-2">
+              <TabsTrigger
+                value="overview"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <Package className="h-4 w-4" />
+                {t("overviewTab")}
+              </TabsTrigger>
+              {canViewPricingDetails && (
+                <TabsTrigger
+                  value="prices"
+                  className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+                >
+                  <Tag className="h-4 w-4" />
+                  {t("pricesTab")}
+                </TabsTrigger>
+              )}
+              <TabsTrigger
+                value="unitOptions"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <Ruler className="h-4 w-4" />
+                {t("unitOptionsTab")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="ledger"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <FileText className="h-4 w-4" />
+                {t("ledgerTab")}
+              </TabsTrigger>
+              <TabsTrigger
+                value="locations"
+                className="group relative gap-2 rounded-full border border-border/40 bg-transparent px-5 py-2.5 text-sm font-medium text-muted-foreground shadow-sm transition-all hover:border-purple-300 hover:bg-muted/50 hover:text-foreground data-[state=active]:border-purple-500 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-600 data-[state=active]:to-purple-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30"
+              >
+                <Warehouse className="h-4 w-4" />
+                {t("locationsTab")}
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className={tabPanelClassName}>

@@ -841,6 +841,11 @@ export type Database = {
           received_qty: number
           receiving_discrepancy_flag: boolean
           receiving_notes: string | null
+          receiving_overage_posted_qty: number
+          receiving_overage_review_notes: string | null
+          receiving_overage_review_status: string | null
+          receiving_overage_reviewed_at: string | null
+          receiving_overage_reviewed_by: string | null
           receiving_status: string
           receiving_variance_qty: number
           requesting_warehouse_id: string
@@ -875,6 +880,11 @@ export type Database = {
           received_qty?: number
           receiving_discrepancy_flag?: boolean
           receiving_notes?: string | null
+          receiving_overage_posted_qty?: number
+          receiving_overage_review_notes?: string | null
+          receiving_overage_review_status?: string | null
+          receiving_overage_reviewed_at?: string | null
+          receiving_overage_reviewed_by?: string | null
           receiving_status?: string
           receiving_variance_qty?: number
           requesting_warehouse_id: string
@@ -909,6 +919,11 @@ export type Database = {
           received_qty?: number
           receiving_discrepancy_flag?: boolean
           receiving_notes?: string | null
+          receiving_overage_posted_qty?: number
+          receiving_overage_review_notes?: string | null
+          receiving_overage_review_status?: string | null
+          receiving_overage_reviewed_at?: string | null
+          receiving_overage_reviewed_by?: string | null
           receiving_status?: string
           receiving_variance_qty?: number
           requesting_warehouse_id?: string
@@ -964,6 +979,13 @@ export type Database = {
           {
             foreignKeyName: "delivery_note_items_last_pick_source_override_by_fkey"
             columns: ["last_pick_source_override_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_items_receiving_overage_reviewed_by_fkey"
+            columns: ["receiving_overage_reviewed_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -6493,6 +6515,9 @@ export type Database = {
           quantity: number
           quantity_delivered: number | null
           quantity_shipped: number | null
+          quotation_fulfilled_qty: number
+          quotation_id: string | null
+          quotation_item_id: string | null
           rate: number
           skip_inventory: boolean
           sort_order: number | null
@@ -6518,6 +6543,9 @@ export type Database = {
           quantity: number
           quantity_delivered?: number | null
           quantity_shipped?: number | null
+          quotation_fulfilled_qty?: number
+          quotation_id?: string | null
+          quotation_item_id?: string | null
           rate: number
           skip_inventory?: boolean
           sort_order?: number | null
@@ -6543,6 +6571,9 @@ export type Database = {
           quantity?: number
           quantity_delivered?: number | null
           quantity_shipped?: number | null
+          quotation_fulfilled_qty?: number
+          quotation_id?: string | null
+          quotation_item_id?: string | null
           rate?: number
           skip_inventory?: boolean
           sort_order?: number | null
@@ -6582,6 +6613,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_order_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_order_items_quotation_item_id_fkey"
+            columns: ["quotation_item_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotation_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_order_items_uom_id_fkey"
             columns: ["uom_id"]
             isOneToOne: false
@@ -6614,7 +6659,6 @@ export type Database = {
           order_date: string
           payment_terms: string | null
           price_list_id: string | null
-          quotation_id: string | null
           shipping_address: string | null
           shipping_city: string | null
           shipping_country: string | null
@@ -6644,7 +6688,6 @@ export type Database = {
           order_date: string
           payment_terms?: string | null
           price_list_id?: string | null
-          quotation_id?: string | null
           shipping_address?: string | null
           shipping_city?: string | null
           shipping_country?: string | null
@@ -6674,7 +6717,6 @@ export type Database = {
           order_date?: string
           payment_terms?: string | null
           price_list_id?: string | null
-          quotation_id?: string | null
           shipping_address?: string | null
           shipping_city?: string | null
           shipping_country?: string | null
@@ -6715,13 +6757,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_orders_quotation_id_fkey"
-            columns: ["quotation_id"]
-            isOneToOne: false
-            referencedRelation: "sales_quotations"
             referencedColumns: ["id"]
           },
           {
@@ -6962,6 +6997,7 @@ export type Database = {
           deleted_at: string | null
           discount_amount: number | null
           discount_percent: number | null
+          fulfilled_qty: number
           id: string
           item_description: string | null
           item_id: string
@@ -6984,6 +7020,7 @@ export type Database = {
           deleted_at?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
+          fulfilled_qty?: number
           id?: string
           item_description?: string | null
           item_id: string
@@ -7006,6 +7043,7 @@ export type Database = {
           deleted_at?: string | null
           discount_amount?: number | null
           discount_percent?: number | null
+          fulfilled_qty?: number
           id?: string
           item_description?: string | null
           item_id?: string
@@ -7083,7 +7121,6 @@ export type Database = {
           price_list_id: string | null
           quotation_code: string
           quotation_date: string
-          sales_order_id: string | null
           status: string | null
           subtotal: number | null
           tax_amount: number | null
@@ -7110,7 +7147,6 @@ export type Database = {
           price_list_id?: string | null
           quotation_code: string
           quotation_date: string
-          sales_order_id?: string | null
           status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
@@ -7137,7 +7173,6 @@ export type Database = {
           price_list_id?: string | null
           quotation_code?: string
           quotation_date?: string
-          sales_order_id?: string | null
           status?: string | null
           subtotal?: number | null
           tax_amount?: number | null
@@ -7189,13 +7224,6 @@ export type Database = {
             columns: ["frame_job_order_id"]
             isOneToOne: false
             referencedRelation: "frame_job_orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sales_quotations_sales_order_id_fkey"
-            columns: ["sales_order_id"]
-            isOneToOne: false
-            referencedRelation: "sales_orders"
             referencedColumns: ["id"]
           },
           {
@@ -10095,6 +10123,28 @@ export type Database = {
       }
     }
     Functions: {
+      accept_delivery_note_receiving_exception: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_dn_id: string
+          p_exception_id: string
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      accept_delivery_note_receiving_overage: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_dn_id: string
+          p_dn_item_id: string
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       adjust_dispatched_delivery_note_item: {
         Args: {
           p_company_id: string
@@ -10105,6 +10155,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      allocate_sales_order_item_quotation_fulfillment: {
+        Args: { p_order_quantity: number; p_quotation_item_id: string }
+        Returns: number
       }
       apply_manufacturing_floor_action_transaction: {
         Args: {
@@ -10157,6 +10211,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      cancel_sales_order_transaction: {
+        Args: { p_sales_order_id: string }
+        Returns: {
+          sales_order_id: string
+          status: string
+        }[]
+      }
       complete_delivery_note_direct_customer_pickup: {
         Args: {
           p_company_id: string
@@ -10172,27 +10233,28 @@ export type Database = {
         Args: { p_job_order_id: string }
         Returns: string
       }
-      confirm_sales_quotation_transaction: {
-        Args: {
-          p_business_unit_id: string
-          p_quotation_id: string
-          p_warehouse_id: string
-        }
-        Returns: {
-          draft_invoice_id: string
-          frame_job_order_id: string
-          invoice_code: string
-          job_order_code: string
-          quotation_id: string
-        }[]
-      }
-      convert_sales_quotation_to_order_transaction: {
-        Args: { p_business_unit_id: string; p_quotation_id: string }
-        Returns: {
-          order_code: string
-          sales_order_id: string
-        }[]
-      }
+      confirm_sales_quotation_transaction:
+        | {
+            Args: {
+              p_business_unit_id: string
+              p_quotation_id: string
+              p_warehouse_id: string
+            }
+            Returns: {
+              draft_invoice_id: string
+              frame_job_order_id: string
+              invoice_code: string
+              job_order_code: string
+              quotation_id: string
+            }[]
+          }
+        | {
+            Args: { p_quotation_id: string; p_warehouse_id?: string }
+            Returns: {
+              quotation_id: string
+              status: string
+            }[]
+          }
       create_frame_job_order_from_sales_order_transaction: {
         Args: { p_sales_order_id: string; p_warehouse_id: string }
         Returns: {
@@ -10313,6 +10375,35 @@ export type Database = {
           summary_total_balance: number
           total_amount: number
           total_count: number
+        }[]
+      }
+      get_available_sales_quotation_lines: {
+        Args: {
+          p_customer_id: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: {
+          discount_percent: number
+          item_code: string
+          item_description: string
+          item_id: string
+          item_name: string
+          line_total: number
+          ordered_quantity: number
+          quantity: number
+          quotation_code: string
+          quotation_date: string
+          quotation_id: string
+          quotation_item_id: string
+          rate: number
+          remaining_quantity: number
+          tax_percent: number
+          uom_code: string
+          uom_id: string
+          uom_name: string
+          valid_until: string
         }[]
       }
       get_current_business_unit_id: { Args: never; Returns: string }
@@ -10624,6 +10715,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      recalculate_sales_order_linked_quotation_statuses: {
+        Args: { p_sales_order_id: string }
+        Returns: undefined
+      }
+      recalculate_sales_quotation_order_status: {
+        Args: { p_quotation_id: string }
+        Returns: undefined
+      }
       recalculate_stock_requisition_fulfillment_for_load_list: {
         Args: { p_company_id: string; p_load_list_id: string }
         Returns: undefined
@@ -10650,6 +10749,32 @@ export type Database = {
       refresh_delivery_note_item_received_qty: {
         Args: { p_company_id: string; p_dn_item_id: string }
         Returns: number
+      }
+      reject_delivery_note_receiving_exception: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_dn_id: string
+          p_exception_id: string
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      reject_delivery_note_receiving_overage: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_dn_id: string
+          p_dn_item_id: string
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      release_sales_order_item_quotation_fulfillment: {
+        Args: { p_fulfilled_qty: number; p_quotation_item_id: string }
+        Returns: undefined
       }
       reserve_delivery_note_inventory: {
         Args: { p_company_id: string; p_dn_id: string; p_user_id: string }

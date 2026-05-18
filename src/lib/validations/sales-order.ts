@@ -11,6 +11,8 @@ export const salesOrderStatusEnum = z.enum([
 
 export const salesOrderLineItemSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
+  quotationId: z.string().nullable().optional(),
+  quotationItemId: z.string().nullable().optional(),
   itemCode: z.string().min(1, "Item code is required"),
   itemName: z.string().min(1, "Item name is required"),
   description: z.string().default(""),
@@ -27,7 +29,6 @@ export const salesOrderFormSchema = z
   .object({
     companyId: z.string().min(1, "Company is required"),
     customerId: z.string().min(1, "Customer is required"),
-    quotationId: z.string().optional(),
     orderDate: z.string().min(1, "Order date is required"),
     expectedDeliveryDate: z.string().min(1, "Expected delivery date is required"),
     lineItems: z.array(salesOrderLineItemSchema).min(1, "At least one line item is required"),

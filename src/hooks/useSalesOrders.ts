@@ -32,6 +32,7 @@ export function useCreateSalesOrder() {
     mutationFn: (data: CreateSalesOrderRequest) => salesOrdersApi.createSalesOrder(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
       toast.success("Sales order created successfully");
     },
     onError: (error: Error) => {
@@ -48,6 +49,7 @@ export function useUpdateSalesOrder() {
       salesOrdersApi.updateSalesOrder(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
       toast.success("Sales order updated successfully");
     },
     onError: (error: Error) => {
@@ -63,6 +65,7 @@ export function useDeleteSalesOrder() {
     mutationFn: (id: string) => salesOrdersApi.deleteSalesOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
       toast.success("Sales order deleted successfully");
     },
     onError: (error: Error) => {
@@ -123,6 +126,7 @@ export function useCancelOrder() {
     mutationFn: (id: string) => salesOrdersApi.cancelOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SALES_ORDERS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ["quotations"] });
       toast.success("Sales order cancelled");
     },
     onError: (error: Error) => {

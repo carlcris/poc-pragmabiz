@@ -13,13 +13,11 @@ import {
   XCircle,
   Clock,
   Send,
-  ShoppingCart,
   MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   useQuotations,
-  useConvertToOrder,
   useChangeQuotationStatus,
   useConfirmQuotation,
 } from "@/hooks/useQuotations";
@@ -81,14 +79,11 @@ export default function QuotationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
-  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
-  const [quotationToConvert, setQuotationToConvert] = useState<Quotation | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [quotationToConfirm, setQuotationToConfirm] = useState<Quotation | null>(null);
 
   const { formatCurrency } = useCurrency();
   const router = useRouter();
-  const convertToOrder = useConvertToOrder();
   const changeStatus = useChangeQuotationStatus();
   const confirmQuotation = useConfirmQuotation();
 
@@ -133,12 +128,14 @@ export default function QuotationsPage() {
         return <Send className="h-4 w-4 text-blue-600" />;
       case "accepted":
         return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case "partially_ordered":
+        return <Clock className="h-4 w-4 text-amber-600" />;
       case "rejected":
         return <XCircle className="h-4 w-4 text-red-600" />;
       case "expired":
         return <Clock className="h-4 w-4 text-orange-600" />;
       case "ordered":
-        return <ShoppingCart className="h-4 w-4 text-purple-600" />;
+        return <CheckCircle className="h-4 w-4 text-purple-600" />;
     }
   };
 
@@ -150,6 +147,8 @@ export default function QuotationsPage() {
         return <StatusText tone="blue">{t("sent")}</StatusText>;
       case "accepted":
         return <StatusText tone="green">{t("accepted")}</StatusText>;
+      case "partially_ordered":
+        return <StatusText tone="orange">{t("partiallyOrdered")}</StatusText>;
       case "rejected":
         return <StatusText tone="red">{t("rejected")}</StatusText>;
       case "expired":
@@ -213,28 +212,6 @@ export default function QuotationsPage() {
     setViewDialogOpen(true);
   };
 
-  const handleConvertToOrder = (quotation: Quotation) => {
-    setQuotationToConvert(quotation);
-    setConvertDialogOpen(true);
-  };
-
-  const handleConfirmConvert = async () => {
-    if (!quotationToConvert) return;
-
-    try {
-      await convertToOrder.mutateAsync(quotationToConvert.id);
-      toast.success("Quotation converted to order successfully");
-      setConvertDialogOpen(false);
-      setQuotationToConvert(null);
-
-      router.push(`/sales/orders`);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to convert quotation to order");
-      setConvertDialogOpen(false);
-      setQuotationToConvert(null);
-    }
-  };
-
   const handleChangeStatus = async (quotationId: string, newStatus: string) => {
     if (newStatus === "accepted") {
       const quotation = quotations.find((candidate) => candidate.id === quotationId) || null;
@@ -255,13 +232,11 @@ export default function QuotationsPage() {
     if (!quotationToConfirm) return;
 
     try {
-      const result = await confirmQuotation.mutateAsync({
+      await confirmQuotation.mutateAsync({
         id: quotationToConfirm.id,
         warehouseId: null,
       });
-      toast.success(
-        `Quotation confirmed. Draft invoice ${result.draftInvoice.invoiceCode} was created.`
-      );
+      toast.success("Quotation confirmed");
       setConfirmDialogOpen(false);
       setQuotationToConfirm(null);
     } catch (error) {
@@ -324,6 +299,7 @@ export default function QuotationsPage() {
               <SelectItem value="draft">{t("draft")}</SelectItem>
               <SelectItem value="sent">{t("sent")}</SelectItem>
               <SelectItem value="accepted">{t("accepted")}</SelectItem>
+              <SelectItem value="partially_ordered">{t("partiallyOrdered")}</SelectItem>
               <SelectItem value="rejected">{t("rejected")}</SelectItem>
               <SelectItem value="expired">{t("expired")}</SelectItem>
               <SelectItem value="ordered">{t("ordered")}</SelectItem>
@@ -437,22 +413,6 @@ export default function QuotationsPage() {
                               <span>{tCommon("edit")}</span>
                             </Button>
                           )}
-                          {quotation.status === "accepted" && !quotation.salesOrderId && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleConvertToOrder(quotation)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <ShoppingCart className="mr-1 h-4 w-4" />
-                              {t("convertToOrder")}
-                            </Button>
-                          )}
-                          {quotation.salesOrderId && (
-                            <Badge variant="outline" className="text-xs">
-                              {t("converted")}
-                            </Badge>
-                          )}
                           {canChangeStatus(quotation.status) && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -513,45 +473,13 @@ export default function QuotationsPage() {
         />
       )}
 
-      <AlertDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("convertTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("convertDescription", { number: quotationToConvert?.quotationNumber ?? "" })}
-            </AlertDialogDescription>
-            <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-              <p>{t("convertWillLabel")}</p>
-              <ul className="ml-2 list-inside list-disc space-y-1">
-                <li>{t("convertBulletCreateOrder")}</li>
-                <li>{t("convertBulletCopyItems")}</li>
-                <li>{t("convertBulletStatus")}</li>
-                <li>{t("convertBulletLink")}</li>
-              </ul>
-              <p className="font-medium">{t("convertCannotUndo")}</p>
-            </div>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmConvert}
-              className="bg-green-600 hover:bg-green-700"
-              disabled={convertToOrder.isPending}
-            >
-              {convertToOrder.isPending ? t("converting") : t("convertAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm quotation</AlertDialogTitle>
             <AlertDialogDescription>
               Confirming {quotationToConfirm?.quotationNumber ?? "this quotation"} will mark the
-              quotation as accepted and draft a sales invoice. Job orders are created later from the
-              sales order.
+              quotation as accepted. Sales orders are created manually from the sales order module.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -5,12 +5,12 @@ import type { FrameQuotationComponent, FrameQuotationConfiguration } from "@/typ
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
 type DbSalesOrder = {
   id: string;
   company_id: string;
   order_code: string;
   customer_id: string | null;
-  quotation_id: string | null;
   order_date: string;
   expected_delivery_date: string | null;
   status: string;
@@ -34,6 +34,8 @@ type DbSalesOrderItem = {
   id: string;
   order_id: string;
   item_id: string;
+  quotation_id: string | null;
+  quotation_item_id: string | null;
   skip_inventory: boolean | null;
   item_description: string | null;
   quantity: number | string;
@@ -56,6 +58,7 @@ type DbUoM = { id: string; code: string; name: string };
 type DbSalesOrderItemWithRelations = DbSalesOrderItem & {
   items?: DbItem | DbItem[] | null;
   units_of_measure?: DbUoM | DbUoM[] | null;
+  sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
 };
 type DbSalesOrderItemConfiguration = {
   id: string;
@@ -140,6 +143,86 @@ type CalculatedSalesOrderLineItem = SalesOrderLineItemInput & {
   quantityDelivered?: number;
 };
 
+type QuotationLinkRow = {
+  id: string;
+  item_id: string;
+  quotation_id: string;
+  sales_quotations?:
+    | { id: string; customer_id: string; status: string | null }
+    | { id: string; customer_id: string; status: string | null }[]
+    | null;
+};
+
+async function normalizeQuotationLinkedItems(
+  supabase: SupabaseClient,
+  customerId: string,
+  items: CalculatedSalesOrderLineItem[]
+): Promise<{ items: CalculatedSalesOrderLineItem[]; error?: string }> {
+  const quotationItemIds = Array.from(
+    new Set(items.map((item) => item.quotationItemId).filter((id): id is string => !!id))
+  );
+
+  if (quotationItemIds.length === 0) {
+    return {
+      items: items.map((item) => ({ ...item, quotationId: null, quotationItemId: null })),
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("sales_quotation_items")
+    .select(
+      `
+      id,
+      item_id,
+      quotation_id,
+      sales_quotations:quotation_id (
+        id,
+        customer_id,
+        status
+      )
+    `
+    )
+    .in("id", quotationItemIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    return { items, error: "Failed to validate quotation line items" };
+  }
+
+  const quotationLineById = new Map((data as QuotationLinkRow[]).map((row) => [row.id, row]));
+  const normalizedItems: CalculatedSalesOrderLineItem[] = [];
+
+  for (const item of items) {
+    if (!item.quotationItemId || !item.quotationId) {
+      normalizedItems.push({ ...item, quotationId: null, quotationItemId: null });
+      continue;
+    }
+
+    const quotationLine = quotationLineById.get(item.quotationItemId);
+    const quotation = Array.isArray(quotationLine?.sales_quotations)
+      ? quotationLine?.sales_quotations[0]
+      : quotationLine?.sales_quotations;
+
+    if (
+      !quotationLine ||
+      quotationLine.quotation_id !== item.quotationId ||
+      !quotation ||
+      quotation.customer_id !== customerId ||
+      !["accepted", "partially_ordered", "ordered"].includes(quotation.status || "")
+    ) {
+      return { items, error: "Selected quotation line is not available for this customer" };
+    }
+
+    normalizedItems.push(
+      quotationLine.item_id === item.itemId
+        ? item
+        : { ...item, quotationId: null, quotationItemId: null }
+    );
+  }
+
+  return { items: normalizedItems };
+}
+
 const asFrameServiceFeeMode = (value: string): FrameQuotationConfiguration["serviceFeeMode"] => {
   switch (value) {
     case "per_order":
@@ -171,16 +254,12 @@ function transformDbSalesOrder(
   dbOrder: DbSalesOrder & {
     customers?: DbCustomer | DbCustomer[] | null;
     users?: DbUser | DbUser[] | null;
-    sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
   },
   items?: SalesOrderLineItem[]
 ): SalesOrder {
   const customer = Array.isArray(dbOrder.customers)
     ? (dbOrder.customers[0] ?? null)
     : dbOrder.customers;
-  const quotation = Array.isArray(dbOrder.sales_quotations)
-    ? (dbOrder.sales_quotations[0] ?? null)
-    : dbOrder.sales_quotations;
 
   return {
     id: dbOrder.id,
@@ -189,8 +268,6 @@ function transformDbSalesOrder(
     customerId: dbOrder.customer_id || "",
     customerName: customer?.customer_name || "",
     customerEmail: customer?.email || "",
-    quotationId: dbOrder.quotation_id || undefined,
-    quotationNumber: quotation?.quotation_code || undefined,
     orderDate: dbOrder.order_date,
     expectedDeliveryDate: dbOrder.expected_delivery_date || "",
     status: dbOrder.status as SalesOrder["status"],
@@ -219,6 +296,9 @@ function transformDbSalesOrderItem(
   components: DbSalesOrderItemComponent[] = []
 ): SalesOrderLineItem {
   const item = Array.isArray(dbItem.items) ? (dbItem.items[0] ?? null) : dbItem.items;
+  const quotation = Array.isArray(dbItem.sales_quotations)
+    ? (dbItem.sales_quotations[0] ?? null)
+    : dbItem.sales_quotations;
   const moldingItem = Array.isArray(configuration?.items)
     ? (configuration?.items[0] ?? null)
     : configuration?.items;
@@ -228,6 +308,9 @@ function transformDbSalesOrderItem(
     itemId: dbItem.item_id,
     itemCode: item?.item_code || "",
     itemName: item?.item_name || "",
+    quotationId: dbItem.quotation_id,
+    quotationNumber: quotation?.quotation_code,
+    quotationItemId: dbItem.quotation_item_id,
     description: dbItem.item_description || "",
     quantity: Number(dbItem.quantity),
     uomId: dbItem.uom_id || "",
@@ -399,9 +482,6 @@ export async function GET(request: NextRequest) {
           id,
           first_name,
           last_name
-        ),
-        sales_quotations:quotation_id (
-          quotation_code
         )
       `,
         { count: "exact" }
@@ -470,6 +550,9 @@ export async function GET(request: NextRequest) {
           id,
           code,
           name
+        ),
+        sales_quotations:quotation_id (
+          quotation_code
         )
       `
       )
@@ -661,7 +744,6 @@ export async function GET(request: NextRequest) {
         order as DbSalesOrder & {
           customers?: DbCustomer | DbCustomer[] | null;
           users?: DbUser | DbUser[] | null;
-          sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
         },
         itemsByOrder[order.id] || []
       ),
@@ -735,7 +817,7 @@ export async function POST(request: NextRequest) {
     let totalDiscount = 0;
     let totalTax = 0;
 
-    const itemsWithCalculations: CalculatedSalesOrderLineItem[] = orderData.lineItems.map(
+    let itemsWithCalculations: CalculatedSalesOrderLineItem[] = orderData.lineItems.map(
       (item) => {
         const itemSubtotal = Number(item.quantity) * item.unitPrice;
         const discountAmount = (itemSubtotal * (item.discount || 0)) / 100;
@@ -755,6 +837,15 @@ export async function POST(request: NextRequest) {
         };
       }
     );
+    const normalized = await normalizeQuotationLinkedItems(
+      supabase,
+      orderData.customerId,
+      itemsWithCalculations
+    );
+    if (normalized.error) {
+      return NextResponse.json({ error: normalized.error }, { status: 400 });
+    }
+    itemsWithCalculations = normalized.items;
 
     const totalAmount = subtotal - totalDiscount + totalTax;
 
@@ -767,7 +858,6 @@ export async function POST(request: NextRequest) {
         business_unit_id: currentBusinessUnitId,
         order_date: orderData.orderDate,
         customer_id: orderData.customerId,
-        quotation_id: orderData.quotationId,
         expected_delivery_date: orderData.expectedDeliveryDate,
         subtotal: subtotal.toFixed(4),
         discount_amount: totalDiscount.toFixed(4),
@@ -798,6 +888,8 @@ export async function POST(request: NextRequest) {
       company_id: userData.company_id,
       order_id: order.id,
       item_id: item.itemId,
+      quotation_id: item.quotationId || null,
+      quotation_item_id: item.quotationItemId || null,
       skip_inventory: item.skipInventory ?? !!item.frameConfiguration,
       item_description: item.description,
       quantity: item.quantity,
@@ -836,7 +928,9 @@ export async function POST(request: NextRequest) {
             {
               company_id: userData.company_id,
               order_item_id: orderItemIdBySortOrder.get(index),
-              quotation_configuration_id: null,
+              quotation_configuration_id: item.quotationItemId
+                ? item.frameConfiguration.id || null
+                : null,
               width: item.frameConfiguration.width,
               height: item.frameConfiguration.height,
               fixed_allowance: item.frameConfiguration.fixedAllowance || 0,
@@ -880,7 +974,7 @@ export async function POST(request: NextRequest) {
           company_id: userData.company_id,
           order_item_id: orderItemId,
           configuration_id: configurationId,
-          quotation_component_id: null,
+          quotation_component_id: item.quotationItemId ? component.id || null : null,
           component_type: component.componentType,
           source: component.source,
           item_id: component.itemId,
@@ -927,9 +1021,6 @@ export async function POST(request: NextRequest) {
           id,
           first_name,
           last_name
-        ),
-        sales_quotations:quotation_id (
-          quotation_code
         )
       `
       )
@@ -950,6 +1041,9 @@ export async function POST(request: NextRequest) {
           id,
           code,
           name
+        ),
+        sales_quotations:quotation_id (
+          quotation_code
         )
       `
       )
@@ -1022,7 +1116,6 @@ export async function POST(request: NextRequest) {
       completeOrder as DbSalesOrder & {
         customers?: DbCustomer | DbCustomer[] | null;
         users?: DbUser | DbUser[] | null;
-        sales_quotations?: { quotation_code: string } | { quotation_code: string }[] | null;
       },
       items
     );

@@ -92,11 +92,14 @@ export const salesOrdersApi = {
     return response.json();
   },
 
-  async cancelOrder(id: string): Promise<SalesOrder> {
+  async cancelOrder(id: string): Promise<{ success: boolean; salesOrderId: string; status: string }> {
     const response = await fetch(`${API_BASE_URL}/sales-orders/${id}/cancel`, {
       method: "POST",
     });
-    if (!response.ok) throw new Error("Failed to cancel sales order");
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Failed to cancel sales order" }));
+      throw new Error(error.error || "Failed to cancel sales order");
+    }
     return response.json();
   },
 

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
+import { customersApi } from "@/lib/api/customers";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { itemsApi } from "@/lib/api/items";
 import { suppliersApi } from "@/lib/api/suppliers";
@@ -32,6 +33,8 @@ export function Breadcrumb() {
   const isItemEdit = lastSegment === "edit" && pathSegments[pathSegments.length - 3] === "items";
   const isSupplierDetail =
     pathSegments[0] === "purchasing" && parentSegment === "suppliers" && pathSegments.length >= 3;
+  const isCustomerDetail =
+    pathSegments[0] === "sales" && parentSegment === "customers" && pathSegments.length >= 3;
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =
@@ -44,6 +47,7 @@ export function Breadcrumb() {
       ? lastSegment
       : "";
   const supplierId = isSupplierDetail ? lastSegment : "";
+  const customerId = isCustomerDetail ? lastSegment : "";
   const adminSettingsLabelMap: Record<string, string> = {
     settings: tAdminSettingsIndex("title"),
     company: tAdminSettingsPages("companyTitle"),
@@ -70,6 +74,7 @@ export function Breadcrumb() {
     !isItemDetail &&
     !isItemEdit &&
     !isSupplierDetail &&
+    !isCustomerDetail &&
     !isWarehouseLocations &&
     !!parentSegment &&
     (isAdminSettingsPage ? parentSegment in adminSettingsLabelMap : t.has(parentSegment));
@@ -91,6 +96,12 @@ export function Breadcrumb() {
     queryKey: ["suppliers", supplierId],
     queryFn: () => suppliersApi.getSupplier(supplierId),
     enabled: !!supplierId,
+  });
+
+  const { data: customer, isLoading: isCustomerLoading } = useQuery({
+    queryKey: ["customers", customerId],
+    queryFn: () => customersApi.getCustomer(customerId),
+    enabled: !!customerId,
   });
 
   // Handle detail pages that use dynamic ids in the URL.
@@ -192,6 +203,34 @@ export function Breadcrumb() {
           <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
         ) : (
           <span className="font-medium text-foreground">{t("Suppliers")}</span>
+        )}
+      </nav>
+    );
+  }
+
+  if (isCustomerDetail) {
+    return (
+      <nav className="flex items-center gap-1 text-xs text-muted-foreground sm:text-sm">
+        <Link
+          href="/dashboard"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Home")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        <Link
+          href="/sales/customers"
+          className="flex items-center font-medium transition-colors hover:text-foreground"
+        >
+          {t("Customers")}
+        </Link>
+        <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+        {customer ? (
+          <span className="font-medium text-foreground">{customer.name || customer.code}</span>
+        ) : isCustomerLoading ? (
+          <span aria-label="Loading" className="h-4 w-40 animate-pulse rounded bg-muted" />
+        ) : (
+          <span className="font-medium text-foreground">{t("Customers")}</span>
         )}
       </nav>
     );

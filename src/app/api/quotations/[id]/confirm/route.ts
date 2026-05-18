@@ -6,10 +6,7 @@ import { asRpcClient, getClientErrorMessage, logQuotationError } from "../../_sh
 
 type ConfirmQuotationResult = {
   quotation_id: string;
-  frame_job_order_id: string | null;
-  job_order_code: string | null;
-  draft_invoice_id: string;
-  invoice_code: string;
+  status: string;
 };
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +33,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { data, error } = await asRpcClient(supabase).rpc("confirm_sales_quotation_transaction", {
       p_quotation_id: quotationId,
-      p_business_unit_id: currentBusinessUnitId,
       p_warehouse_id: body.warehouseId || null,
     });
 
@@ -53,16 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({
       success: true,
       quotationId: result.quotation_id,
-      frameJobOrder: result.frame_job_order_id
-        ? {
-            id: result.frame_job_order_id,
-            jobOrderCode: result.job_order_code,
-          }
-        : null,
-      draftInvoice: {
-        id: result.draft_invoice_id,
-        invoiceCode: result.invoice_code,
-      },
+      status: result.status,
     });
   } catch (error) {
     logQuotationError("Unexpected quotation confirmation error:", error);
