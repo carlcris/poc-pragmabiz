@@ -492,7 +492,7 @@ export default function DeliveryNotesPage() {
     const totals = new Map<string, number>();
 
     for (const dn of allDeliveryNotes) {
-      if (["voided", "received"].includes(dn.status)) continue;
+      if (["voided", "dispatched", "received"].includes(dn.status)) continue;
       for (const item of dn.delivery_note_items || []) {
         const srItemId = item.sr_item_id;
         if (!srItemId) continue;
@@ -560,9 +560,12 @@ export default function DeliveryNotesPage() {
           .filter((item) => !!item.uom_id)
           .map((item) => {
             const requestedQty = Number(item.requested_qty || 0);
-            const receivedQty = Number(item.received_qty || 0);
+            const dispatchedQty = Number(item.dispatch_qty || 0);
             const alreadyAllocatedQty = allocatedBySrItemId.get(item.id) || 0;
-            const allocatableQty = Math.max(0, requestedQty - receivedQty - alreadyAllocatedQty);
+            const allocatableQty = Math.max(
+              0,
+              requestedQty - dispatchedQty - alreadyAllocatedQty
+            );
             return {
               srId: request.id,
               requestCode: request.request_code,

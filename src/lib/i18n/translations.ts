@@ -285,6 +285,10 @@ export type TranslationKeys = {
     status_cancelled: string;
     status_in_transit: string;
     status_partially_received: string;
+    status_pending: string;
+    status_in_progress: string;
+    status_paused: string;
+    status_receiving: string;
     priority_low: string;
     priority_normal: string;
     priority_high: string;
@@ -341,6 +345,12 @@ export type TranslationKeys = {
     logout: string;
     loading: string;
     errorCode: string;
+  };
+  sessionInvalidDialog: {
+    title: string;
+    description: string;
+    action: string;
+    redirecting: string;
   };
   chartOfAccountsPage: {
     title: string;
@@ -3008,6 +3018,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       status_cancelled: "Cancelled",
       status_in_transit: "In Transit",
       status_partially_received: "Partially Received",
+      status_pending: "Pending",
+      status_in_progress: "In Progress",
+      status_paused: "Paused",
+      status_receiving: "Receiving",
       priority_low: "Low",
       priority_normal: "Normal",
       priority_high: "High",
@@ -3066,6 +3080,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       logout: "Logout",
       loading: "Loading...",
       errorCode: "Error Code: 403 - Forbidden",
+    },
+    sessionInvalidDialog: {
+      title: "Your session has ended",
+      description:
+        "For your security, your session is no longer valid. Please sign in again to continue.",
+      action: "Return to sign in",
+      redirecting: "Signing out...",
     },
     chartOfAccountsPage: {
       title: "Chart of Accounts",
@@ -4830,7 +4851,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       maxStockDialogDescription: "Set the maximum stock threshold for {warehouse}.",
       maxStockDialogDescriptionFallback: "Set the maximum stock threshold for this warehouse.",
       maxStockPlaceholder: "Leave blank to disable",
-      maxStockHelp: "Items are marked as overstock when available stock exceeds this warehouse threshold.",
+      maxStockHelp:
+        "Items are marked as overstock when available stock exceeds this warehouse threshold.",
       saveMaxStock: "Save Max Stock",
       unnamed: "Unnamed",
       availableShort: "Avail",
@@ -8234,6 +8256,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       status_cancelled: "已取消",
       status_in_transit: "运输中",
       status_partially_received: "部分接收",
+      status_pending: "待处理",
+      status_in_progress: "进行中",
+      status_paused: "已暂停",
+      status_receiving: "接收中",
       priority_low: "低",
       priority_normal: "普通",
       priority_high: "高",
@@ -8290,6 +8316,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       logout: "退出登录",
       loading: "加载中...",
       errorCode: "错误代码：403 - 禁止访问",
+    },
+    sessionInvalidDialog: {
+      title: "您的会话已结束",
+      description: "为了保障账户安全，当前会话已失效。请重新登录后继续。",
+      action: "返回登录",
+      redirecting: "正在退出...",
     },
     chartOfAccountsPage: {
       title: "会计科目表",
@@ -9165,7 +9197,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       moreActions: "更多操作",
       cancelOrder: "取消订单",
       cancelTitle: "取消销售订单",
-      cancelDescription: "取消销售订单 {number}？关联报价行的履约数量将被释放。已开票订单不能取消。",
+      cancelDescription:
+        "取消销售订单 {number}？关联报价行的履约数量将被释放。已开票订单不能取消。",
       cancelling: "取消中...",
       confirmCancel: "是，取消",
       selectWarehouseTitle: "选择仓库",

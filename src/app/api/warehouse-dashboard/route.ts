@@ -114,6 +114,7 @@ export async function GET() {
     // Execute all queries in parallel for performance
     const [
       incomingDeliveriesTodayResult,
+      dispatchedDeliveryNotesResult,
       pendingStockRequestsResult,
       urgentStockRequestsResult,
       pickListToPickResult,
@@ -130,6 +131,19 @@ export async function GET() {
             .select("id", { count: "exact", head: true })
             .in("business_unit_id", accessibleBUIds)
             .in("status", ["in_transit", "receiving"])
+            .is("deleted_at", null)
+        : Promise.resolve({ count: 0, error: null }),
+
+      // Summary: Dispatched delivery notes awaiting receiving by the current BU
+      canViewIncomingShipmentsCard
+        ? supabase
+            .from("delivery_notes")
+            .select(
+              "id, requesting_warehouse:warehouses!delivery_notes_requesting_warehouse_id_fkey!inner(business_unit_id)",
+              { count: "exact", head: true }
+            )
+            .in("requesting_warehouse.business_unit_id", scopedBUIds)
+            .eq("status", "dispatched")
             .is("deleted_at", null)
         : Promise.resolve({ count: 0, error: null }),
 
@@ -275,6 +289,7 @@ export async function GET() {
 
     // Check for errors
     if (incomingDeliveriesTodayResult.error) throw incomingDeliveriesTodayResult.error;
+    if (dispatchedDeliveryNotesResult.error) throw dispatchedDeliveryNotesResult.error;
     if (pendingStockRequestsResult.error) throw pendingStockRequestsResult.error;
     if (urgentStockRequestsResult.error) throw urgentStockRequestsResult.error;
     if (pickListToPickResult.error) throw pickListToPickResult.error;
@@ -361,7 +376,9 @@ export async function GET() {
     // Build response
     const dashboardData: DashboardData = {
       summary: {
-        incoming_deliveries_today: incomingDeliveriesTodayResult.count || 0,
+        incoming_deliveries_today:
+          (incomingDeliveriesTodayResult.count || 0) +
+          (dispatchedDeliveryNotesResult.count || 0),
         pending_stock_requests: pendingStockRequestsResult.count || 0,
         pick_list_to_pick: pickListToPickResult.count || 0,
         urgent_stock_requests: urgentStockRequestsResult.count || 0,

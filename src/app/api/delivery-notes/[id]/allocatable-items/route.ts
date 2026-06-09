@@ -116,7 +116,11 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       const dnHeader = Array.isArray(existing.delivery_notes)
         ? existing.delivery_notes[0]
         : existing.delivery_notes;
-      if (!dnHeader || ["voided", "received"].includes(dnHeader.status) || existing.is_voided)
+      if (
+        !dnHeader ||
+        ["voided", "dispatched", "received"].includes(dnHeader.status) ||
+        existing.is_voided
+      )
         continue;
       const prior = allocatedByItem.get(existing.sr_item_id) || 0;
       allocatedByItem.set(existing.sr_item_id, prior + toNumber(existing.allocated_qty));
@@ -138,7 +142,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         const allocatedInOtherDns = allocatedByItem.get(row.id as string) || 0;
         const allocatableQty = Math.max(
           0,
-          toNumber(row.requested_qty) - toNumber(row.received_qty) - allocatedInOtherDns
+          toNumber(row.requested_qty) - toNumber(row.dispatch_qty) - allocatedInOtherDns
         );
 
         return {

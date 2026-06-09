@@ -66,6 +66,9 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/auth");
   const isMobileRoute = request.nextUrl.pathname.startsWith("/mobile");
   const isMobileLoginPage = request.nextUrl.pathname === "/mobile/login";
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
 
   // Redirect authenticated users away from login page
   if (user && isAuthPage) {
@@ -96,6 +99,9 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     // Mobile routes redirect to mobile login, others to desktop login
     url.pathname = isMobileRoute ? "/mobile/login" : "/login";
+    if (hasAuthCookie) {
+      url.searchParams.set("session", "invalid");
+    }
     const redirectResponse = NextResponse.redirect(url);
     // Copy cookies from supabaseResponse
     supabaseResponse.cookies.getAll().forEach((cookie) => {

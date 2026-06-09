@@ -110,6 +110,47 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         );
       }
 
+      const { data: pickRows, error: pickRowsError } = await auth.supabase
+        .from("delivery_note_item_picks")
+        .select("delivery_note_item_id, picked_qty")
+        .eq("company_id", auth.companyId)
+        .eq("pick_list_id", id)
+        .is("deleted_at", null);
+
+      if (pickRowsError) {
+        console.error("Error validating pick rows before completing pick list:", pickRowsError);
+        return NextResponse.json(
+          { error: "Unable to validate picked quantities before completing the pick list" },
+          { status: 500 }
+        );
+      }
+
+      const pickedRowsByDnItem = new Map<string, number>();
+      for (const row of pickRows || []) {
+        const dnItemId = row.delivery_note_item_id as string;
+        pickedRowsByDnItem.set(
+          dnItemId,
+          (pickedRowsByDnItem.get(dnItemId) || 0) + asNumber(row.picked_qty as number | string)
+        );
+      }
+
+      const missingPickRowItem = (pickItems || []).find((item) => {
+        const pickedQty = asNumber(item.picked_qty);
+        if (pickedQty <= 0) return false;
+        const rowPickedQty = pickedRowsByDnItem.get(item.dn_item_id as string) || 0;
+        return rowPickedQty < pickedQty;
+      });
+
+      if (missingPickRowItem) {
+        return NextResponse.json(
+          {
+            error:
+              "Cannot complete pick list because one or more picked quantities do not have dispatchable pick rows. Re-scan the affected item before completing.",
+          },
+          { status: 400 }
+        );
+      }
+
       for (const item of pickItems || []) {
         const allocated = asNumber(item.allocated_qty);
         const picked = asNumber(item.picked_qty);

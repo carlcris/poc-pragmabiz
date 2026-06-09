@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/stores/authStore";
+import { isSessionInvalidStatus, notifySessionInvalid } from "@/lib/auth/sessionInvalidation";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -50,7 +51,12 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      if (isSessionInvalidStatus(response.status)) {
+        notifySessionInvalid({ status: response.status });
+      }
+
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
 
     if (options?.responseType === "blob") {
@@ -69,6 +75,10 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (isSessionInvalidStatus(response.status)) {
+        notifySessionInvalid({ status: response.status });
+      }
+
       const errorData = await response.json().catch(() => ({}));
 
       throw new Error(errorData.error || response.statusText, { cause: errorData });
@@ -86,6 +96,10 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (isSessionInvalidStatus(response.status)) {
+        notifySessionInvalid({ status: response.status });
+      }
+
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
@@ -102,6 +116,10 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (isSessionInvalidStatus(response.status)) {
+        notifySessionInvalid({ status: response.status });
+      }
+
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || response.statusText, { cause: errorData });
     }
@@ -117,6 +135,10 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (isSessionInvalidStatus(response.status)) {
+        notifySessionInvalid({ status: response.status });
+      }
+
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error || response.statusText, { cause: errorData });
     }

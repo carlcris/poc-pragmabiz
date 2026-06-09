@@ -4,6 +4,11 @@ import { supabase } from "@/lib/supabase/client";
 import { useBusinessUnitStore } from "./businessUnitStore";
 import { usePermissionStore } from "./permissionStore";
 import { QueryClient } from "@tanstack/react-query";
+import {
+  clearSessionInvalidNoticeShown,
+  markIntentionalLogout,
+  notifySessionInvalid,
+} from "@/lib/auth/sessionInvalidation";
 
 // Get the query client instance - will be initialized by provider
 let queryClientInstance: QueryClient | null = null;
@@ -47,7 +52,7 @@ interface AuthStore {
   checkAuth: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthStore>()((set) => ({
+export const useAuthStore = create<AuthStore>()((set, get) => ({
   user: null,
   token: null,
   isAuthenticated: false,
@@ -113,6 +118,7 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         isLoading: false,
         error: null,
       });
+      clearSessionInvalidNoticeShown();
     } catch (error) {
       set({
         user: null,
@@ -127,6 +133,8 @@ export const useAuthStore = create<AuthStore>()((set) => ({
 
   logout: async () => {
     try {
+      markIntentionalLogout();
+
       // Sign out from Supabase
       await supabase.auth.signOut();
 
@@ -177,6 +185,9 @@ export const useAuthStore = create<AuthStore>()((set) => ({
       } = await supabase.auth.getSession();
 
       if (!session) {
+        if (get().isAuthenticated || get().token) {
+          notifySessionInvalid();
+        }
         set({
           user: null,
           token: null,
@@ -195,6 +206,9 @@ export const useAuthStore = create<AuthStore>()((set) => ({
       } = await supabase.auth.getUser();
 
       if (error || !user) {
+        if (get().isAuthenticated || get().token) {
+          notifySessionInvalid();
+        }
         set({
           user: null,
           token: null,
@@ -246,6 +260,9 @@ export const useAuthStore = create<AuthStore>()((set) => ({
         error: null,
       });
     } catch {
+      if (get().isAuthenticated || get().token) {
+        notifySessionInvalid();
+      }
       set({
         user: null,
         token: null,

@@ -6,6 +6,7 @@ import "./globals.css";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { UserPreferencesProvider } from "@/contexts/UserPreferencesContext";
 import { Toaster } from "@/components/ui/sonner";
+import { SessionInvalidDialog } from "@/components/auth/SessionInvalidDialog";
 import { defaultLocale, localeCookieName, locales, type Locale } from "@/lib/i18n";
 import { translations } from "@/lib/i18n/translations";
 
@@ -41,6 +42,7 @@ export default async function RootLayout({
           <UserPreferencesProvider>
             <ReactQueryProvider>
               {children}
+              <SessionInvalidDialog />
               <Toaster richColors position="top-right" />
             </ReactQueryProvider>
           </UserPreferencesProvider>

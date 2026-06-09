@@ -140,6 +140,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         item_unit_option_id,
         uom_id,
         requested_qty,
+        dispatch_qty,
         received_qty,
         items(item_name, item_code)
       `
@@ -187,7 +188,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const dnHeader = Array.isArray(existing.delivery_notes)
         ? existing.delivery_notes[0]
         : existing.delivery_notes;
-      if (!dnHeader || ["voided", "received"].includes(dnHeader.status) || existing.is_voided)
+      if (
+        !dnHeader ||
+        ["voided", "dispatched", "received"].includes(dnHeader.status) ||
+        existing.is_voided
+      )
         continue;
       const prior = allocatedByItem.get(existing.sr_item_id) || 0;
       allocatedByItem.set(existing.sr_item_id, prior + toNumber(existing.allocated_qty));
@@ -221,7 +226,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const alreadyAllocated = allocatedByItem.get(line.srItemId) || 0;
       const maxAllocatable = Math.max(
         0,
-        toNumber(srItem.requested_qty) - toNumber(srItem.received_qty) - alreadyAllocated
+        toNumber(srItem.requested_qty) - toNumber(srItem.dispatch_qty) - alreadyAllocated
       );
 
       if (allocatedQty > maxAllocatable) {

@@ -62,7 +62,10 @@ export async function GET(request: NextRequest) {
         *,
         delivery_note_items(
           sr_item_id,
-          allocated_qty
+          allocated_qty,
+          received_qty,
+          receiving_variance_qty,
+          receiving_status
         ),
         pick_lists(
           id,
@@ -180,6 +183,7 @@ export async function POST(request: NextRequest) {
         item_unit_option_id,
         uom_id,
         requested_qty,
+        dispatch_qty,
         received_qty,
         items(item_code, item_name)
       `
@@ -218,7 +222,7 @@ export async function POST(request: NextRequest) {
       const dnHeader = Array.isArray(existing.delivery_notes)
         ? existing.delivery_notes[0]
         : existing.delivery_notes;
-      if (!dnHeader || ["voided", "received"].includes(dnHeader.status)) continue;
+      if (!dnHeader || ["voided", "dispatched", "received"].includes(dnHeader.status)) continue;
       const prior = allocatedByItem.get(existing.sr_item_id) || 0;
       allocatedByItem.set(existing.sr_item_id, prior + toNumber(existing.allocated_qty));
     }
@@ -262,16 +266,16 @@ export async function POST(request: NextRequest) {
       const alreadyAllocated = allocatedByItem.get(line.srItemId) || 0;
       const maxAllocatable = Math.max(
         0,
-        toNumber(srItem.requested_qty) - toNumber(srItem.received_qty) - alreadyAllocated
+        toNumber(srItem.requested_qty) - toNumber(srItem.dispatch_qty) - alreadyAllocated
       );
       if (allocatedQty > maxAllocatable) {
         const itemRef = Array.isArray(srItem.items) ? srItem.items[0] : srItem.items;
         const itemLabel = itemRef?.item_name || itemRef?.item_code || line.itemId;
         const requestedQty = toNumber(srItem.requested_qty);
-        const receivedQty = toNumber(srItem.received_qty);
+        const dispatchedQty = toNumber(srItem.dispatch_qty);
         return NextResponse.json(
           {
-            error: `Allocated quantity (${allocatedQty}) exceeds available quantity (${maxAllocatable}) for ${itemLabel}. Requested: ${requestedQty}, received: ${receivedQty}, already allocated in other active DNs: ${alreadyAllocated}.`,
+            error: `Allocated quantity (${allocatedQty}) exceeds available quantity (${maxAllocatable}) for ${itemLabel}. Requested: ${requestedQty}, dispatched: ${dispatchedQty}, already allocated in other pending DNs: ${alreadyAllocated}.`,
           },
           { status: 400 }
         );
