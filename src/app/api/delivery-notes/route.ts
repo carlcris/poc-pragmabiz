@@ -24,6 +24,11 @@ type DeliveryNoteApiRecord = {
   [key: string]: unknown;
 };
 
+const parsePositiveInt = (value: string | null, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 // GET /api/delivery-notes
 export async function GET(request: NextRequest) {
   try {
@@ -34,8 +39,14 @@ export async function GET(request: NextRequest) {
     if (auth instanceof NextResponse) return auth;
 
     const status = request.nextUrl.searchParams.get("status");
+    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
     const requestingWarehouseId = request.nextUrl.searchParams.get("requestingWarehouseId");
     const search = request.nextUrl.searchParams.get("search")?.trim();
+    const hasPagination = request.nextUrl.searchParams.has("page") || request.nextUrl.searchParams.has("limit");
+    const page = parsePositiveInt(request.nextUrl.searchParams.get("page"), 1);
+    const limit = Math.min(parsePositiveInt(request.nextUrl.searchParams.get("limit"), 50), 100);
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
     const scopedWarehouseIds = auth.currentBusinessUnitId
       ? await auth.supabase
           .from("warehouses")
@@ -80,7 +91,11 @@ export async function GET(request: NextRequest) {
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
-    if (status) query = query.eq("status", status);
+    if (status) {
+      query = query.eq("status", status);
+    } else if (receivingOnly) {
+      query = query.in("status", ["dispatched", "received"]);
+    }
     if (auth.currentBusinessUnitId) {
       query = query.or(
         `requesting_warehouse_id.in.(${visibleWarehouseIds.join(",")}),fulfilling_warehouse_id.in.(${visibleWarehouseIds.join(",")})`
@@ -92,10 +107,14 @@ export async function GET(request: NextRequest) {
     if (search) {
       query = query.or(`dn_no.ilike.%${search}%,notes.ilike.%${search}%`);
     }
+    if (hasPagination) {
+      query = query.range(from, to);
+    }
 
     const { data, error } = await query;
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Error loading delivery notes:", error);
+      return NextResponse.json({ error: "Failed to load delivery notes" }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -108,8 +127,8 @@ export async function GET(request: NextRequest) {
       }),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected error loading delivery notes:", error);
+    return NextResponse.json({ error: "Failed to load delivery notes" }, { status: 500 });
   }
 }
 

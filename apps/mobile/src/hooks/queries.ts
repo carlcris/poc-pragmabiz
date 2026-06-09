@@ -218,3 +218,24 @@ export const useUpdatePickedItems = (id: string) => {
     }
   });
 };
+
+export const useCompletePickList = (id: string) => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      items: {
+        deliveryNoteItemId: string;
+        pickedQty: number;
+        batchLocationSku?: string | null;
+        pickedLocationId?: string | null;
+        pickedBatchCode?: string | null;
+        pickedBatchReceivedAt?: string | null;
+      }[]
+    ) => pickingApi.completePickList(id, items),
+    onSuccess: async (updated) => {
+      syncPickListCaches(client, updated);
+      await client.invalidateQueries({ queryKey: queryKeys.pickList(id) });
+      await client.invalidateQueries({ queryKey: queryKeys.dashboard });
+    }
+  });
+};

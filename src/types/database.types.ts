@@ -10233,6 +10233,15 @@ export type Database = {
         Args: { p_job_order_id: string }
         Returns: string
       }
+      complete_pick_list_transaction: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_pick_rows?: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
       confirm_sales_quotation_transaction:
         | {
             Args: {

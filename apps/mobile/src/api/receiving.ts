@@ -204,7 +204,13 @@ export const getLoadListReceiving = async (
 
 export const listDeliveryNotes = async (status: string, search: string) => {
   const response = await apiRequest<ListResponse>("/api/delivery-notes", {
-    query: { status: status === "all" ? undefined : status, search }
+    query: {
+      status: status === "all" ? undefined : status,
+      search,
+      receivingOnly: true,
+      page: 1,
+      limit: 50
+    }
   });
   return asArray(response.data).map(normalizeDeliveryNote);
 };

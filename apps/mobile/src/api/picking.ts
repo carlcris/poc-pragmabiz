@@ -31,7 +31,38 @@ export type PickSourceResolution = {
   isMismatch: boolean;
 };
 
-const normalizePickItem = (value: unknown): PickListItem => {
+const ASSIGNEE_COLORS = ["#6366F1", "#F59E0B", "#10B981", "#EF4444", "#8B5CF6", "#06B6D4"];
+
+const pickListPriorityLabel = (status: string) => {
+  if (status === "in_progress") return "ACTIVE";
+  if (status === "pending") return "PENDING";
+  if (status === "done") return "DONE";
+  return status.toUpperCase();
+};
+
+const initialsFor = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return parts
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+};
+
+const pickRowTotalsByDnItem = (value: unknown) => {
+  const totals = new Map<string, number>();
+  for (const pickRowValue of asArray(value)) {
+    const pickRow = asRecord(pickRowValue);
+    const deliveryNoteItemId = maybeStr(
+      pickRow.deliveryNoteItemId || pickRow.delivery_note_item_id || pickRow.dnItemId
+    );
+    if (!deliveryNoteItemId) continue;
+    totals.set(deliveryNoteItemId, (totals.get(deliveryNoteItemId) || 0) + num(pickRow.pickedQty || pickRow.picked_qty));
+  }
+  return totals;
+};
+
+const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickListItem => {
   const record = asRecord(value);
   const item = firstRecord(record.item || record.items);
   const unitOption = firstRecord(record.itemUnitOption || record.item_unit_option || record.item_unit_options);
@@ -83,7 +114,7 @@ const normalizePickItem = (value: unknown): PickListItem => {
         record.pickQty ||
         record.pick_qty
     ),
-    pickedQty: num(record.pickedQty || record.picked_qty),
+    pickedQty: pickedQtyOverride ?? num(record.pickedQty || record.picked_qty),
     locationName: maybeStr(record.locationName || location.name || location.code),
     batchNumber: maybeStr(record.batchNumber || record.batch_number || batch.batch_number)
   };
@@ -92,16 +123,25 @@ const normalizePickItem = (value: unknown): PickListItem => {
 const normalizePickDetail = (value: unknown): PickListDetail => {
   const record = asRecord(value);
   const deliveryNote = firstRecord(record.deliveryNote || record.delivery_note || record.delivery_notes);
-  const items = asArray(record.items || record.pickListItems || record.pick_list_items).map(
-    normalizePickItem
-  );
+  const pickTotals = pickRowTotalsByDnItem(record.deliveryNoteItemPicks || record.delivery_note_item_picks);
+  const items = asArray(record.items || record.pickListItems || record.pick_list_items).map((itemValue) => {
+    const itemRecord = asRecord(itemValue);
+    const deliveryNoteItemId = str(
+      itemRecord.deliveryNoteItemId || itemRecord.delivery_note_item_id || itemRecord.dnItemId || itemRecord.dn_item_id
+    );
+    return normalizePickItem(itemValue, pickTotals.get(deliveryNoteItemId));
+  });
 
   return {
     id: str(record.id),
     code: str(record.code || record.pickListNo || record.pick_list_no || record.request_code),
     status: str(record.status, "unknown"),
+    priority: pickListPriorityLabel(str(record.status, "unknown")),
+    zone: null,
     lines: num(record.lines || items.length),
+    pickedLines: items.filter((item) => item.pickedQty > 0).length,
     assignedTo: maybeStr(record.assignedTo || record.assigned_to || record.created_by_email),
+    assignees: [],
     requiredDate: maybeStr(record.requiredDate || record.required_date || record.created_at),
     deliveryNoteCode: maybeStr(
       record.deliveryNoteCode || record.delivery_note_code || deliveryNote.dn_no || deliveryNote.code
@@ -116,49 +156,71 @@ export const listPickLists = async (params: {
 }): Promise<PickListSummary[]> => {
   const response = await apiRequest<ListResponse | unknown>("/api/pick-lists", {
     query: {
-      status: params.status && params.status !== "all" ? params.status : undefined
+      status: params.status && params.status !== "all" ? params.status : undefined,
+      search: params.search?.trim() || undefined,
+      limit: 50
     }
   });
   const rows = asArray(asRecord(response).data || response);
-  const needle = (params.search || "").trim().toLowerCase();
 
   return rows
     .map((value) => {
       const record = asRecord(value);
       const deliveryNote = firstRecord(record.delivery_notes || record.deliveryNote || record.delivery_note);
+      const fulfillingWarehouse = firstRecord(
+        deliveryNote.fulfilling_warehouse || deliveryNote.fulfillingWarehouse
+      );
       const assignees = asArray(record.pick_list_assignees || record.assignees);
-      const assignedTo =
-        assignees
-          .map((assigneeValue) => {
-            const assignee = asRecord(assigneeValue);
-            const user = firstRecord(assignee.users || assignee.user);
-            return (
-              str(
-                [maybeStr(user.first_name), maybeStr(user.last_name)].filter(Boolean).join(" "),
-                ""
-              ) ||
-              maybeStr(user.email) ||
-              maybeStr(assignee.user_id)
-            );
-          })
-          .filter(Boolean)
-          .join(", ") || null;
+      const mappedAssignees = assignees
+        .map((assigneeValue, index) => {
+          const assignee = asRecord(assigneeValue);
+          const user = firstRecord(assignee.users || assignee.user);
+          const fullName =
+            [maybeStr(user.first_name), maybeStr(user.last_name)].filter(Boolean).join(" ") ||
+            maybeStr(user.email) ||
+            maybeStr(assignee.user_id) ||
+            "Picker";
+
+          return {
+            id: str(user.id || assignee.user_id || `${record.id}-${index}`),
+            firstName: fullName.split(/\s+/)[0] || fullName,
+            initials: initialsFor(fullName),
+            color: ASSIGNEE_COLORS[index % ASSIGNEE_COLORS.length]
+          };
+        })
+        .filter((assignee) => assignee.id);
+      const assignedTo = mappedAssignees.map((assignee) => assignee.firstName).join(", ") || null;
+      const items = asArray(record.pick_list_items || record.items);
+      const pickTotals = pickRowTotalsByDnItem(record.delivery_note_item_picks || record.deliveryNoteItemPicks);
+      const pickedLines = items.filter((itemValue) => {
+        const itemRecord = asRecord(itemValue);
+        const deliveryNoteItemId = str(
+          itemRecord.deliveryNoteItemId ||
+            itemRecord.delivery_note_item_id ||
+            itemRecord.dnItemId ||
+            itemRecord.dn_item_id
+        );
+        return (pickTotals.get(deliveryNoteItemId) ?? num(itemRecord.picked_qty || itemRecord.pickedQty)) > 0;
+      }).length;
 
       return {
         id: str(record.id),
         code: str(record.pick_list_no || record.code || record.request_code, "Pick list"),
         status: str(record.status, "unknown"),
-        lines: asArray(record.pick_list_items || record.items).length,
+        priority: pickListPriorityLabel(str(record.status, "unknown")),
+        zone: maybeStr(
+          fulfillingWarehouse.warehouse_name ||
+            fulfillingWarehouse.warehouseName ||
+            fulfillingWarehouse.warehouse_code ||
+            fulfillingWarehouse.warehouseCode
+        ),
+        lines: items.length,
+        pickedLines,
         assignedTo,
+        assignees: mappedAssignees,
         requiredDate: maybeStr(record.created_at || record.requiredDate || record.required_date),
         deliveryNoteCode: maybeStr(deliveryNote.dn_no || deliveryNote.code)
       };
-    })
-    .filter((item) => {
-      if (!needle) return true;
-      return `${item.code} ${item.status} ${item.assignedTo || ""} ${item.deliveryNoteCode || ""}`
-        .toLowerCase()
-        .includes(needle);
     });
 };
 
@@ -238,6 +300,35 @@ export const updatePickedItems = async (
 ) => {
   const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/items`, {
     method: "PATCH",
+    body: {
+      pickRows: items.map((item) => ({
+        deliveryNoteItemId: item.deliveryNoteItemId,
+        batchLocationSku: item.batchLocationSku || undefined,
+        pickedLocationId: item.pickedLocationId || "",
+        pickedBatchCode: item.pickedBatchCode || "",
+        pickedBatchReceivedAt: item.pickedBatchReceivedAt || "",
+        pickedQty: item.pickedQty,
+        isMismatchWarningAcknowledged: false,
+        mismatchReason: null
+      }))
+    }
+  });
+  return normalizePickDetail(asRecord(response).data || response);
+};
+
+export const completePickList = async (
+  id: string,
+  items: {
+    deliveryNoteItemId: string;
+    pickedQty: number;
+    batchLocationSku?: string | null;
+    pickedLocationId?: string | null;
+    pickedBatchCode?: string | null;
+    pickedBatchReceivedAt?: string | null;
+  }[]
+) => {
+  const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/complete`, {
+    method: "POST",
     body: {
       pickRows: items.map((item) => ({
         deliveryNoteItemId: item.deliveryNoteItemId,

@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import {
-  getWarehouseBusinessUnitMap,
-  notifyBusinessUnits,
-} from "@/app/api/_lib/workflow-notifications";
-import {
   ensurePickListActorAuthorized,
   fetchPickList,
   fetchPickListHeader,
   getPickListAuthContext,
+  notifyPickListReadyForDispatch,
   type PickListStatus,
 } from "../../_lib";
 
@@ -31,16 +28,22 @@ const ALLOWED_TRANSITIONS: Record<PickListStatus, PickListStatus[]> = {
 };
 
 const DN_STATUS_BY_PICK_LIST_STATUS: Partial<
-  Record<PickListStatus, "picking_in_progress" | "dispatch_ready" | "confirmed">
+  Record<PickListStatus, "picking_in_progress" | "confirmed">
 > = {
   in_progress: "picking_in_progress",
-  done: "dispatch_ready",
 };
 
 const asNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
   const parsed = typeof value === "number" ? value : parseFloat(String(value));
   return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const apiError = (message: string, status: number) => NextResponse.json({ error: message }, { status });
+
+const internalError = (message: string, error: unknown) => {
+  console.error(message, error);
+  return apiError(message, 500);
 };
 
 // PATCH /api/pick-lists/[id]/status
@@ -92,84 +95,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const nowIso = new Date().toISOString();
 
     if (nextStatus === "done") {
-      const { data: pickItems, error: pickItemsError } = await auth.supabase
-        .from("pick_list_items")
-        .select("id, dn_item_id, allocated_qty, picked_qty")
-        .eq("company_id", auth.companyId)
-        .eq("pick_list_id", id);
-
-      if (pickItemsError) {
-        return NextResponse.json({ error: pickItemsError.message }, { status: 500 });
-      }
-
-      const hasPicked = (pickItems || []).some((item) => asNumber(item.picked_qty) > 0);
-      if (!hasPicked) {
-        return NextResponse.json(
-          { error: "At least one pick list item must have picked quantity before completing" },
-          { status: 400 }
-        );
-      }
-
-      const { data: pickRows, error: pickRowsError } = await auth.supabase
-        .from("delivery_note_item_picks")
-        .select("delivery_note_item_id, picked_qty")
-        .eq("company_id", auth.companyId)
-        .eq("pick_list_id", id)
-        .is("deleted_at", null);
-
-      if (pickRowsError) {
-        console.error("Error validating pick rows before completing pick list:", pickRowsError);
-        return NextResponse.json(
-          { error: "Unable to validate picked quantities before completing the pick list" },
-          { status: 500 }
-        );
-      }
-
-      const pickedRowsByDnItem = new Map<string, number>();
-      for (const row of pickRows || []) {
-        const dnItemId = row.delivery_note_item_id as string;
-        pickedRowsByDnItem.set(
-          dnItemId,
-          (pickedRowsByDnItem.get(dnItemId) || 0) + asNumber(row.picked_qty as number | string)
-        );
-      }
-
-      const missingPickRowItem = (pickItems || []).find((item) => {
-        const pickedQty = asNumber(item.picked_qty);
-        if (pickedQty <= 0) return false;
-        const rowPickedQty = pickedRowsByDnItem.get(item.dn_item_id as string) || 0;
-        return rowPickedQty < pickedQty;
+      const { error: completeError } = await auth.supabase.rpc("complete_pick_list_transaction", {
+        p_company_id: auth.companyId,
+        p_user_id: auth.userId,
+        p_pick_list_id: id,
+        p_pick_rows: [],
       });
 
-      if (missingPickRowItem) {
-        return NextResponse.json(
-          {
-            error:
-              "Cannot complete pick list because one or more picked quantities do not have dispatchable pick rows. Re-scan the affected item before completing.",
-          },
-          { status: 400 }
-        );
+      if (completeError) {
+        console.error("Transactional pick list status completion failed", completeError);
+        return apiError("Unable to complete pick list", 400);
       }
 
-      for (const item of pickItems || []) {
-        const allocated = asNumber(item.allocated_qty);
-        const picked = asNumber(item.picked_qty);
-        const shortQty = Math.max(0, allocated - picked);
-
-        const { error: dnItemUpdateError } = await auth.supabase
-          .from("delivery_note_items")
-          .update({
-            picked_qty: picked,
-            short_qty: shortQty,
-            updated_at: nowIso,
-          })
-          .eq("id", item.dn_item_id)
-          .eq("company_id", auth.companyId);
-
-        if (dnItemUpdateError) {
-          return NextResponse.json({ error: dnItemUpdateError.message }, { status: 500 });
-        }
+      try {
+        await notifyPickListReadyForDispatch(auth.supabase, auth.companyId, auth.userId, header);
+      } catch (notificationError) {
+        console.error("Error creating dispatch-ready notifications:", notificationError);
       }
+
+      const updated = await fetchPickList(auth.supabase, auth.companyId, id);
+      return NextResponse.json(updated);
     }
 
     if (nextStatus === "cancelled") {
@@ -183,7 +128,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
 
       if (cancelResetError) {
-        return NextResponse.json({ error: cancelResetError.message }, { status: 400 });
+        console.error("Unable to cancel pick list and reset progress", cancelResetError);
+        return apiError("Unable to cancel pick list and reset progress", 400);
       }
     }
 
@@ -197,10 +143,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       updatePayload.started_at = nowIso;
     }
 
-    if (nextStatus === "done") {
-      updatePayload.completed_at = nowIso;
-    }
-
     if (nextStatus === "cancelled") {
       updatePayload.cancel_reason = body.reason?.trim() || null;
     }
@@ -212,7 +154,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .eq("company_id", auth.companyId);
 
     if (updatePickListError) {
-      return NextResponse.json({ error: updatePickListError.message }, { status: 500 });
+      return internalError("Unable to update pick list status", updatePickListError);
     }
 
     let mappedDnStatus = DN_STATUS_BY_PICK_LIST_STATUS[nextStatus];
@@ -224,7 +166,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .eq("dn_id", header.dn_id);
 
       if (dnLineSummaryError) {
-        return NextResponse.json({ error: dnLineSummaryError.message }, { status: 500 });
+        return internalError("Unable to inspect delivery note dispatch history", dnLineSummaryError);
       }
 
       const hasHistoricalDispatch = (dnLineSummary || []).some(
@@ -244,7 +186,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           .eq("company_id", auth.companyId);
 
         if (fallbackDnStatusError) {
-          return NextResponse.json({ error: fallbackDnStatusError.message }, { status: 500 });
+          return internalError("Unable to update delivery note status", fallbackDnStatusError);
         }
       }
     }
@@ -261,11 +203,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         dnUpdatePayload.picking_started_by = auth.userId;
       }
 
-      if (nextStatus === "done") {
-        dnUpdatePayload.picking_completed_at = nowIso;
-        dnUpdatePayload.picking_completed_by = auth.userId;
-      }
-
       const { error: dnUpdateError } = await auth.supabase
         .from("delivery_notes")
         .update(dnUpdatePayload)
@@ -273,57 +210,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .eq("company_id", auth.companyId);
 
       if (dnUpdateError) {
-        return NextResponse.json({ error: dnUpdateError.message }, { status: 500 });
+        return internalError("Unable to update delivery note status", dnUpdateError);
       }
 
-      if (nextStatus === "done") {
-        try {
-          const { data: dnDetails, error: dnDetailsError } = await auth.supabase
-            .from("delivery_notes")
-            .select("id, dn_no, requesting_warehouse_id, fulfilling_warehouse_id")
-            .eq("id", header.dn_id)
-            .eq("company_id", auth.companyId)
-            .is("deleted_at", null)
-            .single();
-
-          if (dnDetailsError || !dnDetails) {
-            throw new Error(dnDetailsError?.message || "Delivery note details not found");
-          }
-
-          const warehouseBuMap = await getWarehouseBusinessUnitMap(auth.supabase, auth.companyId, [
-            dnDetails.requesting_warehouse_id,
-            dnDetails.fulfilling_warehouse_id,
-          ]);
-
-          await notifyBusinessUnits({
-            supabase: auth.supabase,
-            companyId: auth.companyId,
-            actorUserId: auth.userId,
-            businessUnitIds: [
-              warehouseBuMap.get(dnDetails.requesting_warehouse_id),
-              warehouseBuMap.get(dnDetails.fulfilling_warehouse_id),
-            ],
-            title: "Ready for dispatch",
-            message: `Delivery note ${dnDetails.dn_no} is ready for dispatch.`,
-            type: "delivery_note_workflow",
-            metadata: {
-              delivery_note_id: dnDetails.id,
-              dn_no: dnDetails.dn_no,
-              pick_list_id: header.id,
-              pick_list_status: "done",
-              status: "dispatch_ready",
-            },
-          });
-        } catch (notificationError) {
-          console.error("Error creating dispatch-ready notifications:", notificationError);
-        }
-      }
     }
 
     const updated = await fetchPickList(auth.supabase, auth.companyId, id);
     return NextResponse.json(updated);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalError("Unable to update pick list status", error);
   }
 }

@@ -13,7 +13,11 @@ import {
 } from "@/components/ui";
 import { resolvePickSource } from "@/api/picking";
 import type { PickListItem } from "@/contracts/picking";
-import { usePickList, useSetPickListStatus, useUpdatePickedItems } from "@/hooks/queries";
+import {
+  useCompletePickList,
+  usePickList,
+  useSetPickListStatus
+} from "@/hooks/queries";
 import { colors } from "@/theme/colors";
 
 const normalizeScanValue = (value: string) => value.trim().toLowerCase();
@@ -134,7 +138,7 @@ export default function PickingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const pickList = usePickList(id);
   const setStatus = useSetPickListStatus(id);
-  const updateItems = useUpdatePickedItems(id);
+  const completePickList = useCompletePickList(id);
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
   const [verifiedItemId, setVerifiedItemId] = useState<string | null>(null);
@@ -302,14 +306,7 @@ export default function PickingDetailScreen() {
       })
       .filter((item) => item.pickedQty > 0);
 
-    if (payload.length === 0) {
-      setStatus.mutate("done");
-      return;
-    }
-
-    updateItems.mutate(payload, {
-      onSuccess: () => setStatus.mutate("done")
-    });
+    completePickList.mutate(payload);
   };
 
   return (
@@ -385,7 +382,7 @@ export default function PickingDetailScreen() {
                 icon="checkmark-circle-outline"
                 variant="success"
                 onPress={complete}
-                disabled={updateItems.isPending || setStatus.isPending}
+                disabled={completePickList.isPending || setStatus.isPending}
                 style={{ flex: 1 }}
               />
             </View>

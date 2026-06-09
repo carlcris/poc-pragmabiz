@@ -2,8 +2,17 @@ export type PickListSummary = {
   id: string;
   code: string;
   status: string;
+  priority: string;
+  zone: string | null;
   lines: number;
+  pickedLines: number;
   assignedTo: string | null;
+  assignees: {
+    id: string;
+    firstName: string;
+    initials: string;
+    color: string;
+  }[];
   requiredDate: string | null;
   deliveryNoteCode?: string | null;
 };

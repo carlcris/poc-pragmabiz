@@ -21,6 +21,14 @@ type CreatePickListBody = {
 };
 type PickListApiRecord = Record<string, unknown>;
 
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
+
+const parsePositiveInt = (value: string | null, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 // GET /api/pick-lists
 export async function GET(request: NextRequest) {
   try {
@@ -32,13 +40,31 @@ export async function GET(request: NextRequest) {
 
     const status = request.nextUrl.searchParams.get("status") as PickListStatus | null;
     const dnId = request.nextUrl.searchParams.get("dnId");
+    const search = request.nextUrl.searchParams.get("search")?.trim() || "";
+    const page = parsePositiveInt(request.nextUrl.searchParams.get("page"), 1);
+    const limit = Math.min(
+      parsePositiveInt(request.nextUrl.searchParams.get("limit"), DEFAULT_PAGE_SIZE),
+      MAX_PAGE_SIZE
+    );
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
 
     let query = auth.supabase
       .from("pick_lists")
       .select(
         `
         *,
-        delivery_notes(id, dn_no, status, requesting_warehouse_id, fulfilling_warehouse_id),
+        delivery_notes(
+          id,
+          dn_no,
+          status,
+          requesting_warehouse_id,
+          fulfilling_warehouse_id,
+          fulfilling_warehouse:warehouses!delivery_notes_fulfilling_warehouse_id_fkey(
+            warehouse_code,
+            warehouse_name
+          )
+        ),
         delivery_note_item_picks(*),
         pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)),
         pick_list_items(
@@ -64,30 +90,43 @@ export async function GET(request: NextRequest) {
           items!pick_list_items_item_id_fkey(item_name, item_code),
           units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
         )
-      `
+      `,
+        { count: "exact" }
       )
       .eq("company_id", auth.companyId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (status) {
-      query = query.eq("status", status);
+      query = status === "in_progress" ? query.in("status", ["in_progress", "paused"]) : query.eq("status", status);
     }
     if (dnId) {
       query = query.eq("dn_id", dnId);
     }
-
-    const { data, error } = await query;
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (search) {
+      query = query.ilike("pick_list_no", `%${search}%`);
     }
 
+    const { data, error, count } = await query;
+    if (error) {
+      console.error("Failed to fetch pick lists", error);
+      return NextResponse.json({ error: "Failed to fetch pick lists" }, { status: 500 });
+    }
+
+    const total = count || 0;
     return NextResponse.json({
       data: (data || []).map((row) => mapPickListRecord(row as PickListApiRecord)),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: total > 0 ? Math.ceil(total / limit) : 0,
+      },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected pick list fetch error", error);
+    return NextResponse.json({ error: "Failed to fetch pick lists" }, { status: 500 });
   }
 }
 

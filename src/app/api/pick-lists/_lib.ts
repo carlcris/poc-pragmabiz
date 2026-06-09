@@ -2,6 +2,10 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { checkPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { getAuthContext } from "../delivery-notes/_lib";
+import {
+  getWarehouseBusinessUnitMap,
+  notifyBusinessUnits,
+} from "@/app/api/_lib/workflow-notifications";
 
 type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
 
@@ -133,6 +137,50 @@ export const fetchPickListHeader = async (
     .single();
 
   return (data as PickListRow | null) ?? null;
+};
+
+export const notifyPickListReadyForDispatch = async (
+  supabase: SupabaseClient,
+  companyId: string,
+  actorUserId: string,
+  pickList: PickListRow
+) => {
+  const { data: dnDetails, error: dnDetailsError } = await supabase
+    .from("delivery_notes")
+    .select("id, dn_no, requesting_warehouse_id, fulfilling_warehouse_id")
+    .eq("id", pickList.dn_id)
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .single();
+
+  if (dnDetailsError || !dnDetails) {
+    throw new Error(dnDetailsError?.message || "Delivery note details not found");
+  }
+
+  const warehouseBuMap = await getWarehouseBusinessUnitMap(supabase, companyId, [
+    dnDetails.requesting_warehouse_id,
+    dnDetails.fulfilling_warehouse_id,
+  ]);
+
+  await notifyBusinessUnits({
+    supabase,
+    companyId,
+    actorUserId,
+    businessUnitIds: [
+      warehouseBuMap.get(dnDetails.requesting_warehouse_id),
+      warehouseBuMap.get(dnDetails.fulfilling_warehouse_id),
+    ],
+    title: "Ready for dispatch",
+    message: `Delivery note ${dnDetails.dn_no} is ready for dispatch.`,
+    type: "delivery_note_workflow",
+    metadata: {
+      delivery_note_id: dnDetails.id,
+      dn_no: dnDetails.dn_no,
+      pick_list_id: pickList.id,
+      pick_list_status: "done",
+      status: "dispatch_ready",
+    },
+  });
 };
 
 type CreatePickListForDnArgs = {

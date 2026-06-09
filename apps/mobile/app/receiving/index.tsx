@@ -32,7 +32,7 @@ const deliveryNoteStatusFilters = [
 export default function ReceivingScreen() {
   const [tab, setTab] = useState("load-lists");
   const [status, setStatus] = useState("in_transit");
-  const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("all");
+  const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("dispatched");
   const [search, setSearch] = useState("");
   const loadLists = useLoadLists(status, search);
   const deliveryNotes = useDeliveryNotes(deliveryNoteStatus, search);
@@ -147,13 +147,17 @@ export default function ReceivingScreen() {
               secondaryLabel="Show all"
             />
           ) : (
-            deliveryNotes.data.map((item) => (
-              <Pressable key={item.id} onPress={() => router.push(`/receiving/${item.id}`)}>
+            deliveryNotes.data.map((item) => {
+              const canOpen = item.status === "dispatched" || item.status === "received";
+              const content = (
                 <Card style={styles.rowCard}>
                   <View style={styles.rowHeader}>
                     <Ionicons name="document-text-outline" size={24} color={colors.textSecondary} />
                     <Text style={styles.rowTitle}>{item.code}</Text>
                     <StatusBadge status={item.status} />
+                    {canOpen ? (
+                      <Ionicons name="chevron-forward" size={20} color={colors.muted} />
+                    ) : null}
                   </View>
                   <Text style={styles.rowMeta}>{item.fulfillmentMode}</Text>
                   <Text style={styles.rowMeta}>Dispatched: {formatDate(item.dispatchedAt)}</Text>
@@ -161,8 +165,16 @@ export default function ReceivingScreen() {
                     {item.receivedQty} / {item.totalQty} units
                   </Text>
                 </Card>
-              </Pressable>
-            ))
+              );
+
+              return canOpen ? (
+                <Pressable key={item.id} onPress={() => router.push(`/receiving/${item.id}`)}>
+                  {content}
+                </Pressable>
+              ) : (
+                <View key={item.id}>{content}</View>
+              );
+            })
           )}
         </>
       ) : null}

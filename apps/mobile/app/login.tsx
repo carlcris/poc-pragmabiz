@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -44,10 +45,14 @@ export default function LoginScreen() {
       >
         <View style={styles.container}>
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="cube-outline" size={48} color={colors.primary} />
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../assets/achlers_logo.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.title}>Warehouse Operations</Text>
+            <Text style={styles.title}>Achlers Integrated</Text>
             <Text style={styles.subtitle}>Sign in to continue to your account</Text>
           </View>
 
@@ -131,14 +136,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.md
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.primarySoft,
+  logoContainer: {
+    width: 120,
+    height: 120,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.sm
+  },
+  logo: {
+    width: "100%",
+    height: "100%"
   },
   title: {
     ...typography.heading1,

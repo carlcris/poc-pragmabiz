@@ -40,6 +40,11 @@ const toNumber = (value: number | string | null | undefined) => {
 const formatQty = (value: number) =>
   Number.isInteger(value) ? String(value) : value.toFixed(4).replace(/\.?0+$/, "");
 
+const internalError = (message: string, error: unknown) => {
+  console.error(message, error);
+  return NextResponse.json({ error: message }, { status: 500 });
+};
+
 const getPickSourceAvailability = async ({
   supabase,
   companyId,
@@ -174,7 +179,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .eq("pick_list_id", id);
 
     if (fetchItemsError) {
-      return NextResponse.json({ error: fetchItemsError.message }, { status: 500 });
+      return internalError("Unable to fetch pick list items", fetchItemsError);
     }
 
     const byId = new Map((currentItems || []).map((item) => [item.id, item]));
@@ -231,7 +236,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           .eq("pick_list_id", id);
 
         if (updateItemError) {
-          return NextResponse.json({ error: updateItemError.message }, { status: 500 });
+          return internalError("Unable to update pick list item quantities", updateItemError);
         }
       }
     }
@@ -267,7 +272,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .eq("dn_id", header.dn_id);
 
       if (dnLineError) {
-        return NextResponse.json({ error: dnLineError.message }, { status: 500 });
+        return internalError("Unable to fetch delivery note item details", dnLineError);
       }
 
       const dnLineById = new Map(((dnLineRows || []) as DnLineMeta[]).map((row) => [row.id, row]));
@@ -282,7 +287,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .is("deleted_at", null);
 
       if (existingPickRowsError) {
-        return NextResponse.json({ error: existingPickRowsError.message }, { status: 500 });
+        return internalError("Unable to fetch existing picked rows", existingPickRowsError);
       }
 
       type ExistingPickRow = {
@@ -431,7 +436,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .eq("pick_list_id", id);
 
           if (updatePickRowError) {
-            return NextResponse.json({ error: updatePickRowError.message }, { status: 500 });
+            return internalError("Unable to update picked row", updatePickRowError);
           }
 
           lineTotals.set(row.deliveryNoteItemId, nextLinePicked);
@@ -466,7 +471,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .maybeSingle();
 
           if (resolvedSourceError) {
-            return NextResponse.json({ error: resolvedSourceError.message }, { status: 500 });
+            return internalError("Unable to resolve scanned batch location", resolvedSourceError);
           }
 
           if (!resolvedSource) {
@@ -520,7 +525,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         }
 
         if (currentLinePicked >= allocatedQty) {
-          return NextResponse.json({ error: "Item already picked" }, { status: 400 });
+          continue;
         }
 
         const rowKey = mergeKey(
@@ -593,7 +598,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .eq("pick_list_id", id);
 
           if (mergeUpdateError) {
-            return NextResponse.json({ error: mergeUpdateError.message }, { status: 500 });
+            return internalError("Unable to update picked row", mergeUpdateError);
           }
 
           lineTotals.set(row.deliveryNoteItemId, nextLinePicked);
@@ -675,10 +680,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .single();
 
           if (insertPickRowError || !insertedPickRow) {
-            return NextResponse.json(
-              { error: insertPickRowError?.message || "Failed to create pick row" },
-              { status: 500 }
-            );
+            return internalError("Unable to create picked row", insertPickRowError);
           }
 
           const inserted = insertedPickRow as ExistingPickRow;
@@ -725,7 +727,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .eq("company_id", auth.companyId);
 
           if (updateSuggestionError) {
-            return NextResponse.json({ error: updateSuggestionError.message }, { status: 500 });
+            return internalError("Unable to update picked source suggestion", updateSuggestionError);
           }
         }
       }
@@ -740,7 +742,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           .is("deleted_at", null);
 
         if (pickRowsAfterError) {
-          return NextResponse.json({ error: pickRowsAfterError.message }, { status: 500 });
+          return internalError("Unable to fetch picked rows after update", pickRowsAfterError);
         }
 
         const pickedTotalsByDnItem = new Map<string, number>();
@@ -769,7 +771,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .eq("pick_list_id", id);
 
           if (syncPickListItemError) {
-            return NextResponse.json({ error: syncPickListItemError.message }, { status: 500 });
+            return internalError("Unable to sync pick list item quantities", syncPickListItemError);
           }
         }
       }
@@ -778,7 +780,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const pickList = await fetchPickList(auth.supabase, auth.companyId, id);
     return NextResponse.json(pickList);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return internalError("Unable to update pick list items", error);
   }
 }

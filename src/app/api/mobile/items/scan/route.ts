@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
 
       const batchBusinessUnitId = getBatchBusinessUnitId(batchRow);
       let canAccessBatchBusinessUnit =
-        Boolean(batchBusinessUnitId) &&
+        batchBusinessUnitId !== null &&
         (batchBusinessUnitId === currentBusinessUnitId ||
           accessibleBusinessUnitIds.includes(batchBusinessUnitId));
 
