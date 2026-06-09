@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Image from "next/image";
 import { useAuthStore } from "@/stores/authStore";
-import type { Resource } from "@/constants/resources";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,36 +26,6 @@ const loginSchema = z.object({
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
-
-type RoleSummary = {
-  id: string;
-  name: string;
-  description: string | null;
-  business_unit_id: string | null;
-  business_unit_name: string;
-};
-
-type RolesResponse = {
-  data: RoleSummary[];
-};
-
-type PermissionEntry = {
-  resource: Resource;
-  can_view: boolean;
-  can_create: boolean;
-  can_edit: boolean;
-  can_delete: boolean;
-};
-
-type PermissionsResponse = {
-  data: {
-    userId: string;
-    businessUnitId: string | null;
-    permissions: PermissionEntry[];
-  };
-};
-
-type UserPermissions = Record<Resource, Omit<PermissionEntry, "resource">>;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -83,51 +52,8 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true);
       setLoginError(null);
-      await login(data);
-
-      // SECURITY: Fetch user permissions to determine accessible landing page
-      const user = useAuthStore.getState().user;
-      if (user?.id) {
-        try {
-          // Fetch both roles and permissions in parallel
-          const [rolesResponse, permissionsResponse] = await Promise.all([
-            fetch(`/api/rbac/users/${user.id}/roles`),
-            fetch(`/api/rbac/users/${user.id}/permissions`),
-          ]);
-
-          if (rolesResponse.ok && permissionsResponse.ok) {
-            const rolesPayload = (await rolesResponse.json()) as RolesResponse;
-            const permissionsPayload = (await permissionsResponse.json()) as PermissionsResponse;
-
-            // Transform permissions array to object
-            const permissions = permissionsPayload.data.permissions.reduce<UserPermissions>(
-              (acc, perm) => {
-                acc[perm.resource] = {
-                  can_view: perm.can_view,
-                  can_create: perm.can_create,
-                  can_edit: perm.can_edit,
-                  can_delete: perm.can_delete,
-                };
-                return acc;
-              },
-              {} as UserPermissions
-            );
-
-            // Get first accessible page based on permissions
-            const roleNames = rolesPayload.data.map((role) => role.name);
-            const { getFirstAccessiblePage } = await import("@/config/roleDefaultPages");
-            const landingPage = getFirstAccessiblePage(permissions, roleNames);
-
-            router.push(landingPage);
-            return;
-          }
-        } catch {
-          // Fall through to 403 redirect
-        }
-      }
-
-      // Fallback to 403 if permission fetch fails
-      router.push("/403");
+      const result = await login(data);
+      router.push(result.landingPage);
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Login failed");
       setIsSubmitting(false);

@@ -1,5 +1,133 @@
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 import { NextRequest, NextResponse } from "next/server";
+import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
+import { RESOURCES, type Resource } from "@/constants/resources";
+import type { UserPermissions } from "@/types/rbac";
+import type { RawPermissionRow } from "@/services/permissions/types";
+
+type JwtPayload = {
+  current_business_unit_id?: string;
+  default_business_unit_id?: string;
+};
+
+type UserRoleWithRole = {
+  roles?: { name?: string | null } | { name?: string | null }[] | null;
+};
+
+function decodeBusinessUnitIdFromToken(token: string): string | null {
+  try {
+    const [, payloadPart] = token.split(".");
+    if (!payloadPart) return null;
+    const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf-8")) as JwtPayload;
+    return payload.current_business_unit_id || payload.default_business_unit_id || null;
+  } catch {
+    return null;
+  }
+}
+
+function createEmptyPermissions(): UserPermissions {
+  const permissions: Partial<UserPermissions> = {};
+
+  Object.values(RESOURCES).forEach((resource) => {
+    permissions[resource as Resource] = {
+      can_view: false,
+      can_create: false,
+      can_edit: false,
+      can_delete: false,
+    };
+  });
+
+  return permissions as UserPermissions;
+}
+
+function aggregatePermissions(rows: RawPermissionRow[]): UserPermissions {
+  const permissions = createEmptyPermissions();
+
+  rows.forEach((row) => {
+    const resource = row.resource as Resource;
+    if (!permissions[resource]) return;
+
+    permissions[resource].can_view = permissions[resource].can_view || row.can_view;
+    permissions[resource].can_create = permissions[resource].can_create || row.can_create;
+    permissions[resource].can_edit = permissions[resource].can_edit || row.can_edit;
+    permissions[resource].can_delete = permissions[resource].can_delete || row.can_delete;
+  });
+
+  return permissions;
+}
+
+async function resolveBusinessUnitId(
+  supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
+  userId: string,
+  accessToken: string
+): Promise<string | null> {
+  const tokenBusinessUnitId = decodeBusinessUnitIdFromToken(accessToken);
+  if (tokenBusinessUnitId) return tokenBusinessUnitId;
+
+  const { data } = await supabase
+    .from("user_business_unit_access")
+    .select("business_unit_id, is_current, is_default")
+    .eq("user_id", userId);
+
+  const rows = data || [];
+  return (
+    rows.find((row) => row.is_current)?.business_unit_id ||
+    rows.find((row) => row.is_default)?.business_unit_id ||
+    rows[0]?.business_unit_id ||
+    null
+  );
+}
+
+async function resolveLandingPage(
+  supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
+  userId: string,
+  accessToken: string
+): Promise<string> {
+  const businessUnitId = await resolveBusinessUnitId(supabase, userId, accessToken);
+
+  const [{ data: permissionRows, error: permissionError }, { data: roleRows, error: roleError }] =
+    await Promise.all([
+      supabase.rpc("get_user_permissions", {
+        p_user_id: userId,
+        p_business_unit_id: businessUnitId,
+      }),
+      supabase
+        .from("user_roles")
+        .select(
+          `
+          roles (
+            name
+          )
+        `
+        )
+        .eq("user_id", userId)
+        .is("deleted_at", null),
+    ]);
+
+  if (permissionError) {
+    console.error("Failed to resolve login permissions", {
+      userId,
+      businessUnitId,
+      error: permissionError.message,
+    });
+    return "/403";
+  }
+
+  if (roleError) {
+    console.error("Failed to resolve login roles", {
+      userId,
+      businessUnitId,
+      error: roleError.message,
+    });
+  }
+
+  const permissions = aggregatePermissions((permissionRows || []) as RawPermissionRow[]);
+  const roleNames = ((roleRows as UserRoleWithRole[] | null) || [])
+    .map((row) => (Array.isArray(row.roles) ? row.roles[0] : row.roles)?.name)
+    .filter((name): name is string => typeof name === "string" && name.length > 0);
+
+  return getFirstAccessiblePage(permissions, roleNames);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,6 +196,7 @@ export async function POST(request: NextRequest) {
       },
       token: data.session.access_token,
       refreshToken: data.session.refresh_token,
+      landingPage: await resolveLandingPage(supabase, data.user.id, data.session.access_token),
     });
 
     response.cookies.getAll().forEach((cookie) => {

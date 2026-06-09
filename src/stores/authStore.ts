@@ -5,6 +5,7 @@ import { useBusinessUnitStore } from "./businessUnitStore";
 import { usePermissionStore } from "./permissionStore";
 import { QueryClient } from "@tanstack/react-query";
 import {
+  clearIntentionalLogoutMarker,
   clearSessionInvalidNoticeShown,
   markIntentionalLogout,
   notifySessionInvalid,
@@ -47,7 +48,7 @@ interface AuthStore {
   setToken: (token: string | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<{ landingPage: string }>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
@@ -118,7 +119,9 @@ export const useAuthStore = create<AuthStore>()((set, get) => ({
         isLoading: false,
         error: null,
       });
+      clearIntentionalLogoutMarker();
       clearSessionInvalidNoticeShown();
+      return { landingPage: payload.landingPage || "/dashboard" };
     } catch (error) {
       set({
         user: null,

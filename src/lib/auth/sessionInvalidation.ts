@@ -10,6 +10,7 @@ export const isSessionInvalidStatus = (status: number): boolean => status === 40
 
 export const notifySessionInvalid = (detail: SessionInvalidEventDetail = {}): void => {
   if (typeof window === "undefined") return;
+  if (hasIntentionalLogoutMarker()) return;
   window.dispatchEvent(
     new CustomEvent<SessionInvalidEventDetail>(SESSION_INVALID_EVENT, { detail })
   );

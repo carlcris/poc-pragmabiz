@@ -18,6 +18,7 @@ export interface AuthResponse {
   user: User;
   token: string;
   refreshToken: string;
+  landingPage?: string;
 }
 
 export interface AuthState {

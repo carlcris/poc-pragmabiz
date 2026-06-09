@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  clearIntentionalLogoutMarker,
   hasSessionInvalidNoticeShown,
   hasIntentionalLogoutMarker,
   isSessionInvalidStatus,
@@ -80,7 +79,6 @@ export const SessionInvalidDialog = () => {
   useEffect(() => {
     if (sessionParam === "invalid") {
       if (hasIntentionalLogoutMarker()) {
-        clearIntentionalLogoutMarker();
         router.replace("/login");
         return;
       }
@@ -89,8 +87,6 @@ export const SessionInvalidDialog = () => {
         return;
       }
       openSessionInvalidDialog();
-    } else if (pathname === "/login" && hasIntentionalLogoutMarker()) {
-      clearIntentionalLogoutMarker();
     }
   }, [openSessionInvalidDialog, pathname, router, sessionParam]);
 
