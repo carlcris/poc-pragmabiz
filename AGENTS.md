@@ -35,6 +35,9 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
 - Never expose raw database, Supabase, or internal exception text to API clients. Log internal details server-side and return safe messages.
 - Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
+- Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
+- Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client may send one request; the API may validate/auth and call one transactional DB operation.
+- If any step of a transactional business operation fails, no database writes from that operation may remain committed. Post-commit side effects such as notifications may run after the transaction, but they must not be required for data integrity.
 - Server data lists, reports, selects, comboboxes, and autocomplete controls must use backend filtering/sorting and bounded pagination.
 - UI text introduced or changed by implementation work must use the repository `next-intl` translation system.
 
@@ -44,6 +47,9 @@ Run commands from the repo root unless a nested instruction says otherwise.
 
 - Verify table, column, relationship, enum, RPC, trigger, and policy names against `supabase/migrations/` before writing Supabase queries.
 - Keep handlers thin: validate input, enforce auth/scope, call DB/RPC/service code, and map safe responses.
+- For transactional business operations, API handlers must call a single DB RPC/function that owns validation, locking, writes, reconciliation, and final state transition. Do not perform multi-table business writes sequentially in a route handler.
+- State transitions such as complete, approve, post, dispatch, receive, cancel, void, reconcile, submit, or close must be atomic when they update related records or totals.
+- Existing non-transactional multi-step flows must not be extended. When touched for related work, migrate them to a transactional DB-owned operation before adding behavior.
 - Keep response shapes stable. Check all hooks, services, and callers before changing wrappers or field names.
 - The shared `apiClient` returns parsed JSON; avoid unverified double-unwrapping.
 
@@ -52,6 +58,7 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - Hooks own data fetching, mutations, cache invalidation, typed state, and typed error propagation.
 - Hooks should not hardcode UI toasts, banners, dialogs, or presentation side effects by default.
 - Pages and components should decide how mutation success/error states are shown.
+- Hooks and screens must not orchestrate dependent mutation chains for one business operation. Use one mutation endpoint for the operation and let the server/DB transaction own the sequence.
 
 ### Dashboard Pages
 
@@ -74,6 +81,9 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - Do not patch outdated migrations when newer migrations define current behavior.
 - Regenerate `src/types/database.types.ts` when schema changes are applied locally.
 - Generated document/control codes must be database-owned with the shared generator plus `BEFORE INSERT` trigger pattern. Application inserts must omit generated code columns.
+- Transactional RPCs/functions must lock the primary workflow row with `FOR UPDATE`, validate current status and ownership/scope inputs, apply all related writes, reconcile denormalized totals, and update the final status inside the same function.
+- Transactional RPC validation must be tested with both a successful path and a forced failure after an earlier write would have occurred, proving rollback leaves no partial database changes.
+- Keep non-critical side effects outside the transaction unless they are data-integrity records. If side effects run post-commit, failures must be logged and must not change the committed workflow state.
 
 ## Skill Routing
 
