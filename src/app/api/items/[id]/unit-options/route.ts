@@ -26,6 +26,19 @@ const ITEM_UNIT_OPTION_SELECT = `
   )
 `;
 
+type ItemUnitOptionWriteError = {
+  code?: string;
+  details?: string | null;
+  message?: string;
+};
+
+const ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT = "ux_item_unit_options_item_uom_qty";
+const DUPLICATE_UNIT_OPTION_ERROR = "A unit option with this unit and quantity already exists";
+
+const isDuplicateUnitOptionError = (error: ItemUnitOptionWriteError | null): boolean =>
+  error?.code === "23505" &&
+  `${error.message ?? ""} ${error.details ?? ""}`.includes(ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT);
+
 const getUserCompanyId = async (
   supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
   userId: string
@@ -163,10 +176,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         .is("deleted_at", null);
 
       if (unsetDefaultError) {
-        return NextResponse.json(
-          { error: "Failed to update default unit option", details: unsetDefaultError.message },
-          { status: 500 }
-        );
+        console.error("Error unsetting default item unit option:", unsetDefaultError);
+        return NextResponse.json({ error: "Failed to update default unit option" }, { status: 500 });
       }
     }
 
@@ -190,10 +201,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       });
 
     if (insertError) {
-      return NextResponse.json(
-        { error: "Failed to create item unit option", details: insertError.message },
-        { status: 500 }
-      );
+      if (isDuplicateUnitOptionError(insertError)) {
+        return NextResponse.json({ error: DUPLICATE_UNIT_OPTION_ERROR }, { status: 409 });
+      }
+
+      console.error("Error inserting item unit option:", insertError);
+      return NextResponse.json({ error: "Failed to create item unit option" }, { status: 500 });
     }
 
     const { data: baseUom } = await supabase

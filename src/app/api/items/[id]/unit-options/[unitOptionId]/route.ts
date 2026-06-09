@@ -21,6 +21,19 @@ const ITEM_UNIT_OPTION_SELECT = `
   )
 `;
 
+type ItemUnitOptionWriteError = {
+  code?: string;
+  details?: string | null;
+  message?: string;
+};
+
+const ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT = "ux_item_unit_options_item_uom_qty";
+const DUPLICATE_UNIT_OPTION_ERROR = "A unit option with this unit and quantity already exists";
+
+const isDuplicateUnitOptionError = (error: ItemUnitOptionWriteError | null): boolean =>
+  error?.code === "23505" &&
+  `${error.message ?? ""} ${error.details ?? ""}`.includes(ITEM_UNIT_OPTION_DUPLICATE_CONSTRAINT);
+
 const getUserCompanyId = async (
   supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
   userId: string
@@ -75,7 +88,7 @@ export async function PUT(
 
     const { data: existing, error: existingError } = await supabase
       .from("item_unit_options")
-      .select("id, is_base, is_default")
+      .select("id, uom_id, qty_per_unit, is_base, is_default")
       .eq("id", unitOptionId)
       .eq("item_id", itemId)
       .eq("company_id", companyId)
@@ -119,10 +132,8 @@ export async function PUT(
         .is("deleted_at", null);
 
       if (unsetDefaultError) {
-        return NextResponse.json(
-          { error: "Failed to update default unit option", details: unsetDefaultError.message },
-          { status: 500 }
-        );
+        console.error("Error unsetting default item unit option:", unsetDefaultError);
+        return NextResponse.json({ error: "Failed to update default unit option" }, { status: 500 });
       }
     }
 
@@ -146,10 +157,12 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      return NextResponse.json(
-        { error: "Failed to update item unit option", details: updateError.message },
-        { status: 500 }
-      );
+      if (isDuplicateUnitOptionError(updateError)) {
+        return NextResponse.json({ error: DUPLICATE_UNIT_OPTION_ERROR }, { status: 409 });
+      }
+
+      console.error("Error updating item unit option:", updateError);
+      return NextResponse.json({ error: "Failed to update item unit option" }, { status: 500 });
     }
 
     const { data: baseUom } = await supabase
@@ -225,10 +238,8 @@ export async function DELETE(
       .eq("company_id", companyId);
 
     if (deleteError) {
-      return NextResponse.json(
-        { error: "Failed to delete item unit option", details: deleteError.message },
-        { status: 500 }
-      );
+      console.error("Error deleting item unit option:", deleteError);
+      return NextResponse.json({ error: "Failed to delete item unit option" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

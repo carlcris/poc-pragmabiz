@@ -57,6 +57,15 @@ const INITIAL_FORM_STATE: UnitOptionFormState = {
   isActive: true,
 };
 
+const formatQtyPerUnit = (value: number | string): string => {
+  if (value === "") return "0";
+
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return "";
+  if (Number.isInteger(parsed)) return String(parsed);
+  return parsed.toFixed(4).replace(/\.?0+$/, "");
+};
+
 export const ItemUnitOptionsCard = ({
   itemId,
   baseUomCode,
@@ -72,6 +81,7 @@ export const ItemUnitOptionsCard = ({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUnitOption, setEditingUnitOption] = useState<ItemUnitOption | null>(null);
   const [formState, setFormState] = useState<UnitOptionFormState>(INITIAL_FORM_STATE);
+  const [isOptionLabelOverridden, setIsOptionLabelOverridden] = useState(false);
 
   const unitOptions = data?.data || [];
   const availableUoms = useMemo(
@@ -79,10 +89,27 @@ export const ItemUnitOptionsCard = ({
     [uomsData?.data]
   );
 
+  const buildGeneratedOptionLabel = (
+    uomId: string,
+    qtyPerUnit: string,
+    fallbackUomCode?: string
+  ) => {
+    const selectedUom = availableUoms.find((uom) => uom.id === uomId);
+    const uomCode = selectedUom?.code || fallbackUomCode;
+    const formattedQty = formatQtyPerUnit(qtyPerUnit);
+
+    if (!uomCode || !formattedQty) {
+      return "";
+    }
+
+    return `${uomCode} (${formattedQty})`;
+  };
+
   useEffect(() => {
     if (!dialogOpen) {
       setFormState(INITIAL_FORM_STATE);
       setEditingUnitOption(null);
+      setIsOptionLabelOverridden(false);
     }
   }, [dialogOpen]);
 
@@ -92,18 +119,30 @@ export const ItemUnitOptionsCard = ({
       ...INITIAL_FORM_STATE,
       isActive: true,
     });
+    setIsOptionLabelOverridden(false);
     setDialogOpen(true);
   };
 
   const openEditDialog = (unitOption: ItemUnitOption) => {
+    const qtyPerUnit = String(unitOption.qtyPerUnit);
+    const generatedOptionLabel = buildGeneratedOptionLabel(
+      unitOption.uomId,
+      qtyPerUnit,
+      unitOption.uomCode
+    );
+    const optionLabel = unitOption.optionLabel || generatedOptionLabel;
+
     setEditingUnitOption(unitOption);
     setFormState({
       uomId: unitOption.uomId,
-      qtyPerUnit: String(unitOption.qtyPerUnit),
-      optionLabel: unitOption.optionLabel || "",
+      qtyPerUnit,
+      optionLabel,
       isDefault: unitOption.isDefault,
       isActive: unitOption.isActive,
     });
+    setIsOptionLabelOverridden(
+      !!unitOption.optionLabel && unitOption.optionLabel !== generatedOptionLabel
+    );
     setDialogOpen(true);
   };
 
@@ -336,9 +375,18 @@ export const ItemUnitOptionsCard = ({
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={formState.uomId}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, uomId: event.target.value }))
-                }
+                onChange={(event) => {
+                  const nextUomId = event.target.value;
+                  setFormState((current) =>
+                    isOptionLabelOverridden
+                      ? { ...current, uomId: nextUomId }
+                      : {
+                          ...current,
+                          uomId: nextUomId,
+                          optionLabel: buildGeneratedOptionLabel(nextUomId, current.qtyPerUnit),
+                        }
+                  );
+                }}
               >
                 <option value="">{t("selectUom")}</option>
                 {availableUoms.map((uom) => (
@@ -356,9 +404,18 @@ export const ItemUnitOptionsCard = ({
                 min="0.0001"
                 step="0.0001"
                 value={formState.qtyPerUnit}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, qtyPerUnit: event.target.value }))
-                }
+                onChange={(event) => {
+                  const nextQtyPerUnit = event.target.value;
+                  setFormState((current) =>
+                    isOptionLabelOverridden
+                      ? { ...current, qtyPerUnit: nextQtyPerUnit }
+                      : {
+                          ...current,
+                          qtyPerUnit: nextQtyPerUnit,
+                          optionLabel: buildGeneratedOptionLabel(current.uomId, nextQtyPerUnit),
+                        }
+                  );
+                }}
               />
             </div>
 
@@ -367,9 +424,10 @@ export const ItemUnitOptionsCard = ({
               <Input
                 value={formState.optionLabel}
                 placeholder={t("displayLabelPlaceholder")}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, optionLabel: event.target.value }))
-                }
+                onChange={(event) => {
+                  setIsOptionLabelOverridden(true);
+                  setFormState((current) => ({ ...current, optionLabel: event.target.value }));
+                }}
               />
             </div>
 

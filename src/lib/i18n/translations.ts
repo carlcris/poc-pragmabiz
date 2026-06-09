@@ -1980,6 +1980,7 @@ export type TranslationKeys = {
     defaultUnitOptionDescription: string;
     activeUnitOptionDescription: string;
     unitOptionValidationError: string;
+    unitOptionDuplicateError: string;
     unitOptionAdded: string;
     unitOptionUpdated: string;
     unitOptionDeleted: string;
@@ -4745,6 +4746,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       defaultUnitOptionDescription: "Use this unit option by default in item-specific flows.",
       activeUnitOptionDescription: "Inactive options remain hidden from future selection.",
       unitOptionValidationError: "Select a unit and enter a positive quantity.",
+      unitOptionDuplicateError: "A unit option with this unit and quantity already exists.",
       unitOptionAdded: "Unit option added.",
       unitOptionUpdated: "Unit option updated.",
       unitOptionDeleted: "Unit option deleted.",
@@ -9957,6 +9959,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       defaultUnitOptionDescription: "在商品相关流程中默认使用此单位选项。",
       activeUnitOptionDescription: "停用后，该选项不会出现在后续选择中。",
       unitOptionValidationError: "请选择单位并输入大于 0 的数量。",
+      unitOptionDuplicateError: "已存在相同单位和数量的单位选项。",
       unitOptionAdded: "单位选项已新增。",
       unitOptionUpdated: "单位选项已更新。",
       unitOptionDeleted: "单位选项已删除。",
