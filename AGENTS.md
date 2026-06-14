@@ -10,7 +10,8 @@ Use nested `AGENTS.md` files for directory-specific rules. Use skills for proced
 - `src/components/`, `src/hooks/`, `src/lib/`, `src/services/`, and `src/stores/` contain UI, data logic, helpers, API clients, and state.
 - `src/types/`, `src/constants/`, and `src/config/` contain shared contracts and configuration.
 - `supabase/migrations/` contains schema, RLS, RPC, trigger, and data migrations.
-- `docs/` contains architecture, workflow, and product reference material.
+- `docs/kb/` contains product and module knowledge-base material.
+- `docs/guides/` contains workflow, developer, and operational guides.
 
 ## Commands
 
@@ -98,6 +99,7 @@ Use the relevant skill when a task matches one of these triggers:
 - Dashboard page shells, tables, widgets, loading states, empty states, or row actions: `dashboard-page-shell`.
 - User-facing UI text, validation messages, toasts, dialogs, empty/loading/error copy, or translation migration: `i18n-translation-workflow`.
 - Field/widget/section/operation permissions, redaction, RLS permission behavior, or permission settings UI: `granular-permissions-rollout`.
+- Documentation impact checks after implementation tasks: `project-docs-sync`.
 - Post-change validation or regression checking: `consistency-regression-checker`.
 - Release safety review: `release-readiness-checker`.
 - Security review or vulnerability assessment: `security-vulnerability-checker`.
@@ -107,6 +109,26 @@ Use the relevant skill when a task matches one of these triggers:
 There is no formal test runner configured in `package.json` yet. When adding one, use Jest with `next/jest`, React Testing Library, and MSW. Until then, use the narrowest reliable post-flight command for the changed surface, such as `npm run lint`, `npm run build`, a targeted migration validation, or an existing ad-hoc script.
 
 Every code change must consider test impact. If the correct test cannot be added because the harness does not exist, state the missing coverage in the final response.
+
+## Documentation Sync
+
+After every implementation task, check whether changes affect `docs/kb` or `docs/guides`. Use `project-docs-sync` for this post-flight check.
+
+Update relevant docs when the task changes:
+
+- User-visible module behavior.
+- Workflows or business rules.
+- API request/response contracts.
+- Database schema, RLS, permissions, RPCs, triggers, generated document/control codes, or redaction behavior.
+- Configuration, setup, operational guidance, architecture, reports, dashboards, lists, selects, or pagination behavior.
+
+Do not update docs for purely internal refactors with no behavior, contract, workflow, or operational impact.
+
+Final responses must state:
+
+- Documentation checked.
+- Documentation updated, or why no update was needed.
+- Missing documentation coverage discovered, if any.
 
 ## Conflict Resolution
 
@@ -127,3 +149,4 @@ At completion, report:
 - For UI work, translation impact.
 - For list/select/report work, server-side filtering and pagination impact.
 - For permission work, API and UI enforcement impact.
+- Documentation checked and documentation updated, or why no update was needed.
