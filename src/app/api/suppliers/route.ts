@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // 2. Permission to a feature that depends on suppliers (purchase_orders, purchase_receipts)
     const unauthorized = await requireLookupDataAccess(RESOURCES.SUPPLIERS);
     if (unauthorized) return unauthorized;
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
     // Check authentication
@@ -36,16 +36,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
     // Build query
     let query = supabase
       .from("suppliers")
       .select("*", { count: "exact" })
       .eq("company_id", userData.company_id)
-      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null);
 
     // Apply filters
@@ -131,7 +126,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.SUPPLIERS, "create");
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU();
     const body = await request.json();
 
     // Check authentication
@@ -142,10 +137,6 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
     // Get user's company
@@ -178,13 +169,11 @@ export async function POST(request: NextRequest) {
       supplierCode = `SUP-${String(nextNum).padStart(3, "0")}`;
     }
 
-    // business_unit_id from JWT - set by auth hook
     // Create supplier
     const { data: supplier, error: supplierError } = await supabase
       .from("suppliers")
       .insert({
         company_id: userData.company_id,
-        business_unit_id: currentBusinessUnitId,
         supplier_code: supplierCode,
         supplier_name: body.name,
         contact_person: body.contactPerson,

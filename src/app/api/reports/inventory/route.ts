@@ -24,7 +24,6 @@ type InventorySourceRow = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
-        cost_price: number | string | null;
         purchase_price: number | string | null;
         category?: { name: string | null } | { name: string | null }[] | null;
         uom?: { code: string | null } | { code: string | null }[] | null;
@@ -34,7 +33,6 @@ type InventorySourceRow = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
-        cost_price: number | string | null;
         purchase_price: number | string | null;
         category?: { name: string | null } | { name: string | null }[] | null;
         uom?: { code: string | null } | { code: string | null }[] | null;
@@ -165,7 +163,6 @@ export async function GET(request: NextRequest) {
         item_code,
         item_name,
         category_id,
-        cost_price,
         purchase_price,
         category:item_categories(id, name),
         uom:units_of_measure(id, code, name)
@@ -279,7 +276,7 @@ export async function GET(request: NextRequest) {
       const inTransit = toNumber(row.in_transit);
       const reorderLevel = toNumber(row.reorder_level);
       const reorderQuantity = toNumber(row.reorder_quantity);
-      const unitCost = Math.max(0, toNumber(item?.cost_price), toNumber(item?.purchase_price));
+      const unitCost = Math.max(0, toNumber(item?.purchase_price));
 
       return {
         id: row.id,

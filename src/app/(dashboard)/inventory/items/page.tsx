@@ -287,7 +287,7 @@ function ItemsPageContent() {
       "In Transit Qty",
       "Available",
       "Status",
-      "Std Cost",
+      "Purchase Price",
       "List Price",
     ];
 
@@ -302,7 +302,7 @@ function ItemsPageContent() {
       item.inTransit,
       item.available,
       item.status,
-      item.standardCost,
+      item.purchasePrice,
       item.listPrice,
     ]);
 

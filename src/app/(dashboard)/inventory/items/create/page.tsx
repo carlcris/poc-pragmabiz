@@ -83,7 +83,7 @@ function CreateItemContent() {
       itemType: "raw_material",
       uom: "",
       category: "",
-      standardCost: 0,
+      purchasePrice: 0,
       importCost: null,
       importCurrency: null,
       listPrice: 0,
@@ -130,7 +130,7 @@ function CreateItemContent() {
           height: values.dimensions?.height ?? 0,
           unit: values.dimensions?.unit || "",
         },
-        standardCost: values.standardCost ?? 0,
+        purchasePrice: values.purchasePrice ?? 0,
         importCost: values.importCost ?? null,
         importCurrency: values.importCost == null ? null : values.importCurrency,
         reorderLevel: values.reorderLevel ?? 0,
@@ -424,15 +424,15 @@ function CreateItemContent() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="standardCost"
+                      name="purchasePrice"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("standardCostLabel")}</FormLabel>
+                          <FormLabel>{t("purchasePriceLabel")}</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               step="0.01"
-                              placeholder={t("standardCostPlaceholder")}
+                              placeholder={t("purchasePricePlaceholder")}
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />

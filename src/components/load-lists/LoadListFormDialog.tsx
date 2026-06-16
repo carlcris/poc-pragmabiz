@@ -73,12 +73,11 @@ type LoadListCostSource = {
   importCost?: number | null;
   importCurrency?: string | null;
   purchasePrice?: number | null;
-  standardCost?: number | null;
   listPrice?: number | null;
 };
 
 const getDefaultLoadListUnitCost = (item?: LoadListCostSource | null) =>
-  item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
+  item?.importCost ?? item?.purchasePrice ?? item?.listPrice ?? 0;
 
 const normalizeCurrencyCode = (value?: string | null) => {
   if (!value) return null;

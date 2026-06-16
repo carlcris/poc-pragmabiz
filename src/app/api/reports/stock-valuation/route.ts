@@ -14,7 +14,6 @@ type ItemWarehouseRow = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
-        cost_price?: number | string | null;
         purchase_price?: number | string | null;
         category?:
           | {
@@ -33,7 +32,6 @@ type ItemWarehouseRow = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
-        cost_price?: number | string | null;
         purchase_price?: number | string | null;
         category?: { name: string | null } | { name: string | null }[] | null;
         uom?: { code: string | null } | { code: string | null }[] | null;
@@ -140,7 +138,6 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name,
           category_id,
-          cost_price,
           purchase_price,
           category:item_categories(id, name),
           uom:units_of_measure(id, code, name)
@@ -257,11 +254,7 @@ export async function GET(request: NextRequest) {
 
       if (!balancesMap.has(key)) {
         const currentStock = parseFloat(String(entry.current_stock || 0));
-        const fallbackRate = Math.max(
-          0,
-          Number(item?.cost_price ?? 0),
-          Number(item?.purchase_price ?? 0)
-        );
+        const fallbackRate = Math.max(0, Number(item?.purchase_price ?? 0));
         const valuationRate = valuationRates.get(key) || fallbackRate;
         const stockValue = currentStock * valuationRate;
 

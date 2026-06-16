@@ -32,7 +32,6 @@ type StockAgingRowSource = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
-        cost_price: number | string | null;
         purchase_price: number | string | null;
         category?:
           | {
@@ -48,7 +47,6 @@ type StockAgingRowSource = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
-        cost_price: number | string | null;
         purchase_price: number | string | null;
         category?:
           | {
@@ -176,7 +174,6 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name,
           category_id,
-          cost_price,
           purchase_price,
           category:item_categories(id, name)
         ),
@@ -268,7 +265,7 @@ export async function GET(request: NextRequest) {
         const receivedAt = batch?.received_at || null;
         const ageDays = ageInDays(receivedAt);
         const resolvedAgeBucket = ageBucketOf(ageDays);
-        const unitCost = Math.max(0, toNumber(item?.cost_price), toNumber(item?.purchase_price));
+        const unitCost = Math.max(0, toNumber(item?.purchase_price));
 
         return {
           id: row.id,

@@ -29,7 +29,7 @@ type TemplateWithLines = {
 
 type ItemCostRow = {
   id: string;
-  cost_price: number | string | null;
+  purchase_price: number | string | null;
 };
 
 // GET /api/transformations/orders - List transformation orders
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
 
     const { data: inputItems, error: itemsError } = await supabase
       .from("items")
-      .select("id, cost_price")
+      .select("id, purchase_price")
       .in("id", inputItemIds);
 
     if (itemsError) {
@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
     const itemCostMap = new Map(
       ((inputItems || []) as ItemCostRow[]).map((item) => [
         item.id,
-        parseFloat(String(item.cost_price ?? 0)),
+        parseFloat(String(item.purchase_price ?? 0)),
       ])
     );
 

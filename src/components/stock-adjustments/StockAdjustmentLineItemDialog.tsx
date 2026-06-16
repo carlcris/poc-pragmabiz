@@ -148,7 +148,7 @@ export function StockAdjustmentLineItemDialog({
       form.setValue("itemName", selectedItem.name);
       form.setValue("uomId", selectedItem.uomId);
       setUomLabel(selectedItem.uom || "");
-      form.setValue("unitCost", selectedItem.standardCost);
+      form.setValue("unitCost", selectedItem.purchasePrice);
 
       // Fetch current stock quantity if warehouse is selected
       if (warehouseId && onItemSelect) {

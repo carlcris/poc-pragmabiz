@@ -1919,7 +1919,7 @@ export type TranslationKeys = {
     unitOfMeasureLabel: string;
     selectUom: string;
     pricingInformation: string;
-    standardCostLabel: string;
+    purchasePriceLabel: string;
     importCostLabel: string;
     importCurrencyLabel: string;
     importCostDescription: string;
@@ -2010,7 +2010,7 @@ export type TranslationKeys = {
     itemNamePlaceholder: string;
     chineseNamePlaceholder: string;
     descriptionPlaceholder: string;
-    standardCostPlaceholder: string;
+    purchasePricePlaceholder: string;
     importCostPlaceholder: string;
     listPricePlaceholder: string;
     reorderLevelPlaceholder: string;
@@ -2032,7 +2032,7 @@ export type TranslationKeys = {
     descriptionMax: string;
     uomRequired: string;
     categoryRequired: string;
-    standardCostMin: string;
+    purchasePriceMin: string;
     importCostMin: string;
     importCurrencyRequired: string;
     listPriceMin: string;
@@ -4683,7 +4683,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       unitOfMeasureLabel: "Unit of Measure *",
       selectUom: "Select UOM",
       pricingInformation: "Pricing Information",
-      standardCostLabel: "Unit Cost",
+      purchasePriceLabel: "Purchase Price",
       importCostLabel: "Import Cost",
       importCurrencyLabel: "Import Currency",
       importCostDescription: "Optional purchasing cost in the supplier/import currency.",
@@ -4778,7 +4778,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemNamePlaceholder: "Enter item name",
       chineseNamePlaceholder: "Optional Chinese name",
       descriptionPlaceholder: "Enter description",
-      standardCostPlaceholder: "0.00",
+      purchasePricePlaceholder: "0.00",
       importCostPlaceholder: "0.00",
       listPricePlaceholder: "0.00",
       reorderLevelPlaceholder: "0",
@@ -4800,7 +4800,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       descriptionMax: "Description must be less than 1000 characters",
       uomRequired: "Unit of measure is required",
       categoryRequired: "Category is required",
-      standardCostMin: "Standard cost must be 0 or greater",
+      purchasePriceMin: "Purchase price must be 0 or greater",
       importCostMin: "Import cost must be 0 or greater",
       importCurrencyRequired: "Import currency is required when import cost is provided",
       listPriceMin: "List price must be 0 or greater",
@@ -9898,7 +9898,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       unitOfMeasureLabel: "计量单位 *",
       selectUom: "选择计量单位",
       pricingInformation: "价格信息",
-      standardCostLabel: "单位成本",
+      purchasePriceLabel: "采购价",
       importCostLabel: "进口成本",
       importCurrencyLabel: "进口币种",
       importCostDescription: "可选的供应商或进口币种采购成本。",
@@ -9989,7 +9989,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemNamePlaceholder: "输入商品名称",
       chineseNamePlaceholder: "可选中文名称",
       descriptionPlaceholder: "输入描述",
-      standardCostPlaceholder: "0.00",
+      purchasePricePlaceholder: "0.00",
       importCostPlaceholder: "0.00",
       listPricePlaceholder: "0.00",
       reorderLevelPlaceholder: "0",
@@ -10011,7 +10011,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       descriptionMax: "描述不能超过1000个字符",
       uomRequired: "计量单位为必填项",
       categoryRequired: "分类为必填项",
-      standardCostMin: "标准成本必须大于或等于0",
+      purchasePriceMin: "采购价必须大于或等于0",
       importCostMin: "进口成本必须大于或等于0",
       importCurrencyRequired: "填写进口成本时必须选择进口币种",
       listPriceMin: "标价必须大于或等于0",

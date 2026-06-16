@@ -8,7 +8,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     await requirePermission(RESOURCES.SUPPLIERS, "view");
     const { id } = await params;
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -31,17 +31,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
     // Fetch supplier
     const { data: supplier, error } = await supabase
       .from("suppliers")
       .select("*")
       .eq("id", id)
       .eq("company_id", userData.company_id)
-      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -98,7 +93,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   try {
     await requirePermission(RESOURCES.SUPPLIERS, "edit");
     const { id } = await params;
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU();
     const body = await request.json();
 
     // Check authentication
@@ -122,17 +117,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
     // Check if supplier exists
     const { data: existingSupplier, error: fetchError } = await supabase
       .from("suppliers")
       .select("id, status")
       .eq("id", id)
       .eq("company_id", userData.company_id)
-      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -176,7 +166,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       })
       .eq("id", id)
       .eq("company_id", userData.company_id)
-      .eq("business_unit_id", currentBusinessUnitId)
       .select()
       .single();
 
@@ -205,7 +194,7 @@ export async function DELETE(
   try {
     await requirePermission(RESOURCES.SUPPLIERS, "delete");
     const { id } = await params;
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -228,17 +217,12 @@ export async function DELETE(
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    if (!currentBusinessUnitId) {
-      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
-    }
-
     // Check if supplier exists
     const { data: supplier, error: fetchError } = await supabase
       .from("suppliers")
       .select("id, supplier_code, supplier_name, status")
       .eq("id", id)
       .eq("company_id", userData.company_id)
-      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -277,8 +261,7 @@ export async function DELETE(
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .eq("company_id", userData.company_id)
-      .eq("business_unit_id", currentBusinessUnitId);
+      .eq("company_id", userData.company_id);
 
     if (deleteError) {
       return NextResponse.json({ error: "Failed to delete supplier" }, { status: 500 });

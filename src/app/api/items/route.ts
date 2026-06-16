@@ -37,8 +37,7 @@ export interface ItemWithStock {
   status: "normal" | "low_stock" | "out_of_stock" | "overstock" | "discontinued";
   uom: string;
   uomId: string;
-  standardCost: number;
-  purchasePrice?: number;
+  purchasePrice: number;
   importCost?: number | null;
   importCurrency?: string | null;
   listPrice: number;
@@ -59,7 +58,6 @@ type ItemsRpcRow = {
   category_name: string | null;
   uom_id: string | null;
   uom_code: string | null;
-  cost_price: number;
   purchase_price: number;
   import_cost: number | null;
   import_currency: string | null;
@@ -100,7 +98,6 @@ type DbItem = {
   dimensions: Item["dimensions"] | null;
   item_type: string;
   uom_id: string;
-  cost_price: number | string | null;
   purchase_price: number | string | null;
   import_cost: number | string | null;
   import_currency: string | null;
@@ -353,7 +350,6 @@ const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     uom: uom?.code || "",
     uomId: dbItem.uom_id,
     category: category?.name || "",
-    standardCost: Number(dbItem.cost_price) || 0,
     purchasePrice: Number(dbItem.purchase_price) || 0,
     importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
     importCurrency: dbItem.import_currency,
@@ -588,7 +584,6 @@ export async function GET(request: NextRequest) {
       status: row.status,
       uom: row.uom_code || "",
       uomId: row.uom_id || "",
-      standardCost: row.cost_price,
       purchasePrice: row.purchase_price,
       importCost: row.import_cost == null ? null : Number(row.import_cost),
       importCurrency: row.import_currency,
@@ -740,9 +735,8 @@ export async function POST(request: NextRequest) {
       item_type: body.itemType,
       uom_id: uomData.id,
       category_id: categoryId,
-      cost_price: body.standardCost?.toString(),
       sales_price: body.listPrice?.toString(),
-      purchase_price: body.standardCost?.toString(),
+      purchase_price: body.purchasePrice?.toString(),
       import_cost: importCost,
       import_currency: importCost === null ? null : importCurrency,
       image_url: body.imageUrl || null,

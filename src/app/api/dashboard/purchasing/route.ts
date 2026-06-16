@@ -257,7 +257,6 @@ export async function GET(request: NextRequest) {
           } | null;
         } | null;
         items?: {
-          cost_price?: number | null;
           purchase_price?: number | null;
         } | null;
       };
@@ -280,7 +279,6 @@ export async function GET(request: NextRequest) {
             )
           ),
           items!inner(
-            cost_price,
             purchase_price
           )
         `
@@ -304,7 +302,7 @@ export async function GET(request: NextRequest) {
 
         // Calculate total value
         const totalValue = rows.reduce((sum, item) => {
-          const unitCost = item.items?.cost_price ?? item.items?.purchase_price ?? 0;
+          const unitCost = item.items?.purchase_price ?? 0;
           const damagedQty = item.qty || 0;
           return sum + unitCost * damagedQty;
         }, 0);
@@ -326,7 +324,7 @@ export async function GET(request: NextRequest) {
               value: 0,
             };
 
-            const unitCost = item.items?.cost_price ?? item.items?.purchase_price ?? 0;
+            const unitCost = item.items?.purchase_price ?? 0;
             const damagedQty = item.qty || 0;
             existing.count += damagedQty;
             existing.value += unitCost * damagedQty;

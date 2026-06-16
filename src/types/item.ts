@@ -42,8 +42,7 @@ export type Item = {
   uom: string;
   uomId: string;
   category: string;
-  standardCost: number;
-  purchasePrice?: number;
+  purchasePrice: number;
   importCost?: number | null;
   importCurrency?: string | null;
   listPrice: number;
@@ -61,8 +60,8 @@ export type Item = {
   updatedAt: string;
 };
 
-export type ItemDetail = Omit<Item, "standardCost" | "importCost" | "importCurrency" | "listPrice"> & {
-  standardCost: number | null;
+export type ItemDetail = Omit<Item, "purchasePrice" | "importCost" | "importCurrency" | "listPrice"> & {
+  purchasePrice: number | null;
   importCost: number | null;
   importCurrency: string | null;
   listPrice: number | null;
@@ -78,8 +77,7 @@ export type CreateItemRequest = {
   itemType: ItemType;
   uom: string;
   category: string;
-  standardCost: number;
-  purchasePrice?: number;
+  purchasePrice: number;
   importCost?: number | null;
   importCurrency?: string | null;
   listPrice: number;
@@ -97,7 +95,6 @@ export type UpdateItemRequest = {
   itemType?: ItemType;
   uom?: string;
   category?: string;
-  standardCost?: number;
   purchasePrice?: number;
   importCost?: number | null;
   importCurrency?: string | null;

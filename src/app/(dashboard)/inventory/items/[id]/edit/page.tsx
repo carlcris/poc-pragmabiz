@@ -112,7 +112,7 @@ function EditItemContent({ params }: EditItemPageProps) {
       itemType: "raw_material",
       uom: "",
       category: "",
-      standardCost: 0,
+      purchasePrice: 0,
       importCost: null,
       importCurrency: null,
       listPrice: 0,
@@ -139,7 +139,7 @@ function EditItemContent({ params }: EditItemPageProps) {
         itemType: item.itemType,
         uom: item.uom,
         category: item.category,
-        standardCost: item.standardCost ?? 0,
+        purchasePrice: item.purchasePrice ?? 0,
         importCost: item.importCost ?? null,
         importCurrency: item.importCurrency ?? null,
         listPrice: item.listPrice ?? 0,
@@ -155,7 +155,7 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   const onSubmit = async (values: ItemFormInput) => {
     try {
-      const { code, standardCost, importCost, importCurrency, listPrice, ...updateData } = values;
+      const { code, purchasePrice, importCost, importCurrency, listPrice, ...updateData } = values;
       void code; // Code cannot be changed
 
       await updateItem.mutateAsync({
@@ -164,7 +164,7 @@ function EditItemContent({ params }: EditItemPageProps) {
           ...updateData,
           ...(canViewPricingDetails
             ? {
-                standardCost: standardCost ?? 0,
+                purchasePrice: purchasePrice ?? 0,
                 importCost: importCost ?? null,
                 importCurrency: importCost == null ? null : importCurrency,
                 listPrice: listPrice ?? 0,
@@ -559,15 +559,15 @@ function EditItemContent({ params }: EditItemPageProps) {
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="standardCost"
+                        name="purchasePrice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>{t("standardCostLabel")}</FormLabel>
+                            <FormLabel>{t("purchasePriceLabel")}</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
-                                placeholder={t("standardCostPlaceholder")}
+                                placeholder={t("purchasePricePlaceholder")}
                                 {...field}
                                 onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               />

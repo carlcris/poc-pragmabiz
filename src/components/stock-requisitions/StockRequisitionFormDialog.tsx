@@ -53,13 +53,11 @@ type RequisitionCostSource = {
   importCost?: number | null;
   importCurrency?: string | null;
   purchasePrice?: number | null;
-  standardCost?: number | null;
   listPrice?: number | null;
 };
 
 const getDefaultRequisitionUnitCost = (item: RequisitionCostSource | null | undefined): number => {
-  const cost =
-    item?.importCost ?? item?.purchasePrice ?? item?.standardCost ?? item?.listPrice ?? 0;
+  const cost = item?.importCost ?? item?.purchasePrice ?? item?.listPrice ?? 0;
   const parsed = Number(cost);
   return Number.isFinite(parsed) ? parsed : 0;
 };

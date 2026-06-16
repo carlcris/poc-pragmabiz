@@ -8,7 +8,7 @@ type ItemRow = {
   item_name: string | null;
   description: string | null;
   sales_price: number | string | null;
-  cost_price: number | string | null;
+  purchase_price: number | string | null;
   category_id: string | null;
   uom_id: string | null;
 };
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           item_name,
           description,
           sales_price,
-          cost_price,
+          purchase_price,
           category_id,
           uom_id
         )
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         currentStock: Number(stock.current_stock) || 0,
         availableStock: Number(stock.available_stock) || 0,
         unitPrice: Number(item?.sales_price) || 0,
-        unitCost: Number(item?.cost_price) || 0,
+        unitCost: Number(item?.purchase_price) || 0,
         reorderPoint: Number(stock.reorder_level) || 0,
         categoryId: item?.category_id,
         categoryName: null,

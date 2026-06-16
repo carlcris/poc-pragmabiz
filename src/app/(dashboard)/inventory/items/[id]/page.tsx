@@ -583,10 +583,10 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                 <CardContent className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-muted-foreground">
-                      {t("standardCostLabel")}
+                      {t("purchasePriceLabel")}
                     </span>
                     <span className="text-lg font-bold">
-                      ₱{item.standardCost != null ? item.standardCost.toFixed(2) : "0.00"}
+                      ₱{item.purchasePrice != null ? item.purchasePrice.toFixed(2) : "0.00"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -607,13 +607,13 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       </span>
                     </div>
                   ) : null}
-                  {item.standardCost != null && item.listPrice != null && item.standardCost > 0 && (
+                  {item.purchasePrice != null && item.listPrice != null && item.purchasePrice > 0 && (
                     <div className="flex items-center justify-between border-t pt-2">
                       <span className="text-sm font-medium text-muted-foreground">
                         {t("profitMarginLabel")}
                       </span>
                       <span className="text-lg font-bold text-emerald-600 dark:text-emerald-500">
-                        {(((item.listPrice - item.standardCost) / item.standardCost) * 100).toFixed(
+                        {(((item.listPrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(
                           1
                         )}
                         %

@@ -26,7 +26,7 @@ type DbItem = {
   category_id: string | null;
   item_type: string;
   uom_id: string;
-  cost_price: number | string | null;
+  purchase_price: number | string | null;
   import_cost: number | string | null;
   import_currency: string | null;
   sales_price: number | string | null;
@@ -195,7 +195,7 @@ function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     uom: dbItem.unit_of_measure?.code || "",
     uomId: dbItem.uom_id,
     category: dbItem.item_category?.name || "",
-    standardCost: Number(dbItem.cost_price) || 0,
+    purchasePrice: Number(dbItem.purchase_price) || 0,
     importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
     importCurrency: dbItem.import_currency,
     listPrice: Number(dbItem.sales_price) || 0,
@@ -220,7 +220,7 @@ const maskItemPricingDetails = (item: Item, canViewPricingDetails: boolean): Ite
 
   return {
     ...item,
-    standardCost: null,
+    purchasePrice: null,
     importCost: null,
     importCurrency: null,
     listPrice: null,
@@ -441,9 +441,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.chineseName !== undefined) updateData.item_name_cn = body.chineseName;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.itemType !== undefined) updateData.item_type = body.itemType;
-    if (body.standardCost !== undefined) {
-      updateData.cost_price = body.standardCost.toString();
-      updateData.purchase_price = body.standardCost.toString();
+    if (body.purchasePrice !== undefined) {
+      updateData.purchase_price = body.purchasePrice.toString();
     }
     if (body.listPrice !== undefined) updateData.sales_price = body.listPrice.toString();
     if (nextImportCost !== undefined) {

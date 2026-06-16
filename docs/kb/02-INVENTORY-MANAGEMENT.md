@@ -416,6 +416,8 @@ List all items with pagination and filtering.
 
 **Permissions**: `view` on `items`
 
+**Cost Contract**: Item API request and response payloads use `purchasePrice`.
+
 **Query Parameters**:
 - `page` - Page number (default: 1)
 - `limit` - Items per page (default: 20)

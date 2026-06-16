@@ -128,7 +128,7 @@ export default function ReorderManagementPage() {
         itemCode: item.code,
         itemName: item.name,
         quantity,
-        rate: item.standardCost || item.listPrice || 0,
+        rate: item.purchasePrice || item.listPrice || 0,
         uomId: item.uomId,
         discountPercent: 0,
         taxPercent: 0,

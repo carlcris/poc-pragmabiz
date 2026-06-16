@@ -368,12 +368,12 @@ export async function executeTransformation(
       // Get item cost
       const { data: itemData } = await supabase
         .from("items")
-        .select("cost_price, uom_id")
+        .select("purchase_price, uom_id")
         .eq("id", inputLine.item_id)
         .single();
 
       const currentStock = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
-      const unitCost = itemData?.cost_price ? parseFloat(String(itemData.cost_price)) : 0;
+      const unitCost = itemData?.purchase_price ? parseFloat(String(itemData.purchase_price)) : 0;
       const itemUomId = itemData?.uom_id ?? null;
 
       const newStock = currentStock - resolvedInput.quantity;

@@ -156,7 +156,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           {
             itemId,
             quantity,
-            unitCost: item?.standardCost ?? 0,
+            unitCost: item?.purchasePrice ?? 0,
           },
         ],
       });

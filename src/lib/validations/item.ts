@@ -12,7 +12,7 @@ type ItemValidationKey =
   | "descriptionMax"
   | "uomRequired"
   | "categoryRequired"
-  | "standardCostMin"
+  | "purchasePriceMin"
   | "importCostMin"
   | "importCurrencyRequired"
   | "listPriceMin"
@@ -43,7 +43,7 @@ const createItemFormObjectSchema = (t: ItemValidationTranslator) =>
     itemType: itemTypeEnum,
     uom: z.string().min(1, t("uomRequired")),
     category: z.string().min(1, t("categoryRequired")),
-    standardCost: z.number().min(0, t("standardCostMin")).optional(),
+    purchasePrice: z.number().min(0, t("purchasePriceMin")).optional(),
     importCost: z.number().min(0, t("importCostMin")).optional().nullable(),
     importCurrency: z.string().trim().length(3).optional().nullable(),
     listPrice: z.number().min(0, t("listPriceMin")),

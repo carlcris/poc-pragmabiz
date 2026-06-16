@@ -3288,7 +3288,6 @@ export type Database = {
         Row: {
           category_id: string | null
           company_id: string
-          cost_price: number | null
           created_at: string
           created_by: string | null
           custom_fields: Json | null
@@ -3320,7 +3319,6 @@ export type Database = {
         Insert: {
           category_id?: string | null
           company_id: string
-          cost_price?: number | null
           created_at?: string
           created_by?: string | null
           custom_fields?: Json | null
@@ -3352,7 +3350,6 @@ export type Database = {
         Update: {
           category_id?: string | null
           company_id?: string
-          cost_price?: number | null
           created_at?: string
           created_by?: string | null
           custom_fields?: Json | null
@@ -8482,7 +8479,6 @@ export type Database = {
           billing_country: string
           billing_postal_code: string
           billing_state: string
-          business_unit_id: string | null
           company_id: string
           contact_person: string
           created_at: string
@@ -8523,7 +8519,6 @@ export type Database = {
           billing_country: string
           billing_postal_code: string
           billing_state: string
-          business_unit_id?: string | null
           company_id: string
           contact_person: string
           created_at?: string
@@ -8564,7 +8559,6 @@ export type Database = {
           billing_country?: string
           billing_postal_code?: string
           billing_state?: string
-          business_unit_id?: string | null
           company_id?: string
           contact_person?: string
           created_at?: string
@@ -8596,13 +8590,6 @@ export type Database = {
           website?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "suppliers_business_unit_id_fkey"
-            columns: ["business_unit_id"]
-            isOneToOne: false
-            referencedRelation: "business_units"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "suppliers_company_id_fkey"
             columns: ["company_id"]
@@ -10233,6 +10220,15 @@ export type Database = {
         Args: { p_job_order_id: string }
         Returns: string
       }
+      complete_pick_list_transaction: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_pick_rows?: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
       confirm_sales_quotation_transaction:
         | {
             Args: {
@@ -10260,28 +10256,6 @@ export type Database = {
         Returns: {
           job_order_code: string
           job_order_id: string
-        }[]
-      }
-      create_item_with_packages: {
-        Args: {
-          p_additional_packages?: Json
-          p_base_package_name?: string
-          p_base_package_type?: string
-          p_base_uom_id?: string
-          p_company_id: string
-          p_item_code: string
-          p_item_description?: string
-          p_item_name: string
-          p_item_name_cn?: string
-          p_item_type?: string
-          p_list_price?: number
-          p_standard_cost?: number
-          p_user_id: string
-        }
-        Returns: {
-          base_package_id: string
-          item_id: string
-          message: string
         }[]
       }
       create_manufacturing_order_from_frame_job_order_transaction: {
@@ -10488,7 +10462,6 @@ export type Database = {
           available: number
           category_id: string
           category_name: string
-          cost_price: number
           custom_fields: Json
           estimated_arrival_date: string
           id: string
