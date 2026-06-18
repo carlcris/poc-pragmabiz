@@ -17,6 +17,7 @@ type DbStockAdjustmentItem = {
   id: string;
   adjustment_id: string;
   item_id: string;
+  item_batch_location_id: string | null;
   item_code: string | null;
   item_name: string | null;
   current_qty: number | string | null;
@@ -33,6 +34,7 @@ type DbStockAdjustmentItem = {
 
 type StockAdjustmentItemInput = {
   itemId: string;
+  itemBatchLocationId: string;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -58,8 +60,37 @@ type ItemRow = {
 
 type UomRow = {
   id: string;
-  uom_name: string | null;
+  code: string | null;
 };
+
+type BatchLocationRow = {
+  id: string;
+  batch_location_sku: string | null;
+  location_id: string;
+  item_batch:
+    | {
+        batch_code: string | null;
+        received_at: string | null;
+      }
+    | {
+        batch_code: string | null;
+        received_at: string | null;
+      }[]
+    | null;
+  warehouse_location:
+    | {
+        code: string | null;
+        name: string | null;
+      }
+    | {
+        code: string | null;
+        name: string | null;
+      }[]
+    | null;
+};
+
+const toOne = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/stock-adjustments/[id] - Get single stock adjustment
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -135,6 +166,39 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           .single()
       : null;
 
+    const typedItems = (items as DbStockAdjustmentItem[] | null) || [];
+    const batchLocationIds = Array.from(
+      new Set(
+        typedItems
+          .map((item) => item.item_batch_location_id)
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+    const { data: batchLocationsData } =
+      batchLocationIds.length > 0
+        ? await supabase
+            .from("item_batch_locations")
+            .select(
+              `
+              id,
+              batch_location_sku,
+              location_id,
+              item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
+                batch_code,
+                received_at
+              ),
+              warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(
+                code,
+                name
+              )
+            `
+            )
+            .in("id", batchLocationIds)
+        : { data: [] };
+    const batchLocationsMap = new Map(
+      (batchLocationsData as BatchLocationRow[] | null)?.map((row) => [row.id, row]) || []
+    );
+
     return NextResponse.json({
       id: adjustment.id,
       companyId: adjustment.company_id,
@@ -170,23 +234,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       createdAt: adjustment.created_at,
       updatedAt: adjustment.updated_at,
       items:
-        (items as DbStockAdjustmentItem[] | null)?.map((item) => ({
-          id: item.id,
-          adjustmentId: item.adjustment_id,
-          itemId: item.item_id,
-          itemCode: item.item_code,
-          itemName: item.item_name,
-          currentQty: parseFloat(String(item.current_qty ?? 0)),
-          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
-          difference: parseFloat(String(item.difference ?? 0)),
-          unitCost: parseFloat(String(item.unit_cost ?? 0)),
-          totalCost: parseFloat(String(item.total_cost ?? 0)),
-          uomId: item.uom_id,
-          uomName: item.uom_name,
-          reason: item.reason,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at,
-        })) || [],
+        typedItems.map((item) => {
+          const batchLocation = item.item_batch_location_id
+            ? batchLocationsMap.get(item.item_batch_location_id)
+            : null;
+          const itemBatch = toOne(batchLocation?.item_batch);
+          const batchWarehouseLocation = toOne(batchLocation?.warehouse_location);
+
+          return {
+            id: item.id,
+            adjustmentId: item.adjustment_id,
+            itemId: item.item_id,
+            itemBatchLocationId: item.item_batch_location_id,
+            batchLocationSku: batchLocation?.batch_location_sku || null,
+            batchCode: itemBatch?.batch_code || null,
+            batchReceivedAt: itemBatch?.received_at || null,
+            batchWarehouseLocationId: batchLocation?.location_id || null,
+            batchLocationCode: batchWarehouseLocation?.code || null,
+            batchLocationName: batchWarehouseLocation?.name || null,
+            itemCode: item.item_code,
+            itemName: item.item_name,
+            currentQty: parseFloat(String(item.current_qty ?? 0)),
+            adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+            difference: parseFloat(String(item.difference ?? 0)),
+            unitCost: parseFloat(String(item.unit_cost ?? 0)),
+            totalCost: parseFloat(String(item.total_cost ?? 0)),
+            uomId: item.uom_id,
+            uomName: item.uom_name,
+            reason: item.reason,
+            createdAt: item.created_at,
+            updatedAt: item.updated_at,
+          };
+        }),
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -245,6 +324,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // Update items if provided
     if (body.items) {
+      if (body.items.some((item) => !item.itemBatchLocationId)) {
+        return NextResponse.json(
+          { error: "Batch selection is required for every adjustment item" },
+          { status: 400 }
+        );
+      }
+
       // Delete existing items
       await supabase.from("stock_adjustment_items").delete().eq("adjustment_id", id);
 
@@ -262,8 +348,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // Get UOM details
       const uomIds = body.items.map((item) => item.uomId);
       const { data: uomsData } = await supabase
-        .from("uoms")
-        .select("id, uom_name")
+        .from("units_of_measure")
+        .select("id, code")
         .in("id", uomIds);
 
       const uomsMap = new Map((uomsData as UomRow[] | null)?.map((uom) => [uom.id, uom]) || []);
@@ -279,6 +365,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           company_id: companyId,
           adjustment_id: id,
           item_id: item.itemId,
+          item_batch_location_id: item.itemBatchLocationId,
           item_code: itemData?.item_code || "",
           item_name: itemData?.item_name || "",
           current_qty: item.currentQty,
@@ -287,7 +374,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           unit_cost: item.unitCost,
           total_cost: totalCost,
           uom_id: item.uomId,
-          uom_name: uomData?.uom_name || "",
+          uom_name: uomData?.code || "",
           reason: item.reason || null,
           created_by: userId,
           updated_by: userId,
@@ -312,7 +399,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .eq("id", id);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error("Error updating stock adjustment:", updateError);
+      return NextResponse.json({ error: "Failed to update stock adjustment" }, { status: 500 });
     }
 
     // Fetch updated adjustment
@@ -359,6 +447,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           id: item.id,
           adjustmentId: item.adjustment_id,
           itemId: item.item_id,
+          itemBatchLocationId: item.item_batch_location_id,
           itemCode: item.item_code,
           itemName: item.item_name,
           currentQty: parseFloat(String(item.current_qty ?? 0)),

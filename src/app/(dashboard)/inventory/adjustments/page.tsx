@@ -15,7 +15,10 @@ import {
   XCircle,
   Calculator,
   MoreVertical,
+  Eye,
+  Printer,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   useStockAdjustments,
   useCreateStockAdjustment,
@@ -60,16 +63,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import type {
   StockAdjustment,
+  StockAdjustmentItem,
   StockAdjustmentType,
   StockAdjustmentStatus,
 } from "@/types/stock-adjustment";
 import { useAuthStore } from "@/stores/authStore";
 import { useCurrency } from "@/hooks/useCurrency";
-import { supabase } from "@/lib/supabase/client";
+import type { BarcodeData } from "@/lib/barcode";
 import type { StockAdjustmentFormSubmitPayload } from "@/components/stock-adjustments/StockAdjustmentFormDialog";
 
 const StockAdjustmentFormDialog = dynamic(
@@ -82,6 +94,7 @@ const StockAdjustmentFormDialog = dynamic(
 
 export default function StockAdjustmentsPage() {
   const t = useTranslations("stockAdjustmentsPage");
+  const tForm = useTranslations("stockAdjustmentForm");
   const tCommon = useTranslations("common");
   const locale = useLocale();
   const [searchInput, setSearchInput] = useState("");
@@ -96,6 +109,8 @@ export default function StockAdjustmentsPage() {
   const [adjustmentToDelete, setAdjustmentToDelete] = useState<StockAdjustment | null>(null);
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [adjustmentToPost, setAdjustmentToPost] = useState<StockAdjustment | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [adjustmentToView, setAdjustmentToView] = useState<StockAdjustment | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const companyId = user?.companyId || "";
@@ -185,6 +200,12 @@ export default function StockAdjustmentsPage() {
     });
   };
 
+  const formatQuantity = (value: number) =>
+    value.toLocaleString(locale, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
   const handleCreateAdjustment = () => {
     setSelectedAdjustment(null);
     setDialogOpen(true);
@@ -193,6 +214,48 @@ export default function StockAdjustmentsPage() {
   const handleEditAdjustment = (adjustment: StockAdjustment) => {
     setSelectedAdjustment(adjustment);
     setDialogOpen(true);
+  };
+
+  const handleViewAdjustment = (adjustment: StockAdjustment) => {
+    setAdjustmentToView(adjustment);
+    setDetailsOpen(true);
+  };
+
+  const handlePrintBatchLabel = async (
+    adjustment: StockAdjustment,
+    item: StockAdjustmentItem
+  ) => {
+    if (!item.itemBatchLocationId || !item.batchLocationSku) {
+      toast.error(tForm("printBatchMissing"));
+      return;
+    }
+
+    const selectedWarehouse = warehouses.find(
+      (warehouse) => warehouse.id === adjustment.warehouseId
+    );
+    const barcodeData: BarcodeData = {
+      boxId: item.itemBatchLocationId,
+      itemId: item.itemId,
+      batchLocationSku: item.batchLocationSku,
+      batchNumber: item.batchCode || item.batchLocationSku,
+      grnNumber: adjustment.adjustmentCode || tForm("stockAdjustmentLabel"),
+      itemCode: item.itemCode || "",
+      itemName: item.itemName || "",
+      boxNumber: 1,
+      qtyPerBox: item.adjustedQty,
+      deliveryDate: item.batchReceivedAt || adjustment.adjustmentDate,
+      warehouseCode: selectedWarehouse?.code || undefined,
+      locationId: item.batchWarehouseLocationId || null,
+      locationCode: item.batchLocationCode || undefined,
+    };
+
+    try {
+      const { printBarcodeLabels } = await import("@/lib/barcode");
+      await printBarcodeLabels([barcodeData]);
+      toast.success(tForm("printBatchSuccess"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : tForm("printBatchError"));
+    }
   };
 
   const handleDeleteAdjustment = (adjustment: StockAdjustment) => {
@@ -221,48 +284,6 @@ export default function StockAdjustmentsPage() {
     setAdjustmentToPost(null);
   };
 
-  const handleFetchStockQty = async (
-    itemId: string,
-    warehouseId: string,
-    locationId?: string
-  ): Promise<number> => {
-    try {
-      if (locationId) {
-        const { data, error } = await supabase
-          .from("item_batch_locations")
-          .select("qty_on_hand")
-          .eq("item_id", itemId)
-          .eq("warehouse_id", warehouseId)
-          .eq("location_id", locationId)
-          .eq("company_id", companyId)
-          .is("deleted_at", null);
-
-        if (error) {
-          return 0;
-        }
-
-        return (data || []).reduce((sum, row) => sum + parseFloat(String(row.qty_on_hand ?? 0)), 0);
-      }
-
-      // Fallback to warehouse-level stock when location is not selected
-      const { data, error } = await supabase
-        .from("item_warehouse")
-        .select("current_stock")
-        .eq("item_id", itemId)
-        .eq("warehouse_id", warehouseId)
-        .eq("company_id", companyId)
-        .maybeSingle();
-
-      if (error) {
-        return 0;
-      }
-
-      return data ? parseFloat(data.current_stock) : 0;
-    } catch {
-      return 0;
-    }
-  };
-
   const handleSaveAdjustment = async (payload: StockAdjustmentFormSubmitPayload) => {
     try {
       const submitData = {
@@ -270,6 +291,7 @@ export default function StockAdjustmentsPage() {
         companyId,
         items: payload.lineItems.map((item) => ({
           itemId: item.itemId,
+          itemBatchLocationId: item.itemBatchLocationId,
           currentQty: item.currentQty,
           adjustedQty: item.adjustedQty,
           unitCost: item.unitCost,
@@ -481,6 +503,15 @@ export default function StockAdjustmentsPage() {
                                   variant="outline"
                                   size="sm"
                                   className="h-8 px-2"
+                                  onClick={() => handleViewAdjustment(adjustment)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  <span>{tCommon("view")}</span>
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2"
                                   onClick={() => handleEditAdjustment(adjustment)}
                                 >
                                   <Pencil className="mr-2 h-4 w-4" />
@@ -518,10 +549,24 @@ export default function StockAdjustmentsPage() {
                                 </DropdownMenu>
                               </>
                             )}
-                            {adjustment.status === "posted" && adjustment.stockTransactionCode && (
-                              <Badge variant="outline" className="text-xs">
-                                {adjustment.stockTransactionCode}
-                              </Badge>
+                            {adjustment.status !== "draft" && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2"
+                                  onClick={() => handleViewAdjustment(adjustment)}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  <span>{tCommon("view")}</span>
+                                </Button>
+                                {adjustment.status === "posted" &&
+                                  adjustment.stockTransactionCode && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {adjustment.stockTransactionCode}
+                                    </Badge>
+                                  )}
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -558,10 +603,201 @@ export default function StockAdjustmentsPage() {
             warehouses={warehouses}
             isSaving={createMutation.isPending || updateMutation.isPending}
             onSave={handleSaveAdjustment}
-            onItemSelect={handleFetchStockQty}
             formatCurrency={formatCurrency}
           />
         )}
+
+        <Dialog
+          open={detailsOpen}
+          onOpenChange={(open) => {
+            setDetailsOpen(open);
+            if (!open) setAdjustmentToView(null);
+          }}
+        >
+          <DialogContent className="max-h-[90vh] max-w-6xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("detailsTitle")}</DialogTitle>
+              <DialogDescription>
+                {adjustmentToView
+                  ? t("detailsDescription", { code: adjustmentToView.adjustmentCode })
+                  : ""}
+              </DialogDescription>
+            </DialogHeader>
+
+            {adjustmentToView && (
+              <div className="space-y-6">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("adjustmentNumber")}
+                    </div>
+                    <div className="mt-1 font-medium">{adjustmentToView.adjustmentCode}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("type")}
+                    </div>
+                    <div className="mt-1">{getTypeLabel(adjustmentToView.adjustmentType)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("date")}
+                    </div>
+                    <div className="mt-1">{formatDate(adjustmentToView.adjustmentDate)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("status")}
+                    </div>
+                    <div className="mt-1">{getStatusBadge(adjustmentToView.status)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("warehouse")}
+                    </div>
+                    <div className="mt-1">{adjustmentToView.warehouseName || t("noLocation")}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("location")}
+                    </div>
+                    <div className="mt-1">
+                      {adjustmentToView.locationCode && adjustmentToView.locationName
+                        ? `${adjustmentToView.locationCode} - ${adjustmentToView.locationName}`
+                        : adjustmentToView.locationCode ||
+                          adjustmentToView.locationName ||
+                          t("noLocation")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("totalValue")}
+                    </div>
+                    <div
+                      className={`mt-1 font-medium ${
+                        adjustmentToView.totalValue >= 0 ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      {formatCurrency(adjustmentToView.totalValue)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("stockTransaction")}
+                    </div>
+                    <div className="mt-1">
+                      {adjustmentToView.stockTransactionCode || t("noLocation")}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase text-muted-foreground">
+                    {t("reason")}
+                  </div>
+                  <p className="text-sm">{adjustmentToView.reason}</p>
+                </div>
+
+                {adjustmentToView.notes && (
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium uppercase text-muted-foreground">
+                      {t("notes")}
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm">{adjustmentToView.notes}</p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold">{t("itemsTitle")}</h3>
+                  <div className="overflow-x-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("item")}</TableHead>
+                          <TableHead>{t("batch")}</TableHead>
+                          <TableHead className="text-right">{t("currentQty")}</TableHead>
+                          <TableHead className="text-right">{t("adjustedQty")}</TableHead>
+                          <TableHead className="text-right">{t("difference")}</TableHead>
+                          <TableHead className="text-right">{t("unitCost")}</TableHead>
+                          <TableHead className="text-right">{t("totalValue")}</TableHead>
+                          <TableHead className="w-[100px]">{t("actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {adjustmentToView.items.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div className="font-medium">{item.itemName}</div>
+                              <div className="text-xs text-muted-foreground">{item.itemCode}</div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                {item.batchCode || item.batchLocationSku || t("noLocation")}
+                              </div>
+                              {item.batchLocationSku && (
+                                <div className="font-mono text-xs text-muted-foreground">
+                                  {item.batchLocationSku}
+                                </div>
+                              )}
+                              {(item.batchLocationCode || item.batchLocationName) && (
+                                <div className="text-xs text-muted-foreground">
+                                  {item.batchLocationCode || item.batchLocationName}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatQuantity(item.currentQty)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatQuantity(item.adjustedQty)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <span
+                                className={
+                                  item.difference > 0
+                                    ? "font-medium text-green-600"
+                                    : item.difference < 0
+                                      ? "font-medium text-red-600"
+                                      : "text-muted-foreground"
+                                }
+                              >
+                                {item.difference > 0 ? "+" : ""}
+                                {formatQuantity(item.difference)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.unitCost)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(item.totalCost)}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                aria-label={tCommon("print")}
+                                onClick={() => void handlePrintBatchLabel(adjustmentToView, item)}
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDetailsOpen(false)}>
+                {tCommon("close")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

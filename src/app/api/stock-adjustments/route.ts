@@ -29,6 +29,7 @@ type DbStockAdjustmentItem = {
   id: string;
   adjustment_id: string;
   item_id: string;
+  item_batch_location_id: string | null;
   item_code: string | null;
   item_name: string | null;
   current_qty: number | string | null;
@@ -45,6 +46,7 @@ type DbStockAdjustmentItem = {
 
 type StockAdjustmentItemInput = {
   itemId: string;
+  itemBatchLocationId: string;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -96,6 +98,32 @@ type UomRow = {
   code: string | null;
 };
 
+type BatchLocationRow = {
+  id: string;
+  batch_location_sku: string | null;
+  location_id: string;
+  item_batch:
+    | {
+        batch_code: string | null;
+        received_at: string | null;
+      }
+    | {
+        batch_code: string | null;
+        received_at: string | null;
+      }[]
+    | null;
+  warehouse_location:
+    | {
+        code: string | null;
+        name: string | null;
+      }
+    | {
+        code: string | null;
+        name: string | null;
+      }[]
+    | null;
+};
+
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
@@ -119,6 +147,9 @@ const normalizeSearch = (value: string | null) => {
   const normalized = value.trim().replace(/[,%]/g, " ");
   return normalized.length > 0 ? normalized : null;
 };
+
+const toOne = <T,>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/stock-adjustments - List stock adjustments
 export async function GET(request: NextRequest) {
@@ -220,7 +251,8 @@ export async function GET(request: NextRequest) {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Error loading stock adjustments:", error);
+      return NextResponse.json({ error: "Failed to load stock adjustments" }, { status: 500 });
     }
 
     // Collect unique IDs for related data
@@ -288,6 +320,38 @@ export async function GET(request: NextRequest) {
             .in("adjustment_id", adjustmentIds)
         : { data: [] };
 
+    const batchLocationIds = Array.from(
+      new Set(
+        ((itemsData as DbStockAdjustmentItem[] | null) || [])
+          .map((item) => item.item_batch_location_id)
+          .filter((value): value is string => Boolean(value))
+      )
+    );
+    const { data: batchLocationsData } =
+      batchLocationIds.length > 0
+        ? await supabase
+            .from("item_batch_locations")
+            .select(
+              `
+              id,
+              batch_location_sku,
+              location_id,
+              item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
+                batch_code,
+                received_at
+              ),
+              warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(
+                code,
+                name
+              )
+            `
+            )
+            .in("id", batchLocationIds)
+        : { data: [] };
+    const batchLocationsMap = new Map(
+      (batchLocationsData as BatchLocationRow[] | null)?.map((row) => [row.id, row]) || []
+    );
+
     // Group items by adjustment
     const itemsByAdjustment = new Map<string, DbStockAdjustmentItem[]>();
     (itemsData as DbStockAdjustmentItem[] | null)?.forEach((item) => {
@@ -350,21 +414,38 @@ export async function GET(request: NextRequest) {
         createdAt: adj.created_at,
         updatedAt: adj.updated_at,
         items: items.map((item) => ({
-          id: item.id,
-          adjustmentId: item.adjustment_id,
-          itemId: item.item_id,
-          itemCode: item.item_code,
-          itemName: item.item_name,
-          currentQty: parseFloat(String(item.current_qty ?? 0)),
-          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
-          difference: parseFloat(String(item.difference ?? 0)),
-          unitCost: parseFloat(String(item.unit_cost ?? 0)),
-          totalCost: parseFloat(String(item.total_cost ?? 0)),
-          uomId: item.uom_id,
-          uomName: item.uom_name,
-          reason: item.reason,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at,
+          ...(() => {
+            const batchLocation = item.item_batch_location_id
+              ? batchLocationsMap.get(item.item_batch_location_id)
+              : null;
+            const itemBatch = toOne(batchLocation?.item_batch);
+            const batchWarehouseLocation = toOne(batchLocation?.warehouse_location);
+
+            return {
+              id: item.id,
+              adjustmentId: item.adjustment_id,
+              itemId: item.item_id,
+              itemBatchLocationId: item.item_batch_location_id,
+              batchLocationSku: batchLocation?.batch_location_sku || null,
+              batchCode: itemBatch?.batch_code || null,
+              batchReceivedAt: itemBatch?.received_at || null,
+              batchWarehouseLocationId: batchLocation?.location_id || null,
+              batchLocationCode: batchWarehouseLocation?.code || null,
+              batchLocationName: batchWarehouseLocation?.name || null,
+              itemCode: item.item_code,
+              itemName: item.item_name,
+              currentQty: parseFloat(String(item.current_qty ?? 0)),
+              adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+              difference: parseFloat(String(item.difference ?? 0)),
+              unitCost: parseFloat(String(item.unit_cost ?? 0)),
+              totalCost: parseFloat(String(item.total_cost ?? 0)),
+              uomId: item.uom_id,
+              uomName: item.uom_name,
+              reason: item.reason,
+              createdAt: item.created_at,
+              updatedAt: item.updated_at,
+            };
+          })(),
         })),
       };
     });
@@ -412,6 +493,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
+    if (body.items.some((item) => !item.itemBatchLocationId)) {
+      return NextResponse.json(
+        { error: "Batch selection is required for every adjustment item" },
+        { status: 400 }
+      );
+    }
+
     // Calculate total value using base quantities
     const totalValue = body.items.reduce((sum, item) => {
       const adjustedQty = Number(item.adjustedQty);
@@ -440,7 +528,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (adjustmentError) {
-      return NextResponse.json({ error: adjustmentError.message }, { status: 500 });
+      console.error("Error creating stock adjustment:", adjustmentError);
+      return NextResponse.json({ error: "Failed to create stock adjustment" }, { status: 500 });
     }
 
     // Get item details for items
@@ -473,6 +562,7 @@ export async function POST(request: NextRequest) {
         company_id: companyId,
         adjustment_id: adjustment.id,
         item_id: item.itemId,
+        item_batch_location_id: item.itemBatchLocationId,
         item_code: itemData?.item_code || "",
         item_name: itemData?.item_name || "",
         current_qty: item.currentQty,
@@ -531,6 +621,7 @@ export async function POST(request: NextRequest) {
           id: item.id,
           adjustmentId: item.adjustment_id,
           itemId: item.item_id,
+          itemBatchLocationId: item.item_batch_location_id,
           itemCode: item.item_code,
           itemName: item.item_name,
           currentQty: parseFloat(String(item.current_qty ?? 0)),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocale, useTranslations } from "next-intl";
@@ -35,14 +36,29 @@ import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
+import { apiClient } from "@/lib/api";
+import type { StockAdjustmentBatchLocation } from "@/types/stock-adjustment";
 
 const createLineItemSchema = (
   tValidation: (
-    key: "itemRequired" | "uomRequired" | "currentQtyMin" | "adjustedQtyMin" | "unitCostMin"
+    key:
+      | "itemRequired"
+      | "batchRequired"
+      | "uomRequired"
+      | "currentQtyMin"
+      | "adjustedQtyMin"
+      | "unitCostMin"
   ) => string
 ) =>
   z.object({
     itemId: z.string().min(1, tValidation("itemRequired")),
+    itemBatchLocationId: z.string().min(1, tValidation("batchRequired")),
+    batchLocationSku: z.string().optional(),
+    batchCode: z.string().optional(),
+    batchReceivedAt: z.string().optional(),
+    batchWarehouseLocationId: z.string().optional(),
+    batchLocationCode: z.string().optional(),
+    batchLocationName: z.string().optional(),
     itemCode: z.string().optional(),
     itemName: z.string().optional(),
     uomId: z.string().min(1, tValidation("uomRequired")),
@@ -64,7 +80,6 @@ interface StockAdjustmentLineItemDialogProps {
   mode?: "add" | "edit";
   warehouseId?: string;
   locationId?: string;
-  onItemSelect?: (itemId: string, warehouseId: string, locationId?: string) => Promise<number>;
 }
 
 export function StockAdjustmentLineItemDialog({
@@ -75,13 +90,14 @@ export function StockAdjustmentLineItemDialog({
   mode = "add",
   warehouseId,
   locationId,
-  onItemSelect,
 }: StockAdjustmentLineItemDialogProps) {
   const t = useTranslations("stockAdjustmentLineItemDialog");
   const tValidation = useTranslations("stockAdjustmentLineItemValidation");
   const locale = useLocale();
   const [itemSearch, setItemSearch] = useState("");
+  const [batchSearch, setBatchSearch] = useState("");
   const debouncedItemSearch = useDebouncedValue(itemSearch.trim());
+  const debouncedBatchSearch = useDebouncedValue(batchSearch.trim());
   const { data: itemsData, isLoading: isItemsLoading } = useItems({
     search: debouncedItemSearch || undefined,
     limit: 5,
@@ -95,6 +111,13 @@ export function StockAdjustmentLineItemDialog({
     resolver: zodResolver(lineItemSchema),
     defaultValues: {
       itemId: "",
+      itemBatchLocationId: "",
+      batchLocationSku: "",
+      batchCode: "",
+      batchReceivedAt: "",
+      batchWarehouseLocationId: "",
+      batchLocationCode: "",
+      batchLocationName: "",
       itemCode: "",
       itemName: "",
       uomId: "",
@@ -113,6 +136,13 @@ export function StockAdjustmentLineItemDialog({
     } else if (open) {
       form.reset({
         itemId: "",
+        itemBatchLocationId: "",
+        batchLocationSku: "",
+        batchCode: "",
+        batchReceivedAt: "",
+        batchWarehouseLocationId: "",
+        batchLocationCode: "",
+        batchLocationName: "",
         itemCode: "",
         itemName: "",
         uomId: "",
@@ -126,6 +156,7 @@ export function StockAdjustmentLineItemDialog({
   }, [open, item, form]);
 
   const watchedItemId = form.watch("itemId");
+  const watchedBatchLocationId = form.watch("itemBatchLocationId");
   const { data: selectedItemResponse } = useItem(watchedItemId);
   const selectedItem =
     items.find((candidate) => candidate.id === watchedItemId) ?? selectedItemResponse?.data ?? null;
@@ -139,24 +170,94 @@ export function StockAdjustmentLineItemDialog({
     setUomLabel(selectedItem?.uom || "");
   }, [watchedItemId, items]);
 
-  const handleItemSelect = async (itemId: string) => {
+  const { data: batchLocationsResponse, isLoading: isBatchLocationsLoading } = useQuery<{
+    data: StockAdjustmentBatchLocation[];
+  }>({
+    queryKey: [
+      "stock-adjustment-batch-locations",
+      watchedItemId,
+      warehouseId,
+      locationId,
+      debouncedBatchSearch,
+    ],
+    queryFn: () =>
+      apiClient.get("/api/inventory/batch-locations", {
+        params: {
+          itemId: watchedItemId,
+          warehouseId,
+          locationId: locationId || undefined,
+          search: debouncedBatchSearch || undefined,
+          limit: 5,
+        },
+      }),
+    enabled: Boolean(watchedItemId && warehouseId),
+  });
+
+  const batchLocations = useMemo(
+    () => batchLocationsResponse?.data || [],
+    [batchLocationsResponse?.data]
+  );
+
+  const selectedBatchLocation =
+    batchLocations.find((candidate) => candidate.id === watchedBatchLocationId) ||
+    (item?.itemBatchLocationId === watchedBatchLocationId
+      ? {
+          id: item.itemBatchLocationId,
+          itemId: item.itemId,
+          warehouseId: warehouseId || "",
+          locationId: "",
+          itemBatchId: "",
+          batchLocationSku: item.batchLocationSku || "",
+          batchCode: item.batchCode || "",
+          receivedAt: item.batchReceivedAt || "",
+          batchWarehouseLocationId: item.batchWarehouseLocationId || "",
+          qtyOnHand: item.currentQty,
+          qtyAvailable: item.currentQty,
+          qtyReserved: 0,
+          locationCode: item.batchLocationCode || null,
+          locationName: item.batchLocationName || null,
+        }
+      : null);
+
+  const handleItemSelect = (itemId: string) => {
     const selectedItem = items.find((i) => i.id === itemId);
     if (selectedItem) {
       setItemSearch("");
+      setBatchSearch("");
       form.setValue("itemId", selectedItem.id);
+      form.setValue("itemBatchLocationId", "");
+      form.setValue("batchLocationSku", "");
+      form.setValue("batchCode", "");
+      form.setValue("batchReceivedAt", "");
+      form.setValue("batchWarehouseLocationId", "");
+      form.setValue("batchLocationCode", "");
+      form.setValue("batchLocationName", "");
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
       form.setValue("uomId", selectedItem.uomId);
       setUomLabel(selectedItem.uom || "");
       form.setValue("unitCost", selectedItem.purchasePrice);
-
-      // Fetch current stock quantity if warehouse is selected
-      if (warehouseId && onItemSelect) {
-        const currentQty = await onItemSelect(itemId, warehouseId, locationId);
-        form.setValue("currentQty", currentQty);
-        // Don't default adjustedQty - user will enter adjustment amount
-      }
+      form.setValue("currentQty", 0);
+      form.setValue("adjustedQty", 0);
+      form.setValue("adjustmentAmount", 0);
     }
+  };
+
+  const handleBatchSelect = (batchLocationId: string) => {
+    const batchLocation = batchLocations.find((candidate) => candidate.id === batchLocationId);
+    if (!batchLocation) return;
+
+    setBatchSearch("");
+    form.setValue("itemBatchLocationId", batchLocation.id);
+    form.setValue("batchLocationSku", batchLocation.batchLocationSku);
+    form.setValue("batchCode", batchLocation.batchCode);
+    form.setValue("batchReceivedAt", batchLocation.receivedAt);
+    form.setValue("batchWarehouseLocationId", batchLocation.locationId);
+    form.setValue("batchLocationCode", batchLocation.locationCode || "");
+    form.setValue("batchLocationName", batchLocation.locationName || "");
+    form.setValue("currentQty", batchLocation.qtyOnHand);
+    form.setValue("adjustedQty", batchLocation.qtyOnHand);
+    form.setValue("adjustmentAmount", 0);
   };
 
   const onSubmit = (data: StockAdjustmentLineItemFormValues) => {
@@ -184,6 +285,7 @@ export function StockAdjustmentLineItemDialog({
   const adjustmentType = form.watch("adjustmentType") || "add";
   const unitCost = form.watch("unitCost") || 0;
   const isItemSelected = Boolean(form.watch("itemId"));
+  const isBatchSelected = Boolean(form.watch("itemBatchLocationId"));
 
   // Calculate adjustment in base units (with sign based on type)
   const absAdjustmentInBaseUnits = adjustmentAmount;
@@ -259,6 +361,69 @@ export function StockAdjustmentLineItemDialog({
                         )}
                       />
                     </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+              <FormField
+                control={form.control}
+                name="itemBatchLocationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700">
+                      {t("batchLabel")} <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <AsyncSearchCombobox
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          handleBatchSelect(value);
+                        }}
+                        searchValue={batchSearch}
+                        onSearchValueChange={setBatchSearch}
+                        options={batchLocations}
+                        selectedOption={selectedBatchLocation}
+                        getOptionValue={(entry) => entry.id}
+                        getOptionLabel={(entry) => entry.batchCode || entry.batchLocationSku}
+                        getOptionSearchValue={(entry) =>
+                          `${entry.batchCode} ${entry.batchLocationSku} ${entry.locationCode || ""}`
+                        }
+                        placeholder={
+                          isItemSelected ? t("chooseBatch") : t("chooseItemBeforeBatch")
+                        }
+                        searchPlaceholder={t("searchByBatchOrQr")}
+                        emptyMessage={t("noBatches")}
+                        loadingMessage={t("loadingBatches")}
+                        isLoading={isBatchLocationsLoading}
+                        disabled={!isItemSelected}
+                        renderOption={(entry, selected) => (
+                          <div className="flex w-full items-start gap-2">
+                            <Check
+                              className={`mt-0.5 h-4 w-4 ${selected ? "opacity-100" : "opacity-0"}`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className="font-medium">{entry.batchCode}</span>
+                              </div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {t("batchOptionMeta", {
+                                  qty: entry.qtyOnHand.toLocaleString(locale, {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  }),
+                                  location:
+                                    entry.locationCode ||
+                                    entry.locationName ||
+                                    t("unassignedLocation"),
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -306,10 +471,10 @@ export function StockAdjustmentLineItemDialog({
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
-                        disabled={!isItemSelected}
+                        disabled={!isBatchSelected}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-11" disabled={!isItemSelected}>
+                          <SelectTrigger className="h-11" disabled={!isBatchSelected}>
                             <SelectValue placeholder={t("selectType")} />
                           </SelectTrigger>
                         </FormControl>
@@ -359,7 +524,7 @@ export function StockAdjustmentLineItemDialog({
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             placeholder={t("quantityPlaceholder")}
                             className="h-11 pr-20 text-right text-base font-semibold"
-                            disabled={!isItemSelected}
+                            disabled={!isBatchSelected}
                           />
                           <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
                             {uomLabel || t("units")}
@@ -412,7 +577,7 @@ export function StockAdjustmentLineItemDialog({
                 <h3 className="text-base font-semibold text-gray-900">{t("summaryStep")}</h3>
               </div>
 
-              <div className={`space-y-3 ${isItemSelected ? "" : "opacity-60"}`}>
+              <div className={`space-y-3 ${isBatchSelected ? "" : "opacity-60"}`}>
                 {/* New Stock Level Card */}
                 <div className="rounded-lg border-2 border-purple-200 bg-purple-50 p-5">
                   <div className="space-y-3">

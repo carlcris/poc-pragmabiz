@@ -7200,6 +7200,7 @@ export type Database = {
           deleted_at: string | null
           difference: number
           id: string
+          item_batch_location_id: string | null
           item_code: string
           item_id: string
           item_name: string
@@ -7221,6 +7222,7 @@ export type Database = {
           deleted_at?: string | null
           difference: number
           id?: string
+          item_batch_location_id?: string | null
           item_code: string
           item_id: string
           item_name: string
@@ -7242,6 +7244,7 @@ export type Database = {
           deleted_at?: string | null
           difference?: number
           id?: string
+          item_batch_location_id?: string | null
           item_code?: string
           item_id?: string
           item_name?: string
@@ -7273,6 +7276,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_adjustment_items_item_batch_location_id_fkey"
+            columns: ["item_batch_location_id"]
+            isOneToOne: false
+            referencedRelation: "item_batch_locations"
             referencedColumns: ["id"]
           },
           {
@@ -10627,6 +10637,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      post_stock_adjustment: {
+        Args: {
+          p_adjustment_id: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_user_id: string
+        }
+        Returns: {
+          adjustment_id: string
+          stock_transaction_code: string
+          stock_transaction_id: string
+        }[]
+      }
       recalculate_sales_order_linked_quotation_statuses: {
         Args: { p_sales_order_id: string }
         Returns: undefined
@@ -11010,4 +11033,3 @@ export const Constants = {
     },
   },
 } as const
-

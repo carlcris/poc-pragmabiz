@@ -75,7 +75,7 @@ supabase db reset
 
 This will:
 1. Reset the database
-2. Run all 194 migrations
+2. Run all 208 migrations
 3. Seed the database with test data (from `supabase/seed.sql`)
 
 ### 6. Set Up Environment Variables
@@ -158,7 +158,7 @@ Start with these documents in order:
 │   ├── lib/                  # Utilities and helpers
 │   └── ...
 ├── supabase/                 # Database & backend
-│   ├── migrations/           # 194 SQL migrations
+│   ├── migrations/           # 208 SQL migrations
 │   ├── functions/            # Edge functions
 │   └── seed.sql              # Database seed data
 └── docs/                     # This documentation

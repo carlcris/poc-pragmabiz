@@ -335,18 +335,18 @@ CREATE TABLE stock_adjustments (
 );
 ```
 
-#### stock_adjustment_lines
+#### stock_adjustment_items
 ```sql
-CREATE TABLE stock_adjustment_lines (
+CREATE TABLE stock_adjustment_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   adjustment_id UUID REFERENCES stock_adjustments(id) ON DELETE CASCADE,
   item_id UUID REFERENCES items(id),
-  location_id UUID REFERENCES warehouse_locations(id),
-  expected_quantity DECIMAL(12,3),
-  actual_quantity DECIMAL(12,3),
-  adjustment_quantity DECIMAL(12,3) GENERATED ALWAYS AS (actual_quantity - expected_quantity) STORED,
-  unit_id UUID REFERENCES units_of_measure(id),
-  notes TEXT,
+  item_batch_location_id UUID REFERENCES item_batch_locations(id),
+  current_qty DECIMAL(20,4),
+  adjusted_qty DECIMAL(20,4),
+  difference DECIMAL(20,4),
+  uom_id UUID REFERENCES units_of_measure(id),
+  reason TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -613,17 +613,20 @@ Create stock adjustment (draft).
   "adjustment_date": "2025-06-14",
   "reason": "count",
   "notes": "Monthly physical count",
-  "lines": [
+  "items": [
     {
-      "item_id": "uuid",
-      "location_id": "uuid",
-      "expected_quantity": 100,
-      "actual_quantity": 95,
-      "unit_id": "uuid"
+      "itemId": "uuid",
+      "itemBatchLocationId": "uuid",
+      "currentQty": 100,
+      "adjustedQty": 95,
+      "uomId": "uuid",
+      "unitCost": 12.5
     }
   ]
 }
 ```
+
+Each adjustment line must select an `item_batch_locations` row. The selector is server-filtered by item, warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
 
 #### POST /api/stock-adjustments/[id]/post
 Post stock adjustment (apply to inventory).
@@ -632,10 +635,13 @@ Post stock adjustment (apply to inventory).
 
 **Process**:
 1. Validates all lines
-2. Creates stock transactions for adjustments
-3. Updates item_warehouse, item_batches, and item_batch_locations balances
-4. Marks adjustment as posted
-5. Records posting user and timestamp
+2. Calls the transactional `post_stock_adjustment` RPC
+3. Creates stock transactions for adjustments
+4. Updates item_warehouse, item_batches, and item_batch_locations balances for the selected batch-location rows
+5. Marks adjustment as posted
+6. Records posting user and timestamp
+
+Stock adjustment lines can reprint a batch QR label using the same QR payload and PDF label generator as GRN box labels. The printed label uses the selected batch code, batch-location SKU, item details, adjusted quantity, warehouse, and location metadata.
 
 ### Stock Transfers
 
@@ -820,14 +826,15 @@ class LocationService {
 
 1. User navigates to Stock Adjustments
 2. Creates new adjustment for warehouse
-3. Adds lines for items counted
-4. Enters expected vs actual quantities
-5. System calculates adjustment (variance)
-6. User reviews variances
-7. Posts adjustment
-8. System creates stock transactions
-9. Updates item_warehouse, item_batches, and item_batch_locations balances
-10. Adjustment marked as posted
+3. Adds lines by selecting an item and the exact batch-location row being counted
+4. Enters the adjustment quantity
+5. System calculates the new batch quantity and variance
+6. User can reprint a QR label for the selected batch-location row
+7. User reviews variances
+8. Posts adjustment
+9. System creates stock transactions
+10. Updates item_warehouse, item_batches, and item_batch_locations balances
+11. Adjustment marked as posted
 
 ### Workflow 3: Inter-Warehouse Transfer
 
@@ -882,7 +889,9 @@ class LocationService {
 #### StockAdjustmentForm
 **Location**: `src/components/inventory/StockAdjustmentForm.tsx`
 - Create stock adjustment
-- Add adjustment lines
+- Add adjustment lines with required batch-location selection
+- View adjustment header and line-item details from the stock adjustments list
+- Reprint selected batch QR labels from editable lines or the read-only details view
 - Show variance calculations
 - Post adjustment workflow
 

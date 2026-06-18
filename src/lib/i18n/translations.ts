@@ -23,6 +23,7 @@ export type TranslationKeys = {
     filter: string;
     export: string;
     import: string;
+    print: string;
     actions: string;
     status: string;
     name: string;
@@ -2324,6 +2325,17 @@ export type TranslationKeys = {
     postActionWarning: string;
     posting: string;
     postAction: string;
+    detailsTitle: string;
+    detailsDescription: string;
+    stockTransaction: string;
+    notes: string;
+    itemsTitle: string;
+    item: string;
+    batch: string;
+    currentQty: string;
+    adjustedQty: string;
+    difference: string;
+    unitCost: string;
     noLocation: string;
   };
   stockAdjustmentForm: {
@@ -2351,6 +2363,7 @@ export type TranslationKeys = {
     noItems: string;
     noItemsDescription: string;
     item: string;
+    batch: string;
     currentQty: string;
     adjustedQty: string;
     difference: string;
@@ -2364,6 +2377,10 @@ export type TranslationKeys = {
     updateAction: string;
     createAction: string;
     lineItemRequired: string;
+    stockAdjustmentLabel: string;
+    printBatchMissing: string;
+    printBatchSuccess: string;
+    printBatchError: string;
   };
   stockAdjustmentValidation: {
     adjustmentDateRequired: string;
@@ -2381,6 +2398,14 @@ export type TranslationKeys = {
     itemLabel: string;
     chooseItem: string;
     searchByCodeOrName: string;
+    batchLabel: string;
+    chooseBatch: string;
+    chooseItemBeforeBatch: string;
+    searchByBatchOrQr: string;
+    noBatches: string;
+    loadingBatches: string;
+    batchOptionMeta: string;
+    unassignedLocation: string;
     currentStockOnHand: string;
     units: string;
     typeLabel: string;
@@ -2403,6 +2428,7 @@ export type TranslationKeys = {
   };
   stockAdjustmentLineItemValidation: {
     itemRequired: string;
+    batchRequired: string;
     uomRequired: string;
     currentQtyMin: string;
     adjustedQtyMin: string;
@@ -2695,6 +2721,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       filter: "Filter",
       export: "Export",
       import: "Import",
+      print: "Print",
       actions: "Actions",
       status: "Status",
       name: "Name",
@@ -5104,6 +5131,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       postActionWarning: "This action cannot be undone.",
       posting: "Posting...",
       postAction: "Post Adjustment",
+      detailsTitle: "Stock Adjustment Details",
+      detailsDescription: "View adjustment {code}",
+      stockTransaction: "Stock Transaction",
+      notes: "Notes",
+      itemsTitle: "Adjustment Items",
+      item: "Item",
+      batch: "Batch",
+      currentQty: "Current Qty",
+      adjustedQty: "Adjusted Qty",
+      difference: "Difference",
+      unitCost: "Unit Cost",
       noLocation: "--",
     },
     stockAdjustmentForm: {
@@ -5131,6 +5169,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noItems: "No items added yet.",
       noItemsDescription: 'Click "Add Item" to get started.',
       item: "Item",
+      batch: "Batch",
       currentQty: "Current Qty",
       adjustedQty: "Adjusted Qty",
       difference: "Difference",
@@ -5144,6 +5183,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateAction: "Update Adjustment",
       createAction: "Create Adjustment",
       lineItemRequired: "Please add at least one line item",
+      stockAdjustmentLabel: "Stock Adjustment",
+      printBatchMissing: "Select a batch before printing a QR label.",
+      printBatchSuccess: "Batch QR label opened for printing.",
+      printBatchError: "Failed to print batch QR label",
     },
     stockAdjustmentValidation: {
       adjustmentDateRequired: "Adjustment date is required",
@@ -5161,6 +5204,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLabel: "Inventory Item",
       chooseItem: "Choose an item to adjust",
       searchByCodeOrName: "Search by code or name...",
+      batchLabel: "Batch / QR",
+      chooseBatch: "Choose a batch to adjust",
+      chooseItemBeforeBatch: "Choose an item first",
+      searchByBatchOrQr: "Search by batch or QR...",
+      noBatches: "No batches found",
+      loadingBatches: "Loading batches...",
+      batchOptionMeta: "{qty} units at {location}",
+      unassignedLocation: "Unassigned location",
       currentStockOnHand: "Current Stock on Hand",
       units: "units",
       typeLabel: "Type",
@@ -5183,6 +5234,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     stockAdjustmentLineItemValidation: {
       itemRequired: "Item is required",
+      batchRequired: "Batch is required",
       uomRequired: "Unit of measure is required",
       currentQtyMin: "Current quantity cannot be negative",
       adjustedQtyMin: "Adjusted quantity cannot be negative",
@@ -7969,6 +8021,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       filter: "筛选",
       export: "导出",
       import: "导入",
+      print: "打印",
       actions: "操作",
       status: "状态",
       name: "名称",
@@ -10344,6 +10397,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       postActionWarning: "此操作无法撤销。",
       posting: "过账中...",
       postAction: "过账调整",
+      detailsTitle: "库存调整详情",
+      detailsDescription: "查看调整单 {code}",
+      stockTransaction: "库存交易",
+      notes: "备注",
+      itemsTitle: "调整项目",
+      item: "商品",
+      batch: "批次",
+      currentQty: "当前数量",
+      adjustedQty: "调整后数量",
+      difference: "差异",
+      unitCost: "单位成本",
       noLocation: "--",
     },
     stockAdjustmentForm: {
@@ -10371,6 +10435,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noItems: "尚未添加商品。",
       noItemsDescription: "点击“添加商品”开始。",
       item: "商品",
+      batch: "批次",
       currentQty: "当前数量",
       adjustedQty: "调整后数量",
       difference: "差异",
@@ -10384,6 +10449,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateAction: "更新调整",
       createAction: "创建调整",
       lineItemRequired: "请至少添加一条明细项目",
+      stockAdjustmentLabel: "库存调整",
+      printBatchMissing: "打印二维码标签前请选择批次。",
+      printBatchSuccess: "批次二维码标签已打开，可进行打印。",
+      printBatchError: "打印批次二维码标签失败",
     },
     stockAdjustmentValidation: {
       adjustmentDateRequired: "调整日期为必填项",
@@ -10401,6 +10470,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLabel: "库存商品",
       chooseItem: "选择要调整的商品",
       searchByCodeOrName: "按编码或名称搜索...",
+      batchLabel: "批次 / 二维码",
+      chooseBatch: "选择要调整的批次",
+      chooseItemBeforeBatch: "请先选择商品",
+      searchByBatchOrQr: "按批次或二维码搜索...",
+      noBatches: "未找到批次",
+      loadingBatches: "正在加载批次...",
+      batchOptionMeta: "{location} 的 {qty} 单位",
+      unassignedLocation: "未分配库位",
       currentStockOnHand: "当前现有库存",
       units: "单位",
       typeLabel: "类型",
@@ -10423,6 +10500,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     },
     stockAdjustmentLineItemValidation: {
       itemRequired: "商品为必填项",
+      batchRequired: "批次为必填项",
       uomRequired: "计量单位为必填项",
       currentQtyMin: "当前数量不能为负数",
       adjustedQtyMin: "调整后数量不能为负数",

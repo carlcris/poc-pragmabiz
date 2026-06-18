@@ -81,6 +81,7 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - Search the full migration chain before changing any database object.
 - Identify the latest effective definition; later `ALTER`, corrective migrations, and `CREATE OR REPLACE FUNCTION` migrations can supersede earlier definitions.
 - Do not patch outdated migrations when newer migrations define current behavior.
+- Do not create same-session corrective migrations for mistakes in a migration that is still local/unfinalized. Update the existing same-session migration file directly so the final migration chain contains the intended schema/function definition once, without wrapper, replacement, or repair-only migrations. If such a corrective migration was already created in the same session, fold its changes back into the original migration, delete the corrective migration, and repair local migration history if it was applied locally.
 - Regenerate `src/types/database.types.ts` when schema changes are applied locally.
 - Generated document/control codes must be database-owned with the shared generator plus `BEFORE INSERT` trigger pattern. Application inserts must omit generated code columns.
 - Transactional RPCs/functions must lock the primary workflow row with `FOR UPDATE`, validate current status and ownership/scope inputs, apply all related writes, reconcile denormalized totals, and update the final status inside the same function.
@@ -104,6 +105,16 @@ Use the relevant skill when a task matches one of these triggers:
 - Post-change validation or regression checking: `consistency-regression-checker`.
 - Release safety review: `release-readiness-checker`.
 - Security review or vulnerability assessment: `security-vulnerability-checker`.
+
+## Review Standards
+
+When reviewing changes, explicitly check:
+
+- Completeness: the change fully satisfies the requested workflow, edge cases, and expected user paths.
+- Correctness: the implementation matches the intended data model, API contracts, UI behavior, and business rules.
+- Repo-rule compliance: the change follows this `AGENTS.md`, relevant skills, i18n, API, migration, permission, and transaction rules.
+- Dead code removal: obsolete code, unused imports, redundant migrations, stale helpers, and unreachable branches introduced or made obsolete by the change are removed.
+- Breaking changes and regressions: the change does not break existing workflows, API contracts, schema expectations, permissions, localization, pagination/filtering, or previously supported behavior unless explicitly requested and documented.
 
 ## Testing And Verification
 

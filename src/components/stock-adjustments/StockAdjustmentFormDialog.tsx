@@ -6,10 +6,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Plus, Pencil, Trash2, Calculator } from "lucide-react";
+import { Plus, Pencil, Trash2, Calculator, Printer } from "lucide-react";
+import { toast } from "sonner";
 import type { StockAdjustment } from "@/types/stock-adjustment";
 import type { WarehouseLocation } from "@/types/inventory-location";
 import { apiClient } from "@/lib/api";
+import { printBarcodeLabels, type BarcodeData } from "@/lib/barcode";
 import {
   StockAdjustmentLineItemDialog,
   type StockAdjustmentLineItemFormValues,
@@ -83,7 +85,6 @@ type StockAdjustmentFormDialogProps = {
   warehouses: WarehouseOption[];
   isSaving: boolean;
   onSave: (payload: StockAdjustmentFormSubmitPayload) => Promise<void>;
-  onItemSelect: (itemId: string, warehouseId: string, locationId?: string) => Promise<number>;
   formatCurrency: (value: number) => string;
 };
 
@@ -94,7 +95,6 @@ export function StockAdjustmentFormDialog({
   warehouses,
   isSaving,
   onSave,
-  onItemSelect,
   formatCurrency,
 }: StockAdjustmentFormDialogProps) {
   const t = useTranslations("stockAdjustmentForm");
@@ -145,6 +145,13 @@ export function StockAdjustmentFormDialog({
       const formLineItems: StockAdjustmentLineItemFormValues[] = selectedAdjustment.items.map(
         (item) => ({
           itemId: item.itemId,
+          itemBatchLocationId: item.itemBatchLocationId || "",
+          batchLocationSku: item.batchLocationSku || "",
+          batchCode: item.batchCode || "",
+          batchReceivedAt: item.batchReceivedAt || "",
+          batchWarehouseLocationId: item.batchWarehouseLocationId || "",
+          batchLocationCode: item.batchLocationCode || "",
+          batchLocationName: item.batchLocationName || "",
           itemCode: item.itemCode,
           itemName: item.itemName,
           uomId: item.uomId,
@@ -209,6 +216,37 @@ export function StockAdjustmentFormDialog({
       return;
     }
     setLineItems((items) => [...items, item]);
+  };
+
+  const handlePrintBatchLabel = async (item: StockAdjustmentLineItemFormValues) => {
+    if (!item.itemBatchLocationId || !item.batchLocationSku) {
+      toast.error(t("printBatchMissing"));
+      return;
+    }
+
+    const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === selectedWarehouseId);
+    const barcodeData: BarcodeData = {
+      boxId: item.itemBatchLocationId,
+      itemId: item.itemId,
+      batchLocationSku: item.batchLocationSku,
+      batchNumber: item.batchCode || item.batchLocationSku,
+      grnNumber: selectedAdjustment?.adjustmentCode || t("stockAdjustmentLabel"),
+      itemCode: item.itemCode || "",
+      itemName: item.itemName || "",
+      boxNumber: 1,
+      qtyPerBox: item.adjustedQty,
+      deliveryDate: item.batchReceivedAt || form.getValues("adjustmentDate"),
+      warehouseCode: selectedWarehouse?.code || undefined,
+      locationId: item.batchWarehouseLocationId || null,
+      locationCode: item.batchLocationCode || undefined,
+    };
+
+    try {
+      await printBarcodeLabels([barcodeData]);
+      toast.success(t("printBatchSuccess"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("printBatchError"));
+    }
   };
 
   const handleSubmit = async (values: StockAdjustmentFormValues) => {
@@ -418,6 +456,7 @@ export function StockAdjustmentFormDialog({
                         <TableHeader>
                           <TableRow>
                             <TableHead>{t("item")}</TableHead>
+                            <TableHead>{t("batch")}</TableHead>
                             <TableHead className="text-right">{t("currentQty")}</TableHead>
                             <TableHead className="text-right">{t("adjustedQty")}</TableHead>
                             <TableHead className="text-right">{t("difference")}</TableHead>
@@ -439,6 +478,21 @@ export function StockAdjustmentFormDialog({
                                     <div className="text-sm text-muted-foreground">
                                       {item.itemCode}
                                     </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <div className="font-medium">
+                                      {item.batchCode || item.batchLocationSku}
+                                    </div>
+                                    <div className="font-mono text-xs text-muted-foreground">
+                                      {item.batchLocationSku}
+                                    </div>
+                                    {(item.batchLocationCode || item.batchLocationName) && (
+                                      <div className="text-xs text-muted-foreground">
+                                        {item.batchLocationCode || item.batchLocationName}
+                                      </div>
+                                    )}
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -488,6 +542,14 @@ export function StockAdjustmentFormDialog({
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => void handlePrintBatchLabel(item)}
+                                    >
+                                      <Printer className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                       type="button"
                                       variant="ghost"
@@ -563,7 +625,6 @@ export function StockAdjustmentFormDialog({
           mode={editingItem ? "edit" : "add"}
           warehouseId={selectedWarehouseId}
           locationId={form.watch("locationId")}
-          onItemSelect={onItemSelect}
         />
       )}
     </>

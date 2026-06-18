@@ -8,12 +8,35 @@ export type StockAdjustmentType =
 
 export type StockAdjustmentStatus = "draft" | "pending" | "approved" | "posted" | "rejected";
 
+export type StockAdjustmentBatchLocation = {
+  id: string;
+  itemId: string;
+  warehouseId: string;
+  locationId: string;
+  itemBatchId: string;
+  batchLocationSku: string;
+  batchCode: string;
+  receivedAt: string;
+  qtyOnHand: number;
+  qtyAvailable: number;
+  qtyReserved: number;
+  locationCode?: string | null;
+  locationName?: string | null;
+};
+
 export interface StockAdjustmentItem {
   id: string;
   adjustmentId: string;
   itemId: string;
   itemCode: string;
   itemName: string;
+  itemBatchLocationId?: string | null;
+  batchLocationSku?: string | null;
+  batchCode?: string | null;
+  batchReceivedAt?: string | null;
+  batchWarehouseLocationId?: string | null;
+  batchLocationCode?: string | null;
+  batchLocationName?: string | null;
   currentQty: number;
   adjustedQty: number;
   difference: number;
@@ -69,6 +92,7 @@ export interface CreateStockAdjustmentRequest {
   notes?: string;
   items: {
     itemId: string;
+    itemBatchLocationId: string;
     currentQty: number;
     adjustedQty: number;
     unitCost: number;
@@ -87,6 +111,7 @@ export interface UpdateStockAdjustmentRequest {
   items?: {
     id?: string;
     itemId: string;
+    itemBatchLocationId: string;
     currentQty: number;
     adjustedQty: number;
     unitCost: number;
