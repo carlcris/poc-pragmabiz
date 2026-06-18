@@ -2558,6 +2558,8 @@ export type TranslationKeys = {
     item: string;
     qty: string;
     unit: string;
+    batch: string;
+    autoBatchAllocation: string;
     qtyPerUnit: string;
     notes: string;
     actions: string;
@@ -2587,6 +2589,13 @@ export type TranslationKeys = {
     selectItemFirst: string;
     loadingUnits: string;
     noUnitsAvailable: string;
+    batchLabel: string;
+    autoBatchAllocation: string;
+    selectWarehouseFirst: string;
+    loadingBatches: string;
+    searchBatch: string;
+    noBatchesAvailable: string;
+    batchInsufficient: string;
     selectItem: string;
     searchItem: string;
     loadingItems: string;
@@ -5287,6 +5296,17 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Review the details and confirm dispatch. Dispatched quantities will use picked quantities.",
       receiveDescription: "Review the details and confirm receive.",
       voidDescription: "Review the details and confirm void.",
+      batchAllocationChoiceTitle: "Choose batch allocation",
+      batchAllocationChoiceDescription:
+        "The suggested batch does not have enough quantity for one or more lines. Choose how to allocate the pick list.",
+      batchAllocationRequired: "Required",
+      batchAllocationSuggested: "Suggested",
+      batchAllocationNoSuggestedSource: "No suggested source",
+      batchAllocationSingleSource: "Batch with enough qty",
+      batchAllocationSingleUnavailable: "Not available",
+      batchAllocationSplitSources: "Split sources",
+      batchAllocationUseSingle: "Pick from batch with enough qty",
+      batchAllocationUseSplit: "Split across batches",
     },
     deliveryNoteDetailPage: {
       loading: "Loading...",
@@ -5400,6 +5420,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       unknownItem: "Unknown item",
       unknownUnit: "Unknown unit",
       unknownStockRequest: "Unknown stock request",
+      batchAllocationChoiceTitle: "Choose batch allocation",
+      batchAllocationChoiceDescription:
+        "The suggested batch does not have enough quantity for one or more lines. Choose how to allocate the pick list.",
+      batchAllocationRequired: "Required",
+      batchAllocationSuggested: "Suggested",
+      batchAllocationNoSuggestedSource: "No suggested source",
+      batchAllocationSingleSource: "Batch with enough qty",
+      batchAllocationSingleUnavailable: "Not available",
+      batchAllocationSplitSources: "Split sources",
+      batchAllocationUseSingle: "Pick from batch with enough qty",
+      batchAllocationUseSplit: "Split across batches",
     },
     pickListsPage: {
       title: "Pick Lists",
@@ -7802,6 +7833,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       item: "Item",
       qty: "Qty",
       unit: "Unit",
+      batch: "Batch",
+      autoBatchAllocation: "Auto",
       qtyPerUnit: "Qty/Unit",
       notes: "Notes",
       actions: "Actions",
@@ -7831,6 +7864,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItemFirst: "Select an item first",
       loadingUnits: "Loading units...",
       noUnitsAvailable: "No units available for this item",
+      batchLabel: "Batch (Optional)",
+      autoBatchAllocation: "Auto allocate by FIFO",
+      selectWarehouseFirst: "Select requested to first",
+      loadingBatches: "Loading batches...",
+      searchBatch: "Search batch...",
+      noBatchesAvailable: "No available batches",
+      batchInsufficient:
+        "Selected batch has {available} base units available, but {required} are required.",
       selectItem: "Select an item",
       searchItem: "Search by code or name...",
       loadingItems: "Loading items...",
@@ -10490,6 +10531,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       dispatchDescription: "查看详情并确认发运。发运数量将使用已拣货数量。",
       receiveDescription: "查看详情并确认接收。",
       voidDescription: "查看详情并确认作废。",
+      batchAllocationChoiceTitle: "选择批次分配",
+      batchAllocationChoiceDescription:
+        "建议批次的数量不足以满足一个或多个行项目。请选择拣货单的分配方式。",
+      batchAllocationRequired: "需要",
+      batchAllocationSuggested: "建议",
+      batchAllocationNoSuggestedSource: "无建议来源",
+      batchAllocationSingleSource: "数量足够的批次",
+      batchAllocationSingleUnavailable: "不可用",
+      batchAllocationSplitSources: "拆分来源",
+      batchAllocationUseSingle: "从数量足够的批次拣货",
+      batchAllocationUseSplit: "拆分到多个批次",
     },
     deliveryNoteDetailPage: {
       loading: "加载中...",
@@ -10599,6 +10651,17 @@ export const translations: Record<Locale, TranslationKeys> = {
       unknownItem: "未知商品",
       unknownUnit: "未知单位",
       unknownStockRequest: "未知库存申请",
+      batchAllocationChoiceTitle: "选择批次分配",
+      batchAllocationChoiceDescription:
+        "建议批次的数量不足以满足一个或多个行项目。请选择拣货单的分配方式。",
+      batchAllocationRequired: "需要",
+      batchAllocationSuggested: "建议",
+      batchAllocationNoSuggestedSource: "无建议来源",
+      batchAllocationSingleSource: "数量足够的批次",
+      batchAllocationSingleUnavailable: "不可用",
+      batchAllocationSplitSources: "拆分来源",
+      batchAllocationUseSingle: "从数量足够的批次拣货",
+      batchAllocationUseSplit: "拆分到多个批次",
     },
     pickListsPage: {
       title: "拣货单",
@@ -12935,6 +12998,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       item: "商品",
       qty: "数量",
       unit: "单位",
+      batch: "批次",
+      autoBatchAllocation: "自动",
       qtyPerUnit: "每单位数量",
       notes: "备注",
       actions: "操作",
@@ -12964,6 +13029,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItemFirst: "请先选择商品",
       loadingUnits: "加载单位中...",
       noUnitsAvailable: "此商品没有可用单位",
+      batchLabel: "批次（可选）",
+      autoBatchAllocation: "按先进先出自动分配",
+      selectWarehouseFirst: "请先选择供货方",
+      loadingBatches: "加载批次中...",
+      searchBatch: "搜索批次...",
+      noBatchesAvailable: "没有可用批次",
+      batchInsufficient: "所选批次可用基础单位为 {available}，但需要 {required}。",
       selectItem: "选择商品",
       searchItem: "按编码或名称搜索...",
       loadingItems: "加载商品中...",

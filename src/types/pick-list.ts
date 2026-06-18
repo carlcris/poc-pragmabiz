@@ -12,6 +12,22 @@ export type PickListItem = {
   item_id: string;
   item_unit_option_id?: string | null;
   uom_id: string;
+  suggested_pick_location_id: string | null;
+  suggested_pick_batch_code: string | null;
+  suggested_pick_batch_received_at: string | null;
+  suggested_batch_location_sku?: string | null;
+  suggested_pick_location?:
+    | {
+        id: string;
+        code: string | null;
+        name: string | null;
+      }
+    | {
+        id: string;
+        code: string | null;
+        name: string | null;
+      }[]
+    | null;
   allocated_qty: number;
   picked_qty: number;
   short_qty: number;
@@ -29,41 +45,9 @@ export type PickListItem = {
   delivery_note_items?:
     | {
         id: string;
-        suggested_pick_location_id: string | null;
-        suggested_pick_batch_code: string | null;
-        suggested_pick_batch_received_at: string | null;
-        suggested_batch_location_sku?: string | null;
-        suggested_pick_location?:
-          | {
-              id: string;
-              code: string | null;
-              name: string | null;
-            }
-          | {
-              id: string;
-              code: string | null;
-              name: string | null;
-            }[]
-          | null;
       }
     | {
         id: string;
-        suggested_pick_location_id: string | null;
-        suggested_pick_batch_code: string | null;
-        suggested_pick_batch_received_at: string | null;
-        suggested_batch_location_sku?: string | null;
-        suggested_pick_location?:
-          | {
-              id: string;
-              code: string | null;
-              name: string | null;
-            }
-          | {
-              id: string;
-              code: string | null;
-              name: string | null;
-            }[]
-          | null;
       }[]
     | null;
 };
@@ -73,6 +57,7 @@ export type DeliveryNoteItemPick = {
   company_id: string;
   dn_id: string;
   delivery_note_item_id: string;
+  pick_list_item_id?: string | null;
   pick_list_id: string;
   item_id: string;
   source_warehouse_id: string;
@@ -136,10 +121,45 @@ export type PickListListResponse = {
   data: PickList[];
 };
 
+export type PickListBatchAllocationMode = "single_sufficient" | "split";
+
+export type PickListBatchAllocationSource = {
+  batchLocationSku: string | null;
+  locationId: string;
+  locationCode: string | null;
+  locationName: string | null;
+  batchCode: string;
+  batchReceivedAt: string;
+  availableQty: number;
+  availableBaseQty: number;
+};
+
+export type PickListBatchAllocationChoiceLine = {
+  deliveryNoteItemId: string;
+  itemId: string;
+  itemLabel: string;
+  unitLabel: string;
+  requiredQty: number;
+  requiredBaseQty: number;
+  suggestedSource: PickListBatchAllocationSource | null;
+  singleSource: PickListBatchAllocationSource | null;
+  splitSources: PickListBatchAllocationSource[];
+  totalAvailableQty: number;
+  totalAvailableBaseQty: number;
+};
+
+export type PickListBatchAllocationChoiceError = {
+  error: string;
+  code: "batch_allocation_choice_required";
+  requiresBatchAllocationChoice: true;
+  lines: PickListBatchAllocationChoiceLine[];
+};
+
 export type CreatePickListPayload = {
   dnId: string;
   pickerUserIds: string[];
   notes?: string;
+  batchAllocationMode?: PickListBatchAllocationMode;
 };
 
 export type UpdatePickListStatusPayload = {
@@ -154,6 +174,7 @@ export type UpdatePickListItemsPayload = {
   }>;
   pickRows?: Array<{
     pickRowId?: string;
+    pickListItemId: string;
     deliveryNoteItemId: string;
     batchLocationSku?: string;
     pickedLocationId: string;

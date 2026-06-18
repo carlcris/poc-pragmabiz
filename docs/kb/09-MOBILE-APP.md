@@ -533,6 +533,7 @@ Search items for mobile (autocomplete).
 - Item scanning per box
 - Photo capture for damages
 - Submit for approval
+- Delivery-note receiving is inbound-only: the mobile receiving queue only shows delivery notes whose requesting warehouse belongs to the current business unit.
 
 ## Troubleshooting
 

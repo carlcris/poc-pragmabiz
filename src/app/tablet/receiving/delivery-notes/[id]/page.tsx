@@ -159,7 +159,6 @@ type ReceivingLine = {
   itemUnitOptionId: string | null;
   itemCode: string;
   itemName: string;
-  suggestedBatchLocationSku: string;
   barcode: string;
   uomLabel: string;
   dispatchedQty: number;
@@ -210,7 +209,6 @@ export default function TabletDeliveryNoteReceivingPage() {
         itemUnitOptionId: item.item_unit_option_id || option?.id || null,
         itemCode: itemRef?.item_code || item.item_id,
         itemName: itemRef?.item_name || itemRef?.item_code || item.item_id,
-        suggestedBatchLocationSku: item.suggested_batch_location_sku || "",
         barcode: option?.barcode || "",
         uomLabel: option?.optionLabel || uomRef?.symbol || uomRef?.code || uomRef?.name || "Unit",
         dispatchedQty,
@@ -251,7 +249,6 @@ export default function TabletDeliveryNoteReceivingPage() {
     const candidates = Array.from(extractScanCandidates(rawScan)).map(normalizeScanValue);
     return lines.find((line) => {
       const values = [
-        line.suggestedBatchLocationSku,
         line.itemId,
         line.itemCode,
         line.barcode,

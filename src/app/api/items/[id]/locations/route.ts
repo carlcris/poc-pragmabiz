@@ -3,6 +3,73 @@ import { NextResponse } from "next/server";
 import { requireAnyPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+type BatchLocationRow = {
+  id: string;
+  item_id: string;
+  warehouse_id: string;
+  location_id: string;
+  qty_on_hand: number | string | null;
+  qty_reserved: number | string | null;
+  qty_available: number | string | null;
+  item_batch?:
+    | {
+        id: string;
+        batch_code: string;
+        received_at: string;
+      }
+    | {
+        id: string;
+        batch_code: string;
+        received_at: string;
+      }[]
+    | null;
+  warehouse?:
+    | {
+        id: string;
+        warehouse_code: string | null;
+        warehouse_name: string | null;
+        business_unit_id: string | null;
+        company_id: string | null;
+        deleted_at: string | null;
+      }
+    | {
+        id: string;
+        warehouse_code: string | null;
+        warehouse_name: string | null;
+        business_unit_id: string | null;
+        company_id: string | null;
+        deleted_at: string | null;
+      }[]
+    | null;
+  location?:
+    | {
+        id: string;
+        code: string | null;
+        name: string | null;
+        location_type: string | null;
+        company_id: string | null;
+        deleted_at: string | null;
+      }
+    | {
+        id: string;
+        code: string | null;
+        name: string | null;
+        location_type: string | null;
+        company_id: string | null;
+        deleted_at: string | null;
+      }[]
+    | null;
+};
+
+const toNumber = (value: number | string | null | undefined) => {
+  if (value == null) return 0;
+  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const one = <T>(value: T | T[] | null | undefined): T | null =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+
 // GET /api/items/[id]/locations - List item quantities by warehouse location
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -34,8 +101,30 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    let itemLocationQuery = supabase
-      .from("item_location")
+    let warehouseScopeQuery = supabase
+      .from("warehouses")
+      .select("id")
+      .eq("company_id", userData.company_id)
+      .is("deleted_at", null);
+
+    if (currentBusinessUnitId) {
+      warehouseScopeQuery = warehouseScopeQuery.eq("business_unit_id", currentBusinessUnitId);
+    }
+
+    const { data: warehouseScopeRows, error: warehouseScopeError } = await warehouseScopeQuery;
+
+    if (warehouseScopeError) {
+      console.error("Failed to resolve warehouse scope for item locations", warehouseScopeError);
+      return NextResponse.json({ error: "Failed to fetch item locations" }, { status: 500 });
+    }
+
+    const warehouseScopeIds = (warehouseScopeRows || []).map((warehouse) => warehouse.id);
+    if (warehouseScopeIds.length === 0) {
+      return NextResponse.json({ data: [] });
+    }
+
+    const batchLocationQuery = supabase
+      .from("item_batch_locations")
       .select(
         `
         id,
@@ -45,7 +134,12 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         qty_on_hand,
         qty_reserved,
         qty_available,
-        warehouses!inner(
+        item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
+          id,
+          batch_code,
+          received_at
+        ),
+        warehouse:warehouses!item_batch_locations_warehouse_id_fkey(
           id,
           warehouse_code,
           warehouse_name,
@@ -53,7 +147,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           company_id,
           deleted_at
         ),
-        warehouse_locations!inner(
+        location:warehouse_locations!item_batch_locations_location_id_fkey(
           id,
           code,
           name,
@@ -66,59 +160,18 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .eq("company_id", userData.company_id)
       .eq("item_id", id)
       .is("deleted_at", null)
-      .eq("warehouses.company_id", userData.company_id)
-      .eq("warehouse_locations.company_id", userData.company_id)
-      .is("warehouses.deleted_at", null)
-      .is("warehouse_locations.deleted_at", null)
+      .in("warehouse_id", warehouseScopeIds)
       .order("warehouse_id");
 
-    // Restrict item locations to warehouses in the current BU scope when context is available.
-    if (currentBusinessUnitId) {
-      itemLocationQuery = itemLocationQuery.eq(
-        "warehouses.business_unit_id",
-        currentBusinessUnitId
-      );
-    }
-
-    const { data, error } = await itemLocationQuery;
+    const { data, error } = await batchLocationQuery;
 
     if (error) {
-      return NextResponse.json(
-        { error: "Failed to fetch item locations", details: error.message },
-        { status: 500 }
-      );
+      console.error("Failed to fetch item locations", error);
+      return NextResponse.json({ error: "Failed to fetch item locations" }, { status: 500 });
     }
 
-    const warehouseIds = Array.from(new Set((data || []).map((row) => row.warehouse_id)));
-    const locationIds = Array.from(new Set((data || []).map((row) => row.location_id)));
-
-    // Fetch batch information only for the BU-scoped warehouses/locations above.
-    const { data: batchData } =
-      warehouseIds.length > 0 && locationIds.length > 0
-        ? await supabase
-            .from("item_location_batch")
-            .select(
-              `
-              id,
-              location_id,
-              qty_on_hand,
-              qty_reserved,
-              qty_available,
-              item_batch:item_batch!item_location_batch_item_batch_id_fkey(
-                id,
-                batch_code,
-                received_at
-              )
-            `
-            )
-            .eq("company_id", userData.company_id)
-            .eq("item_id", id)
-            .in("warehouse_id", warehouseIds)
-            .in("location_id", locationIds)
-            .is("deleted_at", null)
-            .order("item_batch(received_at)", { ascending: true })
-            .order("location_id", { ascending: true })
-        : { data: [] };
+    const batchRows = (data || []) as BatchLocationRow[];
+    const warehouseIds = Array.from(new Set(batchRows.map((row) => row.warehouse_id)));
 
     const { data: itemWarehouses } =
       warehouseIds.length > 0
@@ -149,66 +202,106 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       (itemWarehouses || []).map((row) => [row.warehouse_id, row.estimated_arrival_date || null])
     );
 
-    // Group batches by location
-    const batchesByLocation = new Map<
+    const locationsByKey = new Map<
       string,
-      Array<{
+      {
         id: string;
-        batchCode: string;
-        receivedAt: string;
+        itemId: string;
+        warehouseId: string;
+        locationId: string;
+        warehouseCode: string;
+        warehouseName: string;
+        locationCode: string;
+        locationName: string;
+        locationType: string;
         qtyOnHand: number;
         qtyReserved: number;
         qtyAvailable: number;
-      }>
+        maxQuantity: number | null;
+        inTransit: number;
+        estimatedArrivalDate: string | null;
+        isDefault: boolean;
+        defaultLocationId: string | null;
+        batches: Array<{
+          id: string;
+          batchCode: string;
+          receivedAt: string;
+          qtyOnHand: number;
+          qtyReserved: number;
+          qtyAvailable: number;
+        }>;
+      }
     >();
 
-    (batchData || []).forEach((batch) => {
-      const locationBatches = batchesByLocation.get(batch.location_id) || [];
-      const itemBatch = Array.isArray(batch.item_batch) ? batch.item_batch[0] : batch.item_batch;
+    batchRows.forEach((row) => {
+      const defaultLocationId = defaultLocationMap.get(row.warehouse_id) || null;
+      const warehouse = one(row.warehouse);
+      const location = one(row.location);
+      const itemBatch = one(row.item_batch);
+      if (
+        warehouse?.company_id !== userData.company_id ||
+        !!warehouse?.deleted_at ||
+        location?.company_id !== userData.company_id ||
+        !!location?.deleted_at
+      ) {
+        return;
+      }
+
+      const key = `${row.warehouse_id}:${row.location_id}`;
+      const existing =
+        locationsByKey.get(key) ??
+        {
+          id: key,
+          itemId: row.item_id,
+          warehouseId: row.warehouse_id,
+          locationId: row.location_id,
+          warehouseCode: warehouse?.warehouse_code || "",
+          warehouseName: warehouse?.warehouse_name || "",
+          locationCode: location?.code || "",
+          locationName: location?.name || "",
+          locationType: location?.location_type || "",
+          qtyOnHand: 0,
+          qtyReserved: 0,
+          qtyAvailable: 0,
+          maxQuantity: maxQuantityMap.get(row.warehouse_id) ?? null,
+          inTransit: inTransitMap.get(row.warehouse_id) || 0,
+          estimatedArrivalDate: estimatedArrivalMap.get(row.warehouse_id) || null,
+          isDefault: defaultLocationId === row.location_id,
+          defaultLocationId,
+          batches: [] as Array<{
+            id: string;
+            batchCode: string;
+            receivedAt: string;
+            qtyOnHand: number;
+            qtyReserved: number;
+            qtyAvailable: number;
+          }>,
+        };
+
+      existing.qtyOnHand += toNumber(row.qty_on_hand);
+      existing.qtyReserved += toNumber(row.qty_reserved);
+      existing.qtyAvailable += toNumber(row.qty_available);
 
       if (itemBatch) {
-        locationBatches.push({
-          id: batch.id,
+        existing.batches.push({
+          id: row.id,
           batchCode: itemBatch.batch_code,
           receivedAt: itemBatch.received_at,
-          qtyOnHand: Number(batch.qty_on_hand) || 0,
-          qtyReserved: Number(batch.qty_reserved) || 0,
-          qtyAvailable: Number(batch.qty_available) || 0,
+          qtyOnHand: toNumber(row.qty_on_hand),
+          qtyReserved: toNumber(row.qty_reserved),
+          qtyAvailable: toNumber(row.qty_available),
         });
       }
 
-      batchesByLocation.set(batch.location_id, locationBatches);
+      locationsByKey.set(key, existing);
     });
 
-    const locations = (data || []).map((row) => {
-      const defaultLocationId = defaultLocationMap.get(row.warehouse_id) || null;
-      const warehouse = Array.isArray(row.warehouses) ? row.warehouses[0] : row.warehouses;
-      const location = Array.isArray(row.warehouse_locations)
-        ? row.warehouse_locations[0]
-        : row.warehouse_locations;
-      const batches = batchesByLocation.get(row.location_id) || [];
-
-      return {
-        id: row.id,
-        itemId: row.item_id,
-        warehouseId: row.warehouse_id,
-        locationId: row.location_id,
-        warehouseCode: warehouse?.warehouse_code || "",
-        warehouseName: warehouse?.warehouse_name || "",
-        locationCode: location?.code || "",
-        locationName: location?.name || "",
-        locationType: location?.location_type || "",
-        qtyOnHand: Number(row.qty_on_hand) || 0,
-        qtyReserved: Number(row.qty_reserved) || 0,
-        qtyAvailable: Number(row.qty_available) || 0,
-        maxQuantity: maxQuantityMap.get(row.warehouse_id) ?? null,
-        inTransit: inTransitMap.get(row.warehouse_id) || 0,
-        estimatedArrivalDate: estimatedArrivalMap.get(row.warehouse_id) || null,
-        isDefault: defaultLocationId === row.location_id,
-        defaultLocationId,
-        batches,
-      };
-    });
+    const locations = Array.from(locationsByKey.values()).map((location) => ({
+      ...location,
+      batches: location.batches.sort(
+        (left, right) => new Date(left.receivedAt).getTime() - new Date(right.receivedAt).getTime()
+      ),
+    }));
 
     return NextResponse.json({ data: locations });
   } catch {

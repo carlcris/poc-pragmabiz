@@ -34,6 +34,8 @@ import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
+import { getPickListBatchAllocationChoiceError } from "@/lib/api/pick-lists";
+import { BatchAllocationChoiceDialog } from "@/components/delivery-notes/BatchAllocationChoiceDialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -75,6 +77,11 @@ import type {
   DeliveryNoteFulfillmentMode,
   DeliveryNotePickListSummary,
 } from "@/types/delivery-note";
+import type {
+  CreatePickListPayload,
+  PickListBatchAllocationChoiceError,
+  PickListBatchAllocationMode,
+} from "@/types/pick-list";
 import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
@@ -178,6 +185,10 @@ export default function DeliveryNotesPage() {
   const [queuePickerSearch, setQueuePickerSearch] = useState("");
   const [queueNotes, setQueueNotes] = useState("");
   const [selectedQueuePickerIds, setSelectedQueuePickerIds] = useState<Set<string>>(new Set());
+  const [pendingPickListPayload, setPendingPickListPayload] =
+    useState<CreatePickListPayload | null>(null);
+  const [batchAllocationChoice, setBatchAllocationChoice] =
+    useState<PickListBatchAllocationChoiceError | null>(null);
   const [driverName, setDriverName] = useState("");
   const [helperName, setHelperName] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
@@ -542,6 +553,35 @@ export default function DeliveryNotesPage() {
     setDispatchNotes("");
     setReceiveNotes("");
     setVoidReason("");
+    setPendingPickListPayload(null);
+    setBatchAllocationChoice(null);
+  };
+
+  const createPickListWithAllocationHandling = async (payload: CreatePickListPayload) => {
+    try {
+      await createPickListMutation.mutateAsync(payload);
+      return true;
+    } catch (error) {
+      const allocationChoice = getPickListBatchAllocationChoiceError(error);
+      if (allocationChoice && !payload.batchAllocationMode) {
+        setPendingPickListPayload(payload);
+        setBatchAllocationChoice(allocationChoice);
+        return false;
+      }
+      toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
+      return false;
+    }
+  };
+
+  const submitBatchAllocationChoice = async (mode: PickListBatchAllocationMode) => {
+    if (!pendingPickListPayload) return;
+    const created = await createPickListWithAllocationHandling({
+      ...pendingPickListPayload,
+      batchAllocationMode: mode,
+    });
+    if (!created) return;
+    setActionOpen(false);
+    resetActionState();
   };
 
   const onSelectSourceBu = (buId: string) => {
@@ -789,14 +829,12 @@ export default function DeliveryNotesPage() {
       const pickerUserIds = Array.from(selectedQueuePickerIds);
       if (pickerUserIds.length === 0) return;
 
-      try {
-        await createPickListMutation.mutateAsync({
-          dnId: actionDn.id,
-          pickerUserIds,
-          notes: queueNotes.trim() || undefined,
-        });
-      } catch (error) {
-        toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
+      const created = await createPickListWithAllocationHandling({
+        dnId: actionDn.id,
+        pickerUserIds,
+        notes: queueNotes.trim() || undefined,
+      });
+      if (!created) {
         return;
       }
     }
@@ -1305,6 +1343,20 @@ export default function DeliveryNotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <BatchAllocationChoiceDialog
+        open={!!batchAllocationChoice}
+        choice={batchAllocationChoice}
+        isPending={createPickListMutation.isPending}
+        namespace="deliveryNotesPage"
+        onOpenChange={(open) => {
+          if (!open) {
+            setBatchAllocationChoice(null);
+            setPendingPickListPayload(null);
+          }
+        }}
+        onChoose={submitBatchAllocationChoice}
+      />
 
       <Dialog
         open={actionOpen}

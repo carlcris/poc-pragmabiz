@@ -202,6 +202,7 @@ export const useUpdatePickedItems = (id: string) => {
   return useMutation({
     mutationFn: (
       items: {
+        pickListItemId: string;
         deliveryNoteItemId: string;
         pickedQty: number;
         batchLocationSku?: string | null;
@@ -224,6 +225,7 @@ export const useCompletePickList = (id: string) => {
   return useMutation({
     mutationFn: (
       items: {
+        pickListItemId: string;
         deliveryNoteItemId: string;
         pickedQty: number;
         batchLocationSku?: string | null;

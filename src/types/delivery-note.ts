@@ -29,7 +29,6 @@ export type DeliveryNoteItem = {
   fulfilling_warehouse_id: string;
   item_id: string;
   item_unit_option_id?: string | null;
-  suggested_batch_location_sku?: string | null;
   uom_id: string;
   allocated_qty: number;
   picked_qty: number;

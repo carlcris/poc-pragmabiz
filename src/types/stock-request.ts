@@ -26,6 +26,7 @@ export interface StockRequestItem {
   requested_qty: number;
   received_qty?: number;
   item_unit_option_id?: string | null;
+  selected_item_batch_id?: string | null;
   uom_id: string;
   notes?: string | null;
   dispatch_qty?: number;
@@ -43,6 +44,14 @@ export interface StockRequestItem {
     symbol: string;
   };
   item_unit_option?: ItemUnitOption;
+  selected_item_batch?: {
+    id: string;
+    batch_code: string;
+    received_at: string;
+    qty_on_hand?: number;
+    qty_reserved?: number;
+    qty_available?: number | null;
+  } | null;
 }
 
 export interface StockRequest {
@@ -128,6 +137,7 @@ export interface CreateStockRequestPayload {
     item_id: string;
     requested_qty: number;
     item_unit_option_id?: string;
+    selected_item_batch_id?: string | null;
     uom_id?: string;
     notes?: string;
   }>;

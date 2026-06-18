@@ -106,7 +106,7 @@ export const dispatchStockRequestInventory = async ({
     const newBalance = currentBalance - item.quantity;
 
     const { data: locationRows } = await supabase
-      .from("item_location")
+      .from("item_batch_locations")
       .select("location_id, qty_on_hand")
       .eq("company_id", companyId)
       .eq("item_id", item.itemId)

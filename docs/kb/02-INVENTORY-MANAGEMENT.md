@@ -104,8 +104,8 @@ Stock is tracked at multiple levels of granularity:
 ```
 Company Level
   └─ Warehouse Level (item_warehouse table)
-      └─ Location Level (item_location table)
-          └─ Batch Level (optional, for perishables)
+      └─ Batch Level (item_batches table)
+          └─ Location Split Level (item_batch_locations table)
 ```
 
 **Stock Metrics**:
@@ -262,19 +262,38 @@ CREATE TABLE item_warehouse (
 );
 ```
 
-#### item_location
+#### item_batches
 ```sql
-CREATE TABLE item_location (
+CREATE TABLE item_batches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   item_id UUID REFERENCES items(id) ON DELETE CASCADE,
   warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
-  location_id UUID REFERENCES warehouse_locations(id) ON DELETE CASCADE,
+  batch_code TEXT NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL,
   on_hand DECIMAL(12,3) DEFAULT 0,
   reserved DECIMAL(12,3) DEFAULT 0,
   available DECIMAL(12,3) GENERATED ALWAYS AS (on_hand - reserved) STORED,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(item_id, warehouse_id, location_id)
+  UNIQUE(item_id, warehouse_id, batch_code)
+);
+```
+
+#### item_batch_locations
+```sql
+CREATE TABLE item_batch_locations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
+  location_id UUID REFERENCES warehouse_locations(id) ON DELETE CASCADE,
+  item_batch_id UUID REFERENCES item_batches(id) ON DELETE CASCADE,
+  batch_location_sku VARCHAR(10) UNIQUE,
+  on_hand DECIMAL(12,3) DEFAULT 0,
+  reserved DECIMAL(12,3) DEFAULT 0,
+  available DECIMAL(12,3) GENERATED ALWAYS AS (on_hand - reserved) STORED,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(item_id, warehouse_id, location_id, item_batch_id)
 );
 ```
 
@@ -374,6 +393,22 @@ CREATE TABLE stock_requests (
   approved_by UUID REFERENCES users(id),
   approved_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### stock_request_items
+```sql
+CREATE TABLE stock_request_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stock_request_id UUID REFERENCES stock_requests(id) ON DELETE CASCADE,
+  item_id UUID REFERENCES items(id),
+  requested_qty DECIMAL(20,4) NOT NULL,
+  item_unit_option_id UUID REFERENCES item_unit_options(id),
+  selected_item_batch_id UUID REFERENCES item_batches(id), -- optional source batch preference
+  uom_id UUID REFERENCES units_of_measure(id),
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
@@ -598,7 +633,7 @@ Post stock adjustment (apply to inventory).
 **Process**:
 1. Validates all lines
 2. Creates stock transactions for adjustments
-3. Updates item_warehouse and item_location balances
+3. Updates item_warehouse, item_batches, and item_batch_locations balances
 4. Marks adjustment as posted
 5. Records posting user and timestamp
 
@@ -643,12 +678,20 @@ Create stock replenishment request.
 ```json
 {
   "requesting_warehouse_id": "uuid",
-  "supplying_warehouse_id": "uuid",
+  "fulfilling_warehouse_id": "uuid",
   "items": [
-    { "item_id": "uuid", "quantity": 100, "unit_id": "uuid" }
+    {
+      "item_id": "uuid",
+      "requested_qty": 100,
+      "item_unit_option_id": "uuid",
+      "selected_item_batch_id": "uuid-or-null",
+      "uom_id": "uuid"
+    }
   ]
 }
 ```
+
+`selected_item_batch_id` is optional. When provided, the API validates that the batch belongs to the requested item and fulfilling warehouse and has enough available base quantity for the line. Downstream pick-list allocation treats the selected batch as authoritative: it allocates from that batch instead of FIFO, and insufficient selected-batch quantity fails the operation rather than opening the FIFO batch-allocation choice.
 
 #### POST /api/stock-requests/[id]/approve
 Approve stock request.
@@ -783,7 +826,7 @@ class LocationService {
 6. User reviews variances
 7. Posts adjustment
 8. System creates stock transactions
-9. Updates item_warehouse and item_location balances
+9. Updates item_warehouse, item_batches, and item_batch_locations balances
 10. Adjustment marked as posted
 
 ### Workflow 3: Inter-Warehouse Transfer

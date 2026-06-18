@@ -183,9 +183,8 @@ export default function TabletPickingDetailPage() {
     return (pickList?.pick_list_items || []).map((item) => {
       const allocatedQty = toNumber(item.allocated_qty);
       const pickedValue = toNumber(item.picked_qty);
-      const dnLine = one(item.delivery_note_items);
       const suggestedPickLocation = one(
-        (dnLine as { suggested_pick_location?: unknown } | null | undefined)
+        (item as { suggested_pick_location?: unknown } | null | undefined)
           ?.suggested_pick_location as
           | { id: string; code: string | null; name: string | null }
           | { id: string; code: string | null; name: string | null }[]
@@ -223,10 +222,10 @@ export default function TabletPickingDetailPage() {
         requiredQty: allocatedQty,
         pickedQty: pickedValue,
         status,
-        suggestedPickLocationId: dnLine?.suggested_pick_location_id || null,
+        suggestedPickLocationId: item.suggested_pick_location_id || null,
         suggestedPickLocationCode: suggestedPickLocation?.code || null,
-        suggestedPickBatchCode: dnLine?.suggested_pick_batch_code || null,
-        suggestedPickBatchReceivedAt: dnLine?.suggested_pick_batch_received_at || null,
+        suggestedPickBatchCode: item.suggested_pick_batch_code || null,
+        suggestedPickBatchReceivedAt: item.suggested_pick_batch_received_at || null,
       };
     });
   }, [pickList?.pick_list_items]);
@@ -276,6 +275,7 @@ export default function TabletPickingDetailPage() {
               locationCode?: string | null;
               locationName?: string | null;
               batchCode: string;
+              batchReceivedAt: string;
             };
             line?: {
               pickListItemId: string;
@@ -321,7 +321,7 @@ export default function TabletPickingDetailPage() {
             status: "open",
             suggestedPickLocationId: payload.data.source.locationId,
             suggestedPickBatchCode: payload.data.source.batchCode,
-            suggestedPickBatchReceivedAt: "", // resolved on write via batchLocationSku
+            suggestedPickBatchReceivedAt: payload.data.source.batchReceivedAt,
           };
         }
       } catch {
@@ -431,6 +431,7 @@ export default function TabletPickingDetailPage() {
         data: {
           pickRows: [
             {
+              pickListItemId: currentItem.lineId,
               deliveryNoteItemId: currentItem.dnItemId,
               batchLocationSku: /^\d{10}$/.test(currentItem.matchedScanCode)
                 ? currentItem.matchedScanCode
@@ -491,21 +492,22 @@ export default function TabletPickingDetailPage() {
   const pickedLinesCount = lines.filter((l) => isLineCompleteForUi(l.status)).length;
   const remainingLines = lines.filter((l) => !isLineCompleteForUi(l.status));
   const pickedLines = lines.filter((l) => isLinePicked(l.status));
-  const pickSkusByDnItemId = useMemo(() => {
+  const pickSkusByPickListItemId = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const row of pickList?.delivery_note_item_picks || []) {
       if (row.deleted_at) continue;
+      if (!row.pick_list_item_id) continue;
       const batchLocationSku =
         typeof row.batch_location_sku === "string" ? row.batch_location_sku.trim() : "";
       if (!batchLocationSku) continue;
-      const current = map.get(row.delivery_note_item_id) || [];
+      const current = map.get(row.pick_list_item_id) || [];
       if (!current.includes(batchLocationSku)) current.push(batchLocationSku);
-      map.set(row.delivery_note_item_id, current);
+      map.set(row.pick_list_item_id, current);
     }
     return map;
   }, [pickList?.delivery_note_item_picks]);
-  const getPickedSkuSummary = (dnItemId: string) => {
-    const skus = pickSkusByDnItemId.get(dnItemId) || [];
+  const getPickedSkuSummary = (pickListItemId: string) => {
+    const skus = pickSkusByPickListItemId.get(pickListItemId) || [];
     if (skus.length === 0) return null;
     if (skus.length === 1) return skus[0];
     return `${skus[0]} +${skus.length - 1}`;
@@ -872,7 +874,7 @@ export default function TabletPickingDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {pickedLines.map((line) => {
-                    const skuText = getPickedSkuSummary(line.dnItemId);
+                    const skuText = getPickedSkuSummary(line.id);
                     return (
                       <div
                         key={line.id}

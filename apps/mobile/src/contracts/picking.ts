@@ -19,6 +19,7 @@ export type PickListSummary = {
 
 export type PickListItem = {
   id: string;
+  pickListItemId: string;
   deliveryNoteItemId: string;
   itemId: string;
   name: string;

@@ -296,6 +296,7 @@ export default function PickingDetailScreen() {
         const finalPickedQty = picked[item.id] ?? item.pickedQty;
         const source = pickedSources[item.id] || defaultPickSource(item);
         return {
+          pickListItemId: item.pickListItemId,
           deliveryNoteItemId: item.deliveryNoteItemId,
           pickedQty: Math.max(0, finalPickedQty - item.pickedQty),
           batchLocationSku: source.batchLocationSku,

@@ -20,6 +20,7 @@ type UpdatePickListItemsBody = {
   }>;
   pickRows?: Array<{
     pickRowId?: string;
+    pickListItemId?: string;
     deliveryNoteItemId: string;
     batchLocationSku?: string;
     pickedLocationId: string;
@@ -63,7 +64,7 @@ const getPickSourceAvailability = async ({
   batchReceivedAt: string;
 }) => {
   const { data: itemBatchRow, error: itemBatchError } = await supabase
-    .from("item_batch")
+    .from("item_batches")
     .select("id, qty_on_hand")
     .eq("company_id", companyId)
     .eq("item_id", itemId)
@@ -82,7 +83,7 @@ const getPickSourceAvailability = async ({
   }
 
   const { data: locationBatchRow, error: locationBatchError } = await supabase
-    .from("item_location_batch")
+    .from("item_batch_locations")
     .select("qty_on_hand, batch_location_sku")
     .eq("company_id", companyId)
     .eq("item_id", itemId)
@@ -174,7 +175,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const { data: currentItems, error: fetchItemsError } = await auth.supabase
       .from("pick_list_items")
-      .select("id, dn_item_id, item_id, allocated_qty")
+      .select(
+        "id, dn_item_id, item_id, allocated_qty, picked_qty, suggested_pick_location_id, suggested_pick_batch_code, suggested_pick_batch_received_at, suggested_batch_location_sku"
+      )
       .eq("company_id", auth.companyId)
       .eq("pick_list_id", id);
 
@@ -182,8 +185,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return internalError("Unable to fetch pick list items", fetchItemsError);
     }
 
+    type CurrentPickListItem = NonNullable<typeof currentItems>[number];
     const byId = new Map((currentItems || []).map((item) => [item.id, item]));
-    const byDnItemId = new Map((currentItems || []).map((item) => [item.dn_item_id, item]));
+    const byDnItemId = new Map<string, CurrentPickListItem[]>();
+    for (const item of currentItems || []) {
+      const rows = byDnItemId.get(item.dn_item_id) || [];
+      rows.push(item);
+      byDnItemId.set(item.dn_item_id, rows);
+    }
 
     if (hasPickRows && ["dispatched", "received", "voided"].includes(dnHeader.status)) {
       return NextResponse.json(
@@ -214,6 +223,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const nowIso = new Date().toISOString();
+    const lineTotals = new Map<string, number>();
 
     if (hasLegacyItems) {
       for (const item of body.items || []) {
@@ -238,6 +248,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         if (updateItemError) {
           return internalError("Unable to update pick list item quantities", updateItemError);
         }
+
+        lineTotals.set(item.pickListItemId, pickedQty);
       }
     }
 
@@ -249,10 +261,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         item_unit_option_id?: string | null;
         allocated_qty: number | string;
         dispatched_qty: number | string;
-        suggested_pick_location_id?: string | null;
-        suggested_pick_batch_code?: string | null;
-        suggested_pick_batch_received_at?: string | null;
-        suggested_batch_location_sku?: string | null;
         item_unit_options?:
           | {
               qty_per_unit: number | string | null;
@@ -266,7 +274,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const { data: dnLineRows, error: dnLineError } = await auth.supabase
         .from("delivery_note_items")
         .select(
-          "id, item_id, fulfilling_warehouse_id, item_unit_option_id, allocated_qty, dispatched_qty, suggested_pick_location_id, suggested_pick_batch_code, suggested_pick_batch_received_at, suggested_batch_location_sku, item_unit_options!delivery_note_items_item_unit_option_id_fkey(qty_per_unit)"
+          "id, item_id, fulfilling_warehouse_id, item_unit_option_id, allocated_qty, dispatched_qty, item_unit_options!delivery_note_items_item_unit_option_id_fkey(qty_per_unit)"
         )
         .eq("company_id", auth.companyId)
         .eq("dn_id", header.dn_id);
@@ -280,7 +288,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const { data: existingPickRows, error: existingPickRowsError } = await auth.supabase
         .from("delivery_note_item_picks")
         .select(
-          "id, delivery_note_item_id, picked_location_id, picked_batch_code, picked_batch_received_at, picked_qty, dispatched_qty"
+          "id, delivery_note_item_id, pick_list_item_id, picked_location_id, picked_batch_code, picked_batch_received_at, batch_location_sku, picked_qty, dispatched_qty"
         )
         .eq("company_id", auth.companyId)
         .eq("pick_list_id", id)
@@ -293,33 +301,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       type ExistingPickRow = {
         id: string;
         delivery_note_item_id: string;
+        pick_list_item_id: string | null;
         picked_location_id: string;
         picked_batch_code: string;
         picked_batch_received_at: string;
+        batch_location_sku: string | null;
         picked_qty: number | string;
         dispatched_qty: number | string;
       };
 
       const pickRowsById = new Map<string, ExistingPickRow>();
-      const lineTotals = new Map<string, number>();
       const mergeKeyToRow = new Map<string, ExistingPickRow>();
 
       const mergeKey = (
-        deliveryNoteItemId: string,
+        pickListItemId: string,
         locationId: string,
         batchCode: string,
         batchReceivedAt: string
-      ) => `${deliveryNoteItemId}::${locationId}::${batchCode.trim()}::${batchReceivedAt}`;
+      ) => `${pickListItemId}::${locationId}::${batchCode.trim()}::${batchReceivedAt}`;
 
       for (const row of (existingPickRows || []) as ExistingPickRow[]) {
         pickRowsById.set(row.id, row);
-        lineTotals.set(
-          row.delivery_note_item_id,
-          (lineTotals.get(row.delivery_note_item_id) || 0) + toNumber(row.picked_qty)
-        );
+        const pickListItemId = row.pick_list_item_id || "";
+        if (!pickListItemId) continue;
+        lineTotals.set(pickListItemId, (lineTotals.get(pickListItemId) || 0) + toNumber(row.picked_qty));
         mergeKeyToRow.set(
           mergeKey(
-            row.delivery_note_item_id,
+            pickListItemId,
             row.picked_location_id,
             row.picked_batch_code,
             row.picked_batch_received_at
@@ -330,8 +338,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       for (const row of body.pickRows || []) {
         const pickQty = toNumber(row.pickedQty);
-        const dnLine = dnLineById.get(row.deliveryNoteItemId);
-        const pickListItem = byDnItemId.get(row.deliveryNoteItemId);
+        const candidatePickListItems = byDnItemId.get(row.deliveryNoteItemId) || [];
+        const pickListItem = row.pickListItemId
+          ? byId.get(row.pickListItemId)
+          : candidatePickListItems.length === 1
+            ? candidatePickListItems[0]
+            : null;
+        const dnLine = pickListItem ? dnLineById.get(pickListItem.dn_item_id) : null;
         let resolvedPickedLocationId = row.pickedLocationId;
         let resolvedPickedBatchCode = row.pickedBatchCode?.trim();
         let resolvedPickedBatchReceivedAt = row.pickedBatchReceivedAt;
@@ -342,13 +355,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
         if (!dnLine || !pickListItem) {
           return NextResponse.json(
-            { error: `Invalid delivery note item ${row.deliveryNoteItemId} for this pick list` },
+            {
+              error: row.pickListItemId
+                ? `Invalid pick list item ${row.pickListItemId}`
+                : `pickListItemId is required for split line ${row.deliveryNoteItemId}`,
+            },
             { status: 400 }
           );
         }
 
+        const deliveryNoteItemId = pickListItem.dn_item_id;
         const allocatedQty = toNumber(pickListItem.allocated_qty);
-        const currentLinePicked = lineTotals.get(row.deliveryNoteItemId) || 0;
+        const currentLinePicked = lineTotals.get(pickListItem.id) || 0;
         const dnLineUnitOption = Array.isArray(dnLine.item_unit_options)
           ? dnLine.item_unit_options[0]
           : dnLine.item_unit_options;
@@ -356,7 +374,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
         if (row.pickRowId) {
           const existingRow = pickRowsById.get(row.pickRowId);
-          if (!existingRow || existingRow.delivery_note_item_id !== row.deliveryNoteItemId) {
+          if (!existingRow || existingRow.pick_list_item_id !== pickListItem.id) {
             return NextResponse.json(
               { error: `Invalid pick row ${row.pickRowId}` },
               { status: 400 }
@@ -426,6 +444,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .from("delivery_note_item_picks")
             .update({
               picked_qty: pickQty,
+              batch_location_sku: sourceAvailability.batchLocationSku || existingRow.batch_location_sku,
               is_mismatch_warning_acknowledged: row.isMismatchWarningAcknowledged ?? false,
               mismatch_reason: row.mismatchReason?.trim() || null,
               updated_at: nowIso,
@@ -439,9 +458,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             return internalError("Unable to update picked row", updatePickRowError);
           }
 
-          lineTotals.set(row.deliveryNoteItemId, nextLinePicked);
+          lineTotals.set(pickListItem.id, nextLinePicked);
           pickRowsById.set(row.pickRowId, {
             ...existingRow,
+            batch_location_sku: sourceAvailability.batchLocationSku || existingRow.batch_location_sku,
             picked_qty: pickQty,
           });
           continue;
@@ -449,12 +469,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
         if (row.batchLocationSku?.trim()) {
           const { data: resolvedSource, error: resolvedSourceError } = await auth.supabase
-            .from("item_location_batch")
+            .from("item_batch_locations")
             .select(
               `
               location_id,
               batch_location_sku,
-              item_batch:item_batch!item_location_batch_item_batch_id_fkey(
+              item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
                 id,
                 item_id,
                 warehouse_id,
@@ -529,7 +549,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         }
 
         const rowKey = mergeKey(
-          row.deliveryNoteItemId,
+          pickListItem.id,
           resolvedPickedLocationId,
           resolvedPickedBatchCode,
           resolvedPickedBatchReceivedAt
@@ -586,6 +606,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .from("delivery_note_item_picks")
             .update({
               picked_qty: nextPickedQty,
+              batch_location_sku: resolvedPickedBatchLocationSku,
               is_mismatch_warning_acknowledged: row.isMismatchWarningAcknowledged ?? false,
               mismatch_reason: row.mismatchReason?.trim() || null,
               picker_user_id: auth.userId,
@@ -601,9 +622,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             return internalError("Unable to update picked row", mergeUpdateError);
           }
 
-          lineTotals.set(row.deliveryNoteItemId, nextLinePicked);
+          lineTotals.set(pickListItem.id, nextLinePicked);
           const updatedMergedRow: ExistingPickRow = {
             ...mergedRow,
+            batch_location_sku: resolvedPickedBatchLocationSku,
             picked_qty: nextPickedQty,
           };
           mergeKeyToRow.set(rowKey, updatedMergedRow);
@@ -658,13 +680,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .insert({
               company_id: auth.companyId,
               dn_id: header.dn_id,
-              delivery_note_item_id: row.deliveryNoteItemId,
+              delivery_note_item_id: deliveryNoteItemId,
+              pick_list_item_id: pickListItem.id,
               pick_list_id: id,
               item_id: dnLine.item_id,
               source_warehouse_id: dnLine.fulfilling_warehouse_id,
               picked_location_id: resolvedPickedLocationId,
               picked_batch_code: resolvedPickedBatchCode,
               picked_batch_received_at: resolvedPickedBatchReceivedAt,
+              batch_location_sku: resolvedPickedBatchLocationSku,
               picked_qty: pickQty,
               dispatched_qty: 0,
               picker_user_id: auth.userId,
@@ -675,7 +699,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               updated_by: auth.userId,
             })
             .select(
-              "id, delivery_note_item_id, picked_location_id, picked_batch_code, picked_batch_received_at, picked_qty, dispatched_qty"
+              "id, delivery_note_item_id, pick_list_item_id, picked_location_id, picked_batch_code, picked_batch_received_at, batch_location_sku, picked_qty, dispatched_qty"
             )
             .single();
 
@@ -684,11 +708,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           }
 
           const inserted = insertedPickRow as ExistingPickRow;
-          lineTotals.set(row.deliveryNoteItemId, nextLinePicked);
+          lineTotals.set(pickListItem.id, nextLinePicked);
           pickRowsById.set(inserted.id, inserted);
           mergeKeyToRow.set(
             mergeKey(
-              inserted.delivery_note_item_id,
+              inserted.pick_list_item_id || pickListItem.id,
               inserted.picked_location_id,
               inserted.picked_batch_code,
               inserted.picked_batch_received_at
@@ -697,46 +721,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           );
         }
 
-        const suggestedBatchCode = (dnLine as { suggested_pick_batch_code?: string | null })
-          .suggested_pick_batch_code;
-        const suggestedLocationId = (dnLine as { suggested_pick_location_id?: string | null })
-          .suggested_pick_location_id;
-        const suggestedBatchLocationSku = (
-          dnLine as { suggested_batch_location_sku?: string | null }
-        ).suggested_batch_location_sku;
-        const isOverride =
-          (suggestedLocationId && suggestedLocationId !== resolvedPickedLocationId) ||
-          (suggestedBatchCode && suggestedBatchCode !== resolvedPickedBatchCode) ||
-          (suggestedBatchLocationSku &&
-            suggestedBatchLocationSku !== resolvedPickedBatchLocationSku);
-
-        if (isOverride || resolvedPickedBatchLocationSku) {
-          const { error: updateSuggestionError } = await auth.supabase
-            .from("delivery_note_items")
-            .update({
-              suggested_pick_location_id: resolvedPickedLocationId,
-              suggested_pick_batch_code: resolvedPickedBatchCode,
-              suggested_pick_batch_received_at: resolvedPickedBatchReceivedAt,
-              suggested_batch_location_sku: resolvedPickedBatchLocationSku,
-              has_pick_source_override: isOverride,
-              last_pick_source_override_at: isOverride ? nowIso : null,
-              last_pick_source_override_by: isOverride ? auth.userId : null,
-              updated_at: nowIso,
-            })
-            .eq("id", row.deliveryNoteItemId)
-            .eq("company_id", auth.companyId);
-
-          if (updateSuggestionError) {
-            return internalError("Unable to update picked source suggestion", updateSuggestionError);
-          }
-        }
       }
 
-      const lineIds = Array.from(byDnItemId.keys());
-      if (lineIds.length > 0) {
+      const pickListItemIds = Array.from(byId.keys());
+      if (pickListItemIds.length > 0) {
         const { data: pickRowsAfter, error: pickRowsAfterError } = await auth.supabase
           .from("delivery_note_item_picks")
-          .select("delivery_note_item_id, picked_qty")
+          .select("pick_list_item_id, picked_qty")
           .eq("company_id", auth.companyId)
           .eq("pick_list_id", id)
           .is("deleted_at", null);
@@ -745,18 +736,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           return internalError("Unable to fetch picked rows after update", pickRowsAfterError);
         }
 
-        const pickedTotalsByDnItem = new Map<string, number>();
+        const pickedTotalsByPickListItem = new Map<string, number>();
         for (const row of pickRowsAfter || []) {
-          const dnItemId = row.delivery_note_item_id as string;
-          pickedTotalsByDnItem.set(
-            dnItemId,
-            (pickedTotalsByDnItem.get(dnItemId) || 0) + toNumber(row.picked_qty as number | string)
+          const pickListItemId = row.pick_list_item_id as string | null;
+          if (!pickListItemId) continue;
+          pickedTotalsByPickListItem.set(
+            pickListItemId,
+            (pickedTotalsByPickListItem.get(pickListItemId) || 0) +
+              toNumber(row.picked_qty as number | string)
           );
         }
 
-        for (const [dnItemId, pickListItem] of byDnItemId.entries()) {
+        for (const pickListItem of byId.values()) {
           const allocatedQty = toNumber(pickListItem.allocated_qty);
-          const pickedQty = Math.min(allocatedQty, pickedTotalsByDnItem.get(dnItemId) || 0);
+          const pickedQty = Math.min(
+            allocatedQty,
+            pickedTotalsByPickListItem.get(pickListItem.id) || 0
+          );
           const shortQty = Math.max(0, allocatedQty - pickedQty);
 
           const { error: syncPickListItemError } = await auth.supabase
@@ -774,6 +770,34 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             return internalError("Unable to sync pick list item quantities", syncPickListItemError);
           }
         }
+      }
+    }
+
+    const dnItemIds = Array.from(byDnItemId.keys());
+    for (const dnItemId of dnItemIds) {
+      const pickListItemsForDn = byDnItemId.get(dnItemId) || [];
+      const pickedQty = pickListItemsForDn.reduce((total, item) => {
+        const picked = lineTotals.get(item.id);
+        return total + (picked == null ? toNumber(item.picked_qty) : picked);
+      }, 0);
+      const allocatedQty = pickListItemsForDn.reduce(
+        (total, item) => total + toNumber(item.allocated_qty),
+        0
+      );
+
+      const { error: syncDnItemError } = await auth.supabase
+        .from("delivery_note_items")
+        .update({
+          picked_qty: Math.min(allocatedQty, pickedQty),
+          short_qty: Math.max(0, allocatedQty - pickedQty),
+          updated_at: nowIso,
+        })
+        .eq("id", dnItemId)
+        .eq("company_id", auth.companyId)
+        .eq("dn_id", header.dn_id);
+
+      if (syncDnItemError) {
+        return internalError("Unable to sync delivery note item quantities", syncDnItemError);
       }
     }
 

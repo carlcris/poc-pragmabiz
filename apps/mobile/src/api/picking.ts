@@ -49,17 +49,29 @@ const initialsFor = (name: string) => {
     .join("");
 };
 
-const pickRowTotalsByDnItem = (value: unknown) => {
-  const totals = new Map<string, number>();
+const pickRowTotals = (value: unknown) => {
+  const byPickListItem = new Map<string, number>();
+  const byDeliveryNoteItem = new Map<string, number>();
   for (const pickRowValue of asArray(value)) {
     const pickRow = asRecord(pickRowValue);
+    const pickListItemId = maybeStr(
+      pickRow.pickListItemId || pickRow.pick_list_item_id || pickRow.lineId || pickRow.line_id
+    );
     const deliveryNoteItemId = maybeStr(
       pickRow.deliveryNoteItemId || pickRow.delivery_note_item_id || pickRow.dnItemId
     );
-    if (!deliveryNoteItemId) continue;
-    totals.set(deliveryNoteItemId, (totals.get(deliveryNoteItemId) || 0) + num(pickRow.pickedQty || pickRow.picked_qty));
+    const pickedQty = num(pickRow.pickedQty || pickRow.picked_qty);
+    if (pickListItemId) {
+      byPickListItem.set(pickListItemId, (byPickListItem.get(pickListItemId) || 0) + pickedQty);
+    }
+    if (deliveryNoteItemId) {
+      byDeliveryNoteItem.set(
+        deliveryNoteItemId,
+        (byDeliveryNoteItem.get(deliveryNoteItemId) || 0) + pickedQty
+      );
+    }
   }
-  return totals;
+  return { byPickListItem, byDeliveryNoteItem };
 };
 
 const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickListItem => {
@@ -71,9 +83,13 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
   const batch = firstRecord(record.batch || record.item_batches);
   const source = firstRecord(record.source || record.source_location);
   const dnLine = firstRecord(record.deliveryNoteItem || record.delivery_note_item || record.delivery_note_items);
+  const pickListItemId = str(
+    record.pickListItemId || record.pick_list_item_id || record.lineId || record.line_id || record.id
+  );
 
   return {
-    id: str(record.id || record.pickListItemId || record.pick_list_item_id),
+    id: pickListItemId,
+    pickListItemId,
     deliveryNoteItemId: str(
       record.deliveryNoteItemId || record.delivery_note_item_id || record.dnItemId || record.dn_item_id
     ),
@@ -117,19 +133,60 @@ const normalizePickItem = (value: unknown, pickedQtyOverride?: number): PickList
     pickedQty: pickedQtyOverride ?? num(record.pickedQty || record.picked_qty),
     locationName: maybeStr(record.locationName || location.name || location.code),
     batchNumber: maybeStr(record.batchNumber || record.batch_number || batch.batch_number)
+      || maybeStr(
+        record.pickedBatchCode ||
+          record.picked_batch_code ||
+          record.suggestedPickBatchCode ||
+          record.suggested_pick_batch_code ||
+          source.batch_code
+      )
   };
 };
+
+type PickRowInput = {
+  pickListItemId: string;
+  deliveryNoteItemId: string;
+  pickedQty: number;
+  batchLocationSku?: string | null;
+  pickedLocationId?: string | null;
+  pickedBatchCode?: string | null;
+  pickedBatchReceivedAt?: string | null;
+};
+
+const toPickRows = (items: PickRowInput[]) =>
+  items.map((item) => {
+    const pickListItemId = item.pickListItemId.trim();
+    if (!pickListItemId) {
+      throw new Error("Pick list item id is required.");
+    }
+
+    return {
+      pickListItemId,
+      deliveryNoteItemId: item.deliveryNoteItemId,
+      batchLocationSku: item.batchLocationSku || undefined,
+      pickedLocationId: item.pickedLocationId || "",
+      pickedBatchCode: item.pickedBatchCode || "",
+      pickedBatchReceivedAt: item.pickedBatchReceivedAt || "",
+      pickedQty: item.pickedQty,
+      isMismatchWarningAcknowledged: false,
+      mismatchReason: null
+    };
+  });
 
 const normalizePickDetail = (value: unknown): PickListDetail => {
   const record = asRecord(value);
   const deliveryNote = firstRecord(record.deliveryNote || record.delivery_note || record.delivery_notes);
-  const pickTotals = pickRowTotalsByDnItem(record.deliveryNoteItemPicks || record.delivery_note_item_picks);
+  const totals = pickRowTotals(record.deliveryNoteItemPicks || record.delivery_note_item_picks);
   const items = asArray(record.items || record.pickListItems || record.pick_list_items).map((itemValue) => {
     const itemRecord = asRecord(itemValue);
+    const pickListItemId = str(itemRecord.id || itemRecord.pickListItemId || itemRecord.pick_list_item_id);
     const deliveryNoteItemId = str(
       itemRecord.deliveryNoteItemId || itemRecord.delivery_note_item_id || itemRecord.dnItemId || itemRecord.dn_item_id
     );
-    return normalizePickItem(itemValue, pickTotals.get(deliveryNoteItemId));
+    return normalizePickItem(
+      itemValue,
+      totals.byPickListItem.get(pickListItemId) ?? totals.byDeliveryNoteItem.get(deliveryNoteItemId)
+    );
   });
 
   return {
@@ -191,16 +248,23 @@ export const listPickLists = async (params: {
         .filter((assignee) => assignee.id);
       const assignedTo = mappedAssignees.map((assignee) => assignee.firstName).join(", ") || null;
       const items = asArray(record.pick_list_items || record.items);
-      const pickTotals = pickRowTotalsByDnItem(record.delivery_note_item_picks || record.deliveryNoteItemPicks);
+      const totals = pickRowTotals(record.delivery_note_item_picks || record.deliveryNoteItemPicks);
       const pickedLines = items.filter((itemValue) => {
         const itemRecord = asRecord(itemValue);
+        const pickListItemId = str(
+          itemRecord.id || itemRecord.pickListItemId || itemRecord.pick_list_item_id
+        );
         const deliveryNoteItemId = str(
           itemRecord.deliveryNoteItemId ||
             itemRecord.delivery_note_item_id ||
             itemRecord.dnItemId ||
             itemRecord.dn_item_id
         );
-        return (pickTotals.get(deliveryNoteItemId) ?? num(itemRecord.picked_qty || itemRecord.pickedQty)) > 0;
+        return (
+          totals.byPickListItem.get(pickListItemId) ??
+          totals.byDeliveryNoteItem.get(deliveryNoteItemId) ??
+          num(itemRecord.picked_qty || itemRecord.pickedQty)
+        ) > 0;
       }).length;
 
       return {
@@ -289,28 +353,12 @@ export const setPickListStatus = async (id: string, status: "in_progress" | "pau
 
 export const updatePickedItems = async (
   id: string,
-  items: {
-    deliveryNoteItemId: string;
-    pickedQty: number;
-    batchLocationSku?: string | null;
-    pickedLocationId?: string | null;
-    pickedBatchCode?: string | null;
-    pickedBatchReceivedAt?: string | null;
-  }[]
+  items: PickRowInput[]
 ) => {
   const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/items`, {
     method: "PATCH",
     body: {
-      pickRows: items.map((item) => ({
-        deliveryNoteItemId: item.deliveryNoteItemId,
-        batchLocationSku: item.batchLocationSku || undefined,
-        pickedLocationId: item.pickedLocationId || "",
-        pickedBatchCode: item.pickedBatchCode || "",
-        pickedBatchReceivedAt: item.pickedBatchReceivedAt || "",
-        pickedQty: item.pickedQty,
-        isMismatchWarningAcknowledged: false,
-        mismatchReason: null
-      }))
+      pickRows: toPickRows(items)
     }
   });
   return normalizePickDetail(asRecord(response).data || response);
@@ -318,28 +366,12 @@ export const updatePickedItems = async (
 
 export const completePickList = async (
   id: string,
-  items: {
-    deliveryNoteItemId: string;
-    pickedQty: number;
-    batchLocationSku?: string | null;
-    pickedLocationId?: string | null;
-    pickedBatchCode?: string | null;
-    pickedBatchReceivedAt?: string | null;
-  }[]
+  items: PickRowInput[]
 ) => {
   const response = await apiRequest<ListResponse | unknown>(`/api/pick-lists/${id}/complete`, {
     method: "POST",
     body: {
-      pickRows: items.map((item) => ({
-        deliveryNoteItemId: item.deliveryNoteItemId,
-        batchLocationSku: item.batchLocationSku || undefined,
-        pickedLocationId: item.pickedLocationId || "",
-        pickedBatchCode: item.pickedBatchCode || "",
-        pickedBatchReceivedAt: item.pickedBatchReceivedAt || "",
-        pickedQty: item.pickedQty,
-        isMismatchWarningAcknowledged: false,
-        mismatchReason: null
-      }))
+      pickRows: toPickRows(items)
     }
   });
   return normalizePickDetail(asRecord(response).data || response);

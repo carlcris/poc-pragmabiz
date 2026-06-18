@@ -7,8 +7,10 @@ import {
   notifyBusinessUnits,
 } from "@/app/api/_lib/workflow-notifications";
 import {
+  type BatchAllocationMode,
   createPickListForDn,
   fetchPickList,
+  getPickListAllocationChoice,
   getPickListAuthContext,
   mapPickListRecord,
   type PickListStatus,
@@ -18,6 +20,7 @@ type CreatePickListBody = {
   dnId?: string;
   pickerUserIds?: string[];
   notes?: string;
+  batchAllocationMode?: BatchAllocationMode;
 };
 type PickListApiRecord = Record<string, unknown>;
 
@@ -27,6 +30,46 @@ const MAX_PAGE_SIZE = 100;
 const parsePositiveInt = (value: string | null, fallback: number) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const BATCH_ALLOCATION_MODES = new Set<BatchAllocationMode>(["single_sufficient", "split"]);
+
+const CREATE_PICK_LIST_ERROR: Record<string, { message: string; status: number }> = {
+  PICK_LIST_UNAUTHORIZED: { message: "Not authorized to create pick list", status: 403 },
+  PICK_LIST_DELIVERY_NOTE_NOT_FOUND: { message: "Delivery note not found", status: 404 },
+  PICK_LIST_INVALID_DELIVERY_NOTE_STATUS: {
+    message: "Pick list can only be created from confirmed or dispatched delivery notes",
+    status: 400,
+  },
+  PICK_LIST_ACTIVE_EXISTS: {
+    message: "Delivery note already has an active pick list",
+    status: 409,
+  },
+  PICK_LIST_PICKER_REQUIRED: { message: "At least one picker must be assigned", status: 400 },
+  PICK_LIST_INVALID_PICKER: { message: "One or more picker users are invalid", status: 400 },
+  PICK_LIST_NO_PENDING_LINES: {
+    message: "Delivery note has no pending lines for picking",
+    status: 400,
+  },
+  PICK_ALLOCATION_INVALID_MODE: { message: "Invalid batch allocation mode", status: 400 },
+  PICK_ALLOCATION_CHOICE_REQUIRED: {
+    message: "Batch allocation choice is required",
+    status: 409,
+  },
+  PICK_ALLOCATION_SINGLE_SOURCE_UNAVAILABLE: {
+    message: "No single batch has enough quantity for this allocation",
+    status: 400,
+  },
+  PICK_ALLOCATION_INSUFFICIENT_BATCH_QUANTITY: {
+    message: "Batch quantity is not enough for this allocation",
+    status: 400,
+  },
+};
+
+const toCreatePickListError = (error: unknown) => {
+  const rawMessage = error instanceof Error ? error.message : "";
+  const mapped = CREATE_PICK_LIST_ERROR[rawMessage];
+  return mapped || { message: "Failed to create pick list", status: 400 };
 };
 
 // GET /api/pick-lists
@@ -152,6 +195,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one picker must be assigned" }, { status: 400 });
     }
 
+    const batchAllocationMode = body.batchAllocationMode;
+    if (batchAllocationMode && !BATCH_ALLOCATION_MODES.has(batchAllocationMode)) {
+      return NextResponse.json({ error: "Invalid batch allocation mode" }, { status: 400 });
+    }
+
     const header = await fetchDeliveryNoteHeader(auth.supabase, auth.companyId, dnId);
     if (!header) {
       return NextResponse.json({ error: "Delivery note not found" }, { status: 404 });
@@ -163,6 +211,40 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!batchAllocationMode) {
+      let allocationChoice;
+      try {
+        allocationChoice = await getPickListAllocationChoice(auth.supabase, auth.companyId, dnId);
+      } catch (allocationError) {
+        console.error("Failed to preflight pick-list batch allocation", allocationError);
+        return NextResponse.json({ error: "Failed to check batch allocation" }, { status: 500 });
+      }
+
+      if (allocationChoice.insufficientLines.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Batch quantity is not enough for this allocation",
+            code: "batch_allocation_insufficient",
+            lines: allocationChoice.insufficientLines,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (allocationChoice.lines.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Batch allocation choice is required",
+            code: "batch_allocation_choice_required",
+            requiresBatchAllocationChoice: true,
+            lines: allocationChoice.lines,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     let createdPickList;
     try {
       createdPickList = await createPickListForDn({
@@ -175,14 +257,12 @@ export async function POST(request: NextRequest) {
         fulfillingWarehouseId: header.fulfilling_warehouse_id,
         pickerUserIds: uniquePickers,
         notes: body.notes?.trim() || null,
+        batchAllocationMode,
       });
     } catch (createPickListError) {
-      const message =
-        createPickListError instanceof Error
-          ? createPickListError.message
-          : "Failed to create pick list";
-      const status = message === "Delivery note already has an active pick list" ? 409 : 400;
-      return NextResponse.json({ error: message }, { status });
+      console.error("Failed to create pick list", createPickListError);
+      const mapped = toCreatePickListError(createPickListError);
+      return NextResponse.json({ error: mapped.message }, { status: mapped.status });
     }
 
     try {
@@ -214,7 +294,7 @@ export async function POST(request: NextRequest) {
     const pickList = await fetchPickList(auth.supabase, auth.companyId, createdPickList.pickListId);
     return NextResponse.json(pickList, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected pick list creation error", error);
+    return NextResponse.json({ error: "Failed to create pick list" }, { status: 500 });
   }
 }

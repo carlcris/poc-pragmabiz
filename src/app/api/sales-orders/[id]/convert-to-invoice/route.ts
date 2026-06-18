@@ -7,6 +7,7 @@ import { RESOURCES } from "@/constants/resources";
 import {
   adjustItemLocation,
   ensureWarehouseDefaultLocation,
+  getItemLocationOnHand,
 } from "@/services/inventory/locationService";
 
 type StockSnapshot = {
@@ -200,17 +201,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           );
         }
 
-        const { data: locationStock, error: locationStockError } = await supabase
-          .from("item_location")
-          .select("qty_on_hand")
-          .eq("company_id", salesOrder.company_id)
-          .eq("item_id", item.item_id)
-          .eq("warehouse_id", body.warehouseId)
-          .eq("location_id", locationId)
-          .is("deleted_at", null)
-          .maybeSingle();
-
-        if (locationStockError) {
+        let locationOnHand = 0;
+        try {
+          locationOnHand = await getItemLocationOnHand({
+            supabase,
+            companyId: salesOrder.company_id,
+            itemId: item.item_id,
+            warehouseId: body.warehouseId,
+            locationId,
+          });
+        } catch (locationStockError) {
           logConvertToInvoiceError("Error fetching location stock:", locationStockError);
           return NextResponse.json({ error: "Failed to validate location stock" }, { status: 500 });
         }
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           currentStock: parseNumber(warehouseStock?.current_stock),
           defaultLocationId: warehouseStock?.default_location_id ?? null,
           locationId,
-          locationOnHand: parseNumber(locationStock?.qty_on_hand),
+          locationOnHand,
         };
         stockByItemId.set(item.item_id, snapshot);
       }

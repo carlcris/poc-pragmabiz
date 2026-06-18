@@ -10,6 +10,7 @@ import {
 type SupabaseClient = Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"];
 
 export type PickListStatus = "pending" | "in_progress" | "paused" | "cancelled" | "done";
+export type BatchAllocationMode = "single_sufficient" | "split";
 
 export type PickListRow = {
   id: string;
@@ -63,16 +64,12 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
           )
         ),
         delivery_note_items!pick_list_items_dn_item_id_fkey(
+          id
+        ),
+        suggested_pick_location:warehouse_locations!pick_list_items_suggested_pick_location_id_fkey(
           id,
-          suggested_pick_location_id,
-          suggested_pick_batch_code,
-          suggested_pick_batch_received_at,
-          suggested_batch_location_sku,
-          suggested_pick_location:warehouse_locations!delivery_note_items_suggested_pick_location_id_fkey(
-            id,
-            code,
-            name
-          )
+          code,
+          name
         ),
         items!pick_list_items_item_id_fkey(item_name, item_code),
         units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
@@ -183,6 +180,274 @@ export const notifyPickListReadyForDispatch = async (
   });
 };
 
+type RelatedRow<T> = T | T[] | null | undefined;
+
+type AllocationSource = {
+  batchLocationSku: string | null;
+  locationId: string;
+  locationCode: string | null;
+  locationName: string | null;
+  batchCode: string;
+  batchReceivedAt: string;
+  availableQty: number;
+  availableBaseQty: number;
+};
+
+export type PickListAllocationChoiceLine = {
+  deliveryNoteItemId: string;
+  itemId: string;
+  itemLabel: string;
+  unitLabel: string;
+  requiredQty: number;
+  requiredBaseQty: number;
+  suggestedSource: AllocationSource | null;
+  singleSource: AllocationSource | null;
+  splitSources: AllocationSource[];
+  totalAvailableQty: number;
+  totalAvailableBaseQty: number;
+};
+
+export type PickListAllocationChoice = {
+  lines: PickListAllocationChoiceLine[];
+  insufficientLines: PickListAllocationChoiceLine[];
+};
+
+const toNumber = (value: unknown) => {
+  if (value == null) return 0;
+  const parsed = typeof value === "number" ? value : parseFloat(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const one = <T>(value: RelatedRow<T>) => (Array.isArray(value) ? (value[0] ?? null) : (value ?? null));
+
+const toText = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+
+const sortAllocationSources = (a: AllocationSource, b: AllocationSource) => {
+  const receivedCompare = a.batchReceivedAt.localeCompare(b.batchReceivedAt);
+  if (receivedCompare !== 0) return receivedCompare;
+  return (a.batchLocationSku || "").localeCompare(b.batchLocationSku || "");
+};
+
+export const getPickListAllocationChoice = async (
+  supabase: SupabaseClient,
+  companyId: string,
+  dnId: string
+): Promise<PickListAllocationChoice> => {
+  const { data: dnItems, error: dnItemsError } = await supabase
+    .from("delivery_note_items")
+    .select(
+      `
+      id,
+      item_id,
+      item_unit_option_id,
+      uom_id,
+      sr_item_id,
+      allocated_qty,
+      picked_qty,
+      fulfilling_warehouse_id,
+      items!delivery_note_items_item_id_fkey(item_name, item_code),
+      units_of_measure!delivery_note_items_uom_id_fkey(code, symbol, name),
+      item_unit_options!delivery_note_items_item_unit_option_id_fkey(option_label, qty_per_unit)
+    `
+    )
+    .eq("company_id", companyId)
+    .eq("dn_id", dnId)
+    .eq("is_voided", false)
+    .gt("allocated_qty", 0)
+    .order("created_at", { ascending: true });
+
+  if (dnItemsError) {
+    throw new Error(dnItemsError.message);
+  }
+
+  const dnItemRows = (dnItems || []) as Array<Record<string, unknown>>;
+  const srItemIds = Array.from(
+    new Set(dnItemRows.map((row) => toText(row.sr_item_id)).filter((id): id is string => !!id))
+  );
+  const selectedBatchBySrItemId = new Map<string, string>();
+
+  if (srItemIds.length > 0) {
+    const { data: stockRequestItems, error: stockRequestItemsError } = await supabase
+      .from("stock_request_items")
+      .select("id, selected_item_batch_id")
+      .in("id", srItemIds);
+
+    if (stockRequestItemsError) {
+      throw new Error(stockRequestItemsError.message);
+    }
+
+    for (const item of (stockRequestItems || []) as Array<Record<string, unknown>>) {
+      const id = toText(item.id);
+      const selectedBatchId = toText(item.selected_item_batch_id);
+      if (id && selectedBatchId) {
+        selectedBatchBySrItemId.set(id, selectedBatchId);
+      }
+    }
+  }
+
+  const lines: PickListAllocationChoiceLine[] = [];
+  const insufficientLines: PickListAllocationChoiceLine[] = [];
+
+  for (const rawLine of dnItemRows) {
+    const allocatedQty = toNumber(rawLine.allocated_qty);
+    const pickedQty = toNumber(rawLine.picked_qty);
+    const requiredQty = Math.max(0, allocatedQty - pickedQty);
+    if (requiredQty <= 0) continue;
+
+    const unitOption = one(
+      rawLine.item_unit_options as RelatedRow<{
+        option_label?: string | null;
+        qty_per_unit?: number | string | null;
+      }>
+    );
+    const uom = one(
+      rawLine.units_of_measure as RelatedRow<{
+        code?: string | null;
+        symbol?: string | null;
+        name?: string | null;
+      }>
+    );
+    const item = one(
+      rawLine.items as RelatedRow<{
+        item_name?: string | null;
+        item_code?: string | null;
+      }>
+    );
+    const qtyPerUnit = Math.max(1, toNumber(unitOption?.qty_per_unit) || 1);
+    const requiredBaseQty = requiredQty * qtyPerUnit;
+    const itemId = String(rawLine.item_id || "");
+    const warehouseId = String(rawLine.fulfilling_warehouse_id || "");
+    const selectedBatchId = selectedBatchBySrItemId.get(String(rawLine.sr_item_id || "")) || null;
+
+    let sourceQuery = supabase
+      .from("item_batch_locations")
+      .select(
+        `
+        id,
+        location_id,
+        batch_location_sku,
+        qty_on_hand,
+        qty_reserved,
+        warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(id, code, name),
+        item_batch:item_batches!item_batch_locations_item_batch_id_fkey(
+          id,
+          batch_code,
+          received_at,
+          qty_on_hand,
+          qty_reserved
+        )
+      `
+      )
+      .eq("company_id", companyId)
+      .eq("item_id", itemId)
+      .eq("warehouse_id", warehouseId)
+      .is("deleted_at", null);
+
+    if (selectedBatchId) {
+      sourceQuery = sourceQuery.eq("item_batch_id", selectedBatchId);
+    }
+
+    const { data: sourceRows, error: sourceError } = await sourceQuery.limit(100);
+
+    if (sourceError) {
+      throw new Error(sourceError.message);
+    }
+
+    const sources = ((sourceRows || []) as Array<Record<string, unknown>>)
+      .map((row): AllocationSource | null => {
+        const batch = one(
+          row.item_batch as RelatedRow<{
+            batch_code?: string | null;
+            id?: string | null;
+            received_at?: string | null;
+            qty_on_hand?: number | string | null;
+            qty_reserved?: number | string | null;
+          }>
+        );
+        const location = one(
+          row.warehouse_location as RelatedRow<{
+            code?: string | null;
+            name?: string | null;
+          }>
+        );
+        const batchCode = toText(batch?.batch_code);
+        const batchId = toText(batch?.id);
+        const receivedAt = toText(batch?.received_at);
+        const locationId = toText(row.location_id);
+        if (!batchCode || !receivedAt || !locationId) return null;
+        if (selectedBatchId && batchId !== selectedBatchId) return null;
+
+        const locationAvailable = Math.max(
+          0,
+          toNumber(row.qty_on_hand) - toNumber(row.qty_reserved)
+        );
+        const batchAvailable = Math.max(
+          0,
+          toNumber(batch?.qty_on_hand) - toNumber(batch?.qty_reserved)
+        );
+        const availableBaseQty = Math.max(0, Math.min(locationAvailable, batchAvailable));
+        const availableQty = Math.floor(availableBaseQty / qtyPerUnit);
+        const usableBaseQty = availableQty * qtyPerUnit;
+        if (availableQty <= 0 || usableBaseQty <= 0) return null;
+
+        return {
+          batchLocationSku: toText(row.batch_location_sku),
+          locationId,
+          locationCode: toText(location?.code),
+          locationName: toText(location?.name),
+          batchCode,
+          batchReceivedAt: receivedAt,
+          availableQty,
+          availableBaseQty: usableBaseQty,
+        };
+      })
+      .filter((source): source is AllocationSource => source !== null)
+      .sort(sortAllocationSources);
+
+    const suggestedSource = sources[0] || null;
+
+    if (suggestedSource && suggestedSource.availableBaseQty >= requiredBaseQty) {
+      continue;
+    }
+
+    const singleSource = sources.find((source) => source.availableBaseQty >= requiredBaseQty) || null;
+    const totalAvailableBaseQty = sources.reduce(
+      (total, source) => total + source.availableBaseQty,
+      0
+    );
+    const totalAvailableQty = sources.reduce((total, source) => total + source.availableQty, 0);
+    const splitSources: AllocationSource[] = [];
+    let remainingQty = requiredQty;
+    for (const source of sources) {
+      if (remainingQty <= 0) break;
+      splitSources.push(source);
+      remainingQty -= source.availableQty;
+    }
+
+    const choiceLine: PickListAllocationChoiceLine = {
+      deliveryNoteItemId: String(rawLine.id || ""),
+      itemId,
+      itemLabel: item?.item_name || item?.item_code || itemId,
+      unitLabel: unitOption?.option_label || uom?.symbol || uom?.code || uom?.name || "Unit",
+      requiredQty,
+      requiredBaseQty,
+      suggestedSource,
+      singleSource,
+      splitSources: remainingQty <= 0 ? splitSources : [],
+      totalAvailableQty,
+      totalAvailableBaseQty,
+    };
+
+    if (totalAvailableBaseQty < requiredBaseQty) {
+      insufficientLines.push(choiceLine);
+    } else {
+      lines.push(choiceLine);
+    }
+  }
+
+  return { lines, insufficientLines };
+};
+
 type CreatePickListForDnArgs = {
   supabase: SupabaseClient;
   companyId: string;
@@ -193,6 +458,7 @@ type CreatePickListForDnArgs = {
   fulfillingWarehouseId: string;
   pickerUserIds: string[];
   notes?: string | null;
+  batchAllocationMode?: BatchAllocationMode | null;
 };
 
 export const createPickListForDn = async ({
@@ -205,167 +471,40 @@ export const createPickListForDn = async ({
   fulfillingWarehouseId,
   pickerUserIds,
   notes,
+  batchAllocationMode,
 }: CreatePickListForDnArgs) => {
   const uniquePickers = Array.from(new Set(pickerUserIds.map((id) => id.trim()).filter(Boolean)));
   if (uniquePickers.length === 0) {
     throw new Error("At least one picker must be assigned");
   }
 
-  const { data: existingActive, error: existingActiveError } = await supabase
-    .from("pick_lists")
-    .select("id, status")
-    .eq("company_id", companyId)
-    .eq("dn_id", dnId)
-    .in("status", ["pending", "in_progress", "paused"])
-    .is("deleted_at", null)
-    .maybeSingle();
+  void dnBusinessUnitId;
+  void fulfillingWarehouseId;
 
-  if (existingActiveError) {
-    throw new Error(existingActiveError.message);
-  }
-
-  if (existingActive) {
-    throw new Error("Delivery note already has an active pick list");
-  }
-
-  const { data: dnItems, error: dnItemsError } = await supabase
-    .from("delivery_note_items")
-    .select(
-      "id, sr_id, sr_item_id, item_id, item_unit_option_id, uom_id, allocated_qty, picked_qty, is_voided"
-    )
-    .eq("company_id", companyId)
-    .eq("dn_id", dnId)
-    .eq("is_voided", false)
-    .gt("allocated_qty", 0)
-    .order("created_at", { ascending: true });
-
-  if (dnItemsError) {
-    throw new Error(dnItemsError.message);
-  }
-
-  const pendingDnItems = (dnItems || []).filter((item) => {
-    const allocatedQty = Number(item.allocated_qty || 0);
-    const pickedQty = Number(item.picked_qty || 0);
-    return allocatedQty > pickedQty;
+  const { data, error } = await supabase.rpc("create_pick_list_with_allocation", {
+    p_company_id: companyId,
+    p_user_id: userId,
+    p_dn_id: dnId,
+    p_picker_user_ids: uniquePickers,
+    p_notes: notes?.trim() || null,
+    p_current_business_unit_id: currentBusinessUnitId,
+    p_batch_allocation_mode: batchAllocationMode || null,
   });
 
-  if (pendingDnItems.length === 0) {
-    throw new Error("Delivery note has no pending lines for picking");
+  if (error) {
+    throw new Error(error.message || "Failed to create pick list");
   }
 
-  const { data: fulfillingWarehouse, error: fulfillingWarehouseError } = await supabase
-    .from("warehouses")
-    .select("business_unit_id")
-    .eq("id", fulfillingWarehouseId)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .maybeSingle();
-
-  if (fulfillingWarehouseError) {
-    throw new Error(fulfillingWarehouseError.message);
-  }
-
-  const pickListBusinessUnitId =
-    fulfillingWarehouse?.business_unit_id || dnBusinessUnitId || currentBusinessUnitId;
-
-  const { data: pickerUsers, error: pickerUserError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("company_id", companyId)
-    .eq("is_active", true)
-    .in("id", uniquePickers)
-    .is("deleted_at", null);
-
-  if (pickerUserError) {
-    throw new Error(pickerUserError.message);
-  }
-
-  if (!pickerUsers || pickerUsers.length !== uniquePickers.length) {
-    throw new Error("One or more picker users are invalid");
-  }
-
-  const nowIso = new Date().toISOString();
-
-  const { data: createdPickList, error: createError } = await supabase
-    .from("pick_lists")
-    .insert({
-      company_id: companyId,
-      business_unit_id: pickListBusinessUnitId,
-      dn_id: dnId,
-      status: "pending",
-      notes: notes?.trim() || null,
-      created_by: userId,
-      updated_by: userId,
-      created_at: nowIso,
-      updated_at: nowIso,
-    })
-    .select("id, pick_list_no")
-    .single();
-
-  if (createError || !createdPickList) {
-    if (createError?.code === "23505") {
-      throw new Error("Delivery note already has an active pick list");
-    }
-    throw new Error(createError?.message || "Failed to create pick list");
-  }
-
-  const assignees = uniquePickers.map((pickerUserId) => ({
-    company_id: companyId,
-    pick_list_id: createdPickList.id,
-    user_id: pickerUserId,
-    assigned_at: nowIso,
-    assigned_by: userId,
-  }));
-
-  const { error: assigneeError } = await supabase.from("pick_list_assignees").insert(assignees);
-  if (assigneeError) {
-    throw new Error(assigneeError.message);
-  }
-
-  const pickListItems = pendingDnItems.map((item) => {
-    const allocatedQty = Number(item.allocated_qty || 0);
-    const pickedQty = Number(item.picked_qty || 0);
-    const outstandingQty = Math.max(0, allocatedQty - pickedQty);
-
-    return {
-      company_id: companyId,
-      pick_list_id: createdPickList.id,
-      dn_item_id: item.id,
-      sr_id: item.sr_id,
-      sr_item_id: item.sr_item_id,
-      item_id: item.item_id,
-      item_unit_option_id: item.item_unit_option_id || null,
-      uom_id: item.uom_id,
-      allocated_qty: outstandingQty,
-      picked_qty: 0,
-      short_qty: outstandingQty,
-      created_at: nowIso,
-      updated_at: nowIso,
-    };
-  });
-
-  const { error: itemError } = await supabase.from("pick_list_items").insert(pickListItems);
-  if (itemError) {
-    throw new Error(itemError.message);
-  }
-
-  const { error: dnUpdateError } = await supabase
-    .from("delivery_notes")
-    .update({
-      status: "queued_for_picking",
-      updated_at: nowIso,
-      updated_by: userId,
-    })
-    .eq("id", dnId)
-    .eq("company_id", companyId);
-
-  if (dnUpdateError) {
-    throw new Error(dnUpdateError.message);
+  const result = data as { pickListId?: unknown; pickListNo?: unknown } | null;
+  const pickListId = typeof result?.pickListId === "string" ? result.pickListId : "";
+  const pickListNo = typeof result?.pickListNo === "string" ? result.pickListNo : "";
+  if (!pickListId) {
+    throw new Error("Failed to create pick list");
   }
 
   return {
-    pickListId: createdPickList.id,
-    pickListNo: createdPickList.pick_list_no,
+    pickListId,
+    pickListNo,
   };
 };
 

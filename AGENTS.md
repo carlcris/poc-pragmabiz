@@ -32,6 +32,7 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - TypeScript only. Prefer `type` over `interface`. Avoid `any`; use `unknown` and narrow explicitly.
 - Prefer named exports. Page files may default-export.
 - Keep changes surgical and production-grade. Do not add speculative abstractions or temporary fallbacks unless explicitly requested.
+- Do not add backward compatibility, legacy payload support, or version-bridging fallbacks while the app is in active development unless the user explicitly requests it. Keep contracts strict and update all current callers instead.
 - Read the relevant exports, callers, hooks, API routes, migrations, and types before editing.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
 - Never expose raw database, Supabase, or internal exception text to API clients. Log internal details server-side and return safe messages.

@@ -54,6 +54,7 @@ type PickListReportRow = {
     | {
         id: string;
         delivery_note_item_id: string;
+        pick_list_item_id: string | null;
         item_id: string;
         picked_qty: number | string | null;
         picker_user_id: string | null;
@@ -189,6 +190,7 @@ export async function GET(request: NextRequest) {
           delivery_note_item_picks(
             id,
             delivery_note_item_id,
+            pick_list_item_id,
             item_id,
             picked_qty,
             picker_user_id,
@@ -296,7 +298,7 @@ export async function GET(request: NextRequest) {
       const plWarehouse = plWarehouseId ? warehouseMap.get(plWarehouseId) : null;
       const plItems = asArray(pl.pick_list_items);
       const pickRows = asArray(pl.delivery_note_item_picks).filter((r) => !r.deleted_at);
-      const lineByDnItemId = new Map(plItems.map((i) => [i.dn_item_id, i] as const));
+      const lineByPickListItemId = new Map(plItems.map((i) => [i.id, i] as const));
 
       // Apply picker filter at pick-list inclusion level when pick rows exist
       if (pickerUserId) {
@@ -420,8 +422,9 @@ export async function GET(request: NextRequest) {
       for (const row of pickRows) {
         const pickerId = row.picker_user_id;
         if (!pickerId) continue;
+        const lineId = row.pick_list_item_id || row.delivery_note_item_id;
         const set = pickerLineIdsMap.get(pickerId) || new Set<string>();
-        set.add(row.delivery_note_item_id);
+        set.add(lineId);
         pickerLineIdsMap.set(pickerId, set);
         pickerQtyMap.set(pickerId, (pickerQtyMap.get(pickerId) || 0) + toNumber(row.picked_qty));
 
@@ -432,7 +435,7 @@ export async function GET(request: NextRequest) {
       if (pickerLineIdsMap.size === 0) {
         const assignee = asArray(pl.pick_list_assignees)[0];
         if (assignee?.user_id) {
-          pickerLineIdsMap.set(assignee.user_id, new Set(plItems.map((i) => i.dn_item_id)));
+          pickerLineIdsMap.set(assignee.user_id, new Set(plItems.map((i) => i.id)));
           pickerQtyMap.set(assignee.user_id, listPickedQty);
         }
       }
@@ -483,10 +486,10 @@ export async function GET(request: NextRequest) {
         let pickerAllocated = 0;
         let pickerShort = 0;
         let pickerShortLines = 0;
-        for (const dnItemId of lineIds) {
-          if (pickerAgg.lineIds.has(dnItemId)) continue;
-          pickerAgg.lineIds.add(dnItemId);
-          const line = lineByDnItemId.get(dnItemId);
+        for (const pickListItemId of lineIds) {
+          if (pickerAgg.lineIds.has(pickListItemId)) continue;
+          pickerAgg.lineIds.add(pickListItemId);
+          const line = lineByPickListItemId.get(pickListItemId);
           if (!line) continue;
           const allocated = toNumber(line.allocated_qty);
           const shortQty = toNumber(line.short_qty);

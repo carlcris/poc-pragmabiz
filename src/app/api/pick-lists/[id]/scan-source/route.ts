@@ -59,7 +59,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const { data: sourceRow, error: sourceError } = await auth.supabase
-      .from("item_location_batch")
+      .from("item_batch_locations")
       .select(
         `
         id,
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         location_id,
         qty_on_hand,
         batch_location_sku,
-        warehouse_location:warehouse_locations!item_location_batch_location_id_fkey(id, code, name),
-        item_batch:item_batch!item_location_batch_item_batch_id_fkey(id, batch_code, received_at)
+        warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(id, code, name),
+        item_batch:item_batches!item_batch_locations_item_batch_id_fkey(id, batch_code, received_at)
       `
       )
       .eq("company_id", auth.companyId)
@@ -78,7 +78,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .maybeSingle();
 
     if (sourceError) {
-      return NextResponse.json({ error: sourceError.message }, { status: 500 });
+      console.error("Failed to resolve pick-list scan source", sourceError);
+      return NextResponse.json({ error: "Failed to resolve scanned source" }, { status: 500 });
     }
 
     if (!sourceRow) {
@@ -117,16 +118,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
         item_id,
         allocated_qty,
         picked_qty,
+        suggested_pick_location_id,
+        suggested_pick_batch_code,
+        suggested_pick_batch_received_at,
+        suggested_batch_location_sku,
         item_unit_options!pick_list_items_item_unit_option_id_fkey(
           id,
           barcode
         ),
         delivery_note_items!pick_list_items_dn_item_id_fkey(
           id,
-          suggested_pick_location_id,
-          suggested_pick_batch_code,
-          suggested_pick_batch_received_at,
-          suggested_batch_location_sku,
           items!delivery_note_items_item_id_fkey(item_code, item_name)
         )
       `
@@ -151,10 +152,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
         : row.item_unit_options;
       const remainingQty = Math.max(0, toNumber(row.allocated_qty) - toNumber(row.picked_qty));
       const isSuggestedMatch =
-        (!dnLine?.suggested_pick_location_id ||
-          dnLine.suggested_pick_location_id === sourceRow.location_id) &&
-        (!dnLine?.suggested_pick_batch_code ||
-          dnLine.suggested_pick_batch_code === itemBatch.batch_code);
+        (!row.suggested_batch_location_sku ||
+          row.suggested_batch_location_sku === batchLocationSku) &&
+        (!row.suggested_pick_location_id ||
+          row.suggested_pick_location_id === sourceRow.location_id) &&
+        (!row.suggested_pick_batch_code || row.suggested_pick_batch_code === itemBatch.batch_code);
 
       return {
         pickListItemId: row.id as string,
@@ -164,8 +166,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         pickedQty: toNumber(row.picked_qty),
         remainingQty,
         isSuggestedMatch,
-        suggestedPickLocationId: dnLine?.suggested_pick_location_id || null,
-        suggestedPickBatchCode: dnLine?.suggested_pick_batch_code || null,
+        suggestedPickLocationId: row.suggested_pick_location_id || null,
+        suggestedPickBatchCode: row.suggested_pick_batch_code || null,
+        suggestedPickBatchReceivedAt: row.suggested_pick_batch_received_at || null,
         item: dnLine?.items
           ? {
               itemCode:

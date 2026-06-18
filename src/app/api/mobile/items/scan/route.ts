@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
 
     if (!itemId && batchLocationId) {
       const batchQuery = supabase
-        .from("item_location_batch")
+        .from("item_batch_locations")
         .select("item_id")
         .eq("company_id", companyId)
         .in("warehouse_id", scopedWarehouseIds)
@@ -219,8 +219,8 @@ export async function GET(request: NextRequest) {
 
     if (!itemId && effectiveBatchLocationSku) {
       const { data: batchRows, error: batchError } = await supabase
-        .from("item_location_batch")
-        .select("item_id, warehouse_id, warehouses!item_location_batch_warehouse_id_fkey(business_unit_id)")
+        .from("item_batch_locations")
+        .select("item_id, warehouse_id, warehouses!item_batch_locations_warehouse_id_fkey(business_unit_id)")
         .eq("company_id", companyId)
         .eq("batch_location_sku", effectiveBatchLocationSku)
         .is("deleted_at", null)

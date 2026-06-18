@@ -36,6 +36,7 @@ type StockRequestItem = {
   requested_qty: number;
   picked_qty: number;
   item_unit_option_id?: string | null;
+  selected_item_batch_id?: string | null;
   uom_id: string;
   notes?: string | null;
   created_at: string;
@@ -97,6 +98,24 @@ type StockRequestItem = {
     | (DbItemUnitOptionRow & {
         units_of_measure?: DbItemUnitOptionRow["units_of_measure"];
       })[]
+    | null;
+  selected_item_batch?:
+    | {
+        id: string;
+        batch_code: string;
+        received_at: string;
+        qty_on_hand?: number | null;
+        qty_reserved?: number | null;
+        qty_available?: number | null;
+      }
+    | {
+        id: string;
+        batch_code: string;
+        received_at: string;
+        qty_on_hand?: number | null;
+        qty_reserved?: number | null;
+        qty_available?: number | null;
+      }[]
     | null;
 };
 
@@ -250,6 +269,9 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
       const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
         ? (item.item_unit_options[0] ?? null)
         : (item.item_unit_options ?? null);
+      const selectedItemBatch = Array.isArray(item.selected_item_batch)
+        ? (item.selected_item_batch[0] ?? null)
+        : (item.selected_item_batch ?? null);
       const baseUomCode = baseUnitDetails?.code || uomDetails?.code || "";
       const mappedItemUnitOption = itemUnitOptionDetails
         ? transformItemUnitOptionRow(itemUnitOptionDetails, baseUomCode)
@@ -294,6 +316,16 @@ export const mapStockRequest = (record: StockRequestDbRecord): StockRequest => {
                 sortOrder: 0,
               }
             : undefined,
+        selected_item_batch: selectedItemBatch
+          ? {
+              id: selectedItemBatch.id,
+              batch_code: selectedItemBatch.batch_code,
+              received_at: selectedItemBatch.received_at,
+              qty_on_hand: Number(selectedItemBatch.qty_on_hand ?? 0),
+              qty_reserved: Number(selectedItemBatch.qty_reserved ?? 0),
+              qty_available: Number(selectedItemBatch.qty_available ?? 0),
+            }
+          : null,
       };
     }),
   };

@@ -96,7 +96,9 @@ export async function GET(request: NextRequest) {
     } else if (receivingOnly) {
       query = query.in("status", ["dispatched", "received"]);
     }
-    if (auth.currentBusinessUnitId) {
+    if (auth.currentBusinessUnitId && receivingOnly) {
+      query = query.in("requesting_warehouse_id", visibleWarehouseIds);
+    } else if (auth.currentBusinessUnitId) {
       query = query.or(
         `requesting_warehouse_id.in.(${visibleWarehouseIds.join(",")}),fulfilling_warehouse_id.in.(${visibleWarehouseIds.join(",")})`
       );

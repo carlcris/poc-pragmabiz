@@ -178,6 +178,18 @@ export function StockRequestFormDialog({
             "",
           unitBarcode: item.item_unit_option?.barcode,
           qtyPerUnit: item.item_unit_option?.qtyPerUnit ?? 1,
+          selectedItemBatchId: item.selected_item_batch_id || "",
+          batchLabel: item.selected_item_batch
+            ? `${item.selected_item_batch.batch_code} (${(
+                item.selected_item_batch.qty_available ?? 0
+              ).toLocaleString(locale, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 4,
+              })})`
+            : "",
+          batchCode: item.selected_item_batch?.batch_code,
+          batchReceivedAt: item.selected_item_batch?.received_at,
+          batchQtyAvailable: item.selected_item_batch?.qty_available ?? undefined,
           requestedQty: item.requested_qty,
           notes: item.notes || "",
         })) || [];
@@ -194,7 +206,7 @@ export function StockRequestFormDialog({
       });
       setLineItems([]);
     }
-  }, [defaultRequestingWarehouseId, form, open, selectedRequest]);
+  }, [defaultRequestingWarehouseId, form, locale, open, selectedRequest]);
 
   const handleAddItem = () => {
     setEditingItem(null);
@@ -431,6 +443,7 @@ export function StockRequestFormDialog({
                               <TableHead className="py-2 text-xs">{t("item")}</TableHead>
                               <TableHead className="py-2 text-right text-xs">{t("qty")}</TableHead>
                               <TableHead className="py-2 text-xs">{t("unit")}</TableHead>
+                              <TableHead className="py-2 text-xs">{t("batch")}</TableHead>
                               <TableHead className="py-2 text-right text-xs">
                                 {t("qtyPerUnit")}
                               </TableHead>
@@ -459,6 +472,11 @@ export function StockRequestFormDialog({
                                 </TableCell>
                                 <TableCell className="py-2 text-sm">
                                   {item.uomLabel || t("noValue")}
+                                </TableCell>
+                                <TableCell className="py-2 text-sm">
+                                  <div className="max-w-[140px] truncate">
+                                    {item.batchLabel || t("autoBatchAllocation")}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="py-2 text-right text-sm">
                                   {(item.qtyPerUnit ?? 1).toLocaleString(locale, {
@@ -540,13 +558,14 @@ export function StockRequestFormDialog({
       </Dialog>
 
       {itemDialogOpen && (
-        <StockRequestLineItemDialog
-          open={itemDialogOpen}
-          onOpenChange={setItemDialogOpen}
-          onSave={handleSaveItem}
-          item={editingItem?.item || null}
-          mode={editingItem ? "edit" : "add"}
-        />
+          <StockRequestLineItemDialog
+            open={itemDialogOpen}
+            onOpenChange={setItemDialogOpen}
+            onSave={handleSaveItem}
+            item={editingItem?.item || null}
+            mode={editingItem ? "edit" : "add"}
+            fulfillingWarehouseId={form.watch("fulfilling_warehouse_id")}
+          />
       )}
     </>
   );

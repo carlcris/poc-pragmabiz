@@ -12,6 +12,7 @@ type ItemUnitOptionRow = {
   id: string;
   item_id: string;
   uom_id: string;
+  qty_per_unit: number | null;
   is_active: boolean;
   deleted_at: string | null;
 };
@@ -21,6 +22,7 @@ export class StockRequestLineValidationError extends Error {}
 export type ResolvedStockRequestLineInput = StockRequestLineInput & {
   item_unit_option_id: string;
   uom_id: string;
+  qty_per_unit: number;
 };
 
 const buildOptionMapKey = (itemId: string, uomId: string) => `${itemId}:${uomId}`;
@@ -51,7 +53,7 @@ export const resolveStockRequestLineUnitOptions = async (
   if (explicitOptionIds.length > 0) {
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select("id, item_id, uom_id, is_active, deleted_at")
+      .select("id, item_id, uom_id, qty_per_unit, is_active, deleted_at")
       .eq("company_id", companyId)
       .in("id", explicitOptionIds);
 
@@ -84,7 +86,7 @@ export const resolveStockRequestLineUnitOptions = async (
     const { data, error } = await supabase
       .from("item_unit_options")
       .select(
-        "id, item_id, uom_id, is_active, deleted_at, is_base, is_default, sort_order, created_at"
+        "id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at"
       )
       .eq("company_id", companyId)
       .in("item_id", itemIds)
@@ -133,6 +135,7 @@ export const resolveStockRequestLineUnitOptions = async (
         ...item,
         item_unit_option_id: option.id,
         uom_id: option.uom_id,
+        qty_per_unit: Number(option.qty_per_unit || 1),
       };
     }
 
@@ -151,6 +154,7 @@ export const resolveStockRequestLineUnitOptions = async (
       ...item,
       item_unit_option_id: fallbackOption.id,
       uom_id: fallbackOption.uom_id,
+      qty_per_unit: Number(fallbackOption.qty_per_unit || 1),
     };
   });
 };

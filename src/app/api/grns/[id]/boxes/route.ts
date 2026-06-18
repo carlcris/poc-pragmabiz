@@ -100,13 +100,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       );
 
       const { data: batchLocationRows } = await supabase
-        .from("item_location_batch")
+        .from("item_batch_locations")
         .select(
           `
           item_id,
           location_id,
           batch_location_sku,
-          item_batch:item_batch!item_location_batch_item_batch_id_fkey(batch_code, warehouse_id)
+          item_batch:item_batches!item_batch_locations_item_batch_id_fkey(batch_code, warehouse_id)
         `
         )
         .eq("company_id", userData.company_id)
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     let batchLocationSku: string | null = null;
     if (body.warehouseLocationId) {
       const { data: generatedSku, error: skuError } = await supabase.rpc(
-        "generate_item_location_batch_sku"
+        "generate_item_batch_location_sku"
       );
       if (skuError || !generatedSku) {
         console.error("Error generating batch_location_sku:", skuError);

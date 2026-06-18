@@ -229,19 +229,19 @@ export default function StockAdjustmentsPage() {
     try {
       if (locationId) {
         const { data, error } = await supabase
-          .from("item_location")
+          .from("item_batch_locations")
           .select("qty_on_hand")
           .eq("item_id", itemId)
           .eq("warehouse_id", warehouseId)
           .eq("location_id", locationId)
           .eq("company_id", companyId)
-          .maybeSingle();
+          .is("deleted_at", null);
 
         if (error) {
           return 0;
         }
 
-        return data ? parseFloat(data.qty_on_hand) : 0;
+        return (data || []).reduce((sum, row) => sum + parseFloat(String(row.qty_on_hand ?? 0)), 0);
       }
 
       // Fallback to warehouse-level stock when location is not selected

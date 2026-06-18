@@ -70,6 +70,14 @@ type ItemsStatsQueryOptions = Omit<ItemsFilters, "page" | "limit" | "includeStat
   enabled?: boolean;
 };
 
+type ItemBatchOptionsQueryOptions = {
+  itemId?: string;
+  warehouseId?: string;
+  search?: string;
+  limit?: number;
+  enabled?: boolean;
+};
+
 export function useItems(filters?: ItemsQueryOptions) {
   const { enabled, ...restFilters } = filters ?? {};
   const normalizedFilters =
@@ -170,6 +178,17 @@ export function useItem(id: string) {
     queryKey: [ITEMS_QUERY_KEY, id],
     queryFn: () => itemsApi.getItem(id),
     enabled: !!id,
+  });
+}
+
+export function useItemBatches(options: ItemBatchOptionsQueryOptions) {
+  const { itemId = "", warehouseId = "", search, limit = 5, enabled = true } = options;
+
+  return useQuery({
+    queryKey: [ITEMS_QUERY_KEY, itemId, "batches", { warehouseId, search, limit }],
+    queryFn: () => itemsApi.getItemBatches(itemId, { warehouseId, search, limit }),
+    enabled: enabled && !!itemId && !!warehouseId,
+    staleTime: 30_000,
   });
 }
 

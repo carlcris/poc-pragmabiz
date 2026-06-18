@@ -536,6 +536,7 @@ export type Database = {
       }
       delivery_note_item_picks: {
         Row: {
+          batch_location_sku: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -548,6 +549,7 @@ export type Database = {
           item_id: string
           mismatch_reason: string | null
           pick_list_id: string
+          pick_list_item_id: string | null
           picked_at: string
           picked_batch_code: string
           picked_batch_received_at: string
@@ -562,6 +564,7 @@ export type Database = {
           version: number
         }
         Insert: {
+          batch_location_sku?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -574,6 +577,7 @@ export type Database = {
           item_id: string
           mismatch_reason?: string | null
           pick_list_id: string
+          pick_list_item_id?: string | null
           picked_at?: string
           picked_batch_code: string
           picked_batch_received_at: string
@@ -588,6 +592,7 @@ export type Database = {
           version?: number
         }
         Update: {
+          batch_location_sku?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -600,6 +605,7 @@ export type Database = {
           item_id?: string
           mismatch_reason?: string | null
           pick_list_id?: string
+          pick_list_item_id?: string | null
           picked_at?: string
           picked_batch_code?: string
           picked_batch_received_at?: string
@@ -654,6 +660,13 @@ export type Database = {
             columns: ["pick_list_id"]
             isOneToOne: false
             referencedRelation: "pick_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_note_item_picks_pick_list_item_id_fkey"
+            columns: ["pick_list_item_id"]
+            isOneToOne: false
+            referencedRelation: "pick_list_items"
             referencedColumns: ["id"]
           },
           {
@@ -830,13 +843,10 @@ export type Database = {
           dispatched_qty: number
           dn_id: string
           fulfilling_warehouse_id: string
-          has_pick_source_override: boolean
           id: string
           is_voided: boolean
           item_id: string
           item_unit_option_id: string | null
-          last_pick_source_override_at: string | null
-          last_pick_source_override_by: string | null
           picked_qty: number
           received_qty: number
           receiving_discrepancy_flag: boolean
@@ -852,10 +862,6 @@ export type Database = {
           short_qty: number
           sr_id: string
           sr_item_id: string
-          suggested_batch_location_sku: string | null
-          suggested_pick_batch_code: string | null
-          suggested_pick_batch_received_at: string | null
-          suggested_pick_location_id: string | null
           uom_id: string
           updated_at: string
           void_reason: string | null
@@ -869,13 +875,10 @@ export type Database = {
           dispatched_qty?: number
           dn_id: string
           fulfilling_warehouse_id: string
-          has_pick_source_override?: boolean
           id?: string
           is_voided?: boolean
           item_id: string
           item_unit_option_id?: string | null
-          last_pick_source_override_at?: string | null
-          last_pick_source_override_by?: string | null
           picked_qty?: number
           received_qty?: number
           receiving_discrepancy_flag?: boolean
@@ -891,10 +894,6 @@ export type Database = {
           short_qty?: number
           sr_id: string
           sr_item_id: string
-          suggested_batch_location_sku?: string | null
-          suggested_pick_batch_code?: string | null
-          suggested_pick_batch_received_at?: string | null
-          suggested_pick_location_id?: string | null
           uom_id: string
           updated_at?: string
           void_reason?: string | null
@@ -908,13 +907,10 @@ export type Database = {
           dispatched_qty?: number
           dn_id?: string
           fulfilling_warehouse_id?: string
-          has_pick_source_override?: boolean
           id?: string
           is_voided?: boolean
           item_id?: string
           item_unit_option_id?: string | null
-          last_pick_source_override_at?: string | null
-          last_pick_source_override_by?: string | null
           picked_qty?: number
           received_qty?: number
           receiving_discrepancy_flag?: boolean
@@ -930,10 +926,6 @@ export type Database = {
           short_qty?: number
           sr_id?: string
           sr_item_id?: string
-          suggested_batch_location_sku?: string | null
-          suggested_pick_batch_code?: string | null
-          suggested_pick_batch_received_at?: string | null
-          suggested_pick_location_id?: string | null
           uom_id?: string
           updated_at?: string
           void_reason?: string | null
@@ -977,13 +969,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "delivery_note_items_last_pick_source_override_by_fkey"
-            columns: ["last_pick_source_override_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "delivery_note_items_receiving_overage_reviewed_by_fkey"
             columns: ["receiving_overage_reviewed_by"]
             isOneToOne: false
@@ -1009,13 +994,6 @@ export type Database = {
             columns: ["sr_item_id"]
             isOneToOne: false
             referencedRelation: "stock_request_items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "delivery_note_items_suggested_pick_location_id_fkey"
-            columns: ["suggested_pick_location_id"]
-            isOneToOne: false
-            referencedRelation: "warehouse_locations"
             referencedColumns: ["id"]
           },
           {
@@ -2612,7 +2590,121 @@ export type Database = {
           },
         ]
       }
-      item_batch: {
+      item_batch_locations: {
+        Row: {
+          batch_location_sku: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          item_batch_id: string
+          item_id: string
+          location_id: string
+          qty_available: number | null
+          qty_on_hand: number
+          qty_reserved: number
+          updated_at: string
+          updated_by: string | null
+          version: number
+          warehouse_id: string
+        }
+        Insert: {
+          batch_location_sku: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_batch_id: string
+          item_id: string
+          location_id: string
+          qty_available?: number | null
+          qty_on_hand?: number
+          qty_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id: string
+        }
+        Update: {
+          batch_location_sku?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_batch_id?: string
+          item_id?: string
+          location_id?: string
+          qty_available?: number | null
+          qty_on_hand?: number
+          qty_reserved?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_batch_locations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_item_batch_id_fkey"
+            columns: ["item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "item_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_item_batch_id_fkey"
+            columns: ["item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_recon_item_batch_vs_batch_location"
+            referencedColumns: ["item_batch_id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_batch_locations_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_batches: {
         Row: {
           batch_code: string
           company_id: string
@@ -2666,35 +2758,35 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "item_batch_company_id_fkey"
+            foreignKeyName: "item_batches_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "item_batch_created_by_fkey"
+            foreignKeyName: "item_batches_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "item_batch_item_id_fkey"
+            foreignKeyName: "item_batches_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "item_batch_updated_by_fkey"
+            foreignKeyName: "item_batches_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "item_batch_warehouse_id_fkey"
+            foreignKeyName: "item_batches_warehouse_id_fkey"
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
@@ -2778,214 +2870,6 @@ export type Database = {
             columns: ["updated_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      item_location: {
-        Row: {
-          company_id: string
-          created_at: string
-          created_by: string | null
-          deleted_at: string | null
-          id: string
-          item_id: string
-          location_id: string
-          qty_available: number | null
-          qty_on_hand: number
-          qty_reserved: number
-          updated_at: string
-          updated_by: string | null
-          version: number
-          warehouse_id: string
-        }
-        Insert: {
-          company_id: string
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          id?: string
-          item_id: string
-          location_id: string
-          qty_available?: number | null
-          qty_on_hand?: number
-          qty_reserved?: number
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-          warehouse_id: string
-        }
-        Update: {
-          company_id?: string
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          id?: string
-          item_id?: string
-          location_id?: string
-          qty_available?: number | null
-          qty_on_hand?: number
-          qty_reserved?: number
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-          warehouse_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "item_location_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "warehouse_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_warehouse_id_fkey"
-            columns: ["warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      item_location_batch: {
-        Row: {
-          batch_location_sku: string
-          company_id: string
-          created_at: string
-          created_by: string | null
-          deleted_at: string | null
-          id: string
-          item_batch_id: string
-          item_id: string
-          location_id: string
-          qty_available: number | null
-          qty_on_hand: number
-          qty_reserved: number
-          updated_at: string
-          updated_by: string | null
-          version: number
-          warehouse_id: string
-        }
-        Insert: {
-          batch_location_sku: string
-          company_id: string
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          id?: string
-          item_batch_id: string
-          item_id: string
-          location_id: string
-          qty_available?: number | null
-          qty_on_hand?: number
-          qty_reserved?: number
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-          warehouse_id: string
-        }
-        Update: {
-          batch_location_sku?: string
-          company_id?: string
-          created_at?: string
-          created_by?: string | null
-          deleted_at?: string | null
-          id?: string
-          item_batch_id?: string
-          item_id?: string
-          location_id?: string
-          qty_available?: number | null
-          qty_on_hand?: number
-          qty_reserved?: number
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-          warehouse_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "item_location_batch_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_item_batch_id_fkey"
-            columns: ["item_batch_id"]
-            isOneToOne: false
-            referencedRelation: "item_batch"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_item_batch_id_fkey"
-            columns: ["item_batch_id"]
-            isOneToOne: false
-            referencedRelation: "v_inventory_recon_item_batch_vs_location_batch"
-            referencedColumns: ["item_batch_id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "warehouse_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_updated_by_fkey"
-            columns: ["updated_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_batch_warehouse_id_fkey"
-            columns: ["warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -4712,6 +4596,10 @@ export type Database = {
           short_qty: number
           sr_id: string
           sr_item_id: string
+          suggested_batch_location_sku: string | null
+          suggested_pick_batch_code: string | null
+          suggested_pick_batch_received_at: string | null
+          suggested_pick_location_id: string | null
           uom_id: string
           updated_at: string
         }
@@ -4728,6 +4616,10 @@ export type Database = {
           short_qty?: number
           sr_id: string
           sr_item_id: string
+          suggested_batch_location_sku?: string | null
+          suggested_pick_batch_code?: string | null
+          suggested_pick_batch_received_at?: string | null
+          suggested_pick_location_id?: string | null
           uom_id: string
           updated_at?: string
         }
@@ -4744,6 +4636,10 @@ export type Database = {
           short_qty?: number
           sr_id?: string
           sr_item_id?: string
+          suggested_batch_location_sku?: string | null
+          suggested_pick_batch_code?: string | null
+          suggested_pick_batch_received_at?: string | null
+          suggested_pick_location_id?: string | null
           uom_id?: string
           updated_at?: string
         }
@@ -4795,6 +4691,13 @@ export type Database = {
             columns: ["sr_item_id"]
             isOneToOne: false
             referencedRelation: "stock_request_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_items_suggested_pick_location_id_fkey"
+            columns: ["suggested_pick_location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
             referencedColumns: ["id"]
           },
           {
@@ -7540,7 +7443,9 @@ export type Database = {
           notes: string | null
           picked_qty: number | null
           received_qty: number
+          requested_item_batch_id: string | null
           requested_qty: number
+          selected_item_batch_id: string | null
           short_qty: number | null
           short_reason_code: string | null
           stock_request_id: string
@@ -7556,7 +7461,9 @@ export type Database = {
           notes?: string | null
           picked_qty?: number | null
           received_qty?: number
+          requested_item_batch_id?: string | null
           requested_qty: number
+          selected_item_batch_id?: string | null
           short_qty?: number | null
           short_reason_code?: string | null
           stock_request_id: string
@@ -7572,7 +7479,9 @@ export type Database = {
           notes?: string | null
           picked_qty?: number | null
           received_qty?: number
+          requested_item_batch_id?: string | null
           requested_qty?: number
+          selected_item_batch_id?: string | null
           short_qty?: number | null
           short_reason_code?: string | null
           stock_request_id?: string
@@ -7593,6 +7502,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "item_unit_options"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_request_items_requested_item_batch_id_fkey"
+            columns: ["requested_item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "item_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_request_items_requested_item_batch_id_fkey"
+            columns: ["requested_item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_recon_item_batch_vs_batch_location"
+            referencedColumns: ["item_batch_id"]
+          },
+          {
+            foreignKeyName: "stock_request_items_selected_item_batch_id_fkey"
+            columns: ["selected_item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "item_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_request_items_selected_item_batch_id_fkey"
+            columns: ["selected_item_batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_inventory_recon_item_batch_vs_batch_location"
+            referencedColumns: ["item_batch_id"]
           },
           {
             foreignKeyName: "stock_request_items_stock_request_id_fkey"
@@ -9918,76 +9855,34 @@ export type Database = {
       }
     }
     Views: {
-      v_inventory_recon_item_batch_vs_location_batch: {
+      v_inventory_recon_item_batch_vs_batch_location: {
         Row: {
           batch_code: string | null
-          batch_qty_on_hand: number | null
+          batch_location_qty: number | null
+          batch_qty: number | null
           company_id: string | null
           item_batch_id: string | null
           item_id: string | null
-          location_batch_qty_on_hand_sum: number | null
           qty_diff: number | null
-          received_at: string | null
           warehouse_id: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "item_batch_company_id_fkey"
+            foreignKeyName: "item_batches_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "item_batch_item_id_fkey"
+            foreignKeyName: "item_batches_item_id_fkey"
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "item_batch_warehouse_id_fkey"
-            columns: ["warehouse_id"]
-            isOneToOne: false
-            referencedRelation: "warehouses"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      v_inventory_recon_item_location_vs_location_batch: {
-        Row: {
-          company_id: string | null
-          item_id: string | null
-          location_batch_qty_on_hand_sum: number | null
-          location_id: string | null
-          location_qty_on_hand: number | null
-          qty_diff: number | null
-          warehouse_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "item_location_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_item_id_fkey"
-            columns: ["item_id"]
-            isOneToOne: false
-            referencedRelation: "items"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "warehouse_locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "item_location_warehouse_id_fkey"
+            foreignKeyName: "item_batches_warehouse_id_fkey"
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
@@ -9997,12 +9892,12 @@ export type Database = {
       }
       v_inventory_recon_item_warehouse_vs_batch: {
         Row: {
-          batch_qty_on_hand_sum: number | null
+          batch_qty: number | null
           company_id: string | null
           item_id: string | null
           qty_diff: number | null
           warehouse_id: string | null
-          warehouse_qty_on_hand: number | null
+          warehouse_qty: number | null
         }
         Relationships: [
           {
@@ -10028,14 +9923,15 @@ export type Database = {
           },
         ]
       }
-      v_inventory_recon_item_warehouse_vs_location: {
+      v_inventory_recon_item_warehouse_vs_batch_location: {
         Row: {
+          batch_location_qty: number | null
           company_id: string | null
           item_id: string | null
-          location_qty_on_hand_sum: number | null
+          location_id: string | null
           qty_diff: number | null
           warehouse_id: string | null
-          warehouse_qty_on_hand: number | null
+          warehouse_qty: number | null
         }
         Relationships: [
           {
@@ -10272,6 +10168,18 @@ export type Database = {
           manufacturing_order_id: string
         }[]
       }
+      create_pick_list_with_allocation: {
+        Args: {
+          p_batch_allocation_mode?: string
+          p_company_id: string
+          p_current_business_unit_id?: string
+          p_dn_id: string
+          p_notes?: string
+          p_picker_user_ids: string[]
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_sales_order_transaction: {
         Args: { p_business_unit_id: string; p_quotation_id: string }
         Returns: {
@@ -10309,7 +10217,7 @@ export type Database = {
         Args: { p_code_prefix: string; p_company_id: string; p_digits?: number }
         Returns: string
       }
-      generate_item_location_batch_sku: { Args: never; Returns: string }
+      generate_item_batch_location_sku: { Args: never; Returns: string }
       generate_item_unit_option_barcode: { Args: never; Returns: string }
       get_accounts_receivable_aging_report: {
         Args: {
@@ -10378,6 +10286,24 @@ export type Database = {
           uom_id: string
           uom_name: string
           valid_until: string
+        }[]
+      }
+      get_available_stock_request_item_batches: {
+        Args: {
+          p_company_id: string
+          p_item_id: string
+          p_limit?: number
+          p_qty_per_unit?: number
+          p_search?: string
+          p_warehouse_id: string
+        }
+        Returns: {
+          available_base_qty: number
+          available_qty: number
+          batch_code: string
+          item_batch_id: string
+          location_count: number
+          received_at: string
         }[]
       }
       get_current_business_unit_id: { Args: never; Returns: string }
@@ -10604,6 +10530,19 @@ export type Database = {
           total_count: number
           updatedAt: string
         }[]
+      }
+      increase_item_batch_location_stock: {
+        Args: {
+          p_batch_code: string
+          p_company_id: string
+          p_item_id: string
+          p_location_id: string
+          p_quantity: number
+          p_received_at: string
+          p_user_id?: string
+          p_warehouse_id: string
+        }
+        Returns: string
       }
       notify_business_units: {
         Args: {

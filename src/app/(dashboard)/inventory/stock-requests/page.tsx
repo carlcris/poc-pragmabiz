@@ -363,6 +363,7 @@ export default function StockRequestsPage() {
           item_id: item.itemId,
           requested_qty: item.requestedQty,
           item_unit_option_id: item.itemUnitOptionId,
+          selected_item_batch_id: item.selectedItemBatchId || null,
           uom_id: item.uomId,
           notes: item.notes,
         })),

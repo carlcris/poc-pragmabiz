@@ -7,6 +7,23 @@ import type {
   ItemFilters,
 } from "@/types/item";
 
+export type ItemBatchOption = {
+  id: string;
+  batchCode: string;
+  receivedAt: string;
+  qtyOnHand: number;
+  qtyReserved: number;
+  qtyAvailable: number;
+};
+
+export type ItemBatchOptionsResponse = {
+  data: ItemBatchOption[];
+  pagination: {
+    total: number;
+    limit: number;
+  };
+};
+
 export const itemsApi = {
   getItems: async (filters?: ItemFilters): Promise<ItemsListResponse> => {
     const params = new URLSearchParams();
@@ -26,6 +43,20 @@ export const itemsApi = {
 
   getItem: async (id: string): Promise<ItemResponse> => {
     return apiClient.get<ItemResponse>(`/api/items/${id}`);
+  },
+
+  getItemBatches: async (
+    id: string,
+    params: { warehouseId: string; search?: string; limit?: number }
+  ): Promise<ItemBatchOptionsResponse> => {
+    const searchParams = new URLSearchParams();
+    searchParams.append("warehouseId", params.warehouseId);
+    if (params.search) searchParams.append("search", params.search);
+    if (params.limit) searchParams.append("limit", String(params.limit));
+
+    return apiClient.get<ItemBatchOptionsResponse>(
+      `/api/items/${id}/batches?${searchParams.toString()}`
+    );
   },
 
   createItem: async (data: CreateItemRequest): Promise<ItemResponse> => {

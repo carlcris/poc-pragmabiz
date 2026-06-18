@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
@@ -6,12 +7,15 @@ import { mapStockRequest } from "./stock-request-mapper";
 import {
   resolveStockRequestLineUnitOptions,
   StockRequestLineValidationError,
+  type ResolvedStockRequestLineInput,
 } from "./line-item-unit-options";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Database } from "@/types/database.types";
 import type { CreateStockRequestPayload } from "@/types/stock-request";
 
 type StockRequestDbRecord = Parameters<typeof mapStockRequest>[0];
-type StockRequestItemInput = CreateStockRequestPayload["items"][number];
+type StockRequestItemInput = ResolvedStockRequestLineInput;
+type SupabaseLikeClient = SupabaseClient<Database>;
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 10;
@@ -44,6 +48,56 @@ const normalizeSearch = (value: string | null) => {
   if (!value) return null;
   const normalized = value.trim().replace(/[,%]/g, " ");
   return normalized.length > 0 ? normalized : null;
+};
+
+const validateSelectedItemBatches = async (
+  supabase: SupabaseLikeClient,
+  companyId: string,
+  fulfillingWarehouseId: string,
+  items: StockRequestItemInput[]
+) => {
+  const selectedBatchIds = Array.from(
+    new Set(
+      items
+        .map((item) => item.selected_item_batch_id)
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  if (selectedBatchIds.length === 0) return null;
+
+  const { data: batchRows, error } = await supabase
+    .from("item_batches")
+    .select("id, item_id, warehouse_id, qty_available")
+    .eq("company_id", companyId)
+    .in("id", selectedBatchIds)
+    .is("deleted_at", null);
+
+  if (error) {
+    console.error("Error validating selected stock request batches:", error);
+    return "Failed to validate selected batches";
+  }
+
+  const batchMap = new Map((batchRows || []).map((batch) => [batch.id, batch]));
+
+  for (const item of items) {
+    if (!item.selected_item_batch_id) continue;
+
+    const batch = batchMap.get(item.selected_item_batch_id);
+    if (!batch) return "Selected batch is not available";
+    if (batch.item_id !== item.item_id) return "Selected batch does not match the item";
+    if (batch.warehouse_id !== fulfillingWarehouseId) {
+      return "Selected batch does not belong to the fulfilling warehouse";
+    }
+
+    const requestedBaseQty = Number(item.requested_qty || 0) * Number(item.qty_per_unit || 1);
+    const availableBaseQty = Number(batch.qty_available || 0);
+    if (availableBaseQty < requestedBaseQty) {
+      return "Selected batch does not have enough available quantity";
+    }
+  }
+
+  return null;
 };
 
 // GET /api/stock-requests - List stock requests
@@ -145,6 +199,14 @@ export async function GET(request: NextRequest) {
               name,
               symbol
             )
+          ),
+          selected_item_batch:item_batches!stock_request_items_selected_item_batch_id_fkey(
+            id,
+            batch_code,
+            received_at,
+            qty_on_hand,
+            qty_reserved,
+            qty_available
           )
         ),
         delivery_note_sources(
@@ -367,6 +429,15 @@ export async function POST(request: NextRequest) {
       companyId,
       body.items
     );
+    const selectedBatchError = await validateSelectedItemBatches(
+      supabase,
+      companyId,
+      fulfillingWarehouseId,
+      resolvedLineItems
+    );
+    if (selectedBatchError) {
+      return NextResponse.json({ error: selectedBatchError }, { status: 400 });
+    }
 
     // Build requested_by_name from first_name and last_name
     const requestedByName =
@@ -410,6 +481,7 @@ export async function POST(request: NextRequest) {
         requested_qty: item.requested_qty,
         picked_qty: 0,
         item_unit_option_id: item.item_unit_option_id,
+        selected_item_batch_id: item.selected_item_batch_id || null,
         uom_id: item.uom_id,
         notes: item.notes || null,
       })
@@ -486,6 +558,14 @@ export async function POST(request: NextRequest) {
               name,
               symbol
             )
+          ),
+          selected_item_batch:item_batches!stock_request_items_selected_item_batch_id_fkey(
+            id,
+            batch_code,
+            received_at,
+            qty_on_hand,
+            qty_reserved,
+            qty_available
           )
         ),
         delivery_note_sources(
