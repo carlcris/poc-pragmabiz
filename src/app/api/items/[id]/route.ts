@@ -33,6 +33,7 @@ type DbItem = {
   import_currency: string | null;
   sales_price: number | string | null;
   image_url: string | null;
+  custom_fields: Record<string, unknown> | null;
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
@@ -301,6 +302,7 @@ function transformDbItem(
     description: dbItem.description || "",
     dimensions: dbItem.dimensions || null,
     itemType: dbItem.item_type as Item["itemType"],
+    customFields: dbItem.custom_fields || null,
     uom: dbItem.unit_of_measure?.code || "",
     uomId: dbItem.uom_id,
     category: dbItem.item_category?.name || "",

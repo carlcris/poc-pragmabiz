@@ -5,6 +5,8 @@ import type {
   CreateItemRequest,
   UpdateItemRequest,
   ItemFilters,
+  UpsertItemCustomFieldRequest,
+  ItemCustomFieldsResponse,
 } from "@/types/item";
 
 export type ItemBatchOption = {
@@ -65,6 +67,22 @@ export const itemsApi = {
 
   updateItem: async (id: string, data: UpdateItemRequest): Promise<ItemResponse> => {
     return apiClient.put<ItemResponse>(`/api/items/${id}`, data);
+  },
+
+  upsertItemCustomField: async (
+    id: string,
+    data: UpsertItemCustomFieldRequest
+  ): Promise<ItemCustomFieldsResponse> => {
+    return apiClient.put<ItemCustomFieldsResponse>(`/api/items/${id}/custom-fields`, data);
+  },
+
+  deleteItemCustomField: async (
+    id: string,
+    key: string
+  ): Promise<ItemCustomFieldsResponse> => {
+    return apiClient.delete<ItemCustomFieldsResponse>(
+      `/api/items/${id}/custom-fields?key=${encodeURIComponent(key)}`
+    );
   },
 
   deleteItem: async (id: string): Promise<{ message: string }> => {

@@ -1946,6 +1946,28 @@ export type TranslationKeys = {
     reorderQtyLabel: string;
     reorderQtyDescription: string;
     maxStockLevelLabel: string;
+    customFieldsTitle: string;
+    customFieldsDescription: string;
+    noCustomFields: string;
+    customFieldTrue: string;
+    customFieldFalse: string;
+    customFieldKeyLabel: string;
+    customFieldValueLabel: string;
+    customFieldKeyPlaceholder: string;
+    customFieldValuePlaceholder: string;
+    addCustomField: string;
+    deleteCustomField: string;
+    moreCustomFieldActions: string;
+    addCustomFieldTitle: string;
+    editCustomFieldTitle: string;
+    customFieldDialogDescription: string;
+    saveCustomField: string;
+    customFieldKeyRequired: string;
+    customFieldDuplicateKey: string;
+    customFieldsUpdated: string;
+    customFieldsUpdateError: string;
+    customFieldDeleted: string;
+    customFieldDeleteError: string;
     itemInformationTitle: string;
     itemInformationDescription: string;
     itemInformationCreateDescription: string;
@@ -4759,6 +4781,28 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderQtyLabel: "Reorder Quantity",
       reorderQtyDescription: "Suggested quantity to reorder",
       maxStockLevelLabel: "Max Stock Level",
+      customFieldsTitle: "Custom Fields",
+      customFieldsDescription: "Additional item metadata imported or stored with this item",
+      noCustomFields: "No custom fields stored for this item.",
+      customFieldTrue: "True",
+      customFieldFalse: "False",
+      customFieldKeyLabel: "Key",
+      customFieldValueLabel: "Value",
+      customFieldKeyPlaceholder: "Field name",
+      customFieldValuePlaceholder: "Field value",
+      addCustomField: "Add Field",
+      deleteCustomField: "Delete custom field",
+      moreCustomFieldActions: "More custom field actions",
+      addCustomFieldTitle: "Add Custom Field",
+      editCustomFieldTitle: "Edit Custom Field",
+      customFieldDialogDescription: "Save a single custom field for this item.",
+      saveCustomField: "Save Field",
+      customFieldKeyRequired: "Enter a key for each custom field.",
+      customFieldDuplicateKey: "Custom field keys must be unique.",
+      customFieldsUpdated: "Custom fields updated.",
+      customFieldsUpdateError: "Failed to update custom fields.",
+      customFieldDeleted: "Custom field deleted.",
+      customFieldDeleteError: "Failed to delete custom field.",
       itemInformationTitle: "Item Information",
       itemInformationDescription: "Basic details about this item",
       itemInformationCreateDescription: "Fill in the details below to create a new item.",
@@ -10045,6 +10089,28 @@ export const translations: Record<Locale, TranslationKeys> = {
       reorderQtyLabel: "补货数量",
       reorderQtyDescription: "建议补货数量",
       maxStockLevelLabel: "最高库存水平",
+      customFieldsTitle: "自定义字段",
+      customFieldsDescription: "随此商品导入或保存的附加元数据",
+      noCustomFields: "此商品暂无自定义字段。",
+      customFieldTrue: "是",
+      customFieldFalse: "否",
+      customFieldKeyLabel: "键",
+      customFieldValueLabel: "值",
+      customFieldKeyPlaceholder: "字段名称",
+      customFieldValuePlaceholder: "字段值",
+      addCustomField: "新增字段",
+      deleteCustomField: "删除自定义字段",
+      moreCustomFieldActions: "更多自定义字段操作",
+      addCustomFieldTitle: "新增自定义字段",
+      editCustomFieldTitle: "编辑自定义字段",
+      customFieldDialogDescription: "为此商品保存一个自定义字段。",
+      saveCustomField: "保存字段",
+      customFieldKeyRequired: "请输入每个自定义字段的键。",
+      customFieldDuplicateKey: "自定义字段键不能重复。",
+      customFieldsUpdated: "自定义字段已更新。",
+      customFieldsUpdateError: "更新自定义字段失败。",
+      customFieldDeleted: "自定义字段已删除。",
+      customFieldDeleteError: "删除自定义字段失败。",
       itemInformationTitle: "商品信息",
       itemInformationDescription: "该商品的基本信息",
       itemInformationCreateDescription: "填写以下信息以创建新商品。",

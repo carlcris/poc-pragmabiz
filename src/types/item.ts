@@ -121,6 +121,18 @@ export type UpdateItemRequest = {
   isActive?: boolean;
 };
 
+export type UpsertItemCustomFieldRequest = {
+  key: string;
+  value: string;
+  originalKey?: string;
+};
+
+export type ItemCustomFieldsResponse = {
+  data: {
+    customFields: ItemCustomFields;
+  };
+};
+
 export type ItemsListResponse = {
   data: Item[];
   pagination: {

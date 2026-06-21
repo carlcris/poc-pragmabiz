@@ -10221,6 +10221,10 @@ export type Database = {
         Returns: string
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      delete_item_custom_field: {
+        Args: { p_item_id: string; p_key: string; p_updated_by?: string }
+        Returns: Json
+      }
       delete_sales_quotation_transaction: {
         Args: { p_quotation_id: string }
         Returns: string
@@ -10820,6 +10824,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      upsert_item_custom_field: {
+        Args: {
+          p_item_id: string
+          p_key: string
+          p_original_key?: string
+          p_updated_by?: string
+          p_value: string
+        }
+        Returns: Json
       }
       user_has_permission: {
         Args: {

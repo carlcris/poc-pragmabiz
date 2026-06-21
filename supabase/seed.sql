@@ -81,7 +81,6 @@ VALUES
 ('7729a6e6-b797-4d3f-8527-36ad910824f5','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'MAT','Matboard','Matboards and mounting boards',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
 ('9fd932f7-54ed-4a1d-a99e-50c996ce9745','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'GLASS','Glass','Glass sheets for picture frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
 ('a0cb8f17-34c7-433b-969e-a3474bcd1ade','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'MOLD','Moldings','Frame moldings and profiles',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
-('c13ceaf5-8de0-4750-8c6a-6e1b039f9ee3','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'FIN','Finished Frames','Complete assembled frames',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
 ('e8a7d6cf-f743-4b10-ad68-b9a7e2977d0e','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'BACK','Backing','Backing boards and materials',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
 ('a13139e8-23e3-4c8e-b7f3-934ec41afbe0','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'MIRR','Mirror','Reflective sheets for decorative and framed displays',TRUE,'2026-02-20 04:38:13.397445',NULL,'2026-02-20 04:42:01.843038',NULL,NULL,1,NULL),
 ('b2386b6e-5aa5-4dcb-b56a-a74f63615de6','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'ACCE','Accessories','Supporting items used in picture framing and assembly',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
@@ -90,7 +89,8 @@ VALUES
 ('2f0a43c8-b38d-4c1b-89f9-53590ec71599','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'MACH','Machines','Equipment used for framing, cutting, and assembly',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
 ('bc48a101-cb9b-4daa-adc4-efa9ea853f91','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'SHRINK','Shrink Film','Protective wrapping for finished frames and artwork',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
 ('c1326506-d04c-491c-953f-ddcc46ee4d43','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'PTACK','Photo tack','Removable adhesive for mounting photos and prints',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
-('6b8aa7d9-c0e9-4216-9d6a-973327c22b26','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'ARTS','Arts','Decorative elements and materials for creative framing',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL);
+('6b8aa7d9-c0e9-4216-9d6a-973327c22b26','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'ARTS','Arts','Decorative elements and materials for creative framing',TRUE,'2026-02-23 18:24:05.369522',NULL,'2026-02-23 18:24:05.369522',NULL,NULL,1,NULL),
+('5f302f1e-0650-4b0d-b94f-53fb446ab1f7','1e10e2dd-655e-41e0-a508-edfd660a9bcf',NULL,'FRM','Photo Frame','Photo Frame',TRUE,'2026-06-21 07:21:47.115335+00',NULL,'2026-06-21 07:21:47.115335+00',NULL,NULL,1,NULL);
 -- ============================================================================
 -- SEED DATA: Items
 -- ============================================================================
@@ -2055,3 +2055,541 @@ VALUES
 ('0adbf2f3-bae6-4abc-a773-66891d9f2c2a','1e10e2dd-655e-41e0-a508-edfd660a9bcf','STICK','Stick','stick',FALSE,TRUE,'2026-02-20 01:54:02.288286',NULL,'2026-02-20 02:29:46.822541',NULL,NULL,1);
 
 COMMIT;
+
+
+
+DO $wonder_photo_import$
+DECLARE
+  v_missing TEXT;
+BEGIN
+DROP TABLE IF EXISTS public.wonder_photo_import;
+
+CREATE TABLE public.wonder_photo_import (
+  alt_supplier_code TEXT,
+  factory_no TEXT,
+  color TEXT,
+  frame_size TEXT,
+  production TEXT,
+  qty_per_box NUMERIC,
+  supplier_code TEXT,
+  moldings TEXT,
+  item_code TEXT NOT NULL,
+  item_name TEXT NOT NULL,
+  description TEXT,
+  alt_code TEXT,
+  source_code TEXT,
+  stock_number TEXT,
+  price_without_invoice NUMERIC,
+  price_with_invoice NUMERIC,
+  source_price_without_inv NUMERIC,
+  selling_price NUMERIC
+);
+
+INSERT INTO public.wonder_photo_import (
+  alt_supplier_code, factory_no, color, frame_size, production, qty_per_box, supplier_code, moldings,
+  item_code, item_name, description, alt_code, source_code, stock_number, price_without_invoice, price_with_invoice, source_price_without_inv, selling_price
+) VALUES
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1001BLKASF0505', '5X5 1001-1-B-BLK AQUARIUM TYPE', '5X5 1001-1-B-BLK AQUARIUM TYPE', '1001BLK', 'ASF0505', '1001BLK/ASF0505', 75, 85, 79, 89.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODURTION', NULL, NULL, NULL, '1001WHTASF0505', '5X5 1001-02Q-1 WHITE AQUARIUM TYPE', '5X5 1001-02Q-1 WHITE AQUARIUM TYPE', '1001WHT', 'ASF0505', '1001WHT/ASF0505', 75, 85, 79, 89.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1001BLKASF0808', '8X8 1001-1-B-BLK AQUARIUM TYPE', '8X8 1001-1-B-BLK AQUARIUM TYPE', '1001BLK', 'ASF0808', '1001BLK/ASF0808', 105, 119, 111, 125.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1001WHTASF0808', '8X8 1001-02Q-1 WHITE AQUARIUM TYPE', '8X8 1001-02Q-1 WHITE AQUARIUM TYPE', '1001WHT', 'ASF0808', '1001WHT/ASF0808', 105, 119, 111, 125.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1001BLKASF1010', '10X10 1001-1-B-BLK AQUARIUM TYPE', '10X10 1001-1-B-BLK AQUARIUM TYPE', '1001BLK', 'ASF1010', '1001BLK/ASF1010', 125, 142, 132, 149.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1001WHTASF1010', '10X10 1001-02Q-1 WHITE AQUARIUM TYPE', '10X10 1001-02Q-1 WHITE AQUARIUM TYPE', '1001WHT', 'ASF1010', '1001WHT/ASF1010', 203.95, 231.8, 215, 244),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014BLKDG00507', '5X7 TO 8X10 1014-1-B-BLK DOUBLE GLASS W/ TOP HANGER', '5X7 TO 8X10 1014-1-B-BLK DOUBLE GLASS W/ TOP HANGER', '1014BLK', 'DG00507', '1014BLK/DG00507', 176.4, 200.5, 186, 211.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014NTRDG00507', '5X7 TO 8X10 1014-14P-LC DOUBLE GLASS W/ TOP HANGER', '5X7 TO 8X10 1014-14P-LC DOUBLE GLASS W/ TOP HANGER', '1014NTR', 'DG00507', '1014NTR/DG00507', 176.4, 200.5, 186, 211.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014WHTDG00507', '5X7 TO 8X10 1014-02Q-1 WHITE DOUBLE GLASS W/ TOP HANGER', '5X7 TO 8X10 1014-02Q-1 WHITE DOUBLE GLASS W/ TOP HANGER', '1014WHT', 'DG00507', '1014WHT/DG00507', 176.4, 200.5, 186, 211.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014BLKDG01113', '8X10 TO 11X13 1014-1-B-BLK DOUBLE GLASS', '8X10 TO 11X13 1014-1-B-BLK DOUBLE GLASS', '1014BLK', 'DG01113', '1014BLK/DG01113', 239.4, 272, 252, 286.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014NTRDG01113', '8X10 TO 11X13 1014-14P-LC DOUBLE GLASS', '8X10 TO 11X13 1014-14P-LC DOUBLE GLASS', '1014NTR', 'DG01113', '1014NTR/DG01113', 239.4, 272, 252, 286.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014WHTDG01113', '8X10 TO 11X13 1014-02Q-1 WHITE DOUBLE GLASS', '8X10 TO 11X13 1014-02Q-1 WHITE DOUBLE GLASS', '1014WHT', 'DG01113', '1014WHT/DG01113', 239.4, 272, 252, 286.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014BLWHDF1218', '12X18 1014-1-B-BLK/1001-02Q-1 WHITE DOUBLE FRAME', '12X18 1014-1-B-BLK/1001-02Q-1 WHITE DOUBLE FRAME', '1014BLWH', 'DF1218', '1014BLWH/DF1218', 250, 285, 263.5, 300),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014BLWHDF1620', '16X20 1014-1-B-BLK/1001-02Q-1 WHITE DOUBLE FRAME', '16X20 1014-1-B-BLK/1001-02Q-1 WHITE DOUBLE FRAME', '1014BLWH', 'DF1620', '1014BLWH/DF1620', 320, 364, 337, 383.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '1014-1-B-BLK +   1001-02Q-1 WHITE', '1014BLWHDF2024', '20X24 1014-1-B-BLK/1001-02Q-1 WHITE DOUBLE FRAME', '20X24 1014-1-B-BLK/1001-02Q-1 WHITE DOUBLE FRAME', '1014BLWH', 'DF2024', '1014BLWH/DF2024', 420, 478, 442.5, 503.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014WHBLDF1218', '12X18 1014-02Q-1 WHITE/1001-1-B-BLK DOUBLE FRAME', '12X18 1014-02Q-1 WHITE/1001-1-B-BLK DOUBLE FRAME', '1014WHBL', 'DF1218', '1014WHBL/DF1218', 250, 285, 263.5, 300),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014WHBLDF1620', '16X20 1014-02Q-1 WHITE/1001-1-B-BLK DOUBLE FRAME', '16X20 1014-02Q-1 WHITE/1001-1-B-BLK DOUBLE FRAME', '1014WHBL', 'DF1620', '1014WHBL/DF1620', 320, 364, 337, 383.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '1014-02Q-1 WHITE + 1001-1-B-BLK', '10140WHBLDF2024', '20X24 1014-02Q-1 WHITE/1001-1-B-BLK DOUBLE FRAME', '20X24 1014-02Q-1 WHITE/1001-1-B-BLK DOUBLE FRAME', '10140WHBL', 'DF2024', '10140WHBL/DF2024', 420, 478, 442.5, 503.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014NRBLDF1218', '12X18 1014-14P-LC/1001-1-B-BLK DOUBLE FRAME', '12X18 1014-14P-LC/1001-1-B-BLK DOUBLE FRAME', '1014NRBL', 'DF1218', '1014NRBL/DF1218', 250, 285, 263.5, 300),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '1014NRBLDF1620', '16X20 1014-14P-LC/1001-1-B-BLK DOUBLE FRAME', '16X20 1014-14P-LC/1001-1-B-BLK DOUBLE FRAME', '1014NRBL', 'DF1620', '1014NRBL/DF1620', 320, 364, 337, 383.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '1014-14P-LC +    1001-1-B-BLK', '1014NRBLDF2024', '20X24 1014-14P-LC/1001-1-B-BLK DOUBLE FRAME', '20X24 1014-14P-LC/1001-1-B-BLK DOUBLE FRAME', '1014NRBL', 'DF2024', '1014NRBL/DF2024', 420, 478, 442.5, 503.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '20790GLDSM1620', '16X20 TO 19X23 2079-GOLD', '16X20 TO 19X23 2079-GOLD', '20790GLD', 'SM1620', '20790GLD/SM1620', 760, 864, 800, 909.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '20790GLDSM2024', '20X24 TO 23X27 2079-GOLD', '20X24 TO 23X27 2079-GOLD', '20790GLD', 'SM2024', '20790GLD/SM2024', 915, 1040, 963.5, 1095),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2079-GOLD', '20790GLDSM2030', '20X30 TO 23X33 2079-GOLD', '20X30 TO 23X33 2079-GOLD', '20790GLD', 'SM2030', '20790GLD/SM2030', 1015, 1154, 1068.5, 1215),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '20790MRNSM1620', '16X20 TO 19X23 2079-02E MRN', '16X20 TO 19X23 2079-02E MRN', '20790MRN', 'SM1620', '20790MRN/SM1620', 760, 864, 800, 909.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '20790MRNSM2024', '20X24 TO 23X27 2079-02E MRN', '20X24 TO 23X27 2079-02E MRN', '20790MRN', 'SM2024', '20790MRN/SM2024', 915, 1040, 963.5, 1095),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2079-02E MRN', '20790MRNSM2030', '20X30 TO 23X33 2079-02E MRN', '20X30 TO 23X33 2079-02E MRN', '20790MRN', 'SM2030', '20790MRN/SM2030', 1015, 1154, 1068.5, 1215),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '20790SLVSM1620', '16X20 TO 19X23 2079-SILVER', '16X20 TO 19X23 2079-SILVER', '20790SLV', 'SM1620', '20790SLV/SM1620', 760, 864, 800, 909.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '20790SLVSM2024', '20X24 TO 23X27 2079-SILVER', '20X24 TO 23X27 2079-SILVER', '20790SLV', 'SM2024', '20790SLV/SM2024', 915, 1040, 963.5, 1095),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2079-SILVER', '20790SLVSM2030', '20X30 TO 23X33 2079-SILVER', '20X30 TO 23X33 2079-SILVER', '20790SLV', 'SM2030', '20790SLV/SM2030', 1015, 1154, 1068.5, 1215),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2439WHTESM1218', '12X18 TO 15X21 2439-WHITE', '12X18 TO 15X21 2439-WHITE', '2439WHTE', 'SM1218', '2439WHTE/SM1218', 620, 705, 653, 742.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2439WHTESM1620', '16X20 TO 19X23 2439-WHITE', '16X20 TO 19X23 2439-WHITE', '2439WHTE', 'SM1620', '2439WHTE/SM1620', 760, 864, 800, 909.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2439WHTESM2024', '20X24 TO 23X27 2439-WHITE', '20X24 TO 23X27 2439-WHITE', '2439WHTE', 'SM2024', '2439WHTE/SM2024', 915, 1040, 963.5, 1095),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2439-WHITE', '2439WHTESM2030', '20X30 TO 23X33 2439-WHITE', '20X30 TO 23X33 2439-WHITE', '2439WHTE', 'SM2030', '2439WHTE/SM2030', 1015, 1153, 1068.5, 1214),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2630127RNM1218', '12X18 2630-127R-LBLU', '12X18 2630-127R-LBLU', '2630127R', 'NM1218', '2630127R/NM1218', 300, 341, 316, 359),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2630127RNM1620', '16X20 2630-127R-LBLU', '16X20 2630-127R-LBLU', '2630127R', 'NM1620', '2630127R/NM1620', 400, 455, 421.5, 479),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2630127RNM2024', '20X24 2630-127R-LBLU', '20X24 2630-127R-LBLU', '2630127R', 'NM2024', '2630127R/NM2024', 500, 568, 526.5, 598),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2630-127R-LBLU', '2630127RNM2030', '20X30 2630-127R-LBLU', '20X30 2630-127R-LBLU', '2630127R', 'NM2030', '2630127R/NM2030', 620, 705, 653, 742.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2630113WNM1218', '12X18 2630-113W-5-LC', '12X18 2630-113W-5-LC', '2630113W', 'NM1218', '2630113W/NM1218', 300, 341, 316, 359),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2630113WNM1620', '16X20 2630-113W-5-LC', '16X20 2630-113W-5-LC', '2630113W', 'NM1620', '2630113W/NM1620', 400, 455, 421.5, 479),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2630113WNM2024', '20X24 2630-113W-5-LC', '20X24 2630-113W-5-LC', '2630113W', 'NM2024', '2630113W/NM2024', 500, 568, 526.5, 598),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2630-113W-5-LC', '2630113WNM2030', '20X30 2630-113W-5-LC', '20X30 2630-113W-5-LC', '2630113W', 'NM2030', '2630113W/NM2030', 620, 705, 653, 742.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2781135HNM1218', '12X18 2781-135H-NTR', '12X18 2781-135H-NTR', '2781135H', 'NM1218', '2781135H/NM1218', 375, 426, 395, 448.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2781135HNM1620', '16X20 2781-135H-NTR', '16X20 2781-135H-NTR', '2781135H', 'NM1620', '2781135H/NM1620', 465, 529, 489.5, 557),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2781135HNM2024', '20X24 2781-135H-NTR', '20X24 2781-135H-NTR', '2781135H', 'NM2024', '2781135H/NM2024', 590, 670, 621.5, 705.5),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2781-135H-NTR', '2781135HNM2030', '20X30 2781-135H-NTR', '20X30 2781-135H-NTR', '2781135H', 'NM2030', '2781135H/NM2030', 735, 835, 774, 879),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2812132BNM1114', '11X14 2812-132B-BLK', '11X14 2812-132B-BLK', '2812132B', 'NM1114', '2812132B/NM1114', 200, 228, 211, 240),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2812132BNM1218', '12X18 2812-132B-BLK', '12X18 2812-132B-BLK', '2812132B', 'NM1218', '2812132B/NM1218', 230, 262, 242.5, 276),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2812132BNM1620', '16X20 2812-132B-BLK', '16X20 2812-132B-BLK', '2812132B', 'NM1620', '2812132B/NM1620', 300, 341, 316, 359),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '2812132BNM2024', '20X24 2812-132B-BLK', '20X24 2812-132B-BLK', '2812132B', 'NM2024', '2812132B/NM2024', 400, 455, 421.5, 479),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2812-132B-BLK', '2812132BNM2030', '20X30 2812-132B-BLK', '20X30 2812-132B-BLK', '2812132B', 'NM2030', '2812132B/NM2030', 500, 568, 526.5, 598),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '28120581NM1114', '11X14 2812-058-1 NTR', '11X14 2812-058-1 NTR', '28120581', 'NM1114', '28120581/NM1114', 200, 228, 211, 240),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '28120581NM1218', '12X18 2812-058-1 NTR', '12X18 2812-058-1 NTR', '28120581', 'NM1218', '28120581/NM1218', 230, 262, 242.5, 276),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '28120581NM1620', '16X20 2812-058-1 NTR', '16X20 2812-058-1 NTR', '28120581', 'NM1620', '28120581/NM1620', 300, 341, 316, 359),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, NULL, '28120581NM2024', '20X24 2812-058-1 NTR', '20X24 2812-058-1 NTR', '28120581', 'NM2024', '28120581/NM2024', 400, 455, 421.5, 479),
+  (NULL, NULL, NULL, NULL, 'PHIL. PRODUCTION', NULL, NULL, '2812-058-1 NTR', '28120581NM2030', '20X30 2812-058-1 NTR', '20X30 2812-058-1 NTR', '28120581', 'NM2030', '28120581/NM2030', 500, 568, 526.5, 598),
+  ('MDF1022', 'MDF1022/BLK507', 'BLACK', '5 X 7', 'CHINA PRODUCTION', 40, 'BLK507', NULL, 'MDF10022BLK507', '5X7 M1008-2 BLK W/ STAND CLIP HANGER W/O CORNERER', '5X7 M1008-2 BLK W/ STAND CLIP HANGER W/O CORNERER', 'MDF10022', 'BLK507', 'MDF10022/BLK507', 56, 64, 59, 67.5),
+  ('MDF1002', 'MDF10023/BRN507', 'BROWN', '5 X 7', 'CHINA PRODUCTION', 40, 'BRN507', NULL, 'MDF10023BRN507', '5X7 M1008-13 BRN W/ STAND CLIP HANGER W/O CORNERER', '5X7 M1008-13 BRN W/ STAND CLIP HANGER W/O CORNERER', 'MDF10023', 'BRN507', 'MDF10023/BRN507', 56, 64, 59, 67.5),
+  ('MDF1002', 'MDF10026/OAK507', 'OAK', '5 X 7', 'CHINA PRODUCTION', 40, 'OAK507', NULL, 'MDF10026OAK507', '5X7 M1008-6 OAK/LC W/ STAND CLIP HANGER W/O CORNERER', '5X7 M1008-6 OAK/LC W/ STAND CLIP HANGER W/O CORNERER', 'MDF10026', 'OAK507', 'MDF10026/OAK507', 56, 64, 59, 67.5),
+  ('MDF1002', 'MDF10021/WHT507', 'WHITE', '5 X 7', 'CHINA PRODUCTION', 40, 'WHT507', NULL, 'MDF10021WHT507', '5X7 M1008-1 WHT W/ STAND CLIP HANGER W/O CORNERER', '5X7 M1008-1 WHT W/ STAND CLIP HANGER W/O CORNERER', 'MDF10021', 'WHT507', 'MDF10021/WHT507', 56, 64, 59, 67.5),
+  ('MDF10', 'MDF1002222/BLK810', 'BLACK', '8 X 10', 'CHINA PRODUCTION', 30, 'BLK810', NULL, 'MDF10022BLK810', '8X10 M1008-2 BLK W/ STAND CLIP HANGER W/ CORNERER', '8X10 M1008-2 BLK W/ STAND CLIP HANGER W/ CORNERER', 'MDF10022', 'BLK810', 'MDF10022/BLK810', 85, 96.5, 89.5, 102),
+  ('MDF10', 'MDF10023/BRN810', 'BROWN', '8 X 10', 'CHINA PRODUCTION', 30, 'BRN810', NULL, 'MDF10023BRN810', '8X10 M1008-13 BRN W/ STAND CLIP HANGER W/ CORNERER', '8X10 M1008-13 BRN W/ STAND CLIP HANGER W/ CORNERER', 'MDF10023', 'BRN810', 'MDF10023/BRN810', 85, 96.5, 89.5, 102),
+  (NULL, 'MDF10026/OAK810', 'OAK', '8 X 10', 'CHINA PRODUCTION', 30, 'OAK810', NULL, 'MDF10026OAK810', '8X10 M1008-6 OAK/LC W/ STAND CLIP HANGER W/ CORNERER', '8X10 M1008-6 OAK/LC W/ STAND CLIP HANGER W/ CORNERER', 'MDF10026', 'OAK810', 'MDF10026/OAK810', 85, 96.5, 89.5, 102),
+  ('MDF10', 'MDF10021/WHT810', 'WHITE', '8 X 10', 'CHINA PRODUCTION', 30, 'WHT810', NULL, 'MDF10021WHT810', '8X10 M1008-1 WHT W/ STAND CLIP HANGER W/ CORNERER', '8X10 M1008-1 WHT W/ STAND CLIP HANGER W/ CORNERER', 'MDF10021', 'WHT810', 'MDF10021/WHT810', 85, 96.5, 89.5, 102),
+  (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '6248B12SBK0810', '8X10 6248-B1 BLK 2 SIDE FRAME W/ BOX', '8X10 6248-B1 BLK 2 SIDE FRAME W/ BOX', '6248B1', '2SBK0810', '6248B1/2SBK0810', 200, 230, 211, 242.5),
+  (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '6248B13SBK0810', '8X10 6248-B1 BLK 3 SIDE FRAME W/ BOX', '8X10 6248-B1 BLK 3 SIDE FRAME W/ BOX', '6248B1', '3SBK0810', '6248B1/3SBK0810', 440, 500, 463.5, 526.5),
+  (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '6248B12SBK1114', '11X14 6248-B1 BLK 2 SIDE FRAME W/ BOX', '11X14 6248-B1 BLK 2 SIDE FRAME W/ BOX', '6248B1', '2SBK1114', '6248B1/2SBK1114', 260, 300, 274, 316),
+  (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '6248B13SBK1114', '11X14 6248-B1 BLK 3 SIDE FRAME W/ BOX', '11X14 6248-B1 BLK 3 SIDE FRAME W/ BOX', '6248B1', '3SBK1114', '6248B1/3SBK1114', 580, 660, 611, 695);
+
+  SELECT string_agg(required_name, ', ' ORDER BY required_name)
+  INTO v_missing
+  FROM (
+    SELECT 'company 1e10e2dd-655e-41e0-a508-edfd660a9bcf' AS required_name
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.companies
+      WHERE id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+        AND deleted_at IS NULL
+    )
+    UNION ALL
+    SELECT 'UOM PCS'
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.units_of_measure
+      WHERE company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+        AND UPPER(code) = 'PCS'
+        AND deleted_at IS NULL
+    )
+    UNION ALL
+    SELECT 'UOM BOX'
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.units_of_measure
+      WHERE company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+        AND UPPER(code) = 'BOX'
+        AND deleted_at IS NULL
+    )
+    UNION ALL
+    SELECT 'item category FRM'
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.item_categories
+      WHERE company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+        AND code = 'FRM'
+        AND deleted_at IS NULL
+    )
+  ) missing_records;
+
+  IF v_missing IS NOT NULL THEN
+    RAISE EXCEPTION 'Wonder Photo import prerequisite records are missing: %', v_missing;
+  END IF;
+
+PERFORM setval(
+  'public.item_unit_option_barcode_seq',
+  GREATEST(
+    (SELECT COALESCE(last_value, 1) FROM public.item_unit_option_barcode_seq),
+    (SELECT COUNT(*) + 10000 FROM public.item_unit_options)
+  ),
+  TRUE
+);
+
+WITH constants AS (
+  SELECT
+    '1e10e2dd-655e-41e0-a508-edfd660a9bcf'::UUID AS company_id,
+    uom_pcs.id AS pcs_uom_id,
+    category.id AS category_id
+  FROM public.units_of_measure uom_pcs
+  JOIN public.item_categories category
+    ON category.company_id = uom_pcs.company_id
+   AND category.code = 'FRM'
+   AND category.deleted_at IS NULL
+  WHERE uom_pcs.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+    AND UPPER(uom_pcs.code) = 'PCS'
+    AND uom_pcs.deleted_at IS NULL
+)
+INSERT INTO public.items (
+  company_id,
+  item_code,
+  item_name,
+  description,
+  category_id,
+  uom_id,
+  item_type,
+  purchase_price,
+  sales_price,
+  supplier_code,
+  is_stock_item,
+  track_serial,
+  track_batch,
+  is_active,
+  custom_fields
+)
+SELECT
+  constants.company_id,
+  imported.item_code,
+  imported.item_name,
+  imported.description,
+  constants.category_id,
+  constants.pcs_uom_id,
+  'finished_good',
+  imported.price_without_invoice,
+  imported.selling_price,
+  imported.supplier_code,
+  TRUE,
+  FALSE,
+  TRUE,
+  TRUE,
+  jsonb_strip_nulls(jsonb_build_object(
+    'alt_supplier_code', imported.alt_supplier_code,
+    'color', imported.color,
+    'frame_size', imported.frame_size,
+    'production', imported.production,
+    'moldings', imported.moldings
+  ))
+FROM public.wonder_photo_import imported
+CROSS JOIN constants
+ON CONFLICT (company_id, item_code) DO UPDATE SET
+  item_name = EXCLUDED.item_name,
+  description = EXCLUDED.description,
+  category_id = EXCLUDED.category_id,
+  uom_id = EXCLUDED.uom_id,
+  item_type = EXCLUDED.item_type,
+  purchase_price = EXCLUDED.purchase_price,
+  sales_price = EXCLUDED.sales_price,
+  supplier_code = EXCLUDED.supplier_code,
+  is_stock_item = EXCLUDED.is_stock_item,
+  track_serial = EXCLUDED.track_serial,
+  track_batch = EXCLUDED.track_batch,
+  is_active = EXCLUDED.is_active,
+  custom_fields = EXCLUDED.custom_fields,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH constants AS (
+  SELECT
+    '1e10e2dd-655e-41e0-a508-edfd660a9bcf'::UUID AS company_id,
+    uom_pcs.id AS pcs_uom_id
+  FROM public.units_of_measure uom_pcs
+  WHERE uom_pcs.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+    AND UPPER(uom_pcs.code) = 'PCS'
+    AND uom_pcs.deleted_at IS NULL
+)
+INSERT INTO public.item_unit_options (
+  company_id,
+  item_id,
+  uom_id,
+  option_label,
+  qty_per_unit,
+  is_base,
+  is_default,
+  is_active,
+  sort_order
+)
+SELECT
+  constants.company_id,
+  items.id,
+  constants.pcs_uom_id,
+  'PCS',
+  1,
+  TRUE,
+  TRUE,
+  TRUE,
+  0
+FROM public.wonder_photo_import imported
+CROSS JOIN constants
+JOIN public.items
+  ON items.company_id = constants.company_id
+ AND items.item_code = imported.item_code
+ AND items.deleted_at IS NULL
+ON CONFLICT (company_id, item_id, uom_id, qty_per_unit) WHERE deleted_at IS NULL DO UPDATE SET
+  option_label = EXCLUDED.option_label,
+  is_base = TRUE,
+  is_default = TRUE,
+  is_active = TRUE,
+  sort_order = 0,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH constants AS (
+  SELECT
+    '1e10e2dd-655e-41e0-a508-edfd660a9bcf'::UUID AS company_id,
+    uom_box.id AS box_uom_id
+  FROM public.units_of_measure uom_box
+  WHERE uom_box.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+    AND UPPER(uom_box.code) = 'BOX'
+    AND uom_box.deleted_at IS NULL
+)
+INSERT INTO public.item_unit_options (
+  company_id,
+  item_id,
+  uom_id,
+  option_label,
+  qty_per_unit,
+  is_base,
+  is_default,
+  is_active,
+  sort_order
+)
+SELECT
+  constants.company_id,
+  items.id,
+  constants.box_uom_id,
+  FORMAT(
+    'BOX (%s)',
+    CASE
+      WHEN imported.qty_per_box = TRUNC(imported.qty_per_box)
+        THEN TRUNC(imported.qty_per_box)::TEXT
+      ELSE REGEXP_REPLACE(imported.qty_per_box::TEXT, '0+$', '')
+    END
+  ),
+  imported.qty_per_box,
+  FALSE,
+  FALSE,
+  TRUE,
+  10
+FROM public.wonder_photo_import imported
+CROSS JOIN constants
+JOIN public.items
+  ON items.company_id = constants.company_id
+ AND items.item_code = imported.item_code
+ AND items.deleted_at IS NULL
+WHERE imported.qty_per_box IS NOT NULL
+ON CONFLICT (company_id, item_id, uom_id, qty_per_unit) WHERE deleted_at IS NULL DO UPDATE SET
+  option_label = EXCLUDED.option_label,
+  is_base = FALSE,
+  is_default = FALSE,
+  is_active = TRUE,
+  sort_order = 10,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH constants AS (
+  SELECT '1e10e2dd-655e-41e0-a508-edfd660a9bcf'::UUID AS company_id
+),
+price_rows AS (
+  SELECT item_code, 'default'::TEXT AS price_tier, 'Default'::TEXT AS price_tier_name, selling_price AS price
+  FROM public.wonder_photo_import
+  WHERE selling_price IS NOT NULL
+  UNION ALL
+  SELECT item_code, 'price_without_inv'::TEXT AS price_tier, 'Price Without Invoice'::TEXT AS price_tier_name, price_without_invoice AS price
+  FROM public.wonder_photo_import
+  WHERE price_without_invoice IS NOT NULL
+)
+INSERT INTO public.item_prices (
+  company_id,
+  item_id,
+  price_tier,
+  price_tier_name,
+  price,
+  currency_code,
+  effective_from,
+  is_active
+)
+SELECT
+  constants.company_id,
+  items.id,
+  price_rows.price_tier,
+  price_rows.price_tier_name,
+  price_rows.price,
+  'PHP',
+  DATE '2026-06-21',
+  TRUE
+FROM price_rows
+CROSS JOIN constants
+JOIN public.items
+  ON items.company_id = constants.company_id
+ AND items.item_code = price_rows.item_code
+ AND items.deleted_at IS NULL
+ON CONFLICT (company_id, item_id, price_tier, effective_from) DO UPDATE SET
+  price_tier_name = EXCLUDED.price_tier_name,
+  price = EXCLUDED.price,
+  currency_code = EXCLUDED.currency_code,
+  is_active = TRUE,
+  effective_to = NULL,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+INSERT INTO public.warehouse_locations (
+  company_id,
+  warehouse_id,
+  code,
+  name,
+  location_type,
+  is_active,
+  is_pickable,
+  is_storable
+)
+SELECT
+  warehouses.company_id,
+  warehouses.id,
+  'MAIN',
+  'Main',
+  'crate',
+  TRUE,
+  TRUE,
+  TRUE
+FROM public.warehouses
+WHERE warehouses.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+  AND warehouses.deleted_at IS NULL
+ON CONFLICT (company_id, warehouse_id, code) DO UPDATE SET
+  name = EXCLUDED.name,
+  location_type = EXCLUDED.location_type,
+  is_active = TRUE,
+  is_pickable = TRUE,
+  is_storable = TRUE,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH imported_items AS (
+  SELECT
+    items.company_id,
+    items.id AS item_id,
+    warehouses.id AS warehouse_id,
+    warehouse_locations.id AS location_id
+  FROM public.wonder_photo_import imported
+  JOIN public.items
+    ON items.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+   AND items.item_code = imported.item_code
+   AND items.deleted_at IS NULL
+  JOIN public.warehouses
+    ON warehouses.company_id = items.company_id
+   AND warehouses.deleted_at IS NULL
+  JOIN public.warehouse_locations
+    ON warehouse_locations.company_id = warehouses.company_id
+   AND warehouse_locations.warehouse_id = warehouses.id
+   AND warehouse_locations.code = 'MAIN'
+   AND warehouse_locations.deleted_at IS NULL
+)
+INSERT INTO public.item_warehouse (
+  company_id,
+  item_id,
+  warehouse_id,
+  default_location_id,
+  reorder_level,
+  reorder_quantity,
+  current_stock,
+  reserved_stock,
+  in_transit,
+  is_active
+)
+SELECT
+  company_id,
+  item_id,
+  warehouse_id,
+  location_id,
+  0,
+  0,
+  0,
+  0,
+  0,
+  TRUE
+FROM imported_items
+ON CONFLICT (company_id, item_id, warehouse_id) DO UPDATE SET
+  default_location_id = COALESCE(public.item_warehouse.default_location_id, EXCLUDED.default_location_id),
+  is_active = TRUE,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH imported_items AS (
+  SELECT
+    items.company_id,
+    items.id AS item_id,
+    warehouses.id AS warehouse_id
+  FROM public.wonder_photo_import imported
+  JOIN public.items
+    ON items.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+   AND items.item_code = imported.item_code
+   AND items.deleted_at IS NULL
+  JOIN public.warehouses
+    ON warehouses.company_id = items.company_id
+   AND warehouses.deleted_at IS NULL
+)
+INSERT INTO public.item_batches (
+  company_id,
+  item_id,
+  warehouse_id,
+  batch_code,
+  received_at,
+  qty_on_hand,
+  qty_reserved
+)
+SELECT
+  company_id,
+  item_id,
+  warehouse_id,
+  'OPENING-BAL',
+  TIMESTAMPTZ '2026-06-21 00:00:00+08',
+  0,
+  0
+FROM imported_items
+ON CONFLICT (company_id, item_id, warehouse_id, batch_code) DO UPDATE SET
+  received_at = EXCLUDED.received_at,
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+WITH imported_batches AS (
+  SELECT
+    item_batches.company_id,
+    item_batches.item_id,
+    item_batches.warehouse_id,
+    warehouse_locations.id AS location_id,
+    item_batches.id AS item_batch_id
+  FROM public.wonder_photo_import imported
+  JOIN public.items
+    ON items.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+   AND items.item_code = imported.item_code
+   AND items.deleted_at IS NULL
+  JOIN public.item_batches
+    ON item_batches.company_id = items.company_id
+   AND item_batches.item_id = items.id
+   AND item_batches.batch_code = 'OPENING-BAL'
+   AND item_batches.deleted_at IS NULL
+  JOIN public.warehouse_locations
+    ON warehouse_locations.company_id = item_batches.company_id
+   AND warehouse_locations.warehouse_id = item_batches.warehouse_id
+   AND warehouse_locations.code = 'MAIN'
+   AND warehouse_locations.deleted_at IS NULL
+)
+INSERT INTO public.item_batch_locations (
+  company_id,
+  item_id,
+  warehouse_id,
+  location_id,
+  item_batch_id,
+  qty_on_hand,
+  qty_reserved
+)
+SELECT
+  company_id,
+  item_id,
+  warehouse_id,
+  location_id,
+  item_batch_id,
+  0,
+  0
+FROM imported_batches
+ON CONFLICT (company_id, item_id, warehouse_id, location_id, item_batch_id) DO UPDATE SET
+  deleted_at = NULL,
+  updated_at = CURRENT_TIMESTAMP;
+
+DROP TABLE IF EXISTS public.wonder_photo_import;
+
+END;
+$wonder_photo_import$;

@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { itemsApi } from "@/lib/api/items";
-import type { Item, CreateItemRequest, UpdateItemRequest, ItemFilters } from "@/types/item";
+import type {
+  Item,
+  CreateItemRequest,
+  UpdateItemRequest,
+  ItemFilters,
+  UpsertItemCustomFieldRequest,
+  ItemResponse,
+} from "@/types/item";
 import type { ItemWithStock } from "@/app/api/items/route";
 
 const ITEMS_QUERY_KEY = "items";
@@ -209,10 +216,57 @@ export function useUpdateItem() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateItemRequest }) =>
       itemsApi.updateItem(id, data),
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
+      queryClient.setQueryData([ITEMS_QUERY_KEY, variables.id], result);
       invalidateInventoryQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: [ITEM_UNIT_OPTIONS_QUERY_KEY, variables.id] });
+    },
+  });
+}
+
+const updateItemCustomFieldsCache = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  itemId: string,
+  customFields: Record<string, unknown>
+) => {
+  queryClient.setQueryData<ItemResponse>([ITEMS_QUERY_KEY, itemId], (current) =>
+    current
+      ? {
+          ...current,
+          data: {
+            ...current.data,
+            customFields,
+          },
+        }
+      : current
+  );
+};
+
+export function useUpsertItemCustomField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpsertItemCustomFieldRequest }) =>
+      itemsApi.upsertItemCustomField(id, data),
+    onSuccess: (result, variables) => {
+      updateItemCustomFieldsCache(queryClient, variables.id, result.data.customFields);
+      invalidateInventoryQueries(queryClient);
+      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY, variables.id] });
+    },
+  });
+}
+
+export function useDeleteItemCustomField() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, key }: { id: string; key: string }) =>
+      itemsApi.deleteItemCustomField(id, key),
+    onSuccess: (result, variables) => {
+      updateItemCustomFieldsCache(queryClient, variables.id, result.data.customFields);
+      invalidateInventoryQueries(queryClient);
+      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY, variables.id] });
     },
   });
 }

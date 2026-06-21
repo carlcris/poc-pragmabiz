@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   Package,
   Pencil,
@@ -17,14 +18,33 @@ import {
   Truck,
   Ruler,
   Layers,
+  Plus,
+  Trash2,
+  MoreVertical,
 } from "lucide-react";
-import { useItem } from "@/hooks/useItems";
+import { useDeleteItemCustomField, useItem, useUpsertItemCustomField } from "@/hooks/useItems";
 import { useCanEdit } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PricesTab } from "@/components/items/prices/PricesTab";
 import { LocationsTab } from "@/components/items/locations/LocationsTab";
 import { ItemLedgerTab } from "@/components/items/ledger/ItemLedgerTab";
@@ -41,13 +61,70 @@ type ItemDetailsPageProps = {
   params: Promise<{ id: string }>;
 };
 
+type CustomFieldRow = {
+  id: string;
+  key: string;
+  value: string;
+};
+
+type CustomFieldDialogState = {
+  mode: "create" | "edit";
+  originalKey?: string;
+  key: string;
+  value: string;
+};
+
+const formatCustomFieldLabel = (key: string) =>
+  key
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+const formatCustomFieldValue = (
+  value: unknown,
+  booleanLabels: { trueLabel: string; falseLabel: string }
+) => {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "boolean") {
+    return value ? booleanLabels.trueLabel : booleanLabels.falseLabel;
+  }
+  if (typeof value === "number") return new Intl.NumberFormat(undefined).format(value);
+  if (typeof value === "string") return value;
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const customFieldsToRows = (
+  customFields: Record<string, unknown> | null | undefined,
+  booleanLabels: { trueLabel: string; falseLabel: string }
+): CustomFieldRow[] => {
+  if (!customFields || typeof customFields !== "object") return [];
+
+  return Object.entries(customFields)
+    .map(([key, value]) => ({
+      id: key,
+      key,
+      value: formatCustomFieldValue(value, booleanLabels) ?? "",
+    }))
+    .sort((left, right) => left.key.localeCompare(right.key));
+};
+
 function ItemDetailsContent({ params }: ItemDetailsPageProps) {
   const t = useTranslations("inventoryItemPage");
   const searchParams = useSearchParams();
   const unwrappedParams = React.use(params);
   const itemId = unwrappedParams.id;
   const [activeTab, setActiveTab] = useState("overview");
+  const [customFieldDialog, setCustomFieldDialog] = useState<CustomFieldDialogState | null>(null);
+  const [customFieldError, setCustomFieldError] = useState<string | null>(null);
   const canEditItems = useCanEdit(RESOURCES.ITEMS);
+  const upsertCustomField = useUpsertItemCustomField();
+  const deleteCustomField = useDeleteItemCustomField();
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -82,6 +159,89 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
       currency,
       currencyDisplay: "narrowSymbol",
     }).format(amount);
+  const customFieldBooleanLabels = React.useMemo(
+    () => ({
+      trueLabel: t("customFieldTrue"),
+      falseLabel: t("customFieldFalse"),
+    }),
+    [t]
+  );
+
+  const customFieldRows = React.useMemo(
+    () => customFieldsToRows(item?.customFields, customFieldBooleanLabels),
+    [customFieldBooleanLabels, item?.customFields]
+  );
+  const isCustomFieldSaving = upsertCustomField.isPending || deleteCustomField.isPending;
+
+  const openCreateCustomFieldDialog = () => {
+    setCustomFieldError(null);
+    setCustomFieldDialog({
+      mode: "create",
+      key: "",
+      value: "",
+    });
+  };
+
+  const openEditCustomFieldDialog = (field: CustomFieldRow) => {
+    setCustomFieldError(null);
+    setCustomFieldDialog({
+      mode: "edit",
+      originalKey: field.key,
+      key: field.key,
+      value: field.value,
+    });
+  };
+
+  const closeCustomFieldDialog = () => {
+    if (isCustomFieldSaving) return;
+    setCustomFieldDialog(null);
+    setCustomFieldError(null);
+  };
+
+  const submitCustomFieldDialog = async () => {
+    if (!customFieldDialog) return;
+    const key = customFieldDialog.key.trim();
+    if (!key) {
+      setCustomFieldError(t("customFieldKeyRequired"));
+      return;
+    }
+
+    const duplicateKey = customFieldRows.some(
+      (field) => field.key === key && field.key !== customFieldDialog.originalKey
+    );
+    if (duplicateKey) {
+      setCustomFieldError(t("customFieldDuplicateKey"));
+      return;
+    }
+
+    try {
+      await upsertCustomField.mutateAsync({
+        id: itemId,
+        data: {
+          key,
+          value: customFieldDialog.value,
+          originalKey: customFieldDialog.originalKey,
+        },
+      });
+      setCustomFieldError(null);
+      setCustomFieldDialog(null);
+      toast.success(t("customFieldsUpdated"));
+    } catch {
+      toast.error(t("customFieldsUpdateError"));
+    }
+  };
+
+  const deleteCustomFieldRow = async (field: CustomFieldRow) => {
+    try {
+      await deleteCustomField.mutateAsync({
+        id: itemId,
+        key: field.key,
+      });
+      toast.success(t("customFieldDeleted"));
+    } catch {
+      toast.error(t("customFieldDeleteError"));
+    }
+  };
 
   if (error || !item) {
     if (isItemLoading) {
@@ -677,6 +837,103 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
               </CardContent>
             </Card>
           </div>
+
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-base font-semibold">{t("customFieldsTitle")}</h2>
+                <p className="text-sm text-muted-foreground">{t("customFieldsDescription")}</p>
+              </div>
+              {canEditItems && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={openCreateCustomFieldDialog}
+                  disabled={isCustomFieldSaving}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t("addCustomField")}
+                </Button>
+              )}
+            </div>
+
+            <Table containerClassName="rounded-md border">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("customFieldKeyLabel")}</TableHead>
+                  <TableHead>{t("customFieldValueLabel")}</TableHead>
+                  {canEditItems && (
+                    <TableHead className="text-right">{t("actionsLabel")}</TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customFieldRows.length > 0 ? (
+                  customFieldRows.map((field) => (
+                    <TableRow key={field.id}>
+                      <TableCell className="font-medium">
+                        <span className="break-words">{formatCustomFieldLabel(field.key)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="break-words">{field.value}</span>
+                      </TableCell>
+                      {canEditItems && (
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => openEditCustomFieldDialog(field)}
+                              disabled={isCustomFieldSaving}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              {t("edit")}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  aria-label={t("moreCustomFieldActions")}
+                                  disabled={isCustomFieldSaving}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => deleteCustomFieldRow(field)}
+                                  disabled={isCustomFieldSaving}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  {t("deleteAction")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={canEditItems ? 3 : 2}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      {t("noCustomFields")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </section>
         </TabsContent>
 
         {canViewPricingDetails && (
@@ -700,6 +957,64 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
           <LocationsTab itemId={itemId} />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={customFieldDialog !== null} onOpenChange={closeCustomFieldDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {customFieldDialog?.mode === "edit"
+                ? t("editCustomFieldTitle")
+                : t("addCustomFieldTitle")}
+            </DialogTitle>
+            <DialogDescription>{t("customFieldDialogDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="custom-field-dialog-key">
+                {t("customFieldKeyLabel")}
+              </label>
+              <Input
+                id="custom-field-dialog-key"
+                value={customFieldDialog?.key ?? ""}
+                placeholder={t("customFieldKeyPlaceholder")}
+                disabled={isCustomFieldSaving}
+                onChange={(event) => {
+                  setCustomFieldError(null);
+                  setCustomFieldDialog((current) =>
+                    current ? { ...current, key: event.target.value } : current
+                  );
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium" htmlFor="custom-field-dialog-value">
+                {t("customFieldValueLabel")}
+              </label>
+              <Input
+                id="custom-field-dialog-value"
+                value={customFieldDialog?.value ?? ""}
+                placeholder={t("customFieldValuePlaceholder")}
+                disabled={isCustomFieldSaving}
+                onChange={(event) => {
+                  setCustomFieldError(null);
+                  setCustomFieldDialog((current) =>
+                    current ? { ...current, value: event.target.value } : current
+                  );
+                }}
+              />
+            </div>
+            {customFieldError && <p className="text-sm text-destructive">{customFieldError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeCustomFieldDialog}>
+              {t("cancel")}
+            </Button>
+            <Button type="button" onClick={submitCustomFieldDialog} disabled={isCustomFieldSaving}>
+              {isCustomFieldSaving ? t("saving") : t("saveCustomField")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

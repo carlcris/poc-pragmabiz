@@ -176,6 +176,7 @@ CREATE TABLE items (
   barcode VARCHAR,
   qr_code VARCHAR,
   image_url VARCHAR,
+  custom_fields JSONB DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -183,6 +184,7 @@ CREATE TABLE items (
 -- Note: cost_price field was DROPPED in migration 20260610101000_drop_items_cost_price.sql
 -- Cost is now calculated at runtime from purchase_receipts
 -- supplier_code stores an optional supplier-provided item reference.
+-- custom_fields stores editable key/value metadata displayed on the item detail page.
 ```
 
 #### item_unit_options
@@ -525,6 +527,10 @@ Get item details.
   "id": "uuid",
   "code": "ITEM-001",
   "name": "Widget ABC",
+  "customFields": {
+    "color": "Black",
+    "frame_size": "8x10"
+  },
   "stock_levels": [
     {
       "warehouse": { "id": "uuid", "name": "Main Warehouse" },
@@ -540,6 +546,33 @@ Get item details.
   "recent_transactions": [...]
 }
 ```
+
+The item detail page displays `customFields` as editable key/value rows for users with `edit` permission on `items`.
+
+#### PUT /api/items/[id]/custom-fields
+Add or update one custom field for an item. This endpoint owns item custom-field mutations rather than the general item update endpoint.
+Custom-field writes are handled by DB RPCs that lock the item row before changing `custom_fields`, so concurrent edits do not replace unrelated fields.
+
+**Permissions**: `edit` on `items`
+
+**Request**:
+```json
+{
+  "key": "color",
+  "value": "Black",
+  "originalKey": "old_color"
+}
+```
+
+`originalKey` is optional and is used when renaming an existing field.
+
+#### DELETE /api/items/[id]/custom-fields
+Delete one custom field from an item.
+
+**Permissions**: `edit` on `items`
+
+**Query Parameters**:
+- `key` - Custom field key to delete
 
 #### PUT /api/items/[id]
 Update item details.
