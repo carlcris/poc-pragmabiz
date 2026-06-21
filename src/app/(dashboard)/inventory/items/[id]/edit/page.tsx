@@ -100,6 +100,7 @@ function EditItemContent({ params }: EditItemPageProps) {
     resolver: zodResolver(itemFormSchema),
     defaultValues: {
       code: "",
+      supplierCode: "",
       name: "",
       chineseName: "",
       description: "",
@@ -127,6 +128,7 @@ function EditItemContent({ params }: EditItemPageProps) {
     if (item) {
       form.reset({
         code: item.code,
+        supplierCode: item.supplierCode || "",
         name: item.name,
         chineseName: item.chineseName || "",
         description: item.description || "",
@@ -348,6 +350,24 @@ function EditItemContent({ params }: EditItemPageProps) {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="supplierCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("supplierCodeLabel")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t("supplierCodePlaceholder")}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}

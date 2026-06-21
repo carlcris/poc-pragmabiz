@@ -19,6 +19,7 @@ type DbItem = {
   id: string;
   company_id: string;
   item_code: string;
+  supplier_code: string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -105,6 +106,12 @@ const normalizeImportCost = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeOptionalText = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
 const validateImportCostFields = (importCost: number | null, importCurrency: string | null) => {
   if (importCost !== null && importCost < 0) {
     return "Import cost must be 0 or greater";
@@ -184,6 +191,7 @@ function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     id: dbItem.id,
     companyId: dbItem.company_id,
     code: dbItem.item_code,
+    supplierCode: dbItem.supplier_code,
     primaryBarcode: primaryUnitOption?.barcode,
     primaryBarcodeUnitOptionId: primaryUnitOption?.id,
     unitOptions,
@@ -438,6 +446,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     };
 
     if (body.name !== undefined) updateData.item_name = body.name;
+    if (body.supplierCode !== undefined) {
+      updateData.supplier_code = normalizeOptionalText(body.supplierCode);
+    }
     if (body.chineseName !== undefined) updateData.item_name_cn = body.chineseName;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.itemType !== undefined) updateData.item_type = body.itemType;

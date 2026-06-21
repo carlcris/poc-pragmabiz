@@ -33,6 +33,7 @@ export type Item = {
   primaryBarcode?: string;
   primaryBarcodeUnitOptionId?: string;
   unitOptions?: ItemUnitOption[];
+  supplierCode?: string | null;
   name: string;
   chineseName?: string;
   description: string;
@@ -70,6 +71,7 @@ export type ItemDetail = Omit<Item, "purchasePrice" | "importCost" | "importCurr
 export type CreateItemRequest = {
   companyId: string;
   code: string;
+  supplierCode?: string | null;
   name: string;
   chineseName?: string;
   description: string;
@@ -88,6 +90,7 @@ export type CreateItemRequest = {
 };
 
 export type UpdateItemRequest = {
+  supplierCode?: string | null;
   name?: string;
   chineseName?: string;
   description?: string;

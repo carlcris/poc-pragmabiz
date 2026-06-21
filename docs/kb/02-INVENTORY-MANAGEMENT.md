@@ -162,6 +162,7 @@ CREATE TABLE items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID REFERENCES companies(id),
   code VARCHAR UNIQUE NOT NULL,
+  supplier_code VARCHAR(100),
   name VARCHAR NOT NULL,
   description TEXT,
   category_id UUID REFERENCES item_categories(id),
@@ -179,6 +180,7 @@ CREATE TABLE items (
 
 -- Note: cost_price field was DROPPED in migration 20260610101000_drop_items_cost_price.sql
 -- Cost is now calculated at runtime from purchase_receipts
+-- supplier_code stores an optional supplier-provided item reference.
 ```
 
 #### item_unit_options
@@ -969,4 +971,5 @@ Key inventory-related migrations:
 
 - `20260610100000_use_purchase_price_for_item_cost_runtime.sql` - Purchase price calculation
 - `20260610101000_drop_items_cost_price.sql` - Remove stored cost price
+- `20260619100000_add_supplier_code_to_items.sql` - Optional supplier item code and item list search/display support
 - Earlier migrations for items, warehouses, locations, transactions, adjustments, transfers

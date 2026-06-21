@@ -1846,6 +1846,7 @@ export type TranslationKeys = {
     allCategories: string;
     image: string;
     itemCode: string;
+    supplierCode: string;
     itemName: string;
     category: string;
     uom: string;
@@ -1900,6 +1901,7 @@ export type TranslationKeys = {
     locationsTab: string;
     basicInformation: string;
     itemCodeLabel: string;
+    supplierCodeLabel: string;
     itemTypeLabel: string;
     selectItemType: string;
     itemNameLabel: string;
@@ -2008,6 +2010,7 @@ export type TranslationKeys = {
     updateItem: string;
     saveAndContinue: string;
     itemCodePlaceholder: string;
+    supplierCodePlaceholder: string;
     itemNamePlaceholder: string;
     chineseNamePlaceholder: string;
     descriptionPlaceholder: string;
@@ -2030,6 +2033,7 @@ export type TranslationKeys = {
     nameRequired: string;
     nameMax: string;
     chineseNameMax: string;
+    supplierCodeMax: string;
     descriptionMax: string;
     uomRequired: string;
     categoryRequired: string;
@@ -4637,11 +4641,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       lowStockDescription: "At or below reorder point",
       outOfStock: "Out of Stock",
       outOfStockDescription: "No available inventory",
-      searchPlaceholder: "Search by item code or name...",
+      searchPlaceholder: "Search by item, supplier code, or name...",
       categoryPlaceholder: "Category",
       allCategories: "All Categories",
       image: "Image",
       itemCode: "Item Code",
+      supplierCode: "Supplier Code",
       itemName: "Item Name",
       category: "Category",
       uom: "UOM",
@@ -4699,6 +4704,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       locationsTab: "Locations",
       basicInformation: "Basic Information",
       itemCodeLabel: "Item Code *",
+      supplierCodeLabel: "Supplier Code",
       itemTypeLabel: "Item Type *",
       selectItemType: "Select item type",
       itemNameLabel: "Item Name *",
@@ -4811,6 +4817,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateItem: "Update Item",
       saveAndContinue: "Save & Continue",
       itemCodePlaceholder: "ITEM-001",
+      supplierCodePlaceholder: "Supplier item code",
       itemNamePlaceholder: "Enter item name",
       chineseNamePlaceholder: "Optional Chinese name",
       descriptionPlaceholder: "Enter description",
@@ -4833,6 +4840,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       nameRequired: "Item name is required",
       nameMax: "Item name must be less than 200 characters",
       chineseNameMax: "Chinese name must be less than 200 characters",
+      supplierCodeMax: "Supplier code must be less than 100 characters",
       descriptionMax: "Description must be less than 1000 characters",
       uomRequired: "Unit of measure is required",
       categoryRequired: "Category is required",
@@ -9913,11 +9921,12 @@ export const translations: Record<Locale, TranslationKeys> = {
       lowStockDescription: "已达到或低于补货点",
       outOfStock: "缺货",
       outOfStockDescription: "没有可用库存",
-      searchPlaceholder: "按商品编码或名称搜索...",
+      searchPlaceholder: "按商品编码、供应商编码或名称搜索...",
       categoryPlaceholder: "分类",
       allCategories: "所有分类",
       image: "图片",
       itemCode: "商品编码",
+      supplierCode: "供应商编码",
       itemName: "商品名称",
       category: "分类",
       uom: "计量单位",
@@ -9972,6 +9981,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       locationsTab: "库位",
       basicInformation: "基础信息",
       itemCodeLabel: "商品编码 *",
+      supplierCodeLabel: "供应商编码",
       itemTypeLabel: "商品类型 *",
       selectItemType: "选择商品类型",
       itemNameLabel: "商品名称 *",
@@ -10080,6 +10090,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       updateItem: "更新商品",
       saveAndContinue: "保存并继续",
       itemCodePlaceholder: "ITEM-001",
+      supplierCodePlaceholder: "供应商商品编码",
       itemNamePlaceholder: "输入商品名称",
       chineseNamePlaceholder: "可选中文名称",
       descriptionPlaceholder: "输入描述",
@@ -10102,6 +10113,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       nameRequired: "商品名称为必填项",
       nameMax: "商品名称不能超过200个字符",
       chineseNameMax: "中文名称不能超过200个字符",
+      supplierCodeMax: "供应商编码不能超过100个字符",
       descriptionMax: "描述不能超过1000个字符",
       uomRequired: "计量单位为必填项",
       categoryRequired: "分类为必填项",

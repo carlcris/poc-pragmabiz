@@ -68,7 +68,7 @@ This is a comprehensive **Enterprise Resource Planning (ERP)** system built as a
                            ↓
 ┌─────────────────────────────────────────────────────────┐
 │                    Database Layer                        │
-│  PostgreSQL 17 with 208 migrations                      │
+│  PostgreSQL 17 with 209 migrations                      │
 │  Functions, Triggers, Views                             │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -155,7 +155,7 @@ Mobile app for warehouse operations and POS transactions.
 │   ├── config/                   # Feature configuration
 │   └── contexts/                 # React contexts
 ├── supabase/                     # Database & backend
-│   ├── migrations/               # 208 SQL migrations
+│   ├── migrations/               # 209 SQL migrations
 │   ├── functions/                # Edge functions
 │   ├── seed.sql                  # Database seed data
 │   └── config.toml               # Supabase local config

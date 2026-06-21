@@ -3191,6 +3191,7 @@ export type Database = {
           item_type: string
           purchase_price: number | null
           sales_price: number | null
+          supplier_code: string | null
           track_batch: boolean | null
           track_serial: boolean | null
           uom_id: string
@@ -3222,6 +3223,7 @@ export type Database = {
           item_type: string
           purchase_price?: number | null
           sales_price?: number | null
+          supplier_code?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
           uom_id: string
@@ -3253,6 +3255,7 @@ export type Database = {
           item_type?: string
           purchase_price?: number | null
           sales_price?: number | null
+          supplier_code?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
           uom_id?: string
@@ -7453,7 +7456,6 @@ export type Database = {
           notes: string | null
           picked_qty: number | null
           received_qty: number
-          requested_item_batch_id: string | null
           requested_qty: number
           selected_item_batch_id: string | null
           short_qty: number | null
@@ -7471,7 +7473,6 @@ export type Database = {
           notes?: string | null
           picked_qty?: number | null
           received_qty?: number
-          requested_item_batch_id?: string | null
           requested_qty: number
           selected_item_batch_id?: string | null
           short_qty?: number | null
@@ -7489,7 +7490,6 @@ export type Database = {
           notes?: string | null
           picked_qty?: number | null
           received_qty?: number
-          requested_item_batch_id?: string | null
           requested_qty?: number
           selected_item_batch_id?: string | null
           short_qty?: number | null
@@ -7512,20 +7512,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "item_unit_options"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_request_items_requested_item_batch_id_fkey"
-            columns: ["requested_item_batch_id"]
-            isOneToOne: false
-            referencedRelation: "item_batches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_request_items_requested_item_batch_id_fkey"
-            columns: ["requested_item_batch_id"]
-            isOneToOne: false
-            referencedRelation: "v_inventory_recon_item_batch_vs_batch_location"
-            referencedColumns: ["item_batch_id"]
           },
           {
             foreignKeyName: "stock_request_items_selected_item_batch_id_fkey"
@@ -10298,24 +10284,6 @@ export type Database = {
           valid_until: string
         }[]
       }
-      get_available_stock_request_item_batches: {
-        Args: {
-          p_company_id: string
-          p_item_id: string
-          p_limit?: number
-          p_qty_per_unit?: number
-          p_search?: string
-          p_warehouse_id: string
-        }
-        Returns: {
-          available_base_qty: number
-          available_qty: number
-          batch_code: string
-          item_batch_id: string
-          location_count: number
-          received_at: string
-        }[]
-      }
       get_current_business_unit_id: { Args: never; Returns: string }
       get_customer_ledger_entries: {
         Args: {
@@ -10416,6 +10384,7 @@ export type Database = {
           reorder_point: number
           sales_price: number
           status: string
+          supplier_code: string
           total_count: number
           uom_code: string
           uom_id: string
@@ -11033,3 +11002,4 @@ export const Constants = {
     },
   },
 } as const
+

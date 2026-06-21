@@ -71,6 +71,7 @@ function CreateItemContent() {
     resolver: zodResolver(itemFormSchema),
     defaultValues: {
       code: "",
+      supplierCode: "",
       name: "",
       chineseName: "",
       description: "",
@@ -221,6 +222,24 @@ function CreateItemContent() {
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name="supplierCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t("supplierCodeLabel")}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={t("supplierCodePlaceholder")}
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}

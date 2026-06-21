@@ -9,6 +9,7 @@ type ItemValidationKey =
   | "nameRequired"
   | "nameMax"
   | "chineseNameMax"
+  | "supplierCodeMax"
   | "descriptionMax"
   | "uomRequired"
   | "categoryRequired"
@@ -29,6 +30,7 @@ const createItemFormObjectSchema = (t: ItemValidationTranslator) =>
       .min(1, t("codeRequired"))
       .max(50, t("codeMax"))
       .regex(/^[A-Z0-9 -]+$/, t("codeFormat")),
+    supplierCode: z.string().trim().max(100, t("supplierCodeMax")).optional().nullable(),
     name: z.string().min(1, t("nameRequired")).max(200, t("nameMax")),
     chineseName: z.string().max(200, t("chineseNameMax")).optional(),
     description: z.string().max(1000, t("descriptionMax")).optional(),

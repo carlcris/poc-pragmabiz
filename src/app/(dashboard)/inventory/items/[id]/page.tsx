@@ -411,6 +411,18 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
 
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 rounded-lg bg-muted p-2">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("supplierCodeLabel")}
+                      </p>
+                      <p className="font-mono font-medium">{item.supplierCode || "-"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 rounded-lg bg-muted p-2">
                       <Layers className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div className="flex-1 space-y-1">

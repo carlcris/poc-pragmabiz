@@ -19,6 +19,7 @@ export interface ItemWithStock {
   id: string;
   code: string;
   primaryBarcode?: string;
+  supplierCode?: string | null;
   name: string;
   chineseName?: string;
   category: string;
@@ -52,6 +53,7 @@ type ItemStatus = ItemWithStock["status"];
 type ItemsRpcRow = {
   id: string;
   item_code: string;
+  supplier_code: string | null;
   item_name: string;
   item_name_cn: string | null;
   category_id: string | null;
@@ -92,6 +94,7 @@ type DbItem = {
   id: string;
   company_id: string;
   item_code: string;
+  supplier_code: string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -183,6 +186,12 @@ const normalizeImportCost = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const normalizeOptionalText = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+};
+
 const validateImportCostFields = (importCost: number | null, importCurrency: string | null) => {
   if (importCost !== null && importCost < 0) {
     return "Import cost must be 0 or greater";
@@ -235,6 +244,7 @@ const scoreItemSearchMatch = (
   search: string,
   item: {
     code: string;
+    supplierCode?: string | null;
     name: string;
     chineseName?: string;
     description?: string;
@@ -242,6 +252,7 @@ const scoreItemSearchMatch = (
 ) =>
   Math.max(
     scoreSearchField(item.code, search, 500),
+    scoreSearchField(item.supplierCode, search, 475),
     scoreSearchField(item.name, search, 450),
     scoreSearchField(item.chineseName, search, 400),
     scoreSearchField(item.description, search, 300)
@@ -250,6 +261,7 @@ const scoreItemSearchMatch = (
 const rankItemsBySearch = <
   T extends {
     code: string;
+    supplierCode?: string | null;
     name: string;
     chineseName?: string;
     description?: string;
@@ -338,6 +350,7 @@ const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     id: dbItem.id,
     companyId: dbItem.company_id,
     code: dbItem.item_code,
+    supplierCode: dbItem.supplier_code,
     primaryBarcode: primaryUnitOption?.barcode,
     primaryBarcodeUnitOptionId: primaryUnitOption?.id,
     unitOptions,
@@ -420,7 +433,7 @@ export async function GET(request: NextRequest) {
 
       if (search) {
         query = query.or(
-          `item_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
+          `item_code.ilike.%${search}%,supplier_code.ilike.%${search}%,item_name.ilike.%${search}%,item_name_cn.ilike.%${search}%,description.ilike.%${search}%`
         );
       }
 
@@ -561,6 +574,7 @@ export async function GET(request: NextRequest) {
     const itemsWithStock: ItemWithStock[] = rows.map((row) => ({
       id: row.id,
       code: row.item_code,
+      supplierCode: row.supplier_code,
       primaryBarcode: getPrimaryItemUnitOption(
         sortItemUnitOptions(
           (unitOptionRowsByItemId.get(row.id) || []).map((unitOptionRow) =>
@@ -728,6 +742,7 @@ export async function POST(request: NextRequest) {
     const insertPayloadBase = {
       company_id: companyId,
       item_code: body.code,
+      supplier_code: normalizeOptionalText(body.supplierCode),
       item_name: body.name,
       item_name_cn: body.chineseName || null,
       description: body.description || null,
