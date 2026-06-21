@@ -1,7 +1,7 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Item, ItemDetail, UpdateItemRequest } from "@/types/item";
+import type { Item, ItemDetail, UpdateItemRequest, ItemPriceTier } from "@/types/item";
 import type { Database } from "@/types/database.types";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -14,6 +14,7 @@ import {
   transformItemUnitOptionRow,
   type DbItemUnitOptionRow,
 } from "@/lib/items/itemUnitOptions";
+import { DEFAULT_PRICE_TIER_CODE } from "@/lib/pricing/itemPriceTiers";
 
 type DbItem = {
   id: string;
@@ -35,6 +36,17 @@ type DbItem = {
   is_active: boolean | null;
   created_at: string;
   updated_at: string;
+};
+type DbItemPriceRow = {
+  id: string;
+  item_id: string;
+  price_tier: string;
+  price_tier_name: string;
+  price: number | string;
+  currency_code: string | null;
+  effective_from: string;
+  effective_to: string | null;
+  is_active: boolean | null;
 };
 type ItemWarehouseRow = {
   current_stock: number | string | null;
@@ -104,6 +116,90 @@ const normalizeImportCost = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toNumber = (value: unknown): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeSettingString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim().toLowerCase() : null;
+
+const getDefaultPricingTier = async (
+  supabase: SupabaseClient<Database>,
+  companyId: string
+): Promise<string> => {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("company_id", companyId)
+    .is("business_unit_id", null)
+    .eq("group_key", "inventory")
+    .eq("setting_key", "default_pricing_tier")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error loading default pricing tier:", error);
+    return DEFAULT_PRICE_TIER_CODE;
+  }
+
+  return normalizeSettingString(data?.value) || DEFAULT_PRICE_TIER_CODE;
+};
+
+const transformItemPriceRow = (row: DbItemPriceRow): ItemPriceTier => ({
+  id: row.id,
+  priceTier: row.price_tier,
+  priceTierName: row.price_tier_name,
+  price: toNumber(row.price),
+  currencyCode: row.currency_code || "PHP",
+  effectiveFrom: row.effective_from,
+  effectiveTo: row.effective_to,
+  isActive: row.is_active ?? true,
+});
+
+const fetchCurrentPriceTiers = async (
+  supabase: SupabaseClient<Database>,
+  companyId: string,
+  itemId: string
+): Promise<ItemPriceTier[]> => {
+  const today = new Date().toISOString().split("T")[0];
+  const { data, error } = await supabase
+    .from("item_prices")
+    .select(
+      "id, item_id, price_tier, price_tier_name, price, currency_code, effective_from, effective_to, is_active"
+    )
+    .eq("company_id", companyId)
+    .eq("item_id", itemId)
+    .eq("is_active", true)
+    .lte("effective_from", today)
+    .or(`effective_to.is.null,effective_to.gte.${today}`)
+    .is("deleted_at", null)
+    .order("price_tier", { ascending: true })
+    .order("effective_from", { ascending: false });
+
+  if (error) {
+    console.error("Error loading item price tiers:", error);
+    return [];
+  }
+
+  const priceTiers: ItemPriceTier[] = [];
+  for (const row of ((data || []) as DbItemPriceRow[])) {
+    if (!priceTiers.some((priceTier) => priceTier.priceTier === row.price_tier)) {
+      priceTiers.push(transformItemPriceRow(row));
+    }
+  }
+
+  return priceTiers;
+};
+
+const resolveDefaultListPrice = (
+  fallbackListPrice: number,
+  priceTiers: ItemPriceTier[],
+  defaultPricingTier: string
+) => {
+  const matchingTier = priceTiers.find((priceTier) => priceTier.priceTier === defaultPricingTier);
+  return matchingTier?.price ?? fallbackListPrice;
 };
 
 const normalizeOptionalText = (value: unknown): string | null => {
@@ -181,7 +277,12 @@ const fetchItemUnitOptions = async (
 };
 
 // Transform database item to frontend Item type
-function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] = []): Item {
+function transformDbItem(
+  dbItem: ItemRow,
+  unitOptionRows: DbItemUnitOptionRow[] = [],
+  priceTiers: ItemPriceTier[] = [],
+  defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE
+): Item {
   const unitOptions = sortItemUnitOptions(
     unitOptionRows.map((row) => transformItemUnitOptionRow(row, dbItem.unit_of_measure?.code || ""))
   );
@@ -206,7 +307,9 @@ function transformDbItem(dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     purchasePrice: Number(dbItem.purchase_price) || 0,
     importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
     importCurrency: dbItem.import_currency,
-    listPrice: Number(dbItem.sales_price) || 0,
+    listPrice: resolveDefaultListPrice(Number(dbItem.sales_price) || 0, priceTiers, defaultPricingTier),
+    defaultPriceTier: defaultPricingTier,
+    priceTiers,
     reorderLevel: 0,
     reorderQty: 0,
     maxStockLevel: 0,
@@ -284,6 +387,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     const data = fetchedItem;
     const unitOptionRows = await fetchItemUnitOptions(supabase, data.company_id, id);
+    const defaultPricingTier = await getDefaultPricingTier(supabase, data.company_id);
+    const priceTiers = await fetchCurrentPriceTiers(supabase, data.company_id, id);
 
     let onHand = 0;
     let allocated = 0;
@@ -335,7 +440,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Transform and return
     const item = maskItemPricingDetails(
       {
-        ...transformDbItem(data as ItemRow, unitOptionRows),
+        ...transformDbItem(data as ItemRow, unitOptionRows, priceTiers, defaultPricingTier),
         onHand,
         allocated,
         available,
@@ -614,7 +719,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Transform and return
     const unitOptionRows = await fetchItemUnitOptions(supabase, existing.company_id, id);
-    const item = transformDbItem(updatedItem as ItemRow, unitOptionRows);
+    const defaultPricingTier = await getDefaultPricingTier(supabase, existing.company_id);
+    const priceTiers = await fetchCurrentPriceTiers(supabase, existing.company_id, id);
+    const item = transformDbItem(updatedItem as ItemRow, unitOptionRows, priceTiers, defaultPricingTier);
     return NextResponse.json({ data: item });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

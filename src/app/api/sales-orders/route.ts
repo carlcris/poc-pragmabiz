@@ -40,6 +40,8 @@ type DbSalesOrderItem = {
   item_description: string | null;
   quantity: number | string;
   uom_id: string | null;
+  pricing_tier: string | null;
+  pricing_tier_name: string | null;
   rate: number | string;
   discount_percent: number | string | null;
   tax_percent: number | string | null;
@@ -318,6 +320,8 @@ function transformDbSalesOrderItem(
       (Array.isArray(dbItem.units_of_measure)
         ? dbItem.units_of_measure[0]?.code
         : dbItem.units_of_measure?.code) || "",
+    pricingTier: dbItem.pricing_tier || undefined,
+    pricingTierName: dbItem.pricing_tier_name || undefined,
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
     taxRate: Number(dbItem.tax_percent) || 0,
@@ -894,6 +898,8 @@ export async function POST(request: NextRequest) {
       item_description: item.description,
       quantity: item.quantity,
       uom_id: item.uomId,
+      pricing_tier: item.pricingTier || null,
+      pricing_tier_name: item.pricingTierName || null,
       rate: item.unitPrice,
       discount_percent: item.discount || 0,
       discount_amount: item.discountAmount,

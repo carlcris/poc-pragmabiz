@@ -58,7 +58,7 @@ Comprehensive inventory tracking and warehouse management:
 - Stock requisitions and requests
 - Reorder point management
 - Real-time stock calculations (on hand, reserved, available)
-- Stock valuation using moving average cost
+- Stock valuation using the configured default pricing tier
 
 **Use this when**:
 - Managing products and items

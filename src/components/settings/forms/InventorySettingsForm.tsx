@@ -50,6 +50,7 @@ export function InventorySettingsForm({ initialData }: InventorySettingsFormProp
       low_stock_threshold: initialData?.low_stock_threshold || 10,
       critical_stock_threshold: initialData?.critical_stock_threshold || 5,
       valuation_method: initialData?.valuation_method || "FIFO",
+      default_pricing_tier: initialData?.default_pricing_tier || "srp",
       auto_allocation_enabled: initialData?.auto_allocation_enabled ?? false,
       negative_stock_allowed: initialData?.negative_stock_allowed ?? false,
       track_lot_numbers: initialData?.track_lot_numbers ?? false,
@@ -186,6 +187,27 @@ export function InventorySettingsForm({ initialData }: InventorySettingsFormProp
                 </FormItem>
               )}
             />
+            <div className="mt-4">
+              <FormField
+                control={form.control}
+                name="default_pricing_tier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("defaultPricingTier")}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value || ""}
+                        onChange={(event) => field.onChange(event.target.value.toLowerCase())}
+                        placeholder={t("defaultPricingTierPlaceholder")}
+                      />
+                    </FormControl>
+                    <FormDescription>{t("defaultPricingTierDescription")}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </CardContent>
         </Card>
 

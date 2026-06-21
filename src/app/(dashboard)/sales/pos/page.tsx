@@ -33,8 +33,20 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  getItemPriceTierOptions,
+  resolvePriceTierSelection,
+} from "@/lib/pricing/itemPriceTiers";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Customer } from "@/types/customer";
+import type { ItemPriceTier } from "@/types/item";
 import type { POSCartItem, POSPayment, PaymentMethod } from "@/types/pos";
 
 const LOOKUP_PAGE_SIZE = 5;
@@ -42,6 +54,9 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 type POSCartLine = POSCartItem & {
   availableStock: number;
+  listPrice: number;
+  defaultPriceTier?: string | null;
+  priceTiers?: ItemPriceTier[];
 };
 
 export default function POSPage() {
@@ -234,6 +249,7 @@ export default function POSPage() {
       };
       setCart(newCart);
     } else {
+      const priceSelection = resolvePriceTierSelection(item);
       setCart([
         ...cart,
         {
@@ -243,9 +259,14 @@ export default function POSPage() {
           itemName: item.name,
           quantity: 1,
           uom: item.uom || "",
-          unitPrice: item.listPrice,
+          listPrice: item.listPrice,
+          defaultPriceTier: item.defaultPriceTier,
+          priceTiers: item.priceTiers,
+          pricingTier: priceSelection.priceTier,
+          pricingTierName: priceSelection.priceTierName,
+          unitPrice: priceSelection.price,
           discount: 0,
-          lineTotal: item.listPrice,
+          lineTotal: priceSelection.price,
           availableStock: item.available,
         },
       ]);
@@ -305,6 +326,27 @@ export default function POSPage() {
     setCart(newCart);
   };
 
+  const updatePricingTier = (index: number, pricingTier: string) => {
+    const cartItem = cart[index];
+    const sourceItem = items.find((item) => item.id === cartItem.itemId) || cartItem;
+    if (!sourceItem) return;
+
+    const priceSelection = resolvePriceTierSelection(sourceItem, pricingTier);
+    const newCart = [...cart];
+    newCart[index] = {
+      ...newCart[index],
+      pricingTier: priceSelection.priceTier,
+      pricingTierName: priceSelection.priceTierName,
+      unitPrice: priceSelection.price,
+      lineTotal: calculatePOSLineTotal({
+        quantity: newCart[index].quantity,
+        unitPrice: priceSelection.price,
+        discount: newCart[index].discount,
+      }),
+    };
+    setCart(newCart);
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
 
@@ -338,9 +380,12 @@ export default function POSPage() {
     await createTransaction.mutateAsync({
       customerId: selectedCustomerId !== "walk-in" ? selectedCustomerId : undefined,
       warehouseId: currentBusinessUnitWarehouseId,
-      items: cart.map(({ id, availableStock, ...item }) => {
+      items: cart.map(({ id, availableStock, listPrice, defaultPriceTier, priceTiers, ...item }) => {
         void id;
         void availableStock;
+        void listPrice;
+        void defaultPriceTier;
+        void priceTiers;
         return item;
       }),
       payments: [payment],
@@ -456,7 +501,7 @@ export default function POSPage() {
                                     </div>
                                   </div>
                                   <div className="text-sm font-medium">
-                                    {formatCurrency(item.listPrice)}
+                                    {formatCurrency(resolvePriceTierSelection(item).price)}
                                   </div>
                                 </div>
                               </CommandItem>
@@ -484,7 +529,7 @@ export default function POSPage() {
                 <TableHead className="w-[50px]">{t("itemNumber")}</TableHead>
                 <TableHead className="w-[200px]">{t("item")}</TableHead>
                 <TableHead className="w-[250px]">{t("unit")}</TableHead>
-                <TableHead className="w-[120px]">{t("price")}</TableHead>
+                <TableHead className="w-[180px]">{t("pricingTier")}</TableHead>
                 <TableHead className="w-[50px]">{t("qty")}</TableHead>
                 <TableHead className="w-[80px]">{t("discount")}</TableHead>
                 <TableHead className="w-[120px] text-right">{t("total")}</TableHead>
@@ -510,7 +555,29 @@ export default function POSPage() {
                     <TableCell>
                       <div className="text-sm">{item.uom || t("unit")}</div>
                     </TableCell>
-                    <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={item.pricingTier || ""}
+                        onValueChange={(value) => updatePricingTier(index, value)}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder={t("selectPricingTier")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {getItemPriceTierOptions(
+                              items.find((sourceItem) => sourceItem.id === item.itemId) || {
+                                listPrice: item.unitPrice,
+                                defaultPriceTier: item.pricingTier,
+                                priceTiers: [],
+                            }
+                          ).map((priceTier) => (
+                            <SelectItem key={priceTier.priceTier} value={priceTier.priceTier}>
+                              {priceTier.priceTier.toUpperCase()} ({formatCurrency(priceTier.price)})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>
                       <Input
                         type="number"

@@ -107,7 +107,7 @@ Widgets have granular capabilities:
 #### Stock Valuation Report
 **Endpoint**: `GET /api/reports/stock-valuation`
 
-Shows total inventory value by warehouse using average cost method.
+Shows total inventory value by warehouse using the configured inventory default pricing tier for item valuation, with item sales price and purchase price fallback when no active default-tier item price exists.
 
 **Parameters**:
 - `warehouse_id` (optional) - Filter by warehouse

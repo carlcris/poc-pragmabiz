@@ -12,6 +12,7 @@ export const createInventorySettingsSchema = () =>
       .int("Threshold must be a whole number")
       .min(0, "Threshold must be 0 or greater"),
     valuation_method: z.enum(["FIFO", "LIFO", "AVERAGE", "STANDARD"] as const),
+    default_pricing_tier: z.string().trim().min(1).max(50).default("srp"),
     auto_allocation_enabled: z.boolean().default(false),
     negative_stock_allowed: z.boolean().default(false),
     track_lot_numbers: z.boolean().default(false),

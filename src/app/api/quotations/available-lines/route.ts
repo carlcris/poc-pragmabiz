@@ -24,6 +24,8 @@ type AvailableQuotationLineRow = {
   uom_id: string | null;
   uom_code: string | null;
   uom_name: string | null;
+  pricing_tier?: string | null;
+  pricing_tier_name?: string | null;
   rate: number | string;
   discount_percent: number | string | null;
   tax_percent: number | string | null;
@@ -184,6 +186,8 @@ export async function GET(request: NextRequest) {
         quantity: row.remaining_quantity,
         fulfilled_qty: 0,
         uom_id: row.uom_id,
+        pricing_tier: row.pricing_tier || null,
+        pricing_tier_name: row.pricing_tier_name || null,
         rate: row.rate,
         discount_percent: row.discount_percent,
         discount_amount: 0,

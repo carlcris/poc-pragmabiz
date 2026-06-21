@@ -23,6 +23,8 @@ export type SalesOrderLineItem = {
   uomId: string; // Unit of measure ID
   uomCode?: string;
   uomName?: string;
+  pricingTier?: string;
+  pricingTierName?: string;
   unitPrice: number;
   discount: number; // Percentage
   taxRate: number; // Percentage

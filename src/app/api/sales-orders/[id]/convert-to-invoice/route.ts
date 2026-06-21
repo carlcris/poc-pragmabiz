@@ -301,6 +301,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         item_description: item.item_description,
         quantity: parseFloat(item.quantity),
         uom_id: item.uom_id,
+        pricing_tier: item.pricing_tier || null,
+        pricing_tier_name: item.pricing_tier_name || null,
         rate: item.rate,
         discount_percent: item.discount_percent || 0,
         discount_amount: item.discount_amount || 0,

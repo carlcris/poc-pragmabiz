@@ -306,7 +306,7 @@ export function SalesOrderViewDialog({
                     {hasManufacturingLines ? <th className="p-3 text-left">Production</th> : null}
                     <th className="p-3 text-right">Quantity</th>
                     <th className="p-3 text-center">Unit</th>
-                    <th className="p-3 text-right">Unit Price</th>
+                    <th className="p-3 text-right">Selling Price</th>
                     <th className="p-3 text-right">Discount</th>
                     <th className="p-3 text-right">Tax</th>
                     <th className="p-3 text-right">Total</th>

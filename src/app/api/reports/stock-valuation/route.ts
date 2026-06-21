@@ -14,6 +14,7 @@ type ItemWarehouseRow = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
+        sales_price?: number | string | null;
         purchase_price?: number | string | null;
         category?:
           | {
@@ -32,6 +33,7 @@ type ItemWarehouseRow = {
         item_code: string | null;
         item_name: string | null;
         category_id: string | null;
+        sales_price?: number | string | null;
         purchase_price?: number | string | null;
         category?: { name: string | null } | { name: string | null }[] | null;
         uom?: { code: string | null } | { code: string | null }[] | null;
@@ -79,6 +81,22 @@ type ValuationGroup = {
   itemCount: Set<string>;
 };
 
+const DEFAULT_PRICE_TIER_CODE = "srp";
+
+type ItemPriceRow = {
+  item_id: string;
+  price_tier: string;
+  price: number | string;
+};
+
+const toNumber = (value: unknown): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const normalizeSettingString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim().toLowerCase() : null;
+
 // GET /api/reports/stock-valuation
 // Returns current stock valuation report
 export async function GET(request: NextRequest) {
@@ -119,6 +137,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
+    const { data: pricingTierSetting, error: pricingTierSettingError } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("company_id", userData.company_id)
+      .is("business_unit_id", null)
+      .eq("group_key", "inventory")
+      .eq("setting_key", "default_pricing_tier")
+      .maybeSingle();
+
+    if (pricingTierSettingError) {
+      console.error("Error loading default pricing tier for stock valuation:", pricingTierSettingError);
+    }
+
+    const defaultPricingTier =
+      normalizeSettingString(pricingTierSetting?.value) || DEFAULT_PRICE_TIER_CODE;
+
     // Extract query parameters
     const warehouseId = searchParams.get("warehouseId");
     const itemId = searchParams.get("itemId");
@@ -138,6 +172,7 @@ export async function GET(request: NextRequest) {
           item_code,
           item_name,
           category_id,
+          sales_price,
           purchase_price,
           category:item_categories(id, name),
           uom:units_of_measure(id, code, name)
@@ -217,28 +252,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch stock valuation data" }, { status: 500 });
     }
 
-    // Get latest valuation rates from stock_transaction_items for each item-warehouse
-    const itemWarehousePairs =
-      inventoryData?.map((inv) => ({ item_id: inv.item_id, warehouse_id: inv.warehouse_id })) || [];
-
-    const valuationRates = new Map<string, number>();
-    for (const pair of itemWarehousePairs) {
-      const { data: latestTx } = await supabase
-        .from("stock_transaction_items")
-        .select("valuation_rate")
+    const itemIds = Array.from(new Set((inventoryData || []).map((inv) => inv.item_id)));
+    const defaultTierPricesByItemId = new Map<string, number>();
+    if (itemIds.length > 0) {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: itemPrices, error: itemPricesError } = await supabase
+        .from("item_prices")
+        .select("item_id, price_tier, price")
         .eq("company_id", userData.company_id)
-        .eq("item_id", pair.item_id)
-        .gt("valuation_rate", 0)
-        .order("posting_date", { ascending: false })
-        .order("posting_time", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .in("item_id", itemIds)
+        .eq("price_tier", defaultPricingTier)
+        .eq("is_active", true)
+        .lte("effective_from", today)
+        .or(`effective_to.is.null,effective_to.gte.${today}`)
+        .is("deleted_at", null)
+        .order("effective_from", { ascending: false });
 
-      const key = `${pair.item_id}_${pair.warehouse_id}`;
-      valuationRates.set(
-        key,
-        latestTx?.valuation_rate ? parseFloat(String(latestTx.valuation_rate)) : 0
-      );
+      if (itemPricesError) {
+        console.error("Error loading default pricing tier rates for stock valuation:", itemPricesError);
+      } else {
+        for (const price of ((itemPrices || []) as ItemPriceRow[])) {
+          if (!defaultTierPricesByItemId.has(price.item_id)) {
+            defaultTierPricesByItemId.set(price.item_id, Math.max(0, toNumber(price.price)));
+          }
+        }
+      }
     }
 
     // Build valuation map
@@ -254,8 +292,11 @@ export async function GET(request: NextRequest) {
 
       if (!balancesMap.has(key)) {
         const currentStock = parseFloat(String(entry.current_stock || 0));
-        const fallbackRate = Math.max(0, Number(item?.purchase_price ?? 0));
-        const valuationRate = valuationRates.get(key) || fallbackRate;
+        const fallbackRate = Math.max(
+          0,
+          toNumber(item?.sales_price) || toNumber(item?.purchase_price)
+        );
+        const valuationRate = defaultTierPricesByItemId.get(entry.item_id) ?? fallbackRate;
         const stockValue = currentStock * valuationRate;
 
         balancesMap.set(key, {

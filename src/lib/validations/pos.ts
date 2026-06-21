@@ -5,6 +5,8 @@ export const posCartItemSchema = z.object({
   itemCode: z.string().min(1),
   itemName: z.string().min(1),
   quantity: z.number().min(1, "Quantity must be at least 1"),
+  pricingTier: z.string().optional(),
+  pricingTierName: z.string().optional(),
   unitPrice: z.number().min(0),
   discount: z.number().min(0).default(0),
   lineTotal: z.number(),

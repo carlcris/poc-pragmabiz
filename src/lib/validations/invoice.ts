@@ -16,6 +16,8 @@ export const createInvoiceLineItemSchema = (t: (key: string) => string) =>
     itemName: z.string().min(1, t("itemNameRequired")),
     description: z.string().default(""),
     quantity: z.number().min(0.01, t("quantityRequired")),
+    pricingTier: z.string().optional(),
+    pricingTierName: z.string().optional(),
     unitPrice: z.number().min(0, t("unitPriceRequired")),
     discount: z.number().min(0, t("discountMin")).max(100, t("discountMax")),
     taxRate: z.number().min(0, t("taxMin")).max(100, t("taxMax")),

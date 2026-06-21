@@ -146,6 +146,8 @@ CREATE TABLE customers (
 );
 ```
 
+Sales line entry uses active item price tiers as the selling price source. Quotations, sales orders, invoices, and POS lines default to the configured inventory default pricing tier and allow users to select another available tier; the selected tier code/name and resolved selling price are persisted on the line.
+
 #### quotations
 ```sql
 CREATE TABLE quotations (

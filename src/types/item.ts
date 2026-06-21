@@ -26,6 +26,17 @@ export type ItemUnitOption = {
 
 export type ItemCustomFields = Record<string, unknown>;
 
+export type ItemPriceTier = {
+  id: string;
+  priceTier: string;
+  priceTierName: string;
+  price: number;
+  currencyCode: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  isActive: boolean;
+};
+
 export type Item = {
   id: string;
   companyId: string;
@@ -47,6 +58,8 @@ export type Item = {
   importCost?: number | null;
   importCurrency?: string | null;
   listPrice: number;
+  defaultPriceTier?: string | null;
+  priceTiers?: ItemPriceTier[];
   onHand?: number;
   allocated?: number;
   available?: number;

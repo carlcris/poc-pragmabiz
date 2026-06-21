@@ -412,7 +412,7 @@ export function QuotationViewDialog({ open, onOpenChange, quotation }: Quotation
                         </div>
                       </div>
                       <div className="md:col-span-2 md:text-right">
-                        <div className="text-xs text-muted-foreground">Unit Price</div>
+                        <div className="text-xs text-muted-foreground">Selling Price</div>
                         <div className="font-medium">{formatCurrency(item.unitPrice)}</div>
                       </div>
                       <div className="md:col-span-1 md:text-right">

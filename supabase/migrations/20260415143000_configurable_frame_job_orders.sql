@@ -520,13 +520,16 @@ BEGIN
     v_tax_amount := v_tax_amount + v_calculated.tax_amount;
 
     INSERT INTO public.sales_quotation_items (
-      company_id, quotation_id, item_id, item_description, quantity, uom_id, rate,
+      company_id, quotation_id, item_id, item_description, quantity, uom_id,
+      pricing_tier, pricing_tier_name, rate,
       discount_percent, discount_amount, tax_percent, tax_amount, line_total,
       sort_order, notes, created_by, updated_by
     )
     VALUES (
       v_company_id, v_quotation_id, v_calculated.item_id, v_calculated.item_description,
-      v_calculated.quantity, v_calculated.uom_id, v_calculated.rate,
+      v_calculated.quantity, v_calculated.uom_id,
+      NULLIF(v_item ->> 'pricingTier', ''), NULLIF(v_item ->> 'pricingTierName', ''),
+      v_calculated.rate,
       v_calculated.discount_percent, v_calculated.discount_amount, v_calculated.tax_percent,
       v_calculated.tax_amount, v_calculated.line_total, v_calculated.sort_order,
       v_calculated.notes, v_user_id, v_user_id
@@ -632,13 +635,16 @@ BEGIN
     v_tax_amount := v_tax_amount + v_calculated.tax_amount;
 
     INSERT INTO public.sales_quotation_items (
-      company_id, quotation_id, item_id, item_description, quantity, uom_id, rate,
+      company_id, quotation_id, item_id, item_description, quantity, uom_id,
+      pricing_tier, pricing_tier_name, rate,
       discount_percent, discount_amount, tax_percent, tax_amount, line_total,
       sort_order, notes, created_by, updated_by
     )
     VALUES (
       v_existing.company_id, p_quotation_id, v_calculated.item_id, v_calculated.item_description,
-      v_calculated.quantity, v_calculated.uom_id, v_calculated.rate,
+      v_calculated.quantity, v_calculated.uom_id,
+      NULLIF(v_item ->> 'pricingTier', ''), NULLIF(v_item ->> 'pricingTierName', ''),
+      v_calculated.rate,
       v_calculated.discount_percent, v_calculated.discount_amount, v_calculated.tax_percent,
       v_calculated.tax_amount, v_calculated.line_total, v_calculated.sort_order,
       v_calculated.notes, v_user_id, v_user_id

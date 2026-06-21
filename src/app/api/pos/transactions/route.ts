@@ -27,6 +27,8 @@ type POSItemInput = {
   itemCode: string;
   itemName: string;
   quantity: number;
+  pricingTier?: string;
+  pricingTierName?: string;
   unitPrice: number;
   discount?: number;
 };
@@ -298,6 +300,8 @@ async function createSalesInvoiceForPOSTransaction(params: {
       item_description: item.itemName,
       quantity: item.quantity,
       uom_id: uomByItemId.get(item.itemId) || null,
+      pricing_tier: item.pricingTier || null,
+      pricing_tier_name: item.pricingTierName || null,
       rate: item.unitPrice,
       discount_percent: discountPercent,
       discount_amount: discountAmount,
@@ -531,6 +535,8 @@ export async function GET(request: NextRequest) {
             itemCode: item.item_code,
             itemName: item.item_name,
             quantity: Number(item.quantity),
+            pricingTier: item.pricing_tier || undefined,
+            pricingTierName: item.pricing_tier_name || undefined,
             unitPrice: Number(item.unit_price),
             discount: Number(item.discount),
             lineTotal: Number(item.line_total),
@@ -706,6 +712,8 @@ export async function POST(request: NextRequest) {
       item_code: item.itemCode,
       item_name: item.itemName,
       quantity: item.quantity.toFixed(4),
+      pricing_tier: item.pricingTier || null,
+      pricing_tier_name: item.pricingTierName || null,
       unit_price: item.unitPrice.toFixed(4),
       discount: (item.discount || 0).toFixed(2),
       line_total: item.lineTotal.toFixed(4),
@@ -968,6 +976,8 @@ export async function POST(request: NextRequest) {
             itemCode: item.item_code,
             itemName: item.item_name,
             quantity: Number(item.quantity),
+            pricingTier: item.pricing_tier || undefined,
+            pricingTierName: item.pricing_tier_name || undefined,
             unitPrice: Number(item.unit_price),
             discount: Number(item.discount),
             lineTotal: Number(item.line_total),

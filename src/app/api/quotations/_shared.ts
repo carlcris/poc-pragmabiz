@@ -37,6 +37,8 @@ export type DbQuotationItem = {
   quantity: number | string;
   fulfilled_qty: number | string;
   uom_id: string | null;
+  pricing_tier: string | null;
+  pricing_tier_name: string | null;
   rate: number | string;
   discount_percent: number | string | null;
   discount_amount: number | string | null;
@@ -258,6 +260,8 @@ export const transformDbQuotationItem = (
     uomId: dbItem.uom_id || "",
     uomCode: lineUom?.code || undefined,
     uomName: lineUom?.name || undefined,
+    pricingTier: dbItem.pricing_tier || undefined,
+    pricingTierName: dbItem.pricing_tier_name || undefined,
     unitPrice: Number(dbItem.rate),
     discount: Number(dbItem.discount_percent) || 0,
     discountAmount: Number(dbItem.discount_amount) || 0,

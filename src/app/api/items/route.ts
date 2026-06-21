@@ -4,9 +4,10 @@ import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
-import type { CreateItemRequest, Item } from "@/types/item";
+import type { CreateItemRequest, Item, ItemPriceTier } from "@/types/item";
 import type { Database } from "@/types/database.types";
 import { insertItemUnitOptionWithRetry } from "@/lib/items/insertItemUnitOption";
+import { DEFAULT_PRICE_TIER_CODE } from "@/lib/pricing/itemPriceTiers";
 import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 import {
   getPrimaryItemUnitOption,
@@ -42,6 +43,8 @@ export interface ItemWithStock {
   importCost?: number | null;
   importCurrency?: string | null;
   listPrice: number;
+  defaultPriceTier?: string | null;
+  priceTiers?: ItemPriceTier[];
   itemType: string;
   customFields?: Record<string, unknown> | null;
   isActive: boolean;
@@ -84,6 +87,18 @@ type ItemsStatsRow = {
   low_stock_count: number | string | null;
   out_of_stock_count: number | string | null;
   total_count: number | string | null;
+};
+
+type DbItemPriceRow = {
+  id: string;
+  item_id: string;
+  price_tier: string;
+  price_tier_name: string;
+  price: number | string;
+  currency_code: string | null;
+  effective_from: string;
+  effective_to: string | null;
+  is_active: boolean | null;
 };
 
 type ItemMasterCapabilities = {
@@ -226,6 +241,89 @@ const asStatus = (value: string | null): ItemStatus | null => {
 
 const normalizeSearchTerm = (value: string | null) => value?.trim().toLowerCase() || "";
 
+const normalizeSettingString = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim().toLowerCase() : null;
+
+const getDefaultPricingTier = async (
+  supabase: SupabaseClient<Database>,
+  companyId: string
+): Promise<string> => {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("company_id", companyId)
+    .is("business_unit_id", null)
+    .eq("group_key", "inventory")
+    .eq("setting_key", "default_pricing_tier")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error loading default pricing tier:", error);
+    return DEFAULT_PRICE_TIER_CODE;
+  }
+
+  return normalizeSettingString(data?.value) || DEFAULT_PRICE_TIER_CODE;
+};
+
+const transformItemPriceRow = (row: DbItemPriceRow): ItemPriceTier => ({
+  id: row.id,
+  priceTier: row.price_tier,
+  priceTierName: row.price_tier_name,
+  price: toNumber(row.price),
+  currencyCode: row.currency_code || "PHP",
+  effectiveFrom: row.effective_from,
+  effectiveTo: row.effective_to,
+  isActive: row.is_active ?? true,
+});
+
+const fetchCurrentPriceTiersByItemId = async (
+  supabase: SupabaseClient<Database>,
+  companyId: string,
+  itemIds: string[]
+) => {
+  const priceTiersByItemId = new Map<string, ItemPriceTier[]>();
+  if (itemIds.length === 0) return priceTiersByItemId;
+
+  const today = new Date().toISOString().split("T")[0];
+  const { data, error } = await supabase
+    .from("item_prices")
+    .select(
+      "id, item_id, price_tier, price_tier_name, price, currency_code, effective_from, effective_to, is_active"
+    )
+    .eq("company_id", companyId)
+    .in("item_id", itemIds)
+    .eq("is_active", true)
+    .lte("effective_from", today)
+    .or(`effective_to.is.null,effective_to.gte.${today}`)
+    .is("deleted_at", null)
+    .order("price_tier", { ascending: true })
+    .order("effective_from", { ascending: false });
+
+  if (error) {
+    console.error("Error loading item price tiers:", error);
+    return priceTiersByItemId;
+  }
+
+  for (const row of ((data || []) as DbItemPriceRow[])) {
+    const rows = priceTiersByItemId.get(row.item_id) || [];
+    if (!rows.some((priceTier) => priceTier.priceTier === row.price_tier)) {
+      rows.push(transformItemPriceRow(row));
+    }
+    priceTiersByItemId.set(row.item_id, rows);
+  }
+
+  return priceTiersByItemId;
+};
+
+const resolveDefaultListPrice = (
+  fallbackListPrice: number,
+  priceTiers: ItemPriceTier[],
+  defaultPricingTier: string
+) => {
+  const matchingTier = priceTiers.find((priceTier) => priceTier.priceTier === defaultPricingTier);
+  return matchingTier?.price ?? fallbackListPrice;
+};
+
 const scoreSearchField = (
   fieldValue: string | null | undefined,
   search: string,
@@ -334,7 +432,12 @@ const fetchItemUnitOptionsByItemId = async (
   return rowsByItemId;
 };
 
-const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] = []): Item => {
+const transformDbItem = (
+  dbItem: ItemRow,
+  unitOptionRows: DbItemUnitOptionRow[] = [],
+  priceTiers: ItemPriceTier[] = [],
+  defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE
+): Item => {
   const category = Array.isArray(dbItem.item_categories)
     ? dbItem.item_categories[0]
     : dbItem.item_categories;
@@ -366,7 +469,9 @@ const transformDbItem = (dbItem: ItemRow, unitOptionRows: DbItemUnitOptionRow[] 
     purchasePrice: Number(dbItem.purchase_price) || 0,
     importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
     importCurrency: dbItem.import_currency,
-    listPrice: Number(dbItem.sales_price) || 0,
+    listPrice: resolveDefaultListPrice(Number(dbItem.sales_price) || 0, priceTiers, defaultPricingTier),
+    defaultPriceTier: defaultPricingTier,
+    priceTiers,
     reorderLevel: 0,
     reorderQty: 0,
     maxStockLevel: 0,
@@ -402,6 +507,7 @@ export async function GET(request: NextRequest) {
       MAX_PAGE_SIZE
     );
     const capabilities = await getUserCapabilities(userId, currentBusinessUnitId);
+    const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
     const itemMasterCapabilities: ItemMasterCapabilities = {
       canViewTotalAvailableValue: hasCapability(
         capabilities,
@@ -468,13 +574,23 @@ export async function GET(request: NextRequest) {
       }
 
       const fetchedItems = (data || []) as ItemRow[];
+      const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
+        supabase,
+        companyId,
+        fetchedItems.map((item) => item.id)
+      );
       const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(
         supabase,
         companyId,
         fetchedItems.map((item) => item.id)
       );
       const items = fetchedItems.map((item) =>
-        transformDbItem(item, unitOptionRowsByItemId.get(item.id) || [])
+        transformDbItem(
+          item,
+          unitOptionRowsByItemId.get(item.id) || [],
+          priceTiersByItemId.get(item.id) || [],
+          defaultPricingTier
+        )
       );
       const rankedItems = search && page === 1 ? rankItemsBySearch(items, search) : items;
       const total = count || 0;
@@ -566,47 +682,57 @@ export async function GET(request: NextRequest) {
     }
 
     const rows = (rpcRows || []) as ItemsRpcRow[];
+    const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
+      supabase,
+      companyId,
+      rows.map((row) => row.id)
+    );
     const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(
       supabase,
       companyId,
       rows.map((row) => row.id)
     );
-    const itemsWithStock: ItemWithStock[] = rows.map((row) => ({
-      id: row.id,
-      code: row.item_code,
-      supplierCode: row.supplier_code,
-      primaryBarcode: getPrimaryItemUnitOption(
-        sortItemUnitOptions(
-          (unitOptionRowsByItemId.get(row.id) || []).map((unitOptionRow) =>
-            transformItemUnitOptionRow(unitOptionRow, row.uom_code || "")
+    const itemsWithStock: ItemWithStock[] = rows.map((row) => {
+      const priceTiers = priceTiersByItemId.get(row.id) || [];
+      return {
+        id: row.id,
+        code: row.item_code,
+        supplierCode: row.supplier_code,
+        primaryBarcode: getPrimaryItemUnitOption(
+          sortItemUnitOptions(
+            (unitOptionRowsByItemId.get(row.id) || []).map((unitOptionRow) =>
+              transformItemUnitOptionRow(unitOptionRow, row.uom_code || "")
+            )
           )
-        )
-      )?.barcode,
-      name: row.item_name,
-      chineseName: row.item_name_cn || undefined,
-      category: row.category_name || "",
-      categoryId: row.category_id || "",
-      supplier: "",
-      supplierId: null,
-      onHand: row.on_hand,
-      allocated: row.allocated,
-      available: row.available,
-      reorderPoint: row.reorder_point,
-      maxStockLevel: row.max_stock_level,
-      inTransit: row.in_transit,
-      estimatedArrivalDate: row.estimated_arrival_date,
-      status: row.status,
-      uom: row.uom_code || "",
-      uomId: row.uom_id || "",
-      purchasePrice: row.purchase_price,
-      importCost: row.import_cost == null ? null : Number(row.import_cost),
-      importCurrency: row.import_currency,
-      listPrice: row.sales_price,
-      itemType: row.item_type,
-      customFields: row.custom_fields || null,
-      isActive: row.is_active ?? true,
-      imageUrl: row.image_url || undefined,
-    }));
+        )?.barcode,
+        name: row.item_name,
+        chineseName: row.item_name_cn || undefined,
+        category: row.category_name || "",
+        categoryId: row.category_id || "",
+        supplier: "",
+        supplierId: null,
+        onHand: row.on_hand,
+        allocated: row.allocated,
+        available: row.available,
+        reorderPoint: row.reorder_point,
+        maxStockLevel: row.max_stock_level,
+        inTransit: row.in_transit,
+        estimatedArrivalDate: row.estimated_arrival_date,
+        status: row.status,
+        uom: row.uom_code || "",
+        uomId: row.uom_id || "",
+        purchasePrice: row.purchase_price,
+        importCost: row.import_cost == null ? null : Number(row.import_cost),
+        importCurrency: row.import_currency,
+        listPrice: resolveDefaultListPrice(row.sales_price, priceTiers, defaultPricingTier),
+        defaultPriceTier: defaultPricingTier,
+        priceTiers,
+        itemType: row.item_type,
+        customFields: row.custom_fields || null,
+        isActive: row.is_active ?? true,
+        imageUrl: row.image_url || undefined,
+      };
+    });
     const rankedItemsWithStock =
       search && page === 1 ? rankItemsBySearch(itemsWithStock, search) : itemsWithStock;
 
@@ -669,6 +795,7 @@ export async function POST(request: NextRequest) {
     const { supabase, companyId, userId } = context;
 
     const body: CreateItemRequest = await request.json();
+    const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
     const importCost = normalizeImportCost(body.importCost);
     const importCurrency = normalizeImportCurrency(body.importCurrency);
     const importValidationError = validateImportCostFields(importCost, importCurrency);
@@ -824,12 +951,17 @@ export async function POST(request: NextRequest) {
     const unitOptionRowsByItemId = await fetchItemUnitOptionsByItemId(supabase, companyId, [
       (newItem as ItemRow).id,
     ]);
+    const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(supabase, companyId, [
+      (newItem as ItemRow).id,
+    ]);
 
     return NextResponse.json(
       {
         data: transformDbItem(
           newItem as ItemRow,
-          unitOptionRowsByItemId.get((newItem as ItemRow).id) || []
+          unitOptionRowsByItemId.get((newItem as ItemRow).id) || [],
+          priceTiersByItemId.get((newItem as ItemRow).id) || [],
+          defaultPricingTier
         ),
       },
       { status: 201 }

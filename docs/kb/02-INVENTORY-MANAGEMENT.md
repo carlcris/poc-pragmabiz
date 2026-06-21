@@ -142,7 +142,9 @@ Every stock movement is recorded as a **Stock Transaction** for full audit trail
 
 ### 5. Stock Valuation
 
-The system uses **moving average cost** for inventory valuation:
+Stock transaction costs are tracked independently from sales pricing. The stock valuation report values on-hand inventory using the configured inventory `default_pricing_tier` item price, falling back to the item sales price and then purchase price when no active default-tier price exists.
+
+The costing model for stock receipts remains **moving average cost**:
 
 ```
 New Average Cost = (
@@ -915,7 +917,7 @@ class LocationService {
 ### Stock Valuation Report
 **Location**: `/api/reports/stock-valuation`
 
-Shows total inventory value by warehouse, calculated using average cost method.
+Shows total inventory value by warehouse using the configured default pricing tier for item valuation, with sales price and purchase price fallback.
 
 ### Stock Aging Report
 **Location**: `/api/reports/stock-aging`

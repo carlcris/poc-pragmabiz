@@ -26,11 +26,19 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Textarea } from "@/components/ui/textarea";
 import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import { createInvoiceLineItemSchema, invoiceLineItemSchema } from "@/lib/validations/invoice";
+import { getDefaultPriceTierCode, getItemPriceTierOptions, resolvePriceTierSelection } from "@/lib/pricing/itemPriceTiers";
 
 export type LineItemFormValues = z.output<typeof invoiceLineItemSchema> & {
   lineTotal?: number;
@@ -71,6 +79,8 @@ export function InvoiceLineItemDialog({
       itemName: "",
       description: "",
       quantity: 1,
+      pricingTier: "",
+      pricingTierName: "",
       unitPrice: 0,
       uomId: "",
       uomCode: "",
@@ -93,6 +103,8 @@ export function InvoiceLineItemDialog({
         itemName: "",
         description: "",
         quantity: 1,
+        pricingTier: "",
+        pricingTierName: "",
         unitPrice: 0,
         uomId: "",
         uomCode: "",
@@ -110,10 +122,21 @@ export function InvoiceLineItemDialog({
     form.setValue("itemCode", selectedItem.code);
     form.setValue("itemName", selectedItem.name);
     const itemDescription = "description" in selectedItem ? selectedItem.description : "";
+    const priceSelection = resolvePriceTierSelection(selectedItem);
     form.setValue("description", itemDescription);
-    form.setValue("unitPrice", selectedItem.listPrice);
+    form.setValue("pricingTier", priceSelection.priceTier);
+    form.setValue("pricingTierName", priceSelection.priceTierName);
+    form.setValue("unitPrice", priceSelection.price);
     form.setValue("uomId", selectedItem.uomId);
     form.setValue("uomCode", selectedItem.uom);
+  };
+
+  const handlePricingTierChange = (priceTier: string) => {
+    if (!selectedItem) return;
+    const priceSelection = resolvePriceTierSelection(selectedItem, priceTier);
+    form.setValue("pricingTier", priceSelection.priceTier);
+    form.setValue("pricingTierName", priceSelection.priceTierName);
+    form.setValue("unitPrice", priceSelection.price);
   };
 
   const onSubmit = (data: LineItemFormInput) => {
@@ -129,6 +152,10 @@ export function InvoiceLineItemDialog({
   const unitPrice = form.watch("unitPrice");
   const discount = form.watch("discount");
   const taxRate = form.watch("taxRate");
+  const priceTierOptions = selectedItem ? getItemPriceTierOptions(selectedItem) : [];
+  const selectedPricingTier =
+    form.watch("pricingTier") ||
+    (selectedItem ? getDefaultPriceTierCode(selectedItem) : undefined);
   const lineSubtotal = (quantity || 0) * (unitPrice || 0);
   const discountAmount = (lineSubtotal * (discount || 0)) / 100;
   const taxableAmount = lineSubtotal - discountAmount;
@@ -203,6 +230,38 @@ export function InvoiceLineItemDialog({
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
+                name="pricingTier"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("pricingTier")}</FormLabel>
+                    <Select
+                      value={field.value || selectedPricingTier}
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        handlePricingTierChange(value);
+                      }}
+                      disabled={!selectedItem || priceTierOptions.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("selectPricingTier")} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {priceTierOptions.map((priceTier) => (
+                          <SelectItem key={priceTier.priceTier} value={priceTier.priceTier}>
+                            {priceTier.priceTier.toUpperCase()} ({formatCurrency(priceTier.price)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="quantity"
                 render={({ field }) => (
                   <FormItem>
@@ -215,29 +274,10 @@ export function InvoiceLineItemDialog({
                         onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="unitPrice"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("unitPrice")} *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             </div>
 
             <div className="grid grid-cols-2 gap-4">

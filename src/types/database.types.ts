@@ -4812,6 +4812,8 @@ export type Database = {
           item_name: string
           line_total: number
           pos_transaction_id: string
+          pricing_tier: string | null
+          pricing_tier_name: string | null
           quantity: number
           unit_price: number
           updated_at: string
@@ -4825,6 +4827,8 @@ export type Database = {
           item_name: string
           line_total: number
           pos_transaction_id: string
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity: number
           unit_price: number
           updated_at?: string
@@ -4838,6 +4842,8 @@ export type Database = {
           item_name?: string
           line_total?: number
           pos_transaction_id?: string
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity?: number
           unit_price?: number
           updated_at?: string
@@ -5879,6 +5885,8 @@ export type Database = {
           item_description: string | null
           item_id: string
           line_total: number
+          pricing_tier: string | null
+          pricing_tier_name: string | null
           quantity: number
           rate: number
           skip_inventory: boolean
@@ -5901,6 +5909,8 @@ export type Database = {
           item_description?: string | null
           item_id: string
           line_total: number
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity: number
           rate: number
           skip_inventory?: boolean
@@ -5923,6 +5933,8 @@ export type Database = {
           item_description?: string | null
           item_id?: string
           line_total?: number
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity?: number
           rate?: number
           skip_inventory?: boolean
@@ -6415,6 +6427,8 @@ export type Database = {
           line_total: number
           notes: string | null
           order_id: string
+          pricing_tier: string | null
+          pricing_tier_name: string | null
           quantity: number
           quantity_delivered: number | null
           quantity_shipped: number | null
@@ -6443,6 +6457,8 @@ export type Database = {
           line_total: number
           notes?: string | null
           order_id: string
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity: number
           quantity_delivered?: number | null
           quantity_shipped?: number | null
@@ -6471,6 +6487,8 @@ export type Database = {
           line_total?: number
           notes?: string | null
           order_id?: string
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity?: number
           quantity_delivered?: number | null
           quantity_shipped?: number | null
@@ -6906,6 +6924,8 @@ export type Database = {
           item_id: string
           line_total: number
           notes: string | null
+          pricing_tier: string | null
+          pricing_tier_name: string | null
           quantity: number
           quotation_id: string
           rate: number
@@ -6929,6 +6949,8 @@ export type Database = {
           item_id: string
           line_total: number
           notes?: string | null
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity: number
           quotation_id: string
           rate: number
@@ -6952,6 +6974,8 @@ export type Database = {
           item_id?: string
           line_total?: number
           notes?: string | null
+          pricing_tier?: string | null
+          pricing_tier_name?: string | null
           quantity?: number
           quotation_id?: string
           rate?: number

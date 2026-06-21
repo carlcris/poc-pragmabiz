@@ -9,6 +9,8 @@ export interface InvoiceLineItem {
   quantity: number;
   uomId: string;
   uomCode?: string;
+  pricingTier?: string;
+  pricingTierName?: string;
   unitPrice: number;
   discount: number; // Percentage
   taxRate: number; // Percentage

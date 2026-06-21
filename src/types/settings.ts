@@ -103,6 +103,7 @@ export interface InventorySettings {
   low_stock_threshold: number;
   critical_stock_threshold: number;
   valuation_method: "FIFO" | "LIFO" | "AVERAGE" | "STANDARD";
+  default_pricing_tier: string;
   auto_allocation_enabled: boolean;
   negative_stock_allowed: boolean;
   track_lot_numbers: boolean;
@@ -118,6 +119,7 @@ export const INVENTORY_SETTING_KEYS = {
   LOW_STOCK_THRESHOLD: "low_stock_threshold",
   CRITICAL_STOCK_THRESHOLD: "critical_stock_threshold",
   VALUATION_METHOD: "valuation_method",
+  DEFAULT_PRICING_TIER: "default_pricing_tier",
   AUTO_ALLOCATION_ENABLED: "auto_allocation_enabled",
   NEGATIVE_STOCK_ALLOWED: "negative_stock_allowed",
   TRACK_LOT_NUMBERS: "track_lot_numbers",

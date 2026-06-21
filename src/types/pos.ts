@@ -8,6 +8,8 @@ export interface POSCartItem {
   itemName: string;
   quantity: number;
   uom?: string;
+  pricingTier?: string;
+  pricingTierName?: string;
   unitPrice: number;
   discount: number;
   lineTotal: number;

@@ -839,6 +839,9 @@ export type TranslationKeys = {
       valuationMethod: string;
       valuationMethodPlaceholder: string;
       valuationMethodDescription: string;
+      defaultPricingTier: string;
+      defaultPricingTierPlaceholder: string;
+      defaultPricingTierDescription: string;
       allocationTitle: string;
       allocationDescription: string;
       autoAllocation: string;
@@ -1436,6 +1439,8 @@ export type TranslationKeys = {
     inventoryWarning: string;
     description: string;
     quantity: string;
+    pricingTier: string;
+    selectPricingTier: string;
     unitPrice: string;
     discountRate: string;
     taxRate: string;
@@ -1607,6 +1612,8 @@ export type TranslationKeys = {
     selectItem: string;
     description: string;
     quantity: string;
+    pricingTier: string;
+    selectPricingTier: string;
     unitPrice: string;
     discountRate: string;
     taxRate: string;
@@ -1707,6 +1714,8 @@ export type TranslationKeys = {
     itemNumber: string;
     item: string;
     unit: string;
+    pricingTier: string;
+    selectPricingTier: string;
     price: string;
     qty: string;
     discount: string;
@@ -3618,6 +3627,10 @@ export const translations: Record<Locale, TranslationKeys> = {
         valuationMethod: "Valuation Method",
         valuationMethodPlaceholder: "Select valuation method",
         valuationMethodDescription: "Method used to value inventory",
+        defaultPricingTier: "Default Pricing Tier",
+        defaultPricingTierPlaceholder: "srp",
+        defaultPricingTierDescription:
+          "Default tier code used for sales item prices and inventory valuation reports",
         allocationTitle: "Allocation & Stock Settings",
         allocationDescription: "Configure allocation and stock control options",
         autoAllocation: "Auto Allocation",
@@ -4067,7 +4080,7 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Requested quantity exceeds available stock. You can still create the order.",
       qty: "Qty",
       unit: "Unit",
-      price: "Price",
+      price: "Selling Price",
       discountPct: "Disc %",
       taxPct: "Tax %",
       totals: "Totals",
@@ -4106,7 +4119,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "Quantity",
       fulfilled: "Fulfilled",
       unit: "Unit",
-      unitPrice: "Unit Price",
+      unitPrice: "Selling Price",
       discount: "Discount",
       tax: "Tax",
       total: "Total",
@@ -4198,7 +4211,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noItemsDescription: 'Click "Add Item" to get started.',
       qty: "Qty",
       unit: "Unit",
-      price: "Price",
+      price: "Selling Price",
       discountPct: "Disc %",
       taxPct: "Tax %",
       totals: "Totals",
@@ -4215,7 +4228,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     quotationLineItemDialog: {
       itemRequired: "Item is required",
       quantityRequired: "Quantity must be greater than 0",
-      unitPriceRequired: "Unit price cannot be negative",
+      unitPriceRequired: "Selling price cannot be negative",
       uomRequired: "Unit of measure is required",
       editTitle: "Edit Line Item",
       createTitle: "Add Line Item",
@@ -4230,7 +4243,9 @@ export const translations: Record<Locale, TranslationKeys> = {
         "Requested quantity {requested} exceeds available stock {available} {uom}. You can still save this line item.",
       description: "Description",
       quantity: "Quantity",
-      unitPrice: "Unit Price",
+      pricingTier: "Selling Price",
+      selectPricingTier: "Select selling price",
+      unitPrice: "Selling Price",
       discountRate: "Discount %",
       taxRate: "Tax Rate %",
       subtotal: "Subtotal",
@@ -4256,7 +4271,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "Quantity",
       fulfilled: "Fulfilled",
       unit: "Unit",
-      unitPrice: "Unit Price",
+      unitPrice: "Selling Price",
       discount: "Discount",
       tax: "Tax",
       total: "Total",
@@ -4366,7 +4381,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       item: "Item",
       qty: "Qty",
       unit: "Unit",
-      price: "Price",
+      price: "Selling Price",
       actions: "Actions",
       discountPct: "Disc %",
       taxPct: "Tax %",
@@ -4391,7 +4406,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemCodeRequired: "Item code is required",
       itemNameRequired: "Item name is required",
       quantityRequired: "Quantity must be greater than 0",
-      unitPriceRequired: "Unit price must be non-negative",
+      unitPriceRequired: "Selling price must be non-negative",
       discountMin: "Discount cannot be negative",
       discountMax: "Discount cannot exceed 100%",
       taxMin: "Tax rate cannot be negative",
@@ -4405,7 +4420,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItem: "Select an item",
       description: "Description",
       quantity: "Quantity",
-      unitPrice: "Unit Price",
+      pricingTier: "Selling Price",
+      selectPricingTier: "Select selling price",
+      unitPrice: "Selling Price",
       discountRate: "Discount %",
       taxRate: "Tax Rate %",
       subtotal: "Subtotal",
@@ -4434,7 +4451,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItems: "Line Items",
       quantity: "Quantity",
       unit: "Unit",
-      unitPrice: "Unit Price",
+      unitPrice: "Selling Price",
       discount: "Discount",
       tax: "Tax",
       total: "Total",
@@ -4505,7 +4522,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemNumber: "#",
       item: "Item",
       unit: "Unit",
-      price: "Price",
+      pricingTier: "Selling Price",
+      selectPricingTier: "Select selling price",
+      price: "Selling Price",
       qty: "Qty",
       discount: "Discount",
       total: "Total",
@@ -8913,6 +8932,9 @@ export const translations: Record<Locale, TranslationKeys> = {
         valuationMethod: "计价方法",
         valuationMethodPlaceholder: "选择计价方法",
         valuationMethodDescription: "用于库存计价的方法",
+        defaultPricingTier: "默认价格层级",
+        defaultPricingTierPlaceholder: "srp",
+        defaultPricingTierDescription: "用于销售商品价格和库存估值报表的默认层级代码",
         allocationTitle: "分配与库存控制设置",
         allocationDescription: "配置分配和库存控制选项",
         autoAllocation: "自动分配",
@@ -9353,7 +9375,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       inventoryWarning: "请求数量超过可用库存。仍可创建该订单。",
       qty: "数量",
       unit: "单位",
-      price: "价格",
+      price: "销售价",
       discountPct: "折扣 %",
       taxPct: "税率 %",
       totals: "合计",
@@ -9392,7 +9414,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "数量",
       fulfilled: "已履约",
       unit: "单位",
-      unitPrice: "单价",
+      unitPrice: "销售价",
       discount: "折扣",
       tax: "税额",
       total: "总计",
@@ -9484,7 +9506,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       noItemsDescription: "点击“添加项目”开始。",
       qty: "数量",
       unit: "单位",
-      price: "价格",
+      price: "销售价",
       discountPct: "折扣 %",
       taxPct: "税率 %",
       totals: "合计",
@@ -9501,7 +9523,7 @@ export const translations: Record<Locale, TranslationKeys> = {
     quotationLineItemDialog: {
       itemRequired: "项目为必填项",
       quantityRequired: "数量必须大于 0",
-      unitPriceRequired: "单价不能为负数",
+      unitPriceRequired: "销售价不能为负数",
       uomRequired: "计量单位为必填项",
       editTitle: "编辑行项目",
       createTitle: "添加行项目",
@@ -9515,7 +9537,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       inventoryWarning: "请求数量 {requested} 超过可用库存 {available} {uom}。仍可保存该行项目。",
       description: "描述",
       quantity: "数量",
-      unitPrice: "单价",
+      pricingTier: "销售价",
+      selectPricingTier: "选择销售价",
+      unitPrice: "销售价",
       discountRate: "折扣 %",
       taxRate: "税率 %",
       subtotal: "小计",
@@ -9541,7 +9565,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       quantity: "数量",
       fulfilled: "已履约",
       unit: "单位",
-      unitPrice: "单价",
+      unitPrice: "销售价",
       discount: "折扣",
       tax: "税额",
       total: "总计",
@@ -9648,7 +9672,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       item: "项目",
       qty: "数量",
       unit: "单位",
-      price: "价格",
+      price: "销售价",
       actions: "操作",
       discountPct: "折扣 %",
       taxPct: "税率 %",
@@ -9673,7 +9697,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemCodeRequired: "项目编码为必填项",
       itemNameRequired: "项目名称为必填项",
       quantityRequired: "数量必须大于 0",
-      unitPriceRequired: "单价不能为负数",
+      unitPriceRequired: "销售价不能为负数",
       discountMin: "折扣不能为负数",
       discountMax: "折扣不能超过 100%",
       taxMin: "税率不能为负数",
@@ -9687,7 +9711,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       selectItem: "选择项目",
       description: "描述",
       quantity: "数量",
-      unitPrice: "单价",
+      pricingTier: "销售价",
+      selectPricingTier: "选择销售价",
+      unitPrice: "销售价",
       discountRate: "折扣 %",
       taxRate: "税率 %",
       subtotal: "小计",
@@ -9716,7 +9742,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItems: "行项目",
       quantity: "数量",
       unit: "单位",
-      unitPrice: "单价",
+      unitPrice: "销售价",
       discount: "折扣",
       tax: "税额",
       total: "总计",
@@ -9787,7 +9813,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemNumber: "#",
       item: "商品",
       unit: "单位",
-      price: "价格",
+      pricingTier: "销售价",
+      selectPricingTier: "选择销售价",
+      price: "销售价",
       qty: "数量",
       discount: "折扣",
       total: "总计",

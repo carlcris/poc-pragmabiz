@@ -157,6 +157,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         itemCode: item.item_code,
         itemName: item.item_name,
         quantity: Number(item.quantity),
+        pricingTier: item.pricing_tier || undefined,
+        pricingTierName: item.pricing_tier_name || undefined,
         unitPrice: Number(item.unit_price),
         discount: Number(item.discount),
         lineTotal: Number(item.line_total),

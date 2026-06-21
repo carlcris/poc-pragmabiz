@@ -17,7 +17,9 @@ export const salesOrderLineItemSchema = z.object({
   itemName: z.string().min(1, "Item name is required"),
   description: z.string().default(""),
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  unitPrice: z.number().min(0, "Unit price must be non-negative"),
+  pricingTier: z.string().optional(),
+  pricingTierName: z.string().optional(),
+  unitPrice: z.number().min(0, "Selling price must be non-negative"),
   discount: z
     .number()
     .min(0, "Discount cannot be negative")

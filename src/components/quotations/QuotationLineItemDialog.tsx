@@ -56,7 +56,13 @@ import {
 } from "@/components/ui/table";
 import { useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
+import {
+  getDefaultPriceTierCode,
+  getItemPriceTierOptions,
+  resolvePriceTierSelection,
+} from "@/lib/pricing/itemPriceTiers";
 import type { ItemDimensions } from "@/types/item";
+import type { ItemPriceTier } from "@/types/item";
 import type {
   FrameInvoiceDisplayMode,
   FrameQuotationComponent,
@@ -70,7 +76,9 @@ const lineItemSchema = z.object({
   itemName: z.string().optional(),
   description: z.string().default(""),
   quantity: z.number().min(0.01, "Quantity must be greater than 0"),
-  unitPrice: z.number().min(0, "Unit price cannot be negative"),
+  pricingTier: z.string().optional(),
+  pricingTierName: z.string().optional(),
+  unitPrice: z.number().min(0, "Selling price cannot be negative"),
   uomId: z.string().min(1, "Unit of measure is required"),
   uomCode: z.string().optional(),
   uomName: z.string().optional(),
@@ -120,6 +128,8 @@ type LineItemOption = {
   uomCode?: string;
   uomName?: string;
   listPrice: number;
+  defaultPriceTier?: string | null;
+  priceTiers?: ItemPriceTier[];
   available?: number;
   reorderPoint?: number;
 };
@@ -263,6 +273,8 @@ export function QuotationLineItemDialog({
       uom: itemOption.uom,
       uomId: itemOption.uomId,
       listPrice: itemOption.listPrice,
+      defaultPriceTier: itemOption.defaultPriceTier,
+      priceTiers: itemOption.priceTiers,
       available:
         "available" in itemOption && typeof itemOption.available === "number"
           ? itemOption.available
@@ -318,6 +330,8 @@ export function QuotationLineItemDialog({
       itemName: "",
       description: "",
       quantity: 1,
+      pricingTier: "",
+      pricingTierName: "",
       unitPrice: 0,
       uomId: "",
       uomCode: "",
@@ -360,6 +374,22 @@ export function QuotationLineItemDialog({
           uomCode: item.uomCode,
           uomName: item.uomName,
           listPrice: item.unitPrice,
+          defaultPriceTier: item.pricingTier,
+          priceTiers:
+            item.pricingTier && item.pricingTierName
+              ? [
+                  {
+                    id: `${item.itemId}-${item.pricingTier}`,
+                    priceTier: item.pricingTier,
+                    priceTierName: item.pricingTierName,
+                    price: item.unitPrice,
+                    currencyCode: "PHP",
+                    effectiveFrom: new Date().toISOString().split("T")[0],
+                    effectiveTo: null,
+                    isActive: true,
+                  },
+                ]
+              : undefined,
         },
       });
       const config = item.frameConfiguration;
@@ -418,6 +448,8 @@ export function QuotationLineItemDialog({
         itemName: "",
         description: "",
         quantity: 1,
+        pricingTier: "",
+        pricingTierName: "",
         unitPrice: 0,
         uomId: "",
         uomCode: "",
@@ -479,11 +511,22 @@ export function QuotationLineItemDialog({
       form.setValue("itemCode", basicItem.code);
       form.setValue("itemName", basicItem.name);
       form.setValue("description", basicItem.description || "");
-      form.setValue("unitPrice", basicItem.listPrice);
+      const priceSelection = resolvePriceTierSelection(basicItem);
+      form.setValue("pricingTier", priceSelection.priceTier);
+      form.setValue("pricingTierName", priceSelection.priceTierName);
+      form.setValue("unitPrice", priceSelection.price);
       form.setValue("uomId", basicItem.uomId);
       form.setValue("uomCode", basicItem.uom);
       form.setValue("uomName", basicItem.uom);
     }
+  };
+
+  const handlePricingTierChange = (priceTier: string) => {
+    if (!selectedLineItem) return;
+    const priceSelection = resolvePriceTierSelection(selectedLineItem, priceTier);
+    form.setValue("pricingTier", priceSelection.priceTier);
+    form.setValue("pricingTierName", priceSelection.priceTierName);
+    form.setValue("unitPrice", priceSelection.price);
   };
 
   const onSubmit = (data: LineItemFormInput) => {
@@ -558,6 +601,10 @@ export function QuotationLineItemDialog({
 
   const frameQuantity = quantity || 0;
   const selectedLineItem = lineItemsById.get(selectedItemId);
+  const priceTierOptions = selectedLineItem ? getItemPriceTierOptions(selectedLineItem) : [];
+  const selectedPricingTier =
+    form.watch("pricingTier") ||
+    (selectedLineItem ? getDefaultPriceTierCode(selectedLineItem) : undefined);
   const selectedItemAvailable = selectedLineItem?.available ?? 0;
   const showInventoryWarning =
     !!selectedLineItem &&
@@ -944,23 +991,31 @@ export function QuotationLineItemDialog({
 
                   <FormField
                     control={form.control}
-                    name="unitPrice"
+                    name="pricingTier"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-sm font-medium">
-                          {isFrameJob ? "Calculated unit price" : `${t("unitPrice")} *`}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            {...field}
-                            disabled={isFrameJob}
-                            value={isFrameJob ? frameUnitPrice.toFixed(2) : field.value}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            className="h-11"
-                          />
-                        </FormControl>
+                        <FormLabel className="text-sm font-medium">{t("pricingTier")}</FormLabel>
+                        <Select
+                          value={field.value || selectedPricingTier}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            handlePricingTierChange(value);
+                          }}
+                          disabled={isFrameJob || !selectedLineItem || priceTierOptions.length === 0}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder={t("selectPricingTier")} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {priceTierOptions.map((priceTier) => (
+                              <SelectItem key={priceTier.priceTier} value={priceTier.priceTier}>
+                                {priceTier.priceTier.toUpperCase()} ({formatCurrency(priceTier.price)})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

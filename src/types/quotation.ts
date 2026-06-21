@@ -65,6 +65,8 @@ export type QuotationLineItem = {
   uomId: string;
   uomCode?: string;
   uomName?: string;
+  pricingTier?: string;
+  pricingTierName?: string;
   unitPrice: number;
   discount: number; // Percentage
   discountAmount: number;
@@ -112,6 +114,8 @@ export type CreateQuotationItemRequest = {
   quantity: number;
   uomId: string;
   rate: number;
+  pricingTier?: string;
+  pricingTierName?: string;
   discountPercent?: number;
   discountAmount?: number;
   taxPercent?: number;
