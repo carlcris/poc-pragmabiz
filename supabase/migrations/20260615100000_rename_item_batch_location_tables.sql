@@ -35,7 +35,16 @@ BEGIN
   END IF;
 END $$;
 
-ALTER SEQUENCE IF EXISTS public.item_location_batch_sku_seq RENAME TO item_batch_location_sku_seq;
+DO $$
+BEGIN
+  IF to_regclass('public.item_location_batch_sku_seq') IS NOT NULL
+     AND to_regclass('public.item_batch_location_sku_seq') IS NULL THEN
+    ALTER SEQUENCE public.item_location_batch_sku_seq RENAME TO item_batch_location_sku_seq;
+  ELSIF to_regclass('public.item_location_batch_sku_seq') IS NOT NULL
+        AND to_regclass('public.item_batch_location_sku_seq') IS NOT NULL THEN
+    DROP SEQUENCE public.item_location_batch_sku_seq;
+  END IF;
+END $$;
 
 DO $$
 DECLARE

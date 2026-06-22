@@ -103,6 +103,8 @@ type DbItemPriceRow = {
 
 type ItemMasterCapabilities = {
   canViewTotalAvailableValue: boolean;
+  canViewSop: boolean;
+  canEditSop: boolean;
 };
 
 type DbItem = {
@@ -110,6 +112,7 @@ type DbItem = {
   company_id: string;
   item_code: string;
   supplier_code: string | null;
+  sop: number | string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -199,6 +202,12 @@ const normalizeImportCost = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeSop = (value: unknown): number | null | undefined => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 };
 
 const normalizeOptionalText = (value: unknown): string | null => {
@@ -436,7 +445,8 @@ const transformDbItem = (
   dbItem: ItemRow,
   unitOptionRows: DbItemUnitOptionRow[] = [],
   priceTiers: ItemPriceTier[] = [],
-  defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE
+  defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE,
+  canViewSop = false
 ): Item => {
   const category = Array.isArray(dbItem.item_categories)
     ? dbItem.item_categories[0]
@@ -454,6 +464,7 @@ const transformDbItem = (
     companyId: dbItem.company_id,
     code: dbItem.item_code,
     supplierCode: dbItem.supplier_code,
+    sop: canViewSop && dbItem.sop != null ? Number(dbItem.sop) : null,
     primaryBarcode: primaryUnitOption?.barcode,
     primaryBarcodeUnitOptionId: primaryUnitOption?.id,
     unitOptions,
@@ -513,6 +524,8 @@ export async function GET(request: NextRequest) {
         capabilities,
         GRANULAR_CAPABILITIES.ITEM_MASTER_TOTAL_AVAILABLE_VALUE
       ),
+      canViewSop: hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_VIEW),
+      canEditSop: hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_EDIT, "edit"),
     };
 
     if (!includeStock) {
@@ -589,7 +602,8 @@ export async function GET(request: NextRequest) {
           item,
           unitOptionRowsByItemId.get(item.id) || [],
           priceTiersByItemId.get(item.id) || [],
-          defaultPricingTier
+          defaultPricingTier,
+          itemMasterCapabilities.canViewSop
         )
       );
       const rankedItems = search && page === 1 ? rankItemsBySearch(items, search) : items;
@@ -795,13 +809,31 @@ export async function POST(request: NextRequest) {
     const { supabase, companyId, userId } = context;
 
     const body: CreateItemRequest = await request.json();
+    const capabilities = await getUserCapabilities(userId, context.currentBusinessUnitId);
+    const canViewSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_VIEW);
+    const canEditSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_EDIT, "edit");
     const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
     const importCost = normalizeImportCost(body.importCost);
     const importCurrency = normalizeImportCurrency(body.importCurrency);
+    const hasSopSubmission = Object.prototype.hasOwnProperty.call(body, "sop");
+    const sop = normalizeSop(body.sop);
     const importValidationError = validateImportCostFields(importCost, importCurrency);
 
     if (importValidationError) {
       return NextResponse.json({ error: importValidationError }, { status: 400 });
+    }
+
+    if (hasSopSubmission && (sop === undefined || (sop !== null && sop < 0))) {
+      return NextResponse.json({ error: "SOP must be 0 or greater" }, { status: 400 });
+    }
+
+    if (hasSopSubmission) {
+      if (!canEditSop) {
+        return NextResponse.json(
+          { error: "You do not have permission to edit SOP" },
+          { status: 403 }
+        );
+      }
     }
 
     if (!body.code || !body.name || !body.itemType || !body.uom) {
@@ -870,6 +902,7 @@ export async function POST(request: NextRequest) {
       company_id: companyId,
       item_code: body.code,
       supplier_code: normalizeOptionalText(body.supplierCode),
+      ...(hasSopSubmission ? { sop: sop ?? null } : {}),
       item_name: body.name,
       item_name_cn: body.chineseName || null,
       description: body.description || null,
@@ -961,7 +994,8 @@ export async function POST(request: NextRequest) {
           newItem as ItemRow,
           unitOptionRowsByItemId.get((newItem as ItemRow).id) || [],
           priceTiersByItemId.get((newItem as ItemRow).id) || [],
-          defaultPricingTier
+          defaultPricingTier,
+          canViewSop
         ),
       },
       { status: 201 }

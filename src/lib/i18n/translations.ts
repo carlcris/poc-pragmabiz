@@ -1911,6 +1911,7 @@ export type TranslationKeys = {
     basicInformation: string;
     itemCodeLabel: string;
     supplierCodeLabel: string;
+    sopLabel: string;
     itemTypeLabel: string;
     selectItemType: string;
     itemNameLabel: string;
@@ -2047,6 +2048,9 @@ export type TranslationKeys = {
     descriptionPlaceholder: string;
     purchasePricePlaceholder: string;
     importCostPlaceholder: string;
+    sopPlaceholder: string;
+    sopDescription: string;
+    sopReadonlyDescription: string;
     listPricePlaceholder: string;
     reorderLevelPlaceholder: string;
     reorderQtyPlaceholder: string;
@@ -2065,6 +2069,7 @@ export type TranslationKeys = {
     nameMax: string;
     chineseNameMax: string;
     supplierCodeMax: string;
+    sopMin: string;
     descriptionMax: string;
     uomRequired: string;
     categoryRequired: string;
@@ -4746,6 +4751,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       basicInformation: "Basic Information",
       itemCodeLabel: "Item Code *",
       supplierCodeLabel: "Supplier Code",
+      sopLabel: "SOP",
       itemTypeLabel: "Item Type *",
       selectItemType: "Select item type",
       itemNameLabel: "Item Name *",
@@ -4886,6 +4892,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       descriptionPlaceholder: "Enter description",
       purchasePricePlaceholder: "0.00",
       importCostPlaceholder: "0.00",
+      sopPlaceholder: "0.00",
+      sopDescription: "Optional item-level SOP value reserved for future use.",
+      sopReadonlyDescription: "You can view SOP but do not have permission to edit it.",
       listPricePlaceholder: "0.00",
       reorderLevelPlaceholder: "0",
       reorderQtyPlaceholder: "0",
@@ -4904,6 +4913,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       nameMax: "Item name must be less than 200 characters",
       chineseNameMax: "Chinese name must be less than 200 characters",
       supplierCodeMax: "Supplier code must be less than 100 characters",
+      sopMin: "SOP must be 0 or greater",
       descriptionMax: "Description must be less than 1000 characters",
       uomRequired: "Unit of measure is required",
       categoryRequired: "Category is required",
@@ -10054,6 +10064,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       basicInformation: "基础信息",
       itemCodeLabel: "商品编码 *",
       supplierCodeLabel: "供应商编码",
+      sopLabel: "SOP",
       itemTypeLabel: "商品类型 *",
       selectItemType: "选择商品类型",
       itemNameLabel: "商品名称 *",
@@ -10190,6 +10201,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       descriptionPlaceholder: "输入描述",
       purchasePricePlaceholder: "0.00",
       importCostPlaceholder: "0.00",
+      sopPlaceholder: "0.00",
+      sopDescription: "可选的商品级 SOP 值，预留用于未来功能。",
+      sopReadonlyDescription: "您可以查看 SOP，但没有编辑权限。",
       listPricePlaceholder: "0.00",
       reorderLevelPlaceholder: "0",
       reorderQtyPlaceholder: "0",
@@ -10208,6 +10222,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       nameMax: "商品名称不能超过200个字符",
       chineseNameMax: "中文名称不能超过200个字符",
       supplierCodeMax: "供应商编码不能超过100个字符",
+      sopMin: "SOP 必须大于或等于0",
       descriptionMax: "描述不能超过1000个字符",
       uomRequired: "计量单位为必填项",
       categoryRequired: "分类为必填项",

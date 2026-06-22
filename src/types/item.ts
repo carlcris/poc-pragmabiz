@@ -45,6 +45,7 @@ export type Item = {
   primaryBarcodeUnitOptionId?: string;
   unitOptions?: ItemUnitOption[];
   supplierCode?: string | null;
+  sop?: number | null;
   name: string;
   chineseName?: string;
   description: string;
@@ -85,6 +86,7 @@ export type CreateItemRequest = {
   companyId: string;
   code: string;
   supplierCode?: string | null;
+  sop?: number | null;
   name: string;
   chineseName?: string;
   description: string;
@@ -104,6 +106,7 @@ export type CreateItemRequest = {
 
 export type UpdateItemRequest = {
   supplierCode?: string | null;
+  sop?: number | null;
   name?: string;
   chineseName?: string;
   description?: string;
@@ -147,6 +150,8 @@ export type ItemResponse = {
   data: ItemDetail;
   capabilities?: {
     canViewPricingDetails?: boolean;
+    canViewSop?: boolean;
+    canEditSop?: boolean;
   };
 };
 

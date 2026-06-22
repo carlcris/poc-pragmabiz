@@ -3191,6 +3191,7 @@ export type Database = {
           item_type: string
           purchase_price: number | null
           sales_price: number | null
+          sop: number | null
           supplier_code: string | null
           track_batch: boolean | null
           track_serial: boolean | null
@@ -3223,6 +3224,7 @@ export type Database = {
           item_type: string
           purchase_price?: number | null
           sales_price?: number | null
+          sop?: number | null
           supplier_code?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null
@@ -3255,6 +3257,7 @@ export type Database = {
           item_type?: string
           purchase_price?: number | null
           sales_price?: number | null
+          sop?: number | null
           supplier_code?: string | null
           track_batch?: boolean | null
           track_serial?: boolean | null

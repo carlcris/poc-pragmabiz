@@ -21,6 +21,7 @@ type DbItem = {
   company_id: string;
   item_code: string;
   supplier_code: string | null;
+  sop: number | string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -117,6 +118,12 @@ const normalizeImportCost = (value: unknown): number | null => {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const normalizeSop = (value: unknown): number | null | undefined => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 };
 
 const toNumber = (value: unknown): number => {
@@ -282,7 +289,8 @@ function transformDbItem(
   dbItem: ItemRow,
   unitOptionRows: DbItemUnitOptionRow[] = [],
   priceTiers: ItemPriceTier[] = [],
-  defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE
+  defaultPricingTier: string = DEFAULT_PRICE_TIER_CODE,
+  canViewSop = false
 ): Item {
   const unitOptions = sortItemUnitOptions(
     unitOptionRows.map((row) => transformItemUnitOptionRow(row, dbItem.unit_of_measure?.code || ""))
@@ -294,6 +302,7 @@ function transformDbItem(
     companyId: dbItem.company_id,
     code: dbItem.item_code,
     supplierCode: dbItem.supplier_code,
+    sop: canViewSop && dbItem.sop != null ? Number(dbItem.sop) : null,
     primaryBarcode: primaryUnitOption?.barcode,
     primaryBarcodeUnitOptionId: primaryUnitOption?.id,
     unitOptions,
@@ -363,6 +372,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       capabilities,
       GRANULAR_CAPABILITIES.ITEM_DETAILS_PRICING_DETAILS
     );
+    const canViewSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_VIEW);
+    const canEditSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_EDIT, "edit");
 
     const { id } = await params;
     if (!isUuid(id)) {
@@ -442,7 +453,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Transform and return
     const item = maskItemPricingDetails(
       {
-        ...transformDbItem(data as ItemRow, unitOptionRows, priceTiers, defaultPricingTier),
+        ...transformDbItem(
+          data as ItemRow,
+          unitOptionRows,
+          priceTiers,
+          defaultPricingTier,
+          canViewSop
+        ),
         onHand,
         allocated,
         available,
@@ -458,6 +475,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       data: item,
       capabilities: {
         canViewPricingDetails,
+        canViewSop,
+        canEditSop,
       },
     });
   } catch {
@@ -472,7 +491,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "edit");
     if (unauthorized) return unauthorized;
 
-    const { supabase } = await createServerClientWithBU();
+    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
     // Check authentication
     const {
@@ -490,6 +509,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const body: UpdateItemRequest = await request.json();
+    const hasSopSubmission = Object.prototype.hasOwnProperty.call(body, "sop");
+    const nextSop = normalizeSop(body.sop);
+    if (hasSopSubmission && (nextSop === undefined || (nextSop !== null && nextSop < 0))) {
+      return NextResponse.json({ error: "SOP must be 0 or greater" }, { status: 400 });
+    }
+    if (hasSopSubmission) {
+      const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId);
+      const canEditSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_EDIT, "edit");
+      if (!canEditSop) {
+        return NextResponse.json(
+          { error: "You do not have permission to edit SOP" },
+          { status: 403 }
+        );
+      }
+    }
     const nextImportCost =
       body.importCost !== undefined ? normalizeImportCost(body.importCost) : undefined;
     const nextImportCurrency =
@@ -555,6 +589,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.name !== undefined) updateData.item_name = body.name;
     if (body.supplierCode !== undefined) {
       updateData.supplier_code = normalizeOptionalText(body.supplierCode);
+    }
+    if (hasSopSubmission) {
+      updateData.sop = nextSop ?? null;
     }
     if (body.chineseName !== undefined) updateData.item_name_cn = body.chineseName;
     if (body.description !== undefined) updateData.description = body.description;
@@ -723,8 +760,31 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const unitOptionRows = await fetchItemUnitOptions(supabase, existing.company_id, id);
     const defaultPricingTier = await getDefaultPricingTier(supabase, existing.company_id);
     const priceTiers = await fetchCurrentPriceTiers(supabase, existing.company_id, id);
-    const item = transformDbItem(updatedItem as ItemRow, unitOptionRows, priceTiers, defaultPricingTier);
-    return NextResponse.json({ data: item });
+    const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId);
+    const canViewPricingDetails = hasCapability(
+      capabilities,
+      GRANULAR_CAPABILITIES.ITEM_DETAILS_PRICING_DETAILS
+    );
+    const canViewSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_VIEW);
+    const canEditSop = hasCapability(capabilities, GRANULAR_CAPABILITIES.ITEM_SOP_EDIT, "edit");
+    const item = maskItemPricingDetails(
+      transformDbItem(
+        updatedItem as ItemRow,
+        unitOptionRows,
+        priceTiers,
+        defaultPricingTier,
+        canViewSop
+      ),
+      canViewPricingDetails
+    );
+    return NextResponse.json({
+      data: item,
+      capabilities: {
+        canViewPricingDetails,
+        canViewSop,
+        canEditSop,
+      },
+    });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

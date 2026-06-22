@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useCreateItem } from "@/hooks/useItems";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { useAuthStore } from "@/stores/authStore";
 import { createItemFormSchema } from "@/lib/validations/item";
 import type { z } from "zod";
@@ -35,6 +36,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { COMMON_IMPORT_CURRENCIES } from "@/constants/currencies";
 import { ImageUpload } from "@/components/ui/image-upload";
 
@@ -47,6 +49,11 @@ function CreateItemContent() {
   const createItem = useCreateItem();
   const { data: categoriesData } = useItemCategories();
   const { data: uomsData } = useUnitsOfMeasure();
+  const { data: sopEditCapabilities = {} } = useGranularCapabilities(
+    [GRANULAR_CAPABILITIES.ITEM_SOP_EDIT],
+    "edit"
+  );
+  const canEditSop = !!sopEditCapabilities[GRANULAR_CAPABILITIES.ITEM_SOP_EDIT];
 
   const categories = useMemo(() => categoriesData?.data || [], [categoriesData?.data]);
   const unitsOfMeasure = useMemo(
@@ -72,6 +79,7 @@ function CreateItemContent() {
     defaultValues: {
       code: "",
       supplierCode: "",
+      sop: null,
       name: "",
       chineseName: "",
       description: "",
@@ -122,8 +130,10 @@ function CreateItemContent() {
         return;
       }
 
+      const { sop, ...itemValues } = values;
       const created = await createItem.mutateAsync({
-        ...values,
+        ...itemValues,
+        ...(canEditSop ? { sop: sop ?? null } : {}),
         description: values.description || "",
         dimensions: {
           length: values.dimensions?.length ?? 0,
@@ -539,6 +549,36 @@ function CreateItemContent() {
                       )}
                     />
                   </div>
+
+                  {canEditSop && (
+                    <FormField
+                      control={form.control}
+                      name="sop"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("sopLabel")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder={t("sopPlaceholder")}
+                              value={field.value ?? ""}
+                              onChange={(event) =>
+                                field.onChange(
+                                  event.target.value === ""
+                                    ? null
+                                    : parseFloat(event.target.value) || 0
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>{t("sopDescription")}</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Inventory Management */}

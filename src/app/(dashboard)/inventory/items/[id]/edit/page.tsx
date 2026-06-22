@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useItem, useUpdateItem } from "@/hooks/useItems";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useUnitsOfMeasure } from "@/hooks/useUnitsOfMeasure";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { createItemFormSchema } from "@/lib/validations/item";
 import type { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { ProtectedRoute } from "@/components/permissions/ProtectedRoute";
 import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { COMMON_IMPORT_CURRENCIES } from "@/constants/currencies";
 import Link from "next/link";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -54,6 +56,14 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   const item = itemResponse?.data;
   const canViewPricingDetails = itemResponse?.capabilities?.canViewPricingDetails === true;
+  const canViewSop = itemResponse?.capabilities?.canViewSop === true;
+  const responseCanEditSop = itemResponse?.capabilities?.canEditSop === true;
+  const { data: sopEditCapabilities = {} } = useGranularCapabilities(
+    [GRANULAR_CAPABILITIES.ITEM_SOP_EDIT],
+    "edit"
+  );
+  const canEditSop =
+    responseCanEditSop || !!sopEditCapabilities[GRANULAR_CAPABILITIES.ITEM_SOP_EDIT];
   const isItemLoading = isLoading && !item;
   const hasLoadError = !isItemLoading && (Boolean(error) || !item);
   const primaryBarcode = item?.primaryBarcode ?? null;
@@ -101,6 +111,7 @@ function EditItemContent({ params }: EditItemPageProps) {
     defaultValues: {
       code: "",
       supplierCode: "",
+      sop: null,
       name: "",
       chineseName: "",
       description: "",
@@ -129,6 +140,7 @@ function EditItemContent({ params }: EditItemPageProps) {
       form.reset({
         code: item.code,
         supplierCode: item.supplierCode || "",
+        sop: item.sop ?? null,
         name: item.name,
         chineseName: item.chineseName || "",
         description: item.description || "",
@@ -157,13 +169,16 @@ function EditItemContent({ params }: EditItemPageProps) {
 
   const onSubmit = async (values: ItemFormInput) => {
     try {
-      const { code, purchasePrice, importCost, importCurrency, listPrice, ...updateData } = values;
+      const { code, sop, purchasePrice, importCost, importCurrency, listPrice, ...updateData } =
+        values;
       void code; // Code cannot be changed
+      const shouldSubmitSop = canEditSop && form.formState.dirtyFields.sop === true;
 
       await updateItem.mutateAsync({
         id: itemId,
         data: {
           ...updateData,
+          ...(shouldSubmitSop ? { sop: sop ?? null } : {}),
           ...(canViewPricingDetails
             ? {
                 purchasePrice: purchasePrice ?? 0,
@@ -670,6 +685,39 @@ function EditItemContent({ params }: EditItemPageProps) {
                         )}
                       />
                     </div>
+
+                    {canViewSop && (
+                      <FormField
+                        control={form.control}
+                        name="sop"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t("sopLabel")}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder={t("sopPlaceholder")}
+                                disabled={!canEditSop}
+                                value={field.value ?? ""}
+                                onChange={(event) =>
+                                  field.onChange(
+                                    event.target.value === ""
+                                      ? null
+                                      : parseFloat(event.target.value) || 0
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              {canEditSop ? t("sopDescription") : t("sopReadonlyDescription")}
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                 )}
 

@@ -15,6 +15,8 @@ export const GRANULAR_CAPABILITIES = {
 
   ITEM_MASTER_TOTAL_AVAILABLE_VALUE: "items.widget.total_available_value.view",
   ITEM_DETAILS_PRICING_DETAILS: "items.card.pricing_details.view",
+  ITEM_SOP_VIEW: "items.field.sop.view",
+  ITEM_SOP_EDIT: "items.field.sop.edit",
 
   PURCHASING_SR_VALUE: "purchasing_dashboard.widget.stock_requisition_value.view",
   PURCHASING_DAMAGED_ITEMS_VALUE: "purchasing_dashboard.widget.damaged_items_value.view",
@@ -69,6 +71,8 @@ export type DashboardWidgetCapabilities = {
 export type ItemMasterCapabilities = {
   canViewTotalAvailableValue: boolean;
   canViewPricingDetails: boolean;
+  canViewSop: boolean;
+  canEditSop: boolean;
 };
 
 export type PurchasingDashboardCapabilities = {

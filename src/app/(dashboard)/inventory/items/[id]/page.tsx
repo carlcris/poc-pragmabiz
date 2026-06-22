@@ -136,6 +136,7 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
   const { data: itemResponse, isLoading, error } = useItem(itemId);
   const item = itemResponse?.data;
   const canViewPricingDetails = itemResponse?.capabilities?.canViewPricingDetails === true;
+  const canViewSop = itemResponse?.capabilities?.canViewSop === true;
 
   useEffect(() => {
     if (!isLoading && !canViewPricingDetails && activeTab === "prices") {
@@ -779,6 +780,16 @@ function ItemDetailsContent({ params }: ItemDetailsPageProps) {
                       </span>
                     </div>
                   ) : null}
+                  {canViewSop && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {t("sopLabel")}
+                      </span>
+                      <span className="text-lg font-bold">
+                        {item.sop == null ? "-" : item.sop.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                   {item.purchasePrice != null && item.listPrice != null && item.purchasePrice > 0 && (
                     <div className="flex items-center justify-between border-t pt-2">
                       <span className="text-sm font-medium text-muted-foreground">

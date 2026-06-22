@@ -165,6 +165,7 @@ CREATE TABLE items (
   company_id UUID REFERENCES companies(id),
   code VARCHAR UNIQUE NOT NULL,
   supplier_code VARCHAR(100),
+  sop NUMERIC(8,2),
   name VARCHAR NOT NULL,
   description TEXT,
   category_id UUID REFERENCES item_categories(id),
@@ -184,8 +185,11 @@ CREATE TABLE items (
 -- Note: cost_price field was DROPPED in migration 20260610101000_drop_items_cost_price.sql
 -- Cost is now calculated at runtime from purchase_receipts
 -- supplier_code stores an optional supplier-provided item reference.
+-- sop stores an optional item-level numeric value reserved for future use.
 -- custom_fields stores editable key/value metadata displayed on the item detail page.
 ```
+
+The item-level SOP field is nullable, non-negative, and protected by granular permissions. `items.field.sop.view` controls whether item detail/list responses can expose the value. `items.field.sop.edit` controls whether create or update requests may submit the field. SOP currently has no downstream stock, pricing, report, or allocation behavior.
 
 #### item_unit_options
 ```sql
