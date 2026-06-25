@@ -115,15 +115,16 @@ export async function GET() {
       item_id: string;
       warehouse_id: string;
       current_stock: number | string | null;
-      reorder_level: number | string | null;
       items:
         | {
             item_code: string;
             item_name: string;
+            reorder_level: number | string | null;
           }
         | {
             item_code: string;
             item_name: string;
+            reorder_level: number | string | null;
           }[];
     };
 
@@ -443,17 +444,17 @@ export async function GET() {
         item_id,
         warehouse_id,
         current_stock,
-        reorder_level,
         items!inner (
           id,
           item_code,
           item_name,
-          company_id
+          company_id,
+          reorder_level
         )
       `
       )
       .eq("items.company_id", companyId)
-      .not("reorder_level", "is", null)
+      .gt("items.reorder_level", 0)
       .order("current_stock", { ascending: true })
       .limit(100);
 
@@ -464,7 +465,8 @@ export async function GET() {
     const reorderAlerts = ((reorderAlertsData as ItemWarehouseAlertRow[] | null) || [])
       .filter((alert) => {
         const currentStock = Number(alert.current_stock) || 0;
-        const reorderLevel = Number(alert.reorder_level) || 0;
+        const item = Array.isArray(alert.items) ? alert.items[0] : alert.items;
+        const reorderLevel = Number(item?.reorder_level) || 0;
         return currentStock < reorderLevel;
       })
       .sort((a, b) => {
@@ -480,7 +482,7 @@ export async function GET() {
           code: item?.item_code || "",
           name: item?.item_name || "",
           currentStock: Number(alert.current_stock) || 0,
-          reorderPoint: Number(alert.reorder_level) || 0,
+          reorderPoint: Number(item?.reorder_level) || 0,
           warehouseId: alert.warehouse_id,
         };
       });

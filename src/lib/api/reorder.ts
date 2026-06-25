@@ -5,12 +5,18 @@ import type {
   ReorderRule,
   ReorderAlert,
   ReorderStatistics,
+  ReorderSeason,
+  ReorderSeasonItemPolicy,
 } from "@/types/reorder";
 import type { PaginatedResponse, ApiQueryParams } from "@/types/api";
 import type {
   ReorderRuleInput,
   ReorderSuggestionUpdate,
   AcknowledgeAlertInput,
+  ReorderSeasonInput,
+  ReorderSeasonUpdate,
+  ReorderSeasonItemPolicyInput,
+  ReorderSeasonItemPolicyUpdate,
 } from "@/lib/validations/reorder";
 
 export const reorderApi = {
@@ -65,14 +71,6 @@ export const reorderApi = {
     return response;
   },
 
-  createPurchaseOrderFromSuggestion: async (id: string) => {
-    const response = await apiClient.post<{ purchaseOrderId: string }>(
-      `/inventory/reorder-suggestions/${id}/create-po`,
-      {}
-    );
-    return response;
-  },
-
   // Reorder Rules
   getReorderRules: async (params?: ApiQueryParams) => {
     const response = await apiClient.get<PaginatedResponse<ReorderRule>>(
@@ -115,8 +113,72 @@ export const reorderApi = {
     return response;
   },
 
+  // Reorder Seasons
+  getReorderSeasons: async (params?: ApiQueryParams) => {
+    const response = await apiClient.get<PaginatedResponse<ReorderSeason>>(
+      "/api/reorder/seasons",
+      { params }
+    );
+    return response;
+  },
+
+  createReorderSeason: async (data: ReorderSeasonInput) => {
+    const response = await apiClient.post<{ data: ReorderSeason }>("/api/reorder/seasons", data);
+    return response;
+  },
+
+  updateReorderSeason: async (id: string, data: ReorderSeasonUpdate) => {
+    const response = await apiClient.patch<{ data: ReorderSeason }>(
+      `/api/reorder/seasons/${id}`,
+      data
+    );
+    return response;
+  },
+
+  deleteReorderSeason: async (id: string) => {
+    const response = await apiClient.delete<{ message: string }>(`/api/reorder/seasons/${id}`);
+    return response;
+  },
+
+  // Seasonal Reorder Policies
+  getReorderSeasonItemPolicies: async (params?: ApiQueryParams) => {
+    const response = await apiClient.get<PaginatedResponse<ReorderSeasonItemPolicy>>(
+      "/api/reorder/season-policies",
+      { params }
+    );
+    return response;
+  },
+
+  createReorderSeasonItemPolicy: async (data: ReorderSeasonItemPolicyInput) => {
+    const response = await apiClient.post<{ data: ReorderSeasonItemPolicy }>(
+      "/api/reorder/season-policies",
+      data
+    );
+    return response;
+  },
+
+  updateReorderSeasonItemPolicy: async (id: string, data: ReorderSeasonItemPolicyUpdate) => {
+    const response = await apiClient.patch<{ data: ReorderSeasonItemPolicy }>(
+      `/api/reorder/season-policies/${id}`,
+      data
+    );
+    return response;
+  },
+
+  deleteReorderSeasonItemPolicy: async (id: string) => {
+    const response = await apiClient.delete<{ message: string }>(
+      `/api/reorder/season-policies/${id}`
+    );
+    return response;
+  },
+
   acknowledgeAlerts: async (data: AcknowledgeAlertInput) => {
     const response = await apiClient.post("/api/reorder/alerts/acknowledge", data);
+    return response;
+  },
+
+  unacknowledgeAlerts: async (data: AcknowledgeAlertInput) => {
+    const response = await apiClient.post("/api/reorder/alerts/unacknowledge", data);
     return response;
   },
 

@@ -9,6 +9,7 @@ type ItemRow = {
   description: string | null;
   sales_price: number | string | null;
   purchase_price: number | string | null;
+  reorder_level: number | string | null;
   category_id: string | null;
   uom_id: string | null;
 };
@@ -21,7 +22,6 @@ type ItemWarehouseWithItem = {
   warehouse_id: string;
   current_stock: number | string | null;
   available_stock: number | string | null;
-  reorder_level: number | string | null;
   items: ItemRow | ItemRow[] | null;
 };
 
@@ -96,7 +96,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         warehouse_id,
         current_stock,
         available_stock,
-        reorder_level,
         items!inner (
           id,
           item_code,
@@ -104,6 +103,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           description,
           sales_price,
           purchase_price,
+          reorder_level,
           category_id,
           uom_id
         )
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         availableStock: Number(stock.available_stock) || 0,
         unitPrice: Number(item?.sales_price) || 0,
         unitCost: Number(item?.purchase_price) || 0,
-        reorderPoint: Number(stock.reorder_level) || 0,
+        reorderPoint: Number(item?.reorder_level) || 0,
         categoryId: item?.category_id,
         categoryName: null,
         uomId: item?.uom_id,

@@ -22,6 +22,8 @@ type DbItem = {
   item_code: string;
   supplier_code: string | null;
   sop: number | string | null;
+  reorder_level: number | string | null;
+  reorder_quantity: number | string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -56,8 +58,6 @@ type ItemWarehouseRow = {
   available_stock: number | string | null;
   in_transit: number | string | null;
   estimated_arrival_date: string | null;
-  reorder_level: number | string | null;
-  reorder_quantity: number | string | null;
   max_quantity: number | string | null;
 };
 type DbItemCategory = {
@@ -321,8 +321,8 @@ function transformDbItem(
     listPrice: resolveDefaultListPrice(Number(dbItem.sales_price) || 0, priceTiers, defaultPricingTier),
     defaultPriceTier: defaultPricingTier,
     priceTiers,
-    reorderLevel: 0,
-    reorderQty: 0,
+    reorderLevel: Number(dbItem.reorder_level) || 0,
+    reorderQty: Number(dbItem.reorder_quantity) || 0,
     maxStockLevel: 0,
     imageUrl: dbItem.image_url || undefined,
     isActive: dbItem.is_active ?? true,
@@ -406,8 +406,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     let onHand = 0;
     let allocated = 0;
     let available = 0;
-    let reorderLevel = 0;
-    let reorderQty = 0;
+    const reorderLevel = Number(data.reorder_level) || 0;
+    const reorderQty = Number(data.reorder_quantity) || 0;
     let maxStockLevel = 0;
     let inTransit = 0;
     let estimatedArrivalDate: string | null = null;
@@ -415,7 +415,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     let inventoryQuery = supabase
       .from("item_warehouse")
       .select(
-        "current_stock, reserved_stock, available_stock, in_transit, estimated_arrival_date, reorder_level, reorder_quantity, max_quantity, warehouses!inner(business_unit_id)"
+        "current_stock, reserved_stock, available_stock, in_transit, estimated_arrival_date, max_quantity, warehouses!inner(business_unit_id)"
       )
       .eq("item_id", id)
       .eq("company_id", data.company_id)
@@ -439,8 +439,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         allocated += rowAllocated;
         available += rowAvailable;
         inTransit += Number(row.in_transit || 0);
-        reorderLevel = Math.max(reorderLevel, Number(row.reorder_level || 0));
-        reorderQty = Math.max(reorderQty, Number(row.reorder_quantity || 0));
         maxStockLevel += Number(row.max_quantity || 0);
         if (row.estimated_arrival_date) {
           if (!estimatedArrivalDate || row.estimated_arrival_date < estimatedArrivalDate) {
@@ -513,6 +511,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const nextSop = normalizeSop(body.sop);
     if (hasSopSubmission && (nextSop === undefined || (nextSop !== null && nextSop < 0))) {
       return NextResponse.json({ error: "SOP must be 0 or greater" }, { status: 400 });
+    }
+    if (
+      (body.reorderLevel !== undefined && body.reorderLevel < 0) ||
+      (body.reorderQty !== undefined && body.reorderQty < 0)
+    ) {
+      return NextResponse.json(
+        { error: "Reorder level and reorder quantity must be 0 or greater" },
+        { status: 400 }
+      );
     }
     if (hasSopSubmission) {
       const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId);
@@ -612,6 +619,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (body.dimensions !== undefined) updateData.dimensions = normalizeDimensions(body.dimensions);
     if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl;
     if (body.isActive !== undefined) updateData.is_active = body.isActive;
+    if (body.reorderLevel !== undefined) updateData.reorder_level = body.reorderLevel;
+    if (body.reorderQty !== undefined) updateData.reorder_quantity = body.reorderQty;
 
     // Get UoM ID if provided
     let resolvedUomId: string | null = null;
@@ -652,34 +661,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       }
 
       updateData.category_id = categoryData.id;
-    }
-
-    if (body.reorderLevel !== undefined || body.reorderQty !== undefined) {
-      const reorderUpdate: Record<string, unknown> = {
-        updated_by: user.id,
-      };
-
-      if (body.reorderLevel !== undefined) {
-        reorderUpdate.reorder_level = body.reorderLevel;
-      }
-
-      if (body.reorderQty !== undefined) {
-        reorderUpdate.reorder_quantity = body.reorderQty;
-      }
-
-      const { error: reorderUpdateError } = await supabase
-        .from("item_warehouse")
-        .update(reorderUpdate)
-        .eq("company_id", existing.company_id)
-        .eq("item_id", id)
-        .is("deleted_at", null);
-
-      if (reorderUpdateError) {
-        return NextResponse.json(
-          { error: "Failed to update reorder settings", details: reorderUpdateError.message },
-          { status: 500 }
-        );
-      }
     }
 
     // Update item

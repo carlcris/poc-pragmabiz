@@ -113,6 +113,8 @@ type DbItem = {
   item_code: string;
   supplier_code: string | null;
   sop: number | string | null;
+  reorder_level: number | string | null;
+  reorder_quantity: number | string | null;
   item_name: string;
   item_name_cn: string | null;
   description: string | null;
@@ -483,8 +485,8 @@ const transformDbItem = (
     listPrice: resolveDefaultListPrice(Number(dbItem.sales_price) || 0, priceTiers, defaultPricingTier),
     defaultPriceTier: defaultPricingTier,
     priceTiers,
-    reorderLevel: 0,
-    reorderQty: 0,
+    reorderLevel: Number(dbItem.reorder_level) || 0,
+    reorderQty: Number(dbItem.reorder_quantity) || 0,
     maxStockLevel: 0,
     imageUrl: dbItem.image_url || undefined,
     isActive: dbItem.is_active ?? true,
@@ -817,6 +819,8 @@ export async function POST(request: NextRequest) {
     const importCurrency = normalizeImportCurrency(body.importCurrency);
     const hasSopSubmission = Object.prototype.hasOwnProperty.call(body, "sop");
     const sop = normalizeSop(body.sop);
+    const reorderLevel = toNumber(body.reorderLevel);
+    const reorderQty = toNumber(body.reorderQty);
     const importValidationError = validateImportCostFields(importCost, importCurrency);
 
     if (importValidationError) {
@@ -825,6 +829,13 @@ export async function POST(request: NextRequest) {
 
     if (hasSopSubmission && (sop === undefined || (sop !== null && sop < 0))) {
       return NextResponse.json({ error: "SOP must be 0 or greater" }, { status: 400 });
+    }
+
+    if (reorderLevel < 0 || reorderQty < 0) {
+      return NextResponse.json(
+        { error: "Reorder level and reorder quantity must be 0 or greater" },
+        { status: 400 }
+      );
     }
 
     if (hasSopSubmission) {
@@ -910,6 +921,8 @@ export async function POST(request: NextRequest) {
       item_type: body.itemType,
       uom_id: uomData.id,
       category_id: categoryId,
+      reorder_level: reorderLevel,
+      reorder_quantity: reorderQty,
       sales_price: body.listPrice?.toString(),
       purchase_price: body.purchasePrice?.toString(),
       import_cost: importCost,

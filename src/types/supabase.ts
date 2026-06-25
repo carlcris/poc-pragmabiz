@@ -3190,6 +3190,8 @@ export type Database = {
           item_name_cn: string | null
           item_type: string
           purchase_price: number | null
+          reorder_level: number
+          reorder_quantity: number
           sales_price: number | null
           sop: number | null
           supplier_code: string | null
@@ -3223,6 +3225,8 @@ export type Database = {
           item_name_cn?: string | null
           item_type: string
           purchase_price?: number | null
+          reorder_level?: number
+          reorder_quantity?: number
           sales_price?: number | null
           sop?: number | null
           supplier_code?: string | null
@@ -3256,6 +3260,8 @@ export type Database = {
           item_name_cn?: string | null
           item_type?: string
           purchase_price?: number | null
+          reorder_level?: number
+          reorder_quantity?: number
           sales_price?: number | null
           sop?: number | null
           supplier_code?: string | null
@@ -5500,6 +5506,288 @@ export type Database = {
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reorder_alert_acknowledgments: {
+        Row: {
+          acknowledged_at: string
+          acknowledged_available_stock: number
+          acknowledged_by: string | null
+          company_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          item_id: string
+          minimum_level: number
+          policy_source: string
+          reorder_point: number
+          reorder_quantity: number
+          season_id: string | null
+          severity: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          acknowledged_at?: string
+          acknowledged_available_stock: number
+          acknowledged_by?: string | null
+          company_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          item_id: string
+          minimum_level: number
+          policy_source: string
+          reorder_point: number
+          reorder_quantity: number
+          season_id?: string | null
+          severity: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          acknowledged_at?: string
+          acknowledged_available_stock?: number
+          acknowledged_by?: string | null
+          company_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          item_id?: string
+          minimum_level?: number
+          policy_source?: string
+          reorder_point?: number
+          reorder_quantity?: number
+          season_id?: string | null
+          severity?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reorder_alert_acknowledgments_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_alert_acknowledgments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_alert_acknowledgments_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_alert_acknowledgments_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "reorder_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_alert_acknowledgments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reorder_season_item_policies: {
+        Row: {
+          base_reorder_level: number | null
+          base_reorder_quantity: number | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          is_active: boolean
+          item_id: string
+          item_unit_option_id: string | null
+          qty_per_unit: number
+          reorder_level: number
+          reorder_quantity: number
+          season_id: string
+          uom_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          base_reorder_level?: number | null
+          base_reorder_quantity?: number | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          item_id: string
+          item_unit_option_id?: string | null
+          qty_per_unit: number
+          reorder_level: number
+          reorder_quantity: number
+          season_id: string
+          uom_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          base_reorder_level?: number | null
+          base_reorder_quantity?: number | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_active?: boolean
+          item_id?: string
+          item_unit_option_id?: string | null
+          qty_per_unit?: number
+          reorder_level?: number
+          reorder_quantity?: number
+          season_id?: string
+          uom_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reorder_season_item_policies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_season_item_policies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_season_item_policies_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_season_item_policies_item_unit_option_id_fkey"
+            columns: ["item_unit_option_id"]
+            isOneToOne: false
+            referencedRelation: "item_unit_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_season_item_policies_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "reorder_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_season_item_policies_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_season_item_policies_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reorder_seasons: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          effective_from: string
+          effective_to: string
+          id: string
+          is_active: boolean
+          name: string
+          priority: number
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          effective_from: string
+          effective_to: string
+          id?: string
+          is_active?: boolean
+          name: string
+          priority?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          effective_from?: string
+          effective_to?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority?: number
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reorder_seasons_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_seasons_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_seasons_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -10051,6 +10339,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      acknowledge_reorder_alerts: {
+        Args: {
+          p_acknowledged_by: string
+          p_alert_ids: string[]
+          p_as_of_date?: string
+          p_company_id: string
+        }
+        Returns: {
+          acknowledged_count: number
+        }[]
+      }
       adjust_dispatched_delivery_note_item: {
         Args: {
           p_company_id: string
@@ -10367,6 +10666,51 @@ export type Database = {
           pos_sales: number
         }[]
       }
+      get_effective_reorder_alerts: {
+        Args: {
+          p_acknowledgment_status?: string
+          p_as_of_date?: string
+          p_company_id: string
+          p_limit?: number
+          p_page?: number
+          p_search?: string
+          p_severity?: string
+        }
+        Returns: {
+          acknowledged: boolean
+          acknowledged_at: string
+          acknowledged_by: string
+          acknowledgment_id: string
+          id: string
+          item_code: string
+          item_id: string
+          item_name: string
+          message: string
+          minimum_level: number
+          policy_source: string
+          reorder_point: number
+          reorder_quantity: number
+          season_code: string
+          season_id: string
+          season_name: string
+          severity: string
+          total_available_stock: number
+          total_count: number
+          total_current_stock: number
+          warehouse_breakdown: Json
+        }[]
+      }
+      get_warehouse_dashboard_low_stocks: {
+        Args: { p_company_id: string; p_limit?: number }
+        Returns: {
+          item_id: string
+          item_name: string
+          location_code: string
+          qty: number
+          reorder_level: number
+          uom: string
+        }[]
+      }
       get_inventory_batch_reconciliation_mismatches: {
         Args: { p_company_id?: string; p_tolerance?: number }
         Returns: {
@@ -10474,6 +10818,20 @@ export type Database = {
           transaction_count: number
           unit_cost: number
           uom: string
+        }[]
+      }
+      get_reorder_statistics: {
+        Args: { p_as_of_date?: string; p_company_id: string }
+        Returns: {
+          active_alerts: number
+          approved_suggestions: number
+          items_critical: number
+          items_low_stock: number
+          items_ok: number
+          items_out_of_stock: number
+          pending_suggestions: number
+          total_estimated_reorder_cost: number
+          total_items_tracked: number
         }[]
       }
       get_user_business_units: {
@@ -10769,6 +11127,17 @@ export type Database = {
             }
             Returns: undefined
           }
+      unacknowledge_reorder_alerts: {
+        Args: {
+          p_alert_ids: string[]
+          p_as_of_date?: string
+          p_company_id: string
+          p_unacknowledged_by: string
+        }
+        Returns: {
+          unacknowledged_count: number
+        }[]
+      }
       update_current_business_unit: {
         Args: { p_business_unit_id: string }
         Returns: Json
@@ -11043,4 +11412,3 @@ export const Constants = {
     },
   },
 } as const
-

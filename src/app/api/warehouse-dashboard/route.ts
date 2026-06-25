@@ -50,6 +50,15 @@ type StockMovementsRow = {
   units_of_measure: { symbol: string } | { symbol: string }[] | null;
 };
 
+type DashboardLowStockRow = {
+  item_id: string;
+  item_name: string;
+  qty: number | string | null;
+  uom: string | null;
+  location_code: string | null;
+  reorder_level: number | string | null;
+};
+
 export async function GET() {
   try {
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
@@ -62,6 +71,16 @@ export async function GET() {
 
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: userData, error: companyError } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (companyError || !userData?.company_id) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
     const capabilities = await getUserCapabilities(user.id, currentBusinessUnitId ?? null);
@@ -97,8 +116,6 @@ export async function GET() {
       capabilities,
       GRANULAR_CAPABILITIES.DASHBOARD_STOCK_REQUESTS_QUEUE
     );
-    const canViewInventoryHealth = canViewStockValue || canViewReorderValue;
-
     // Get user's accessible business units
     const { data: userBUAccess } = await supabase
       .from("user_business_unit_access")
@@ -118,6 +135,7 @@ export async function GET() {
       pendingStockRequestsResult,
       urgentStockRequestsResult,
       pickListToPickResult,
+      reorderInventoryHealthResult,
       inventoryHealthResult,
       pickListQueueResult,
       incomingDeliveriesQueueResult,
@@ -176,8 +194,16 @@ export async function GET() {
             .is("deleted_at", null)
         : Promise.resolve({ count: 0, error: null }),
 
-      // Inventory health (low + out of stock)
-      canViewInventoryHealth
+      // Reorder health is company-wide, item-level, and bounded in SQL.
+      canViewReorderValue
+        ? supabase.rpc("get_warehouse_dashboard_low_stocks", {
+            p_company_id: userData.company_id,
+            p_limit: 8,
+          })
+        : Promise.resolve({ data: [], error: null }),
+
+      // Stock health remains scoped to the selected business unit.
+      canViewStockValue
         ? supabase
             .from("item_warehouse")
             .select(
@@ -185,7 +211,6 @@ export async function GET() {
               item_id,
               warehouse_id,
               current_stock,
-              reorder_level,
               warehouses!inner(business_unit_id),
               warehouse_locations!item_warehouse_default_location_id_fkey(code),
               items!inner(item_name, units_of_measure!inner(symbol))
@@ -293,17 +318,19 @@ export async function GET() {
     if (pendingStockRequestsResult.error) throw pendingStockRequestsResult.error;
     if (urgentStockRequestsResult.error) throw urgentStockRequestsResult.error;
     if (pickListToPickResult.error) throw pickListToPickResult.error;
+    if (reorderInventoryHealthResult.error) throw reorderInventoryHealthResult.error;
     if (inventoryHealthResult.error) throw inventoryHealthResult.error;
     if (pickListQueueResult.error) throw pickListQueueResult.error;
     if (incomingDeliveriesQueueResult.error) throw incomingDeliveriesQueueResult.error;
     if (stockRequestsQueueResult.error) throw stockRequestsQueueResult.error;
     if (stockMovementsResult.error) throw stockMovementsResult.error;
 
+    const reorderInventoryRows = (reorderInventoryHealthResult.data || []) as DashboardLowStockRow[];
+
     const inventoryRows = (inventoryHealthResult.data || []) as Array<{
       item_id: string;
       warehouse_id: string;
       current_stock: number | string | null;
-      reorder_level: number | string | null;
       warehouse_locations?: { code?: string | null } | { code?: string | null }[] | null;
       items:
         | { item_name: string; units_of_measure: { symbol: string } | { symbol: string }[] }
@@ -317,7 +344,6 @@ export async function GET() {
         item_id: string;
         item_name: string;
         qty: number;
-        reorder_level: number;
         uom: string;
         location_code: string | null;
         hasMultipleLocations: boolean;
@@ -333,13 +359,11 @@ export async function GET() {
         ? (row.warehouse_locations[0] ?? null)
         : (row.warehouse_locations ?? null);
       const qty = Number(row.current_stock || 0);
-      const reorderLevel = Number(row.reorder_level || 0);
       const locationCode = locationRecord?.code || null;
 
       const existing = aggregatedInventory.get(row.item_id);
       if (existing) {
         existing.qty += qty;
-        existing.reorder_level += reorderLevel;
         if (existing.location_code !== locationCode) {
           existing.hasMultipleLocations = true;
           existing.location_code = null;
@@ -349,7 +373,6 @@ export async function GET() {
           item_id: row.item_id,
           item_name: itemRecord?.item_name || "",
           qty,
-          reorder_level: reorderLevel,
           uom: uomRecord?.symbol || "",
           location_code: locationCode,
           hasMultipleLocations: false,
@@ -363,10 +386,14 @@ export async function GET() {
       []) as IncomingDeliveriesQueueRow[];
     const stockRequestsQueue = (stockRequestsQueueResult.data || []) as StockRequestsQueueRow[];
     const stockMovements = (stockMovementsResult.data || []) as StockMovementsRow[];
-    const lowStocks = aggregatedList
-      .filter((item) => item.reorder_level > 0 && item.qty > 0 && item.qty <= item.reorder_level)
-      .sort((a, b) => a.qty - b.qty)
-      .slice(0, 8);
+    const lowStocks = reorderInventoryRows.map((item) => ({
+      item_id: item.item_id,
+      item_name: item.item_name,
+      qty: Number(item.qty || 0),
+      uom: item.uom || "",
+      location_code: item.location_code,
+      reorder_level: Number(item.reorder_level || 0),
+    }));
 
     const outOfStocks = aggregatedList
       .filter((item) => item.qty <= 0)

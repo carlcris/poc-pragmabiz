@@ -4,8 +4,8 @@ import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
 import { acknowledgeAlertSchema } from "@/lib/validations/reorder";
 
-// POST /api/reorder/alerts/acknowledge
-// Acknowledges reorder alerts
+// POST /api/reorder/alerts/unacknowledge
+// Restores generated reorder alerts to the active alert list.
 export async function POST(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "edit");
@@ -25,27 +25,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase.rpc("acknowledge_reorder_alerts", {
+    const { data, error } = await supabase.rpc("unacknowledge_reorder_alerts", {
       p_company_id: companyId,
       p_alert_ids: parsed.data.alertIds,
-      p_acknowledged_by: userId,
+      p_unacknowledged_by: userId,
     });
 
     if (error) {
-      console.error("Error acknowledging reorder alerts:", error);
-      return NextResponse.json({ error: "Failed to acknowledge alerts" }, { status: 500 });
+      console.error("Error restoring reorder alerts:", error);
+      return NextResponse.json({ error: "Failed to restore alerts" }, { status: 500 });
     }
 
-    const row = ((data || [])[0] || null) as { acknowledged_count?: number | string | null } | null;
-    const acknowledgedCount = Number(row?.acknowledged_count || 0);
+    const row = ((data || [])[0] || null) as {
+      unacknowledged_count?: number | string | null;
+    } | null;
+    const unacknowledgedCount = Number(row?.unacknowledged_count || 0);
 
     return NextResponse.json({
       success: true,
-      message: `${acknowledgedCount} alert(s) acknowledged`,
-      acknowledgedCount,
+      message: `${unacknowledgedCount} alert(s) restored`,
+      unacknowledgedCount,
     });
   } catch (error) {
-    console.error("Unexpected error acknowledging reorder alerts:", error);
+    console.error("Unexpected error restoring reorder alerts:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

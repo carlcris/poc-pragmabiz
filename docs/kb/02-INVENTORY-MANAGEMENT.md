@@ -57,7 +57,8 @@ The **Item** is the central entity representing a product or material in the sys
 - **Unit Options**: Multiple units of measure (base + conversions)
 - **Purchase Price**: Last/average purchase cost (runtime calculation)
 - **Selling Price**: Standard selling price
-- **Reorder Point**: Minimum stock threshold
+- **Reorder Point**: Default company-wide minimum stock threshold in the base unit
+- **Reorder Quantity**: Default company-wide suggested replenishment quantity in the base unit
 - **Maximum Stock Level**: Maximum stock to maintain
 - **Is Active**: Enable/disable item
 
@@ -113,7 +114,7 @@ Company Level
 - **Available**: On hand - reserved
 - **Reserved**: Allocated to sales orders/delivery notes
 - **In Transit**: Being transferred between warehouses
-- **Reorder Quantity**: On hand below reorder point
+- **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
 ### 4. Stock Transactions
 
@@ -170,7 +171,7 @@ CREATE TABLE items (
   description TEXT,
   category_id UUID REFERENCES item_categories(id),
   base_unit_id UUID REFERENCES units_of_measure(id),
-  selling_price DECIMAL(12,2),
+  sales_price DECIMAL(12,2),
   reorder_point DECIMAL(12,3),
   max_stock_level DECIMAL(12,3),
   is_active BOOLEAN DEFAULT true,
@@ -437,20 +438,72 @@ CREATE TABLE stock_requisitions (
 );
 ```
 
-#### reorder_rules
+#### reorder_seasons
 ```sql
-CREATE TABLE reorder_rules (
+CREATE TABLE reorder_seasons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  item_id UUID REFERENCES items(id) ON DELETE CASCADE,
-  warehouse_id UUID REFERENCES warehouses(id) ON DELETE CASCADE,
-  reorder_point DECIMAL(12,3) NOT NULL,
-  max_stock_level DECIMAL(12,3),
-  reorder_quantity DECIMAL(12,3),
+  company_id UUID REFERENCES companies(id),
+  code VARCHAR(50) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  effective_from DATE NOT NULL,
+  effective_to DATE NOT NULL,
+  priority INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(item_id, warehouse_id)
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 ```
+
+Active reorder seasons are selected automatically by the current date. Active seasons with the same priority cannot overlap for the same company.
+RLS restricts season rows to the authenticated user's company.
+
+#### reorder_season_item_policies
+```sql
+CREATE TABLE reorder_season_item_policies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID REFERENCES companies(id),
+  season_id UUID REFERENCES reorder_seasons(id) ON DELETE CASCADE,
+  item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  item_unit_option_id UUID REFERENCES item_unit_options(id) ON DELETE SET NULL,
+  uom_id UUID REFERENCES units_of_measure(id) NOT NULL,
+  qty_per_unit DECIMAL(20,2) NOT NULL,
+  reorder_level DECIMAL(20,2) NOT NULL,
+  reorder_quantity DECIMAL(20,2) NOT NULL,
+  base_reorder_level DECIMAL(20,2) GENERATED ALWAYS AS (reorder_level * qty_per_unit) STORED,
+  base_reorder_quantity DECIMAL(20,2) GENERATED ALWAYS AS (reorder_quantity * qty_per_unit) STORED,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(season_id, item_id)
+);
+```
+
+Item defaults live on `items.reorder_level` and `items.reorder_quantity`. If an active season has an active policy for the item, that policy overrides the item defaults. If the seasonal policy is inactive, the system falls back to the item defaults even while the season is active.
+Seasonal policies persist the selected item unit option, `uom_id`, and `qty_per_unit` snapshot for display and editing. `reorder_level` and `reorder_quantity` store the user-entered selected-unit quantities. `base_reorder_level` and `base_reorder_quantity` are generated stored columns and are used by alerts, statistics, and requisition defaults.
+Reorder reports and dashboard analytics read reorder defaults from `items`, not from `item_warehouse`. Company-wide reorder analytics aggregate stock across all company warehouses and compare the total to the item-level effective reorder point; business-unit context does not narrow these reorder calculations.
+The warehouse dashboard low-stock reorder card uses a bounded SQL RPC (`get_warehouse_dashboard_low_stocks`) to aggregate and return only the top low-stock rows needed by the card.
+Seasonal policy list responses include the selected unit context and active item units for display: selected unit option, unit label, quantity per unit, generated base quantities, base unit label, and available unit options.
+RLS restricts seasonal item policy rows to the authenticated user's company.
+
+#### reorder_alert_acknowledgments
+```sql
+CREATE TABLE reorder_alert_acknowledgments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID REFERENCES companies(id),
+  item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  policy_source TEXT NOT NULL,
+  season_id UUID REFERENCES reorder_seasons(id) ON DELETE SET NULL,
+  reorder_point DECIMAL(20,2) NOT NULL,
+  reorder_quantity DECIMAL(20,2) NOT NULL,
+  minimum_level DECIMAL(20,2) NOT NULL,
+  severity TEXT NOT NULL,
+  acknowledged_available_stock DECIMAL(20,2) NOT NULL,
+  acknowledged_at TIMESTAMPTZ DEFAULT now(),
+  acknowledged_by UUID REFERENCES users(id)
+);
+```
+
+Reorder alerts are generated from live stock levels, not stored as alert rows. Acknowledgments persist the item, active policy/season, threshold snapshot, severity, and available stock at the time the user acknowledged the alert. Acknowledge and restore RPCs require the caller's authenticated user and company to match the requested write scope.
 
 ## API Reference
 
@@ -481,7 +534,7 @@ List all items with pagination and filtering.
       "description": "High-quality widget",
       "category": { "id": "uuid", "name": "Widgets" },
       "base_unit": { "id": "uuid", "name": "piece" },
-      "selling_price": 10.50,
+      "sales_price": 10.50,
       "reorder_point": 100,
       "max_stock_level": 500,
       "is_active": true,
@@ -510,7 +563,7 @@ Create a new item.
   "description": "Description here",
   "category_id": "uuid",
   "base_unit_id": "uuid",
-  "selling_price": 15.00,
+  "sales_price": 15.00,
   "reorder_point": 50,
   "max_stock_level": 300,
   "unit_options": [
@@ -714,10 +767,10 @@ Complete transfer (update inventory).
 
 **Permissions**: `edit` on `stock_transfers`
 
-### Stock Requests
+### Stock Transfers
 
 #### POST /api/stock-requests
-Create stock replenishment request.
+Create stock replenishment transfer request.
 
 **Permissions**: `create` on `stock_requests`
 
@@ -741,47 +794,83 @@ Create stock replenishment request.
 `selected_item_batch_id` is optional. When provided, the API validates that the batch belongs to the requested item and fulfilling warehouse and has enough available base quantity for the line. Downstream pick-list allocation treats the selected batch as authoritative: it allocates from that batch instead of FIFO, and insufficient selected-batch quantity fails the operation rather than opening the FIFO batch-allocation choice.
 
 #### POST /api/stock-requests/[id]/approve
-Approve stock request.
+Approve stock transfer.
 
 **Permissions**: `approve_stock_requests` capability
 
 #### POST /api/stock-requests/[id]/reject
-Reject stock request.
+Reject stock transfer.
 
 **Permissions**: `approve_stock_requests` capability
 
 #### POST /api/stock-requests/[id]/fulfill
-Fulfill stock request (create transfer).
+Fulfill stock transfer.
 
 **Permissions**: `edit` on `stock_requests`
 
 ### Reorder Management
 
 #### GET /api/reorder/alerts
-Get items below reorder point.
+Get items whose total available stock across all company warehouses is below the effective reorder point.
 
 **Permissions**: `view` on `reorder_management`
+
+By default, acknowledged alert conditions are hidden. Passing `acknowledged=true` includes both active and acknowledged conditions. Passing `acknowledged=only` returns acknowledged conditions only.
+The `warehouseBreakdown` includes all company warehouses; warehouses without item stock rows are returned with zero stock values.
 
 **Response**:
 ```json
 {
-  "alerts": [
+  "data": [
     {
-      "item": { "id": "uuid", "code": "ITEM-001", "name": "Widget ABC" },
-      "warehouse": { "id": "uuid", "name": "Main Warehouse" },
-      "on_hand": 45,
-      "reorder_point": 100,
-      "reorder_quantity": 55,
-      "max_stock_level": 300
+      "itemId": "uuid",
+      "itemCode": "ITEM-001",
+      "itemName": "Widget ABC",
+      "totalAvailableStock": 45,
+      "reorderPoint": 100,
+      "reorderQuantity": 55,
+      "policySource": "season_override",
+      "seasonName": "Peak Season",
+      "requisitionUomId": "uuid",
+      "requisitionUomLabel": "PCS",
+      "requisitionItemUnitOptionId": "uuid",
+      "requisitionQtyPerUnit": 1,
+      "requisitionUnitPrice": 10.5,
+      "requisitionUnitPriceCurrency": null,
+      "warehouseBreakdown": [
+        { "warehouseName": "Main Warehouse", "availableStock": 45 }
+      ]
     }
-  ]
+  ],
+  "pagination": { "page": 1, "limit": 50, "total": 1, "totalPages": 1 }
 }
 ```
 
-#### POST /api/reorder/rules
-Create/update reorder rule.
+#### POST /api/reorder/seasons
+Create a date-effective reorder season.
 
 **Permissions**: `create` on `reorder_management`
+
+#### POST /api/reorder/alerts/acknowledge
+Persist acknowledgment for selected generated reorder alert IDs.
+
+**Permissions**: `edit` on `reorder_management`
+
+Acknowledgment suppresses the same item/policy/season/severity/stock snapshot from the active alerts list. If the stock level changes, the severity changes, or the effective reorder policy changes, the alert is generated again. Direct RPC calls are bound to the authenticated user and company.
+
+#### POST /api/reorder/alerts/unacknowledge
+Restore selected acknowledged reorder alert IDs to the active alerts list.
+
+**Permissions**: `edit` on `reorder_management`
+
+Restoring an alert soft-deletes the matching acknowledgment row for the current generated alert condition, so the alert returns to the active alerts list.
+
+#### POST /api/reorder/season-policies
+Create a per-item seasonal reorder override.
+
+**Permissions**: `create` on `reorder_management`
+
+Seasonal policy requests must include `itemUnitOptionId`. Requests store `reorderLevel` and `reorderQuantity` as selected-unit quantities. The API resolves and snapshots `uomId` and `qtyPerUnit`; PostgreSQL generated columns compute `baseReorderLevel` and `baseReorderQuantity`. Responses include `itemUnitOptionId`, `uomId`, `unitOptions`, `reorderUnitLevel`, `reorderUnitQuantity`, `baseReorderLevel`, `baseReorderQuantity`, `unitLabel`, `qtyPerUnit`, `totalQuantity`, and `baseUnitLabel` so the dialog can edit the selected unit while alerts and statistics compare base quantities.
 
 ## Services
 
@@ -893,15 +982,17 @@ class LocationService {
 
 ### Workflow 4: Reorder Alert Response
 
-1. System checks reorder rules daily
-2. Identifies items below reorder point
-3. Generates reorder alerts
+1. System selects the active reorder season by effective date and priority
+2. System resolves each item's effective reorder level from active seasonal policy or item defaults
+3. System compares total available stock across all company warehouses to the effective reorder level
 4. Purchasing manager reviews alerts
-5. Creates purchase orders for items
-6. Purchase orders approved and sent to suppliers
-7. Goods received via purchase receipt
-8. Stock levels updated
-9. Reorder alert cleared
+5. Creates a stock requisition with selected alert items prefilled. Seasonal-policy alerts use the policy unit and selected-unit reorder quantity; item-default alerts use the default item unit.
+6. User selects the supplier and submits the stock requisition through the purchasing workflow
+7. User may acknowledge an alert to hide the current generated alert condition without changing stock
+8. User may review acknowledged alerts and restore them to active alerts
+9. Requisition fulfillment is tracked through linked purchasing/load-list workflows
+10. Stock levels updated
+11. Reorder alert clears when stock reaches the effective reorder level, or reappears when the acknowledged condition changes
 
 ## UI Components
 
@@ -945,9 +1036,11 @@ class LocationService {
 
 #### ReorderAlerts
 **Location**: `src/components/inventory/ReorderAlerts.tsx`
-- Display items below reorder point
-- Create purchase order from alert
-- Update reorder rules
+- Display items below effective reorder point using company-wide available stock
+- Display active and acknowledged reorder alerts separately
+- Create stock requisition from selected alerts
+- Acknowledge and restore generated alert conditions
+- Configure reorder seasons and seasonal item overrides
 
 ## Reports
 

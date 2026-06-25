@@ -166,7 +166,7 @@ export const RESOURCE_METADATA: ResourceMetadata[] = [
   },
   {
     key: RESOURCES.STOCK_REQUESTS,
-    name: "Stock Requests",
+    name: "Stock Transfers",
     description: "Request and fulfill stock items",
     category: "Inventory",
   },

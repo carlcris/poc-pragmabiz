@@ -29,9 +29,54 @@ export const reorderSuggestionUpdateSchema = z.object({
 });
 
 export const acknowledgeAlertSchema = z.object({
-  alertIds: z.array(z.string()).min(1, "At least one alert must be selected"),
+  alertIds: z.array(z.string().uuid()).min(1, "At least one alert must be selected"),
 });
+
+const reorderSeasonBaseSchema = z.object({
+  code: z.string().trim().min(1, "Code is required").max(50, "Code must be 50 characters or less"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Name is required")
+    .max(200, "Name must be 200 characters or less"),
+  effectiveFrom: z.string().trim().min(1, "Effective from date is required"),
+  effectiveTo: z.string().trim().min(1, "Effective to date is required"),
+  priority: z.number().int().min(0, "Priority must be 0 or greater").default(0),
+  isActive: z.boolean().default(true),
+});
+
+export const reorderSeasonSchema = reorderSeasonBaseSchema
+  .refine((data) => data.effectiveFrom <= data.effectiveTo, {
+    message: "Effective from date must be on or before effective to date",
+    path: ["effectiveTo"],
+  });
+
+export const reorderSeasonUpdateSchema = reorderSeasonBaseSchema.partial().refine(
+  (data) =>
+    data.effectiveFrom === undefined ||
+    data.effectiveTo === undefined ||
+    data.effectiveFrom <= data.effectiveTo,
+  {
+    message: "Effective from date must be on or before effective to date",
+    path: ["effectiveTo"],
+  }
+);
+
+export const reorderSeasonItemPolicySchema = z.object({
+  seasonId: z.string().uuid("Season is required"),
+  itemId: z.string().uuid("Item is required"),
+  itemUnitOptionId: z.string().uuid("Unit is required").nullable().optional(),
+  reorderLevel: z.number().min(0, "Reorder level must be 0 or greater"),
+  reorderQuantity: z.number().min(0, "Reorder quantity must be 0 or greater"),
+  isActive: z.boolean().default(true),
+});
+
+export const reorderSeasonItemPolicyUpdateSchema = reorderSeasonItemPolicySchema.partial();
 
 export type ReorderRuleInput = z.infer<typeof reorderRuleSchema>;
 export type ReorderSuggestionUpdate = z.infer<typeof reorderSuggestionUpdateSchema>;
 export type AcknowledgeAlertInput = z.infer<typeof acknowledgeAlertSchema>;
+export type ReorderSeasonInput = z.infer<typeof reorderSeasonSchema>;
+export type ReorderSeasonUpdate = z.infer<typeof reorderSeasonUpdateSchema>;
+export type ReorderSeasonItemPolicyInput = z.infer<typeof reorderSeasonItemPolicySchema>;
+export type ReorderSeasonItemPolicyUpdate = z.infer<typeof reorderSeasonItemPolicyUpdateSchema>;

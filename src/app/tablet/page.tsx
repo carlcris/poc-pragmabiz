@@ -26,10 +26,10 @@ export default function TabletDashboardPage() {
   const urgentRequestCount = dashboardData?.summary.urgent_stock_requests ?? 0;
   const attentionLabel = isLoadingDashboard ? "--" : urgentRequestCount.toString();
   const attentionMessage = isLoadingDashboard
-    ? "Checking urgent stock requests..."
+    ? "Checking urgent stock transfers..."
     : urgentRequestCount === 0
-      ? "All clear. No urgent stock requests right now."
-      : `${attentionLabel} urgent stock request${urgentRequestCount === 1 ? "" : "s"} waiting for pick assignment`;
+      ? "All clear. No urgent stock transfers right now."
+      : `${attentionLabel} urgent stock transfer${urgentRequestCount === 1 ? "" : "s"} waiting for pick assignment`;
 
   return (
     <div className="min-h-screen">
@@ -137,7 +137,7 @@ export default function TabletDashboardPage() {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Pending Stock Requests</span>
+              <span className="text-gray-600">Pending Stock Transfers</span>
               <span className="font-semibold text-gray-900">
                 {isLoadingDashboard ? "--" : (dashboardData?.summary.pending_stock_requests ?? 0)}
               </span>

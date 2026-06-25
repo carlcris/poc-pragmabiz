@@ -5,6 +5,10 @@ import type {
   ReorderRuleInput,
   ReorderSuggestionUpdate,
   AcknowledgeAlertInput,
+  ReorderSeasonInput,
+  ReorderSeasonUpdate,
+  ReorderSeasonItemPolicyInput,
+  ReorderSeasonItemPolicyUpdate,
 } from "@/lib/validations/reorder";
 import { toast } from "sonner";
 
@@ -74,22 +78,6 @@ export function useRejectReorderSuggestion() {
     },
     onError: () => {
       toast.error("Failed to reject reorder suggestion");
-    },
-  });
-}
-
-export function useCreatePOFromSuggestion() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => reorderApi.createPurchaseOrderFromSuggestion(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reorderSuggestions"] });
-      queryClient.invalidateQueries({ queryKey: ["purchaseOrders"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
-      toast.success("Purchase order created successfully");
-    },
-    onError: () => {
-      toast.error("Failed to create purchase order");
     },
   });
 }
@@ -172,6 +160,113 @@ export function useAcknowledgeAlerts() {
     },
     onError: () => {
       toast.error("Failed to acknowledge alerts");
+    },
+  });
+}
+
+export function useUnacknowledgeAlerts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AcknowledgeAlertInput) => reorderApi.unacknowledgeAlerts(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      toast.success("Alerts restored");
+    },
+    onError: () => {
+      toast.error("Failed to restore alerts");
+    },
+  });
+}
+
+// Reorder Seasons
+export function useReorderSeasons(params?: ApiQueryParams) {
+  return useQuery({
+    queryKey: ["reorderSeasons", params],
+    queryFn: () => reorderApi.getReorderSeasons(params),
+  });
+}
+
+export function useCreateReorderSeason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ReorderSeasonInput) => reorderApi.createReorderSeason(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasons"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+    },
+  });
+}
+
+export function useUpdateReorderSeason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ReorderSeasonUpdate }) =>
+      reorderApi.updateReorderSeason(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasons"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+    },
+  });
+}
+
+export function useDeleteReorderSeason() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reorderApi.deleteReorderSeason(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasons"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+    },
+  });
+}
+
+// Seasonal Reorder Policies
+export function useReorderSeasonItemPolicies(params?: ApiQueryParams) {
+  return useQuery({
+    queryKey: ["reorderSeasonItemPolicies", params],
+    queryFn: () => reorderApi.getReorderSeasonItemPolicies(params),
+  });
+}
+
+export function useCreateReorderSeasonItemPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ReorderSeasonItemPolicyInput) =>
+      reorderApi.createReorderSeasonItemPolicy(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+    },
+  });
+}
+
+export function useUpdateReorderSeasonItemPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ReorderSeasonItemPolicyUpdate }) =>
+      reorderApi.updateReorderSeasonItemPolicy(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+    },
+  });
+}
+
+export function useDeleteReorderSeasonItemPolicy() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => reorderApi.deleteReorderSeasonItemPolicy(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
+      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
     },
   });
 }

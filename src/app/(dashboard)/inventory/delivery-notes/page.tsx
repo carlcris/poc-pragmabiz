@@ -421,7 +421,7 @@ export default function DeliveryNotesPage() {
     const requestRef = Array.isArray(item.stock_requests)
       ? item.stock_requests[0]
       : item.stock_requests;
-    return requestRef?.request_code || "Unknown stock request";
+    return requestRef?.request_code || "Unknown stock transfer";
   };
 
   const actionUomLabel = (item: (typeof actionItems)[number]) => {

@@ -14,8 +14,6 @@ type InventorySourceRow = {
   reserved_stock: number | string | null;
   available_stock: number | string | null;
   in_transit: number | string | null;
-  reorder_level: number | string | null;
-  reorder_quantity: number | string | null;
   max_quantity: number | string | null;
   updated_at: string;
   item?:
@@ -25,6 +23,8 @@ type InventorySourceRow = {
         item_name: string | null;
         category_id: string | null;
         purchase_price: number | string | null;
+        reorder_level: number | string | null;
+        reorder_quantity: number | string | null;
         category?: { name: string | null } | { name: string | null }[] | null;
         uom?: { code: string | null } | { code: string | null }[] | null;
       }
@@ -34,6 +34,8 @@ type InventorySourceRow = {
         item_name: string | null;
         category_id: string | null;
         purchase_price: number | string | null;
+        reorder_level: number | string | null;
+        reorder_quantity: number | string | null;
         category?: { name: string | null } | { name: string | null }[] | null;
         uom?: { code: string | null } | { code: string | null }[] | null;
       }[]
@@ -111,7 +113,7 @@ const resolveStatus = (
 export async function GET(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
-    const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
+    const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
     const {
@@ -154,8 +156,6 @@ export async function GET(request: NextRequest) {
       reserved_stock,
       available_stock,
       in_transit,
-      reorder_level,
-      reorder_quantity,
       max_quantity,
       updated_at,
       item:items!inner(
@@ -164,6 +164,8 @@ export async function GET(request: NextRequest) {
         item_name,
         category_id,
         purchase_price,
+        reorder_level,
+        reorder_quantity,
         category:item_categories(id, name),
         uom:units_of_measure(id, code, name)
       ),
@@ -198,11 +200,6 @@ export async function GET(request: NextRequest) {
     if (warehouseId) {
       countQuery = countQuery.eq("warehouse_id", warehouseId);
       dataQuery = dataQuery.eq("warehouse_id", warehouseId);
-    }
-
-    if (currentBusinessUnitId) {
-      countQuery = countQuery.eq("warehouse.business_unit_id", currentBusinessUnitId);
-      dataQuery = dataQuery.eq("warehouse.business_unit_id", currentBusinessUnitId);
     }
 
     if (category) {
@@ -274,8 +271,8 @@ export async function GET(request: NextRequest) {
       const reservedStock = toNumber(row.reserved_stock);
       const availableStock = toNumber(row.available_stock);
       const inTransit = toNumber(row.in_transit);
-      const reorderLevel = toNumber(row.reorder_level);
-      const reorderQuantity = toNumber(row.reorder_quantity);
+      const reorderLevel = toNumber(item?.reorder_level);
+      const reorderQuantity = toNumber(item?.reorder_quantity);
       const unitCost = Math.max(0, toNumber(item?.purchase_price));
 
       return {
@@ -332,7 +329,7 @@ export async function GET(request: NextRequest) {
         stockStatus,
         sortBy,
         sortOrder,
-        currentBusinessUnitId: currentBusinessUnitId || null,
+        currentBusinessUnitId: null,
       },
     });
   } catch (error) {

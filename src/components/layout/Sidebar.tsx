@@ -73,7 +73,7 @@ const menuItems = [
         icon: Settings,
       },
       {
-        title: "Stock Requests",
+        title: "Stock Transfers",
         href: "/inventory/stock-requests",
         resource: RESOURCES.STOCK_REQUESTS as Resource,
         icon: ClipboardList,

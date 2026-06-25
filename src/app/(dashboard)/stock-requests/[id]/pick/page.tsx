@@ -61,7 +61,7 @@ export default function StockRequestPickPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-3xl font-bold">Pick Items</h1>
-          <p className="text-muted-foreground">Stock Request: {id}</p>
+          <p className="text-muted-foreground">Stock Transfer: {id}</p>
         </div>
         <Badge variant="outline" className="px-4 py-2 text-lg">
           {completedItems} / {totalItems} Picked

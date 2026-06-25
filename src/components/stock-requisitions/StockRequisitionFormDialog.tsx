@@ -108,10 +108,16 @@ type LineItem = {
   notes?: string;
 };
 
+export type StockRequisitionInitialLineItem = LineItem;
+
+const EMPTY_INITIAL_LINE_ITEMS: StockRequisitionInitialLineItem[] = [];
+
 type StockRequisitionFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   stockRequisition?: StockRequisition | null;
+  initialLineItems?: StockRequisitionInitialLineItem[];
+  initialActiveTab?: "general" | "items";
 };
 
 const STOCK_REQUISITION_COST_CAPABILITY_KEYS = [
@@ -123,6 +129,8 @@ export function StockRequisitionFormDialog({
   open,
   onOpenChange,
   stockRequisition,
+  initialLineItems = EMPTY_INITIAL_LINE_ITEMS,
+  initialActiveTab = "general",
 }: StockRequisitionFormDialogProps) {
   const t = useTranslations("stockRequisitionForm");
   const tValidation = useTranslations("stockRequisitionValidation");
@@ -289,15 +297,24 @@ export function StockRequisitionFormDialog({
       setLineItems(formLineItems);
     } else if (open) {
       form.reset(defaultValues);
-      setLineItems([]);
+      setLineItems(initialLineItems);
       setSelectedItemId("");
       setSelectedUnitOptionId("");
       setQuantity("");
       setPrice("");
       setAddItemError("");
-      setActiveTab("general");
+      setActiveTab(initialLineItems.length > 0 ? initialActiveTab : "general");
     }
-  }, [open, stockRequisition, form, defaultValues, currentCurrency.code, canViewUnitCost]);
+  }, [
+    open,
+    stockRequisition,
+    form,
+    defaultValues,
+    currentCurrency.code,
+    canViewUnitCost,
+    initialLineItems,
+    initialActiveTab,
+  ]);
 
   useEffect(() => {
     if (!selectedItemDetail) {

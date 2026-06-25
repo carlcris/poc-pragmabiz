@@ -124,7 +124,7 @@ export default function StockRequestDetailPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Stock Request</h1>
+            <h1 className="text-3xl font-bold">Stock Transfer</h1>
             <p className="text-muted-foreground">{request?.request_code || id}</p>
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function StockRequestDetailPage() {
       ) : error ? (
         <Card>
           <CardContent className="py-8 text-center text-destructive">
-            Failed to load stock request.
+            Failed to load stock transfer.
           </CardContent>
         </Card>
       ) : !request ? (
@@ -335,7 +335,7 @@ export default function StockRequestDetailPage() {
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject Stock Request</AlertDialogTitle>
+            <AlertDialogTitle>Reject Stock Transfer</AlertDialogTitle>
             <AlertDialogDescription>
               Provide a reason for rejecting this request.
             </AlertDialogDescription>

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Notification System provides real-time workflow notifications to users throughout the ERP system. It enables event-driven communication for critical business processes, ensuring users are alerted to actions requiring their attention (approvals, deliveries, stock requests, etc.).
+The Notification System provides real-time workflow notifications to users throughout the ERP system. It enables event-driven communication for critical business processes, ensuring users are alerted to actions requiring their attention (approvals, deliveries, stock transfers, etc.).
 
 ## Key Features
 
@@ -146,8 +146,8 @@ async function notifyBusinessUnits(params: {
 ```typescript
 await notifyBusinessUnits({
   businessUnitIds: ['bu-uuid-1'],
-  title: 'Stock Request Submitted',
-  message: 'Stock request #SR-0045 requires approval',
+  title: 'Stock Transfer Submitted',
+  message: 'Stock transfer #SR-0045 requires approval',
   type: 'warning',
   excludeUserIds: [currentUserId], // Don't notify the person who created it
   metadata: {
@@ -322,19 +322,19 @@ await notifyUsers({
 })
 ```
 
-### Workflow 2: Notify Business Unit on Stock Request Submission
+### Workflow 2: Notify Business Unit on Stock Transfer Submission
 
-**Trigger**: Stock request is submitted for approval
+**Trigger**: Stock transfer is submitted for approval
 
 **Implementation**:
 ```typescript
 import { notifyBusinessUnits } from '@/app/api/_lib/workflow-notifications'
 
-// After stock request is submitted
+// After stock transfer is submitted
 await notifyBusinessUnits({
   businessUnitIds: [stockRequest.business_unit_id],
-  title: 'Stock Request Requires Approval',
-  message: `Stock request ${stockRequestNumber} submitted by ${userName} requires approval`,
+  title: 'Stock Transfer Requires Approval',
+  message: `Stock transfer ${stockRequestNumber} submitted by ${userName} requires approval`,
   type: 'warning',
   excludeUserIds: [currentUserId], // Don't notify the submitter
   metadata: {
@@ -481,11 +481,11 @@ interface NotificationItemProps {
 - Pick list status changed → Notify warehouse team
 - Pick list completed → Notify dispatch team
 
-### 2. Stock Request Workflows
-- Stock request submitted → Notify approvers in business unit
-- Stock request approved → Notify requester
-- Stock request rejected → Notify requester with reason
-- Stock request fulfilled → Notify requester
+### 2. Stock Transfer Workflows
+- Stock transfer submitted → Notify approvers in business unit
+- Stock transfer approved → Notify requester
+- Stock transfer rejected → Notify requester with reason
+- Stock transfer fulfilled → Notify requester
 
 ### 3. Delivery Note Workflows
 - Delivery note dispatched → Notify receiving warehouse
