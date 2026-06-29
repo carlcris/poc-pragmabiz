@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -16,7 +17,7 @@ const normalizeMaxQuantity = (value: unknown): number | null | undefined => {
 };
 
 // PATCH /api/items/[id]/warehouse-settings - Update warehouse-scoped item thresholds.
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "edit");
     if (unauthorized) return unauthorized;
@@ -87,7 +88,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { data: warehouse, error: warehouseError } = await warehouseQuery.maybeSingle();
 
     if (warehouseError) {
-      console.error("Failed to check warehouse before item warehouse settings update", warehouseError);
+      console.error(
+        "Failed to check warehouse before item warehouse settings update",
+        warehouseError
+      );
       return NextResponse.json({ error: "Failed to update warehouse settings" }, { status: 500 });
     }
 
@@ -146,3 +150,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "items",
+  route: "/api/items/[id]/warehouse-settings",
+});

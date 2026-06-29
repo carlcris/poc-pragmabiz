@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -7,7 +8,7 @@ type RouteContext = {
 };
 
 // POST /api/stock-requests/[id]/receive - deprecated in DN flow
-export async function POST(_request: NextRequest, context: RouteContext) {
+async function POSTHandler(_request: NextRequest, context: RouteContext) {
   const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
   if (unauthorized) return unauthorized;
 
@@ -20,3 +21,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
     { status: 410 }
   );
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "receive",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests/[id]/receive",
+});

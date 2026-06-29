@@ -1,10 +1,11 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // PATCH /api/items/[id]/default-location - Set default location per warehouse for an item
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "edit");
     if (unauthorized) return unauthorized;
@@ -119,3 +120,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "items",
+  route: "/api/items/[id]/default-location",
+});

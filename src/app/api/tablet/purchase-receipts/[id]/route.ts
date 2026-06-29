@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -8,7 +9,7 @@ type RouteContext = {
 };
 
 // GET /api/tablet/purchase-receipts/[id] - Get single receipt with items
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.PURCHASE_RECEIPTS, "view");
     if (unauthorized) return unauthorized;
@@ -184,3 +185,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "purchase_receipts",
+  route: "/api/tablet/purchase-receipts/[id]",
+});

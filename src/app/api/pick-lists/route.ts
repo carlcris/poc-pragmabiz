@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -73,7 +74,7 @@ const toCreatePickListError = (error: unknown) => {
 };
 
 // GET /api/pick-lists
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
@@ -142,7 +143,10 @@ export async function GET(request: NextRequest) {
       .range(from, to);
 
     if (status) {
-      query = status === "in_progress" ? query.in("status", ["in_progress", "paused"]) : query.eq("status", status);
+      query =
+        status === "in_progress"
+          ? query.in("status", ["in_progress", "paused"])
+          : query.eq("status", status);
     }
     if (dnId) {
       query = query.eq("dn_id", dnId);
@@ -174,7 +178,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/pick-lists
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -298,3 +302,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create pick list" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "pick_lists",
+  route: "/api/pick-lists",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "pick_lists",
+  route: "/api/pick-lists",
+});

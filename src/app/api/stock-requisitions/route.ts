@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -26,7 +27,7 @@ const validateCurrency = (currency: string) =>
   /^[A-Z]{3}$/.test(currency) ? null : "Currency must be a 3-letter currency code";
 
 // GET /api/stock-requisitions
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "view");
     if (unauthorized) return unauthorized;
@@ -305,7 +306,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/stock-requisitions
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "create");
     if (unauthorized) return unauthorized;
@@ -446,3 +447,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_requisitions",
+  route: "/api/stock-requisitions",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "stock_requisitions",
+  route: "/api/stock-requisitions",
+});

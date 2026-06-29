@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -5,7 +6,7 @@ import { RESOURCES } from "@/constants/resources";
 
 // POST /api/load-lists/[id]/link-requisitions
 // Link load list items to stock requisition items
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
     if (unauthorized) return unauthorized;
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 // GET /api/load-lists/[id]/link-requisitions
 // Get linked requisitions for a load list
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
     if (unauthorized) return unauthorized;
@@ -274,3 +275,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "link_requisitions",
+  resourceType: "load_lists",
+  route: "/api/load-lists/[id]/link-requisitions",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "link_requisitions",
+  resourceType: "load_lists",
+  route: "/api/load-lists/[id]/link-requisitions",
+});

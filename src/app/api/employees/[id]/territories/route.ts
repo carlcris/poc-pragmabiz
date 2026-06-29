@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -10,7 +11,7 @@ type RouteContext = {
 };
 
 // GET /api/employees/[id]/territories - Get employee territories
-export const GET = async (req: NextRequest, context: RouteContext) => {
+const GETHandler = async (req: NextRequest, context: RouteContext) => {
   try {
     await requirePermission(RESOURCES.EMPLOYEES, "view");
     const { id } = await context.params;
@@ -38,7 +39,7 @@ export const GET = async (req: NextRequest, context: RouteContext) => {
 };
 
 // POST /api/employees/[id]/territories - Add territory to employee
-export const POST = async (req: NextRequest, context: RouteContext) => {
+const POSTHandler = async (req: NextRequest, context: RouteContext) => {
   try {
     await requirePermission(RESOURCES.EMPLOYEES, "edit");
     const { id } = await context.params;
@@ -133,3 +134,14 @@ export const POST = async (req: NextRequest, context: RouteContext) => {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 };
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "employees",
+  route: "/api/employees/[id]/territories",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "employees",
+  route: "/api/employees/[id]/territories",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -72,7 +73,7 @@ const getActualQty = (transactionType: string | null | undefined, quantity: numb
   return quantity;
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "view");
     if (unauthorized) return unauthorized;
@@ -260,3 +261,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch stock ledger" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_ledger",
+  route: "/api/stock-ledger",
+});

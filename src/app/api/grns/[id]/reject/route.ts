@@ -1,10 +1,11 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/grns/[id]/reject - Reject GRN
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
     const { id } = await params;
@@ -83,3 +84,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "reject",
+  resourceType: "grns",
+  route: "/api/grns/[id]/reject",
+});

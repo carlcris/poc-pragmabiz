@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -17,10 +18,11 @@ type CompletePickListBody = {
   pickRows?: unknown[];
 };
 
-const safeError = (message: string, status: number) => NextResponse.json({ error: message }, { status });
+const safeError = (message: string, status: number) =>
+  NextResponse.json({ error: message }, { status });
 
 // POST /api/pick-lists/[id]/complete
-export async function POST(request: NextRequest, context: RouteContext) {
+async function POSTHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -74,3 +76,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return safeError("Unable to complete pick list", 500);
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "complete",
+  resourceType: "pick_lists",
+  route: "/api/pick-lists/[id]/complete",
+});

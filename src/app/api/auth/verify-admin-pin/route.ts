@@ -1,7 +1,8 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const supabase = await createClient();
 
@@ -36,3 +37,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "verify_admin_pin",
+  resourceType: "auth",
+  route: "/api/auth/verify-admin-pin",
+});

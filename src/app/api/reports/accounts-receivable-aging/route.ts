@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -129,7 +130,7 @@ const transformRow = (
   };
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
     if (unauthorized) return unauthorized;
@@ -217,3 +218,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "accounts_receivable_aging",
+  route: "/api/reports/accounts-receivable-aging",
+});

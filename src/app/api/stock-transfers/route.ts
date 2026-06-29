@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -50,7 +51,7 @@ type StockTransferItemInput = {
   uomName?: string | null;
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Require 'stock_transfers' view permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, "view");
@@ -190,7 +191,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Require 'stock_transfers' create permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, "create");
@@ -343,3 +344,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_transfers",
+  route: "/api/stock-transfers",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "stock_transfers",
+  route: "/api/stock-transfers",
+});

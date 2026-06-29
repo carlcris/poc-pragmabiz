@@ -1,10 +1,11 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/sales-orders/[id]/confirm - Confirm a sales order
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission first
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
@@ -72,3 +73,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "confirm",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders/[id]/confirm",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -5,17 +6,33 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Deprecated: packaging has been removed.
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   void request;
   return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }
 
-export async function PUT(request: NextRequest) {
+async function PUTHandler(request: NextRequest) {
   void request;
   return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }
 
-export async function DELETE(request: NextRequest) {
+async function DELETEHandler(request: NextRequest) {
   void request;
   return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "items",
+  route: "/api/items/[id]/packages/[packageId]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "items",
+  route: "/api/items/[id]/packages/[packageId]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "items",
+  route: "/api/items/[id]/packages/[packageId]",
+});

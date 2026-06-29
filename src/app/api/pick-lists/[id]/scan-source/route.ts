@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -24,7 +25,7 @@ const toNumber = (value: number | string | null | undefined) => {
 };
 
 // GET /api/pick-lists/[id]/scan-source?batchLocationSku=1234567890[&itemId=...&locationId=...&batchCode=...]
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -215,3 +216,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "pick_lists",
+  route: "/api/pick-lists/[id]/scan-source",
+});

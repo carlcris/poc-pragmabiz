@@ -5,9 +5,11 @@ This folder contains comprehensive documentation for each functional module of t
 ## Available Modules
 
 ### [00-PROJECT-OVERVIEW.md](00-PROJECT-OVERVIEW.md)
+
 **System Overview & Architecture**
 
 Start here! This document provides:
+
 - Executive summary of the ERP system
 - Technology stack details
 - System architecture diagrams
@@ -21,9 +23,11 @@ Start here! This document provides:
 ---
 
 ### [01-AUTHENTICATION-AUTHORIZATION.md](01-AUTHENTICATION-AUTHORIZATION.md)
+
 **Authentication & Authorization Module**
 
 Complete guide to user authentication and permission system:
+
 - JWT-based authentication flow
 - Session management
 - Role-Based Access Control (RBAC)
@@ -35,6 +39,7 @@ Complete guide to user authentication and permission system:
 - Database schema for users, roles, permissions
 
 **Use this when**:
+
 - Implementing login/logout
 - Adding permission checks
 - Creating new roles
@@ -46,9 +51,11 @@ Complete guide to user authentication and permission system:
 ---
 
 ### [02-INVENTORY-MANAGEMENT.md](02-INVENTORY-MANAGEMENT.md)
+
 **Inventory Management Module**
 
 Comprehensive inventory tracking and warehouse management:
+
 - Item master data management
 - Multi-warehouse inventory
 - Location-level stock tracking
@@ -61,6 +68,7 @@ Comprehensive inventory tracking and warehouse management:
 - Stock valuation using the configured default pricing tier
 
 **Use this when**:
+
 - Managing products and items
 - Tracking warehouse inventory
 - Handling stock movements
@@ -75,9 +83,11 @@ Comprehensive inventory tracking and warehouse management:
 ---
 
 ### [03-SALES-MANAGEMENT.md](03-SALES-MANAGEMENT.md)
+
 **Sales Management Module**
 
 Complete sales workflow from quotation to payment:
+
 - Customer master data
 - Quotations with partial fulfillment tracking
 - Sales orders linked to quotations
@@ -88,11 +98,13 @@ Complete sales workflow from quotation to payment:
 - Sales analytics
 
 **Sales Workflow**:
+
 ```
 Quotation → Sales Order → Delivery Note → Invoice → Payment
 ```
 
 **Use this when**:
+
 - Managing customers
 - Creating sales quotations
 - Processing sales orders
@@ -108,9 +120,11 @@ Quotation → Sales Order → Delivery Note → Invoice → Payment
 ---
 
 ### [04-PURCHASING-MANAGEMENT.md](04-PURCHASING-MANAGEMENT.md)
+
 **Purchasing Management Module**
 
 Vendor management and procurement workflow:
+
 - Supplier master data (company-scoped as of June 2025)
 - Purchase orders with approval workflow
 - Purchase receipts (tablet-optimized)
@@ -121,11 +135,13 @@ Vendor management and procurement workflow:
 - Purchase price tracking for inventory costing
 
 **Purchasing Workflow**:
+
 ```
 Stock Requisition → Load List → Purchase Order → GRN → Purchase Receipt
 ```
 
 **Use this when**:
+
 - Managing suppliers and vendors
 - Creating purchase orders
 - Receiving goods from suppliers
@@ -138,9 +154,11 @@ Stock Requisition → Load List → Purchase Order → GRN → Purchase Receipt
 ---
 
 ### [05-ACCOUNTING.md](05-ACCOUNTING.md)
+
 **Accounting Integration Module**
 
 Financial management and GL integration:
+
 - Chart of accounts with hierarchical structure
 - Journal entries with validation
 - General ledger transaction tracking
@@ -152,6 +170,7 @@ Financial management and GL integration:
   - Point of Sale transactions
 
 **Use this when**:
+
 - Managing chart of accounts
 - Creating manual journal entries
 - Reviewing general ledger
@@ -166,9 +185,11 @@ Financial management and GL integration:
 ---
 
 ### [06-MANUFACTURING.md](06-MANUFACTURING.md)
+
 **Manufacturing Module**
 
 Production and transformation management:
+
 - Bill of Materials (BOM) templates
 - Transformation orders (stock transformations/production)
 - Cost allocation and redistribution
@@ -178,6 +199,7 @@ Production and transformation management:
 - Atomic transactional operations
 
 **Use this when**:
+
 - Creating BOM templates
 - Executing production runs
 - Performing stock transformations
@@ -193,9 +215,11 @@ Production and transformation management:
 ---
 
 ### [07-REPORTING-ANALYTICS.md](07-REPORTING-ANALYTICS.md)
+
 **Reporting & Analytics Module**
 
 Business intelligence and reporting:
+
 - Real-time dashboard widgets with KPIs
 - Inventory reports (valuation, aging, movement, location/batch details)
 - Sales analytics (by employee, location, time period, customer)
@@ -206,6 +230,7 @@ Business intelligence and reporting:
 - Export capabilities (Excel, PDF, CSV)
 
 **Use this when**:
+
 - Building dashboard widgets
 - Generating operational reports
 - Creating analytical insights
@@ -218,9 +243,11 @@ Business intelligence and reporting:
 ---
 
 ### [08-POINT-OF-SALE.md](08-POINT-OF-SALE.md)
+
 **Point of Sale Module**
 
 Retail transaction system for cash sales:
+
 - Cash sales transactions with multi-payment methods
 - Receipt generation (print and email)
 - Real-time inventory integration
@@ -232,6 +259,7 @@ Retail transaction system for cash sales:
 - Multi-station support
 
 **Use this when**:
+
 - Implementing POS sales
 - Processing cash transactions
 - Generating receipts
@@ -246,9 +274,11 @@ Retail transaction system for cash sales:
 ---
 
 ### [09-MOBILE-APP.md](09-MOBILE-APP.md)
+
 **Mobile App Module**
 
 Native React Native Expo mobile app for warehouse operations:
+
 - React Native Expo mobile app (iOS/Android)
 - Warehouse picking workflows
 - GRN receiving on mobile devices
@@ -259,6 +289,7 @@ Native React Native Expo mobile app for warehouse operations:
 - GPS tracking for deliveries
 
 **Use this when**:
+
 - Building mobile warehouse features
 - Creating picking workflows
 - Developing mobile receiving
@@ -272,9 +303,11 @@ Native React Native Expo mobile app for warehouse operations:
 ---
 
 ### [10-NOTIFICATIONS.md](10-NOTIFICATIONS.md)
+
 **Notification System Module**
 
 Real-time workflow notifications and user alerts:
+
 - Event-driven workflow notifications
 - Business unit broadcasting
 - Read/unread status tracking
@@ -285,6 +318,7 @@ Real-time workflow notifications and user alerts:
 - Approval and status change notifications
 
 **Use this when**:
+
 - Implementing workflow notifications
 - Notifying users of business events
 - Broadcasting to business units
@@ -294,6 +328,31 @@ Real-time workflow notifications and user alerts:
 **Key APIs**: `/api/notifications/*`
 
 **Key Services**: `workflow-notifications.ts`
+
+---
+
+### [11-USER-ACTIVITY-LOGGING.md](11-USER-ACTIVITY-LOGGING.md)
+
+**User Activity Logging**
+
+Implemented internal structured activity logging:
+
+- API read and mutation coverage
+- Sanitized mutation payload capture
+- User, tenant, route, action, entity, and outcome context
+- System and anonymous actor support
+- Ninety-day retention
+- Mandatory feature post-flight coverage
+
+**Use this when**:
+
+- Adding or changing API routes
+- Defining auditable business actions
+- Handling sensitive request payloads
+- Adding transactional workflow RPCs
+- Investigating internal user activity
+
+**Implementation Plan**: `docs/plans/app-wide-user-activity-logging-plan.md`
 
 ---
 
@@ -317,12 +376,14 @@ Each module document follows this consistent structure:
 ## How to Use This Documentation
 
 ### For New Developers
+
 1. Start with [00-PROJECT-OVERVIEW.md](00-PROJECT-OVERVIEW.md)
 2. Read [01-AUTHENTICATION-AUTHORIZATION.md](01-AUTHENTICATION-AUTHORIZATION.md)
 3. Focus on the module(s) you'll be working on
 4. Reference as needed during development
 
 ### For Bug Fixes
+
 1. Identify which module the bug is in
 2. Read that module's documentation
 3. Check the **API Reference** for endpoint details
@@ -330,6 +391,7 @@ Each module document follows this consistent structure:
 5. Check **Troubleshooting** section
 
 ### For New Features
+
 1. Identify which module(s) are affected
 2. Read module documentation thoroughly
 3. Review **Common Workflows** for similar processes
@@ -337,6 +399,7 @@ Each module document follows this consistent structure:
 5. Look at similar existing code as examples
 
 ### For Understanding Workflows
+
 1. Find the module that owns the workflow
 2. Read **Core Concepts** section
 3. Follow **Common Workflows** step-by-step
@@ -347,6 +410,7 @@ Each module document follows this consistent structure:
 ### When to Update Module Documentation
 
 Update module documentation when:
+
 - Adding new API endpoints
 - Modifying database schema
 - Changing workflows

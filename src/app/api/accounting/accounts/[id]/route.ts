@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Single Account API Routes
  *
@@ -21,7 +22,7 @@ type RouteContext = {
  * GET /api/accounting/accounts/[id]
  * Get a single account by ID
  */
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "view");
     if (unauthorized) return unauthorized;
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * PUT /api/accounting/accounts/[id]
  * Update an account
  */
-export async function PUT(request: NextRequest, context: RouteContext) {
+async function PUTHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "edit");
     if (unauthorized) return unauthorized;
@@ -160,7 +161,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
  * DELETE /api/accounting/accounts/[id]
  * Soft delete an account (only if not a system account and has no transactions)
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function DELETEHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "delete");
     if (unauthorized) return unauthorized;
@@ -232,3 +233,19 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "accounts",
+  route: "/api/accounting/accounts/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "accounts",
+  route: "/api/accounting/accounts/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "accounts",
+  route: "/api/accounting/accounts/[id]",
+});

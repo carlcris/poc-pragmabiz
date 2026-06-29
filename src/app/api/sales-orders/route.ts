@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SalesOrder, SalesOrderLineItem, CreateSalesOrderRequest } from "@/types/sales-order";
@@ -443,7 +444,7 @@ function getLineManufacturingStatus(
 }
 
 // GET /api/sales-orders - List sales orders with filters
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "view");
@@ -770,7 +771,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/sales-orders - Create new sales order
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "create");
@@ -821,26 +822,24 @@ export async function POST(request: NextRequest) {
     let totalDiscount = 0;
     let totalTax = 0;
 
-    let itemsWithCalculations: CalculatedSalesOrderLineItem[] = orderData.lineItems.map(
-      (item) => {
-        const itemSubtotal = Number(item.quantity) * item.unitPrice;
-        const discountAmount = (itemSubtotal * (item.discount || 0)) / 100;
-        const taxableAmount = itemSubtotal - discountAmount;
-        const taxAmount = (taxableAmount * (item.taxRate || 0)) / 100;
-        const lineTotal = taxableAmount + taxAmount;
+    let itemsWithCalculations: CalculatedSalesOrderLineItem[] = orderData.lineItems.map((item) => {
+      const itemSubtotal = Number(item.quantity) * item.unitPrice;
+      const discountAmount = (itemSubtotal * (item.discount || 0)) / 100;
+      const taxableAmount = itemSubtotal - discountAmount;
+      const taxAmount = (taxableAmount * (item.taxRate || 0)) / 100;
+      const lineTotal = taxableAmount + taxAmount;
 
-        subtotal += itemSubtotal;
-        totalDiscount += discountAmount;
-        totalTax += taxAmount;
+      subtotal += itemSubtotal;
+      totalDiscount += discountAmount;
+      totalTax += taxAmount;
 
-        return {
-          ...item,
-          discountAmount,
-          taxAmount,
-          lineTotal,
-        };
-      }
-    );
+      return {
+        ...item,
+        discountAmount,
+        taxAmount,
+        lineTotal,
+      };
+    });
     const normalized = await normalizeQuotationLinkedItems(
       supabase,
       orderData.customerId,
@@ -1131,3 +1130,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders",
+});

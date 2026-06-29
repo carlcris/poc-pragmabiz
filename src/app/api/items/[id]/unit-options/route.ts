@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import {
@@ -86,7 +87,7 @@ const listUnitOptions = async (
   );
 };
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: itemId } = await params;
     const { supabase } = await createServerClientWithBU();
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: itemId } = await params;
     const body = (await request.json()) as {
@@ -177,7 +178,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       if (unsetDefaultError) {
         console.error("Error unsetting default item unit option:", unsetDefaultError);
-        return NextResponse.json({ error: "Failed to update default unit option" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to update default unit option" },
+          { status: 500 }
+        );
       }
     }
 
@@ -226,3 +230,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Failed to create item unit option" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "items",
+  route: "/api/items/[id]/unit-options",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "items",
+  route: "/api/items/[id]/unit-options",
+});

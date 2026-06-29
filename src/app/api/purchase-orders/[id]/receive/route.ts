@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { postAPBill } from "@/services/accounting/apPosting";
@@ -42,7 +43,7 @@ type PurchaseOrderReceiveBody = {
 
 // POST /api/purchase-orders/[id]/receive
 // Creates a purchase receipt from an approved purchase order
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.PURCHASE_ORDERS, "edit");
     const { id: purchaseOrderId } = await params;
@@ -461,3 +462,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "receive",
+  resourceType: "purchase_orders",
+  route: "/api/purchase-orders/[id]/receive",
+});

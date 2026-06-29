@@ -1,9 +1,10 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-export async function GET() {
+async function GETHandler() {
   try {
     // Check permission first
     const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "view");
@@ -77,7 +78,7 @@ export async function GET() {
 }
 
 // Endpoint to assign/unassign van warehouse to user
-export async function PATCH(request: Request) {
+async function PATCHHandler(request: Request) {
   try {
     // Check permission first
     const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "edit");
@@ -136,3 +137,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "users",
+  route: "/api/users/me/van-warehouse",
+});
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "users",
+  route: "/api/users/me/van-warehouse",
+});

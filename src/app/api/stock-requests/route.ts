@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
@@ -101,7 +102,7 @@ const validateSelectedItemBatches = async (
 };
 
 // GET /api/stock-requests - List stock requests
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Require 'stock_requests' view permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
@@ -378,7 +379,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/stock-requests - Create new stock request
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Require 'stock_requests' create permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "create");
@@ -595,3 +596,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests",
+});

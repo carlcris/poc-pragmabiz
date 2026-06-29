@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -148,11 +149,11 @@ const normalizeSearch = (value: string | null) => {
   return normalized.length > 0 ? normalized : null;
 };
 
-const toOne = <T,>(value: T | T[] | null | undefined): T | null =>
+const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/stock-adjustments - List stock adjustments
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Require 'stock_adjustments' view permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "view");
@@ -465,7 +466,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/stock-adjustments - Create new stock adjustment
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Require 'stock_adjustments' create permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "create");
@@ -640,3 +641,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_adjustments",
+  route: "/api/stock-adjustments",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "stock_adjustments",
+  route: "/api/stock-adjustments",
+});

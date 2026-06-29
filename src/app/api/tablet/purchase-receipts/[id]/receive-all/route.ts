@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -9,7 +10,7 @@ type RouteContext = {
 
 // POST /api/tablet/purchase-receipts/[id]/receive-all
 // Auto-fill all line items with expected quantities
-export async function POST(request: NextRequest, context: RouteContext) {
+async function POSTHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.PURCHASE_RECEIPTS, "edit");
     if (unauthorized) return unauthorized;
@@ -133,3 +134,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "receive_all",
+  resourceType: "purchase_receipts",
+  route: "/api/tablet/purchase-receipts/[id]/receive-all",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { createTransformationOrderSchema } from "@/lib/validations/transformation-order";
@@ -33,7 +34,7 @@ type ItemCostRow = {
 };
 
 // GET /api/transformations/orders - List transformation orders
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "view");
     if (unauthorized) return unauthorized;
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/transformations/orders - Create transformation order from template
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "create");
     if (unauthorized) return unauthorized;
@@ -379,3 +380,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "transformations",
+  route: "/api/transformations/orders",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "transformations",
+  route: "/api/transformations/orders",
+});

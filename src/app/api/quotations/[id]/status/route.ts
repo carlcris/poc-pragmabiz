@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -24,7 +25,7 @@ const getInvalidTransitionMessage = (currentStatus: string, nextStatus: string) 
 };
 
 // PATCH /api/quotations/[id]/status
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.SALES_QUOTATIONS, "edit");
 
@@ -99,3 +100,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "change_status",
+  resourceType: "quotations",
+  route: "/api/quotations/[id]/status",
+});

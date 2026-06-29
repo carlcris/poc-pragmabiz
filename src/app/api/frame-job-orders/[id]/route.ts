@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -158,7 +159,7 @@ const fetchRows = async <T>(query: QueryBuilder): Promise<{ data: T[] | null; er
   return result;
 };
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.SALES_QUOTATIONS, "view");
     if (unauthorized) return unauthorized;
@@ -598,3 +599,9 @@ const buildReservation = (reservation: DbReservation) => {
     releasedAt: reservation.released_at,
   };
 };
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "frame_job_orders",
+  route: "/api/frame-job-orders/[id]",
+});

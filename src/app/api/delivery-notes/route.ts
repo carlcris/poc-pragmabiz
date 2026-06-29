@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -30,7 +31,7 @@ const parsePositiveInt = (value: string | null, fallback: number) => {
 };
 
 // GET /api/delivery-notes
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest) {
     const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
     const requestingWarehouseId = request.nextUrl.searchParams.get("requestingWarehouseId");
     const search = request.nextUrl.searchParams.get("search")?.trim();
-    const hasPagination = request.nextUrl.searchParams.has("page") || request.nextUrl.searchParams.has("limit");
+    const hasPagination =
+      request.nextUrl.searchParams.has("page") || request.nextUrl.searchParams.has("limit");
     const page = parsePositiveInt(request.nextUrl.searchParams.get("page"), 1);
     const limit = Math.min(parsePositiveInt(request.nextUrl.searchParams.get("limit"), 50), 100);
     const from = (page - 1) * limit;
@@ -135,7 +137,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/delivery-notes
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -401,3 +403,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "delivery_notes",
+  route: "/api/delivery-notes",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "delivery_notes",
+  route: "/api/delivery-notes",
+});

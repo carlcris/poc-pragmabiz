@@ -31,11 +31,20 @@ Run commands from the repo root unless a nested instruction says otherwise.
 
 - TypeScript only. Prefer `type` over `interface`. Avoid `any`; use `unknown` and narrow explicitly.
 - Prefer named exports. Page files may default-export.
+- Name new files and symbols for their actual domain responsibility. Use descriptive kebab-case for
+  non-component TypeScript files, PascalCase for component files, PascalCase for components, and
+  camelCase for functions and variables. Do not use unrelated or placeholder names.
 - Keep changes surgical and production-grade. Do not add speculative abstractions or temporary fallbacks unless explicitly requested.
+- Balance simplicity and efficiency in every implementation. Prefer the simplest design that meets
+  measured scale requirements; when efficiency is intentionally sacrificed, document the concrete
+  tradeoff and why it is necessary.
 - Do not add backward compatibility, legacy payload support, or version-bridging fallbacks while the app is in active development unless the user explicitly requests it. Keep contracts strict and update all current callers instead.
 - Read the relevant exports, callers, hooks, API routes, migrations, and types before editing.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
 - Never expose raw database, Supabase, or internal exception text to API clients. Log internal details server-side and return safe messages.
+- Every API route handling `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` must use the shared activity
+  logging wrapper. Mutation payloads must be sanitized and bounded; reads must log route and query
+  context without response data. Run `npm run activity-logging:check` during feature post-flight.
 - Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
 - Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
 - Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client may send one request; the API may validate/auth and call one transactional DB operation.

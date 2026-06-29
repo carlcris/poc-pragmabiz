@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { calculateInvoiceCommission } from "@/services/commission/commissionService";
@@ -6,7 +7,7 @@ import { RESOURCES } from "@/constants/resources";
 import type { CreateInvoiceRequest } from "@/types/invoice";
 
 // GET /api/invoices
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.SALES_INVOICES, "view");
     const { supabase } = await createServerClientWithBU();
@@ -231,7 +232,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/invoices
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.SALES_INVOICES, "create");
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
@@ -387,3 +388,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "invoices",
+  route: "/api/invoices",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "invoices",
+  route: "/api/invoices",
+});

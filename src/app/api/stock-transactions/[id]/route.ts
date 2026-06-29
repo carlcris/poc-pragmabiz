@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -31,7 +32,7 @@ type StockTransactionItemRow = {
 };
 
 // GET /api/stock-transactions/[id]
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Require 'stock_transactions' view permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "view");
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/stock-transactions/[id]
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -202,3 +203,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "stock_transactions",
+  route: "/api/stock-transactions/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "stock_transactions",
+  route: "/api/stock-transactions/[id]",
+});

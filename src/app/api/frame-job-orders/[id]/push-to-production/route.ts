@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAnyPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -9,7 +10,7 @@ type PushToProductionResult = {
   manufacturing_order_code: string;
 };
 
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requireAnyPermission([
       [RESOURCES.MANUFACTURING, "create"],
@@ -59,3 +60,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "push_to_production",
+  resourceType: "frame_job_orders",
+  route: "/api/frame-job-orders/[id]/push-to-production",
+});

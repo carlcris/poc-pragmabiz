@@ -1,7 +1,8 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { supabase } = await createServerClientWithBU();
     const {
@@ -36,3 +37,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "mark_read",
+  resourceType: "notifications",
+  route: "/api/notifications/[id]/read",
+});

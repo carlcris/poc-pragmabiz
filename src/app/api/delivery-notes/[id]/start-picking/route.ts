@@ -1,9 +1,10 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/delivery-notes/[id]/start-picking
-export async function POST() {
+async function POSTHandler() {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -19,3 +20,9 @@ export async function POST() {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "start_picking",
+  resourceType: "delivery_notes",
+  route: "/api/delivery-notes/[id]/start-picking",
+});

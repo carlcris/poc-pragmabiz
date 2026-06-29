@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import { requireAnyPermission } from "@/lib/auth";
@@ -71,7 +72,7 @@ const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/items/[id]/locations - List item quantities by warehouse location
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requireAnyPermission([
       [RESOURCES.VIEW_LOCATION_STOCK, "view"],
@@ -248,35 +249,33 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       }
 
       const key = `${row.warehouse_id}:${row.location_id}`;
-      const existing =
-        locationsByKey.get(key) ??
-        {
-          id: key,
-          itemId: row.item_id,
-          warehouseId: row.warehouse_id,
-          locationId: row.location_id,
-          warehouseCode: warehouse?.warehouse_code || "",
-          warehouseName: warehouse?.warehouse_name || "",
-          locationCode: location?.code || "",
-          locationName: location?.name || "",
-          locationType: location?.location_type || "",
-          qtyOnHand: 0,
-          qtyReserved: 0,
-          qtyAvailable: 0,
-          maxQuantity: maxQuantityMap.get(row.warehouse_id) ?? null,
-          inTransit: inTransitMap.get(row.warehouse_id) || 0,
-          estimatedArrivalDate: estimatedArrivalMap.get(row.warehouse_id) || null,
-          isDefault: defaultLocationId === row.location_id,
-          defaultLocationId,
-          batches: [] as Array<{
-            id: string;
-            batchCode: string;
-            receivedAt: string;
-            qtyOnHand: number;
-            qtyReserved: number;
-            qtyAvailable: number;
-          }>,
-        };
+      const existing = locationsByKey.get(key) ?? {
+        id: key,
+        itemId: row.item_id,
+        warehouseId: row.warehouse_id,
+        locationId: row.location_id,
+        warehouseCode: warehouse?.warehouse_code || "",
+        warehouseName: warehouse?.warehouse_name || "",
+        locationCode: location?.code || "",
+        locationName: location?.name || "",
+        locationType: location?.location_type || "",
+        qtyOnHand: 0,
+        qtyReserved: 0,
+        qtyAvailable: 0,
+        maxQuantity: maxQuantityMap.get(row.warehouse_id) ?? null,
+        inTransit: inTransitMap.get(row.warehouse_id) || 0,
+        estimatedArrivalDate: estimatedArrivalMap.get(row.warehouse_id) || null,
+        isDefault: defaultLocationId === row.location_id,
+        defaultLocationId,
+        batches: [] as Array<{
+          id: string;
+          batchCode: string;
+          receivedAt: string;
+          qtyOnHand: number;
+          qtyReserved: number;
+          qtyAvailable: number;
+        }>,
+      };
 
       existing.qtyOnHand += toNumber(row.qty_on_hand);
       existing.qtyReserved += toNumber(row.qty_reserved);
@@ -308,3 +307,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "items",
+  route: "/api/items/[id]/locations",
+});

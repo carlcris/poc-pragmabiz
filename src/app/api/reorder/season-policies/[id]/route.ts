@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -62,15 +63,14 @@ type UnitOptionSnapshot = {
   qty_per_unit: number | string;
 };
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const toNumber = (value: unknown) => {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const unwrapRelation = <T,>(value: T | T[] | null): T | null =>
+const unwrapRelation = <T>(value: T | T[] | null): T | null =>
   Array.isArray(value) ? value[0] || null : value;
 
 const toPolicyResponse = (row: DbReorderSeasonItemPolicy) => {
@@ -132,10 +132,7 @@ const toPolicyResponse = (row: DbReorderSeasonItemPolicy) => {
   };
 };
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "edit");
     if (unauthorized) return unauthorized;
@@ -176,8 +173,14 @@ export async function PATCH(
         .maybeSingle();
 
       if (existingPolicyError) {
-        console.error("Error resolving seasonal reorder policy before update:", existingPolicyError);
-        return NextResponse.json({ error: "Failed to update seasonal reorder policy" }, { status: 500 });
+        console.error(
+          "Error resolving seasonal reorder policy before update:",
+          existingPolicyError
+        );
+        return NextResponse.json(
+          { error: "Failed to update seasonal reorder policy" },
+          { status: 500 }
+        );
       }
 
       if (!existingPolicy) {
@@ -197,11 +200,17 @@ export async function PATCH(
 
       if (unitOptionError) {
         console.error("Error resolving seasonal reorder policy unit option:", unitOptionError);
-        return NextResponse.json({ error: "Failed to update seasonal reorder policy" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to update seasonal reorder policy" },
+          { status: 500 }
+        );
       }
 
       if (!unitOption) {
-        return NextResponse.json({ error: "Selected unit is not available for this item" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Selected unit is not available for this item" },
+          { status: 400 }
+        );
       }
 
       const unitSnapshot = unitOption as UnitOptionSnapshot;
@@ -282,7 +291,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -329,3 +338,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "reorder",
+  route: "/api/reorder/season-policies/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "reorder",
+  route: "/api/reorder/season-policies/[id]",
+});

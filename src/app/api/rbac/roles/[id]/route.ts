@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
@@ -37,7 +38,7 @@ type RoleWithPermissions = RoleRow & {
 };
 
 // GET /api/rbac/roles/[id] - Get single role with permissions
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'roles' view permission
     const unauthorized = await requirePermission(RESOURCES.ROLES, "view");
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // PUT /api/rbac/roles/[id] - Update role
-export async function PUT(request: NextRequest, context: RouteContext) {
+async function PUTHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'roles' edit permission
     const unauthorized = await requirePermission(RESOURCES.ROLES, "edit");
@@ -210,7 +211,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/rbac/roles/[id] - Delete role
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function DELETEHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'roles' delete permission
     const unauthorized = await requirePermission(RESOURCES.ROLES, "delete");
@@ -294,3 +295,19 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "roles",
+  route: "/api/rbac/roles/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "roles",
+  route: "/api/rbac/roles/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "roles",
+  route: "/api/rbac/roles/[id]",
+});

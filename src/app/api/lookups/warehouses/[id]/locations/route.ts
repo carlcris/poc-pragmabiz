@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireLookupDataAccess } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -18,7 +19,7 @@ const normalizeSearch = (raw: string | null) => {
   return value ? value : null;
 };
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES);
     if (unauthorized) return unauthorized;
@@ -95,3 +96,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "lookups",
+  route: "/api/lookups/warehouses/[id]/locations",
+});

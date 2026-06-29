@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Dashboard Widgets API
  *
@@ -17,7 +18,7 @@ import { getUserCapabilities, hasCapability } from "@/services/permissions/permi
  * GET /api/analytics/dashboard/widgets
  * Get dashboard widget data including today's sales, top agent, and recent activity
  */
-export async function GET() {
+async function GETHandler() {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
@@ -540,3 +541,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "dashboard",
+  route: "/api/analytics/dashboard/widgets",
+});

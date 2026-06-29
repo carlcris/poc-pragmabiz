@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
@@ -315,7 +316,7 @@ const fetchCurrentPriceTiersByItemId = async (
     return priceTiersByItemId;
   }
 
-  for (const row of ((data || []) as DbItemPriceRow[])) {
+  for (const row of (data || []) as DbItemPriceRow[]) {
     const rows = priceTiersByItemId.get(row.item_id) || [];
     if (!rows.some((priceTier) => priceTier.priceTier === row.price_tier)) {
       rows.push(transformItemPriceRow(row));
@@ -482,7 +483,11 @@ const transformDbItem = (
     purchasePrice: Number(dbItem.purchase_price) || 0,
     importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
     importCurrency: dbItem.import_currency,
-    listPrice: resolveDefaultListPrice(Number(dbItem.sales_price) || 0, priceTiers, defaultPricingTier),
+    listPrice: resolveDefaultListPrice(
+      Number(dbItem.sales_price) || 0,
+      priceTiers,
+      defaultPricingTier
+    ),
     defaultPriceTier: defaultPricingTier,
     priceTiers,
     reorderLevel: Number(dbItem.reorder_level) || 0,
@@ -495,7 +500,7 @@ const transformDbItem = (
   };
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // const unauthorized = await requireLookupDataAccess(RESOURCES.ITEMS);
     // if (unauthorized) return unauthorized;
@@ -801,7 +806,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "create");
     if (unauthorized) return unauthorized;
@@ -1017,3 +1022,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "items",
+  route: "/api/items",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "items",
+  route: "/api/items",
+});

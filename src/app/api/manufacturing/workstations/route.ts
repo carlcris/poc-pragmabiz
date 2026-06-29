@@ -1,10 +1,11 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextResponse } from "next/server";
 import { requireAnyPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { logQuotationError } from "../../quotations/_shared";
 
-export async function GET() {
+async function GETHandler() {
   try {
     const unauthorized = await requireAnyPermission([
       [RESOURCES.MANUFACTURING, "view"],
@@ -49,3 +50,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "manufacturing",
+  route: "/api/manufacturing/workstations",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -192,7 +193,7 @@ const fetchCurrentPriceTiers = async (
   }
 
   const priceTiers: ItemPriceTier[] = [];
-  for (const row of ((data || []) as DbItemPriceRow[])) {
+  for (const row of (data || []) as DbItemPriceRow[]) {
     if (!priceTiers.some((priceTier) => priceTier.priceTier === row.price_tier)) {
       priceTiers.push(transformItemPriceRow(row));
     }
@@ -318,7 +319,11 @@ function transformDbItem(
     purchasePrice: Number(dbItem.purchase_price) || 0,
     importCost: dbItem.import_cost == null ? null : Number(dbItem.import_cost),
     importCurrency: dbItem.import_currency,
-    listPrice: resolveDefaultListPrice(Number(dbItem.sales_price) || 0, priceTiers, defaultPricingTier),
+    listPrice: resolveDefaultListPrice(
+      Number(dbItem.sales_price) || 0,
+      priceTiers,
+      defaultPricingTier
+    ),
     defaultPriceTier: defaultPricingTier,
     priceTiers,
     reorderLevel: Number(dbItem.reorder_level) || 0,
@@ -350,7 +355,7 @@ const maskItemPricingDetails = (item: Item, canViewPricingDetails: boolean): Ite
 };
 
 // GET /api/items/[id] - Get single item
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "view");
@@ -483,7 +488,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PUT /api/items/[id] - Update item
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "edit");
@@ -772,7 +777,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/items/[id] - Soft delete item
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -831,3 +836,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "items",
+  route: "/api/items/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "items",
+  route: "/api/items/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "items",
+  route: "/api/items/[id]",
+});

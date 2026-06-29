@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -57,7 +58,7 @@ type PurchaseOrderUpdateBody = UpdatePurchaseOrderRequest;
 type PurchaseOrderItemInput = NonNullable<PurchaseOrderUpdateBody["items"]>[number];
 
 // GET /api/purchase-orders/[id]
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.PURCHASE_ORDERS, "view");
     const { id } = await params;
@@ -215,7 +216,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PUT /api/purchase-orders/[id]
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.PURCHASE_ORDERS, "edit");
     const { id } = await params;
@@ -372,7 +373,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/purchase-orders/[id]
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -446,3 +447,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "purchase_orders",
+  route: "/api/purchase-orders/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "purchase_orders",
+  route: "/api/purchase-orders/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "purchase_orders",
+  route: "/api/purchase-orders/[id]",
+});

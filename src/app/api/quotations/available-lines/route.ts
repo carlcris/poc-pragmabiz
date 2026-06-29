@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -75,7 +76,7 @@ const toPositiveInteger = (value: string | null, fallback: number, max: number) 
   return Math.min(Math.floor(parsed), max);
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.SALES_QUOTATIONS, "view");
     if (unauthorized) return unauthorized;
@@ -100,15 +101,12 @@ export async function GET(request: NextRequest) {
     const limit = toPositiveInteger(searchParams.get("limit"), 10, 50);
     const search = searchParams.get("search")?.trim() || null;
 
-    const { data, error } = await asRpcClient(supabase).rpc(
-      "get_available_sales_quotation_lines",
-      {
-        p_customer_id: customerId,
-        p_search: search,
-        p_limit: limit,
-        p_offset: (page - 1) * limit,
-      }
-    );
+    const { data, error } = await asRpcClient(supabase).rpc("get_available_sales_quotation_lines", {
+      p_customer_id: customerId,
+      p_search: search,
+      p_limit: limit,
+      p_offset: (page - 1) * limit,
+    });
 
     if (error) {
       logQuotationError("Error loading available quotation lines:", error);
@@ -240,3 +238,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "quotations",
+  route: "/api/quotations/available-lines",
+});

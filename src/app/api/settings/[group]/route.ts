@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -21,7 +22,7 @@ const VALID_GROUPS: SettingsGroupKey[] = [
  * GET /api/settings/[group]
  * Fetch all settings for a specific group
  */
-export async function GET(request: NextRequest, context: { params: Promise<{ group: string }> }) {
+async function GETHandler(request: NextRequest, context: { params: Promise<{ group: string }> }) {
   try {
     const { group } = await context.params;
 
@@ -138,7 +139,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ gro
  * PUT /api/settings/[group]
  * Update or create settings for a specific group
  */
-export async function PUT(request: NextRequest, context: { params: Promise<{ group: string }> }) {
+async function PUTHandler(request: NextRequest, context: { params: Promise<{ group: string }> }) {
   try {
     const { group } = await context.params;
 
@@ -385,3 +386,14 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ gro
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "settings",
+  route: "/api/settings/[group]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "settings",
+  route: "/api/settings/[group]",
+});

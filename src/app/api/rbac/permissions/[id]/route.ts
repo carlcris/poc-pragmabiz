@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
@@ -42,7 +43,7 @@ type RouteContext = {
 };
 
 // GET /api/rbac/permissions/[id] - Get single permission
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'permissions' view permission
     const unauthorized = await requirePermission(RESOURCES.PERMISSIONS, "view");
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // PUT /api/rbac/permissions/[id] - Update permission flags
-export async function PUT(request: NextRequest, context: RouteContext) {
+async function PUTHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'permissions' edit permission
     const unauthorized = await requirePermission(RESOURCES.PERMISSIONS, "edit");
@@ -176,7 +177,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/rbac/permissions/[id] - Delete permission
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function DELETEHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'permissions' delete permission
     const unauthorized = await requirePermission(RESOURCES.PERMISSIONS, "delete");
@@ -250,3 +251,19 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "permissions",
+  route: "/api/rbac/permissions/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "permissions",
+  route: "/api/rbac/permissions/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "permissions",
+  route: "/api/rbac/permissions/[id]",
+});

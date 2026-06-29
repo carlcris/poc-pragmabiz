@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { UserPreferences, UpdateUserPreferencesRequest } from "@/types/user-preferences";
@@ -24,7 +25,7 @@ function transformDbPreferences(dbPrefs: DbUserPreferences): UserPreferences {
 }
 
 // GET /api/user-preferences - Get current user's preferences
-export async function GET() {
+async function GETHandler() {
   try {
     const { supabase } = await createServerClientWithBU();
 
@@ -73,7 +74,7 @@ export async function GET() {
 }
 
 // PUT /api/user-preferences - Update or create user preferences
-export async function PUT(request: NextRequest) {
+async function PUTHandler(request: NextRequest) {
   try {
     const { supabase } = await createServerClientWithBU();
 
@@ -147,3 +148,14 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "user_preferences",
+  route: "/api/user-preferences",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "user_preferences",
+  route: "/api/user-preferences",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
@@ -46,7 +47,7 @@ const getUserCompanyId = async (
   return userData?.company_id || null;
 };
 
-export async function PUT(
+async function PUTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; unitOptionId: string }> }
 ) {
@@ -133,7 +134,10 @@ export async function PUT(
 
       if (unsetDefaultError) {
         console.error("Error unsetting default item unit option:", unsetDefaultError);
-        return NextResponse.json({ error: "Failed to update default unit option" }, { status: 500 });
+        return NextResponse.json(
+          { error: "Failed to update default unit option" },
+          { status: 500 }
+        );
       }
     }
 
@@ -182,7 +186,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; unitOptionId: string }> }
 ) {
@@ -248,3 +252,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete item unit option" }, { status: 500 });
   }
 }
+
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "items",
+  route: "/api/items/[id]/unit-options/[unitOptionId]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "items",
+  route: "/api/items/[id]/unit-options/[unitOptionId]",
+});

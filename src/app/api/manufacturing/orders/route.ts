@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAnyPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -66,7 +67,7 @@ const parsePositiveInt = (raw: string | null, fallback: number) => {
 
 const toNumber = (value: number | string | null | undefined) => Number(value) || 0;
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requireAnyPermission([
       [RESOURCES.MANUFACTURING, "view"],
@@ -336,3 +337,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "manufacturing",
+  route: "/api/manufacturing/orders",
+});

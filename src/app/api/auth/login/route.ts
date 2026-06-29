@@ -1,3 +1,7 @@
+import {
+  setActivityContext,
+  withActivityLogging,
+} from "@/lib/activity-logging/route-activity-logger";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 import { NextRequest, NextResponse } from "next/server";
 import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
@@ -18,7 +22,9 @@ function decodeBusinessUnitIdFromToken(token: string): string | null {
   try {
     const [, payloadPart] = token.split(".");
     if (!payloadPart) return null;
-    const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf-8")) as JwtPayload;
+    const payload = JSON.parse(
+      Buffer.from(payloadPart, "base64url").toString("utf-8")
+    ) as JwtPayload;
     return payload.current_business_unit_id || payload.default_business_unit_id || null;
   } catch {
     return null;
@@ -129,7 +135,7 @@ async function resolveLandingPage(
   return getFirstAccessiblePage(permissions, roleNames);
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const { supabase, response } = createRouteHandlerClient(request);
     const { email, password } = await request.json();
@@ -199,6 +205,12 @@ export async function POST(request: NextRequest) {
       landingPage: await resolveLandingPage(supabase, data.user.id, data.session.access_token),
     });
 
+    setActivityContext({
+      userId: data.user.id,
+      companyId: userData.company_id,
+      businessUnitId: decodeBusinessUnitIdFromToken(data.session.access_token),
+    });
+
     response.cookies.getAll().forEach((cookie) => {
       jsonResponse.cookies.set(cookie.name, cookie.value, cookie);
     });
@@ -208,3 +220,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "login",
+  resourceType: "auth",
+  route: "/api/auth/login",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
@@ -9,7 +10,7 @@ const normalizeAction = (value: string | null): PermissionAction => {
   return ACTIONS.includes(value as PermissionAction) ? (value as PermissionAction) : "view";
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const context = await requireRequestContext();
     if ("status" in context) return context;
@@ -47,3 +48,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "capabilities",
+  route: "/api/rbac/capabilities",
+});

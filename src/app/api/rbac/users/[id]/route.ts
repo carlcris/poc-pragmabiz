@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
@@ -8,7 +9,7 @@ type RouteContext = {
 };
 
 // GET /api/rbac/users/[id] - Get user details
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'users' view permission
     const unauthorized = await requirePermission(RESOURCES.USERS, "view");
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // PATCH /api/rbac/users/[id] - Update user (e.g., toggle active status)
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function PATCHHandler(request: NextRequest, context: RouteContext) {
   try {
     // Require 'users' edit permission
     const unauthorized = await requirePermission(RESOURCES.USERS, "edit");
@@ -100,3 +101,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "users",
+  route: "/api/rbac/users/[id]",
+});
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "users",
+  route: "/api/rbac/users/[id]",
+});

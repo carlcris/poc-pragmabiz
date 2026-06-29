@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -39,7 +40,8 @@ const asNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const apiError = (message: string, status: number) => NextResponse.json({ error: message }, { status });
+const apiError = (message: string, status: number) =>
+  NextResponse.json({ error: message }, { status });
 
 const internalError = (message: string, error: unknown) => {
   console.error(message, error);
@@ -47,7 +49,7 @@ const internalError = (message: string, error: unknown) => {
 };
 
 // PATCH /api/pick-lists/[id]/status
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function PATCHHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -166,7 +168,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         .eq("dn_id", header.dn_id);
 
       if (dnLineSummaryError) {
-        return internalError("Unable to inspect delivery note dispatch history", dnLineSummaryError);
+        return internalError(
+          "Unable to inspect delivery note dispatch history",
+          dnLineSummaryError
+        );
       }
 
       const hasHistoricalDispatch = (dnLineSummary || []).some(
@@ -212,7 +217,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (dnUpdateError) {
         return internalError("Unable to update delivery note status", dnUpdateError);
       }
-
     }
 
     const updated = await fetchPickList(auth.supabase, auth.companyId, id);
@@ -221,3 +225,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return internalError("Unable to update pick list status", error);
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "change_status",
+  resourceType: "pick_lists",
+  route: "/api/pick-lists/[id]/status",
+});

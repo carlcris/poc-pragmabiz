@@ -1,10 +1,11 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/items/upload-image - Upload item image to Supabase Storage
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Check permission first
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "edit");
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/items/upload-image - Delete item image from Supabase Storage
-export async function DELETE(request: NextRequest) {
+async function DELETEHandler(request: NextRequest) {
   try {
     // Check permission first
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "delete");
@@ -144,3 +145,14 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "items",
+  route: "/api/items/upload-image",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "items",
+  route: "/api/items/upload-image",
+});

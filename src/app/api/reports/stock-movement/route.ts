@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -66,7 +67,7 @@ type PrevTransactionItem = {
 
 // GET /api/reports/stock-movement
 // Returns aggregated stock movement report
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase } = await createServerClientWithBU();
@@ -366,3 +367,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_movement",
+  route: "/api/reports/stock-movement",
+});

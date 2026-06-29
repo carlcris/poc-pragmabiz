@@ -1,7 +1,8 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+async function GETHandler() {
   try {
     const supabase = await createClient();
 
@@ -50,3 +51,9 @@ export async function GET() {
     return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "auth",
+  route: "/api/auth/me",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Chart of Accounts API Routes
  *
@@ -22,7 +23,7 @@ import { RESOURCES } from "@/constants/resources";
  * GET /api/accounting/accounts
  * List all accounts with optional filtering
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "view");
     if (unauthorized) return unauthorized;
@@ -149,7 +150,7 @@ export async function GET(request: NextRequest) {
  * POST /api/accounting/accounts
  * Create a new account
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.CHART_OF_ACCOUNTS, "create");
     if (unauthorized) return unauthorized;
@@ -258,3 +259,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "accounts",
+  route: "/api/accounting/accounts",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "accounts",
+  route: "/api/accounting/accounts",
+});

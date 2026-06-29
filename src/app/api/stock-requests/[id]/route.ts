@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requirePermission } from "@/lib/auth";
@@ -137,7 +138,7 @@ async function rehydrateMissingWarehouses(
 }
 
 // GET /api/stock-requests/[id] - Get single stock request
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
@@ -299,7 +300,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // PATCH /api/stock-requests/[id] - Update stock request (draft only)
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function PATCHHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -520,7 +521,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/stock-requests/[id] - Delete stock request (draft only)
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function DELETEHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "delete");
     if (unauthorized) return unauthorized;
@@ -571,3 +572,19 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests/[id]",
+});
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests/[id]",
+});

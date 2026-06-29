@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -5,7 +6,7 @@ import { RESOURCES } from "@/constants/resources";
 import { sendStockRequisitionEmail } from "@/lib/email";
 
 // PATCH /api/stock-requisitions/[id]/status
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUISITIONS, "edit");
     if (unauthorized) return unauthorized;
@@ -245,3 +246,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "change_status",
+  resourceType: "stock_requisitions",
+  route: "/api/stock-requisitions/[id]/status",
+});

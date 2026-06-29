@@ -1,8 +1,9 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 
 // PUT /api/items/[id]/prices/[priceId] - Update a price
-export async function PUT(
+async function PUTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; priceId: string }> }
 ) {
@@ -88,7 +89,7 @@ export async function PUT(
 }
 
 // DELETE /api/items/[id]/prices/[priceId] - Delete a price
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; priceId: string }> }
 ) {
@@ -145,3 +146,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete item price" }, { status: 500 });
   }
 }
+
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "items",
+  route: "/api/items/[id]/prices/[priceId]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "items",
+  route: "/api/items/[id]/prices/[priceId]",
+});

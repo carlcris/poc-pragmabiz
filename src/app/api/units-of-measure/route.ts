@@ -1,9 +1,10 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import { requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-export async function GET() {
+async function GETHandler() {
   try {
     const permissionCheck = await requireLookupDataAccess(RESOURCES.ITEMS);
     if (permissionCheck) return permissionCheck;
@@ -54,3 +55,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "units_of_measure",
+  route: "/api/units-of-measure",
+});

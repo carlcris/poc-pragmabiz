@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { postARInvoice } from "@/services/accounting/arPosting";
@@ -11,7 +12,7 @@ import {
 } from "@/services/inventory/locationService";
 
 // POST /api/invoices/[id]/post - Post an invoice and create stock transactions
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.SALES_INVOICES, "edit");
     const { supabase } = await createServerClientWithBU();
@@ -297,3 +298,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "post",
+  resourceType: "invoices",
+  route: "/api/invoices/[id]/post",
+});

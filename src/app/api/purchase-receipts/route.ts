@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -82,7 +83,7 @@ type PurchaseReceiptCreateBody = {
 };
 
 // GET /api/purchase-receipts
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Check permission
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, "view");
@@ -307,7 +308,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/purchase-receipts
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Check permission
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, "create");
@@ -415,3 +416,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "purchase_receipts",
+  route: "/api/purchase-receipts",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "purchase_receipts",
+  route: "/api/purchase-receipts",
+});

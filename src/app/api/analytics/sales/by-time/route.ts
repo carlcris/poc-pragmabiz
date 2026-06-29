@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { getUserCapabilities, hasCapability } from "@/services/permissions/permissionResolver";
 
 // GET /api/analytics/sales/by-time - Time series data
-export const GET = async (req: NextRequest) => {
+const GETHandler = async (req: NextRequest) => {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase, userId, currentBusinessUnitId } = await createServerClientWithBU();
@@ -141,3 +142,9 @@ export const GET = async (req: NextRequest) => {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 };
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "sales",
+  route: "/api/analytics/sales/by-time",
+});

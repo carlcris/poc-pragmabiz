@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -121,7 +122,7 @@ const clampPageSize = (value: string | null, fallback: number) => {
   return Math.min(Math.max(parsed, 10), 50);
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
@@ -373,3 +374,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_aging",
+  route: "/api/reports/stock-aging",
+});

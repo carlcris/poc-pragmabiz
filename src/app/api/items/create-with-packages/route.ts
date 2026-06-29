@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -5,10 +6,16 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Deprecated: packaging has been removed. Use POST /api/items instead.
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   void request;
   return NextResponse.json(
     { error: "Packaging has been removed. Use POST /api/items instead." },
     { status: 410 }
   );
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "items",
+  route: "/api/items/create-with-packages",
+});

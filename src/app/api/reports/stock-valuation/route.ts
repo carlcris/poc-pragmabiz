@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -99,7 +100,7 @@ const normalizeSettingString = (value: unknown): string | null =>
 
 // GET /api/reports/stock-valuation
 // Returns current stock valuation report
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
@@ -147,7 +148,10 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (pricingTierSettingError) {
-      console.error("Error loading default pricing tier for stock valuation:", pricingTierSettingError);
+      console.error(
+        "Error loading default pricing tier for stock valuation:",
+        pricingTierSettingError
+      );
     }
 
     const defaultPricingTier =
@@ -269,9 +273,12 @@ export async function GET(request: NextRequest) {
         .order("effective_from", { ascending: false });
 
       if (itemPricesError) {
-        console.error("Error loading default pricing tier rates for stock valuation:", itemPricesError);
+        console.error(
+          "Error loading default pricing tier rates for stock valuation:",
+          itemPricesError
+        );
       } else {
-        for (const price of ((itemPrices || []) as ItemPriceRow[])) {
+        for (const price of (itemPrices || []) as ItemPriceRow[]) {
           if (!defaultTierPricesByItemId.has(price.item_id)) {
             defaultTierPricesByItemId.set(price.item_id, Math.max(0, toNumber(price.price)));
           }
@@ -446,3 +453,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_valuation",
+  route: "/api/reports/stock-valuation",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { postARInvoice } from "@/services/accounting/arPosting";
@@ -31,7 +32,7 @@ const shouldSkipInventory = (item: { skip_inventory?: boolean | null }) =>
   item.skip_inventory === true;
 
 // POST /api/sales-orders/[id]/convert-to-invoice
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission first
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
@@ -658,3 +659,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "convert_to_invoice",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders/[id]/convert-to-invoice",
+});

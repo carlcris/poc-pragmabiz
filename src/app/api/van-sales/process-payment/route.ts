@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { postARInvoice, postARPayment } from "@/services/accounting/arPosting";
@@ -36,7 +37,7 @@ interface ProcessPaymentRequest {
   notes?: string;
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.VAN_SALES, "create");
@@ -602,3 +603,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "process_payment",
+  resourceType: "van_sales",
+  route: "/api/van-sales/process-payment",
+});

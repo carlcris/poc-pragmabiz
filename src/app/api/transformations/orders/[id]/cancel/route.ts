@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { validateStateTransition } from "@/services/inventory/transformationService";
@@ -5,7 +6,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // POST /api/transformations/orders/[id]/cancel - Cancel order (DRAFT or PREPARING → CANCELLED)
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "edit");
     if (unauthorized) return unauthorized;
@@ -71,3 +72,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "cancel",
+  resourceType: "transformations",
+  route: "/api/transformations/orders/[id]/cancel",
+});

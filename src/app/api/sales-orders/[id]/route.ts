@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SalesOrder, SalesOrderLineItem, UpdateSalesOrderRequest } from "@/types/sales-order";
@@ -458,7 +459,7 @@ function getLineManufacturingStatus(
 }
 
 // GET /api/sales-orders/[id] - Get single sales order by ID
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "view");
@@ -704,7 +705,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PUT /api/sales-orders/[id] - Update sales order
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
@@ -1071,7 +1072,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/sales-orders/[id] - Soft delete sales order
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -1136,3 +1137,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders/[id]",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -22,7 +23,7 @@ type StockTransferRow = {
   stock_transfer_items: StockTransferItemRow[];
 };
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Require 'stock_transfers' edit permission (confirming is a form of editing)
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFERS, "edit");
@@ -308,3 +309,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "confirm",
+  resourceType: "stock_transfers",
+  route: "/api/stock-transfers/[id]/confirm",
+});

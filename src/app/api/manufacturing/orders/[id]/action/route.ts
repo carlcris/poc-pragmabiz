@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAnyPermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -17,7 +18,7 @@ const isManufacturingAction = (value: unknown): value is ManufacturingAction =>
   value === "resume" ||
   value === "complete";
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requireAnyPermission([
       [RESOURCES.MANUFACTURING, "edit"],
@@ -70,3 +71,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "execute",
+  resourceType: "manufacturing",
+  route: "/api/manufacturing/orders/[id]/action",
+});

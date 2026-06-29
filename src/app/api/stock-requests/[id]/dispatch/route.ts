@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
@@ -24,6 +25,12 @@ const dispatchStockRequest = async (_request: NextRequest, context: RouteContext
 };
 
 // POST /api/stock-requests/[id]/dispatch
-export async function POST(request: NextRequest, context: RouteContext) {
+async function POSTHandler(request: NextRequest, context: RouteContext) {
   return dispatchStockRequest(request, context);
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "dispatch",
+  resourceType: "stock_requests",
+  route: "/api/stock-requests/[id]/dispatch",
+});

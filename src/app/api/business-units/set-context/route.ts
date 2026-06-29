@@ -1,3 +1,7 @@
+import {
+  setActivityContext,
+  withActivityLogging,
+} from "@/lib/activity-logging/route-activity-logger";
 /**
  * Set Business Unit Context API Route
  *
@@ -21,7 +25,7 @@ type SetContextRequest = {
   business_unit_id: string;
 };
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Note: No permission check - all authenticated users can switch their BU context
 
@@ -87,6 +91,8 @@ export async function POST(request: NextRequest) {
       refreshToken: refreshed.session.refresh_token,
     });
 
+    setActivityContext({ businessUnitId: data.business_unit.id });
+
     response.cookies.getAll().forEach((cookie) => {
       jsonResponse.cookies.set(cookie.name, cookie.value, cookie);
     });
@@ -96,3 +102,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "switch_business_unit",
+  resourceType: "business_units",
+  route: "/api/business-units/set-context",
+});

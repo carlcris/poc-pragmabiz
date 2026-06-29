@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
@@ -9,7 +10,7 @@ type RouteContext = {
 };
 
 // GET /api/rbac/users/[userId]/permissions - Get user's effective permissions
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
@@ -70,3 +71,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "users",
+  route: "/api/rbac/users/[id]/permissions",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -5,12 +6,23 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Deprecated: packaging has been removed.
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   void request;
   return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   void request;
   return NextResponse.json({ error: "Packaging has been removed." }, { status: 410 });
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "items",
+  route: "/api/items/[id]/packages",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "items",
+  route: "/api/items/[id]/packages",
+});

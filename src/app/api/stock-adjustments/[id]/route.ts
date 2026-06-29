@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -89,11 +90,11 @@ type BatchLocationRow = {
     | null;
 };
 
-const toOne = <T,>(value: T | T[] | null | undefined): T | null =>
+const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/stock-adjustments/[id] - Get single stock adjustment
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Require 'stock_adjustments' view permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "view");
@@ -233,39 +234,38 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       updatedBy: adjustment.updated_by,
       createdAt: adjustment.created_at,
       updatedAt: adjustment.updated_at,
-      items:
-        typedItems.map((item) => {
-          const batchLocation = item.item_batch_location_id
-            ? batchLocationsMap.get(item.item_batch_location_id)
-            : null;
-          const itemBatch = toOne(batchLocation?.item_batch);
-          const batchWarehouseLocation = toOne(batchLocation?.warehouse_location);
+      items: typedItems.map((item) => {
+        const batchLocation = item.item_batch_location_id
+          ? batchLocationsMap.get(item.item_batch_location_id)
+          : null;
+        const itemBatch = toOne(batchLocation?.item_batch);
+        const batchWarehouseLocation = toOne(batchLocation?.warehouse_location);
 
-          return {
-            id: item.id,
-            adjustmentId: item.adjustment_id,
-            itemId: item.item_id,
-            itemBatchLocationId: item.item_batch_location_id,
-            batchLocationSku: batchLocation?.batch_location_sku || null,
-            batchCode: itemBatch?.batch_code || null,
-            batchReceivedAt: itemBatch?.received_at || null,
-            batchWarehouseLocationId: batchLocation?.location_id || null,
-            batchLocationCode: batchWarehouseLocation?.code || null,
-            batchLocationName: batchWarehouseLocation?.name || null,
-            itemCode: item.item_code,
-            itemName: item.item_name,
-            currentQty: parseFloat(String(item.current_qty ?? 0)),
-            adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
-            difference: parseFloat(String(item.difference ?? 0)),
-            unitCost: parseFloat(String(item.unit_cost ?? 0)),
-            totalCost: parseFloat(String(item.total_cost ?? 0)),
-            uomId: item.uom_id,
-            uomName: item.uom_name,
-            reason: item.reason,
-            createdAt: item.created_at,
-            updatedAt: item.updated_at,
-          };
-        }),
+        return {
+          id: item.id,
+          adjustmentId: item.adjustment_id,
+          itemId: item.item_id,
+          itemBatchLocationId: item.item_batch_location_id,
+          batchLocationSku: batchLocation?.batch_location_sku || null,
+          batchCode: itemBatch?.batch_code || null,
+          batchReceivedAt: itemBatch?.received_at || null,
+          batchWarehouseLocationId: batchLocation?.location_id || null,
+          batchLocationCode: batchWarehouseLocation?.code || null,
+          batchLocationName: batchWarehouseLocation?.name || null,
+          itemCode: item.item_code,
+          itemName: item.item_name,
+          currentQty: parseFloat(String(item.current_qty ?? 0)),
+          adjustedQty: parseFloat(String(item.adjusted_qty ?? 0)),
+          difference: parseFloat(String(item.difference ?? 0)),
+          unitCost: parseFloat(String(item.unit_cost ?? 0)),
+          totalCost: parseFloat(String(item.total_cost ?? 0)),
+          uomId: item.uom_id,
+          uomName: item.uom_name,
+          reason: item.reason,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at,
+        };
+      }),
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -273,7 +273,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PATCH /api/stock-adjustments/[id] - Update stock adjustment (draft only)
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Require 'stock_adjustments' edit permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "edit");
@@ -468,7 +468,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 // DELETE /api/stock-adjustments/[id] - Soft delete stock adjustment (draft only)
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -517,3 +517,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "stock_adjustments",
+  route: "/api/stock-adjustments/[id]",
+});
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "stock_adjustments",
+  route: "/api/stock-adjustments/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "stock_adjustments",
+  route: "/api/stock-adjustments/[id]",
+});

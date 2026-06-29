@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -6,7 +7,7 @@ import { acknowledgeAlertSchema } from "@/lib/validations/reorder";
 
 // POST /api/reorder/alerts/acknowledge
 // Acknowledges reorder alerts
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "edit");
     if (unauthorized) return unauthorized;
@@ -49,3 +50,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "acknowledge",
+  resourceType: "reorder",
+  route: "/api/reorder/alerts/acknowledge",
+});

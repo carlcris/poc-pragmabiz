@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -56,9 +57,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const isUuid = (value: string) =>
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 const asText = (value: unknown) => {
   if (typeof value === "string") return value.trim();
@@ -133,7 +132,7 @@ const getBatchBusinessUnitId = (row: BatchLocationRow) => {
   return warehouse?.business_unit_id || null;
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.ITEMS, "view");
     if (unauthorized) return unauthorized;
@@ -141,7 +140,8 @@ export async function GET(request: NextRequest) {
     const context = await requireRequestContext();
     if ("status" in context) return context;
 
-    const { supabase, companyId, currentBusinessUnitId, accessibleBusinessUnitIds, userId } = context;
+    const { supabase, companyId, currentBusinessUnitId, accessibleBusinessUnitIds, userId } =
+      context;
     if (!currentBusinessUnitId) {
       return NextResponse.json(
         { error: "Select a business unit before scanning items." },
@@ -158,7 +158,10 @@ export async function GET(request: NextRequest) {
     try {
       parsed = parseScanInput(scan);
     } catch {
-      return NextResponse.json({ error: "The scanned QR code is not valid JSON." }, { status: 400 });
+      return NextResponse.json(
+        { error: "The scanned QR code is not valid JSON." },
+        { status: 400 }
+      );
     }
 
     const { data: warehouses, error: warehouseError } = await supabase
@@ -175,7 +178,10 @@ export async function GET(request: NextRequest) {
 
     let scopedWarehouseIds = (warehouses || []).map((warehouse) => warehouse.id);
     if (scopedWarehouseIds.length === 0) {
-      return NextResponse.json({ error: "No warehouses are available for this business unit." }, { status: 404 });
+      return NextResponse.json(
+        { error: "No warehouses are available for this business unit." },
+        { status: 404 }
+      );
     }
 
     let itemId = firstText(parsed.payload, ["item_id", "itemId", "item"]);
@@ -193,7 +199,10 @@ export async function GET(request: NextRequest) {
       (rawBatchLocationSku ? "" : parsed.text);
 
     if (itemId && !isUuid(itemId)) {
-      return NextResponse.json({ error: "The scanned item identifier is invalid." }, { status: 400 });
+      return NextResponse.json(
+        { error: "The scanned item identifier is invalid." },
+        { status: 400 }
+      );
     }
 
     if (!itemId && batchLocationId) {
@@ -220,7 +229,9 @@ export async function GET(request: NextRequest) {
     if (!itemId && effectiveBatchLocationSku) {
       const { data: batchRows, error: batchError } = await supabase
         .from("item_batch_locations")
-        .select("item_id, warehouse_id, warehouses!item_batch_locations_warehouse_id_fkey(business_unit_id)")
+        .select(
+          "item_id, warehouse_id, warehouses!item_batch_locations_warehouse_id_fkey(business_unit_id)"
+        )
         .eq("company_id", companyId)
         .eq("batch_location_sku", effectiveBatchLocationSku)
         .is("deleted_at", null)
@@ -279,7 +290,10 @@ export async function GET(request: NextRequest) {
           .is("deleted_at", null);
 
         if (batchBuWarehouseError) {
-          console.error("Failed to resolve batch SKU business unit warehouses", batchBuWarehouseError);
+          console.error(
+            "Failed to resolve batch SKU business unit warehouses",
+            batchBuWarehouseError
+          );
           return NextResponse.json({ error: "Failed to scan item." }, { status: 500 });
         }
 
@@ -328,7 +342,10 @@ export async function GET(request: NextRequest) {
     } else if (itemCode) {
       itemQuery = itemQuery.eq("item_code", itemCode);
     } else {
-      return NextResponse.json({ error: "The scanned QR code does not include an item." }, { status: 400 });
+      return NextResponse.json(
+        { error: "The scanned QR code does not include an item." },
+        { status: 400 }
+      );
     }
 
     const { data: items, error: itemError } = await itemQuery;
@@ -385,3 +402,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to scan item." }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "search",
+  resourceType: "items",
+  route: "/api/mobile/items/scan",
+});

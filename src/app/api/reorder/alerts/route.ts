@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -76,7 +77,7 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const unwrapRelation = <T,>(value: T | T[] | null): T | null =>
+const unwrapRelation = <T>(value: T | T[] | null): T | null =>
   Array.isArray(value) ? value[0] || null : value;
 
 const parseAcknowledgmentStatus = (value: string | null) => {
@@ -85,7 +86,7 @@ const parseAcknowledgmentStatus = (value: string | null) => {
   return "active";
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "view");
     if (unauthorized) return unauthorized;
@@ -220,10 +221,9 @@ export async function GET(request: NextRequest) {
         row.policy_source === "season_override" && row.season_id
           ? policyDetailsByKey.get(`${row.season_id}:${row.item_id}`) || null
           : null;
-      const policyUnitOption =
-        policyDetails?.item_unit_option_id
-          ? unitOptions.find((option) => option.id === policyDetails.item_unit_option_id) || null
-          : null;
+      const policyUnitOption = policyDetails?.item_unit_option_id
+        ? unitOptions.find((option) => option.id === policyDetails.item_unit_option_id) || null
+        : null;
       const policyUom = unwrapRelation(policyDetails?.units_of_measure ?? null);
       const alertRequisitionUomId =
         policyDetails?.uom_id || requisitionUnitOption?.uomId || itemDetails?.uom_id || "";
@@ -237,10 +237,9 @@ export async function GET(request: NextRequest) {
         "";
       const alertRequisitionItemUnitOptionId =
         policyDetails?.item_unit_option_id || requisitionUnitOption?.id || "";
-      const alertRequisitionQtyPerUnit =
-        policyDetails
-          ? toNumber(policyDetails.qty_per_unit) || 1
-          : requisitionUnitOption?.qtyPerUnit || 1;
+      const alertRequisitionQtyPerUnit = policyDetails
+        ? toNumber(policyDetails.qty_per_unit) || 1
+        : requisitionUnitOption?.qtyPerUnit || 1;
       const importCost =
         itemDetails?.import_cost == null ? null : toNumber(itemDetails.import_cost);
       const purchasePrice = toNumber(itemDetails?.purchase_price);
@@ -278,7 +277,8 @@ export async function GET(request: NextRequest) {
         requisitionItemUnitOptionId: alertRequisitionItemUnitOptionId,
         requisitionQtyPerUnit: alertRequisitionQtyPerUnit,
         requisitionUnitPrice,
-        requisitionUnitPriceCurrency: importCost == null ? null : itemDetails?.import_currency || null,
+        requisitionUnitPriceCurrency:
+          importCost == null ? null : itemDetails?.import_currency || null,
       };
     });
 
@@ -298,3 +298,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "reorder",
+  route: "/api/reorder/alerts",
+});

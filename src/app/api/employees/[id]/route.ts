@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -81,7 +82,7 @@ function transformEmployee(emp: EmployeeRow) {
 }
 
 // GET /api/employees/[id] - Get employee by ID
-export const GET = async (req: NextRequest, context: RouteContext) => {
+const GETHandler = async (req: NextRequest, context: RouteContext) => {
   try {
     await requirePermission(RESOURCES.EMPLOYEES, "view");
     const { id } = await context.params;
@@ -105,7 +106,7 @@ export const GET = async (req: NextRequest, context: RouteContext) => {
 };
 
 // PUT /api/employees/[id] - Update employee
-export const PUT = async (req: NextRequest, context: RouteContext) => {
+const PUTHandler = async (req: NextRequest, context: RouteContext) => {
   try {
     await requirePermission(RESOURCES.EMPLOYEES, "edit");
     const { id } = await context.params;
@@ -179,7 +180,7 @@ export const PUT = async (req: NextRequest, context: RouteContext) => {
 };
 
 // DELETE /api/employees/[id] - Soft delete employee
-export const DELETE = async (req: NextRequest, context: RouteContext) => {
+const DELETEHandler = async (req: NextRequest, context: RouteContext) => {
   try {
     await requirePermission(RESOURCES.EMPLOYEES, "delete");
     const { id } = await context.params;
@@ -223,3 +224,19 @@ export const DELETE = async (req: NextRequest, context: RouteContext) => {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 };
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "employees",
+  route: "/api/employees/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "employees",
+  route: "/api/employees/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "employees",
+  route: "/api/employees/[id]",
+});

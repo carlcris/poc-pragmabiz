@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -28,7 +29,7 @@ import type { LoadListStatus } from "@/types/load-list";
  * - warehouseId: Filter by specific warehouse
  * - businessUnitId: Filter by business unit
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Check permissions - user needs view access to load lists or requisitions
     await requirePermission(RESOURCES.LOAD_LISTS, "view");
@@ -827,3 +828,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "dashboard",
+  route: "/api/dashboard/purchasing",
+});

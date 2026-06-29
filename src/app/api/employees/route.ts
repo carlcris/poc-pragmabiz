@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
@@ -74,7 +75,7 @@ function transformEmployee(emp: EmployeeRow) {
 }
 
 // GET /api/employees - List employees with filters
-export const GET = async (req: NextRequest) => {
+const GETHandler = async (req: NextRequest) => {
   try {
     // Check permission using Lookup Data Access Pattern
     // User can access if they have EITHER:
@@ -156,7 +157,7 @@ export const GET = async (req: NextRequest) => {
 };
 
 // POST /api/employees - Create new employee
-export const POST = async (req: NextRequest) => {
+const POSTHandler = async (req: NextRequest) => {
   try {
     await requirePermission(RESOURCES.EMPLOYEES, "create");
     const { supabase } = await createServerClientWithBU();
@@ -256,3 +257,14 @@ export const POST = async (req: NextRequest) => {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 };
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "employees",
+  route: "/api/employees",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "employees",
+  route: "/api/employees",
+});

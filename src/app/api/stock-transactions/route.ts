@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -174,7 +175,7 @@ const pickFirst = <T>(value: T | T[] | null | undefined): T | null => {
 };
 
 // GET /api/stock-transactions
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Require 'stock_transactions' view permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "view");
@@ -393,7 +394,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/stock-transactions
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Require 'stock_transactions' create permission
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSACTIONS, "create");
@@ -685,3 +686,14 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "stock_transactions",
+  route: "/api/stock-transactions",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "stock_transactions",
+  route: "/api/stock-transactions",
+});

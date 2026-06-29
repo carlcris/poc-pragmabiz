@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -20,7 +21,7 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-export async function GET() {
+async function GETHandler() {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "view");
     if (unauthorized) return unauthorized;
@@ -56,3 +57,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "reorder",
+  route: "/api/reorder/statistics",
+});

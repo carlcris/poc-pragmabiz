@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Journal Entry Posting API
  *
@@ -19,7 +20,7 @@ type RouteContext = {
  * Post (finalize) a draft journal entry
  * Once posted, journal entries become immutable
  */
-export async function POST(request: NextRequest, context: RouteContext) {
+async function POSTHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, "edit");
     if (unauthorized) return unauthorized;
@@ -120,3 +121,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "post",
+  resourceType: "journals",
+  route: "/api/accounting/journals/[id]/post",
+});

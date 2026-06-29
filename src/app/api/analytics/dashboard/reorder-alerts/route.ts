@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Dashboard Reorder Alerts API
  *
@@ -10,7 +11,7 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-export async function GET() {
+async function GETHandler() {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase } = await createServerClientWithBU();
@@ -111,3 +112,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "dashboard",
+  route: "/api/analytics/dashboard/reorder-alerts",
+});

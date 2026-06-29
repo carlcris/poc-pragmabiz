@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { RESOURCES } from "@/constants/resources";
 import { requirePermission } from "@/lib/auth";
@@ -13,9 +14,7 @@ const MAX_LIMIT = 50;
 
 const parseLimit = (value: string | null) => {
   const parsed = Number.parseInt(value || "", 10);
-  return Number.isFinite(parsed) && parsed > 0
-    ? Math.min(parsed, MAX_LIMIT)
-    : DEFAULT_LIMIT;
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, MAX_LIMIT) : DEFAULT_LIMIT;
 };
 
 const normalizeSearch = (value: string | null) => {
@@ -23,7 +22,7 @@ const normalizeSearch = (value: string | null) => {
   return trimmed.length > 0 ? trimmed.replace(/[,%]/g, " ") : null;
 };
 
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
@@ -47,10 +46,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     let query = supabase
       .from("item_batches")
-      .select(
-        "id, batch_code, received_at, qty_on_hand, qty_reserved, qty_available",
-        { count: "exact" }
-      )
+      .select("id, batch_code, received_at, qty_on_hand, qty_reserved, qty_available", {
+        count: "exact",
+      })
       .eq("company_id", companyId)
       .eq("item_id", itemId)
       .eq("warehouse_id", warehouseId)
@@ -90,3 +88,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Failed to load item batches" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "items",
+  route: "/api/items/[id]/batches",
+});

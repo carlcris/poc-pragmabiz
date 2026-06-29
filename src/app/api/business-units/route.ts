@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Business Units API Route
  *
@@ -8,7 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { BusinessUnitWithAccess, CompanySummary } from "@/types/business-unit";
 
-export async function GET() {
+async function GETHandler() {
   try {
     // Note: No permission check - all authenticated users need to see their business units
     const supabase = await createClient();
@@ -106,3 +107,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "business_units",
+  route: "/api/business-units",
+});

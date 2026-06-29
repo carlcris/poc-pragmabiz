@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { postARPayment } from "@/services/accounting/arPosting";
@@ -5,7 +6,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // GET /api/invoices/[id]/payments
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.SALES_INVOICES, "view");
     const { id: invoiceId } = await params;
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // POST /api/invoices/[id]/payments
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.SALES_INVOICES, "edit");
     const { id: invoiceId } = await params;
@@ -208,3 +209,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "invoices",
+  route: "/api/invoices/[id]/payments",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "invoices",
+  route: "/api/invoices/[id]/payments",
+});

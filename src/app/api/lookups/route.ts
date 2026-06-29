@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireLookupDataAccess } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -37,7 +38,7 @@ const normalizeSearch = (raw: string | null) => {
   return value ? value : null;
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get("type");
@@ -343,3 +344,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "lookups",
+  route: "/api/lookups",
+});

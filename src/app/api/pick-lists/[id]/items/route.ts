@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -112,7 +113,7 @@ const getPickSourceAvailability = async ({
 };
 
 // PATCH /api/pick-lists/[id]/items
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function PATCHHandler(request: NextRequest, context: RouteContext) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
     if (unauthorized) return unauthorized;
@@ -324,7 +325,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         pickRowsById.set(row.id, row);
         const pickListItemId = row.pick_list_item_id || "";
         if (!pickListItemId) continue;
-        lineTotals.set(pickListItemId, (lineTotals.get(pickListItemId) || 0) + toNumber(row.picked_qty));
+        lineTotals.set(
+          pickListItemId,
+          (lineTotals.get(pickListItemId) || 0) + toNumber(row.picked_qty)
+        );
         mergeKeyToRow.set(
           mergeKey(
             pickListItemId,
@@ -444,7 +448,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             .from("delivery_note_item_picks")
             .update({
               picked_qty: pickQty,
-              batch_location_sku: sourceAvailability.batchLocationSku || existingRow.batch_location_sku,
+              batch_location_sku:
+                sourceAvailability.batchLocationSku || existingRow.batch_location_sku,
               is_mismatch_warning_acknowledged: row.isMismatchWarningAcknowledged ?? false,
               mismatch_reason: row.mismatchReason?.trim() || null,
               updated_at: nowIso,
@@ -461,7 +466,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           lineTotals.set(pickListItem.id, nextLinePicked);
           pickRowsById.set(row.pickRowId, {
             ...existingRow,
-            batch_location_sku: sourceAvailability.batchLocationSku || existingRow.batch_location_sku,
+            batch_location_sku:
+              sourceAvailability.batchLocationSku || existingRow.batch_location_sku,
             picked_qty: pickQty,
           });
           continue;
@@ -720,7 +726,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             inserted
           );
         }
-
       }
 
       const pickListItemIds = Array.from(byId.keys());
@@ -807,3 +812,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return internalError("Unable to update pick list items", error);
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "pick_lists",
+  route: "/api/pick-lists/[id]/items",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * General Ledger Query API
  *
@@ -20,7 +21,7 @@ import { RESOURCES } from "@/constants/resources";
  * GET /api/accounting/ledger
  * Query general ledger entries for a specific account within a date range
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.GENERAL_LEDGER, "view");
     if (unauthorized) return unauthorized;
@@ -282,3 +283,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "ledger",
+  route: "/api/accounting/ledger",
+});

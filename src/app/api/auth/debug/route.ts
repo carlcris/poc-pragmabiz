@@ -1,7 +1,8 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const { supabase } = createRouteHandlerClient(request);
 
@@ -16,3 +17,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ hasUser: false, error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "auth",
+  route: "/api/auth/debug",
+});

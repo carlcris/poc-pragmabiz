@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -71,7 +72,7 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const unwrapRelation = <T,>(value: T | T[] | null): T | null =>
+const unwrapRelation = <T>(value: T | T[] | null): T | null =>
   Array.isArray(value) ? value[0] || null : value;
 
 const toPolicyResponse = (row: DbReorderSeasonItemPolicy) => {
@@ -133,7 +134,7 @@ const toPolicyResponse = (row: DbReorderSeasonItemPolicy) => {
   };
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "view");
     if (unauthorized) return unauthorized;
@@ -233,7 +234,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "create");
     if (unauthorized) return unauthorized;
@@ -355,3 +356,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "reorder",
+  route: "/api/reorder/season-policies",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "reorder",
+  route: "/api/reorder/season-policies",
+});

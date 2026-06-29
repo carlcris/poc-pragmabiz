@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission } from "@/lib/auth";
@@ -50,7 +51,7 @@ const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 // GET /api/reports/item-location-batch
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.REPORTS, "view");
     const { supabase } = await createServerClientWithBU();
@@ -240,3 +241,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "item_location_batch",
+  route: "/api/reports/item-location-batch",
+});

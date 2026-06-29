@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
@@ -174,7 +175,7 @@ async function getUserContext(): Promise<
 }
 
 // GET /api/warehouses
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requireLookupDataAccess(RESOURCES.WAREHOUSES);
     if (unauthorized) return unauthorized;
@@ -252,7 +253,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/warehouses
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "create");
     if (unauthorized) return unauthorized;
@@ -362,3 +363,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "warehouses",
+  route: "/api/warehouses",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "warehouses",
+  route: "/api/warehouses",
+});

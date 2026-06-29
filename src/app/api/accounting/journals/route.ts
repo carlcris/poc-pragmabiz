@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Journal Entry API Routes
  *
@@ -150,7 +151,7 @@ function transformJournalEntry(entry: JournalEntryRow): JournalEntryWithLines {
  * GET /api/accounting/journals
  * List journal entries with optional filtering
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, "view");
     if (unauthorized) return unauthorized;
@@ -266,7 +267,7 @@ export async function GET(request: NextRequest) {
  * POST /api/accounting/journals
  * Create a new journal entry (manual journal)
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.JOURNAL_ENTRIES, "create");
     if (unauthorized) return unauthorized;
@@ -432,3 +433,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "journals",
+  route: "/api/accounting/journals",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "journals",
+  route: "/api/accounting/journals",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import type { DashboardData, Priority } from "@/types/warehouse-dashboard";
@@ -59,7 +60,7 @@ type DashboardLowStockRow = {
   reorder_level: number | string | null;
 };
 
-export async function GET() {
+async function GETHandler() {
   try {
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
 
@@ -325,7 +326,8 @@ export async function GET() {
     if (stockRequestsQueueResult.error) throw stockRequestsQueueResult.error;
     if (stockMovementsResult.error) throw stockMovementsResult.error;
 
-    const reorderInventoryRows = (reorderInventoryHealthResult.data || []) as DashboardLowStockRow[];
+    const reorderInventoryRows = (reorderInventoryHealthResult.data ||
+      []) as DashboardLowStockRow[];
 
     const inventoryRows = (inventoryHealthResult.data || []) as Array<{
       item_id: string;
@@ -404,8 +406,7 @@ export async function GET() {
     const dashboardData: DashboardData = {
       summary: {
         incoming_deliveries_today:
-          (incomingDeliveriesTodayResult.count || 0) +
-          (dispatchedDeliveryNotesResult.count || 0),
+          (incomingDeliveriesTodayResult.count || 0) + (dispatchedDeliveryNotesResult.count || 0),
         pending_stock_requests: pendingStockRequestsResult.count || 0,
         pick_list_to_pick: pickListToPickResult.count || 0,
         urgent_stock_requests: urgentStockRequestsResult.count || 0,
@@ -502,3 +503,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "warehouse_dashboard",
+  route: "/api/warehouse-dashboard",
+});

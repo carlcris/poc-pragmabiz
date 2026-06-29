@@ -1,10 +1,11 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // GET /api/warehouses/[id]/locations - List locations for a warehouse
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "view");
     if (unauthorized) return unauthorized;
@@ -68,7 +69,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 // POST /api/warehouses/[id]/locations - Create a location
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.MANAGE_LOCATIONS, "create");
     if (unauthorized) return unauthorized;
@@ -164,3 +165,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "warehouses",
+  route: "/api/warehouses/[id]/locations",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "warehouses",
+  route: "/api/warehouses/[id]/locations",
+});

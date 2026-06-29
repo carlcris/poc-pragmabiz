@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { postAPBill } from "@/services/accounting/apPosting";
@@ -90,7 +91,7 @@ type ReceiptItemUpdateInput = {
 };
 
 // GET /api/purchase-receipts/[id]
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, "view");
@@ -254,7 +255,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PUT /api/purchase-receipts/[id]
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Check permission
     await requirePermission(RESOURCES.PURCHASE_RECEIPTS, "edit");
@@ -653,7 +654,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/purchase-receipts/[id]
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -724,3 +725,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "purchase_receipts",
+  route: "/api/purchase-receipts/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "purchase_receipts",
+  route: "/api/purchase-receipts/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "purchase_receipts",
+  route: "/api/purchase-receipts/[id]",
+});

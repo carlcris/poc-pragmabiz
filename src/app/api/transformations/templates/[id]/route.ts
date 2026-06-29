@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { updateTransformationTemplateSchema } from "@/lib/validations/transformation-template";
@@ -5,7 +6,7 @@ import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
 // GET /api/transformations/templates/[id] - Get template by ID
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "view");
     if (unauthorized) return unauthorized;
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // PATCH /api/transformations/templates/[id] - Update template (limited fields)
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_TRANSFORMATIONS, "edit");
     if (unauthorized) return unauthorized;
@@ -221,7 +222,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 // DELETE /api/transformations/templates/[id] - Soft delete template
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -293,3 +294,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "transformations",
+  route: "/api/transformations/templates/[id]",
+});
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "transformations",
+  route: "/api/transformations/templates/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "transformations",
+  route: "/api/transformations/templates/[id]",
+});

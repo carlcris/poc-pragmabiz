@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { requirePermission, getAuthenticatedUser } from "@/lib/auth";
@@ -25,7 +26,7 @@ type RoleWithPermissions = RoleRow & {
 };
 
 // GET /api/rbac/roles - List all roles
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Require 'roles' view permission
     const unauthorized = await requirePermission(RESOURCES.ROLES, "view");
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/rbac/roles - Create new role
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Require 'roles' create permission
     const unauthorized = await requirePermission(RESOURCES.ROLES, "create");
@@ -206,3 +207,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "roles",
+  route: "/api/rbac/roles",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "roles",
+  route: "/api/rbac/roles",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { RESOURCES } from "@/constants/resources";
 // GET /api/reorder/suggestions
 // Generates purchase suggestions based on stock levels
 // NOTE: This feature requires reorder management tables that haven't been set up yet
-export async function GET() {
+async function GETHandler() {
   try {
     await requirePermission(RESOURCES.REORDER_MANAGEMENT, "view");
     const { supabase } = await createServerClientWithBU();
@@ -29,3 +30,9 @@ export async function GET() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "reorder",
+  route: "/api/reorder/suggestions",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextResponse } from "next/server";
 import { invalidatePermissionCache } from "@/services/permissions/permissionResolver";
 import { requirePermission } from "@/lib/auth";
@@ -11,7 +12,7 @@ import { RESOURCES } from "@/constants/resources";
  *
  * Requires: roles permission (edit or delete)
  */
-export async function POST() {
+async function POSTHandler() {
   try {
     // Only admins with role management permission can clear the cache
     const unauthorized = await requirePermission(RESOURCES.ROLES, "edit");
@@ -27,3 +28,9 @@ export async function POST() {
     return NextResponse.json({ error: "Failed to clear permission cache" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "clear_cache",
+  resourceType: "permissions",
+  route: "/api/rbac/permissions/clear-cache",
+});

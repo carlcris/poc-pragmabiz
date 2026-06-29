@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -25,7 +26,7 @@ const getClientErrorMessage = (error: RpcError | null | undefined) => {
   return "Failed to cancel sales order";
 };
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.SALES_ORDERS, "edit");
     if (unauthorized) return unauthorized;
@@ -67,3 +68,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "cancel",
+  resourceType: "sales_orders",
+  route: "/api/sales-orders/[id]/cancel",
+});

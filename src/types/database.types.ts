@@ -9600,6 +9600,90 @@ export type Database = {
           },
         ]
       }
+      user_activity_logs: {
+        Row: {
+          action: string
+          actor_type: string
+          business_unit_id: string | null
+          company_id: string | null
+          duration_ms: number | null
+          entity_id: string | null
+          entity_ids: Json | null
+          error_code: string | null
+          event_kind: string
+          http_method: string | null
+          http_status: number | null
+          id: string
+          ip_address: string | null
+          metadata: Json
+          occurred_at: string
+          outcome: string
+          query_params: Json | null
+          request_id: string
+          request_payload: Json | null
+          resource_type: string
+          route: string | null
+          route_params: Json | null
+          source: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_type: string
+          business_unit_id?: string | null
+          company_id?: string | null
+          duration_ms?: number | null
+          entity_id?: string | null
+          entity_ids?: Json | null
+          error_code?: string | null
+          event_kind: string
+          http_method?: string | null
+          http_status?: number | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          occurred_at?: string
+          outcome: string
+          query_params?: Json | null
+          request_id: string
+          request_payload?: Json | null
+          resource_type: string
+          route?: string | null
+          route_params?: Json | null
+          source: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_type?: string
+          business_unit_id?: string | null
+          company_id?: string | null
+          duration_ms?: number | null
+          entity_id?: string | null
+          entity_ids?: Json | null
+          error_code?: string | null
+          event_kind?: string
+          http_method?: string | null
+          http_status?: number | null
+          id?: string
+          ip_address?: string | null
+          metadata?: Json
+          occurred_at?: string
+          outcome?: string
+          query_params?: Json | null
+          request_id?: string
+          request_payload?: Json | null
+          resource_type?: string
+          route?: string | null
+          route_params?: Json | null
+          source?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_business_unit_access: {
         Row: {
           business_unit_id: string
@@ -10365,6 +10449,7 @@ export type Database = {
         Args: { p_order_quantity: number; p_quotation_item_id: string }
         Returns: number
       }
+      append_user_activity_log: { Args: { p_event: Json }; Returns: string }
       apply_manufacturing_floor_action_transaction: {
         Args: {
           p_action: string
@@ -10533,6 +10618,10 @@ export type Database = {
       }
       ensure_default_manufacturing_workstations: {
         Args: { p_business_unit_id?: string; p_company_id: string }
+        Returns: undefined
+      }
+      ensure_user_activity_log_partitions: {
+        Args: { p_months_ahead?: number; p_months_before?: number }
         Returns: undefined
       }
       finalize_frame_job_order_completion_transaction: {
@@ -10911,6 +11000,13 @@ export type Database = {
           p_warehouse_id: string
         }
         Returns: string
+      }
+      maintain_user_activity_logs: {
+        Args: { p_delete_batch_size?: number; p_retention_days?: number }
+        Returns: {
+          deleted_rows: number
+          dropped_partitions: number
+        }[]
       }
       notify_business_units: {
         Args: {

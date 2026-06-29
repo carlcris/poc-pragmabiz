@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { getAuthenticatedUser, checkPermission } from "@/lib/auth";
@@ -35,7 +36,7 @@ type UserRoleWithJoins = UserRoleRow & {
 };
 
 // GET /api/rbac/users/[userId]/roles - Get user's roles
-export async function GET(request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 }
 
 // POST /api/rbac/users/[userId]/roles - Assign role to user
-export async function POST(request: NextRequest, context: RouteContext) {
+async function POSTHandler(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
@@ -226,7 +227,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 }
 
 // DELETE /api/rbac/users/[userId]/roles - Remove role from user
-export async function DELETE(request: NextRequest, context: RouteContext) {
+async function DELETEHandler(request: NextRequest, context: RouteContext) {
   try {
     const user = await getAuthenticatedUser();
     if (!user) {
@@ -292,3 +293,19 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "users",
+  route: "/api/rbac/users/[id]/roles",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "assign_role",
+  resourceType: "users",
+  route: "/api/rbac/users/[id]/roles",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "remove_role",
+  resourceType: "users",
+  route: "/api/rbac/users/[id]/roles",
+});

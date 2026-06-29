@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 
 type DispatchConfirmBody = {
@@ -11,7 +12,7 @@ type DispatchConfirmBody = {
 };
 
 // POST /api/dispatch/confirm - PRD compatibility alias
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const clone = request.clone();
     const body = (await clone.json().catch(() => ({}))) as DispatchConfirmBody;
@@ -31,3 +32,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "confirm",
+  resourceType: "dispatch",
+  route: "/api/dispatch/confirm",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { Customer, CreateCustomerRequest, PaymentTerms } from "@/types/customer";
@@ -107,7 +108,7 @@ const getCustomerBalances = async (
 };
 
 // GET /api/customers - List customers with filters
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     // Check permission using Lookup Data Access Pattern
     // User can access if they have EITHER:
@@ -200,7 +201,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/customers - Create new customer
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     // Check permission
     const unauthorized = await requirePermission(RESOURCES.CUSTOMERS, "create");
@@ -315,3 +316,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "customers",
+  route: "/api/customers",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "customers",
+  route: "/api/customers",
+});

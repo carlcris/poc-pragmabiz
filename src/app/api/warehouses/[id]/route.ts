@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
@@ -123,7 +124,7 @@ async function getScopedWarehouse(
 }
 
 // GET /api/warehouses/[id]
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function GETHandler(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "view");
     if (unauthorized) return unauthorized;
@@ -171,7 +172,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 // PUT /api/warehouses/[id]
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "edit");
     if (unauthorized) return unauthorized;
@@ -252,7 +253,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // DELETE /api/warehouses/[id]
-export async function DELETE(
+async function DELETEHandler(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -315,3 +316,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "view",
+  resourceType: "warehouses",
+  route: "/api/warehouses/[id]",
+});
+export const PUT = withActivityLogging(PUTHandler, {
+  action: "update",
+  resourceType: "warehouses",
+  route: "/api/warehouses/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "warehouses",
+  route: "/api/warehouses/[id]",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -43,7 +44,7 @@ type BatchLocationRow = {
     | null;
 };
 
-const toOne = <T,>(value: T | T[] | null | undefined): T | null =>
+const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -58,7 +59,7 @@ const parseLimit = (value: string | null) => {
   return Math.min(parsed, MAX_LIMIT);
 };
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.STOCK_ADJUSTMENTS, "view");
     if (unauthorized) return unauthorized;
@@ -181,3 +182,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "inventory",
+  route: "/api/inventory/batch-locations",
+});

@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { CreateQuotationRequest, QuotationLineItem } from "@/types/quotation";
@@ -56,7 +57,7 @@ const decodeCursor = (value: string | null): QuotationCursor | null => {
 };
 
 // GET /api/quotations - List quotations with server-side filters and cursor pagination
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.SALES_QUOTATIONS, "view");
 
@@ -213,7 +214,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/quotations - Create new quotation
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     await requirePermission(RESOURCES.SALES_QUOTATIONS, "create");
 
@@ -284,3 +285,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "quotations",
+  route: "/api/quotations",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "quotations",
+  route: "/api/quotations",
+});

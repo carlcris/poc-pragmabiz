@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 /**
  * Trial Balance API
  *
@@ -18,7 +19,7 @@ import { RESOURCES } from "@/constants/resources";
  * GET /api/accounting/trial-balance
  * Generate a trial balance report as of a specific date
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.GENERAL_LEDGER, "view");
     if (unauthorized) return unauthorized;
@@ -189,3 +190,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "trial_balance",
+  route: "/api/accounting/trial-balance",
+});

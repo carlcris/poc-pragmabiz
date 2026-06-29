@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -16,8 +17,7 @@ type DbReorderSeason = {
   updated_at: string;
 };
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const toSeasonResponse = (row: DbReorderSeason) => ({
   id: row.id,
@@ -31,10 +31,7 @@ const toSeasonResponse = (row: DbReorderSeason) => ({
   updatedAt: row.updated_at,
 });
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "edit");
     if (unauthorized) return unauthorized;
@@ -61,7 +58,8 @@ export async function PATCH(
     };
     if (parsed.data.code !== undefined) updateData.code = parsed.data.code.trim().toUpperCase();
     if (parsed.data.name !== undefined) updateData.name = parsed.data.name.trim();
-    if (parsed.data.effectiveFrom !== undefined) updateData.effective_from = parsed.data.effectiveFrom;
+    if (parsed.data.effectiveFrom !== undefined)
+      updateData.effective_from = parsed.data.effectiveFrom;
     if (parsed.data.effectiveTo !== undefined) updateData.effective_to = parsed.data.effectiveTo;
     if (parsed.data.priority !== undefined) updateData.priority = parsed.data.priority;
     if (parsed.data.isActive !== undefined) updateData.is_active = parsed.data.isActive;
@@ -72,7 +70,9 @@ export async function PATCH(
       .eq("id", id)
       .eq("company_id", companyId)
       .is("deleted_at", null)
-      .select("id, code, name, effective_from, effective_to, priority, is_active, created_at, updated_at")
+      .select(
+        "id, code, name, effective_from, effective_to, priority, is_active, created_at, updated_at"
+      )
       .maybeSingle();
 
     if (error) {
@@ -97,7 +97,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -141,3 +141,14 @@ export async function DELETE(
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const PATCH = withActivityLogging(PATCHHandler, {
+  action: "update",
+  resourceType: "reorder",
+  route: "/api/reorder/seasons/[id]",
+});
+export const DELETE = withActivityLogging(DELETEHandler, {
+  action: "delete",
+  resourceType: "reorder",
+  route: "/api/reorder/seasons/[id]",
+});

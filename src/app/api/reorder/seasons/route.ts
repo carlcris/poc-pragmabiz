@@ -1,3 +1,4 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
@@ -36,7 +37,7 @@ const toSeasonResponse = (row: DbReorderSeason) => ({
   updatedAt: row.updated_at,
 });
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "view");
     if (unauthorized) return unauthorized;
@@ -54,9 +55,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("reorder_seasons")
-      .select("id, code, name, effective_from, effective_to, priority, is_active, created_at, updated_at", {
-        count: "exact",
-      })
+      .select(
+        "id, code, name, effective_from, effective_to, priority, is_active, created_at, updated_at",
+        {
+          count: "exact",
+        }
+      )
       .eq("company_id", companyId)
       .is("deleted_at", null);
 
@@ -88,7 +92,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   try {
     const unauthorized = await requirePermission(RESOURCES.REORDER_MANAGEMENT, "create");
     if (unauthorized) return unauthorized;
@@ -99,7 +103,10 @@ export async function POST(request: NextRequest) {
 
     const parsed = reorderSeasonSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message || "Invalid season" }, { status: 400 });
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || "Invalid season" },
+        { status: 400 }
+      );
     }
 
     const { data: season, error } = await supabase
@@ -115,7 +122,9 @@ export async function POST(request: NextRequest) {
         created_by: userId,
         updated_by: userId,
       })
-      .select("id, code, name, effective_from, effective_to, priority, is_active, created_at, updated_at")
+      .select(
+        "id, code, name, effective_from, effective_to, priority, is_active, created_at, updated_at"
+      )
       .single();
 
     if (error) {
@@ -129,9 +138,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: message }, { status: error.code === "23505" ? 409 : 400 });
     }
 
-    return NextResponse.json({ data: toSeasonResponse(season as DbReorderSeason) }, { status: 201 });
+    return NextResponse.json(
+      { data: toSeasonResponse(season as DbReorderSeason) },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Unexpected error creating reorder season:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export const GET = withActivityLogging(GETHandler, {
+  action: "list",
+  resourceType: "reorder",
+  route: "/api/reorder/seasons",
+});
+export const POST = withActivityLogging(POSTHandler, {
+  action: "create",
+  resourceType: "reorder",
+  route: "/api/reorder/seasons",
+});
