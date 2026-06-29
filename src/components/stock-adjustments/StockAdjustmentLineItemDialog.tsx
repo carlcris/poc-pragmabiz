@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { AsyncSearchCombobox } from "@/components/shared/AsyncSearchCombobox";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useItem, useItems } from "@/hooks/useItems";
 import { useCurrency } from "@/hooks/useCurrency";
 import { apiClient } from "@/lib/api";
@@ -174,7 +175,7 @@ export function StockAdjustmentLineItemDialog({
     data: StockAdjustmentBatchLocation[];
   }>({
     queryKey: [
-      "stock-adjustment-batch-locations",
+      STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
       watchedItemId,
       warehouseId,
       locationId,

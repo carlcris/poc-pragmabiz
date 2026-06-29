@@ -309,6 +309,8 @@ All user-facing text must be:
 4. **Test** locally with `supabase db reset`
 5. **Never modify** existing migrations after deployment
 
+Migrations must not insert, update, or delete dev/demo seed data. Seed data and seed-only setup behavior belong in `supabase/seed.sql`; migrations are for schema, RLS, RPCs, triggers, indexes, and production-safe backfills.
+
 ## Documentation Structure
 
 This documentation is organized by module for easy navigation:

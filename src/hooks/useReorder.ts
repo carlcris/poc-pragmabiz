@@ -11,11 +11,17 @@ import type {
   ReorderSeasonItemPolicyUpdate,
 } from "@/lib/validations/reorder";
 import { toast } from "sonner";
+import {
+  REORDER_ALERTS_QUERY_KEY,
+  REORDER_STATISTICS_QUERY_KEY,
+  REORDER_STOCK_LEVELS_QUERY_KEY,
+  REORDER_SUGGESTIONS_QUERY_KEY,
+} from "@/hooks/queryKeys";
 
 // Stock Levels
 export function useStockLevels(params?: ApiQueryParams) {
   return useQuery({
-    queryKey: ["stockLevels", params],
+    queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY, params],
     queryFn: () => reorderApi.getStockLevels(params),
   });
 }
@@ -23,7 +29,7 @@ export function useStockLevels(params?: ApiQueryParams) {
 // Reorder Suggestions
 export function useReorderSuggestions(params?: ApiQueryParams) {
   return useQuery({
-    queryKey: ["reorderSuggestions", params],
+    queryKey: [REORDER_SUGGESTIONS_QUERY_KEY, params],
     queryFn: () => reorderApi.getReorderSuggestions(params),
   });
 }
@@ -42,8 +48,8 @@ export function useUpdateReorderSuggestion() {
     mutationFn: ({ id, data }: { id: string; data: ReorderSuggestionUpdate }) =>
       reorderApi.updateReorderSuggestion(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reorderSuggestions"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_SUGGESTIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       toast.success("Reorder suggestion updated successfully");
     },
     onError: () => {
@@ -57,8 +63,8 @@ export function useApproveReorderSuggestion() {
   return useMutation({
     mutationFn: (id: string) => reorderApi.approveReorderSuggestion(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reorderSuggestions"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_SUGGESTIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       toast.success("Reorder suggestion approved");
     },
     onError: () => {
@@ -72,8 +78,8 @@ export function useRejectReorderSuggestion() {
   return useMutation({
     mutationFn: (id: string) => reorderApi.rejectReorderSuggestion(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reorderSuggestions"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_SUGGESTIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       toast.success("Reorder suggestion rejected");
     },
     onError: () => {
@@ -144,7 +150,7 @@ export function useDeleteReorderRule() {
 // Reorder Alerts
 export function useReorderAlerts(params?: ApiQueryParams) {
   return useQuery({
-    queryKey: ["reorderAlerts", params],
+    queryKey: [REORDER_ALERTS_QUERY_KEY, params],
     queryFn: () => reorderApi.getReorderAlerts(params),
   });
 }
@@ -154,8 +160,8 @@ export function useAcknowledgeAlerts() {
   return useMutation({
     mutationFn: (data: AcknowledgeAlertInput) => reorderApi.acknowledgeAlerts(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       toast.success("Alerts acknowledged");
     },
     onError: () => {
@@ -169,8 +175,8 @@ export function useUnacknowledgeAlerts() {
   return useMutation({
     mutationFn: (data: AcknowledgeAlertInput) => reorderApi.unacknowledgeAlerts(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       toast.success("Alerts restored");
     },
     onError: () => {
@@ -193,8 +199,8 @@ export function useCreateReorderSeason() {
     mutationFn: (data: ReorderSeasonInput) => reorderApi.createReorderSeason(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reorderSeasons"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
     },
   });
 }
@@ -206,8 +212,8 @@ export function useUpdateReorderSeason() {
       reorderApi.updateReorderSeason(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reorderSeasons"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
     },
   });
 }
@@ -219,8 +225,8 @@ export function useDeleteReorderSeason() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reorderSeasons"] });
       queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
     },
   });
 }
@@ -240,8 +246,8 @@ export function useCreateReorderSeasonItemPolicy() {
       reorderApi.createReorderSeasonItemPolicy(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
     },
   });
 }
@@ -253,8 +259,8 @@ export function useUpdateReorderSeasonItemPolicy() {
       reorderApi.updateReorderSeasonItemPolicy(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
     },
   });
 }
@@ -265,8 +271,8 @@ export function useDeleteReorderSeasonItemPolicy() {
     mutationFn: (id: string) => reorderApi.deleteReorderSeasonItemPolicy(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["reorderSeasonItemPolicies"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderAlerts"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
     },
   });
 }
@@ -274,7 +280,7 @@ export function useDeleteReorderSeasonItemPolicy() {
 // Statistics
 export function useReorderStatistics() {
   return useQuery({
-    queryKey: ["reorderStatistics"],
+    queryKey: [REORDER_STATISTICS_QUERY_KEY],
     queryFn: () => reorderApi.getReorderStatistics(),
   });
 }
@@ -285,8 +291,8 @@ export function useGenerateReorderSuggestions() {
   return useMutation({
     mutationFn: () => reorderApi.generateReorderSuggestions(),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["reorderSuggestions"] });
-      queryClient.invalidateQueries({ queryKey: ["reorderStatistics"] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_SUGGESTIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       toast.success(`Generated ${data.generated} reorder suggestions`);
     },
     onError: () => {

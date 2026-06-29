@@ -116,6 +116,8 @@ Company Level
 - **In Transit**: Being transferred between warehouses
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
+Stock-aware item lists subscribe to `item_warehouse` realtime changes. Posted stock adjustments and other stock movements invalidate the loaded items and item statistics queries so on-hand, reserved, and available quantities refresh without leaving the page.
+
 ### 4. Stock Transactions
 
 Every stock movement is recorded as a **Stock Transaction** for full audit trail and stock ledger reporting.
@@ -482,6 +484,7 @@ Item defaults live on `items.reorder_level` and `items.reorder_quantity`. If an 
 Seasonal policies persist the selected item unit option, `uom_id`, and `qty_per_unit` snapshot for display and editing. `reorder_level` and `reorder_quantity` store the user-entered selected-unit quantities. `base_reorder_level` and `base_reorder_quantity` are generated stored columns and are used by alerts, statistics, and requisition defaults.
 Reorder reports and dashboard analytics read reorder defaults from `items`, not from `item_warehouse`. Company-wide reorder analytics aggregate stock across all company warehouses and compare the total to the item-level effective reorder point; business-unit context does not narrow these reorder calculations.
 The warehouse dashboard low-stock reorder card uses a bounded SQL RPC (`get_warehouse_dashboard_low_stocks`) to aggregate and return only the top low-stock rows needed by the card.
+Active reorder alerts create realtime company-level notifications across all warehouses. Acknowledged and resolved reorder alerts do not create notifications, and stale reorder notification rows are removed by the alert sync.
 Seasonal policy list responses include the selected unit context and active item units for display: selected unit option, unit label, quantity per unit, generated base quantities, base unit label, and available unit options.
 RLS restricts seasonal item policy rows to the authenticated user's company.
 

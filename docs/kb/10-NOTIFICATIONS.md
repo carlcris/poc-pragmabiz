@@ -13,6 +13,7 @@ The Notification System provides real-time workflow notifications to users throu
 - **Metadata support** - Contextual information (links, IDs, types)
 - **Multi-tenant support** - Business unit scoping with company-level fallback
 - **Pagination support** - Efficient retrieval of notification lists
+- **Realtime updates** - Supabase realtime invalidates notification queries when rows change
 
 ## Architecture
 
@@ -64,6 +65,7 @@ Notifications are categorized by type for UI rendering and filtering:
 - **`warning`** - Warning notifications (attention required)
 - **`success`** - Success notifications (action completed)
 - **`error`** - Error notifications (action failed)
+- **`reorder_alert`** - Active company reorder alerts across all warehouses
 
 ### 3. Metadata Structure
 
@@ -110,6 +112,24 @@ async function notifyUsers(params: {
   metadata?: Record<string, any>
 }): Promise<void>
 ```
+
+### 5. Reorder Alert Notifications
+
+Active reorder alerts create company-level notifications with `business_unit_id = NULL` and `type = 'reorder_alert'`. These notifications are separate from local per-warehouse low-stock indicators. They describe overall available inventory across all warehouses and are created only for active actionable reorder alerts.
+
+Reorder notification rows persist machine-readable title/message tokens plus structured metadata rather than localized prose. The notification menu and page render the title, quantities, and message through `next-intl` using the active locale.
+
+Recipients must be active company users with `view` permission on `reorder_management`. The synchronization removes existing reorder notifications when a recipient loses that permission or becomes inactive or deleted.
+
+Acknowledged alerts and resolved alerts do not create notifications. Statement-level database triggers synchronize only the affected item IDs when acknowledgment rows are inserted, updated, or deleted, so acknowledging removes the notification immediately and restoring the alert recreates it without a full-company scan. The database sync also removes stale reorder alert notifications when an alert is resolved or no longer matches the active alert condition.
+
+Example messages:
+
+- `APRICOT YELLOW MATBOARD 30"X42" has 480.00 units available across all warehouses, below the reorder point of 2,500.00.`
+- `20X30 2812-058-1 NTR has 850.00 units available across all warehouses, below the reorder point of 1,000.00.`
+- `BISCUIT BLOCK BROWN MATBOARD 30X42 has 0.00 units available across all warehouses.`
+
+The reorder-owned `sync_reorder_alert_notifications(company_id)` RPC keeps notification rows in sync. Statement-level stock-balance triggers collect distinct affected item IDs and run an item-scoped sync once per company per SQL statement. Triggers on item reorder settings, reorder seasons, and seasonal item policies also run the sync so notification inserts, updates, and deletes are emitted through Supabase realtime. The generic notifications API only reads registered notification rows and never invokes producer-specific reconciliation. Full-company reconciliation is reserved for explicit recovery or scheduled reorder maintenance.
 
 **Usage**:
 ```typescript
@@ -653,7 +673,6 @@ WHERE read = TRUE
 
 ## Future Enhancements
 
-- **Real-time push notifications** via WebSockets or Server-Sent Events
 - **Email digests** for unread notifications
 - **Notification preferences** per user (enable/disable by type)
 - **Notification grouping** (combine similar notifications)

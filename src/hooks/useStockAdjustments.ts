@@ -1,5 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  ITEMS_QUERY_KEY,
+  ITEMS_STATS_QUERY_KEY,
+  STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY,
+  WAREHOUSE_DASHBOARD_QUERY_KEY,
+  REORDER_ALERTS_QUERY_KEY,
+  REORDER_STATISTICS_QUERY_KEY,
+  REORDER_SUGGESTIONS_QUERY_KEY,
+  REORDER_STOCK_LEVELS_QUERY_KEY,
+} from "@/hooks/queryKeys";
 import { stockAdjustmentsApi } from "@/lib/api/stock-adjustments";
 import type {
   StockAdjustmentListParams,
@@ -102,6 +112,14 @@ export function usePostStockAdjustment() {
       queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
+      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_SUGGESTIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY] });
       toast.success("Stock adjustment posted successfully");
     },
     onError: (error: unknown) => {

@@ -11127,6 +11127,14 @@ export type Database = {
             }
             Returns: undefined
           }
+      sync_reorder_alert_notifications: {
+        Args: { p_company_id: string }
+        Returns: number
+      }
+      sync_reorder_alert_notifications_internal: {
+        Args: { p_company_id: string; p_item_ids?: string[] }
+        Returns: number
+      }
       unacknowledge_reorder_alerts: {
         Args: {
           p_alert_ids: string[]

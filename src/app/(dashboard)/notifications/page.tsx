@@ -7,7 +7,6 @@ import { useMarkNotificationRead, useNotifications } from "@/hooks/useNotificati
 import type { Notification } from "@/types/notifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -16,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NotificationContent } from "@/components/notifications/NotificationContent";
 
 export default function NotificationsPage() {
   const t = useTranslations("notificationsPage");
@@ -76,15 +76,7 @@ export default function NotificationsPage() {
             <Card key={notification.id}>
               <CardContent className="flex items-start justify-between gap-4 p-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{notification.title}</span>
-                    {!notification.is_read && (
-                      <Badge className="bg-blue-600 text-[10px] hover:bg-blue-700">
-                        {t("new")}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{notification.message}</p>
+                  <NotificationContent notification={notification} />
                   <p className="text-xs text-muted-foreground">
                     {new Date(notification.created_at).toLocaleString(locale)}
                   </p>

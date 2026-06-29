@@ -1,6 +1,8 @@
 import {
   DELIVERY_NOTES_QUERY_KEY,
   GRNS_QUERY_KEY,
+  ITEMS_QUERY_KEY,
+  ITEMS_STATS_QUERY_KEY,
   LOAD_LISTS_QUERY_KEY,
   NOTIFICATIONS_QUERY_KEY,
   PICK_LISTS_QUERY_KEY,
@@ -25,6 +27,11 @@ export const realtimeDomains = {
     tables: ["notifications"],
     queryKeys: [NOTIFICATIONS_QUERY_KEY],
     channelKey: "notifications",
+  },
+  stock: {
+    tables: ["item_warehouse"],
+    queryKeys: [ITEMS_QUERY_KEY, ITEMS_STATS_QUERY_KEY],
+    channelKey: "stock",
   },
   purchasing: {
     tables: [

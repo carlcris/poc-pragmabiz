@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { itemsApi } from "@/lib/api/items";
+import { ITEMS_QUERY_KEY, ITEMS_STATS_QUERY_KEY } from "@/hooks/queryKeys";
+import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import type {
   Item,
   CreateItemRequest,
@@ -10,8 +12,6 @@ import type {
 } from "@/types/item";
 import type { ItemWithStock } from "@/app/api/items/route";
 
-const ITEMS_QUERY_KEY = "items";
-const ITEMS_STATS_QUERY_KEY = "items-stats";
 const ITEM_UNIT_OPTIONS_QUERY_KEY = "item-unit-options";
 const LOOKUP_MAX_LIMIT = 50;
 
@@ -93,6 +93,10 @@ export function useItems(filters?: ItemsQueryOptions) {
       : restFilters;
   const includeStock = normalizedFilters.includeStock ?? false;
   const includeStats = normalizedFilters.includeStats ?? false;
+
+  useRealtimeDomainInvalidation("stock", {
+    enabled: (enabled ?? true) && includeStock,
+  });
 
   return useQuery({
     queryKey: [ITEMS_QUERY_KEY, normalizedFilters],

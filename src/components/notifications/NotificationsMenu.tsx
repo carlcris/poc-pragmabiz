@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { Bell, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +15,7 @@ import {
 import { useMarkNotificationRead, useNotifications } from "@/hooks/useNotifications";
 import type { Notification } from "@/types/notifications";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NotificationContent } from "@/components/notifications/NotificationContent";
 
 export function NotificationsMenu() {
   const t = useTranslations("notificationsPage");
@@ -72,15 +72,7 @@ export function NotificationsMenu() {
               <div key={notification.id} className="border-b px-4 py-3 last:border-b-0">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{notification.title}</span>
-                      {!notification.is_read && (
-                        <Badge className="bg-blue-600 text-[10px] hover:bg-blue-700">
-                          {t("new")}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{notification.message}</p>
+                    <NotificationContent notification={notification} compact />
                     <p className="text-[11px] text-muted-foreground">
                       {new Date(notification.created_at).toLocaleString(locale)}
                     </p>

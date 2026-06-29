@@ -3,10 +3,23 @@ export type NotificationType =
   | "stock_request_workflow"
   | "pick_list_workflow"
   | "delivery_note_workflow"
+  | "reorder_alert"
   | "customer_registration_submitted"
   | "customer_registration_approved"
   | "customer_registration_rejected"
   | "system";
+
+export type ReorderAlertNotificationMetadata = {
+  category: "reorder_alert";
+  reorderAlertKey: string;
+  itemId: string;
+  itemName: string;
+  severity: "critical" | "warning";
+  availableStock: number;
+  reorderPoint: number;
+  scope: "all_warehouses";
+  alertStatus: "active";
+};
 
 export type Notification = {
   id: string;

@@ -312,6 +312,12 @@ export type TranslationKeys = {
     new: string;
     markAsRead: string;
     viewAll: string;
+    reorderTitle: string;
+    reorderCriticalTitle: string;
+    reorderStockoutTitle: string;
+    reorderStockoutMessage: string;
+    reorderBelowPointMessage: string;
+    reorderFallbackMessage: string;
   };
   userMenu: {
     myProfile: string;
@@ -3121,6 +3127,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       new: "New",
       markAsRead: "Mark as read",
       viewAll: "View all",
+      reorderTitle: "Reorder alert",
+      reorderCriticalTitle: "Critical reorder alert",
+      reorderStockoutTitle: "Stockout alert",
+      reorderStockoutMessage:
+        "{itemName} has {availableStock} units available across all warehouses.",
+      reorderBelowPointMessage:
+        "{itemName} has {availableStock} units available across all warehouses, below the reorder point of {reorderPoint}.",
+      reorderFallbackMessage:
+        "Available inventory across all warehouses is below its reorder point.",
     },
     userMenu: {
       myProfile: "My Profile",
@@ -8570,6 +8585,13 @@ export const translations: Record<Locale, TranslationKeys> = {
       new: "新",
       markAsRead: "标记为已读",
       viewAll: "查看全部",
+      reorderTitle: "补货预警",
+      reorderCriticalTitle: "紧急补货预警",
+      reorderStockoutTitle: "缺货预警",
+      reorderStockoutMessage: "{itemName} 在所有仓库的可用库存为 {availableStock} 个单位。",
+      reorderBelowPointMessage:
+        "{itemName} 在所有仓库的可用库存为 {availableStock} 个单位，低于补货点 {reorderPoint}。",
+      reorderFallbackMessage: "所有仓库的可用库存已低于补货点。",
     },
     userMenu: {
       myProfile: "我的资料",

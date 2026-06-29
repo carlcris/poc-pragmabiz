@@ -1,6 +1,8 @@
 -- Seed data for development
 -- This file will be executed after migrations when running `supabase db reset`
 
+SELECT set_config('app.skip_reorder_notification_sync', 'true', false);
+
 -- ============================================================================
 -- SEED DATA: Companies
 -- ============================================================================
@@ -3126,3 +3128,5 @@ WHERE i.id = source.item_id
 
 END;
 $innovatronix_import$;
+
+SELECT set_config('app.skip_reorder_notification_sync', 'false', false);
