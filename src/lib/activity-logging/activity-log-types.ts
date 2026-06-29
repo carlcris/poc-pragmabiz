@@ -16,18 +16,27 @@ export type RouteActivityConfig = {
   route: string;
 };
 
+export type ActivityPresentation = {
+  displayMessage: string;
+  messageKey: string;
+};
+
 export type ActivityContextOverride = {
   action?: string;
+  actorLabel?: string | null;
   businessUnitId?: string | null;
   companyId?: string | null;
   entityId?: string | null;
   entityIds?: string[];
+  entityCode?: string | null;
+  entityLabel?: string | null;
   metadata?: JsonObject;
   resourceType?: string;
   userId?: string | null;
 };
 
 export type ActivityActorContext = {
+  actorLabel: string | null;
   actorType: ActivityActorType;
   businessUnitId: string | null;
   companyId: string | null;
@@ -37,17 +46,22 @@ export type ActivityActorContext = {
 export type RequestActivityEvent = {
   action: string;
   actor_type: ActivityActorType;
+  actor_label: string | null;
   business_unit_id: string | null;
   company_id: string | null;
   duration_ms: number;
   entity_id: string | null;
   entity_ids: string[] | null;
+  entity_code: string | null;
+  entity_label: string | null;
   error_code: string | null;
   event_kind: "request";
   http_method: ActivityHttpMethod;
   http_status: number;
   ip_address: string | null;
+  display_message: string;
   metadata: JsonObject;
+  message_key: string;
   occurred_at: string;
   outcome: ActivityOutcome;
   query_params: JsonObject;

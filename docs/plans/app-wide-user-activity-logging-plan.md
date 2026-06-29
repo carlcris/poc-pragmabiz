@@ -80,6 +80,7 @@ Create a monthly partitioned `user_activity_logs` table with these logical field
 | `event_kind`       | `request` or `business_operation`                              |
 | `actor_type`       | `user`, `system`, or `anonymous`                               |
 | `user_id`          | Authenticated user when applicable                             |
+| `actor_label`      | Historical actor display name or verified email                |
 | `company_id`       | Tenant scope when available                                    |
 | `business_unit_id` | Active business-unit scope when available                      |
 | `source`           | `web`, `mobile`, `tablet`, `api`, or `system`                  |
@@ -89,6 +90,10 @@ Create a monthly partitioned `user_activity_logs` table with these logical field
 | `resource_type`    | Stable domain resource name                                    |
 | `entity_id`        | Primary affected entity when known                             |
 | `entity_ids`       | Additional affected entity identifiers                         |
+| `entity_code`      | Historical business-code snapshot when already available       |
+| `entity_label`     | Historical entity-name snapshot when already available         |
+| `message_key`      | Stable key for future report or localized UI rendering         |
+| `display_message`  | Safe immediately readable activity summary                     |
 | `route_params`     | Sanitized route parameters                                     |
 | `query_params`     | Sanitized read filters and pagination                          |
 | `request_payload`  | Sanitized mutation payload                                     |
@@ -239,6 +244,9 @@ roll back with the business transaction.
 - Explicit authentication and business-unit context overrides.
 - Request-ID response headers and API/business-event correlation support.
 - Activity coverage for all current API route handlers.
+- Human-readable display messages backed by stable message keys and entity snapshots.
+- Zero-query message enrichment using only authentication claims and operation-owned data.
+- Signed actor display names added by the existing access-token profile lookup.
 - `npm run activity-logging:check` enforcement for future API handlers.
 
 ## Mandatory Feature Post-Flight

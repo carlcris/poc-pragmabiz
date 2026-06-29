@@ -113,6 +113,44 @@ Events may include:
 - Outcome, HTTP status, duration, and safe error code.
 - Bounded IP and user-agent metadata.
 
+## Human-Readable Activity Messages
+
+Every new activity record includes both structured reporting fields and a safe presentation
+snapshot:
+
+- `actor_label`: actor name or verified email at the time of the event.
+- `entity_code`: business code such as an item or document number when already available.
+- `entity_label`: entity name at the time of the event when already available.
+- `message_key`: stable key for future report or localized UI rendering.
+- `display_message`: immediately readable English summary.
+
+Example:
+
+```text
+Maria Santos deleted item ITM-0042 (Safety Gloves).
+```
+
+The identifiers, action, resource type, and outcome remain authoritative for filtering and
+reporting. Consumers must not parse `display_message` to recover structured data.
+
+### No Automatic Enrichment Queries
+
+The activity logger never queries users, items, or documents solely to improve a message.
+
+- Actor labels come from the signed `actor_label` JWT claim or context already resolved by the
+  route. The access-token hook derives this claim from the existing user-profile lookup using full
+  name, username, then email fallback, without another database round trip.
+- Entity labels and codes come from rows or RPC results the operation already loaded or returned.
+- Delete operations reuse their existing pre-delete row or transactional result.
+- When display details are unavailable, the formatter emits a generic message instead of reading
+  more data.
+
+Messages are generated only from explicitly allowlisted presentation fields. Raw request payloads
+and response bodies are never used as display-message templates.
+
+User-name changes appear after the user's token is refreshed or the user signs in again. Existing
+activity rows intentionally retain their historical actor label.
+
 ## Read Logging
 
 Read events capture:
@@ -234,6 +272,16 @@ export const POST = withActivityLogging(POSTHandler, {
 
 Use `setActivityContext` after successful login, session establishment, tenant-context changes, or
 when the handler resolves a more precise entity or semantic action than route parameters provide.
+
+Entity presentation snapshots can be supplied without an enrichment query:
+
+```typescript
+setActivityContext({
+  entityId: item.id,
+  entityCode: item.item_code,
+  entityLabel: item.item_name,
+});
+```
 
 The wrapper emits request events after the response through Next.js `after()`. Critical database
 operations can additionally write a correlated `business_operation` event inside their owning RPC

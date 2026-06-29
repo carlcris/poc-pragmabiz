@@ -45,6 +45,9 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - Every API route handling `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` must use the shared activity
   logging wrapper. Mutation payloads must be sanitized and bounded; reads must log route and query
   context without response data. Run `npm run activity-logging:check` during feature post-flight.
+- Activity display messages must use the shared formatter and allowlisted presentation fields.
+  Reuse actor and entity labels or codes already loaded or returned by the operation; never add a
+  database read solely to enrich an activity message. Use a generic message when context is absent.
 - Do not send insert-only identity, ownership, control number, or creation-linkage fields through update paths.
 - Business operations that write more than one row/table, perform a workflow state transition, or create dependent side effects must be transactional. Implement the core operation as a DB-owned RPC/function in `supabase/migrations/`, not as chained client/API mutations.
 - Never split one logical workflow operation into multiple client calls that must all succeed for data correctness. The client may send one request; the API may validate/auth and call one transactional DB operation.

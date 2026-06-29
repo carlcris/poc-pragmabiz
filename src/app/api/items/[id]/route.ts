@@ -1,4 +1,7 @@
-import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
+import {
+  setActivityContext,
+  withActivityLogging,
+} from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -474,6 +477,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       },
       canViewPricingDetails
     );
+    setActivityContext({
+      entityId: data.id,
+      entityCode: data.item_code,
+      entityLabel: data.item_name,
+    });
     return NextResponse.json({
       data: item,
       capabilities: {
@@ -763,6 +771,13 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       ),
       canViewPricingDetails
     );
+
+    setActivityContext({
+      entityId: updatedItem.id,
+      entityCode: updatedItem.item_code,
+      entityLabel: updatedItem.item_name,
+    });
+
     return NextResponse.json({
       data: item,
       capabilities: {
@@ -806,7 +821,7 @@ async function DELETEHandler(
     // Check if item exists
     const { data: existing } = await supabase
       .from("items")
-      .select("id")
+      .select("id, item_code, item_name")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -830,6 +845,12 @@ async function DELETEHandler(
         { status: 500 }
       );
     }
+
+    setActivityContext({
+      entityId: existing.id,
+      entityCode: existing.item_code,
+      entityLabel: existing.item_name,
+    });
 
     return NextResponse.json({ message: "Item deleted successfully" });
   } catch {

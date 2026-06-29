@@ -188,12 +188,13 @@ async function POSTHandler(request: NextRequest) {
     const firstName = userData.first_name || "";
     const lastName = userData.last_name || "";
     const fullName = [firstName, lastName].filter(Boolean).join(" ");
+    const actorLabel = fullName || userData.username || data.user.email || email;
 
     const jsonResponse = NextResponse.json({
       user: {
         id: data.user.id,
         email: data.user.email,
-        name: fullName || data.user.email || email,
+        name: actorLabel,
         role: data.user.user_metadata?.role || "user",
         companyId: userData.company_id,
         username: userData.username || email.split("@")[0],
@@ -207,6 +208,7 @@ async function POSTHandler(request: NextRequest) {
 
     setActivityContext({
       userId: data.user.id,
+      actorLabel,
       companyId: userData.company_id,
       businessUnitId: decodeBusinessUnitIdFromToken(data.session.access_token),
     });

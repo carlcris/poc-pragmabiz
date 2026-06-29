@@ -36,9 +36,11 @@ async function POSTHandler(request: NextRequest) {
         .maybeSingle();
       const { data: claimData } = await supabase.auth.getClaims(body.accessToken);
       const businessUnitId = claimData?.claims.current_business_unit_id;
+      const actorLabel = claimData?.claims.actor_label;
 
       setActivityContext({
         userId: data.user.id,
+        actorLabel: typeof actorLabel === "string" ? actorLabel : (data.user.email ?? null),
         companyId: profile?.company_id ?? null,
         businessUnitId: typeof businessUnitId === "string" ? businessUnitId : null,
       });

@@ -4,6 +4,7 @@ import { after, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { captureSanitizedRequestPayload, sanitizeActivityData } from "./activity-data-sanitizer";
+import { buildActivityPresentation } from "./activity-display-message";
 import type {
   ActivityActorContext,
   ActivityContextOverride,
@@ -67,17 +68,30 @@ async function resolveActorContext(request: NextRequest): Promise<ActivityActorC
     const supabase = await createClient();
     const { data, error } = await supabase.auth.getClaims(getBearerToken(request));
     if (error || !data?.claims) {
-      return { actorType: "anonymous", userId: null, companyId: null, businessUnitId: null };
+      return {
+        actorType: "anonymous",
+        actorLabel: null,
+        userId: null,
+        companyId: null,
+        businessUnitId: null,
+      };
     }
 
     const claims = data.claims as Record<string, unknown>;
     const userId = readStringClaim(claims, "sub");
     if (!userId) {
-      return { actorType: "anonymous", userId: null, companyId: null, businessUnitId: null };
+      return {
+        actorType: "anonymous",
+        actorLabel: null,
+        userId: null,
+        companyId: null,
+        businessUnitId: null,
+      };
     }
 
     return {
       actorType: "user",
+      actorLabel: readStringClaim(claims, "actor_label") || readStringClaim(claims, "email"),
       userId,
       companyId: readStringClaim(claims, "company_id"),
       businessUnitId:
@@ -88,7 +102,13 @@ async function resolveActorContext(request: NextRequest): Promise<ActivityActorC
     console.error("Failed to resolve activity-log actor context", {
       error: error instanceof Error ? error.message : "Unknown actor-context error",
     });
-    return { actorType: "anonymous", userId: null, companyId: null, businessUnitId: null };
+    return {
+      actorType: "anonymous",
+      actorLabel: null,
+      userId: null,
+      companyId: null,
+      businessUnitId: null,
+    };
   }
 }
 
@@ -213,12 +233,27 @@ function scheduleActivityAppend(pendingActivity: PendingRequestActivity): void {
         const userId = override.userId === undefined ? actorContext.userId : override.userId;
         const actorType = userId ? "user" : actorContext.actorType;
         const outcome = responseStatus < 400 ? "succeeded" : "failed";
+        const actorLabel =
+          override.actorLabel === undefined ? actorContext.actorLabel : override.actorLabel;
+        const entityCode = override.entityCode?.slice(0, 100) || null;
+        const entityLabel = override.entityLabel?.slice(0, 255) || null;
+        const presentation = buildActivityPresentation({
+          action: override.action || config.action,
+          actorLabel,
+          actorType,
+          entityCode,
+          entityLabel,
+          httpStatus: responseStatus,
+          outcome,
+          resourceType: override.resourceType || config.resourceType,
+        });
 
         await appendActivityEvent({
           occurred_at: new Date().toISOString(),
           request_id: requestId,
           event_kind: "request",
           actor_type: actorType,
+          actor_label: actorLabel?.slice(0, 255) || null,
           user_id: userId ?? null,
           company_id:
             override.companyId === undefined ? actorContext.companyId : override.companyId,
@@ -233,6 +268,10 @@ function scheduleActivityAppend(pendingActivity: PendingRequestActivity): void {
           resource_type: override.resourceType || config.resourceType,
           entity_id: override.entityId || getPrimaryEntityId(routeParams),
           entity_ids: override.entityIds || null,
+          entity_code: entityCode,
+          entity_label: entityLabel,
+          message_key: presentation.messageKey,
+          display_message: presentation.displayMessage,
           route_params: routeParams,
           query_params: getQueryParams(nextRequest),
           request_payload: payloadResult.payload,

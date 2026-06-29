@@ -9603,18 +9603,23 @@ export type Database = {
       user_activity_logs: {
         Row: {
           action: string
+          actor_label: string | null
           actor_type: string
           business_unit_id: string | null
           company_id: string | null
+          display_message: string
           duration_ms: number | null
+          entity_code: string | null
           entity_id: string | null
           entity_ids: Json | null
+          entity_label: string | null
           error_code: string | null
           event_kind: string
           http_method: string | null
           http_status: number | null
           id: string
           ip_address: string | null
+          message_key: string
           metadata: Json
           occurred_at: string
           outcome: string
@@ -9630,18 +9635,23 @@ export type Database = {
         }
         Insert: {
           action: string
+          actor_label?: string | null
           actor_type: string
           business_unit_id?: string | null
           company_id?: string | null
+          display_message?: string
           duration_ms?: number | null
+          entity_code?: string | null
           entity_id?: string | null
           entity_ids?: Json | null
+          entity_label?: string | null
           error_code?: string | null
           event_kind: string
           http_method?: string | null
           http_status?: number | null
           id?: string
           ip_address?: string | null
+          message_key?: string
           metadata?: Json
           occurred_at?: string
           outcome: string
@@ -9657,18 +9667,23 @@ export type Database = {
         }
         Update: {
           action?: string
+          actor_label?: string | null
           actor_type?: string
           business_unit_id?: string | null
           company_id?: string | null
+          display_message?: string
           duration_ms?: number | null
+          entity_code?: string | null
           entity_id?: string | null
           entity_ids?: Json | null
+          entity_label?: string | null
           error_code?: string | null
           event_kind?: string
           http_method?: string | null
           http_status?: number | null
           id?: string
           ip_address?: string | null
+          message_key?: string
           metadata?: Json
           occurred_at?: string
           outcome?: string
