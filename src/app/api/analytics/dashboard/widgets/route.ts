@@ -112,21 +112,14 @@ async function GETHandler() {
       warehouses?: { warehouse_name: string | null } | { warehouse_name: string | null }[] | null;
     };
 
-    type ItemWarehouseAlertRow = {
+    type ReorderAlertRpcRow = {
+      id: string;
       item_id: string;
-      warehouse_id: string;
-      current_stock: number | string | null;
-      items:
-        | {
-            item_code: string;
-            item_name: string;
-            reorder_level: number | string | null;
-          }
-        | {
-            item_code: string;
-            item_name: string;
-            reorder_level: number | string | null;
-          }[];
+      item_code: string | null;
+      item_name: string | null;
+      total_available_stock: number | string | null;
+      reorder_point: number | string | null;
+      total_count: number | string | null;
     };
 
     type OrderStatusRow = {
@@ -437,56 +430,36 @@ async function GETHandler() {
     allRecentActivity.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     const recentActivity = allRecentActivity.slice(0, 5).map(({ ...rest }) => rest);
 
-    // Get reorder alerts - items with stock below reorder level
-    const { data: reorderAlertsData, error: reorderAlertsError } = await supabase
-      .from("item_warehouse")
-      .select(
-        `
-        item_id,
-        warehouse_id,
-        current_stock,
-        items!inner (
-          id,
-          item_code,
-          item_name,
-          company_id,
-          reorder_level
-        )
-      `
-      )
-      .eq("items.company_id", companyId)
-      .gt("items.reorder_level", 0)
-      .order("current_stock", { ascending: true })
-      .limit(100);
+    // Reorder alerts are item-level and company-wide. Use the reorder engine so
+    // item defaults, seasonal policies, zero-stock items, and acknowledgments match /api/reorder.
+    const { data: reorderAlertsData, error: reorderAlertsError } = await supabase.rpc(
+      "get_effective_reorder_alerts",
+      {
+        p_company_id: companyId,
+        p_as_of_date: undefined,
+        p_search: null,
+        p_severity: null,
+        p_page: 1,
+        p_limit: 10,
+        p_acknowledgment_status: "active",
+      }
+    );
 
     if (reorderAlertsError) {
+      console.error("Error fetching dashboard reorder alerts:", reorderAlertsError);
     }
 
-    // Filter alerts where current stock is below reorder level and sort
-    const reorderAlerts = ((reorderAlertsData as ItemWarehouseAlertRow[] | null) || [])
-      .filter((alert) => {
-        const currentStock = Number(alert.current_stock) || 0;
-        const item = Array.isArray(alert.items) ? alert.items[0] : alert.items;
-        const reorderLevel = Number(item?.reorder_level) || 0;
-        return currentStock < reorderLevel;
-      })
-      .sort((a, b) => {
-        const aStock = Number(a.current_stock) || 0;
-        const bStock = Number(b.current_stock) || 0;
-        return aStock - bStock;
-      })
-      .slice(0, 10)
-      .map((alert) => {
-        const item = Array.isArray(alert.items) ? alert.items[0] : alert.items;
-        return {
-          id: alert.item_id,
-          code: item?.item_code || "",
-          name: item?.item_name || "",
-          currentStock: Number(alert.current_stock) || 0,
-          reorderPoint: Number(item?.reorder_level) || 0,
-          warehouseId: alert.warehouse_id,
-        };
-      });
+    const reorderAlertRows = ((reorderAlertsData as ReorderAlertRpcRow[] | null) || []);
+    const reorderAlerts = reorderAlertRows.map((alert) => ({
+      id: alert.item_id,
+      code: alert.item_code || "",
+      name: alert.item_name || "",
+      currentStock: Number(alert.total_available_stock) || 0,
+      reorderPoint: Number(alert.reorder_point) || 0,
+      warehouseId: null,
+    }));
+    const lowStockCount =
+      reorderAlertRows.length > 0 ? Number(reorderAlertRows[0].total_count) || 0 : 0;
 
     // Get statistics
     const { data: salesOrdersData } = await supabase
@@ -527,7 +500,7 @@ async function GETHandler() {
       stats: {
         activeSalesOrders,
         activePurchaseOrders,
-        lowStockCount: reorderAlerts.length,
+        lowStockCount,
       },
       capabilities: {
         canViewTotalSales,

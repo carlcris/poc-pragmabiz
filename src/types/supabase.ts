@@ -9600,6 +9600,105 @@ export type Database = {
           },
         ]
       }
+      user_activity_logs: {
+        Row: {
+          action: string
+          actor_label: string | null
+          actor_type: string
+          business_unit_id: string | null
+          company_id: string | null
+          display_message: string
+          duration_ms: number | null
+          entity_code: string | null
+          entity_id: string | null
+          entity_ids: Json | null
+          entity_label: string | null
+          error_code: string | null
+          event_kind: string
+          http_method: string | null
+          http_status: number | null
+          id: string
+          ip_address: string | null
+          message_key: string
+          metadata: Json
+          occurred_at: string
+          outcome: string
+          query_params: Json | null
+          request_id: string
+          request_payload: Json | null
+          resource_type: string
+          route: string | null
+          route_params: Json | null
+          source: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_label?: string | null
+          actor_type: string
+          business_unit_id?: string | null
+          company_id?: string | null
+          display_message?: string
+          duration_ms?: number | null
+          entity_code?: string | null
+          entity_id?: string | null
+          entity_ids?: Json | null
+          entity_label?: string | null
+          error_code?: string | null
+          event_kind: string
+          http_method?: string | null
+          http_status?: number | null
+          id?: string
+          ip_address?: string | null
+          message_key?: string
+          metadata?: Json
+          occurred_at?: string
+          outcome: string
+          query_params?: Json | null
+          request_id: string
+          request_payload?: Json | null
+          resource_type: string
+          route?: string | null
+          route_params?: Json | null
+          source: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_label?: string | null
+          actor_type?: string
+          business_unit_id?: string | null
+          company_id?: string | null
+          display_message?: string
+          duration_ms?: number | null
+          entity_code?: string | null
+          entity_id?: string | null
+          entity_ids?: Json | null
+          entity_label?: string | null
+          error_code?: string | null
+          event_kind?: string
+          http_method?: string | null
+          http_status?: number | null
+          id?: string
+          ip_address?: string | null
+          message_key?: string
+          metadata?: Json
+          occurred_at?: string
+          outcome?: string
+          query_params?: Json | null
+          request_id?: string
+          request_payload?: Json | null
+          resource_type?: string
+          route?: string | null
+          route_params?: Json | null
+          source?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_business_unit_access: {
         Row: {
           business_unit_id: string
@@ -10365,6 +10464,7 @@ export type Database = {
         Args: { p_order_quantity: number; p_quotation_item_id: string }
         Returns: number
       }
+      append_user_activity_log: { Args: { p_event: Json }; Returns: string }
       apply_manufacturing_floor_action_transaction: {
         Args: {
           p_action: string
@@ -10469,6 +10569,28 @@ export type Database = {
               status: string
             }[]
           }
+      create_draft_stock_adjustment: {
+        Args: {
+          p_adjustment_date?: string
+          p_adjustment_id?: string
+          p_adjustment_type?: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_items?: Json
+          p_location_id?: string
+          p_location_id_provided?: boolean
+          p_notes?: string
+          p_notes_provided?: boolean
+          p_reason?: string
+          p_user_id: string
+          p_warehouse_id?: string
+        }
+        Returns: {
+          adjustment_code: string
+          adjustment_id: string
+          status: string
+        }[]
+      }
       create_frame_job_order_from_sales_order_transaction: {
         Args: { p_sales_order_id: string; p_warehouse_id: string }
         Returns: {
@@ -10522,6 +10644,25 @@ export type Database = {
         }
         Returns: string
       }
+      create_stock_adjustment: {
+        Args: {
+          p_adjustment_date: string
+          p_adjustment_type: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_items: Json
+          p_location_id: string
+          p_notes: string
+          p_reason: string
+          p_user_id: string
+          p_warehouse_id: string
+        }
+        Returns: {
+          adjustment_code: string
+          adjustment_id: string
+          status: string
+        }[]
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_item_custom_field: {
         Args: { p_item_id: string; p_key: string; p_updated_by?: string }
@@ -10533,6 +10674,10 @@ export type Database = {
       }
       ensure_default_manufacturing_workstations: {
         Args: { p_business_unit_id?: string; p_company_id: string }
+        Returns: undefined
+      }
+      ensure_user_activity_log_partitions: {
+        Args: { p_months_ahead?: number; p_months_before?: number }
         Returns: undefined
       }
       finalize_frame_job_order_completion_transaction: {
@@ -10700,17 +10845,6 @@ export type Database = {
           warehouse_breakdown: Json
         }[]
       }
-      get_warehouse_dashboard_low_stocks: {
-        Args: { p_company_id: string; p_limit?: number }
-        Returns: {
-          item_id: string
-          item_name: string
-          location_code: string
-          qty: number
-          reorder_level: number
-          uom: string
-        }[]
-      }
       get_inventory_batch_reconciliation_mismatches: {
         Args: { p_company_id?: string; p_tolerance?: number }
         Returns: {
@@ -10867,6 +11001,21 @@ export type Database = {
           warehouse_id: string
         }[]
       }
+      get_warehouse_dashboard_low_stocks: {
+        Args: {
+          p_business_unit_id?: string
+          p_company_id: string
+          p_limit?: number
+        }
+        Returns: {
+          item_id: string
+          item_name: string
+          location_code: string
+          qty: number
+          reorder_level: number
+          uom: string
+        }[]
+      }
       get_warehouses: {
         Args: {
           p_accessible_business_unit_ids?: string[]
@@ -10911,6 +11060,13 @@ export type Database = {
           p_warehouse_id: string
         }
         Returns: string
+      }
+      maintain_user_activity_logs: {
+        Args: { p_delete_batch_size?: number; p_retention_days?: number }
+        Returns: {
+          deleted_rows: number
+          dropped_partitions: number
+        }[]
       }
       notify_business_units: {
         Args: {
@@ -11124,7 +11280,7 @@ export type Database = {
               p_notes?: string
               p_received_date?: string
               p_user_id: string
-          }
+            }
             Returns: undefined
           }
       sync_reorder_alert_notifications: {
@@ -11160,6 +11316,28 @@ export type Database = {
           p_valid_until: string
         }
         Returns: string
+      }
+      update_stock_adjustment: {
+        Args: {
+          p_adjustment_date?: string
+          p_adjustment_id: string
+          p_adjustment_type?: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_items?: Json
+          p_location_id?: string
+          p_location_id_provided?: boolean
+          p_notes?: string
+          p_notes_provided?: boolean
+          p_reason?: string
+          p_user_id: string
+          p_warehouse_id?: string
+        }
+        Returns: {
+          adjustment_code: string
+          adjustment_id: string
+          status: string
+        }[]
       }
       update_transformation_template: {
         Args: {

@@ -181,7 +181,7 @@ export interface DashboardWidgetData {
     name: string;
     currentStock: number;
     reorderPoint: number;
-    warehouseId: string;
+    warehouseId: string | null;
   }>;
   stats?: {
     activeSalesOrders: number;

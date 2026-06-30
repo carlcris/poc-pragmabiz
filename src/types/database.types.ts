@@ -11002,7 +11002,11 @@ export type Database = {
         }[]
       }
       get_warehouse_dashboard_low_stocks: {
-        Args: { p_company_id: string; p_limit?: number }
+        Args: {
+          p_business_unit_id?: string
+          p_company_id: string
+          p_limit?: number
+        }
         Returns: {
           item_id: string
           item_name: string

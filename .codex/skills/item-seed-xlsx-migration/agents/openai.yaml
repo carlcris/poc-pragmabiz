@@ -1,0 +1,4 @@
+interface:
+  display_name: "Item Seed XLSX Migration"
+  short_description: "Migrate item XLSX price lists into seed.sql"
+  default_prompt: "Use $item-seed-xlsx-migration to migrate an item price-list XLSX into supabase/seed.sql."

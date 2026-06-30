@@ -1,15 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { WAREHOUSE_DASHBOARD_QUERY_KEY } from "@/hooks/queryKeys";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { DashboardData } from "@/types/warehouse-dashboard";
 
 export const useWarehouseDashboard = () => {
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+
   useRealtimeDomainInvalidation("inventory", {
     queryKeys: [WAREHOUSE_DASHBOARD_QUERY_KEY],
   });
 
   return useQuery<DashboardData>({
-    queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY],
+    queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY, currentBusinessUnitId ?? null],
     queryFn: async () => {
       const response = await fetch("/api/warehouse-dashboard");
 

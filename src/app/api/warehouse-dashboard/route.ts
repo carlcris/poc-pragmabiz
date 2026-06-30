@@ -148,7 +148,7 @@ async function GETHandler() {
         ? supabase
             .from("load_lists")
             .select("id", { count: "exact", head: true })
-            .in("business_unit_id", accessibleBUIds)
+            .in("business_unit_id", scopedBUIds)
             .in("status", ["in_transit", "receiving"])
             .is("deleted_at", null)
         : Promise.resolve({ count: 0, error: null }),
@@ -199,6 +199,7 @@ async function GETHandler() {
       canViewReorderValue
         ? supabase.rpc("get_warehouse_dashboard_low_stocks", {
             p_company_id: userData.company_id,
+            p_business_unit_id: currentBusinessUnitId,
             p_limit: 8,
           })
         : Promise.resolve({ data: [], error: null }),
@@ -258,7 +259,7 @@ async function GETHandler() {
           load_list_items(id)
         `
             )
-            .in("business_unit_id", accessibleBUIds)
+            .in("business_unit_id", scopedBUIds)
             .in("status", ["in_transit", "receiving"])
             .is("deleted_at", null)
             .order("estimated_arrival_date", { ascending: true })

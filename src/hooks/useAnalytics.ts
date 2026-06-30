@@ -1,5 +1,6 @@
 import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { analyticsApi } from "@/lib/api/analytics";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { SalesAnalyticsFilters, ExportOptions } from "@/types/analytics";
 
 const ANALYTICS_QUERY_KEY = "analytics";
@@ -74,8 +75,10 @@ export function useCommissionBreakdown(employeeId: string, filters?: SalesAnalyt
 
 // Dashboard widgets
 export function useDashboardWidgets() {
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+
   return useQuery({
-    queryKey: [ANALYTICS_QUERY_KEY, "dashboard-widgets"],
+    queryKey: [ANALYTICS_QUERY_KEY, "dashboard-widgets", currentBusinessUnitId ?? null],
     queryFn: () => analyticsApi.getDashboardWidgets(),
     staleTime: 0,
     refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes

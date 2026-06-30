@@ -471,6 +471,11 @@ Get all dashboard widgets for current user.
 
 **Permissions**: Various widget-specific capabilities
 
+Inventory reorder widgets use the same effective reorder alert calculation as reorder management:
+item-level defaults, active seasonal policies, active acknowledgments, zero-stock items, and
+company-wide available stock are handled by the reorder RPC. Reorder widget rows are not tied to a
+single warehouse, so `warehouseId` is `null` for those company-wide alerts.
+
 **Response**:
 ```json
 {
