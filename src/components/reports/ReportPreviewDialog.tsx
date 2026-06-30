@@ -93,6 +93,8 @@ type ReportPreviewPanelProps = {
   }) => void;
 };
 
+const PDF_REPORT_ROW_LIMIT = 500;
+
 type PreviewFrameProps = {
   url: string | null;
   isGenerating: boolean;
@@ -226,7 +228,8 @@ function InventoryReportPreview({
   const reportQuery = useInventoryReport({
     enabled: false,
     page: 1,
-    limit: 50,
+    limit: PDF_REPORT_ROW_LIMIT,
+    exportMode: "pdf",
     search: search || undefined,
     warehouseId,
     category: category === "all" ? undefined : category,

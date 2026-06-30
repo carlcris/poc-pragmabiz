@@ -543,6 +543,41 @@ export type TranslationKeys = {
     statusUpdatedInactive: string;
     statusUpdateError: string;
   };
+  adminActivityLogsPage: {
+    title: string;
+    subtitle: string;
+    searchPlaceholder: string;
+    timeRange: string;
+    today: string;
+    yesterday: string;
+    last7Days: string;
+    last30Days: string;
+    customRange: string;
+    startDate: string;
+    endDate: string;
+    outcome: string;
+    source: string;
+    allOutcomes: string;
+    allSources: string;
+    succeeded: string;
+    failed: string;
+    web: string;
+    mobile: string;
+    tablet: string;
+    api: string;
+    system: string;
+    applyFilters: string;
+    resetFilters: string;
+    time: string;
+    activity: string;
+    actor: string;
+    resource: string;
+    loadError: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    unknownActor: string;
+    noStatus: string;
+  };
   adminUserRolesDialog: {
     title: string;
     description: string;
@@ -2943,6 +2978,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       Admin: "Admin",
       Users: "Users",
       Roles: "Roles",
+      "Activity Logs": "Activity Logs",
+      "activity-logs": "Activity Logs",
       Settings: "Settings",
       "Company Settings": "Company Settings",
       "Business Units": "Business Units",
@@ -3363,6 +3400,41 @@ export const translations: Record<Locale, TranslationKeys> = {
       statusUpdatedActive: "User {email} activated",
       statusUpdatedInactive: "User {email} deactivated",
       statusUpdateError: "Failed to update user status",
+    },
+    adminActivityLogsPage: {
+      title: "Activity Logs",
+      subtitle: "Review user activity and system access events",
+      searchPlaceholder: "Search activity, actor, or entity...",
+      timeRange: "Time range",
+      today: "Today",
+      yesterday: "Yesterday",
+      last7Days: "Last 7 days",
+      last30Days: "Last 30 days",
+      customRange: "Custom",
+      startDate: "Start date",
+      endDate: "End date",
+      outcome: "Outcome",
+      source: "Source",
+      allOutcomes: "All outcomes",
+      allSources: "All sources",
+      succeeded: "Succeeded",
+      failed: "Failed",
+      web: "Web",
+      mobile: "Mobile",
+      tablet: "Tablet",
+      api: "API",
+      system: "System",
+      applyFilters: "Apply filters",
+      resetFilters: "Reset filters",
+      time: "Time",
+      activity: "Activity",
+      actor: "Actor",
+      resource: "Resource",
+      loadError: "Error loading activity logs. Please try again.",
+      emptyTitle: "No activity found",
+      emptyDescription: "Try adjusting the date range or filters.",
+      unknownActor: "Unknown actor",
+      noStatus: "No status",
     },
     adminUserRolesDialog: {
       title: "Manage Roles - {name}",
@@ -8402,6 +8474,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       Admin: "管理",
       Users: "用户",
       Roles: "角色",
+      "Activity Logs": "活动日志",
+      "activity-logs": "活动日志",
       Settings: "设置",
       "Company Settings": "公司设置",
       "Business Units": "业务单元",
@@ -8816,6 +8890,41 @@ export const translations: Record<Locale, TranslationKeys> = {
       statusUpdatedActive: "用户 {email} 已启用",
       statusUpdatedInactive: "用户 {email} 已停用",
       statusUpdateError: "更新用户状态失败",
+    },
+    adminActivityLogsPage: {
+      title: "活动日志",
+      subtitle: "查看用户活动和系统访问事件",
+      searchPlaceholder: "搜索活动、操作者或实体...",
+      timeRange: "时间范围",
+      today: "今天",
+      yesterday: "昨天",
+      last7Days: "最近 7 天",
+      last30Days: "最近 30 天",
+      customRange: "自定义",
+      startDate: "开始日期",
+      endDate: "结束日期",
+      outcome: "结果",
+      source: "来源",
+      allOutcomes: "全部结果",
+      allSources: "全部来源",
+      succeeded: "成功",
+      failed: "失败",
+      web: "网页",
+      mobile: "手机",
+      tablet: "平板",
+      api: "API",
+      system: "系统",
+      applyFilters: "应用筛选",
+      resetFilters: "重置筛选",
+      time: "时间",
+      activity: "活动",
+      actor: "操作者",
+      resource: "资源",
+      loadError: "加载活动日志失败。请重试。",
+      emptyTitle: "未找到活动",
+      emptyDescription: "请尝试调整日期范围或筛选条件。",
+      unknownActor: "未知操作者",
+      noStatus: "无状态",
     },
     adminUserRolesDialog: {
       title: "管理角色 - {name}",

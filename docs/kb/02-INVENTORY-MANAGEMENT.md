@@ -1052,20 +1052,28 @@ class LocationService {
 
 Shows total inventory value by warehouse using the configured default pricing tier for item valuation, with sales price and purchase price fallback.
 
+Requests that would aggregate more than 5,000 source rows are rejected so the report does not perform unbounded database and application work. Narrow the warehouse, item, or category filters before regenerating the report.
+
 ### Stock Aging Report
 **Location**: `/api/reports/stock-aging`
 
 Shows how long inventory has been in stock, categorized by age buckets (0-30, 31-60, 61-90, 90+ days).
+
+The report applies business-unit scope and rejects requests that would aggregate more than 5,000 source rows. Narrow age bucket, category, or search filters before regenerating the report.
 
 ### Stock Movement Report
 **Location**: `/api/reports/stock-movement`
 
 Shows all stock transactions for a date range, grouped by item/warehouse.
 
+The report rejects current or comparison periods above 5,000 source transaction rows. Narrow the date range, warehouse, or item filters before regenerating the report.
+
 ### Inventory Report
 **Location**: `/api/reports/inventory`
 
 Current stock levels across all warehouses with location details.
+
+Normal list calls are capped at 50 rows per page. PDF preview uses `exportMode=pdf` and can include up to 500 matching rows in one preview request.
 
 ## Troubleshooting
 

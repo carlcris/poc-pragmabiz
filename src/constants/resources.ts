@@ -14,6 +14,7 @@ export const RESOURCES = {
   PERMISSIONS: "permissions",
   COMPANY_SETTINGS: "company_settings",
   BUSINESS_UNITS: "business_units",
+  ACTIVITY_LOGS: "activity_logs",
 
   // ============================================================================
   // INVENTORY MANAGEMENT
@@ -118,6 +119,12 @@ export const RESOURCE_METADATA: ResourceMetadata[] = [
     key: RESOURCES.BUSINESS_UNITS,
     name: "Business Units",
     description: "Manage business units",
+    category: "Admin",
+  },
+  {
+    key: RESOURCES.ACTIVITY_LOGS,
+    name: "Activity Logs",
+    description: "View user activity logs",
     category: "Admin",
   },
 

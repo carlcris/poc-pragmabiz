@@ -101,6 +101,7 @@ type AggregatedGroup = {
 };
 
 const CHUNK_SIZE = 200;
+const MAX_SOURCE_ROWS = 5000;
 
 const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
@@ -136,7 +137,9 @@ const formatName = (user: UserRow | null | undefined) => {
 
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
@@ -224,6 +227,15 @@ async function GETHandler(request: NextRequest) {
       const chunk = (data || []) as PickListReportRow[];
       if (chunk.length === 0) break;
       pickLists.push(...chunk);
+      if (pickLists.length > MAX_SOURCE_ROWS) {
+        return NextResponse.json(
+          {
+            error:
+              "Picking efficiency report is too large to generate. Narrow the filters and try again.",
+          },
+          { status: 413 }
+        );
+      }
       if (chunk.length < CHUNK_SIZE) break;
       from += CHUNK_SIZE;
     }

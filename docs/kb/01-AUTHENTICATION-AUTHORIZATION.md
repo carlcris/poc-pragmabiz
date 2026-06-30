@@ -98,6 +98,7 @@ User
 - `journal_entries` - Accounting entries
 - `reports` - Reporting features
 - `analytics` - Dashboard widgets
+- `activity_logs` - User activity log review
 
 **Permission Types per Resource**:
 - `view` - Read access

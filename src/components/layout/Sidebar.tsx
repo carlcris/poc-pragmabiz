@@ -27,6 +27,7 @@ import {
   PackageCheck,
   Factory,
   ChefHat,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
@@ -257,6 +258,12 @@ const menuItems = [
     children: [
       { title: "Users", href: "/admin/users", resource: RESOURCES.USERS as Resource, icon: Users },
       { title: "Roles", href: "/admin/roles", resource: RESOURCES.ROLES as Resource, icon: Shield },
+      {
+        title: "Activity Logs",
+        href: "/admin/activity-logs",
+        resource: RESOURCES.ACTIVITY_LOGS as Resource,
+        icon: Activity,
+      },
       {
         title: "Settings",
         href: "/admin/settings",

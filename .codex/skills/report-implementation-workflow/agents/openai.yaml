@@ -1,0 +1,4 @@
+interface:
+  display_name: "Report Implementation Workflow"
+  short_description: "Build scalable, permission-safe reports"
+  default_prompt: "Use $report-implementation-workflow to implement or review a report endpoint, hook, preview, export, and documentation."

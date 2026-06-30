@@ -70,6 +70,7 @@ type GroupAgg = {
 };
 
 const CHUNK_SIZE = 200;
+const MAX_SOURCE_ROWS = 5000;
 
 const asArray = <T>(value: T | T[] | null | undefined): T[] =>
   value == null ? [] : Array.isArray(value) ? value : [value];
@@ -91,7 +92,9 @@ const diffSeconds = (start: string | null, end: string | null) => {
 
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
@@ -173,6 +176,15 @@ async function GETHandler(request: NextRequest) {
       const chunk = (data || []) as TransformationOrderRow[];
       if (chunk.length === 0) break;
       orders.push(...chunk);
+      if (orders.length > MAX_SOURCE_ROWS) {
+        return NextResponse.json(
+          {
+            error:
+              "Transformation efficiency report is too large to generate. Narrow the filters and try again.",
+          },
+          { status: 413 }
+        );
+      }
       if (chunk.length < CHUNK_SIZE) break;
       from += CHUNK_SIZE;
     }

@@ -20,6 +20,7 @@ export type InventoryReportSortBy =
 export type InventoryReportFilters = {
   page?: number;
   limit?: number;
+  exportMode?: "pdf";
   warehouseId?: string;
   category?: string;
   search?: string;
@@ -91,6 +92,7 @@ export function useInventoryReport(filters: InventoryReportFilters) {
       const params = new URLSearchParams();
       if (queryFilters.page) params.append("page", String(queryFilters.page));
       if (queryFilters.limit) params.append("limit", String(queryFilters.limit));
+      if (queryFilters.exportMode) params.append("exportMode", queryFilters.exportMode);
       if (queryFilters.warehouseId) params.append("warehouseId", queryFilters.warehouseId);
       if (queryFilters.category) params.append("category", queryFilters.category);
       if (queryFilters.search) params.append("search", queryFilters.search);

@@ -73,6 +73,9 @@ const STATUSES = new Set<InventoryStatus>([
   "in_transit",
   "zero",
 ]);
+const DEFAULT_PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 50;
+const MAX_PDF_EXPORT_ROWS = 500;
 
 const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -83,10 +86,10 @@ const toNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const clampPageSize = (value: string | null, fallback: number) => {
+const clampPageSize = (value: string | null, fallback: number, maximum = MAX_PAGE_SIZE) => {
   const parsed = Number.parseInt(value || "", 10);
   if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(Math.max(parsed, 10), 50);
+  return Math.min(Math.max(parsed, 10), maximum);
 };
 
 const escapeFilterValue = (value: string) =>
@@ -113,7 +116,9 @@ const resolveStatus = (
 
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
@@ -135,7 +140,12 @@ async function GETHandler(request: NextRequest) {
     }
 
     const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
-    const limit = clampPageSize(searchParams.get("limit"), 25);
+    const exportMode = searchParams.get("exportMode") === "pdf" ? "pdf" : null;
+    const limit = clampPageSize(
+      searchParams.get("limit"),
+      DEFAULT_PAGE_SIZE,
+      exportMode === "pdf" ? MAX_PDF_EXPORT_ROWS : MAX_PAGE_SIZE
+    );
     const warehouseId = searchParams.get("warehouseId") || undefined;
     const category = searchParams.get("category") || undefined;
     const search = searchParams.get("search")?.trim() || undefined;

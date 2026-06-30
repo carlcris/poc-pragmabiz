@@ -46,6 +46,7 @@ const PAGE_RESOURCE_MAP: Record<string, Resource> = {
   "/reports/commission": "reports",
   "/admin/users": "users",
   "/admin/roles": "roles",
+  "/admin/activity-logs": "activity_logs",
   "/admin/settings": "company_settings",
   "/admin/business-units": "business_units",
 };

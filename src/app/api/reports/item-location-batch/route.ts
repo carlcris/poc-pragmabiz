@@ -53,7 +53,9 @@ const one = <T>(value: T | T[] | null | undefined): T | null =>
 // GET /api/reports/item-location-batch
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 

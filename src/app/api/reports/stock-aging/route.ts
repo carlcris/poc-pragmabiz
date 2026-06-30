@@ -90,6 +90,7 @@ type StockAgingRowSource = {
 type AgeBucket = "all" | "0_30" | "31_60" | "61_90" | "91_180" | "181_plus" | "90_plus";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_SOURCE_ROWS = 5000;
 
 const one = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
@@ -124,7 +125,9 @@ const clampPageSize = (value: string | null, fallback: number) => {
 
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
@@ -170,7 +173,7 @@ async function GETHandler(request: NextRequest) {
           batch_code,
           received_at
         ),
-        item:items!item_batch_locations_item_id_fkey(
+        item:items!inner(
           id,
           item_code,
           item_name,
@@ -178,7 +181,7 @@ async function GETHandler(request: NextRequest) {
           purchase_price,
           category:item_categories(id, name)
         ),
-        warehouse:warehouses!item_batch_locations_warehouse_id_fkey(
+        warehouse:warehouses!inner(
           id,
           warehouse_code,
           warehouse_name,
@@ -243,17 +246,26 @@ async function GETHandler(request: NextRequest) {
       }
     }
 
-    const { data, error } = await query;
+    if (currentBusinessUnitId) {
+      query = query.eq("warehouse.business_unit_id", currentBusinessUnitId);
+    }
+
+    const { data, error } = await query.range(0, MAX_SOURCE_ROWS);
     if (error) {
       return NextResponse.json({ error: "Failed to fetch stock aging report" }, { status: 500 });
     }
 
+    if ((data || []).length > MAX_SOURCE_ROWS) {
+      return NextResponse.json(
+        {
+          error:
+            "Stock aging report is too large to generate. Narrow the filters and try again.",
+        },
+        { status: 413 }
+      );
+    }
+
     const scopedRows = ((data || []) as StockAgingRowSource[])
-      .filter((row) => {
-        if (!currentBusinessUnitId) return true;
-        const warehouse = one(row.warehouse);
-        return warehouse?.business_unit_id === currentBusinessUnitId;
-      })
       .map((row) => {
         const item = one(row.item);
         const warehouse = one(row.warehouse);

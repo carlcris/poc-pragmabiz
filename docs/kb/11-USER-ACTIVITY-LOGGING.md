@@ -251,7 +251,32 @@ The request-level logging foundation is implemented across all current API route
 - Append function: `public.append_user_activity_log(jsonb)`, executable only by `service_role`.
 - Retention function: `public.maintain_user_activity_logs(integer, integer)`.
 - Route wrapper: `src/lib/activity-logging/route-activity-logger.ts`.
+- Admin UI: `/admin/activity-logs`.
+- Access permission: `activity_logs.view`.
 - Coverage check: `npm run activity-logging:check`.
+
+## Activity Logs Admin UI
+
+The Activity Logs page is an interactive admin surface for reviewing minimal, end-user-consumable
+activity details.
+
+- Route: `/admin/activity-logs`.
+- API: `GET /api/admin/activity-logs`.
+- Default access: Super Admin roles receive `activity_logs.view`.
+- Configurable access: other roles can be granted `activity_logs.view` from role permissions.
+- The API returns display-safe fields such as time, display message, actor label, action, resource,
+  outcome, status, source, and request correlation identifiers.
+- The API does not return request payloads, route/query params, metadata, IP address, or user-agent
+  fields.
+- The UI includes quick time presets for today, yesterday, last 7 days, last 30 days, and custom
+  date ranges. Preset date ranges are evaluated in the app business timezone (`Asia/Manila`) and
+  converted to UTC timestamp boundaries before querying `occurred_at`.
+- Date range filters are guarded in the UI and API: the start date cannot be after the end date,
+  and direct API requests with an invalid range return `400`.
+- UI filters for search, date range, outcome, and source are server-backed and paginated with a
+  maximum page size of 50. Manual filter edits are local until the user clicks Apply filters,
+  avoiding a list request for each keystroke or control change. Quick date presets apply
+  immediately because the preset click is an explicit filter action.
 
 ### Adding or Changing an API Route
 

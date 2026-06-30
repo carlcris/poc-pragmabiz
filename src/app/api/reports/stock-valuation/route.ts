@@ -83,6 +83,7 @@ type ValuationGroup = {
 };
 
 const DEFAULT_PRICE_TIER_CODE = "srp";
+const MAX_SOURCE_ROWS = 5000;
 
 type ItemPriceRow = {
   item_id: string;
@@ -102,7 +103,9 @@ const normalizeSettingString = (value: unknown): string | null =>
 // Returns current stock valuation report
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase, currentBusinessUnitId } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
@@ -250,10 +253,20 @@ async function GETHandler(request: NextRequest) {
       }
     }
 
-    const { data: inventoryData, error } = await query;
+    const { data: inventoryData, error } = await query.range(0, MAX_SOURCE_ROWS);
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch stock valuation data" }, { status: 500 });
+    }
+
+    if ((inventoryData || []).length > MAX_SOURCE_ROWS) {
+      return NextResponse.json(
+        {
+          error:
+            "Stock valuation report is too large to generate. Narrow the filters and try again.",
+        },
+        { status: 413 }
+      );
     }
 
     const itemIds = Array.from(new Set((inventoryData || []).map((inv) => inv.item_id)));

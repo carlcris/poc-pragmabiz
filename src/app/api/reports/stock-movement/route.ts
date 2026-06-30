@@ -65,11 +65,15 @@ type PrevTransactionItem = {
   } | null;
 };
 
+const MAX_SOURCE_ROWS = 5000;
+
 // GET /api/reports/stock-movement
 // Returns aggregated stock movement report
 async function GETHandler(request: NextRequest) {
   try {
-    await requirePermission(RESOURCES.REPORTS, "view");
+    const unauthorized = await requirePermission(RESOURCES.REPORTS, "view");
+    if (unauthorized) return unauthorized;
+
     const { supabase } = await createServerClientWithBU();
     const { searchParams } = new URL(request.url);
 
@@ -147,10 +151,20 @@ async function GETHandler(request: NextRequest) {
       query = query.eq("item_id", itemId);
     }
 
-    const { data: transactionItems, error } = await query;
+    const { data: transactionItems, error } = await query.range(0, MAX_SOURCE_ROWS);
 
     if (error) {
       return NextResponse.json({ error: "Failed to fetch stock movement data" }, { status: 500 });
+    }
+
+    if ((transactionItems || []).length > MAX_SOURCE_ROWS) {
+      return NextResponse.json(
+        {
+          error:
+            "Stock movement report is too large to generate. Narrow the filters and try again.",
+        },
+        { status: 413 }
+      );
     }
 
     // Need to fetch warehouse details separately since we're joining through transaction
@@ -286,7 +300,27 @@ async function GETHandler(request: NextRequest) {
         prevQuery = prevQuery.eq("item_id", itemId);
       }
 
-      const { data: prevTransactionItems } = await prevQuery;
+      const { data: prevTransactionItems, error: prevError } = await prevQuery.range(
+        0,
+        MAX_SOURCE_ROWS
+      );
+
+      if (prevError) {
+        return NextResponse.json(
+          { error: "Failed to fetch stock movement data" },
+          { status: 500 }
+        );
+      }
+
+      if ((prevTransactionItems || []).length > MAX_SOURCE_ROWS) {
+        return NextResponse.json(
+          {
+            error:
+              "Stock movement comparison is too large to generate. Narrow the filters and try again.",
+          },
+          { status: 413 }
+        );
+      }
 
       if (prevTransactionItems) {
         const typedPrevItems = prevTransactionItems as PrevTransactionItem[];

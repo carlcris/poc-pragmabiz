@@ -89,6 +89,11 @@ Widgets have granular capabilities:
 - Export to Excel/PDF
 - Print-friendly formatting
 
+**Operational Limits**:
+- Interactive report list endpoints keep normal page sizes bounded to avoid large hot queries.
+- Inventory PDF preview can request up to 500 matching rows with `exportMode=pdf`.
+- Stock aging, stock movement, stock valuation, picking efficiency, and transformation efficiency reports reject overly broad requests once the source dataset exceeds 5,000 rows. Users should narrow date range, warehouse, item, category, template, or picker filters before regenerating the report.
+
 ### 3. Analytical Reports
 
 **Analytical Reports** provide insights and trends for decision-making.
@@ -142,10 +147,16 @@ Shows total inventory value by warehouse using the configured inventory default 
 Shows how long inventory has been in stock, categorized by age buckets.
 
 **Parameters**:
-- `warehouse_id` (optional)
-- `as_of_date` (optional)
+- `page` / `limit` (optional, paginated response)
+- `search` (optional, matches item code/name, batch code, or batch-location scan code)
+- `category` (optional, category id or name)
+- `ageBucket` (optional, defaults to `90_plus`)
 
-**Age Buckets**: 0-30, 31-60, 61-90, 90+ days
+**Age Buckets**: `all`, `0_30`, `31_60`, `61_90`, `91_180`, `181_plus`, `90_plus`
+
+The report applies business-unit scope before the 5,000 source-row safety cap. Requests that remain
+too broad after scope and filters return `413`; narrow category, search, or age bucket filters before
+regenerating the report.
 
 **Output**:
 ```json
