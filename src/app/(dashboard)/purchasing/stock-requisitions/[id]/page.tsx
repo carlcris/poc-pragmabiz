@@ -135,9 +135,15 @@ export default function StockRequisitionDetailPage() {
     stockRequisition: StockRequisition
   ): StockRequisitionPDFData => {
     const supplierLanguage = stockRequisition.supplier?.lang === "chinese" ? "chinese" : "english";
-    const showTotalAmount = stockRequisition.documentSettings?.showTotalAmount === true;
-    const showUnitPrice = stockRequisition.documentSettings?.showUnitPrice === true;
-    const showLineTotal = stockRequisition.documentSettings?.showLineTotal === true;
+    const showTotalAmount =
+      stockRequisition.documentSettings?.showTotalAmount === true &&
+      stockRequisition.capabilities?.canViewTotalAmount === true;
+    const showUnitPrice =
+      stockRequisition.documentSettings?.showUnitPrice === true &&
+      stockRequisition.capabilities?.canViewUnitCost === true;
+    const showLineTotal =
+      stockRequisition.documentSettings?.showLineTotal === true &&
+      stockRequisition.capabilities?.canViewTotalAmount === true;
     const documentCurrency = stockRequisition.documentCurrency ?? stockRequisition.currency;
 
     return {

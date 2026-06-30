@@ -177,6 +177,12 @@ async function GETHandler(request: NextRequest) {
 
     // Format response
     const formattedRequisitions = requisitions?.map((sr) => {
+      const canShowDocumentUnitPrice =
+        documentSettings.showUnitPrice && capabilities.canViewUnitCost;
+      const canShowDocumentLineTotal =
+        documentSettings.showLineTotal && capabilities.canViewTotalAmount;
+      const canShowDocumentTotalAmount =
+        documentSettings.showTotalAmount && capabilities.canViewTotalAmount;
       const formattedItems =
         (sr.items as StockRequisitionListItemRow[] | null)?.map((item) => {
           const itemUnitOptionDetails = Array.isArray(item.item_unit_options)
@@ -211,11 +217,9 @@ async function GETHandler(request: NextRequest) {
             requestedQty,
             unitPrice: capabilities.canViewUnitCost ? unitPrice : null,
             totalPrice: capabilities.canViewTotalAmount ? totalPrice : null,
-            documentUnitPrice: documentSettings.showUnitPrice ? unitPrice : null,
+            documentUnitPrice: canShowDocumentUnitPrice ? unitPrice : null,
             documentTotalPrice:
-              documentSettings.showLineTotal || documentSettings.showTotalAmount
-                ? totalPrice
-                : null,
+              canShowDocumentLineTotal || canShowDocumentTotalAmount ? totalPrice : null,
             fulfilledQty: Number(item.fulfilled_qty ?? 0),
             outstandingQty: Number(item.outstanding_qty ?? 0),
             notes: item.notes,
@@ -263,12 +267,10 @@ async function GETHandler(request: NextRequest) {
           ? formattedItems.reduce((sum, item) => sum + (item.totalPrice ?? 0), 0)
           : null,
         documentCurrency:
-          documentSettings.showUnitPrice ||
-          documentSettings.showLineTotal ||
-          documentSettings.showTotalAmount
+          canShowDocumentUnitPrice || canShowDocumentLineTotal || canShowDocumentTotalAmount
             ? (normalizeCurrency(sr.currency) ?? "PHP")
             : null,
-        documentTotalAmount: documentSettings.showTotalAmount
+        documentTotalAmount: canShowDocumentTotalAmount
           ? formattedItems.reduce((sum, item) => sum + (item.documentTotalPrice ?? 0), 0)
           : null,
         items: formattedItems,

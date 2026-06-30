@@ -443,6 +443,8 @@ Get supplier details with analytics.
 
 ### Stock Requisition Management
 
+Stock requisition cost fields are protected by granular permissions. The API returns `null` for unit cost and total amount fields when the user does not have the matching stock requisition cost capability. Printed and downloaded stock requisition PDFs also require both the document display setting and the user's cost-view permission before showing Unit Price, line Total, or Total Amount.
+
 #### POST /api/stock-requisitions
 Create stock requisition.
 
