@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { stockTransactionsApi } from "@/lib/api/stock-transactions";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type {
   StockTransactionFilters,
   CreateStockTransactionRequest,
@@ -9,8 +10,10 @@ const STOCK_TRANSACTIONS_QUERY_KEY = "stock-transactions";
 const STOCK_BALANCES_QUERY_KEY = "stock-balances";
 
 export function useStockTransactions(filters?: StockTransactionFilters) {
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+
   return useQuery({
-    queryKey: [STOCK_TRANSACTIONS_QUERY_KEY, filters],
+    queryKey: [STOCK_TRANSACTIONS_QUERY_KEY, currentBusinessUnitId ?? null, filters],
     queryFn: () => stockTransactionsApi.getTransactions(filters),
   });
 }

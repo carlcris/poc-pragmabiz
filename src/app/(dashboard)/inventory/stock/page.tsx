@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { TransactionType } from "@/types/stock-transaction";
 
 const StockTransactionFormDialog = dynamic(
@@ -64,6 +65,7 @@ export default function StockTransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
 
   const { data, isLoading, error } = useStockTransactions({
     search: search || undefined,
@@ -83,6 +85,12 @@ export default function StockTransactionsPage() {
 
     return () => window.clearTimeout(timeout);
   }, [searchInput]);
+
+  useEffect(() => {
+    setPage(1);
+    setDetailDialogOpen(false);
+    setSelectedTransactionId(null);
+  }, [currentBusinessUnitId]);
 
   const getTransactionTypeIcon = (type: TransactionType) => {
     switch (type) {
