@@ -92,7 +92,8 @@ export interface CreateStockAdjustmentRequest {
   notes?: string;
   items: {
     itemId: string;
-    itemBatchLocationId: string;
+    itemBatchLocationId?: string | null;
+    batchCode?: string | null;
     currentQty: number;
     adjustedQty: number;
     unitCost: number;
@@ -111,7 +112,8 @@ export interface UpdateStockAdjustmentRequest {
   items?: {
     id?: string;
     itemId: string;
-    itemBatchLocationId: string;
+    itemBatchLocationId?: string | null;
+    batchCode?: string | null;
     currentQty: number;
     adjustedQty: number;
     unitCost: number;

@@ -10569,6 +10569,28 @@ export type Database = {
               status: string
             }[]
           }
+      create_draft_stock_adjustment: {
+        Args: {
+          p_adjustment_date?: string
+          p_adjustment_id?: string
+          p_adjustment_type?: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_items?: Json
+          p_location_id?: string
+          p_location_id_provided?: boolean
+          p_notes?: string
+          p_notes_provided?: boolean
+          p_reason?: string
+          p_user_id: string
+          p_warehouse_id?: string
+        }
+        Returns: {
+          adjustment_code: string
+          adjustment_id: string
+          status: string
+        }[]
+      }
       create_frame_job_order_from_sales_order_transaction: {
         Args: { p_sales_order_id: string; p_warehouse_id: string }
         Returns: {
@@ -10621,6 +10643,25 @@ export type Database = {
           p_valid_until: string
         }
         Returns: string
+      }
+      create_stock_adjustment: {
+        Args: {
+          p_adjustment_date: string
+          p_adjustment_type: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_items: Json
+          p_location_id: string
+          p_notes: string
+          p_reason: string
+          p_user_id: string
+          p_warehouse_id: string
+        }
+        Returns: {
+          adjustment_code: string
+          adjustment_id: string
+          status: string
+        }[]
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_item_custom_field: {
@@ -11271,6 +11312,28 @@ export type Database = {
           p_valid_until: string
         }
         Returns: string
+      }
+      update_stock_adjustment: {
+        Args: {
+          p_adjustment_date?: string
+          p_adjustment_id: string
+          p_adjustment_type?: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_items?: Json
+          p_location_id?: string
+          p_location_id_provided?: boolean
+          p_notes?: string
+          p_notes_provided?: boolean
+          p_reason?: string
+          p_user_id: string
+          p_warehouse_id?: string
+        }
+        Returns: {
+          adjustment_code: string
+          adjustment_id: string
+          status: string
+        }[]
       }
       update_transformation_template: {
         Args: {

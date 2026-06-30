@@ -3,17 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
-type DbStockAdjustmentUpdate = {
-  adjustment_type?: string;
-  adjustment_date?: string;
-  warehouse_id?: string;
-  reason?: string;
-  notes?: string | null;
-  custom_fields?: Record<string, unknown> | null;
-  total_value?: number | string | null;
-  updated_by?: string;
-  updated_at?: string;
-};
+import type { Json } from "@/types/database.types";
 type DbStockAdjustmentItem = {
   id: string;
   adjustment_id: string;
@@ -35,7 +25,8 @@ type DbStockAdjustmentItem = {
 
 type StockAdjustmentItemInput = {
   itemId: string;
-  itemBatchLocationId: string;
+  itemBatchLocationId?: string | null;
+  batchCode?: string | null;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -53,15 +44,10 @@ type StockAdjustmentPatchBody = {
   items?: StockAdjustmentItemInput[];
 };
 
-type ItemRow = {
-  id: string;
-  item_code: string | null;
-  item_name: string | null;
-};
-
-type UomRow = {
-  id: string;
-  code: string | null;
+type StockAdjustmentSaveResult = {
+  adjustment_id: string;
+  adjustment_code: string;
+  status: string;
 };
 
 type BatchLocationRow = {
@@ -92,6 +78,89 @@ type BatchLocationRow = {
 
 const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+
+type RpcErrorLike = {
+  code?: string;
+  message?: string;
+};
+
+const STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES = new Map<
+  string,
+  { message: string; status: number }
+>([
+  ["Stock adjustment not found", { message: "Stock adjustment not found", status: 404 }],
+  [
+    "Only draft adjustments can be updated",
+    { message: "Only draft adjustments can be updated", status: 400 },
+  ],
+  [
+    "Business unit context required",
+    { message: "Business unit context required", status: 400 },
+  ],
+  [
+    "Missing required stock adjustment fields",
+    { message: "Missing required stock adjustment fields", status: 400 },
+  ],
+  ["At least one item is required", { message: "At least one item is required", status: 400 }],
+  [
+    "Selected warehouse is not valid for the current business unit",
+    { message: "Selected warehouse is not valid for the current business unit", status: 400 },
+  ],
+  [
+    "Stock adjustment is not valid for the current business unit",
+    { message: "Stock adjustment not found", status: 404 },
+  ],
+  ["Invalid stock adjustment item", { message: "Invalid stock adjustment item", status: 400 }],
+  [
+    "Stock adjustment item does not exist",
+    { message: "Stock adjustment item does not exist", status: 400 },
+  ],
+  [
+    "Stock adjustment unit of measure does not exist",
+    { message: "Stock adjustment unit of measure does not exist", status: 400 },
+  ],
+  [
+    "Selected batch location is not valid for the adjustment",
+    { message: "Selected batch location is not valid for the adjustment", status: 400 },
+  ],
+  ["Batch code is required", { message: "Batch code is required", status: 400 }],
+  [
+    "Location is required for a new batch",
+    { message: "Location is required for a new batch", status: 400 },
+  ],
+  [
+    "Selected location is not valid for the warehouse",
+    { message: "Selected location is not valid for the warehouse", status: 400 },
+  ],
+  ["User context mismatch", { message: "Not authorized to update stock adjustment", status: 403 }],
+  [
+    "User is not valid for the company",
+    { message: "Not authorized to update stock adjustment", status: 403 },
+  ],
+  [
+    "User does not have access to the business unit",
+    { message: "Not authorized to update stock adjustment", status: 403 },
+  ],
+]);
+
+const getStockAdjustmentUpdateErrorResponse = (error: RpcErrorLike | null | undefined) => {
+  const mapped = error?.message
+    ? STOCK_ADJUSTMENT_UPDATE_ERROR_RESPONSES.get(error.message)
+    : null;
+
+  if (mapped) {
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+  }
+
+  if (error?.code === "42501") {
+    return NextResponse.json(
+      { error: "Not authorized to update stock adjustment" },
+      { status: 403 }
+    );
+  }
+
+  return null;
+};
 
 // GET /api/stock-adjustments/[id] - Get single stock adjustment
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -283,123 +352,51 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     const body = (await request.json()) as StockAdjustmentPatchBody;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId, userId } = context;
+    const { supabase, companyId, currentBusinessUnitId, userId } = context;
 
-    // Check adjustment exists and is draft
-    const { data: adjustment, error: fetchError } = await supabase
-      .from("stock_adjustments")
-      .select("status, custom_fields")
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .single();
-
-    if (fetchError || !adjustment) {
-      return NextResponse.json({ error: "Stock adjustment not found" }, { status: 404 });
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    if (adjustment.status !== "draft") {
-      return NextResponse.json({ error: "Only draft adjustments can be updated" }, { status: 400 });
-    }
-
-    // Prepare update data
-    const updateData: DbStockAdjustmentUpdate = {
-      updated_by: userId,
-      updated_at: new Date().toISOString(),
-    };
-
-    if (body.adjustmentType) updateData.adjustment_type = body.adjustmentType;
-    if (body.adjustmentDate) updateData.adjustment_date = body.adjustmentDate;
-    if (body.warehouseId) updateData.warehouse_id = body.warehouseId;
-    if (body.reason) updateData.reason = body.reason;
-    if (body.notes !== undefined) updateData.notes = body.notes;
-    if ("locationId" in body) {
-      const locationValue =
-        typeof body.locationId === "string" && body.locationId.length > 0 ? body.locationId : null;
-      updateData.custom_fields = {
-        ...(adjustment.custom_fields || {}),
-        locationId: locationValue,
-      };
-    }
-
-    // Update items if provided
     if (body.items) {
-      if (body.items.some((item) => !item.itemBatchLocationId)) {
+      if (body.items.some((item) => !item.itemBatchLocationId && !item.batchCode?.trim())) {
         return NextResponse.json(
-          { error: "Batch selection is required for every adjustment item" },
+          { error: "Batch selection or batch code is required for every adjustment item" },
           { status: 400 }
         );
       }
-
-      // Delete existing items
-      await supabase.from("stock_adjustment_items").delete().eq("adjustment_id", id);
-
-      // Get item details
-      const itemIds = body.items.map((item) => item.itemId);
-      const { data: itemsData } = await supabase
-        .from("items")
-        .select("id, item_code, item_name")
-        .in("id", itemIds);
-
-      const itemsMap = new Map(
-        (itemsData as ItemRow[] | null)?.map((item) => [item.id, item]) || []
-      );
-
-      // Get UOM details
-      const uomIds = body.items.map((item) => item.uomId);
-      const { data: uomsData } = await supabase
-        .from("units_of_measure")
-        .select("id, code")
-        .in("id", uomIds);
-
-      const uomsMap = new Map((uomsData as UomRow[] | null)?.map((uom) => [uom.id, uom]) || []);
-
-      // Create new items
-      const adjustmentItems = body.items.map((item) => {
-        const itemData = itemsMap.get(item.itemId);
-        const uomData = uomsMap.get(item.uomId);
-        const difference = item.adjustedQty - item.currentQty;
-        const totalCost = difference * item.unitCost;
-
-        return {
-          company_id: companyId,
-          adjustment_id: id,
-          item_id: item.itemId,
-          item_batch_location_id: item.itemBatchLocationId,
-          item_code: itemData?.item_code || "",
-          item_name: itemData?.item_name || "",
-          current_qty: item.currentQty,
-          adjusted_qty: item.adjustedQty,
-          difference: difference,
-          unit_cost: item.unitCost,
-          total_cost: totalCost,
-          uom_id: item.uomId,
-          uom_name: uomData?.code || "",
-          reason: item.reason || null,
-          created_by: userId,
-          updated_by: userId,
-        };
-      });
-
-      await supabase.from("stock_adjustment_items").insert(adjustmentItems);
-
-      // Calculate new total value
-      const totalValue = body.items.reduce((sum, item) => {
-        const difference = item.adjustedQty - item.currentQty;
-        return sum + difference * item.unitCost;
-      }, 0);
-
-      updateData.total_value = totalValue;
     }
 
-    // Update adjustment
-    const { error: updateError } = await supabase
-      .from("stock_adjustments")
-      .update(updateData)
-      .eq("id", id);
+    const { data: savedAdjustments, error: updateError } = await supabase.rpc(
+      "update_stock_adjustment",
+      {
+        p_adjustment_date: body.adjustmentDate || null,
+        p_adjustment_id: id,
+        p_adjustment_type: body.adjustmentType || null,
+        p_business_unit_id: currentBusinessUnitId,
+        p_company_id: companyId,
+        p_items: body.items ? (body.items as unknown as Json) : null,
+        p_location_id: body.locationId || null,
+        p_location_id_provided: "locationId" in body,
+        p_notes: body.notes || null,
+        p_notes_provided: "notes" in body,
+        p_reason: body.reason || null,
+        p_user_id: userId,
+        p_warehouse_id: body.warehouseId || null,
+      }
+    );
+    const savedAdjustment = (savedAdjustments as StockAdjustmentSaveResult[] | null)?.[0];
 
     if (updateError) {
       console.error("Error updating stock adjustment:", updateError);
+      const errorResponse = getStockAdjustmentUpdateErrorResponse(updateError);
+      if (errorResponse) return errorResponse;
+
+      return NextResponse.json({ error: "Failed to update stock adjustment" }, { status: 500 });
+    }
+
+    if (!savedAdjustment) {
+      console.error("Error updating stock adjustment: RPC returned no saved adjustment");
       return NextResponse.json({ error: "Failed to update stock adjustment" }, { status: 500 });
     }
 
@@ -462,7 +459,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
           updatedAt: item.updated_at,
         })) || [],
     });
-  } catch {
+  } catch (error) {
+    console.error("Internal server error updating stock adjustment:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

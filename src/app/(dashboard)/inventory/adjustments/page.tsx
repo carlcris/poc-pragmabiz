@@ -80,6 +80,7 @@ import type {
   StockAdjustmentStatus,
 } from "@/types/stock-adjustment";
 import { useAuthStore } from "@/stores/authStore";
+import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { useCurrency } from "@/hooks/useCurrency";
 import type { BarcodeData } from "@/lib/barcode";
 import type { StockAdjustmentFormSubmitPayload } from "@/components/stock-adjustments/StockAdjustmentFormDialog";
@@ -113,6 +114,7 @@ export default function StockAdjustmentsPage() {
   const [adjustmentToView, setAdjustmentToView] = useState<StockAdjustment | null>(null);
 
   const user = useAuthStore((state) => state.user);
+  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
   const companyId = user?.companyId || "";
   const { formatCurrency } = useCurrency();
 
@@ -127,6 +129,10 @@ export default function StockAdjustmentsPage() {
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
 
   const warehouses = warehousesData?.data || [];
+  const currentWarehouse =
+    warehouses.find(
+      (warehouse) => warehouse.isActive && warehouse.businessUnitId === currentBusinessUnit?.id
+    ) || null;
 
   const createMutation = useCreateStockAdjustment();
   const updateMutation = useUpdateStockAdjustment();
@@ -286,12 +292,15 @@ export default function StockAdjustmentsPage() {
 
   const handleSaveAdjustment = async (payload: StockAdjustmentFormSubmitPayload) => {
     try {
+      const warehouseId = payload.selectedAdjustment?.warehouseId || currentWarehouse?.id || "";
       const submitData = {
         ...payload.values,
         companyId,
+        warehouseId,
         items: payload.lineItems.map((item) => ({
           itemId: item.itemId,
           itemBatchLocationId: item.itemBatchLocationId,
+          batchCode: item.batchCode,
           currentQty: item.currentQty,
           adjustedQty: item.adjustedQty,
           unitCost: item.unitCost,
@@ -600,7 +609,7 @@ export default function StockAdjustmentsPage() {
               if (!open) setSelectedAdjustment(null);
             }}
             selectedAdjustment={selectedAdjustment}
-            warehouses={warehouses}
+            currentWarehouse={currentWarehouse}
             isSaving={createMutation.isPending || updateMutation.isPending}
             onSave={handleSaveAdjustment}
             formatCurrency={formatCurrency}

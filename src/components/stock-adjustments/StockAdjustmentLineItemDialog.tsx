@@ -51,24 +51,35 @@ const createLineItemSchema = (
       | "unitCostMin"
   ) => string
 ) =>
-  z.object({
-    itemId: z.string().min(1, tValidation("itemRequired")),
-    itemBatchLocationId: z.string().min(1, tValidation("batchRequired")),
-    batchLocationSku: z.string().optional(),
-    batchCode: z.string().optional(),
-    batchReceivedAt: z.string().optional(),
-    batchWarehouseLocationId: z.string().optional(),
-    batchLocationCode: z.string().optional(),
-    batchLocationName: z.string().optional(),
-    itemCode: z.string().optional(),
-    itemName: z.string().optional(),
-    uomId: z.string().min(1, tValidation("uomRequired")),
-    currentQty: z.number().min(0, tValidation("currentQtyMin")),
-    adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
-    unitCost: z.number().min(0, tValidation("unitCostMin")),
-    adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
-    adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
-  });
+  z
+    .object({
+      itemId: z.string().min(1, tValidation("itemRequired")),
+      itemBatchLocationId: z.string().optional(),
+      batchLocationSku: z.string().optional(),
+      batchCode: z.string().optional(),
+      batchReceivedAt: z.string().optional(),
+      batchWarehouseLocationId: z.string().optional(),
+      batchLocationCode: z.string().optional(),
+      batchLocationName: z.string().optional(),
+      itemCode: z.string().optional(),
+      itemName: z.string().optional(),
+      uomId: z.string().min(1, tValidation("uomRequired")),
+      uomName: z.string().optional(),
+      currentQty: z.number().min(0, tValidation("currentQtyMin")),
+      adjustedQty: z.number().min(0, tValidation("adjustedQtyMin")),
+      unitCost: z.number().min(0, tValidation("unitCostMin")),
+      adjustmentAmount: z.number().optional(), // User input: the delta (always positive)
+      adjustmentType: z.enum(["add", "remove"]).optional(), // Whether to add or remove
+    })
+    .superRefine((value, ctx) => {
+      if (!value.itemBatchLocationId && !value.batchCode?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: tValidation("batchRequired"),
+          path: ["itemBatchLocationId"],
+        });
+      }
+    });
 
 type LineItemSchema = ReturnType<typeof createLineItemSchema>;
 export type StockAdjustmentLineItemFormValues = z.infer<LineItemSchema>;
@@ -122,6 +133,7 @@ export function StockAdjustmentLineItemDialog({
       itemCode: "",
       itemName: "",
       uomId: "",
+      uomName: "",
       currentQty: 0,
       adjustedQty: 0,
       unitCost: 0,
@@ -133,7 +145,12 @@ export function StockAdjustmentLineItemDialog({
   // Reset form when dialog opens/closes or item changes
   useEffect(() => {
     if (open && item) {
-      form.reset(item);
+      const adjustmentDifference = item.adjustedQty - item.currentQty;
+      form.reset({
+        ...item,
+        adjustmentAmount: Math.abs(adjustmentDifference),
+        adjustmentType: adjustmentDifference < 0 ? "remove" : "add",
+      });
     } else if (open) {
       form.reset({
         itemId: "",
@@ -147,6 +164,7 @@ export function StockAdjustmentLineItemDialog({
         itemCode: "",
         itemName: "",
         uomId: "",
+        uomName: "",
         currentQty: 0,
         adjustedQty: 0,
         unitCost: 0,
@@ -167,9 +185,9 @@ export function StockAdjustmentLineItemDialog({
       setUomLabel("");
       return;
     }
-    const selectedItem = items.find((candidate) => candidate.id === watchedItemId);
-    setUomLabel(selectedItem?.uom || "");
-  }, [watchedItemId, items]);
+
+    setUomLabel(selectedItem?.uom || item?.uomName || "");
+  }, [watchedItemId, selectedItem?.uom, item?.uomName]);
 
   const { data: batchLocationsResponse, isLoading: isBatchLocationsLoading } = useQuery<{
     data: StockAdjustmentBatchLocation[];
@@ -201,7 +219,7 @@ export function StockAdjustmentLineItemDialog({
 
   const selectedBatchLocation =
     batchLocations.find((candidate) => candidate.id === watchedBatchLocationId) ||
-    (item?.itemBatchLocationId === watchedBatchLocationId
+    (item && item.itemBatchLocationId && item.itemBatchLocationId === watchedBatchLocationId
       ? {
           id: item.itemBatchLocationId,
           itemId: item.itemId,
@@ -236,6 +254,7 @@ export function StockAdjustmentLineItemDialog({
       form.setValue("itemCode", selectedItem.code);
       form.setValue("itemName", selectedItem.name);
       form.setValue("uomId", selectedItem.uomId);
+      form.setValue("uomName", selectedItem.uom);
       setUomLabel(selectedItem.uom || "");
       form.setValue("unitCost", selectedItem.purchasePrice);
       form.setValue("currentQty", 0);
@@ -286,7 +305,10 @@ export function StockAdjustmentLineItemDialog({
   const adjustmentType = form.watch("adjustmentType") || "add";
   const unitCost = form.watch("unitCost") || 0;
   const isItemSelected = Boolean(form.watch("itemId"));
-  const isBatchSelected = Boolean(form.watch("itemBatchLocationId"));
+  const manualBatchCode = form.watch("batchCode") || "";
+  const isBatchSelected = Boolean(form.watch("itemBatchLocationId") || manualBatchCode.trim());
+  const canEnterManualBatch =
+    isItemSelected && Boolean(locationId) && !isBatchLocationsLoading && batchLocations.length === 0;
 
   // Calculate adjustment in base units (with sign based on type)
   const absAdjustmentInBaseUnits = adjustmentAmount;
@@ -334,7 +356,7 @@ export function StockAdjustmentLineItemDialog({
                     </FormLabel>
                     <FormControl>
                       <AsyncSearchCombobox
-                        value={field.value}
+                        value={field.value || ""}
                         onValueChange={(value) => {
                           field.onChange(value);
                           void handleItemSelect(value);
@@ -377,7 +399,7 @@ export function StockAdjustmentLineItemDialog({
                     </FormLabel>
                     <FormControl>
                       <AsyncSearchCombobox
-                        value={field.value}
+                        value={field.value || ""}
                         onValueChange={(value) => {
                           field.onChange(value);
                           handleBatchSelect(value);
@@ -429,6 +451,40 @@ export function StockAdjustmentLineItemDialog({
                   </FormItem>
                 )}
               />
+
+              {canEnterManualBatch ? (
+                <FormField
+                  control={form.control}
+                  name="batchCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-700">
+                        {t("manualBatchCodeLabel")} <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(event) => {
+                            field.onChange(event.target.value);
+                            form.setValue("itemBatchLocationId", "");
+                            form.setValue("batchLocationSku", "");
+                            form.setValue("batchReceivedAt", "");
+                            form.setValue("batchWarehouseLocationId", locationId || "");
+                            form.setValue("batchLocationCode", "");
+                            form.setValue("batchLocationName", "");
+                            form.setValue("currentQty", 0);
+                            form.setValue("adjustedQty", 0);
+                          }}
+                          placeholder={t("manualBatchCodePlaceholder")}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">{t("manualBatchCodeHint")}</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
 
               {/* Current Stock Display */}
               <div className="rounded-lg bg-gray-50 p-4">

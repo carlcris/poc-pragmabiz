@@ -6,7 +6,7 @@
 
 ## Objective
 
-Capture server-observable user and system activity in a structured, append-only log for internal technical investigation. The system must cover API reads and mutations, retain records for 90 days, and never expose an end-user activity-log UI.
+Capture server-observable user and system activity in a structured, append-only log for internal technical investigation. The system must cover API reads and mutations, retain records for 90 days, keep raw technical payloads internal, and expose only minimal display-safe activity summaries through a restricted admin UI.
 
 ## Approved Decisions
 
@@ -18,7 +18,7 @@ Capture server-observable user and system activity in a structured, append-only 
 - Use PostgreSQL/Supabase as the only activity-log destination for now.
 - Fail open when activity logging fails: preserve the original application response and emit a server-side `console.error`.
 - Represent scheduled and internal operations with `actor_type = 'system'` and a nullable `user_id`; do not create a fake user account.
-- Add no end-user UI or API that exposes activity logs.
+- Expose a restricted technical/admin review UI only. Do not expose raw payloads, route/query params, metadata, IP addresses, or user-agent details through that UI/API.
 - Make activity-log coverage a mandatory post-flight check for every feature implementation.
 
 ## Architecture Decision
@@ -172,8 +172,8 @@ Do not derive workflow action names from arbitrary URL text when a stable explic
 - Enable RLS on all partitions.
 - Do not grant authenticated users `SELECT`, `UPDATE`, or `DELETE`.
 - Allow appending only through a restricted database function called by trusted server code.
-- Keep activity-log APIs and UI out of scope.
-- Technical staff review logs through controlled database tooling.
+- Provide a restricted admin activity-log UI for display-safe review.
+- Technical staff may still review raw logs through controlled database tooling when deeper payload or metadata inspection is required.
 - Treat activity payloads as sensitive internal data.
 
 ## Failure Behavior
@@ -195,6 +195,22 @@ Transactional business-operation records remain subject to the owning RPC transa
 - Drop expired monthly partitions when fully outside the retention window.
 - Remove expired rows from the partially retained boundary partition in bounded batches if required.
 - Log cleanup failures through server/database operational logs.
+
+## Admin Review UI
+
+The implemented system includes a minimal interactive review surface for technical/admin users:
+
+- Route: `/admin/activity-logs`.
+- API: `GET /api/admin/activity-logs`.
+- Permission: `activity_logs.view`.
+- Default access: Super Admin receives `activity_logs.view`.
+- Configurable access: other roles can be granted `activity_logs.view`.
+- Returned fields are display-safe: occurrence time, actor label, display message, action, resource, outcome, source, status, request ID, and entity snapshots.
+- Raw request payloads, route/query params, metadata, IP address, and user-agent values are not returned by the admin UI API.
+- Filters are server-backed and paginated: search, date range, outcome, source, and page size up to 50.
+- Quick presets include today, yesterday, last 7 days, and last 30 days.
+- Preset boundaries are calculated in the app business timezone (`Asia/Manila`) and converted to UTC boundaries for `occurred_at` filtering.
+- Manual filter edits are applied only when the user clicks Apply filters. Presets apply immediately because the preset click is an explicit filter action.
 
 ## Rollout Plan
 
@@ -247,6 +263,8 @@ roll back with the business transaction.
 - Human-readable display messages backed by stable message keys and entity snapshots.
 - Zero-query message enrichment using only authentication claims and operation-owned data.
 - Signed actor display names added by the existing access-token profile lookup.
+- Restricted admin review UI and API with display-safe fields only.
+- `activity_logs.view` permission with Super Admin default access and configurable role assignment.
 - `npm run activity-logging:check` enforcement for future API handlers.
 
 ## Mandatory Feature Post-Flight

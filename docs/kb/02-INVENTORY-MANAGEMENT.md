@@ -704,15 +704,17 @@ Get all inventory in a warehouse.
 ### Stock Adjustments
 
 #### POST /api/stock-adjustments
-Create stock adjustment (draft).
+Create stock adjustment (draft) for the current business unit. The UI shows the current business unit's warehouse as read-only context; users do not select a warehouse. The API submits that current-BU warehouse ID to the transactional RPC, and the RPC validates that it belongs to the current business unit before writing the draft.
 
 **Permissions**: `create` on `stock_adjustments`
 
 **Request**:
 ```json
 {
-  "warehouse_id": "uuid",
-  "adjustment_date": "2025-06-14",
+  "adjustmentType": "physical_count",
+  "adjustmentDate": "2025-06-14",
+  "warehouseId": "uuid",
+  "locationId": "uuid",
   "reason": "count",
   "notes": "Monthly physical count",
   "items": [
@@ -728,7 +730,7 @@ Create stock adjustment (draft).
 }
 ```
 
-Each adjustment line must select an `item_batch_locations` row. The selector is server-filtered by item, warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata.
+Each adjustment line normally selects an `item_batch_locations` row. The selector is server-filtered by item, the current business unit warehouse, optional location, and batch/QR search text. The selected batch-location row supplies the current quantity and QR label metadata. If no batch-location row exists for the selected item/location, the user can enter a new batch code; saving the draft creates a zero-quantity `item_batches` and `item_batch_locations` record for the current business unit warehouse/location inside the same database transaction as the adjustment header and lines. If any part of the save fails, no manual batch, batch-location, header, or line write remains committed.
 
 #### POST /api/stock-adjustments/[id]/post
 Post stock adjustment (apply to inventory).
@@ -963,8 +965,8 @@ class LocationService {
 ### Workflow 2: Stock Adjustment (Physical Count)
 
 1. User navigates to Stock Adjustments
-2. Creates new adjustment for warehouse
-3. Adds lines by selecting an item and the exact batch-location row being counted
+2. Creates a new adjustment in the current business unit; the assigned warehouse is shown but cannot be changed
+3. Adds lines by selecting an item and the exact batch-location row being counted, or enters a new batch code when no initial batch-location exists
 4. Enters the adjustment quantity
 5. System calculates the new batch quantity and variance
 6. User can reprint a QR label for the selected batch-location row

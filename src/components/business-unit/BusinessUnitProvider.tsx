@@ -70,6 +70,7 @@ export const BusinessUnitProvider = ({ children }: BusinessUnitProviderProps) =>
         // Current BU is valid, just mark as initialized
         if (matchingCurrentBusinessUnit) {
           setCurrentBusinessUnit(matchingCurrentBusinessUnit);
+          setContext(matchingCurrentBusinessUnit.id);
         }
         hasInitialized.current = true;
       }

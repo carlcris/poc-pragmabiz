@@ -1,8 +1,9 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
-import { requireRequestContext } from "@/lib/auth/requestContext";
+import { requireRequestContext, type RequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import type { Json } from "@/types/database.types";
 type DbStockAdjustmentRow = {
   id: string;
   company_id: string;
@@ -47,7 +48,8 @@ type DbStockAdjustmentItem = {
 
 type StockAdjustmentItemInput = {
   itemId: string;
-  itemBatchLocationId: string;
+  itemBatchLocationId?: string | null;
+  batchCode?: string | null;
   currentQty: number;
   adjustedQty: number;
   unitCost: number;
@@ -63,6 +65,12 @@ type StockAdjustmentBody = {
   notes?: string | null;
   locationId?: string | null;
   items: StockAdjustmentItemInput[];
+};
+
+type StockAdjustmentSaveResult = {
+  adjustment_id: string;
+  adjustment_code: string;
+  status: string;
 };
 
 type WarehouseRow = {
@@ -86,17 +94,6 @@ type UserRow = {
 type StockTransactionRow = {
   id: string;
   transaction_code: string | null;
-};
-
-type ItemRow = {
-  id: string;
-  item_code: string | null;
-  item_name: string | null;
-};
-
-type UomRow = {
-  id: string;
-  code: string | null;
 };
 
 type BatchLocationRow = {
@@ -151,6 +148,34 @@ const normalizeSearch = (value: string | null) => {
 
 const toOne = <T>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+
+const validateStockAdjustmentWarehouseId = async (
+  supabase: RequestContext["supabase"],
+  companyId: string,
+  currentBusinessUnitId: string,
+  requestedWarehouseId: string
+) => {
+  const { data: requestedWarehouse, error } = await supabase
+    .from("warehouses")
+    .select("id")
+    .eq("id", requestedWarehouseId)
+    .eq("company_id", companyId)
+    .eq("business_unit_id", currentBusinessUnitId)
+    .eq("is_active", true)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error validating stock adjustment warehouse:", error);
+    return { valid: false, error: "Failed to validate warehouse" };
+  }
+
+  if (!requestedWarehouse) {
+    return { valid: false, error: "Selected warehouse is not valid for the current business unit" };
+  }
+
+  return { valid: true, error: null };
+};
 
 // GET /api/stock-adjustments - List stock adjustments
 async function GETHandler(request: NextRequest) {
@@ -494,113 +519,60 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
-    if (body.items.some((item) => !item.itemBatchLocationId)) {
+    if (body.items.some((item) => !item.itemBatchLocationId && !item.batchCode?.trim())) {
       return NextResponse.json(
-        { error: "Batch selection is required for every adjustment item" },
+        { error: "Batch selection or batch code is required for every adjustment item" },
         { status: 400 }
       );
     }
 
-    // Calculate total value using base quantities
-    const totalValue = body.items.reduce((sum, item) => {
-      const adjustedQty = Number(item.adjustedQty);
-      const difference = adjustedQty - item.currentQty;
-      return sum + difference * item.unitCost;
-    }, 0);
+    const warehouseValidation = await validateStockAdjustmentWarehouseId(
+      supabase,
+      companyId,
+      currentBusinessUnitId,
+      body.warehouseId
+    );
 
-    // Create adjustment header
-    const { data: adjustment, error: adjustmentError } = await supabase
-      .from("stock_adjustments")
-      .insert({
-        company_id: companyId,
-        business_unit_id: currentBusinessUnitId,
-        adjustment_type: body.adjustmentType,
-        adjustment_date: body.adjustmentDate,
-        warehouse_id: body.warehouseId,
-        status: "draft",
-        reason: body.reason,
-        notes: body.notes || null,
-        total_value: totalValue,
-        custom_fields: body.locationId ? { locationId: body.locationId } : null,
-        created_by: userId,
-        updated_by: userId,
-      })
-      .select()
-      .single();
-
-    if (adjustmentError) {
-      console.error("Error creating stock adjustment:", adjustmentError);
-      return NextResponse.json({ error: "Failed to create stock adjustment" }, { status: 500 });
+    if (!warehouseValidation.valid) {
+      return NextResponse.json(
+        { error: warehouseValidation.error || "Invalid warehouse for current business unit" },
+        { status: 400 }
+      );
     }
 
-    // Get item details for items
-    const itemIds = body.items.map((item) => item.itemId);
-    const { data: itemsData } = await supabase
-      .from("items")
-      .select("id, item_code, item_name")
-      .in("id", itemIds);
+    const { data: savedAdjustments, error: saveError } = await supabase.rpc(
+      "create_stock_adjustment",
+      {
+        p_adjustment_date: body.adjustmentDate,
+        p_adjustment_type: body.adjustmentType,
+        p_business_unit_id: currentBusinessUnitId,
+        p_company_id: companyId,
+        p_items: body.items as unknown as Json,
+        p_location_id: body.locationId || null,
+        p_notes: body.notes || null,
+        p_reason: body.reason,
+        p_user_id: userId,
+        p_warehouse_id: body.warehouseId,
+      }
+    );
+    const savedAdjustment = (savedAdjustments as StockAdjustmentSaveResult[] | null)?.[0];
 
-    const itemsMap = new Map((itemsData as ItemRow[] | null)?.map((item) => [item.id, item]) || []);
-
-    // Get UOM details
-    const uomIds = body.items.map((item) => item.uomId);
-    const { data: uomsData } = await supabase
-      .from("units_of_measure")
-      .select("id, code")
-      .in("id", uomIds);
-
-    const uomsMap = new Map((uomsData as UomRow[] | null)?.map((uom) => [uom.id, uom]) || []);
-
-    // Create adjustment items
-    const adjustmentItems = body.items.map((item) => {
-      const itemData = itemsMap.get(item.itemId);
-      const uomData = uomsMap.get(item.uomId);
-      const adjustedQty = Number(item.adjustedQty);
-      const difference = adjustedQty - item.currentQty;
-      const totalCost = difference * item.unitCost;
-
-      return {
-        company_id: companyId,
-        adjustment_id: adjustment.id,
-        item_id: item.itemId,
-        item_batch_location_id: item.itemBatchLocationId,
-        item_code: itemData?.item_code || "",
-        item_name: itemData?.item_name || "",
-        current_qty: item.currentQty,
-        adjusted_qty: adjustedQty,
-        // Other fields
-        difference: difference,
-        unit_cost: item.unitCost,
-        total_cost: totalCost,
-        uom_id: item.uomId,
-        uom_name: uomData?.code || "",
-        reason: item.reason || null,
-        created_by: userId,
-        updated_by: userId,
-      };
-    });
-
-    const { error: itemsError } = await supabase
-      .from("stock_adjustment_items")
-      .insert(adjustmentItems);
-
-    if (itemsError) {
-      // Rollback adjustment
-      await supabase.from("stock_adjustments").delete().eq("id", adjustment.id);
-      return NextResponse.json({ error: "Failed to create adjustment items" }, { status: 500 });
+    if (saveError || !savedAdjustment) {
+      console.error("Error creating stock adjustment:", saveError);
+      return NextResponse.json({ error: "Failed to create stock adjustment" }, { status: 500 });
     }
 
     // Fetch the complete adjustment with items
     const { data: completeAdjustment } = await supabase
       .from("stock_adjustments")
       .select("*")
-      .eq("id", adjustment.id)
+      .eq("id", savedAdjustment.adjustment_id)
       .single();
 
     const { data: completeItems } = await supabase
       .from("stock_adjustment_items")
       .select("*")
-      .eq("adjustment_id", adjustment.id);
+      .eq("adjustment_id", savedAdjustment.adjustment_id);
 
     return NextResponse.json({
       id: completeAdjustment.id,
@@ -637,7 +609,8 @@ async function POSTHandler(request: NextRequest) {
           updatedAt: item.updated_at,
         })) || [],
     });
-  } catch {
+  } catch (error) {
+    console.error("Internal server error creating stock adjustment:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

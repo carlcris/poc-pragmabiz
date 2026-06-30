@@ -34,6 +34,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -52,12 +53,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 const createAdjustmentFormSchema = (
-  tValidation: (key: "adjustmentDateRequired" | "warehouseRequired" | "reasonRequired") => string
+  tValidation: (key: "adjustmentDateRequired" | "reasonRequired") => string
 ) =>
   z.object({
     adjustmentType: z.enum(["physical_count", "damage", "loss", "found", "quality_issue", "other"]),
     adjustmentDate: z.string().min(1, tValidation("adjustmentDateRequired")),
-    warehouseId: z.string().min(1, tValidation("warehouseRequired")),
     locationId: z.string().optional(),
     reason: z.string().min(1, tValidation("reasonRequired")),
     notes: z.string().optional(),
@@ -82,7 +82,7 @@ type StockAdjustmentFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedAdjustment: StockAdjustment | null;
-  warehouses: WarehouseOption[];
+  currentWarehouse: WarehouseOption | null;
   isSaving: boolean;
   onSave: (payload: StockAdjustmentFormSubmitPayload) => Promise<void>;
   formatCurrency: (value: number) => string;
@@ -92,7 +92,7 @@ export function StockAdjustmentFormDialog({
   open,
   onOpenChange,
   selectedAdjustment,
-  warehouses,
+  currentWarehouse,
   isSaving,
   onSave,
   formatCurrency,
@@ -114,7 +114,6 @@ export function StockAdjustmentFormDialog({
     defaultValues: {
       adjustmentType: "physical_count",
       adjustmentDate: new Date().toISOString().split("T")[0],
-      warehouseId: "",
       locationId: "",
       reason: "",
       notes: "",
@@ -136,7 +135,6 @@ export function StockAdjustmentFormDialog({
       form.reset({
         adjustmentType: selectedAdjustment.adjustmentType,
         adjustmentDate: selectedAdjustment.adjustmentDate,
-        warehouseId: selectedAdjustment.warehouseId,
         locationId: selectedAdjustment.locationId || "",
         reason: selectedAdjustment.reason,
         notes: selectedAdjustment.notes || "",
@@ -155,6 +153,7 @@ export function StockAdjustmentFormDialog({
           itemCode: item.itemCode,
           itemName: item.itemName,
           uomId: item.uomId,
+          uomName: item.uomName || "",
           currentQty: item.currentQty,
           adjustedQty: item.adjustedQty,
           unitCost: item.unitCost,
@@ -168,7 +167,6 @@ export function StockAdjustmentFormDialog({
       form.reset({
         adjustmentType: "physical_count",
         adjustmentDate: new Date().toISOString().split("T")[0],
-        warehouseId: "",
         locationId: "",
         reason: "",
         notes: "",
@@ -177,7 +175,19 @@ export function StockAdjustmentFormDialog({
     }
   }, [form, open, selectedAdjustment]);
 
-  const selectedWarehouseId = form.watch("warehouseId");
+  const effectiveWarehouse = useMemo(() => {
+    if (selectedAdjustment) {
+      return {
+        id: selectedAdjustment.warehouseId,
+        code: null,
+        name: selectedAdjustment.warehouseName || null,
+      };
+    }
+
+    return currentWarehouse;
+  }, [currentWarehouse, selectedAdjustment]);
+
+  const selectedWarehouseId = effectiveWarehouse?.id || "";
 
   useEffect(() => {
     if (!selectedWarehouseId) {
@@ -224,7 +234,6 @@ export function StockAdjustmentFormDialog({
       return;
     }
 
-    const selectedWarehouse = warehouses.find((warehouse) => warehouse.id === selectedWarehouseId);
     const barcodeData: BarcodeData = {
       boxId: item.itemBatchLocationId,
       itemId: item.itemId,
@@ -236,7 +245,7 @@ export function StockAdjustmentFormDialog({
       boxNumber: 1,
       qtyPerBox: item.adjustedQty,
       deliveryDate: item.batchReceivedAt || form.getValues("adjustmentDate"),
-      warehouseCode: selectedWarehouse?.code || undefined,
+      warehouseCode: effectiveWarehouse?.code || undefined,
       locationId: item.batchWarehouseLocationId || null,
       locationCode: item.batchLocationCode || undefined,
     };
@@ -327,30 +336,17 @@ export function StockAdjustmentFormDialog({
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="warehouseId"
-                    render={({ field }) => (
-                      <FormItem className="col-span-2">
-                        <FormLabel>{t("warehouseLabel")}</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={t("selectWarehouse")} />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {warehouses.map((warehouse) => (
-                              <SelectItem key={warehouse.id} value={warehouse.id}>
-                                {(warehouse.code || "") + " - " + (warehouse.name || "")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="col-span-2 space-y-2">
+                    <Label>{t("warehouseLabel")}</Label>
+                    <Input
+                      value={
+                        effectiveWarehouse
+                          ? `${effectiveWarehouse.code || ""}${effectiveWarehouse.code && effectiveWarehouse.name ? " - " : ""}${effectiveWarehouse.name || ""}`
+                          : t("warehouseUnavailable")
+                      }
+                      readOnly
+                    />
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -369,7 +365,7 @@ export function StockAdjustmentFormDialog({
                                 placeholder={
                                   selectedWarehouseId
                                     ? t("selectLocation")
-                                    : t("selectWarehouseFirst")
+                                    : t("warehouseUnavailable")
                                 }
                               />
                             </SelectTrigger>
@@ -440,7 +436,7 @@ export function StockAdjustmentFormDialog({
 
                 {!selectedWarehouseId && (
                   <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-600">
-                    {t("selectWarehouseBeforeItems")}
+                    {t("warehouseUnavailableBeforeItems")}
                   </div>
                 )}
 

@@ -2438,6 +2438,7 @@ export type TranslationKeys = {
     adjustmentDateLabel: string;
     warehouseLabel: string;
     selectWarehouse: string;
+    warehouseUnavailable: string;
     locationLabel: string;
     selectLocation: string;
     selectWarehouseFirst: string;
@@ -2449,6 +2450,7 @@ export type TranslationKeys = {
     lineItemsDescription: string;
     addItem: string;
     selectWarehouseBeforeItems: string;
+    warehouseUnavailableBeforeItems: string;
     noItems: string;
     noItemsDescription: string;
     item: string;
@@ -2493,6 +2495,9 @@ export type TranslationKeys = {
     searchByBatchOrQr: string;
     noBatches: string;
     loadingBatches: string;
+    manualBatchCodeLabel: string;
+    manualBatchCodePlaceholder: string;
+    manualBatchCodeHint: string;
     batchOptionMeta: string;
     unassignedLocation: string;
     currentStockOnHand: string;
@@ -5339,6 +5344,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       adjustmentDateLabel: "Adjustment Date",
       warehouseLabel: "Warehouse",
       selectWarehouse: "Select warehouse",
+      warehouseUnavailable: "No active warehouse assigned to this business unit",
       locationLabel: "Location",
       selectLocation: "Select location",
       selectWarehouseFirst: "Select warehouse first",
@@ -5350,6 +5356,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "Add items to adjust stock levels",
       addItem: "Add Item",
       selectWarehouseBeforeItems: "Please select a warehouse before adding items",
+      warehouseUnavailableBeforeItems:
+        "An active warehouse must be assigned to the current business unit before adding items.",
       noItems: "No items added yet.",
       noItemsDescription: 'Click "Add Item" to get started.',
       item: "Item",
@@ -5388,12 +5396,16 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLabel: "Inventory Item",
       chooseItem: "Choose an item to adjust",
       searchByCodeOrName: "Search by code or name...",
-      batchLabel: "Batch / QR",
+      batchLabel: "Batch",
       chooseBatch: "Choose a batch to adjust",
       chooseItemBeforeBatch: "Choose an item first",
       searchByBatchOrQr: "Search by batch or QR...",
       noBatches: "No batches found",
       loadingBatches: "Loading batches...",
+      manualBatchCodeLabel: "New Batch Code",
+      manualBatchCodePlaceholder: "Enter batch code",
+      manualBatchCodeHint:
+        "No batch/location exists yet. This batch will be created at the selected adjustment location when saved.",
       batchOptionMeta: "{qty} units at {location}",
       unassignedLocation: "Unassigned location",
       currentStockOnHand: "Current Stock on Hand",
@@ -10808,6 +10820,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       adjustmentDateLabel: "调整日期",
       warehouseLabel: "仓库",
       selectWarehouse: "选择仓库",
+      warehouseUnavailable: "当前业务单元未分配启用的仓库",
       locationLabel: "库位",
       selectLocation: "选择库位",
       selectWarehouseFirst: "请先选择仓库",
@@ -10819,6 +10832,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       lineItemsDescription: "添加需要调整库存的商品",
       addItem: "添加商品",
       selectWarehouseBeforeItems: "添加商品前请先选择仓库",
+      warehouseUnavailableBeforeItems: "当前业务单元必须先分配启用的仓库，才能添加商品。",
       noItems: "尚未添加商品。",
       noItemsDescription: "点击“添加商品”开始。",
       item: "商品",
@@ -10857,12 +10871,15 @@ export const translations: Record<Locale, TranslationKeys> = {
       itemLabel: "库存商品",
       chooseItem: "选择要调整的商品",
       searchByCodeOrName: "按编码或名称搜索...",
-      batchLabel: "批次 / 二维码",
+      batchLabel: "批次",
       chooseBatch: "选择要调整的批次",
       chooseItemBeforeBatch: "请先选择商品",
       searchByBatchOrQr: "按批次或二维码搜索...",
       noBatches: "未找到批次",
       loadingBatches: "正在加载批次...",
+      manualBatchCodeLabel: "新批次编码",
+      manualBatchCodePlaceholder: "输入批次编码",
+      manualBatchCodeHint: "尚无批次/库位记录。保存时将在所选调整库位创建此批次。",
       batchOptionMeta: "{location} 的 {qty} 单位",
       unassignedLocation: "未分配库位",
       currentStockOnHand: "当前现有库存",
