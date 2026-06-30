@@ -153,7 +153,7 @@ type ItemRow = DbItem & {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
-const CSV_EXPORT_ROW_LIMIT = 5000;
+const ITEM_EXPORT_ROW_LIMIT = 5000;
 const ID_FILTER_CHUNK_SIZE = 100;
 
 const parsePositiveInt = (raw: string | null, fallback: number) => {
@@ -529,11 +529,13 @@ async function GETHandler(request: NextRequest) {
     const includeStock = searchParams.get("includeStock") !== "false";
     const includeStats = searchParams.get("includeStats") === "true";
     const statsOnly = searchParams.get("statsOnly") === "true";
-    const exportMode = searchParams.get("exportMode") === "csv" ? "csv" : null;
+    const exportMode = ["csv", "xlsx", "pdf"].includes(searchParams.get("exportMode") || "")
+      ? searchParams.get("exportMode")
+      : null;
     const page = parsePositiveInt(searchParams.get("page"), 1);
     const limit =
-      exportMode === "csv"
-        ? CSV_EXPORT_ROW_LIMIT + 1
+      exportMode
+        ? ITEM_EXPORT_ROW_LIMIT + 1
         : Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
     const capabilities = await getUserCapabilities(userId, currentBusinessUnitId);
     const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
@@ -689,9 +691,9 @@ async function GETHandler(request: NextRequest) {
       });
     }
 
-    const exportPage = exportMode === "csv" ? 1 : page;
+    const exportPage = exportMode ? 1 : page;
     const candidateLimit =
-      exportMode === "csv" ? limit : search && page === 1 ? Math.max(limit, 100) : limit;
+      exportMode ? limit : search && page === 1 ? Math.max(limit, 100) : limit;
 
     const rpcPayload = {
       ...statsRpcPayload,
@@ -717,7 +719,7 @@ async function GETHandler(request: NextRequest) {
 
     const rows = (rpcRows || []) as ItemsRpcRow[];
     const total = rows.length > 0 ? toNumber(rows[0].total_count) : 0;
-    if (exportMode === "csv" && total > CSV_EXPORT_ROW_LIMIT) {
+    if (exportMode && total > ITEM_EXPORT_ROW_LIMIT) {
       return NextResponse.json(
         {
           error: "Item export is too large. Narrow the filters and try again.",
@@ -780,13 +782,13 @@ async function GETHandler(request: NextRequest) {
     const rankedItemsWithStock =
       search && page === 1 ? rankItemsBySearch(itemsWithStock, search) : itemsWithStock;
 
-    const responseLimit = exportMode === "csv" ? CSV_EXPORT_ROW_LIMIT : limit;
+    const responseLimit = exportMode ? ITEM_EXPORT_ROW_LIMIT : limit;
     const totalPages = total > 0 ? Math.ceil(total / responseLimit) : 0;
 
     if (!includeStats) {
       return NextResponse.json({
         data:
-          search && page === 1 && exportMode !== "csv"
+          search && page === 1 && !exportMode
             ? rankedItemsWithStock.slice(0, limit)
             : rankedItemsWithStock,
         pagination: {
@@ -811,7 +813,7 @@ async function GETHandler(request: NextRequest) {
 
     return NextResponse.json({
       data:
-        search && page === 1 && exportMode !== "csv"
+        search && page === 1 && !exportMode
           ? rankedItemsWithStock.slice(0, limit)
           : rankedItemsWithStock,
       pagination: {

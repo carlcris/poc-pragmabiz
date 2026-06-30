@@ -1881,7 +1881,10 @@ export type TranslationKeys = {
   itemsPage: {
     title: string;
     subtitle: string;
+    export: string;
     exportCsv: string;
+    exportXlsx: string;
+    exportPdf: string;
     createItem: string;
     totalItems: string;
     totalItemsDescription: string;
@@ -1908,6 +1911,8 @@ export type TranslationKeys = {
     overstock: string;
     discontinued: string;
     unknown: string;
+    purchasePrice: string;
+    listPrice: string;
     errorLoadingTitle: string;
     unauthorizedMessage: string;
     loadErrorMessage: string;
@@ -1920,7 +1925,7 @@ export type TranslationKeys = {
     deleteError: string;
     noDataToExport: string;
     exportSuccess: string;
-    exportingCsv: string;
+    exporting: string;
     exportError: string;
     exportTooLarge: string;
     editAriaLabel: string;
@@ -4767,7 +4772,10 @@ export const translations: Record<Locale, TranslationKeys> = {
     itemsPage: {
       title: "Inventory Master",
       subtitle: "Manage items with real-time stock levels",
+      export: "Export",
       exportCsv: "Export CSV",
+      exportXlsx: "Export XLSX",
+      exportPdf: "Export PDF",
       createItem: "Create Item",
       totalItems: "Total Items",
       totalItemsDescription: "In inventory",
@@ -4794,6 +4802,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       overstock: "Overstock",
       discontinued: "Discontinued",
       unknown: "Unknown",
+      purchasePrice: "Purchase Price",
+      listPrice: "List Price",
       errorLoadingTitle: "Error Loading Items",
       unauthorizedMessage: "Please log in to view inventory items.",
       loadErrorMessage: "Unable to load inventory data. Please try again.",
@@ -4806,8 +4816,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteSuccess: "Item deleted successfully",
       deleteError: "Failed to delete item",
       noDataToExport: "No data to export",
-      exportSuccess: "Inventory exported to CSV",
-      exportingCsv: "Exporting...",
+      exportSuccess: "Inventory exported successfully",
+      exporting: "Exporting...",
       exportError: "Failed to export inventory",
       exportTooLarge: "Export is too large. Narrow the filters and try again.",
       editAriaLabel: "Edit",
@@ -10241,7 +10251,10 @@ export const translations: Record<Locale, TranslationKeys> = {
     itemsPage: {
       title: "库存主数据",
       subtitle: "管理具有实时库存数量的商品",
+      export: "导出",
       exportCsv: "导出 CSV",
+      exportXlsx: "导出 XLSX",
+      exportPdf: "导出 PDF",
       createItem: "创建商品",
       totalItems: "商品总数",
       totalItemsDescription: "库存中的商品",
@@ -10268,6 +10281,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       overstock: "超储",
       discontinued: "已停用",
       unknown: "未知",
+      purchasePrice: "采购价",
+      listPrice: "标价",
       errorLoadingTitle: "加载商品失败",
       unauthorizedMessage: "请登录后查看库存商品。",
       loadErrorMessage: "无法加载库存数据。请重试。",
@@ -10279,8 +10294,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteSuccess: "商品删除成功",
       deleteError: "删除商品失败",
       noDataToExport: "没有可导出的数据",
-      exportSuccess: "库存已导出为 CSV",
-      exportingCsv: "正在导出...",
+      exportSuccess: "库存导出成功",
+      exporting: "正在导出...",
       exportError: "导出库存失败",
       exportTooLarge: "导出数据过大。请缩小筛选条件后重试。",
       editAriaLabel: "编辑",

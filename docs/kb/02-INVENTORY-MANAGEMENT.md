@@ -65,10 +65,10 @@ The **Item** is the central entity representing a product or material in the sys
 **Unit Options**:
 Each item can have multiple unit options (e.g., box, piece, dozen) with conversion factors to the base unit.
 
-**CSV Export**:
-The Item Master CSV export uses the current search, category, status, warehouse, and business-unit
-scope filters. Export requests are bounded to 5,000 filtered rows; users must narrow filters before
-exporting larger result sets.
+**Exports**:
+The Item Master export supports CSV, XLSX, and PDF formats. Each export uses the current search,
+category, status, warehouse, and business-unit scope filters. Export requests are bounded to 5,000
+filtered rows; users must narrow filters before exporting larger result sets.
 
 ```typescript
 // Example: Item with multiple units

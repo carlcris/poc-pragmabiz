@@ -63,11 +63,14 @@ import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import type { ItemWithStock } from "@/app/api/items/route";
 import type { Item } from "@/types/item";
+import type { XlsxCellValue } from "@/lib/export/xlsx-workbook";
 
 const ConfirmDialog = dynamic(
   () => import("@/components/shared/ConfirmDialog").then((mod) => mod.ConfirmDialog),
   { ssr: false }
 );
+
+type ItemExportFormat = "csv" | "xlsx" | "pdf";
 
 function ItemsPageContent() {
   const t = useTranslations("itemsPage");
@@ -79,7 +82,7 @@ function ItemsPageContent() {
   const [pageSize, setPageSize] = useState(10);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [isExportingCsv, setIsExportingCsv] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<ItemExportFormat | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemWithStock | null>(null);
 
@@ -279,28 +282,50 @@ function ItemsPageContent() {
   const escapeCsvCell = (value: string | number | boolean | null | undefined) =>
     `"${String(value ?? "").replaceAll('"', '""')}"`;
 
-  const downloadItemsCsv = (exportItems: ItemWithStock[]) => {
-    if (exportItems.length === 0) {
-      toast.error(t("noDataToExport"));
-      return;
-    }
+  const getExportFileName = (format: ItemExportFormat) =>
+    `inventory-items-${new Date().toISOString().split("T")[0]}.${format}`;
 
-    const headers = [
-      "Item Code",
-      "Supplier Code",
-      "Item Name",
-      "Category",
-      "UOM",
-      "On Hand",
-      "Allocated",
-      "In Transit Qty",
-      "Available",
-      "Status",
-      "Purchase Price",
-      "List Price",
-    ];
+  const downloadBlob = (blob: Blob, fileName: string) => {
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
-    const rows = exportItems.map((item) => [
+  const getExportColumns = () => [
+    t("itemCode"),
+    t("supplierCode"),
+    t("itemName"),
+    t("category"),
+    t("uom"),
+    t("onHand"),
+    t("allocated"),
+    t("inTransitQty"),
+    t("available"),
+    tCommon("status"),
+    t("purchasePrice"),
+    t("listPrice"),
+  ];
+
+  const getStatusLabel = (status?: ItemWithStock["status"]) => {
+    if (!status) return t("unknown");
+    const statusLabels: Record<ItemWithStock["status"], string> = {
+      normal: t("normal"),
+      low_stock: t("lowStock"),
+      out_of_stock: t("outOfStock"),
+      overstock: t("overstock"),
+      discontinued: t("discontinued"),
+    };
+    return statusLabels[status] ?? t("unknown");
+  };
+
+  const getExportRows = (exportItems: ItemWithStock[]) =>
+    exportItems.map((item) => [
       item.code,
       item.supplierCode || "",
       item.name,
@@ -310,34 +335,87 @@ function ItemsPageContent() {
       item.allocated,
       item.inTransit,
       item.available,
-      item.status,
+      getStatusLabel(item.status),
       item.purchasePrice,
       item.listPrice,
     ]);
 
+  const downloadItemsCsv = (headers: string[], rows: XlsxCellValue[][]) => {
     const csvContent = [
       headers.map(escapeCsvCell).join(","),
       ...rows.map((row) => row.map(escapeCsvCell).join(",")),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `inventory-items-${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    toast.success(t("exportSuccess"));
+    downloadBlob(blob, getExportFileName("csv"));
   };
 
-  const handleExportCSV = async () => {
-    if (!areItemQueriesEnabled || isExportingCsv) return;
+  const downloadItemsXlsx = async (headers: string[], rows: XlsxCellValue[][]) => {
+    const { createXlsxWorkbookBlob } = await import("@/lib/export/xlsx-workbook");
+    const blob = createXlsxWorkbookBlob(t("title"), [headers, ...rows]);
+    downloadBlob(blob, getExportFileName("xlsx"));
+  };
 
-    setIsExportingCsv(true);
+  const downloadItemsPdf = async (headers: string[], rows: XlsxCellValue[][]) => {
+    const { default: jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const margin = 28;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const tableWidth = pageWidth - margin * 2;
+    const columnWidths = [58, 58, 116, 76, 42, 48, 48, 58, 48, 58, 58, 58];
+    const scale = tableWidth / columnWidths.reduce((sum, width) => sum + width, 0);
+    const widths = columnWidths.map((width) => width * scale);
+    const rowHeight = 24;
+    let y = margin;
+
+    const drawHeader = () => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text(t("title"), margin, y);
+      y += 20;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.text(new Date().toLocaleString(), margin, y);
+      y += 18;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      let x = margin;
+      headers.forEach((header, index) => {
+        doc.text(doc.splitTextToSize(header, widths[index] - 4), x + 2, y);
+        x += widths[index];
+      });
+      y += rowHeight;
+      doc.line(margin, y - 8, pageWidth - margin, y - 8);
+      doc.setFont("helvetica", "normal");
+    };
+
+    drawHeader();
+
+    rows.forEach((row) => {
+      if (y + rowHeight > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+        drawHeader();
+      }
+
+      let x = margin;
+      row.forEach((value, index) => {
+        const text = String(value ?? "");
+        const lines = doc.splitTextToSize(text, widths[index] - 4).slice(0, 2);
+        doc.text(lines, x + 2, y);
+        x += widths[index];
+      });
+      y += rowHeight;
+    });
+
+    doc.save(getExportFileName("pdf"));
+  };
+
+  const handleExportItems = async (format: ItemExportFormat) => {
+    if (!areItemQueriesEnabled || exportingFormat) return;
+
+    setExportingFormat(format);
     try {
       const params = new URLSearchParams();
       if (itemsQueryParams.search) params.append("search", itemsQueryParams.search);
@@ -348,7 +426,7 @@ function ItemsPageContent() {
       }
       params.append("includeStock", "true");
       params.append("includeStats", "false");
-      params.append("exportMode", "csv");
+      params.append("exportMode", format);
 
       const response = await fetch(`/api/items?${params.toString()}`, {
         credentials: "include",
@@ -368,11 +446,26 @@ function ItemsPageContent() {
       }
 
       const exportData = (await response.json()) as ItemsWithStockResponse;
-      downloadItemsCsv(exportData.data || []);
+      const exportItems = exportData.data || [];
+      if (exportItems.length === 0) {
+        toast.error(t("noDataToExport"));
+        return;
+      }
+
+      const headers = getExportColumns();
+      const rows = getExportRows(exportItems);
+      if (format === "csv") {
+        downloadItemsCsv(headers, rows);
+      } else if (format === "xlsx") {
+        await downloadItemsXlsx(headers, rows);
+      } else {
+        await downloadItemsPdf(headers, rows);
+      }
+      toast.success(t("exportSuccess"));
     } catch {
       toast.error(t("exportError"));
     } finally {
-      setIsExportingCsv(false);
+      setExportingFormat(null);
     }
   };
 
@@ -388,15 +481,34 @@ function ItemsPageContent() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-2">
-          <Button
-            variant="outline"
-            onClick={handleExportCSV}
-            disabled={isExportingCsv || !areItemQueriesEnabled}
-            className="w-full flex-shrink-0 sm:w-auto"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            <span className="sm:inline">{isExportingCsv ? t("exportingCsv") : t("exportCsv")}</span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                disabled={Boolean(exportingFormat) || !areItemQueriesEnabled}
+                className="w-full flex-shrink-0 sm:w-auto"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                <span className="sm:inline">
+                  {exportingFormat ? t("exporting") : t("export")}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExportItems("csv")}>
+                <Download className="h-4 w-4" />
+                <span>{t("exportCsv")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportItems("xlsx")}>
+                <Download className="h-4 w-4" />
+                <span>{t("exportXlsx")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportItems("pdf")}>
+                <Download className="h-4 w-4" />
+                <span>{t("exportPdf")}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={handleCreateItem} className="w-full flex-shrink-0 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             <span className="sm:inline">{t("createItem")}</span>
