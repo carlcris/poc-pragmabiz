@@ -1920,6 +1920,9 @@ export type TranslationKeys = {
     deleteError: string;
     noDataToExport: string;
     exportSuccess: string;
+    exportingCsv: string;
+    exportError: string;
+    exportTooLarge: string;
     editAriaLabel: string;
     deleteAriaLabel: string;
     moreActions: string;
@@ -4804,6 +4807,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteError: "Failed to delete item",
       noDataToExport: "No data to export",
       exportSuccess: "Inventory exported to CSV",
+      exportingCsv: "Exporting...",
+      exportError: "Failed to export inventory",
+      exportTooLarge: "Export is too large. Narrow the filters and try again.",
       editAriaLabel: "Edit",
       deleteAriaLabel: "Delete",
       moreActions: "More",
@@ -10274,6 +10280,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       deleteError: "删除商品失败",
       noDataToExport: "没有可导出的数据",
       exportSuccess: "库存已导出为 CSV",
+      exportingCsv: "正在导出...",
+      exportError: "导出库存失败",
+      exportTooLarge: "导出数据过大。请缩小筛选条件后重试。",
       editAriaLabel: "编辑",
       deleteAriaLabel: "删除",
       moreActions: "更多",

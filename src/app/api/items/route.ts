@@ -153,6 +153,8 @@ type ItemRow = DbItem & {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 100;
+const CSV_EXPORT_ROW_LIMIT = 5000;
+const ID_FILTER_CHUNK_SIZE = 100;
 
 const parsePositiveInt = (raw: string | null, fallback: number) => {
   const parsed = Number.parseInt(raw || "", 10);
@@ -296,32 +298,37 @@ const fetchCurrentPriceTiersByItemId = async (
   const priceTiersByItemId = new Map<string, ItemPriceTier[]>();
   if (itemIds.length === 0) return priceTiersByItemId;
 
+  const uniqueItemIds = [...new Set(itemIds)];
   const today = new Date().toISOString().split("T")[0];
-  const { data, error } = await supabase
-    .from("item_prices")
-    .select(
-      "id, item_id, price_tier, price_tier_name, price, currency_code, effective_from, effective_to, is_active"
-    )
-    .eq("company_id", companyId)
-    .in("item_id", itemIds)
-    .eq("is_active", true)
-    .lte("effective_from", today)
-    .or(`effective_to.is.null,effective_to.gte.${today}`)
-    .is("deleted_at", null)
-    .order("price_tier", { ascending: true })
-    .order("effective_from", { ascending: false });
 
-  if (error) {
-    console.error("Error loading item price tiers:", error);
-    return priceTiersByItemId;
-  }
+  for (let startIndex = 0; startIndex < uniqueItemIds.length; startIndex += ID_FILTER_CHUNK_SIZE) {
+    const itemIdChunk = uniqueItemIds.slice(startIndex, startIndex + ID_FILTER_CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("item_prices")
+      .select(
+        "id, item_id, price_tier, price_tier_name, price, currency_code, effective_from, effective_to, is_active"
+      )
+      .eq("company_id", companyId)
+      .in("item_id", itemIdChunk)
+      .eq("is_active", true)
+      .lte("effective_from", today)
+      .or(`effective_to.is.null,effective_to.gte.${today}`)
+      .is("deleted_at", null)
+      .order("price_tier", { ascending: true })
+      .order("effective_from", { ascending: false });
 
-  for (const row of (data || []) as DbItemPriceRow[]) {
-    const rows = priceTiersByItemId.get(row.item_id) || [];
-    if (!rows.some((priceTier) => priceTier.priceTier === row.price_tier)) {
-      rows.push(transformItemPriceRow(row));
+    if (error) {
+      console.error("Error loading item price tiers:", error);
+      return priceTiersByItemId;
     }
-    priceTiersByItemId.set(row.item_id, rows);
+
+    for (const row of (data || []) as DbItemPriceRow[]) {
+      const rows = priceTiersByItemId.get(row.item_id) || [];
+      if (!rows.some((priceTier) => priceTier.priceTier === row.price_tier)) {
+        rows.push(transformItemPriceRow(row));
+      }
+      priceTiersByItemId.set(row.item_id, rows);
+    }
   }
 
   return priceTiersByItemId;
@@ -402,43 +409,46 @@ const fetchItemUnitOptionsByItemId = async (
 ) => {
   const emptyMap = new Map<string, DbItemUnitOptionRow[]>();
   if (itemIds.length === 0) return emptyMap;
-
-  const { data, error } = await supabase
-    .from("item_unit_options")
-    .select(
-      `
-      id,
-      item_id,
-      uom_id,
-      option_label,
-      qty_per_unit,
-      barcode,
-      is_base,
-      is_default,
-      is_active,
-      sort_order,
-      units_of_measure (
-        id,
-        code,
-        name,
-        symbol
-      )
-    `
-    )
-    .eq("company_id", companyId)
-    .in("item_id", itemIds)
-    .is("deleted_at", null);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rows = (data || []) as DbItemUnitOptionRow[];
+  const uniqueItemIds = [...new Set(itemIds)];
   const rowsByItemId = new Map<string, DbItemUnitOptionRow[]>();
-  for (const row of rows) {
-    const existingRows = rowsByItemId.get(row.item_id) || [];
-    existingRows.push(row);
-    rowsByItemId.set(row.item_id, existingRows);
+
+  for (let startIndex = 0; startIndex < uniqueItemIds.length; startIndex += ID_FILTER_CHUNK_SIZE) {
+    const itemIdChunk = uniqueItemIds.slice(startIndex, startIndex + ID_FILTER_CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from("item_unit_options")
+      .select(
+        `
+        id,
+        item_id,
+        uom_id,
+        option_label,
+        qty_per_unit,
+        barcode,
+        is_base,
+        is_default,
+        is_active,
+        sort_order,
+        units_of_measure (
+          id,
+          code,
+          name,
+          symbol
+        )
+      `
+      )
+      .eq("company_id", companyId)
+      .in("item_id", itemIdChunk)
+      .is("deleted_at", null);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const row of (data || []) as DbItemUnitOptionRow[]) {
+      const existingRows = rowsByItemId.get(row.item_id) || [];
+      existingRows.push(row);
+      rowsByItemId.set(row.item_id, existingRows);
+    }
   }
 
   return rowsByItemId;
@@ -519,11 +529,12 @@ async function GETHandler(request: NextRequest) {
     const includeStock = searchParams.get("includeStock") !== "false";
     const includeStats = searchParams.get("includeStats") === "true";
     const statsOnly = searchParams.get("statsOnly") === "true";
+    const exportMode = searchParams.get("exportMode") === "csv" ? "csv" : null;
     const page = parsePositiveInt(searchParams.get("page"), 1);
-    const limit = Math.min(
-      parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE),
-      MAX_PAGE_SIZE
-    );
+    const limit =
+      exportMode === "csv"
+        ? CSV_EXPORT_ROW_LIMIT + 1
+        : Math.min(parsePositiveInt(searchParams.get("limit"), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
     const capabilities = await getUserCapabilities(userId, currentBusinessUnitId);
     const defaultPricingTier = await getDefaultPricingTier(supabase, companyId);
     const itemMasterCapabilities: ItemMasterCapabilities = {
@@ -678,11 +689,13 @@ async function GETHandler(request: NextRequest) {
       });
     }
 
-    const candidateLimit = search && page === 1 ? Math.max(limit, 100) : limit;
+    const exportPage = exportMode === "csv" ? 1 : page;
+    const candidateLimit =
+      exportMode === "csv" ? limit : search && page === 1 ? Math.max(limit, 100) : limit;
 
     const rpcPayload = {
       ...statsRpcPayload,
-      p_page: page,
+      p_page: exportPage,
       p_limit: candidateLimit,
     };
 
@@ -703,6 +716,16 @@ async function GETHandler(request: NextRequest) {
     }
 
     const rows = (rpcRows || []) as ItemsRpcRow[];
+    const total = rows.length > 0 ? toNumber(rows[0].total_count) : 0;
+    if (exportMode === "csv" && total > CSV_EXPORT_ROW_LIMIT) {
+      return NextResponse.json(
+        {
+          error: "Item export is too large. Narrow the filters and try again.",
+        },
+        { status: 413 }
+      );
+    }
+
     const priceTiersByItemId = await fetchCurrentPriceTiersByItemId(
       supabase,
       companyId,
@@ -757,15 +780,18 @@ async function GETHandler(request: NextRequest) {
     const rankedItemsWithStock =
       search && page === 1 ? rankItemsBySearch(itemsWithStock, search) : itemsWithStock;
 
-    const total = rows.length > 0 ? toNumber(rows[0].total_count) : 0;
-    const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+    const responseLimit = exportMode === "csv" ? CSV_EXPORT_ROW_LIMIT : limit;
+    const totalPages = total > 0 ? Math.ceil(total / responseLimit) : 0;
 
     if (!includeStats) {
       return NextResponse.json({
-        data: search && page === 1 ? rankedItemsWithStock.slice(0, limit) : rankedItemsWithStock,
+        data:
+          search && page === 1 && exportMode !== "csv"
+            ? rankedItemsWithStock.slice(0, limit)
+            : rankedItemsWithStock,
         pagination: {
-          page,
-          limit,
+          page: exportPage,
+          limit: responseLimit,
           total,
           totalPages,
         },
@@ -784,10 +810,13 @@ async function GETHandler(request: NextRequest) {
     const statsRow = ((statsRows || [])[0] || null) as ItemsStatsRow | null;
 
     return NextResponse.json({
-      data: search && page === 1 ? rankedItemsWithStock.slice(0, limit) : rankedItemsWithStock,
+      data:
+        search && page === 1 && exportMode !== "csv"
+          ? rankedItemsWithStock.slice(0, limit)
+          : rankedItemsWithStock,
       pagination: {
-        page,
-        limit,
+        page: exportPage,
+        limit: responseLimit,
         total,
         totalPages,
       },

@@ -18,7 +18,12 @@ import {
   TrendingUp,
   type LucideIcon,
 } from "lucide-react";
-import { useDeleteItem, useItems, useItemsStats } from "@/hooks/useItems";
+import {
+  useDeleteItem,
+  useItems,
+  useItemsStats,
+  type ItemsWithStockResponse,
+} from "@/hooks/useItems";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useItemCategories } from "@/hooks/useItemCategories";
 import { useCurrency } from "@/hooks/useCurrency";
@@ -74,6 +79,7 @@ function ItemsPageContent() {
   const [pageSize, setPageSize] = useState(10);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<ItemWithStock | null>(null);
 
@@ -270,13 +276,15 @@ function ItemsPageContent() {
     }
   };
 
-  const handleExportCSV = () => {
-    if (!items || items.length === 0) {
+  const escapeCsvCell = (value: string | number | boolean | null | undefined) =>
+    `"${String(value ?? "").replaceAll('"', '""')}"`;
+
+  const downloadItemsCsv = (exportItems: ItemWithStock[]) => {
+    if (exportItems.length === 0) {
       toast.error(t("noDataToExport"));
       return;
     }
 
-    // Create CSV header
     const headers = [
       "Item Code",
       "Supplier Code",
@@ -292,8 +300,7 @@ function ItemsPageContent() {
       "List Price",
     ];
 
-    // Create CSV rows
-    const rows = items.map((item) => [
+    const rows = exportItems.map((item) => [
       item.code,
       item.supplierCode || "",
       item.name,
@@ -308,13 +315,11 @@ function ItemsPageContent() {
       item.listPrice,
     ]);
 
-    // Combine headers and rows
     const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+      headers.map(escapeCsvCell).join(","),
+      ...rows.map((row) => row.map(escapeCsvCell).join(",")),
     ].join("\n");
 
-    // Create blob and download
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -324,8 +329,51 @@ function ItemsPageContent() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
     toast.success(t("exportSuccess"));
+  };
+
+  const handleExportCSV = async () => {
+    if (!areItemQueriesEnabled || isExportingCsv) return;
+
+    setIsExportingCsv(true);
+    try {
+      const params = new URLSearchParams();
+      if (itemsQueryParams.search) params.append("search", itemsQueryParams.search);
+      if (itemsQueryParams.category) params.append("category", itemsQueryParams.category);
+      if (itemsQueryParams.warehouseId) params.append("warehouseId", itemsQueryParams.warehouseId);
+      if (itemsQueryParams.status && itemsQueryParams.status !== "all") {
+        params.append("status", itemsQueryParams.status);
+      }
+      params.append("includeStock", "true");
+      params.append("includeStats", "false");
+      params.append("exportMode", "csv");
+
+      const response = await fetch(`/api/items?${params.toString()}`, {
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 413) {
+        toast.error(t("exportTooLarge"));
+        return;
+      }
+
+      if (!response.ok) {
+        toast.error(t("exportError"));
+        return;
+      }
+
+      const exportData = (await response.json()) as ItemsWithStockResponse;
+      downloadItemsCsv(exportData.data || []);
+    } catch {
+      toast.error(t("exportError"));
+    } finally {
+      setIsExportingCsv(false);
+    }
   };
 
   return (
@@ -343,10 +391,11 @@ function ItemsPageContent() {
           <Button
             variant="outline"
             onClick={handleExportCSV}
+            disabled={isExportingCsv || !areItemQueriesEnabled}
             className="w-full flex-shrink-0 sm:w-auto"
           >
             <Download className="mr-2 h-4 w-4" />
-            <span className="sm:inline">{t("exportCsv")}</span>
+            <span className="sm:inline">{isExportingCsv ? t("exportingCsv") : t("exportCsv")}</span>
           </Button>
           <Button onClick={handleCreateItem} className="w-full flex-shrink-0 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
