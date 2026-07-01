@@ -121,7 +121,7 @@ Company Level
 - **In Transit**: Being transferred between warehouses
 - **Reorder Alert Basis**: Total available stock across all company warehouses compared to the effective item reorder point
 
-Stock-aware item lists subscribe to `item_warehouse` realtime changes. Posted stock adjustments and other stock movements invalidate the loaded items and item statistics queries so on-hand, reserved, and available quantities refresh without leaving the page.
+Stock-aware item lists subscribe to `item_warehouse` realtime changes. Stock movement screens also subscribe to `stock_transactions` and `stock_transaction_items` realtime changes. Posted stock adjustments, GRN approvals, and other stock movements invalidate the loaded items, item statistics, stock transaction, stock balance, dashboard, and reorder queries so on-hand, reserved, available, and movement history refresh without leaving the page.
 
 ### 4. Stock Transactions
 

@@ -6,7 +6,9 @@ import {
   LOAD_LISTS_QUERY_KEY,
   NOTIFICATIONS_QUERY_KEY,
   PICK_LISTS_QUERY_KEY,
+  STOCK_BALANCES_QUERY_KEY,
   STOCK_REQUISITIONS_QUERY_KEY,
+  STOCK_TRANSACTIONS_QUERY_KEY,
 } from "@/hooks/queryKeys";
 
 export type RealtimeDomainConfig = {
@@ -29,8 +31,13 @@ export const realtimeDomains = {
     channelKey: "notifications",
   },
   stock: {
-    tables: ["item_warehouse"],
-    queryKeys: [ITEMS_QUERY_KEY, ITEMS_STATS_QUERY_KEY],
+    tables: ["item_warehouse", "stock_transactions", "stock_transaction_items"],
+    queryKeys: [
+      ITEMS_QUERY_KEY,
+      ITEMS_STATS_QUERY_KEY,
+      STOCK_TRANSACTIONS_QUERY_KEY,
+      STOCK_BALANCES_QUERY_KEY,
+    ],
     channelKey: "stock",
   },
   purchasing: {

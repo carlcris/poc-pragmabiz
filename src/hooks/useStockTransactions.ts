@@ -1,4 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { STOCK_BALANCES_QUERY_KEY, STOCK_TRANSACTIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { stockTransactionsApi } from "@/lib/api/stock-transactions";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type {
@@ -6,11 +8,10 @@ import type {
   CreateStockTransactionRequest,
 } from "@/types/stock-transaction";
 
-const STOCK_TRANSACTIONS_QUERY_KEY = "stock-transactions";
-const STOCK_BALANCES_QUERY_KEY = "stock-balances";
-
 export function useStockTransactions(filters?: StockTransactionFilters) {
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
+
+  useRealtimeDomainInvalidation("stock");
 
   return useQuery({
     queryKey: [STOCK_TRANSACTIONS_QUERY_KEY, currentBusinessUnitId ?? null, filters],
@@ -19,6 +20,8 @@ export function useStockTransactions(filters?: StockTransactionFilters) {
 }
 
 export function useStockTransaction(id: string) {
+  useRealtimeDomainInvalidation("stock", { enabled: !!id });
+
   return useQuery({
     queryKey: [STOCK_TRANSACTIONS_QUERY_KEY, id],
     queryFn: () => stockTransactionsApi.getTransaction(id),
@@ -40,6 +43,8 @@ export function useCreateStockTransaction() {
 }
 
 export function useStockBalances(filters?: { warehouseId?: string; itemId?: string }) {
+  useRealtimeDomainInvalidation("stock");
+
   return useQuery({
     queryKey: [STOCK_BALANCES_QUERY_KEY, filters],
     queryFn: () => stockTransactionsApi.getStockBalances(filters),

@@ -1,5 +1,16 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { GRNS_QUERY_KEY, LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
+import {
+  GRNS_QUERY_KEY,
+  ITEMS_QUERY_KEY,
+  ITEMS_STATS_QUERY_KEY,
+  LOAD_LISTS_QUERY_KEY,
+  REORDER_ALERTS_QUERY_KEY,
+  REORDER_STATISTICS_QUERY_KEY,
+  REORDER_STOCK_LEVELS_QUERY_KEY,
+  STOCK_BALANCES_QUERY_KEY,
+  STOCK_TRANSACTIONS_QUERY_KEY,
+  WAREHOUSE_DASHBOARD_QUERY_KEY,
+} from "@/hooks/queryKeys";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { grnsApi } from "@/lib/api/grns";
 import type {
@@ -98,8 +109,15 @@ export function useApproveGRN() {
     mutationFn: ({ id, notes }: { id: string; notes?: string }) => grnsApi.approveGRN(id, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
-      // Also invalidate load lists as approval updates inventory
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEMS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [ITEMS_STATS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_TRANSACTIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_BALANCES_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [WAREHOUSE_DASHBOARD_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY] });
     },
   });
 }
