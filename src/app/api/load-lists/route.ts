@@ -230,11 +230,8 @@ async function GETHandler(request: NextRequest) {
         actualArrivalDate: ll.actual_arrival_date,
         loadDate: ll.load_date,
         status: ll.status,
-        currency:
-          capabilities.canViewTotalAmount || capabilities.canViewUnitPrice
-            ? (normalizeCurrency(ll.currency) ?? "PHP")
-            : null,
-        totalAmount: capabilities.canViewTotalAmount ? totalAmount : null,
+        currency: normalizeCurrency(ll.currency) ?? "PHP",
+        totalAmount,
         capabilities,
         createdBy: ll.created_by,
         createdByUser: createdByUser
@@ -314,6 +311,13 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
     }
 
+    if (body.items.some((item: { unitPrice?: unknown }) => item.unitPrice == null)) {
+      return NextResponse.json(
+        { error: "Unit price is required for each load list line" },
+        { status: 400 }
+      );
+    }
+
     const currency = resolveRequestCurrency(body.currency);
     if (!currency) {
       return NextResponse.json(
@@ -365,27 +369,17 @@ async function POSTHandler(request: NextRequest) {
     }
 
     // Create line items
-    const itemsToInsert = resolvedLineItems.map(
-      (item: {
-        itemId: string;
-        item_unit_option_id: string;
-        uom_id: string;
-        qty_per_unit: number;
-        loadListQty: number;
-        unitPrice: number;
-        notes?: string;
-      }) => ({
-        load_list_id: ll.id,
-        item_id: item.itemId,
-        item_unit_option_id: item.item_unit_option_id,
-        uom_id: item.uom_id,
-        load_list_qty: item.loadListQty,
-        unit_price: item.unitPrice,
-        received_qty: 0,
-        damaged_qty: 0,
-        notes: item.notes,
-      })
-    );
+    const itemsToInsert = resolvedLineItems.map((item) => ({
+      load_list_id: ll.id,
+      item_id: item.itemId,
+      item_unit_option_id: item.item_unit_option_id,
+      uom_id: item.uom_id,
+      load_list_qty: item.loadListQty,
+      unit_price: Number(item.unitPrice),
+      received_qty: 0,
+      damaged_qty: 0,
+      notes: item.notes,
+    }));
 
     const { error: itemsError } = await supabase.from("load_list_items").insert(itemsToInsert);
 

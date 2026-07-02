@@ -65,9 +65,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 import { cn } from "@/lib/utils";
 import { createLoadListFormSchema, type LoadListFormValues } from "@/lib/validations/load-list";
-import type { LoadList } from "@/types/load-list";
+import type { CreateLoadListRequest, LoadList, UpdateLoadListRequest } from "@/types/load-list";
 
 type LoadListCostSource = {
   importCost?: number | null;
@@ -124,7 +126,7 @@ type LineItem = {
   qtyPerUnit: number;
   loadListQty: number;
   unitPrice: number;
-  unitPriceCurrency: string;
+  unitPriceCurrency: string | null;
   notes?: string;
 };
 
@@ -134,6 +136,11 @@ type LoadListFormDialogProps = {
   loadList?: LoadList | null;
   defaultWarehouseId?: string;
 };
+
+const LOAD_LIST_COST_CAPABILITY_KEYS = [
+  GRANULAR_CAPABILITIES.LOAD_LISTS_TOTAL_AMOUNT,
+  GRANULAR_CAPABILITIES.LOAD_LISTS_UNIT_PRICE,
+] as const;
 
 export function LoadListFormDialog({
   open,
@@ -150,6 +157,14 @@ export function LoadListFormDialog({
   const updateMutation = useUpdateLoadList();
   const { data: loadListDetails } = useLoadList(loadList?.id ?? "");
   const resolvedLoadList = loadListDetails ?? loadList;
+  const { data: granularCapabilities } = useGranularCapabilities(LOAD_LIST_COST_CAPABILITY_KEYS);
+  const canViewTotalAmount =
+    resolvedLoadList?.capabilities?.canViewTotalAmount ??
+    granularCapabilities?.[GRANULAR_CAPABILITIES.LOAD_LISTS_TOTAL_AMOUNT] === true;
+  const canViewUnitPrice =
+    resolvedLoadList?.capabilities?.canViewUnitPrice ??
+    granularCapabilities?.[GRANULAR_CAPABILITIES.LOAD_LISTS_UNIT_PRICE] === true;
+  const canShowFormAmounts = canViewTotalAmount && canViewUnitPrice;
 
   const { data: suppliersData } = useSuppliers({ limit: 50 });
   const suppliers = suppliersData?.data || [];
@@ -236,13 +251,16 @@ export function LoadListFormDialog({
 
   // Calculate total
   const totalAmount = useMemo(() => {
+    if (!canShowFormAmounts) return null;
+
     return lineItems.reduce(
       (sum, item) => sum + item.loadListQty * item.qtyPerUnit * item.unitPrice,
       0
     );
-  }, [lineItems]);
+  }, [canShowFormAmounts, lineItems]);
   const loadListCurrency = lineItems[0]?.unitPriceCurrency ?? currentCurrency.code;
-  const formattedTotalAmount = formatCurrencyAmount(totalAmount, loadListCurrency, locale);
+  const formattedTotalAmount =
+    totalAmount == null ? "--" : formatCurrencyAmount(totalAmount, loadListCurrency, locale);
 
   // Reset form when dialog opens/closes or LL changes
   useEffect(() => {
@@ -323,7 +341,14 @@ export function LoadListFormDialog({
   }, [itemSearchInput]);
 
   const handleAddItem = () => {
-    if (!selectedItemId || !selectedUnitOptionId || !quantity || unitCost === "") {
+    const parsedUnitCost = Number.parseFloat(unitCost);
+
+    if (
+      !selectedItemId ||
+      !selectedUnitOptionId ||
+      !quantity ||
+      (canViewUnitPrice && !Number.isFinite(parsedUnitCost))
+    ) {
       toast.error(t("addItemError"));
       return;
     }
@@ -346,6 +371,9 @@ export function LoadListFormDialog({
       toast.error(t("mixedCurrencyNotAllowed"));
       return;
     }
+    const unitPrice = canViewUnitPrice
+      ? parsedUnitCost
+      : Number(getDefaultLoadListUnitCost(selectedItem));
 
     const newItem: LineItem = {
       itemId: selectedItemId,
@@ -356,7 +384,7 @@ export function LoadListFormDialog({
       uomLabel: selectedUomLabel,
       qtyPerUnit: selectedQtyPerUnit,
       loadListQty: parseFloat(quantity),
-      unitPrice: parseFloat(unitCost),
+      unitPrice: Number.isFinite(unitPrice) ? unitPrice : 0,
       unitPriceCurrency,
     };
 
@@ -381,7 +409,6 @@ export function LoadListFormDialog({
 
     try {
       const requestData = {
-        currency: loadListCurrency,
         supplierId: values.supplierId,
         warehouseId: values.warehouseId,
         supplierLlNumber: values.supplierLlNumber,
@@ -400,16 +427,21 @@ export function LoadListFormDialog({
           unitPrice: item.unitPrice,
           notes: item.notes,
         })),
+        currency: loadListCurrency,
       };
 
       if (isEditMode) {
+        const updateData: UpdateLoadListRequest = requestData;
+
         await updateMutation.mutateAsync({
           id: loadList.id,
-          data: requestData,
+          data: updateData,
         });
         toast.success(t("updateSuccess"));
       } else {
-        await createMutation.mutateAsync(requestData);
+        const createData: CreateLoadListRequest = requestData;
+
+        await createMutation.mutateAsync(createData);
         toast.success(t("createSuccess"));
       }
 
@@ -716,7 +748,13 @@ export function LoadListFormDialog({
                     </div>
                     <h3 className="text-sm font-semibold text-gray-900">{t("addItemsTitle")}</h3>
                   </div>
-                  <div className="grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]">
+                  <div
+                    className={
+                      canViewUnitPrice
+                        ? "grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_150px_160px]"
+                        : "grid gap-3 xl:grid-cols-[minmax(0,2.8fr)_minmax(0,1.75fr)_100px_120px_120px_160px]"
+                    }
+                  >
                     <div className="min-w-0">
                       <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
                         {t("itemLabel")}
@@ -784,16 +822,18 @@ export function LoadListFormDialog({
                                           {item.name}
                                         </div>
                                       </div>
-                                      <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
-                                        {formatCurrencyAmount(
-                                          getDefaultLoadListUnitCost(item),
-                                          getDefaultLoadListCostCurrency(
-                                            item,
-                                            currentCurrency.code
-                                          ),
-                                          locale
-                                        )}
-                                      </div>
+                                      {canViewUnitPrice && (
+                                        <div className="ml-4 flex-shrink-0 self-start text-sm font-semibold">
+                                          {formatCurrencyAmount(
+                                            getDefaultLoadListUnitCost(item),
+                                            getDefaultLoadListCostCurrency(
+                                              item,
+                                              currentCurrency.code
+                                            ),
+                                            locale
+                                          )}
+                                        </div>
+                                      )}
                                     </CommandItem>
                                   ))}
                               </CommandGroup>
@@ -872,31 +912,33 @@ export function LoadListFormDialog({
                         className="h-10 border-gray-300 bg-gray-50 text-sm"
                       />
                     </div>
-                    <div>
-                      <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
-                        {t("unitCostLabel")}
-                      </label>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
-                          {selectedUnitCostSymbol}
-                        </span>
-                        <Input
-                          key={`unit-cost-${selectedItemId}`}
-                          type="text"
-                          inputMode="decimal"
-                          pattern="^-?\\d*(\\.\\d{0,2})?$"
-                          placeholder={t("unitCostPlaceholder")}
-                          value={unitCost}
-                          onChange={(e) => {
-                            const next = e.target.value;
-                            if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
-                              setUnitCost(next);
-                            }
-                          }}
-                          className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
-                        />
+                    {canViewUnitPrice && (
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold tracking-wide text-gray-700">
+                          {t("unitCostLabel")}
+                        </label>
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted-foreground">
+                            {selectedUnitCostSymbol}
+                          </span>
+                          <Input
+                            key={`unit-cost-${selectedItemId}`}
+                            type="text"
+                            inputMode="decimal"
+                            pattern="^-?\\d*(\\.\\d{0,2})?$"
+                            placeholder={t("unitCostPlaceholder")}
+                            value={unitCost}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              if (next === "" || /^-?\d*(\.\d{0,2})?$/.test(next)) {
+                                setUnitCost(next);
+                              }
+                            }}
+                            className="h-10 border-gray-300 bg-white pl-8 text-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="flex items-end">
                       <Button
                         type="button"
@@ -933,12 +975,16 @@ export function LoadListFormDialog({
                               <TableHead className="h-8 text-right text-xs font-semibold">
                                 {t("totalQtyLabel")}
                               </TableHead>
-                              <TableHead className="h-8 text-right text-xs font-semibold">
-                                {t("unitCostLabel")}
-                              </TableHead>
-                              <TableHead className="h-8 text-right text-xs font-semibold">
-                                {t("total")}
-                              </TableHead>
+                              {canViewUnitPrice && (
+                                <TableHead className="h-8 text-right text-xs font-semibold">
+                                  {t("unitCostLabel")}
+                                </TableHead>
+                              )}
+                              {canShowFormAmounts && (
+                                <TableHead className="h-8 text-right text-xs font-semibold">
+                                  {t("total")}
+                                </TableHead>
+                              )}
                               <TableHead className="h-8 w-[50px]"></TableHead>
                             </TableRow>
                           </TableHeader>
@@ -972,20 +1018,28 @@ export function LoadListFormDialog({
                                     maximumFractionDigits: 4,
                                   })}
                                 </TableCell>
-                                <TableCell className="py-2 text-right text-xs tabular-nums text-gray-700">
-                                  {formatCurrencyAmount(
-                                    item.unitPrice,
-                                    item.unitPriceCurrency,
-                                    locale
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-2 text-right text-xs font-semibold tabular-nums text-purple-600">
-                                  {formatCurrencyAmount(
-                                    item.loadListQty * item.qtyPerUnit * item.unitPrice,
-                                    item.unitPriceCurrency,
-                                    locale
-                                  )}
-                                </TableCell>
+                                {canViewUnitPrice && (
+                                  <TableCell className="py-2 text-right text-xs tabular-nums text-gray-700">
+                                    {item.unitPriceCurrency == null
+                                      ? "--"
+                                      : formatCurrencyAmount(
+                                          item.unitPrice,
+                                          item.unitPriceCurrency,
+                                          locale
+                                        )}
+                                  </TableCell>
+                                )}
+                                {canShowFormAmounts && (
+                                  <TableCell className="py-2 text-right text-xs font-semibold tabular-nums text-purple-600">
+                                    {item.unitPriceCurrency == null
+                                      ? "--"
+                                      : formatCurrencyAmount(
+                                          item.loadListQty * item.qtyPerUnit * item.unitPrice,
+                                          item.unitPriceCurrency,
+                                          locale
+                                        )}
+                                  </TableCell>
+                                )}
                                 <TableCell className="py-2">
                                   <Button
                                     type="button"
@@ -1004,26 +1058,28 @@ export function LoadListFormDialog({
                       </div>
 
                       {/* Total Section */}
-                      <div className="border-t bg-gradient-to-r from-purple-50 to-violet-50 p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-violet-600">
-                              <DollarSign className="h-4 w-4 text-white" />
+                      {canShowFormAmounts && (
+                        <div className="border-t bg-gradient-to-r from-purple-50 to-violet-50 p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-violet-600">
+                                <DollarSign className="h-4 w-4 text-white" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-gray-600">
+                                  {t("totalAmount")}
+                                </p>
+                                <p className="text-[10px] text-gray-500">{lineItems.length}</p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-xs font-medium text-gray-600">
-                                {t("totalAmount")}
+                            <div className="text-right">
+                              <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-2xl font-bold text-transparent">
+                                {formattedTotalAmount}
                               </p>
-                              <p className="text-[10px] text-gray-500">{lineItems.length}</p>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-2xl font-bold text-transparent">
-                              {formattedTotalAmount}
-                            </p>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex flex-1 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50/50 p-8">

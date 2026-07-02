@@ -243,10 +243,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       actualArrivalDate: ll.actual_arrival_date,
       loadDate: ll.load_date,
       status: ll.status,
-      currency:
-        capabilities.canViewTotalAmount || capabilities.canViewUnitPrice
-          ? (normalizeCurrency(ll.currency) ?? "PHP")
-          : null,
+      currency: normalizeCurrency(ll.currency) ?? "PHP",
       createdBy: ll.created_by,
       createdByUser: createdByUser
         ? {
@@ -277,20 +274,16 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       receivedDate: ll.received_date,
       approvedDate: ll.approved_date,
       notes: ll.notes,
-      totalAmount: capabilities.canViewTotalAmount
-        ? (ll.items as LoadListItemRow[] | null)?.reduce((sum, item) => {
-            const unitDetails = Array.isArray(item.item_unit_options)
-              ? (item.item_unit_options[0] ?? null)
-              : (item.item_unit_options ?? null);
-            const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
-            return (
-              sum +
-              parseFloat(String(item.load_list_qty)) *
-                qtyPerUnit *
-                parseFloat(String(item.unit_price))
-            );
-          }, 0)
-        : null,
+      totalAmount: (ll.items as LoadListItemRow[] | null)?.reduce((sum, item) => {
+        const unitDetails = Array.isArray(item.item_unit_options)
+          ? (item.item_unit_options[0] ?? null)
+          : (item.item_unit_options ?? null);
+        const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
+        return (
+          sum +
+          parseFloat(String(item.load_list_qty)) * qtyPerUnit * parseFloat(String(item.unit_price))
+        );
+      }, 0),
       capabilities,
       items: (ll.items as LoadListItemRow[] | null)?.map((item) => {
         const itemDetails = Array.isArray(item.item) ? (item.item[0] ?? null) : (item.item ?? null);
@@ -324,8 +317,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           receivedQty: parseFloat(String(item.received_qty)),
           damagedQty: parseFloat(String(item.damaged_qty)),
           shortageQty: parseFloat(String(item.shortage_qty)),
-          unitPrice: capabilities.canViewUnitPrice ? unitPrice : null,
-          totalPrice: capabilities.canViewTotalAmount ? loadListQty * qtyPerUnit * unitPrice : null,
+          unitPrice,
+          totalPrice: loadListQty * qtyPerUnit * unitPrice,
           notes: item.notes,
         };
       }),
@@ -373,8 +366,17 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
-    const loadDate = normalizeOptionalDate(body.loadDate);
+    if (body.items && body.items.length === 0) {
+      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    }
+
+    if (body.items?.some((item: { unitPrice?: unknown }) => item.unitPrice == null)) {
+      return NextResponse.json(
+        { error: "Unit price is required for each load list line" },
+        { status: 400 }
+      );
+    }
+
     const currency =
       body.currency === undefined ? existingLL.currency : resolveRequestCurrency(body.currency);
 
@@ -385,9 +387,20 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    if (body.items && body.items.length === 0) {
-      return NextResponse.json({ error: "At least one item is required" }, { status: 400 });
+    let resolvedLineItems;
+    if (body.items && body.items.length > 0 && existingLL.status === "draft") {
+      try {
+        resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
+      } catch (error) {
+        if (error instanceof LoadListLineValidationError) {
+          return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        throw error;
+      }
     }
+
+    const estimatedArrivalDate = normalizeOptionalDate(body.estimatedArrivalDate);
+    const loadDate = normalizeOptionalDate(body.loadDate);
 
     // Update load list
     const { data: ll, error: updateError } = await supabase
@@ -416,42 +429,22 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     // Update line items if provided and status is draft
-    if (body.items && body.items.length > 0 && existingLL.status === "draft") {
-      let resolvedLineItems;
-      try {
-        resolvedLineItems = await resolveLoadListLineUnitOptions(supabase, companyId, body.items);
-      } catch (error) {
-        if (error instanceof LoadListLineValidationError) {
-          return NextResponse.json({ error: error.message }, { status: 400 });
-        }
-        throw error;
-      }
-
+    if (resolvedLineItems && resolvedLineItems.length > 0) {
       // Delete existing items
       await supabase.from("load_list_items").delete().eq("load_list_id", id);
 
       // Insert new items
-      const itemsToInsert = resolvedLineItems.map(
-        (item: {
-          itemId: string;
-          item_unit_option_id: string;
-          uom_id: string;
-          qty_per_unit: number;
-          loadListQty: number;
-          unitPrice: number;
-          notes?: string;
-        }) => ({
-          load_list_id: id,
-          item_id: item.itemId,
-          item_unit_option_id: item.item_unit_option_id,
-          uom_id: item.uom_id,
-          load_list_qty: item.loadListQty,
-          unit_price: item.unitPrice,
-          received_qty: 0,
-          damaged_qty: 0,
-          notes: item.notes,
-        })
-      );
+      const itemsToInsert = resolvedLineItems.map((item) => ({
+        load_list_id: id,
+        item_id: item.itemId,
+        item_unit_option_id: item.item_unit_option_id,
+        uom_id: item.uom_id,
+        load_list_qty: item.loadListQty,
+        unit_price: Number(item.unitPrice),
+        received_qty: 0,
+        damaged_qty: 0,
+        notes: item.notes,
+      }));
 
       const { error: itemsError } = await supabase.from("load_list_items").insert(itemsToInsert);
 

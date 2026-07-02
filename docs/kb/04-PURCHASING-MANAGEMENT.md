@@ -487,6 +487,8 @@ Reject requisition.
 
 ### Load List Management
 
+Load list unit price and total amount fields are display-controlled by granular permissions. Create and edit forms hide item costs, unit price inputs, line totals, and total amount when the user lacks `load_lists.field.unit_price.view`, while mutation payloads still preserve the stored prices.
+
 #### POST /api/load-lists
 Create load list from requisitions.
 

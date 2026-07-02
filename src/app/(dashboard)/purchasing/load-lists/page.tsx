@@ -17,9 +17,11 @@ import {
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useLoadLists, useDeleteLoadList, useUpdateLoadListStatus } from "@/hooks/useLoadLists";
+import { useResourcePermissions } from "@/hooks/usePermissions";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
+import { RESOURCES } from "@/constants/resources";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -102,6 +104,11 @@ export default function LoadListsPage() {
 
   const deleteMutation = useDeleteLoadList();
   const updateStatusMutation = useUpdateLoadListStatus();
+  const {
+    canCreate: canCreateLoadLists,
+    canEdit: canEditLoadLists,
+    canDelete: canDeleteLoadLists,
+  } = useResourcePermissions(RESOURCES.LOAD_LISTS);
 
   const { data, isLoading, error } = useLoadLists({
     search,
@@ -112,7 +119,6 @@ export default function LoadListsPage() {
     limit: pageSize,
   });
   const canViewTotalAmount = data?.capabilities?.canViewTotalAmount === true;
-  const canViewUnitPrice = data?.capabilities?.canViewUnitPrice === true;
 
   const { data: suppliersData } = useSuppliers({ page: 1, limit: 50 });
   const suppliers = useMemo(() => suppliersData?.data || [], [suppliersData?.data]);
@@ -268,7 +274,7 @@ export default function LoadListsPage() {
             {t("subtitle")}
           </p>
         </div>
-        {canViewUnitPrice && (
+        {canCreateLoadLists && (
           <Button onClick={handleCreateLL} className="w-full flex-shrink-0 sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             {t("createAction")}
@@ -537,7 +543,7 @@ export default function LoadListsPage() {
                           className="flex items-center justify-end gap-2"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {canViewUnitPrice &&
+                          {canEditLoadLists &&
                             (ll.status === "draft" || ll.status === "confirmed") && (
                               <Button
                                 variant="outline"
@@ -550,7 +556,7 @@ export default function LoadListsPage() {
                                 <span>{t("edit")}</span>
                               </Button>
                             )}
-                          {ll.status === "draft" && (
+                          {canEditLoadLists && ll.status === "draft" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -562,7 +568,9 @@ export default function LoadListsPage() {
                               <span>{t("confirm")}</span>
                             </Button>
                           )}
-                          {canCancelLL(ll) || ll.status === "draft" || ll.status === "confirmed" ? (
+                          {(canEditLoadLists && canCancelLL(ll)) ||
+                          (canDeleteLoadLists &&
+                            (ll.status === "draft" || ll.status === "confirmed")) ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -575,7 +583,7 @@ export default function LoadListsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {canCancelLL(ll) && (
+                                {canEditLoadLists && canCancelLL(ll) && (
                                   <DropdownMenuItem
                                     onClick={() => handleCancelLL(ll)}
                                     disabled={updateStatusMutation.isPending}
@@ -585,16 +593,17 @@ export default function LoadListsPage() {
                                     <span>{t("cancel")}</span>
                                   </DropdownMenuItem>
                                 )}
-                                {(ll.status === "draft" || ll.status === "confirmed") && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteLL(ll)}
-                                    disabled={deleteMutation.isPending}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span>{t("delete")}</span>
-                                  </DropdownMenuItem>
-                                )}
+                                {canDeleteLoadLists &&
+                                  (ll.status === "draft" || ll.status === "confirmed") && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteLL(ll)}
+                                      disabled={deleteMutation.isPending}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span>{t("delete")}</span>
+                                    </DropdownMenuItem>
+                                  )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           ) : null}

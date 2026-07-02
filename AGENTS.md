@@ -56,6 +56,24 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - UI text introduced or changed by implementation work must use the repository `next-intl` translation system.
 - Every implementation must balance simplicity and efficiency before coding. Prefer the simplest design that remains efficient at expected scale. If the chosen design knowingly sacrifices either, disclose the tradeoff and justification to the user before editing and wait for approval.
 
+#### Presets Before Arbitrary Values
+
+Use Tailwind and design-system scale presets before arbitrary values.
+
+- Prefer scale classes such as `max-w-lg`, `max-w-xl`, `w-48`, `gap-4`,
+  `px-6`, and `py-4` when they fit the layout.
+- Do not add arbitrary classes such as `max-w-[600px]`, `w-[37rem]`,
+  `gap-[13px]`, or `p-[18px]` when a preset communicates the same intent.
+- Keep existing arbitrary values only when the changed surface has a concrete
+  layout requirement that the preset scale cannot express.
+- If an arbitrary value is added or preserved in touched code, the work summary
+  must be able to state why the preset scale is insufficient.
+
+Hard stop:
+
+- Arbitrary Tailwind values are not allowed as a default sizing or spacing
+  habit. Use them only as a documented exception.
+
 ## Subsystem Rules
 
 ### API Routes And Data Contracts
