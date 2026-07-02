@@ -2,6 +2,7 @@ import {
   setActivityContext,
   withActivityLogging,
 } from "@/lib/activity-logging/route-activity-logger";
+import { formatActivityActorUsername } from "@/lib/activity-logging/activity-actor-label";
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 
@@ -31,7 +32,7 @@ async function POSTHandler(request: NextRequest) {
     if (data.user) {
       const { data: profile } = await supabase
         .from("users")
-        .select("company_id")
+        .select("company_id, username")
         .eq("id", data.user.id)
         .maybeSingle();
       const { data: claimData } = await supabase.auth.getClaims(body.accessToken);
@@ -40,7 +41,10 @@ async function POSTHandler(request: NextRequest) {
 
       setActivityContext({
         userId: data.user.id,
-        actorLabel: typeof actorLabel === "string" ? actorLabel : (data.user.email ?? null),
+        actorLabel:
+          formatActivityActorUsername(profile?.username) ||
+          (typeof actorLabel === "string" ? actorLabel : data.user.email) ||
+          null,
         companyId: profile?.company_id ?? null,
         businessUnitId: typeof businessUnitId === "string" ? businessUnitId : null,
       });

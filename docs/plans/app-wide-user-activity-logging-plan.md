@@ -80,7 +80,7 @@ Create a monthly partitioned `user_activity_logs` table with these logical field
 | `event_kind`       | `request` or `business_operation`                              |
 | `actor_type`       | `user`, `system`, or `anonymous`                               |
 | `user_id`          | Authenticated user when applicable                             |
-| `actor_label`      | Historical actor display name or verified email                |
+| `actor_label`      | Historical username-first actor label or verified email        |
 | `company_id`       | Tenant scope when available                                    |
 | `business_unit_id` | Active business-unit scope when available                      |
 | `source`           | `web`, `mobile`, `tablet`, `api`, or `system`                  |

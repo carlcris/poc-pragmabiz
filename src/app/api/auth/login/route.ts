@@ -2,6 +2,7 @@ import {
   setActivityContext,
   withActivityLogging,
 } from "@/lib/activity-logging/route-activity-logger";
+import { formatActivityActorUsername } from "@/lib/activity-logging/activity-actor-label";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
 import { NextRequest, NextResponse } from "next/server";
 import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
@@ -188,7 +189,8 @@ async function POSTHandler(request: NextRequest) {
     const firstName = userData.first_name || "";
     const lastName = userData.last_name || "";
     const fullName = [firstName, lastName].filter(Boolean).join(" ");
-    const actorLabel = fullName || userData.username || data.user.email || email;
+    const actorLabel =
+      formatActivityActorUsername(userData.username) || fullName || data.user.email || email;
 
     const jsonResponse = NextResponse.json({
       user: {

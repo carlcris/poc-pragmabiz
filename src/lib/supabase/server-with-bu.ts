@@ -8,14 +8,18 @@
  * - Solves connection pooling issue where config doesn't persist across connections
  *
  * The BU flow is:
- * 1. User logs in → Auth hook injects default BU into JWT
+ * 1. User logs in → JWT or database fallback provides default BU context
  * 2. User switches BU → Call update_current_business_unit(), then refresh session
  * 3. New JWT issued → Contains updated current_business_unit_id claim
  * 4. RLS policies enforce → Read BU from JWT (available in every pooled connection)
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { setActivityContextIfAvailable } from "@/lib/activity-logging/activity-request-context";
+import {
+  getActivityRequestId,
+  setActivityContextIfAvailable,
+} from "@/lib/activity-logging/activity-request-context";
+import { formatActivityActorUsername } from "@/lib/activity-logging/activity-actor-label";
 
 type JwtPayload = {
   current_business_unit_id?: string;
@@ -52,6 +56,7 @@ export async function createServerClientWithBU() {
   let currentBusinessUnitId: string | undefined;
   let defaultBusinessUnitId: string | undefined;
   let companyId: string | undefined;
+  let username: string | undefined;
   let accessibleBusinessUnitIds: string[] = [];
   if (session?.access_token) {
     try {
@@ -73,13 +78,16 @@ export async function createServerClientWithBU() {
     } catch {}
   }
 
-  if (!companyId && user?.id) {
+  const shouldResolveActivityActorLabel = getActivityRequestId() !== null;
+
+  if ((!companyId || shouldResolveActivityActorLabel) && user?.id) {
     const { data: userData } = await supabase
       .from("users")
-      .select("company_id")
+      .select("company_id, username")
       .eq("id", user.id)
       .maybeSingle();
-    companyId = userData?.company_id ?? undefined;
+    companyId = userData?.company_id ?? companyId;
+    username = userData?.username ?? undefined;
   }
 
   // Fallback: resolve current BU from DB if JWT claim is missing.
@@ -123,6 +131,7 @@ export async function createServerClientWithBU() {
 
   setActivityContextIfAvailable({
     userId: user?.id ?? null,
+    actorLabel: formatActivityActorUsername(username) || user?.email || null,
     companyId: companyId ?? null,
     businessUnitId: currentBusinessUnitId ?? null,
   });

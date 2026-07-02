@@ -137,15 +137,15 @@ reporting. Consumers must not parse `display_message` to recover structured data
 
 The activity logger never queries users, items, or documents solely to improve a message.
 
-- Actor labels come from the signed `actor_label` JWT claim or context already resolved by the
-  route. The access-token hook derives this claim from the existing user-profile lookup using full
-  name, username, then email fallback, without another database round trip.
+- Actor labels come from context already resolved by the route when available, using a title-cased
+  username first and email as fallback. For bearer-token clients that do not use the shared request
+  context, the logger may still use a signed `actor_label` claim when present, then email.
 - Browser API calls are cookie-authenticated and do not send a separate `Authorization` bearer
   token. Actor resolution uses the cookie-backed session for browser requests; bearer token actor
   resolution is reserved for non-browser clients. Expired JWTs and rotated refresh tokens are
   treated as unauthenticated actor context for logging purposes rather than application errors.
 - Routes that create the shared Supabase server client with business-unit context also pass the
-  resolved user, company, and business-unit IDs into the activity logger for the current request.
+  resolved user, actor label, company, and business-unit IDs into the activity logger for the current request.
   This keeps company-scoped activity-log reads aligned with the same context used by API
   authorization and RLS, without per-route enrichment queries.
 - Entity labels and codes come from rows or RPC results the operation already loaded or returned.
