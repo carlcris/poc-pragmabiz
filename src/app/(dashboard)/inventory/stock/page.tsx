@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
 import {
-  Plus,
   Search,
   Filter,
   Calendar,
@@ -14,7 +13,6 @@ import {
   Settings2,
 } from "lucide-react";
 import { useStockTransactions } from "@/hooks/useStockTransactions";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,13 +36,6 @@ import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import type { TransactionType } from "@/types/stock-transaction";
 
-const StockTransactionFormDialog = dynamic(
-  () =>
-    import("@/components/stock/StockTransactionFormDialog").then(
-      (mod) => mod.StockTransactionFormDialog
-    ),
-  { ssr: false }
-);
 const StockTransactionDetailDialog = dynamic(
   () =>
     import("@/components/stock/StockTransactionDetailDialog").then(
@@ -62,7 +53,6 @@ export default function StockTransactionsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   const currentBusinessUnitId = useBusinessUnitStore((state) => state.currentBusinessUnit?.id);
@@ -169,10 +159,6 @@ export default function StockTransactionsPage() {
     };
   };
 
-  const handleCreateTransaction = () => {
-    setDialogOpen(true);
-  };
-
   const handleTypeFilterChange = (value: string) => {
     setTypeFilter(value as TransactionType | "all");
     setPage(1);
@@ -189,10 +175,6 @@ export default function StockTransactionsPage() {
             {t("subtitle")}
           </p>
         </div>
-        <Button onClick={handleCreateTransaction} className="w-full flex-shrink-0 sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          {t("newTransaction")}
-        </Button>
       </div>
 
       <div className="space-y-4">
@@ -383,8 +365,6 @@ export default function StockTransactionsPage() {
           </>
         )}
       </div>
-
-      {dialogOpen && <StockTransactionFormDialog open={dialogOpen} onOpenChange={setDialogOpen} />}
 
       {detailDialogOpen && (
         <StockTransactionDetailDialog

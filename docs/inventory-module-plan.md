@@ -57,7 +57,7 @@ The Inventory Module manages all stock-related operations including item master 
 | `/api/items/[id]`              | ✅ DONE    | -     | Single item operations      |
 | `/api/warehouses`              | ✅ DONE    | 202   | Full CRUD implementation    |
 | `/api/warehouses/[id]`         | ✅ DONE    | -     | Single warehouse operations |
-| `/api/stock-transactions`      | ✅ DONE    | 470   | GET & POST implementation   |
+| `/api/stock-transactions`      | ✅ DONE    | 470   | GET list; POST retained for item location moves |
 | `/api/stock-transactions/[id]` | ✅ DONE    | 157   | GET & DELETE implementation |
 | `/api/stock-balances`          | ✅ DONE    | 112   | Full implementation         |
 | `/api/stock-ledger`            | ❌ Missing | -     | Not created                 |
@@ -71,7 +71,6 @@ The Inventory Module manages all stock-related operations including item master 
 
 - ✅ `/src/components/items/ItemFormDialog.tsx` - Item create/edit form
 - ✅ `/src/components/warehouses/WarehouseFormDialog.tsx` - Warehouse create/edit form
-- ✅ `/src/components/stock/StockTransactionFormDialog.tsx` - Manual stock transaction form
 
 **Shared Components**:
 
@@ -129,7 +128,7 @@ The Inventory Module manages all stock-related operations including item master 
 
 1. ✅ **Created `/api/stock-transactions/route.ts`**
    - `GET` - List stock transactions with filters (date, item, warehouse, type)
-   - `POST` - Create manual stock transaction (adjustments, transfers)
+   - `POST` - Retained for item location move workflow; manual creation from the transaction page is removed
    - Auto-generate transaction codes (ST-2025-0001)
    - Create entries in `stock_transactions` and `stock_transaction_items`
    - Update `stock_ledger` with running balance
@@ -462,7 +461,7 @@ The Inventory Module integrates with:
 - Identified all completed and missing components
 - ✅ **Completed Phase 6: Stock Transactions API**
   - Implemented GET /api/stock-transactions (list with filters)
-  - Implemented POST /api/stock-transactions (create manual transactions)
+  - Retained POST /api/stock-transactions for item location moves; manual transaction page creation is removed
   - Implemented GET /api/stock-transactions/[id] (single transaction)
   - Implemented DELETE /api/stock-transactions/[id] (soft delete drafts)
   - Implemented GET /api/stock-balances (current stock levels)

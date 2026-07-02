@@ -1,6 +1,5 @@
 import type {
   StockTransaction,
-  CreateStockTransactionRequest,
   StockTransactionFilters,
   StockTransactionListResponse,
   StockBalance,
@@ -30,16 +29,6 @@ export const stockTransactionsApi = {
   async getTransaction(id: string): Promise<StockTransaction> {
     const response = await fetch(`${API_BASE_URL}/stock-transactions/${id}`);
     if (!response.ok) throw new Error("Failed to fetch stock transaction");
-    return response.json();
-  },
-
-  async createTransaction(data: CreateStockTransactionRequest): Promise<StockTransaction> {
-    const response = await fetch(`${API_BASE_URL}/stock-transactions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) throw new Error("Failed to create stock transaction");
     return response.json();
   },
 

@@ -34,31 +34,6 @@ export interface StockTransaction {
   updatedAt: string;
 }
 
-export interface StockTransactionItem {
-  itemId: string;
-  quantity: number;
-  uomId: string;
-  unitCost?: number;
-  batchNo?: string;
-  serialNo?: string;
-  expiryDate?: string;
-  notes?: string;
-}
-
-export interface CreateStockTransactionRequest {
-  transactionDate: string;
-  transactionType: TransactionType;
-  warehouseId: string;
-  toWarehouseId?: string;
-  fromLocationId?: string;
-  toLocationId?: string;
-  referenceType?: string;
-  referenceId?: string;
-  referenceNumber?: string;
-  notes?: string;
-  items: StockTransactionItem[];
-}
-
 export interface StockTransactionFilters {
   search?: string;
   transactionType?: TransactionType | "all";

@@ -2265,69 +2265,6 @@ export type TranslationKeys = {
     badgeTransfer: string;
     badgeAdjustment: string;
   };
-  stockTransactionForm: {
-    title: string;
-    description: string;
-    transactionDateLabel: string;
-    transactionTypeLabel: string;
-    selectType: string;
-    warehouseLabel: string;
-    fromWarehouseLabel: string;
-    toWarehouseLabel: string;
-    selectWarehouse: string;
-    selectDestinationWarehouse: string;
-    fromLocationLabel: string;
-    toLocationLabel: string;
-    destinationLocationLabel: string;
-    sourceLocationLabel: string;
-    selectLocation: string;
-    selectWarehouseFirst: string;
-    selectDestinationWarehouseFirst: string;
-    itemLabel: string;
-    selectWarehouseFirstItem: string;
-    searchItem: string;
-    searchItemByCodeOrName: string;
-    noItemFound: string;
-    stockLabel: string;
-    quantityLabel: string;
-    quantityPlaceholder: string;
-    referenceNumberLabel: string;
-    referenceNumberPlaceholder: string;
-    reasonLabel: string;
-    selectReason: string;
-    notesLabel: string;
-    notesPlaceholder: string;
-    cancel: string;
-    createAction: string;
-    creating: string;
-    invalidItem: string;
-    transferCreated: string;
-    transferCreatedDescription: string;
-    createSuccess: string;
-    createError: string;
-    reasonPurchaseReceipt: string;
-    reasonProductionOutput: string;
-    reasonCustomerReturn: string;
-    reasonOther: string;
-    reasonSalesOrder: string;
-    reasonProductionConsumption: string;
-    reasonDamageLoss: string;
-    reasonStockRebalancing: string;
-    reasonCustomerRequest: string;
-    reasonWarehouseConsolidation: string;
-    reasonPhysicalCountAdjustment: string;
-    reasonDamagedGoods: string;
-    reasonSystemCorrection: string;
-  };
-  stockTransactionValidation: {
-    transactionDateRequired: string;
-    itemRequired: string;
-    warehouseRequired: string;
-    quantityMin: string;
-    uomRequired: string;
-    reasonRequired: string;
-    destinationWarehouseRequired: string;
-  };
   stockTransactionDetail: {
     titleDescription: string;
     transactionInformation: string;
@@ -5169,69 +5106,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       badgeOut: "OUT",
       badgeTransfer: "TRANSFER",
       badgeAdjustment: "ADJUSTMENT",
-    },
-    stockTransactionForm: {
-      title: "New Stock Transaction",
-      description: "Record a new inventory movement or adjustment",
-      transactionDateLabel: "Transaction Date *",
-      transactionTypeLabel: "Transaction Type *",
-      selectType: "Select type",
-      warehouseLabel: "Warehouse *",
-      fromWarehouseLabel: "From Warehouse *",
-      toWarehouseLabel: "To Warehouse *",
-      selectWarehouse: "Select warehouse",
-      selectDestinationWarehouse: "Select destination",
-      fromLocationLabel: "From Location",
-      toLocationLabel: "To Location",
-      destinationLocationLabel: "Destination Location",
-      sourceLocationLabel: "Source Location",
-      selectLocation: "Select location",
-      selectWarehouseFirst: "Select warehouse first",
-      selectDestinationWarehouseFirst: "Select destination warehouse",
-      itemLabel: "Item *",
-      selectWarehouseFirstItem: "Select warehouse first...",
-      searchItem: "Search item...",
-      searchItemByCodeOrName: "Search by code or name...",
-      noItemFound: "No item found.",
-      stockLabel: "Stock",
-      quantityLabel: "Quantity *",
-      quantityPlaceholder: "0",
-      referenceNumberLabel: "Reference Number",
-      referenceNumberPlaceholder: "PO-2024-001, SO-2024-001, etc.",
-      reasonLabel: "Reason *",
-      selectReason: "Select reason",
-      notesLabel: "Notes",
-      notesPlaceholder: "Additional notes...",
-      cancel: "Cancel",
-      createAction: "Create Transaction",
-      creating: "Creating...",
-      invalidItem: "Invalid item selected or item has no unit of measure",
-      transferCreated: "Stock transfer created successfully",
-      transferCreatedDescription: "Driver must confirm receipt.",
-      createSuccess: "Stock transaction created successfully",
-      createError: "Failed to create stock transaction",
-      reasonPurchaseReceipt: "Purchase receipt",
-      reasonProductionOutput: "Production output",
-      reasonCustomerReturn: "Customer return",
-      reasonOther: "Other",
-      reasonSalesOrder: "Sales order",
-      reasonProductionConsumption: "Production consumption",
-      reasonDamageLoss: "Damage/Loss",
-      reasonStockRebalancing: "Stock rebalancing",
-      reasonCustomerRequest: "Customer request",
-      reasonWarehouseConsolidation: "Warehouse consolidation",
-      reasonPhysicalCountAdjustment: "Physical count adjustment",
-      reasonDamagedGoods: "Damaged goods",
-      reasonSystemCorrection: "System correction",
-    },
-    stockTransactionValidation: {
-      transactionDateRequired: "Transaction date is required",
-      itemRequired: "Item is required",
-      warehouseRequired: "Warehouse is required",
-      quantityMin: "Quantity must be greater than 0",
-      uomRequired: "Unit of measure is required",
-      reasonRequired: "Reason is required",
-      destinationWarehouseRequired: "Destination warehouse is required for transfers",
     },
     stockTransactionDetail: {
       titleDescription: "Stock Transaction Details",
@@ -10646,69 +10520,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       badgeOut: "出库",
       badgeTransfer: "调拨",
       badgeAdjustment: "调整",
-    },
-    stockTransactionForm: {
-      title: "新建库存交易",
-      description: "记录新的库存移动或调整",
-      transactionDateLabel: "交易日期 *",
-      transactionTypeLabel: "交易类型 *",
-      selectType: "选择类型",
-      warehouseLabel: "仓库 *",
-      fromWarehouseLabel: "来源仓库 *",
-      toWarehouseLabel: "目标仓库 *",
-      selectWarehouse: "选择仓库",
-      selectDestinationWarehouse: "选择目标仓库",
-      fromLocationLabel: "来源库位",
-      toLocationLabel: "目标库位",
-      destinationLocationLabel: "目标库位",
-      sourceLocationLabel: "来源库位",
-      selectLocation: "选择库位",
-      selectWarehouseFirst: "请先选择仓库",
-      selectDestinationWarehouseFirst: "请先选择目标仓库",
-      itemLabel: "商品 *",
-      selectWarehouseFirstItem: "请先选择仓库...",
-      searchItem: "搜索商品...",
-      searchItemByCodeOrName: "按编码或名称搜索...",
-      noItemFound: "未找到商品。",
-      stockLabel: "库存",
-      quantityLabel: "数量 *",
-      quantityPlaceholder: "0",
-      referenceNumberLabel: "参考单号",
-      referenceNumberPlaceholder: "PO-2024-001、SO-2024-001 等",
-      reasonLabel: "原因 *",
-      selectReason: "选择原因",
-      notesLabel: "备注",
-      notesPlaceholder: "附加备注...",
-      cancel: "取消",
-      createAction: "创建交易",
-      creating: "创建中...",
-      invalidItem: "所选商品无效或未设置计量单位",
-      transferCreated: "库存调拨创建成功",
-      transferCreatedDescription: "司机必须确认收货。",
-      createSuccess: "库存交易创建成功",
-      createError: "创建库存交易失败",
-      reasonPurchaseReceipt: "采购收货",
-      reasonProductionOutput: "生产产出",
-      reasonCustomerReturn: "客户退货",
-      reasonOther: "其他",
-      reasonSalesOrder: "销售订单",
-      reasonProductionConsumption: "生产领用",
-      reasonDamageLoss: "损坏/丢失",
-      reasonStockRebalancing: "库存再平衡",
-      reasonCustomerRequest: "客户请求",
-      reasonWarehouseConsolidation: "仓库整合",
-      reasonPhysicalCountAdjustment: "盘点调整",
-      reasonDamagedGoods: "货品损坏",
-      reasonSystemCorrection: "系统修正",
-    },
-    stockTransactionValidation: {
-      transactionDateRequired: "交易日期为必填项",
-      itemRequired: "商品为必填项",
-      warehouseRequired: "仓库为必填项",
-      quantityMin: "数量必须大于 0",
-      uomRequired: "计量单位为必填项",
-      reasonRequired: "原因为必填项",
-      destinationWarehouseRequired: "调拨必须选择目标仓库",
     },
     stockTransactionDetail: {
       titleDescription: "库存交易详情",

@@ -234,7 +234,6 @@ These report files currently use item-location-batch naming. During implementati
 
 Location selection and warehouse operation UI to regression check:
 
-- `src/components/stock/StockTransactionFormDialog.tsx`
 - `src/components/stock-adjustments/StockAdjustmentFormDialog.tsx`
 - `src/components/stock-adjustments/StockAdjustmentLineItemDialog.tsx`
 - `src/components/purchase-receipts/ReceiveGoodsDialog.tsx`
