@@ -4,12 +4,17 @@ import type { ActivityContextOverride } from "./activity-log-types";
 export type ActivityRequestStore = {
   contextOverride: ActivityContextOverride;
   requestId: string;
+  shouldResolveActorLabel: boolean;
 };
 
 export const activityRequestStorage = new AsyncLocalStorage<ActivityRequestStore>();
 
 export function getActivityRequestId(): string | null {
   return activityRequestStorage.getStore()?.requestId ?? null;
+}
+
+export function shouldResolveActivityActorLabel(): boolean {
+  return activityRequestStorage.getStore()?.shouldResolveActorLabel ?? false;
 }
 
 export function setActivityContext(context: ActivityContextOverride): void {

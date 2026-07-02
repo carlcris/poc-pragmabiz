@@ -16,8 +16,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import {
-  getActivityRequestId,
   setActivityContextIfAvailable,
+  shouldResolveActivityActorLabel,
 } from "@/lib/activity-logging/activity-request-context";
 import { formatActivityActorUsername } from "@/lib/activity-logging/activity-actor-label";
 
@@ -78,9 +78,9 @@ export async function createServerClientWithBU() {
     } catch {}
   }
 
-  const shouldResolveActivityActorLabel = getActivityRequestId() !== null;
+  const shouldResolveActorLabel = shouldResolveActivityActorLabel();
 
-  if ((!companyId || shouldResolveActivityActorLabel) && user?.id) {
+  if ((!companyId || shouldResolveActorLabel) && user?.id) {
     const { data: userData } = await supabase
       .from("users")
       .select("company_id, username")

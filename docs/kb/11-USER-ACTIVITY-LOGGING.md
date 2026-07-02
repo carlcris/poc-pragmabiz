@@ -5,7 +5,7 @@
 
 ## Overview
 
-User Activity Logging records server-observable activity across the ERP application. Its purpose is internal troubleshooting, operational investigation, and traceability by developers and database administrators.
+User Activity Logging records user-intent activity across the ERP application. Its purpose is internal troubleshooting, operational investigation, and traceability by developers and database administrators.
 
 This capability is not an end-user feature and will not include a user-facing UI.
 
@@ -13,8 +13,8 @@ This capability is not an end-user feature and will not include a user-facing UI
 
 The logging system will cover:
 
-- API reads through `GET`.
 - API mutations through `POST`, `PUT`, `PATCH`, and `DELETE`.
+- Dashboard page navigation through the frontend route layer.
 - Authentication and session events.
 - Web, mobile, tablet, and direct API sources.
 - Scheduled and internal database operations using a system actor.
@@ -62,15 +62,14 @@ The primary boundary is a typed API route wrapper. Middleware does not own paylo
 
 ### Request Events
 
-One request event records the completed API interaction.
+One request event records a completed API mutation or dashboard navigation event.
 
 Examples:
 
-- A user lists stock adjustments.
-- A user views an invoice.
 - A user creates a purchase order.
 - A user updates an item.
 - A user deletes a draft document.
+- A user navigates to the stock adjustments page.
 - A login attempt succeeds or fails.
 
 ### Business-Operation Events
@@ -159,16 +158,26 @@ and response bodies are never used as display-message templates.
 User-name changes appear after the user's token is refreshed or the user signs in again. Existing
 activity rows intentionally retain their historical actor label.
 
-## Read Logging
+## Navigation Logging
 
-Read events capture:
+API `GET` requests are not logged. Lookup requests, list-fetches, dropdown helpers, permissions reads,
+dashboard widget reads, polling, and report data reads are intentionally excluded from request-level
+activity logging.
 
-- Route template.
-- Entity identifier when applicable.
-- Search and filter parameters.
-- Pagination and sorting inputs.
+Dashboard navigation is logged separately from the frontend route layer through
+`POST /api/activity/navigation`. The client sends only the path and previous path. The server
+validates the path against an allowlisted page map and builds the activity message from server-owned
+metadata.
 
-Read events never capture response records, report datasets, or export file contents.
+Navigation events capture:
+
+- Page key.
+- Page title.
+- Path.
+- Previous path when available.
+
+Navigation events do not capture response records, report datasets, lookup results, or export file
+contents.
 
 ## Mutation Payload Logging
 
@@ -190,8 +199,7 @@ Payloads are size-bounded. Truncated payloads include explicit truncation metada
 
 Stable action names include:
 
-- `list`, `view`, `search`, `export`.
-- `create`, `update`, `delete`.
+- `navigate`, `create`, `update`, `delete`.
 - `submit`, `approve`, `reject`, `post`, `void`, `cancel`.
 - `dispatch`, `receive`, `complete`, `reconcile`.
 - `login`, `login_failed`, `logout`, `switch_business_unit`.
@@ -204,7 +212,7 @@ Workflow routes declare semantic actions explicitly instead of relying only on H
 The security contract is:
 
 - RLS enabled on the activity-log table and partitions.
-- No activity-log read API or UI.
+- Activity-log reads are restricted to the admin API and permission-gated admin UI.
 - No authenticated-client `SELECT`, `UPDATE`, or `DELETE`.
 - Inserts accepted only through a restricted database function used by trusted server code.
 - Multi-tenant actor context stored with every event when available.
@@ -214,17 +222,17 @@ Technical staff will inspect records through controlled database tooling.
 
 ## Efficiency and Scaling
 
-Logging every read creates one additional database write per API request. This is an accepted tradeoff for complete server-observable activity coverage.
+API `GET` requests are not logged. Write volume is limited to explicit dashboard navigation events
+and API mutations.
 
 The initial design controls the impact through:
 
-- One append per completed request.
+- One append per logged mutation or navigation event.
 - No response-body logging.
 - Bounded payloads.
 - Monthly time partitions.
 - Targeted indexes.
 - Ninety-day retention.
-- A pilot rollout with latency and volume measurement before full read coverage.
 
 An external queue is intentionally deferred because it would add delivery infrastructure and operational complexity. It can be reconsidered if measured write volume or request latency justifies it.
 
@@ -234,13 +242,12 @@ Every feature change must verify:
 
 - New and changed user activities are identified.
 - Resource and action names are stable and domain-oriented.
-- Read and mutation routes are covered.
+- Mutation routes and page navigation coverage are considered.
 - Mutation payloads are correctly redacted.
-- Read logs contain query context but no response data.
+- Navigation logs contain only allowlisted page context.
 - Critical operations use transactional activity records when required.
 - Success, failure, and denied outcomes are validated.
 - Any exemption is explicit and documented.
-- The automated activity-logging coverage check passes.
 
 ## Retention and Operations
 
@@ -252,16 +259,18 @@ Every feature change must verify:
 
 ## Implementation Status
 
-The request-level logging foundation is implemented across all current API route handlers.
+The request-level logging foundation is implemented for API mutations. Dashboard page navigation is
+logged from the frontend route layer through a dedicated navigation endpoint.
 
 - Parent table: `public.user_activity_logs`.
 - Physical monthly partitions: private `activity_logging` schema.
 - Append function: `public.append_user_activity_log(jsonb)`, executable only by `service_role`.
 - Retention function: `public.maintain_user_activity_logs(integer, integer)`.
 - Route wrapper: `src/lib/activity-logging/route-activity-logger.ts`.
+- Navigation logger: `src/components/activity-logging/NavigationActivityLogger.tsx`.
+- Navigation endpoint: `POST /api/activity/navigation`.
 - Admin UI: `/admin/activity-logs`.
 - Access permission: `activity_logs.view`.
-- Coverage check: `npm run activity-logging:check`.
 
 ## Activity Logs Admin UI
 
@@ -288,8 +297,8 @@ activity details.
 
 ### Adding or Changing an API Route
 
-Export every supported method through `withActivityLogging` with an explicit normalized route,
-resource type, and stable action:
+Export mutation methods through `withActivityLogging` with an explicit normalized route, resource
+type, and stable action. Wrapped `GET` methods are allowed but do not append activity records.
 
 ```typescript
 const POSTHandler = async (request: NextRequest) => {
@@ -316,9 +325,9 @@ setActivityContext({
 });
 ```
 
-The wrapper emits request events after the response through Next.js `after()`. Critical database
-operations can additionally write a correlated `business_operation` event inside their owning RPC
-when commit/rollback-level audit precision is required.
+The wrapper emits mutation request events after the response through Next.js `after()`. Critical
+database operations can additionally write a correlated `business_operation` event inside their
+owning RPC when commit/rollback-level audit precision is required.
 
 ## Related Documentation
 

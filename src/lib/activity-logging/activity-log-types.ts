@@ -32,6 +32,7 @@ export type ActivityContextOverride = {
   entityLabel?: string | null;
   metadata?: JsonObject;
   resourceType?: string;
+  skip?: boolean;
   userId?: string | null;
 };
 

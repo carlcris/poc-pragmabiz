@@ -19,6 +19,7 @@ export {
   getActivityRequestId,
   setActivityContext,
   setActivityContextIfAvailable,
+  shouldResolveActivityActorLabel,
 } from "./activity-request-context";
 
 const MUTATION_METHODS = new Set<ActivityHttpMethod>(["POST", "PUT", "PATCH", "DELETE"]);
@@ -231,6 +232,8 @@ function scheduleActivityAppend(pendingActivity: PendingRequestActivity): void {
           responseStatus,
           routeParamsPromise,
         } = pendingActivity;
+        if (override.skip) return;
+
         const [actorContext, routeParams, payloadResult] = await Promise.all([
           actorContextPromise,
           routeParamsPromise,
@@ -324,11 +327,36 @@ export function withActivityLogging<THandler extends RouteHandler>(
     const nextRequest = request as NextRequest;
     const method = nextRequest.method.toUpperCase() as ActivityHttpMethod;
     const requestId = getRequestId(nextRequest);
+    if (!MUTATION_METHODS.has(method)) {
+      const readStore: ActivityRequestStore = {
+        requestId,
+        contextOverride: {},
+        shouldResolveActorLabel: false,
+      };
+
+      return (await activityRequestStorage.run(readStore, async () => {
+        const response = (await handler(...args)) as Awaited<ReturnType<THandler>>;
+        if (response instanceof Response) {
+          try {
+            response.headers.set("x-request-id", requestId);
+          } catch {
+            // Some framework responses expose immutable headers.
+          }
+        }
+
+        return response;
+      })) as Awaited<ReturnType<THandler>>;
+    }
+
     const startedAt = performance.now();
     const actorContextPromise = resolveActorContext(nextRequest);
     const routeParamsPromise = getRouteParams(args as unknown[]);
     const payloadPromise = startPayloadCapture(nextRequest, method);
-    const store: ActivityRequestStore = { requestId, contextOverride: {} };
+    const store: ActivityRequestStore = {
+      requestId,
+      contextOverride: {},
+      shouldResolveActorLabel: true,
+    };
 
     return (await activityRequestStorage.run(store, async () => {
       let responseStatus = 500;

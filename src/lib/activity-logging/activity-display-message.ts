@@ -192,6 +192,15 @@ export function buildActivityPresentation(
     return { messageKey, displayMessage: authenticationMessage.slice(0, 1000) };
   }
 
+  if (input.action === "navigate") {
+    const page = input.entityLabel || humanize(input.resourceType);
+    const displayMessage =
+      input.outcome === "succeeded"
+        ? `${actor} viewed the ${page} page.`
+        : `${actor} attempted to view the ${page} page, but the action failed.`;
+    return { messageKey, displayMessage: displayMessage.slice(0, 1000) };
+  }
+
   if (input.action === "list") {
     const resource =
       COLLECTION_LABELS[input.resourceType] || `${humanize(input.resourceType)} list`;

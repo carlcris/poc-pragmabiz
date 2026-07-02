@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { usePermissionStore } from "@/stores/permissionStore";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { NavigationActivityLogger } from "@/components/activity-logging/NavigationActivityLogger";
 import { BusinessUnitProvider } from "@/components/business-unit/BusinessUnitProvider";
 import { useLoadPermissions } from "@/hooks/usePermissions";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -71,6 +72,7 @@ export function DashboardShell({
 
   return (
     <BusinessUnitProvider>
+      <NavigationActivityLogger />
       <div className="flex h-screen min-h-0 flex-col overflow-hidden">
         {!isManufacturingFloorFullscreen ? (
           <Sidebar

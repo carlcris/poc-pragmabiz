@@ -6,14 +6,15 @@
 
 ## Objective
 
-Capture server-observable user and system activity in a structured, append-only log for internal technical investigation. The system must cover API reads and mutations, retain records for 90 days, keep raw technical payloads internal, and expose only minimal display-safe activity summaries through a restricted admin UI.
+Capture user-intent activity in a structured, append-only log for internal technical investigation. The system must cover API mutations and dashboard page navigation, retain records for 90 days, keep raw technical payloads internal, and expose only minimal display-safe activity summaries through a restricted admin UI.
 
 ## Approved Decisions
 
-- Log authenticated API activity for `GET`, `POST`, `PUT`, `PATCH`, and `DELETE`.
+- Log authenticated API mutations for `POST`, `PUT`, `PATCH`, and `DELETE`.
+- Log dashboard page navigation from the frontend route layer.
 - Log successful and failed authentication events with stronger credential redaction.
 - Store sanitized request payloads for mutation methods.
-- Store route parameters and query parameters for reads, but never response datasets.
+- Do not log API `GET` requests; lookup, list, widget, polling, and report-read endpoints are intentionally excluded.
 - Retain activity records for 90 days.
 - Use PostgreSQL/Supabase as the only activity-log destination for now.
 - Fail open when activity logging fails: preserve the original application response and emit a server-side `console.error`.
@@ -42,7 +43,7 @@ Create a typed route-handler wrapper that:
 
 1. Generates or accepts a request ID.
 2. Resolves actor, company, and business-unit context once.
-3. Captures route and query parameters.
+3. Captures route parameters.
 4. Clones and parses supported request bodies.
 5. Applies recursive redaction and payload limits.
 6. Executes the route handler.
@@ -95,7 +96,7 @@ Create a monthly partitioned `user_activity_logs` table with these logical field
 | `message_key`      | Stable key for future report or localized UI rendering         |
 | `display_message`  | Safe immediately readable activity summary                     |
 | `route_params`     | Sanitized route parameters                                     |
-| `query_params`     | Sanitized read filters and pagination                          |
+| `query_params`     | Sanitized query parameters when applicable                     |
 | `request_payload`  | Sanitized mutation payload                                     |
 | `outcome`          | `succeeded` or `failed`                                        |
 | `http_status`      | Final HTTP status when applicable                              |
@@ -124,20 +125,21 @@ Monthly partitions make the 90-day retention policy predictable and avoid large 
 
 Capture sanitized JSON payloads for `POST`, `PUT`, `PATCH`, and `DELETE`.
 
-### Read Requests
+### Navigation Requests
 
-Capture:
+Capture dashboard navigation through `POST /api/activity/navigation`:
 
-- Normalized route.
-- Route parameters.
-- Query filters.
-- Pagination and sorting inputs.
+- Page key.
+- Page title.
+- Path.
+- Previous path when available.
 
 Do not capture:
 
 - Response rows.
 - Report datasets.
 - Export file contents.
+- Lookup results.
 
 ### Mandatory Redaction
 
@@ -159,7 +161,7 @@ Apply a strict serialized payload-size limit. Record truncation metadata when a 
 
 Use stable domain-oriented action names:
 
-- Reads: `list`, `view`, `search`, `export`.
+- Navigation: `navigate`.
 - CRUD: `create`, `update`, `delete`.
 - Workflow: `submit`, `approve`, `reject`, `post`, `void`, `cancel`, `dispatch`, `receive`, `complete`, `reconcile`.
 - Authentication: `login`, `login_failed`, `logout`, `refresh_session`, `switch_business_unit`.
@@ -227,7 +229,7 @@ roll back with the business transaction.
 
 ### Phase 2: Pilot
 
-- Wrap authentication, RBAC administration, stock adjustments, and one read-heavy module.
+- Wrap authentication, RBAC administration, stock adjustments, and one representative workflow module.
 - Verify redaction, latency, actor context, and tenant isolation.
 - Measure activity rows per day and database growth.
 
@@ -237,11 +239,11 @@ roll back with the business transaction.
 - Add transactional records to critical RPCs.
 - Add route-level semantic action declarations.
 
-### Phase 4: Read Coverage
+### Phase 4: Navigation Coverage
 
-- Migrate all `GET` routes.
-- Confirm query logging does not include response datasets.
-- Validate high-volume list and lookup endpoints.
+- Add the dashboard route observer.
+- Add the allowlisted page metadata map.
+- Confirm lookup and list `GET` endpoints are not logged.
 
 ### Phase 5: Enforcement
 
@@ -259,13 +261,13 @@ roll back with the business transaction.
 - Recursive sensitive-field redaction and bounded mutation payload capture.
 - Explicit authentication and business-unit context overrides.
 - Request-ID response headers and API/business-event correlation support.
-- Activity coverage for all current API route handlers.
+- Activity coverage for API mutations.
+- Dashboard navigation logging through an allowlisted frontend route observer.
 - Human-readable display messages backed by stable message keys and entity snapshots.
 - Zero-query message enrichment using only authentication claims and operation-owned data.
-- Signed actor display names added by the existing access-token profile lookup.
+- Username-first actor display labels from app request context.
 - Restricted admin review UI and API with display-safe fields only.
 - `activity_logs.view` permission with Super Admin default access and configurable role assignment.
-- `npm run activity-logging:check` enforcement for future API handlers.
 
 ## Mandatory Feature Post-Flight
 
@@ -273,17 +275,16 @@ Every feature implementation must:
 
 - Identify all new or changed server-observable user actions.
 - Assign stable resource and action names.
-- Add or update route activity coverage.
+- Add or update mutation route activity coverage and navigation page metadata.
 - Confirm mutation payload redaction.
-- Confirm read query logging without response data.
+- Confirm API `GET` routes remain excluded unless a future requirement explicitly changes that.
 - Decide whether critical operations also need transactional activity records.
 - Test success, failure, and authorization-denied outcomes.
 - Document explicit exemptions.
-- Run the activity-logging coverage check.
 
 ## Validation
 
-- Verify successful and failed reads.
+- Verify dashboard navigation events.
 - Verify successful and failed mutations.
 - Verify authentication and anonymous failure events.
 - Verify user, company, and business-unit attribution.
@@ -294,7 +295,7 @@ Every feature implementation must:
 - Verify transactional rollback behavior.
 - Verify RLS and direct-access denial.
 - Verify 90-day retention.
-- Measure request latency and write volume under concurrent read traffic.
+- Measure request latency and write volume under concurrent mutation and navigation traffic.
 - Run `supabase db reset`, regenerate database types, `npm run lint`, and `npm run build`.
 
 ## Related Documentation
