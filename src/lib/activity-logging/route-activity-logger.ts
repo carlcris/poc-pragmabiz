@@ -1,10 +1,10 @@
-import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { after, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { captureSanitizedRequestPayload, sanitizeActivityData } from "./activity-data-sanitizer";
 import { buildActivityPresentation } from "./activity-display-message";
+import { activityRequestStorage, type ActivityRequestStore } from "./activity-request-context";
 import type {
   ActivityActorContext,
   ActivityContextOverride,
@@ -15,35 +15,21 @@ import type {
   RouteActivityConfig,
 } from "./activity-log-types";
 
+export {
+  getActivityRequestId,
+  setActivityContext,
+  setActivityContextIfAvailable,
+} from "./activity-request-context";
+
 const MUTATION_METHODS = new Set<ActivityHttpMethod>(["POST", "PUT", "PATCH", "DELETE"]);
 const REQUEST_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-type ActivityRequestStore = {
-  contextOverride: ActivityContextOverride;
-  requestId: string;
-};
 
 type RouteHandler = (...args: never[]) => unknown;
 
 type RouteContextArgument = {
   params?: Promise<Record<string, string | string[]>> | Record<string, string | string[]>;
 };
-
-const activityRequestStorage = new AsyncLocalStorage<ActivityRequestStore>();
-
-export function getActivityRequestId(): string | null {
-  return activityRequestStorage.getStore()?.requestId ?? null;
-}
-
-export function setActivityContext(context: ActivityContextOverride): void {
-  const store = activityRequestStorage.getStore();
-  if (!store) {
-    throw new Error("Activity context is only available inside a logged API route");
-  }
-
-  Object.assign(store.contextOverride, context);
-}
 
 function getRequestId(request: NextRequest): string {
   const suppliedRequestId = request.headers.get("x-request-id");

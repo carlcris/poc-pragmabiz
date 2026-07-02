@@ -15,6 +15,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { setActivityContextIfAvailable } from "@/lib/activity-logging/activity-request-context";
 
 type JwtPayload = {
   current_business_unit_id?: string;
@@ -119,6 +120,12 @@ export async function createServerClientWithBU() {
       }
     }
   }
+
+  setActivityContextIfAvailable({
+    userId: user?.id ?? null,
+    companyId: companyId ?? null,
+    businessUnitId: currentBusinessUnitId ?? null,
+  });
 
   return {
     supabase,

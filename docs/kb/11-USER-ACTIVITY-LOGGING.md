@@ -144,6 +144,10 @@ The activity logger never queries users, items, or documents solely to improve a
   token. Actor resolution uses the cookie-backed session for browser requests; bearer token actor
   resolution is reserved for non-browser clients. Expired JWTs and rotated refresh tokens are
   treated as unauthenticated actor context for logging purposes rather than application errors.
+- Routes that create the shared Supabase server client with business-unit context also pass the
+  resolved user, company, and business-unit IDs into the activity logger for the current request.
+  This keeps company-scoped activity-log reads aligned with the same context used by API
+  authorization and RLS, without per-route enrichment queries.
 - Entity labels and codes come from rows or RPC results the operation already loaded or returned.
 - Delete operations reuse their existing pre-delete row or transactional result.
 - When display details are unavailable, the formatter emits a generic message instead of reading
