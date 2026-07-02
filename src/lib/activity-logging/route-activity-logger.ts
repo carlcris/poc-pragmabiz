@@ -58,35 +58,57 @@ function getBearerToken(request: NextRequest): string | undefined {
   return authorization.slice(7).trim() || undefined;
 }
 
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+}
+
+function isExpectedAuthClaimsError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const authError = error as { code?: unknown; message?: unknown; status?: unknown };
+  const code = typeof authError.code === "string" ? authError.code : "";
+  const message = typeof authError.message === "string" ? authError.message.toLowerCase() : "";
+
+  return (
+    code === "refresh_token_not_found" ||
+    message.includes("jwt has expired") ||
+    message.includes("invalid refresh token") ||
+    message.includes("refresh token not found")
+  );
+}
+
 function readStringClaim(claims: Record<string, unknown>, key: string): string | null {
   const value = claims[key];
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function anonymousActorContext(): ActivityActorContext {
+  return {
+    actorType: "anonymous",
+    actorLabel: null,
+    userId: null,
+    companyId: null,
+    businessUnitId: null,
+  };
+}
+
 async function resolveActorContext(request: NextRequest): Promise<ActivityActorContext> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase.auth.getClaims(getBearerToken(request));
+    const bearerToken = getBearerToken(request);
+    const { data, error } = await (hasSupabaseAuthCookie(request)
+      ? supabase.auth.getClaims()
+      : supabase.auth.getClaims(bearerToken));
+
     if (error || !data?.claims) {
-      return {
-        actorType: "anonymous",
-        actorLabel: null,
-        userId: null,
-        companyId: null,
-        businessUnitId: null,
-      };
+      return anonymousActorContext();
     }
 
     const claims = data.claims as Record<string, unknown>;
     const userId = readStringClaim(claims, "sub");
     if (!userId) {
-      return {
-        actorType: "anonymous",
-        actorLabel: null,
-        userId: null,
-        companyId: null,
-        businessUnitId: null,
-      };
+      return anonymousActorContext();
     }
 
     return {
@@ -99,16 +121,14 @@ async function resolveActorContext(request: NextRequest): Promise<ActivityActorC
         readStringClaim(claims, "default_business_unit_id"),
     };
   } catch (error) {
+    if (isExpectedAuthClaimsError(error)) {
+      return anonymousActorContext();
+    }
+
     console.error("Failed to resolve activity-log actor context", {
       error: error instanceof Error ? error.message : "Unknown actor-context error",
     });
-    return {
-      actorType: "anonymous",
-      actorLabel: null,
-      userId: null,
-      companyId: null,
-      businessUnitId: null,
-    };
+    return anonymousActorContext();
   }
 }
 

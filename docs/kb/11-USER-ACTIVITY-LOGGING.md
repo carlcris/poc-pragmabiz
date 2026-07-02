@@ -140,6 +140,10 @@ The activity logger never queries users, items, or documents solely to improve a
 - Actor labels come from the signed `actor_label` JWT claim or context already resolved by the
   route. The access-token hook derives this claim from the existing user-profile lookup using full
   name, username, then email fallback, without another database round trip.
+- Browser API calls are cookie-authenticated and do not send a separate `Authorization` bearer
+  token. Actor resolution uses the cookie-backed session for browser requests; bearer token actor
+  resolution is reserved for non-browser clients. Expired JWTs and rotated refresh tokens are
+  treated as unauthenticated actor context for logging purposes rather than application errors.
 - Entity labels and codes come from rows or RPC results the operation already loaded or returned.
 - Delete operations reuse their existing pre-delete row or transactional result.
 - When display details are unavailable, the formatter emits a generic message instead of reading

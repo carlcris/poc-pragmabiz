@@ -71,6 +71,13 @@ export async function middleware(request: NextRequest) {
 - **Refresh**: Automatic via middleware
 - **Expiry**: Managed by Supabase Auth
 - **Invalidation**: Handled on token errors
+- **Refresh-token rotation**: If middleware encounters a rotated or missing Supabase refresh token,
+  it clears stale Supabase auth cookies and redirects protected pages to login with
+  `session=invalid` instead of surfacing the Supabase Auth error as a production exception.
+- **Web API authentication**: Browser API calls use Supabase auth cookies as the single server
+  authentication source. They do not send a separate `Authorization` bearer token, avoiding stale
+  in-memory JWTs competing with refreshed cookie sessions. Mobile clients continue to use bearer
+  token authentication because they do not rely on browser cookies.
 
 ### 2. Permission System
 

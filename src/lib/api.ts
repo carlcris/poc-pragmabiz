@@ -1,4 +1,3 @@
-import { useAuthStore } from "@/stores/authStore";
 import { isSessionInvalidStatus, notifySessionInvalid } from "@/lib/auth/sessionInvalidation";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -11,17 +10,9 @@ export class ApiClient {
   }
 
   private getHeaders(): HeadersInit {
-    const token = useAuthStore.getState().token;
-
-    const headers: HeadersInit = {
+    return {
       "Content-Type": "application/json",
     };
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    return headers;
   }
 
   async get<T>(

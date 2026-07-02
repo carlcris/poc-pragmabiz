@@ -27,6 +27,31 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const isSupabaseAuthCookie = (name: string) =>
+  name.startsWith("sb-") && name.includes("auth-token");
+
+const isInvalidRefreshTokenError = (error: unknown) => {
+  if (!error || typeof error !== "object") return false;
+  const authError = error as { code?: unknown; message?: unknown; status?: unknown };
+  const code = typeof authError.code === "string" ? authError.code : "";
+  const message = typeof authError.message === "string" ? authError.message.toLowerCase() : "";
+
+  return (
+    code === "refresh_token_not_found" ||
+    message.includes("invalid refresh token") ||
+    message.includes("refresh token not found")
+  );
+};
+
+function clearSupabaseAuthCookies(request: NextRequest, response: NextResponse) {
+  request.cookies
+    .getAll()
+    .filter((cookie) => isSupabaseAuthCookie(cookie.name))
+    .forEach((cookie) => {
+      response.cookies.delete(cookie.name);
+    });
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -57,18 +82,46 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: unknown = null;
+  let authError: unknown = null;
+
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+    authError = result.error;
+  } catch (error) {
+    authError = error;
+  }
 
   // Route protection logic
   const isAuthPage =
     request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/auth");
   const isMobileRoute = request.nextUrl.pathname.startsWith("/mobile");
   const isMobileLoginPage = request.nextUrl.pathname === "/mobile/login";
-  const hasAuthCookie = request.cookies
-    .getAll()
-    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+  const hasAuthCookie = request.cookies.getAll().some((cookie) => isSupabaseAuthCookie(cookie.name));
+
+  if (!user && authError && hasAuthCookie) {
+    if (!isInvalidRefreshTokenError(authError)) {
+      console.error("Failed to refresh Supabase session in middleware", {
+        error: authError instanceof Error ? authError.message : "Unknown auth error",
+      });
+    }
+
+    if (isAuthPage || isMobileLoginPage) {
+      clearSupabaseAuthCookies(request, supabaseResponse);
+      return supabaseResponse;
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = isMobileRoute ? "/mobile/login" : "/login";
+    url.searchParams.set("session", "invalid");
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    clearSupabaseAuthCookies(request, redirectResponse);
+    return redirectResponse;
+  }
 
   // Redirect authenticated users away from login page
   if (user && isAuthPage) {
