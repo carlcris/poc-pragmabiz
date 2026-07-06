@@ -148,6 +148,59 @@ export type TranslationKeys = {
     wasteReasonRequired: string;
     totalAccounted: string;
   };
+  putawayStationPage: {
+    title: string;
+    description: string;
+    openTasks: string;
+    taskCount: string;
+    searchPlaceholder: string;
+    statusFilter: string;
+    openTasksFilter: string;
+    completedTasksFilter: string;
+    allTasksFilter: string;
+    apply: string;
+    source: string;
+    item: string;
+    warehouse: string;
+    pendingQty: string;
+    status: string;
+    statusPending: string;
+    statusPartial: string;
+    statusCompleted: string;
+    statusCancelled: string;
+    action: string;
+    loading: string;
+    empty: string;
+    refreshing: string;
+    select: string;
+    postTitle: string;
+    reprintTitle: string;
+    location: string;
+    loadingLocations: string;
+    selectLocation: string;
+    batchCode: string;
+    quantity: string;
+    printBoxLabels: string;
+    printBoxLabelsDescription: string;
+    labelCount: string;
+    qtyPerLabel: string;
+    post: string;
+    postAndPrint: string;
+    postPutawaySuccess: string;
+    postPutawayError: string;
+    putawayLabelReference: string;
+    printLabelsSuccess: string;
+    printLabelsError: string;
+    reprintLabels: string;
+    noLabelsToPrint: string;
+    labelCountTooSmall: string;
+    reprintLabelsSuccess: string;
+    reprintLabelsError: string;
+    selectTask: string;
+    pagination: string;
+    previous: string;
+    next: string;
+  };
   pagination: {
     rowsPerPage: string;
     pageOf: string;
@@ -2879,6 +2932,60 @@ export const translations: Record<Locale, TranslationKeys> = {
       wasteReasonRequired: "Waste reason is required",
       totalAccounted: "Total Accounted",
     },
+    putawayStationPage: {
+      title: "Putaway Station",
+      description: "Post pending stock into final warehouse locations.",
+      openTasks: "{count} open tasks",
+      taskCount: "{count} tasks",
+      searchPlaceholder: "Search source, reference, or batch...",
+      statusFilter: "Task status",
+      openTasksFilter: "Open",
+      completedTasksFilter: "Completed",
+      allTasksFilter: "All",
+      apply: "Apply",
+      source: "Source",
+      item: "Item",
+      warehouse: "Warehouse",
+      pendingQty: "Qty",
+      status: "Status",
+      statusPending: "Pending",
+      statusPartial: "Partial",
+      statusCompleted: "Completed",
+      statusCancelled: "Cancelled",
+      action: "Action",
+      loading: "Loading putaway tasks...",
+      empty: "No pending putaway tasks",
+      refreshing: "Refreshing...",
+      select: "Select",
+      postTitle: "Post Putaway",
+      reprintTitle: "Print Putaway Labels",
+      location: "Location",
+      loadingLocations: "Loading locations...",
+      selectLocation: "Select location",
+      batchCode: "Batch Code",
+      quantity: "Quantity",
+      printBoxLabels: "Print box labels",
+      printBoxLabelsDescription:
+        "Print labels after posting this stock into the selected final location.",
+      labelCount: "Number of Labels",
+      qtyPerLabel: "Qty per label: {count}",
+      post: "Post Putaway",
+      postAndPrint: "Post & Print Labels",
+      postPutawaySuccess: "Putaway posted successfully",
+      postPutawayError: "Failed to post putaway",
+      putawayLabelReference: "PUTAWAY",
+      printLabelsSuccess: "Box labels sent to printer",
+      printLabelsError: "Putaway was posted, but labels failed to print",
+      reprintLabels: "Print Labels",
+      noLabelsToPrint: "No posted labels found for this putaway",
+      labelCountTooSmall: "Print at least {count} labels to cover each posted batch/location",
+      reprintLabelsSuccess: "Box labels sent to printer",
+      reprintLabelsError: "Failed to print putaway labels",
+      selectTask: "Select a putaway task to post it into a final location.",
+      pagination: "Page {page} of {totalPages} - {total} tasks",
+      previous: "Previous",
+      next: "Next",
+    },
     pagination: {
       rowsPerPage: "Rows per page",
       pageOf: "Page {currentPage} of {totalPages}",
@@ -2904,6 +3011,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Notes": "Delivery Notes",
       "Pick Lists": "Pick Lists",
       "Stock Transformations": "Stock Transformations",
+      "Putaway Station": "Putaway Station",
       Manufacturing: "Manufacturing",
       Orders: "Orders",
       Production: "Production",
@@ -2943,6 +3051,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "delivery-notes": "Delivery Notes",
       "pick-lists": "Pick Lists",
       transformations: "Stock Transformations",
+      putaway: "Putaway Station",
       templates: "Templates",
       reorder: "Reorder Management",
       purchasing: "Purchasing",
@@ -8327,6 +8436,59 @@ export const translations: Record<Locale, TranslationKeys> = {
       wasteReasonRequired: "必须填写浪费原因",
       totalAccounted: "已统计总数",
     },
+    putawayStationPage: {
+      title: "上架工作站",
+      description: "将待上架库存过账到最终仓库库位。",
+      openTasks: "{count} 个待处理任务",
+      taskCount: "{count} 个任务",
+      searchPlaceholder: "搜索来源、参考号或批次...",
+      statusFilter: "任务状态",
+      openTasksFilter: "未完成",
+      completedTasksFilter: "已完成",
+      allTasksFilter: "全部",
+      apply: "应用",
+      source: "来源",
+      item: "物料",
+      warehouse: "仓库",
+      pendingQty: "数量",
+      status: "状态",
+      statusPending: "待处理",
+      statusPartial: "部分完成",
+      statusCompleted: "已完成",
+      statusCancelled: "已取消",
+      action: "操作",
+      loading: "正在加载上架任务...",
+      empty: "没有待上架任务",
+      refreshing: "正在刷新...",
+      select: "选择",
+      postTitle: "过账上架",
+      reprintTitle: "打印上架标签",
+      location: "库位",
+      loadingLocations: "正在加载库位...",
+      selectLocation: "选择库位",
+      batchCode: "批次号",
+      quantity: "数量",
+      printBoxLabels: "打印箱标签",
+      printBoxLabelsDescription: "过账到所选最终库位后打印标签。",
+      labelCount: "标签数量",
+      qtyPerLabel: "每个标签数量：{count}",
+      post: "过账上架",
+      postAndPrint: "过账并打印标签",
+      postPutawaySuccess: "上架已成功过账",
+      postPutawayError: "上架过账失败",
+      putawayLabelReference: "上架",
+      printLabelsSuccess: "箱标签已发送到打印机",
+      printLabelsError: "上架已过账，但标签打印失败",
+      reprintLabels: "打印标签",
+      noLabelsToPrint: "未找到此上架任务的已过账标签",
+      labelCountTooSmall: "至少打印 {count} 个标签，以覆盖每个已过账批次/库位",
+      reprintLabelsSuccess: "箱标签已发送到打印机",
+      reprintLabelsError: "打印上架标签失败",
+      selectTask: "选择一个上架任务并过账到最终库位。",
+      pagination: "第 {page} 页，共 {totalPages} 页 - {total} 个任务",
+      previous: "上一页",
+      next: "下一页",
+    },
     pagination: {
       rowsPerPage: "每页行数",
       pageOf: "第 {currentPage} 页，共 {totalPages} 页",
@@ -8352,6 +8514,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "Delivery Notes": "送货单",
       "Pick Lists": "拣货单",
       "Stock Transformations": "库存转换",
+      "Putaway Station": "上架工作站",
       Manufacturing: "制造",
       Orders: "工单",
       Production: "生产",
@@ -8391,6 +8554,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       "delivery-notes": "送货单",
       "pick-lists": "拣货单",
       transformations: "库存转换",
+      putaway: "上架工作站",
       templates: "模板",
       reorder: "补货管理",
       purchasing: "采购",

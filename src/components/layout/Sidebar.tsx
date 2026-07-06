@@ -62,6 +62,12 @@ const menuItems = [
         icon: Warehouse,
       },
       {
+        title: "Putaway Station",
+        href: "/inventory/putaway",
+        resource: RESOURCES.WAREHOUSES as Resource,
+        icon: PackageCheck,
+      },
+      {
         title: "Stock Transactions",
         href: "/inventory/stock",
         resource: RESOURCES.STOCK_TRANSFERS as Resource,

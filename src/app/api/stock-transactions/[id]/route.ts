@@ -31,6 +31,12 @@ type StockTransactionItemRow = {
   notes: string | null;
 };
 
+const PUTAWAY_LOCATION_LABEL = "PUTAWAY";
+
+const isPutawayTransfer = (
+  transaction: { transaction_type: string | null; reference_type: string | null } | null
+) => transaction?.transaction_type === "transfer" && transaction.reference_type === "putaway_task";
+
 // GET /api/stock-transactions/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -96,7 +102,9 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       warehouseCode: transaction.warehouse?.warehouse_code,
       warehouseName: transaction.warehouse?.warehouse_name,
       fromLocationId: transaction.from_location_id,
-      fromLocationCode: transaction.fromLocation?.code,
+      fromLocationCode:
+        transaction.fromLocation?.code ||
+        (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : null),
       fromLocationName: transaction.fromLocation?.name,
       toWarehouseId: transaction.to_warehouse_id,
       toWarehouseCode: transaction.toWarehouse?.warehouse_code,

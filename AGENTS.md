@@ -98,6 +98,8 @@ Hard stop:
 - Render a stable dashboard shell first: breadcrumb, page header, toolbar/filter row, then content region.
 - Do not replace normal dashboard pages with blank screens or full-page spinners during data fetches.
 - Skeleton only dynamic regions and keep loading, empty, error, and loaded states in the same shell footprint.
+- Render status values as readable text with corresponding semantic color, not as badges. Badges may
+  be used for counts, categories, tags, or non-status labels, but not for workflow/status values.
 - Visible row actions like `Edit`, `View`, or `Open` should include text labels. Put destructive and secondary actions in a kebab dropdown.
 
 ### Components And I18n

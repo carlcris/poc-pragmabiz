@@ -155,6 +155,7 @@ type StockTransactionBody = {
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
+const PUTAWAY_LOCATION_LABEL = "PUTAWAY";
 
 const parsePositiveInt = (value: string | null, fallback: number) => {
   const parsed = Number.parseInt(value || "", 10);
@@ -173,6 +174,10 @@ const pickFirst = <T>(value: T | T[] | null | undefined): T | null => {
   }
   return value ?? null;
 };
+
+const isPutawayTransfer = (
+  transaction: { transaction_type: string | null; reference_type: string | null } | null
+) => transaction?.transaction_type === "transfer" && transaction.reference_type === "putaway_task";
 
 // GET /api/stock-transactions
 async function GETHandler(request: NextRequest) {
@@ -349,7 +354,8 @@ async function GETHandler(request: NextRequest) {
           warehouseCode: warehouseRecord?.warehouse_code || "",
           warehouseName: warehouseRecord?.warehouse_name || "",
           fromLocationId: transaction.from_location_id,
-          fromLocationCode: fromLocationRecord?.code || "",
+          fromLocationCode:
+            fromLocationRecord?.code || (isPutawayTransfer(transaction) ? PUTAWAY_LOCATION_LABEL : ""),
           fromLocationName: fromLocationRecord?.name || "",
           toWarehouseId: transaction.to_warehouse_id,
           toWarehouseCode: toWarehouseRecord?.warehouse_code || "",

@@ -91,6 +91,9 @@ A **Transformation Order** executes a production run based on a template.
 Draft → Reserve Inputs → Execute → Complete
 ```
 
+**Shared putaway behavior**:
+Transformation completion hands produced output quantities into the shared putaway station instead of posting outputs into the `UNTRACKED` batch or making them immediately available. The same putaway model is intended for stock receiving, chop-and-join production, and any other workflow that creates stock before final warehouse placement. See `docs/plans/shared-putaway-station-plan.md`.
+
 **Cost Redistribution**:
 When executing a transformation:
 1. Calculate total cost of all inputs (qty × avg_cost)
@@ -462,7 +465,9 @@ Execute transformation (atomic RPC).
 2. **Calculate total input cost**
    - Sum (input_qty × unit_cost) for all inputs
 3. **Add output inventory**
-   - Increase stock levels
+   - Increase on-hand stock levels
+   - Create putaway task records for output quantities pending final placement
+   - Increase item/warehouse putaway quantity
    - Create positive stock transactions
    - Allocate costs based on cost_proportion
 4. **Update item costs**

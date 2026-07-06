@@ -3071,6 +3071,7 @@ export type Database = {
           is_active: boolean | null
           item_id: string
           max_quantity: number | null
+          putaway_qty: number
           reorder_level: number | null
           reorder_quantity: number | null
           reserved_stock: number | null
@@ -3093,6 +3094,7 @@ export type Database = {
           is_active?: boolean | null
           item_id: string
           max_quantity?: number | null
+          putaway_qty?: number
           reorder_level?: number | null
           reorder_quantity?: number | null
           reserved_stock?: number | null
@@ -3115,6 +3117,7 @@ export type Database = {
           is_active?: boolean | null
           item_id?: string
           max_quantity?: number | null
+          putaway_qty?: number
           reorder_level?: number | null
           reorder_quantity?: number | null
           reserved_stock?: number | null
@@ -5503,6 +5506,134 @@ export type Database = {
           },
           {
             foreignKeyName: "purchase_receipts_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      putaway_tasks: {
+        Row: {
+          business_unit_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          pending_quantity: number
+          posted_quantity: number
+          quantity: number
+          source_batch_code: string | null
+          source_id: string
+          source_line_id: string
+          source_reference: string | null
+          source_type: string
+          status: string
+          unit_cost: number
+          uom_id: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+          warehouse_id: string
+        }
+        Insert: {
+          business_unit_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          pending_quantity: number
+          posted_quantity?: number
+          quantity: number
+          source_batch_code?: string | null
+          source_id: string
+          source_line_id: string
+          source_reference?: string | null
+          source_type: string
+          status?: string
+          unit_cost?: number
+          uom_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id: string
+        }
+        Update: {
+          business_unit_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          pending_quantity?: number
+          posted_quantity?: number
+          quantity?: number
+          source_batch_code?: string | null
+          source_id?: string
+          source_line_id?: string
+          source_reference?: string | null
+          source_type?: string
+          status?: string
+          unit_cost?: number
+          uom_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "putaway_tasks_business_unit_id_fkey"
+            columns: ["business_unit_id"]
+            isOneToOne: false
+            referencedRelation: "business_units"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_uom_id_fkey"
+            columns: ["uom_id"]
+            isOneToOne: false
+            referencedRelation: "units_of_measure"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_warehouse_id_fkey"
             columns: ["warehouse_id"]
             isOneToOne: false
             referencedRelation: "warehouses"
@@ -10624,6 +10755,45 @@ export type Database = {
         }
         Returns: Json
       }
+      create_putaway_task: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_item_id: string
+          p_notes?: string
+          p_quantity: number
+          p_source_batch_code?: string
+          p_source_id: string
+          p_source_line_id: string
+          p_source_reference: string
+          p_source_type: string
+          p_unit_cost: number
+          p_uom_id: string
+          p_user_id: string
+          p_warehouse_id: string
+        }
+        Returns: string
+      }
+      create_transformation_output_putaway: {
+        Args: {
+          p_business_unit_id: string | null
+          p_company_id: string
+          p_item_id: string
+          p_order_code: string
+          p_order_id: string
+          p_output_line_id: string
+          p_produced_quantity: number
+          p_total_cost: number
+          p_transaction_date: string
+          p_unit_cost: number
+          p_uom_id: string
+          p_user_id: string
+          p_warehouse_id: string
+          p_waste_reason: string | null
+          p_wasted_quantity: number
+        }
+        Returns: string
+      }
       create_sales_order_transaction: {
         Args: { p_business_unit_id: string; p_quotation_id: string }
         Returns: {
@@ -11150,6 +11320,24 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      post_putaway_task: {
+        Args: {
+          p_batch_code: string
+          p_location_id: string
+          p_quantity: number
+          p_task_id: string
+          p_user_id: string
+        }
+        Returns: {
+          batch_code: string
+          batch_location_id: string
+          batch_location_sku: string
+          location_id: string
+          posted_date: string
+          posted_quantity: number
+          transaction_id: string
+        }[]
       }
       post_stock_adjustment: {
         Args: {

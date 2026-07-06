@@ -28,6 +28,7 @@ type TransformationOrderOutputRow = {
   id: string;
   item_id: string;
   is_scrap: boolean;
+  sequence: number;
 };
 
 type TransformationOrderRow = {
@@ -39,6 +40,12 @@ type TransformationOrderRow = {
   status: string;
   inputs: TransformationOrderInputRow[];
   outputs: TransformationOrderOutputRow[];
+};
+
+const parseNumber = (value: unknown) => {
+  if (value == null) return 0;
+  const num = typeof value === "number" ? value : parseFloat(String(value));
+  return Number.isFinite(num) ? num : 0;
 };
 
 // ============================================================================
@@ -313,26 +320,6 @@ export async function executeTransformation(
       0
     );
 
-    // 5. Update order status to COMPLETED (execute and complete in one step)
-    const { error: statusError } = await supabase
-      .from("transformation_orders")
-      .update({
-        status: "COMPLETED",
-        execution_date: executionData.executionDate || new Date().toISOString(),
-        completion_date: new Date().toISOString(),
-        actual_quantity: actualQuantity,
-        updated_by: userId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId);
-
-    if (statusError) {
-      return {
-        success: false,
-        error: `Failed to update order status: ${statusError.message || JSON.stringify(statusError)}`,
-      };
-    }
-
     // 5. Resolve input quantities (already in base UOM)
     const resolvedInputs = executionData.inputs.map((inputData) => {
       const inputLine = typedOrder.inputs.find((i) => i.id === inputData.inputLineId);
@@ -372,14 +359,15 @@ export async function executeTransformation(
         .eq("id", inputLine.item_id)
         .single();
 
-      const currentStock = warehouseStock ? parseFloat(String(warehouseStock.current_stock)) : 0;
+      const currentStock = warehouseStock ? parseNumber(warehouseStock.current_stock) : 0;
+      const availableStock = warehouseStock ? parseNumber(warehouseStock.available_stock) : 0;
       const unitCost = itemData?.purchase_price ? parseFloat(String(itemData.purchase_price)) : 0;
       const itemUomId = itemData?.uom_id ?? null;
 
       const newStock = currentStock - resolvedInput.quantity;
 
       // Validate sufficient stock (using base quantity)
-      if (newStock < 0) {
+      if (availableStock < resolvedInput.quantity) {
         // Rollback: revert order status
         await supabase
           .from("transformation_orders")
@@ -387,7 +375,7 @@ export async function executeTransformation(
           .eq("id", orderId);
         return {
           success: false,
-          error: `Insufficient stock for item. Available: ${currentStock}, Required: ${resolvedInput.quantity}`,
+          error: `Insufficient stock for item. Available: ${availableStock}, Required: ${resolvedInput.quantity}`,
         };
       }
 
@@ -562,22 +550,6 @@ export async function executeTransformation(
       const costPerUnit = totalOutputQuantity > 0 ? totalInputCost / totalOutputQuantity : 0;
       const allocatedCost = outputLine.is_scrap ? 0 : costPerUnit * resolvedOutput.quantity;
 
-      // Get current stock (same warehouse as inputs)
-      const { data: warehouseStock } = await supabase
-        .from("item_warehouse")
-        .select("current_stock, available_stock, default_location_id")
-        .eq("item_id", outputLine.item_id)
-        .eq("warehouse_id", order.source_warehouse_id)
-        .maybeSingle();
-
-      const warehouseStockRow = warehouseStock as {
-        current_stock?: number | string | null;
-        default_location_id?: string | null;
-      } | null;
-      const currentStock = warehouseStockRow
-        ? parseFloat(String(warehouseStockRow.current_stock))
-        : 0;
-
       const { data: outputItemData } = await supabase
         .from("items")
         .select("uom_id")
@@ -592,115 +564,60 @@ export async function executeTransformation(
         };
       }
 
-      const newStock = currentStock + resolvedOutput.quantity;
+      if (resolvedOutput.quantity > 0) {
+        const { data: outputTransactionId, error: outputPutawayError } = await supabase.rpc(
+          "create_transformation_output_putaway",
+          {
+            p_company_id: order.company_id,
+            p_business_unit_id: order.business_unit_id,
+            p_order_id: orderId,
+            p_output_line_id: outputData.outputLineId,
+            p_item_id: outputLine.item_id,
+            p_warehouse_id: order.source_warehouse_id,
+            p_uom_id: outputUomId,
+            p_order_code: order.order_code,
+            p_transaction_date:
+              executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
+            p_produced_quantity: resolvedOutput.quantity,
+            p_wasted_quantity: outputData.wastedQuantity || 0,
+            p_waste_reason: outputData.wasteReason || null,
+            p_unit_cost: costPerUnit,
+            p_total_cost: allocatedCost,
+            p_user_id: userId,
+          }
+        );
 
-      // Create stock transaction (type='in') - same warehouse as inputs
-      const { data: stockTransaction, error: transactionError } = await supabase
-        .from("stock_transactions")
-        .insert({
-          company_id: order.company_id,
-          business_unit_id: order.business_unit_id,
-          transaction_type: "in",
-          transaction_date:
-            executionData.executionDate?.split("T")[0] || new Date().toISOString().split("T")[0],
-          warehouse_id: order.source_warehouse_id,
-          to_location_id: defaultLocationId,
-          reference_type: "transformation_order",
-          reference_id: orderId,
-          reference_code: order.order_code,
-          notes: `Transformation output production - ${order.order_code}`,
-          status: "posted",
-          created_by: userId,
-          updated_by: userId,
-        })
-        .select()
-        .single();
+        if (outputPutawayError || !outputTransactionId) {
+          console.error("Error creating transformation output putaway:", outputPutawayError);
+          return {
+            success: false,
+            error: "Failed to create output putaway task",
+          };
+        }
 
-      if (transactionError || !stockTransaction) {
-        // Rollback would be complex here - better to prevent this with validation
-
-        return {
-          success: false,
-          error: `Failed to create output stock transaction: ${transactionError?.message || "Unknown error"}`,
-        };
-      }
-
-      outputTransactionIds.push(stockTransaction.id);
-
-      // Create stock transaction item
-      const now = new Date();
-      const postingDate = now.toISOString().split("T")[0];
-      const postingTime = now.toTimeString().split(" ")[0];
-      const stockValueBefore = currentStock * costPerUnit;
-      const stockValueAfter = newStock * costPerUnit;
-
-      await supabase.from("stock_transaction_items").insert({
-        company_id: order.company_id,
-        transaction_id: stockTransaction.id,
-        item_id: outputLine.item_id,
-        // Standard fields
-        quantity: resolvedOutput.quantity,
-        uom_id: outputUomId,
-        unit_cost: costPerUnit,
-        total_cost: allocatedCost,
-        // Audit fields
-        qty_before: currentStock,
-        qty_after: newStock,
-        valuation_rate: costPerUnit,
-        stock_value_before: stockValueBefore,
-        stock_value_after: stockValueAfter,
-        posting_date: postingDate,
-        posting_time: postingTime,
-        created_by: userId,
-        updated_by: userId,
-      });
-
-      await adjustItemLocation({
-        supabase,
-        companyId: order.company_id,
-        itemId: outputLine.item_id,
-        warehouseId: order.source_warehouse_id,
-        locationId: warehouseStockRow?.default_location_id || defaultLocationId,
-        userId,
-        qtyOnHandDelta: resolvedOutput.quantity,
-      });
-
-      // Update or insert item_warehouse (no stock_value column) - same warehouse as inputs
-      if (warehouseStockRow) {
-        await supabase
-          .from("item_warehouse")
+        outputTransactionIds.push(outputTransactionId);
+      } else {
+        const { error: outputUpdateError } = await supabase
+          .from("transformation_order_outputs")
           .update({
-            current_stock: newStock,
+            produced_quantity: 0,
+            wasted_quantity: outputData.wastedQuantity || 0,
+            waste_reason: outputData.wasteReason || null,
+            allocated_cost_per_unit: costPerUnit,
+            total_allocated_cost: 0,
+            stock_transaction_id: null,
             updated_by: userId,
           })
-          .eq("item_id", outputLine.item_id)
-          .eq("warehouse_id", order.source_warehouse_id);
-      } else {
-        await supabase.from("item_warehouse").insert({
-          company_id: order.company_id,
-          item_id: outputLine.item_id,
-          warehouse_id: order.source_warehouse_id,
-          current_stock: newStock,
-          reserved_stock: 0,
-          default_location_id: defaultLocationId,
-          created_by: userId,
-          updated_by: userId,
-        });
-      }
+          .eq("id", outputData.outputLineId);
 
-      // Update transformation_order_outputs
-      await supabase
-        .from("transformation_order_outputs")
-        .update({
-          produced_quantity: outputData.producedQuantity,
-          wasted_quantity: outputData.wastedQuantity || 0,
-          waste_reason: outputData.wasteReason || null,
-          allocated_cost_per_unit: costPerUnit,
-          total_allocated_cost: allocatedCost,
-          stock_transaction_id: stockTransaction.id,
-          updated_by: userId,
-        })
-        .eq("id", outputData.outputLineId);
+        if (outputUpdateError) {
+          console.error("Error updating waste-only transformation output:", outputUpdateError);
+          return {
+            success: false,
+            error: "Failed to update transformation output",
+          };
+        }
+      }
 
       // 7b. Create waste transaction if waste quantity > 0
       if (outputData.wastedQuantity && outputData.wastedQuantity > 0) {
@@ -824,10 +741,15 @@ export async function executeTransformation(
     await supabase
       .from("transformation_orders")
       .update({
+        status: "COMPLETED",
+        execution_date: executionData.executionDate || new Date().toISOString(),
+        completion_date: new Date().toISOString(),
+        actual_quantity: actualQuantity,
         total_input_cost: totalInputCost,
         total_output_cost: totalOutputCost,
         cost_variance: costVariance,
         updated_by: userId,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", orderId);
 
