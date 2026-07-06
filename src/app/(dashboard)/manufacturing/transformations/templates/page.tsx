@@ -120,7 +120,7 @@ export default function TransformationTemplatesPage() {
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button
               variant="outline"
-              onClick={() => router.push("/inventory/transformations/templates/design")}
+              onClick={() => router.push("/manufacturing/transformations/templates/design")}
               className="w-full sm:w-auto"
             >
               <Plus className="mr-2 h-4 w-4" />

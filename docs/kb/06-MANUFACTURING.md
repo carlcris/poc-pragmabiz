@@ -4,6 +4,8 @@
 
 The Manufacturing module manages production operations including Bill of Materials (BOM) templates, transformation orders for stock conversions, cost allocation, lineage tracking, custom assembly jobs, and workstation management.
 
+Dashboard stock transformation screens are under **Manufacturing > Stock Transformations** at `/manufacturing/transformations`.
+
 ## Key Features
 
 - **Bill of Materials (BOM)** templates

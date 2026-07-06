@@ -187,7 +187,7 @@ function TransformationOrderContent({ id }: { id: string }) {
       {/* Header with Title */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/inventory/transformations">
+          <Link href="/manufacturing/transformations">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>

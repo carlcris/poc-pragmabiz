@@ -257,10 +257,10 @@ export default function TransformationOrdersPage() {
         actions={
           <>
             <Button variant="outline" asChild className="w-full sm:w-auto">
-              <Link href="/inventory/transformations/templates">{t("manageTemplates")}</Link>
+              <Link href="/manufacturing/transformations/templates">{t("manageTemplates")}</Link>
             </Button>
             <Button asChild className="w-full sm:w-auto">
-              <Link href="/inventory/transformations/new">
+              <Link href="/manufacturing/transformations/new">
                 <Plus className="mr-2 h-4 w-4" />
                 {t("newTransformation")}
               </Link>
@@ -359,7 +359,7 @@ export default function TransformationOrdersPage() {
                 <TableRow
                   key={order.id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/inventory/transformations/${order.id}`)}
+                  onClick={() => router.push(`/manufacturing/transformations/${order.id}`)}
                 >
                   <TableCell className="font-medium">{order.order_code}</TableCell>
                   <TableCell>{order.template?.template_code || t("notAvailable")}</TableCell>

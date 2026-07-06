@@ -1508,7 +1508,7 @@ export function TransformationTemplateDesignerPage() {
 
     try {
       await createTemplate.mutateAsync(payload);
-      router.push("/inventory/transformations/templates");
+      router.push("/manufacturing/transformations/templates");
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Failed to save template. Please try again."
@@ -1577,7 +1577,7 @@ export function TransformationTemplateDesignerPage() {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => router.push("/inventory/transformations/templates")}
+            onClick={() => router.push("/manufacturing/transformations/templates")}
           >
             Cancel
           </Button>

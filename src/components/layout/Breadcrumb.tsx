@@ -38,7 +38,7 @@ export function Breadcrumb() {
   const isWarehouseLocations =
     lastSegment === "locations" && pathSegments[pathSegments.length - 3] === "warehouses";
   const isTransformationTemplateDesigner =
-    pathname === "/inventory/transformations/templates/design";
+    pathname === "/manufacturing/transformations/templates/design";
   const isAdminSettingsPage =
     pathSegments[0] === "admin" && pathSegments[1] === "settings" && pathSegments.length >= 2;
   const itemId = isItemEdit

@@ -98,12 +98,6 @@ const menuItems = [
         icon: List,
       },
       {
-        title: "Stock Transformations",
-        href: "/inventory/transformations",
-        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
-        icon: Repeat,
-      },
-      {
         title: "Reorder Management",
         href: "/inventory/reorder",
         resource: RESOURCES.REORDER_MANAGEMENT as Resource,
@@ -176,6 +170,12 @@ const menuItems = [
         href: "/manufacturing/floor",
         resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
         icon: ChefHat,
+      },
+      {
+        title: "Stock Transformations",
+        href: "/manufacturing/transformations",
+        resource: RESOURCES.STOCK_TRANSFORMATIONS as Resource,
+        icon: Repeat,
       },
     ],
   },

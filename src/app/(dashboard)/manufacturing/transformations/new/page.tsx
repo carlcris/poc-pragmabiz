@@ -116,7 +116,7 @@ export default function NewTransformationOrderPage() {
         notes: values.notes || undefined,
       });
 
-      router.push("/inventory/transformations");
+      router.push("/manufacturing/transformations");
     } catch (error) {
       const message = error instanceof Error ? error.message : t("failedCreateTransformationOrder");
       setErrors({ root: message });
@@ -236,7 +236,7 @@ export default function NewTransformationOrderPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.push("/inventory/transformations")}
+                onClick={() => router.push("/manufacturing/transformations")}
               >
                 {tCommon("cancel")}
               </Button>
