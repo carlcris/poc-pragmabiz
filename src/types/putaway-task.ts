@@ -20,6 +20,7 @@ export type PutawayTask = {
   sourceLineId: string | null;
   sourceReference: string | null;
   sourceBatchCode: string | null;
+  suggestedLocationId: string | null;
   quantity: number;
   pendingQuantity: number;
   postedQuantity: number;

@@ -114,6 +114,7 @@ A **GRN** documents the receipt of goods from suppliers with multi-box receiving
 - Box-level item tracking
 - Damage tracking per box
 - Approval workflow before creating purchase receipt
+- Submit-for-approval stages received stock into the shared Putaway Station
 - Barcode/QR scanning support
 - Photo capture for damaged items
 
@@ -611,6 +612,8 @@ Approve GRN.
 2. Ready to create purchase receipt
 3. Records approver and timestamp
 
+GRN inventory handoff happens earlier, when the receiving user submits the GRN for approval. The submit action creates putaway tasks grouped by GRN line and batch code, increments `item_warehouse.current_stock` and `item_warehouse.putaway_qty` by the actual good received quantity, decreases `item_warehouse.in_transit` by the expected/to-be-received line quantity, and does not write final `item_batches` or `item_batch_locations`. Approval confirms the GRN workflow status; final batch/location inventory is created later when the Putaway Station posts the stock into a selected warehouse location. Damaged stock handling will be implemented in a separate workflow.
+
 ### Purchase Receipt Management
 
 #### POST /api/purchase-receipts
@@ -698,14 +701,14 @@ For each receipt item:
    - Take photos of damaged items
    - Add notes
 4. Complete GRN with all boxes
-5. Submit GRN for approval
+5. Submit GRN for approval, staging received quantities into Putaway Station
 6. Supervisor approves GRN
-7. Create purchase receipt from approved GRN
-8. Post receipt:
-   - Inventory updated
+7. Putaway Station posts staged stock into final warehouse locations and prints final location labels
+8. Create purchase receipt from approved GRN
+9. Post receipt:
    - Costs calculated
    - Damaged items tracked
-9. PO updated with received quantities
+10. PO updated with received quantities
 
 ### Workflow 4: Damaged Item Processing
 

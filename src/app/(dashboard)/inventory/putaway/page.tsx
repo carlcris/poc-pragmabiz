@@ -222,7 +222,7 @@ export default function PutawayStationPage() {
 
   const selectTask = (task: PutawayTask) => {
     setSelectedTask(task);
-    setLocationId("");
+    setLocationId(task.suggestedLocationId ?? "");
     setQuantity(String(task.status === "completed" ? task.postedQuantity : task.pendingQuantity));
     setBatchCode(task.sourceBatchCode ?? "");
     setShouldPrintLabels(true);

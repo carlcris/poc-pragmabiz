@@ -17,6 +17,7 @@ type PutawayTaskRow = {
   source_line_id: string;
   source_reference: string | null;
   source_batch_code: string | null;
+  suggested_location_id: string | null;
   quantity: number | string;
   pending_quantity: number | string;
   posted_quantity: number | string;
@@ -67,6 +68,7 @@ const mapTask = (row: PutawayTaskRow): PutawayTask => ({
   sourceLineId: row.source_line_id,
   sourceReference: row.source_reference,
   sourceBatchCode: row.source_batch_code,
+  suggestedLocationId: row.suggested_location_id,
   quantity: parseNumber(row.quantity),
   pendingQuantity: parseNumber(row.pending_quantity),
   postedQuantity: parseNumber(row.posted_quantity),
@@ -109,6 +111,7 @@ async function GETHandler(request: NextRequest) {
       source_line_id,
       source_reference,
       source_batch_code,
+      suggested_location_id,
       quantity,
       pending_quantity,
       posted_quantity,

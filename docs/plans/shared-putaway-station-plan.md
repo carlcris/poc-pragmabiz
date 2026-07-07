@@ -22,6 +22,8 @@ Create a shared putaway task model and putaway station.
 
 Producer workflows should create putaway task records and increment `item_warehouse.current_stock` plus `item_warehouse.putaway_qty`. The putaway station owns the final warehouse placement step. Posting putaway creates or updates the final `item_batches` and `item_batch_locations`, decreases `item_warehouse.putaway_qty`, and leaves `item_warehouse.current_stock` unchanged because the stock was already counted when pushed to putaway.
 
+The only inventory write allowed at producer handoff is the putaway staging write: create or update the putaway task, increment `item_warehouse.current_stock`, and increment `item_warehouse.putaway_qty`. Producer handoff must not create available final batch-location stock directly.
+
 ## Inventory Math
 
 - `item_warehouse.current_stock`: total physical stock in the warehouse, including stock waiting in putaway.
@@ -33,10 +35,24 @@ Producer workflows should create putaway task records and increment `item_wareho
 
 ## Putaway Sources
 
-- Stock receiving: approved/received goods that still need final bin/location assignment.
+- GRN receiving: received goods submitted for approval that still need final bin/location assignment.
 - Transformation outputs: produced output quantities from stock transformations.
 - Production workflows: chop-and-join, assembly, or other production outputs that need final storage.
 - Future stock-producing workflows: any operation that creates on-hand stock before final location assignment.
+
+## GRN Receiving Integration
+
+GRN receiving must use the same putaway station handoff as transformation output, with these source-specific rules:
+
+- Create or update GRN putaway tasks when the receiving user submits the GRN for approval.
+- A GRN can be operationally treated as received once its received quantities have been staged into putaway, even though the stock is not yet available for picking, consumption, sale, or transfer.
+- Received quantities must not be written directly to final `item_batches` or `item_batch_locations` during GRN submission or approval.
+- The GRN handoff updates `item_warehouse.current_stock` and `item_warehouse.putaway_qty` by the actual good received quantity, decreases `item_warehouse.in_transit` by the expected/to-be-received line quantity, and creates or updates putaway task rows for the actual good received quantity.
+- Use the batch code from the GRN receiving data as the putaway task batch reference.
+- Group GRN putaway tasks by GRN line plus batch code.
+- Partial receiving is allowed. Each submitted received quantity creates or increases the matching putaway task for that GRN line and batch code.
+- GRN receiving may still capture a suggested or default destination location, but putaway station users can override it when posting final placement.
+- Putaway label printing is always tied to final putaway posting. GRN box/label printing should not be extended as part of this integration because it will be removed from the GRN workflow later.
 
 ## Action Items
 
@@ -46,6 +62,9 @@ Producer workflows should create putaway task records and increment `item_wareho
 - [x] Update the `item_warehouse.available_stock` generated calculation to exclude both reserved and putaway quantities: `available_stock = current_stock - reserved_stock - putaway_qty`.
 - [x] Add a shared putaway task table so producer workflows can create putaway entries with source type, source ID, required source line ID, item, warehouse, quantity, pending quantity, optional source batch/reference, status, and audit fields.
 - [ ] Refactor stock-producing workflows that need final placement so they create putaway tasks, increase `item_warehouse.current_stock`, and increase `item_warehouse.putaway_qty` instead of creating final batch-location stock immediately.
+- [x] Refactor GRN receiving submission so each received GRN line plus batch code stages stock into the shared putaway station instead of writing directly to final batch-location inventory.
+- [x] Preserve any suggested/default GRN destination location as a putaway suggestion only; final location assignment remains owned by putaway posting and can be overridden.
+- [x] Ensure GRN approval/status semantics still allow the GRN to be considered received after staging into putaway, while availability remains excluded until putaway posting.
 - [x] For transformation execution specifically, ensure completion creates a putaway task and never relies on a missing batch/location that defaults to `UNTRACKED`.
 - [x] Keep transformation output stock transaction creation, stock transaction item creation, putaway task creation, and output-line update in one DB-owned transaction.
 - [x] Treat zero-produced, waste-only transformation outputs as waste records only; they must not create output stock transactions or putaway tasks.
@@ -63,6 +82,8 @@ Producer workflows should create putaway task records and increment `item_wareho
 - A shared putaway station avoids duplicating putaway logic in receiving, transformations, and production workflows.
 - Keeping each producer handoff and each putaway movement as DB-owned transactions avoids partial writes and keeps the API/client simple.
 - Transformation output handoff uses one RPC so a putaway creation failure cannot leave a posted output stock transaction without its matching putaway task.
+- GRN receiving handoff should be transactional for the same reason: submitting received quantities for approval must not leave `item_warehouse.current_stock` or `putaway_qty` changed without matching putaway task rows.
+- GRN putaway tasks carry the receiving batch code because the batch is already determined before putaway. The putaway station still owns the final batch-location placement.
 - Waste-only transformation outputs skip putaway because there is no physical produced stock to place.
 - Putaway posting creates or increments final batch rows with one atomic upsert so concurrent first postings for the same batch do not fail on the batch uniqueness constraint.
 - Reconciliation excludes `putaway_qty` from item-warehouse quantities because pending putaway stock is physical stock but not final placed batch/location stock.

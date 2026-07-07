@@ -5532,6 +5532,7 @@ export type Database = {
           source_reference: string | null
           source_type: string
           status: string
+          suggested_location_id: string | null
           unit_cost: number
           uom_id: string | null
           updated_at: string
@@ -5557,6 +5558,7 @@ export type Database = {
           source_reference?: string | null
           source_type: string
           status?: string
+          suggested_location_id?: string | null
           unit_cost?: number
           uom_id?: string | null
           updated_at?: string
@@ -5582,6 +5584,7 @@ export type Database = {
           source_reference?: string | null
           source_type?: string
           status?: string
+          suggested_location_id?: string | null
           unit_cost?: number
           uom_id?: string | null
           updated_at?: string
@@ -5616,6 +5619,13 @@ export type Database = {
             columns: ["item_id"]
             isOneToOne: false
             referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "putaway_tasks_suggested_location_id_fkey"
+            columns: ["suggested_location_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_locations"
             referencedColumns: ["id"]
           },
           {
@@ -10608,7 +10618,7 @@ export type Database = {
         Args: {
           p_company_id: string
           p_grn_id: string
-          p_notes?: string
+          p_notes?: string | null
           p_user_id: string
         }
         Returns: string
@@ -10617,7 +10627,7 @@ export type Database = {
         Args: {
           p_company_id: string
           p_grn_id: string
-          p_notes?: string
+          p_notes?: string | null
           p_user_id: string
         }
         Returns: string
@@ -10759,14 +10769,16 @@ export type Database = {
         Args: {
           p_business_unit_id: string
           p_company_id: string
+          p_in_transit_decrease?: number
           p_item_id: string
-          p_notes?: string
+          p_notes?: string | null
           p_quantity: number
-          p_source_batch_code?: string
+          p_source_batch_code?: string | null
           p_source_id: string
           p_source_line_id: string
           p_source_reference: string
           p_source_type: string
+          p_suggested_location_id?: string | null
           p_unit_cost: number
           p_uom_id: string
           p_user_id: string
@@ -11351,6 +11363,15 @@ export type Database = {
           stock_transaction_code: string
           stock_transaction_id: string
         }[]
+      }
+      submit_grn_to_putaway: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_notes?: string | null
+          p_user_id: string
+        }
+        Returns: string
       }
       recalculate_sales_order_linked_quotation_statuses: {
         Args: { p_sales_order_id: string }

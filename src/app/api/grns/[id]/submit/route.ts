@@ -30,10 +30,12 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
+    const body = await request.json().catch(() => ({} as { notes?: string | null }));
+
     // Fetch GRN
     const { data: grn, error: fetchError } = await supabase
       .from("grns")
-      .select("id, grn_number, status, items:grn_items(id, received_qty)")
+      .select("id, grn_number, status, company_id, items:grn_items(id, received_qty)")
       .eq("id", id)
       .eq("company_id", userData.company_id)
       .is("deleted_at", null)
@@ -51,7 +53,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       );
     }
 
-    // Validate all items have received quantities
+    // Validate at least one item has a received quantity. Partial receiving is allowed.
     type GrnSubmitItem = {
       received_qty: number | string | null;
     };
@@ -60,31 +62,33 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "GRN has no items" }, { status: 400 });
     }
 
-    const hasReceivedQty = items.every((item) => Number(item.received_qty ?? 0) > 0);
+    const hasReceivedQty = items.some((item) => Number(item.received_qty ?? 0) > 0);
     if (!hasReceivedQty) {
       return NextResponse.json(
-        { error: "All items must have received quantities" },
+        { error: "At least one item must have a received quantity" },
         { status: 400 }
       );
     }
 
-    // Update GRN status to pending_approval
-    const { error: updateError } = await supabase
-      .from("grns")
-      .update({
-        status: "pending_approval",
-        updated_by: user.id,
-      })
-      .eq("id", id);
+    const { data: stockTransactionCode, error: submitError } = await supabase.rpc(
+      "submit_grn_to_putaway",
+      {
+        p_company_id: grn.company_id,
+        p_user_id: user.id,
+        p_grn_id: grn.id,
+        p_notes: body.notes || null,
+      }
+    );
 
-    if (updateError) {
-      console.error("Error submitting GRN:", updateError);
-      return NextResponse.json({ error: "Failed to submit GRN" }, { status: 500 });
+    if (submitError) {
+      console.error("Error submitting GRN to putaway:", submitError);
+      return NextResponse.json({ error: submitError.message }, { status: 400 });
     }
 
     return NextResponse.json({
       id: grn.id,
       grnNumber: grn.grn_number,
+      stockTransactionCode: stockTransactionCode || null,
       status: "pending_approval",
       message: "GRN submitted for approval successfully",
     });

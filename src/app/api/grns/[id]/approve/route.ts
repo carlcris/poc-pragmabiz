@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-// POST /api/grns/[id]/approve - Approve GRN and create stock entries
+// POST /api/grns/[id]/approve - Approve GRN after received stock has been staged to putaway
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
@@ -128,7 +128,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       grnNumber: grn.grn_number,
       stockTransactionCode: stockTransactionCode || null,
       status: "approved",
-      message: "GRN approved and inventory updated successfully",
+      message: "GRN approved successfully",
     });
   } catch (error) {
     console.error("Internal server error:", error);
