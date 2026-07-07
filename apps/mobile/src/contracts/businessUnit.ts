@@ -22,4 +22,5 @@ export type SetBusinessUnitResponse = {
   business_unit: BusinessUnit;
   token: string;
   refreshToken: string;
+  cookieHeader: string;
 };

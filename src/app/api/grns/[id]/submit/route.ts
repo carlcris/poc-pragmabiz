@@ -4,10 +4,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-// POST /api/grns/[id]/submit - Submit GRN for approval
+const userSafeSubmitMessage = (message: string | undefined) => {
+  const allowedMessages = new Set([
+    "GRN not found",
+    "Only draft or receiving GRNs can be submitted",
+    "GRN has no items",
+    "At least one GRN item must have a received quantity",
+  ]);
+
+  return message && allowedMessages.has(message) ? message : "Failed to submit GRN";
+};
+
+// POST /api/grns/[id]/submit - Submit GRN for confirmation
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
 
@@ -82,7 +94,8 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
 
     if (submitError) {
       console.error("Error submitting GRN to putaway:", submitError);
-      return NextResponse.json({ error: submitError.message }, { status: 400 });
+      const status = submitError.message === "Unauthorized" ? 403 : 400;
+      return NextResponse.json({ error: userSafeSubmitMessage(submitError.message) }, { status });
     }
 
     return NextResponse.json({
@@ -90,7 +103,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       grnNumber: grn.grn_number,
       stockTransactionCode: stockTransactionCode || null,
       status: "pending_approval",
-      message: "GRN submitted for approval successfully",
+      message: "GRN submitted for confirmation successfully",
     });
   } catch (error) {
     console.error("Internal server error:", error);

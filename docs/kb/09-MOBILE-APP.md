@@ -105,36 +105,34 @@ apps/mobile/
 
 **Workflow**:
 ```
-1. View Pending GRNs
+1. View inbound load lists
    ↓
-2. Select GRN
+2. Select arrived or receiving load list
    ↓
-3. For Each Box:
-   ├─ Scan Box Barcode
-   ├─ For Each Item in Box:
-   │  ├─ Scan Item Barcode
-   │  ├─ Enter Quantity Received
-   │  ├─ Enter Quantity Damaged (if any)
-   │  ├─ Take Photo of Damage (if any)
-   │  └─ Add Notes
-   └─ Confirm Box
+3. Open linked GRN receiving checklist
    ↓
-4. Review Total Quantities
+4. Start receiving
    ↓
-5. Submit GRN for Approval
+5. Enter received and damaged quantities per GRN line
    ↓
-6. Supervisor Approves (desktop)
+6. Save quantities, or pause receiving to return the load list to arrived status
    ↓
-7. Purchase Receipt Created and Posted
+7. Submit GRN for Approval
+   ↓
+8. Received stock is staged into Putaway Station
+   ↓
+9. Supervisor Approves (desktop)
 ```
 
 **Mobile Features**:
-- Multi-box receiving workflow
-- Camera integration for damage photos
-- Offline draft capability (save locally)
-- Damage documentation
+- Load-list based GRN receiving
+- Load-list receiving queue resolves the current business unit warehouse and fetches load lists with that `warehouseId` filter
+- Start and pause controls for user-triggered receiving sessions
+- Per-line received and damaged quantity entry
+- Save draft receiving quantities
+- Submit to the shared GRN confirmation and putaway-staging workflow
 - Real-time quantity tracking
-- Barcode verification
+- Variance highlighting
 
 ## Mobile App Features
 
@@ -387,49 +385,55 @@ Complete picking.
 - Locks picking (no more changes)
 - Notifies dispatch team
 
-#### GET /api/mobile/grns/pending
-Get GRNs pending receiving.
+#### GET /api/load-lists/receiving-warehouse
+Resolve the current business unit warehouse used by native mobile load-list receiving.
 
-**Permissions**: `view` on `grns`
+**Permissions**: `view` on Load Lists
 
-#### POST /api/mobile/grns/[id]/receive-box
-Receive GRN box on mobile.
+#### GET /api/load-lists?receivingOnly=true&warehouseId=:id
+Fetch native mobile load-list receiving candidates. The API only returns rows when `warehouseId` matches the current business unit warehouse.
 
-**Permissions**: `edit` on `grns`
+**Permissions**: `view` on Load Lists
+
+#### GET /api/grns?load_list_id=:id
+Get the GRN linked to a load list for native mobile receiving.
+
+**Permissions**: `view` on Goods Receipt Notes
+
+#### PUT /api/grns/[id]
+Save native mobile GRN receiving quantities.
+
+**Permissions**: `edit` on Goods Receipt Notes
 
 **Request**:
 ```json
 {
-  "box_number": 1,
-  "box_barcode": "BOX-001",
+  "receivingDate": "2026-07-07",
   "items": [
     {
-      "item_id": "uuid",
-      "item_barcode": "123456789",
-      "quantity_received": 50,
-      "quantity_damaged": 2,
-      "damage_photos": [
-        "data:image/jpeg;base64,...",
-        "data:image/jpeg;base64,..."
-      ],
-      "notes": "Corner of box crushed, 2 units damaged"
+      "id": "grn-item-uuid",
+      "receivedQty": 50,
+      "damagedQty": 2,
+      "notes": "Optional receiving notes"
     }
   ]
 }
 ```
 
-**Response**:
-```json
-{
-  "success": true,
-  "box_complete": true,
-  "grn_complete": false,
-  "progress": {
-    "boxes_received": 2,
-    "boxes_total": 5
-  }
-}
-```
+#### POST /api/grns/[id]/start-receiving
+Start native mobile GRN receiving. This transitions the GRN and linked arrived load list into `receiving`.
+
+**Permissions**: `edit` on Goods Receipt Notes
+
+#### POST /api/grns/[id]/pause-receiving
+Pause native mobile GRN receiving. This saves the session state by returning the GRN to `draft` and the linked load list to `arrived`; entered quantities remain on the GRN lines.
+
+**Permissions**: `edit` on Goods Receipt Notes
+
+#### POST /api/grns/[id]/submit
+Submit native mobile GRN receiving for confirmation. Submission stages received good quantities into Putaway Station using the shared GRN putaway workflow; final batch/location placement happens when putaway is posted.
+
+**Permissions**: `edit` on Goods Receipt Notes
 
 #### GET /api/mobile/items/search
 Search items for mobile (autocomplete).
@@ -486,24 +490,24 @@ Search items for mobile (autocomplete).
 ### Workflow 2: Mobile GRN Receiving
 
 1. **Warehouse worker opens mobile app**
-2. **Views list of pending GRNs**
-3. **Selects GRN to receive**
-4. **For each box**:
-   - Scans box barcode
-   - **For each item in box**:
-     - Scans item barcode
-     - Enters quantity received (good)
-     - If damaged:
-       - Enters quantity damaged
-       - **Takes photo** of damage
-       - Adds notes describing damage
-   - Confirms box complete
-5. **Reviews total received quantities**
-   - Compares to PO quantities
+2. **Views inbound load lists**
+3. **Selects an arrived or receiving load list**
+4. **Opens the linked GRN**
+5. **Starts receiving**
+   - GRN status changes to `receiving`
+   - Linked load list status changes to `receiving`
+6. **For each GRN line**:
+   - Enters received quantity
+   - Enters damaged quantity when applicable
+   - Reviews line variance
+7. **Reviews total received quantities**
+   - Compares to expected load-list quantities
    - Shows variances
-6. **Submits GRN for approval**
-7. **Supervisor approves GRN** (on desktop)
-8. **Purchase receipt created and posted**
+8. **Saves receiving quantities**
+   - Can pause receiving before submit
+9. **Submits GRN for confirmation**
+10. **Received good stock is staged into Putaway Station**
+11. **Supervisor confirms GRN** (on desktop)
 
 ## UI Components
 
@@ -528,11 +532,13 @@ Search items for mobile (autocomplete).
 - Manual entry fallback
 
 #### GRNReceivingDetail
-**Location**: `apps/mobile/app/receiving/[id].tsx`
-- Multi-box receiving interface
-- Item scanning per box
-- Photo capture for damages
-- Submit for approval
+**Location**: `apps/mobile/app/receiving/load-lists/[id].tsx`
+- Load-list linked GRN receiving interface
+- Mobile receiving list resolves the current business unit warehouse and only fetches load lists with that exact `warehouseId`
+- Start and pause receiving controls
+- Per-line received and damaged quantity entry
+- Save receiving quantities
+- Submit for confirmation and putaway staging
 - Delivery-note receiving is inbound-only: the mobile receiving queue only shows delivery notes whose requesting warehouse belongs to the current business unit.
 
 ## Troubleshooting

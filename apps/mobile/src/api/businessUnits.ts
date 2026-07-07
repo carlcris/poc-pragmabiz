@@ -51,6 +51,6 @@ export const setBusinessUnitContext = async (
 
   return {
     ...payload,
-    cookieHeader: toCookieHeader(response.headers.get("set-cookie")) || session?.cookieHeader || ""
+    cookieHeader: payload.cookieHeader || toCookieHeader(response.headers.get("set-cookie"))
   };
 };

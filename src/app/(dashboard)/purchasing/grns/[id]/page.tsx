@@ -12,11 +12,10 @@ import {
   Calendar,
   User,
   CheckCircle,
-  XCircle,
   Save,
   Send,
 } from "lucide-react";
-import { useGRN, useUpdateGRN, useSubmitGRN, useApproveGRN, useRejectGRN } from "@/hooks/useGRNs";
+import { useGRN, useUpdateGRN, useSubmitGRN, useConfirmGRN } from "@/hooks/useGRNs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusText } from "@/components/shared/StatusText";
@@ -82,8 +81,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const { data: grn, isLoading, error } = useGRN(id);
   const updateMutation = useUpdateGRN();
   const submitMutation = useSubmitGRN();
-  const approveMutation = useApproveGRN();
-  const rejectMutation = useRejectGRN();
+  const confirmMutation = useConfirmGRN();
 
   const [editedItems, setEditedItems] = useState<
     Record<
@@ -97,9 +95,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     >
   >({});
   const [notes, setNotes] = useState("");
-  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   const formatDate = (dateString?: string | null, fallback = t("noValue")) => {
     if (!dateString) return fallback;
@@ -195,31 +191,15 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     }
   };
 
-  const handleApprove = async () => {
+  const handleConfirm = async () => {
     if (!grn) return;
 
     try {
-      await approveMutation.mutateAsync({ id: grn.id, notes });
-      toast.success(t("approveSuccess"));
-      setApproveDialogOpen(false);
+      await confirmMutation.mutateAsync({ id: grn.id, notes });
+      toast.success(t("confirmSuccess"));
+      setConfirmDialogOpen(false);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("approveError"));
-    }
-  };
-
-  const handleReject = async () => {
-    if (!grn || !rejectReason.trim()) {
-      toast.error(t("rejectReasonRequired"));
-      return;
-    }
-
-    try {
-      await rejectMutation.mutateAsync({ id: grn.id, reason: rejectReason });
-      toast.success(t("rejectSuccess"));
-      setRejectDialogOpen(false);
-      setRejectReason("");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("rejectError"));
+      toast.error(err instanceof Error ? err.message : t("confirmError"));
     }
   };
 
@@ -236,7 +216,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
   const isEditable = grn?.status === "draft" || grn?.status === "receiving";
   const canSubmit = grn?.status === "draft" || grn?.status === "receiving";
-  const canApprove = grn?.status === "pending_approval";
+  const canConfirm = grn?.status === "pending_approval";
 
   if (isLoading) {
     return (
@@ -308,26 +288,15 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                 {submitMutation.isPending ? t("submitting") : t("submitForApproval")}
               </Button>
             )}
-            {canApprove && (
-              <>
-                <Button
-                  onClick={() => setApproveDialogOpen(true)}
-                  disabled={approveMutation.isPending}
-                  className="bg-emerald-600 shadow-md hover:bg-emerald-700"
-                >
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  {t("approve")}
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setRejectDialogOpen(true)}
-                  disabled={rejectMutation.isPending}
-                  className="shadow-md"
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  {t("reject")}
-                </Button>
-              </>
+            {canConfirm && (
+              <Button
+                onClick={() => setConfirmDialogOpen(true)}
+                disabled={confirmMutation.isPending}
+                className="bg-emerald-600 shadow-md hover:bg-emerald-700"
+              >
+                <CheckCircle className="mr-2 h-4 w-4" />
+                {t("confirm")}
+              </Button>
             )}
           </div>
         </div>
@@ -739,64 +708,32 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         </TabsContent>
       </Tabs>
 
-      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("approveTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("approveDescription", { grnNumber: grn.grnNumber })}
+              {t("confirmDescription", { grnNumber: grn.grnNumber })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4">
-            <Label htmlFor="approve-notes">{t("approvalNotes")}</Label>
+            <Label htmlFor="confirm-notes">{t("confirmationNotes")}</Label>
             <Textarea
-              id="approve-notes"
+              id="confirm-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder={t("approvalNotesPlaceholder")}
+              placeholder={t("confirmationNotesPlaceholder")}
               rows={3}
             />
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>{common("cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleApprove}
-              disabled={approveMutation.isPending}
+              onClick={handleConfirm}
+              disabled={confirmMutation.isPending}
               className="bg-green-600 hover:bg-green-700"
             >
-              {approveMutation.isPending ? t("approving") : t("approve")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("rejectTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("rejectDescription", { grnNumber: grn.grnNumber })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <Label htmlFor="reject-reason">{t("rejectionReason")}</Label>
-            <Textarea
-              id="reject-reason"
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder={t("rejectionReasonPlaceholder")}
-              rows={3}
-              required
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{common("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleReject}
-              disabled={rejectMutation.isPending || !rejectReason.trim()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {rejectMutation.isPending ? t("rejecting") : t("reject")}
+              {confirmMutation.isPending ? t("confirming") : t("confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -7,6 +7,13 @@ export type LoadListSummary = {
   itemCount: number;
 };
 
+export type ReceivingWarehouse = {
+  id: string;
+  warehouseId: string;
+  code: string;
+  name: string;
+};
+
 export type LoadListDetail = LoadListSummary & {
   supplierLlNumber: string | null;
   warehouseName: string | null;
@@ -27,6 +34,20 @@ export type GrnLine = {
   damagedQty: number;
   boxCount: number;
   notes: string | null;
+};
+
+export type UpdateGrnLinePayload = {
+  id: string;
+  receivedQty: number;
+  damagedQty: number;
+  numBoxes: number;
+  notes?: string;
+};
+
+export type UpdateGrnReceivingPayload = {
+  receivingDate?: string;
+  notes?: string;
+  items: UpdateGrnLinePayload[];
 };
 
 export type GrnDetail = {

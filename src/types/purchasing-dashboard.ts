@@ -75,8 +75,8 @@ export type TodaysReceivingQueueData = {
 };
 
 /**
- * Pending Approvals Widget Data
- * Shows GRNs awaiting approval
+ * Pending Confirmations Widget Data
+ * Shows GRNs awaiting confirmation
  */
 export type PendingApprovalsData = {
   count: number;

@@ -513,9 +513,8 @@ interface NotificationItemProps {
 - Delivery note received → Notify sender (confirmation)
 
 ### 4. GRN/Purchase Receipt Workflows
-- GRN submitted → Notify approvers
-- GRN approved → Notify receiving team
-- GRN rejected → Notify submitter
+- GRN submitted → Notify confirmers
+- GRN confirmed → Notify receiving team
 - Purchase receipt posted → Notify purchasing team
 
 ### 5. Approval Workflows

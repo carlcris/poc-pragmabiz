@@ -247,8 +247,8 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         }
       }
 
-      // Handle transition TO "received" (after GRN approval)
-      // Note: This will typically be handled by the GRN approval endpoint
+      // Handle transition TO "received" (after GRN confirmation)
+      // Note: This will typically be handled by the GRN confirmation endpoint
       // but we include it here for completeness
       if (currentStatus !== "received" && newStatus === "received") {
         // Decrement in_transit and increment on_hand

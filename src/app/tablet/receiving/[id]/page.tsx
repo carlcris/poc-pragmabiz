@@ -102,7 +102,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
       }
 
       await submitMutation.mutateAsync(grn.id);
-      toast.success("GRN submitted for approval");
+      toast.success("GRN submitted for confirmation");
       router.push("/tablet/receiving");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to submit GRN");

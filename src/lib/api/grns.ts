@@ -97,27 +97,15 @@ export const grnsApi = {
     }
   },
 
-  approveGRN: async (id: string, notes?: string): Promise<void> => {
-    const response = await fetch(`${API_BASE}/${id}/approve`, {
+  confirmGRN: async (id: string, notes?: string): Promise<void> => {
+    const response = await fetch(`${API_BASE}/${id}/confirm`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notes }),
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to approve GRN");
-    }
-  },
-
-  rejectGRN: async (id: string, reason: string): Promise<void> => {
-    const response = await fetch(`${API_BASE}/${id}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to reject GRN");
+      throw new Error(error.error || "Failed to confirm GRN");
     }
   },
 

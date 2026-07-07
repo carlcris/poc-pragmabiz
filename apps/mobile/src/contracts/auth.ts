@@ -25,4 +25,9 @@ export type LoginResponse = {
   user: MobileUser;
   token: string;
   refreshToken: string;
+  currentBusinessUnit?: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
 };

@@ -231,6 +231,8 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
+  v_auth_user_id UUID := auth.uid();
+  v_user_company_id UUID;
   v_grn public.grns%ROWTYPE;
   v_grn_item public.grn_items%ROWTYPE;
   v_now TIMESTAMPTZ := NOW();
@@ -250,7 +252,23 @@ DECLARE
   v_suggested_location_id UUID;
   v_has_items BOOLEAN := FALSE;
   v_has_received BOOLEAN := FALSE;
+  v_existing_tx_code TEXT;
 BEGIN
+  IF v_auth_user_id IS NULL OR v_auth_user_id <> p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT u.company_id
+  INTO v_user_company_id
+  FROM public.users u
+  WHERE u.id = v_auth_user_id
+    AND u.deleted_at IS NULL
+    AND u.is_active IS TRUE;
+
+  IF v_user_company_id IS DISTINCT FROM p_company_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
   SELECT *
   INTO v_grn
   FROM public.grns
@@ -263,8 +281,31 @@ BEGIN
     RAISE EXCEPTION 'GRN not found';
   END IF;
 
-  IF v_grn.status NOT IN ('draft', 'receiving') THEN
-    RAISE EXCEPTION 'Only draft or receiving GRNs can be submitted';
+  IF v_grn.status NOT IN ('draft', 'receiving', 'pending_approval') THEN
+    RAISE EXCEPTION 'Only draft, receiving, or pending confirmation GRNs can be staged';
+  END IF;
+
+  IF NOT public.user_has_permission(
+    v_auth_user_id,
+    'goods_receipt_notes',
+    'edit',
+    v_grn.business_unit_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT st.transaction_code
+  INTO v_existing_tx_code
+  FROM public.stock_transactions st
+  WHERE st.company_id = p_company_id
+    AND st.reference_type = 'grn'
+    AND st.reference_id = v_grn.id
+    AND st.deleted_at IS NULL
+  ORDER BY st.created_at ASC
+  LIMIT 1;
+
+  IF v_existing_tx_code IS NOT NULL THEN
+    RETURN v_existing_tx_code;
   END IF;
 
   v_batch_code := COALESCE(
@@ -445,13 +486,200 @@ BEGIN
       received_by = COALESCE(received_by, p_user_id),
       updated_by = p_user_id,
       updated_at = v_now
-  WHERE id = v_grn.id;
+  WHERE id = v_grn.id
+    AND status <> 'pending_approval';
 
   RETURN v_tx_code;
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.approve_grn_with_batch_inventory(
+CREATE OR REPLACE FUNCTION public.start_grn_receiving(
+  p_company_id UUID,
+  p_user_id UUID,
+  p_grn_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_auth_user_id UUID := auth.uid();
+  v_user_company_id UUID;
+  v_grn public.grns%ROWTYPE;
+  v_load_list public.load_lists%ROWTYPE;
+BEGIN
+  IF v_auth_user_id IS NULL OR v_auth_user_id <> p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT u.company_id
+  INTO v_user_company_id
+  FROM public.users u
+  WHERE u.id = v_auth_user_id
+    AND u.deleted_at IS NULL
+    AND u.is_active IS TRUE;
+
+  IF v_user_company_id IS DISTINCT FROM p_company_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT *
+  INTO v_grn
+  FROM public.grns
+  WHERE id = p_grn_id
+    AND company_id = p_company_id
+    AND deleted_at IS NULL
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'GRN not found';
+  END IF;
+
+  IF NOT public.user_has_permission(
+    v_auth_user_id,
+    'goods_receipt_notes',
+    'edit',
+    v_grn.business_unit_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  IF v_grn.status NOT IN ('draft', 'receiving') THEN
+    RAISE EXCEPTION 'Only draft GRNs can start receiving';
+  END IF;
+
+  IF v_grn.load_list_id IS NOT NULL THEN
+    SELECT *
+    INTO v_load_list
+    FROM public.load_lists
+    WHERE id = v_grn.load_list_id
+      AND company_id = p_company_id
+      AND deleted_at IS NULL
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Load list not found';
+    END IF;
+
+    IF v_load_list.status NOT IN ('arrived', 'receiving') THEN
+      RAISE EXCEPTION 'Only arrived load lists can start receiving';
+    END IF;
+
+    IF v_load_list.status <> 'receiving' THEN
+      UPDATE public.load_lists
+      SET
+        status = 'receiving',
+        updated_by = p_user_id,
+        updated_at = NOW()
+      WHERE id = v_load_list.id
+        AND company_id = p_company_id;
+    END IF;
+  END IF;
+
+  IF v_grn.status <> 'receiving' THEN
+    UPDATE public.grns
+    SET
+      status = 'receiving',
+      received_by = COALESCE(received_by, p_user_id),
+      receiving_date = COALESCE(receiving_date, CURRENT_DATE),
+      updated_by = p_user_id,
+      updated_at = NOW()
+    WHERE id = v_grn.id
+      AND company_id = p_company_id;
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.pause_grn_receiving(
+  p_company_id UUID,
+  p_user_id UUID,
+  p_grn_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_auth_user_id UUID := auth.uid();
+  v_user_company_id UUID;
+  v_grn public.grns%ROWTYPE;
+  v_load_list public.load_lists%ROWTYPE;
+BEGIN
+  IF v_auth_user_id IS NULL OR v_auth_user_id <> p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT u.company_id
+  INTO v_user_company_id
+  FROM public.users u
+  WHERE u.id = v_auth_user_id
+    AND u.deleted_at IS NULL
+    AND u.is_active IS TRUE;
+
+  IF v_user_company_id IS DISTINCT FROM p_company_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT *
+  INTO v_grn
+  FROM public.grns
+  WHERE id = p_grn_id
+    AND company_id = p_company_id
+    AND deleted_at IS NULL
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'GRN not found';
+  END IF;
+
+  IF NOT public.user_has_permission(
+    v_auth_user_id,
+    'goods_receipt_notes',
+    'edit',
+    v_grn.business_unit_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  IF v_grn.status <> 'receiving' THEN
+    RAISE EXCEPTION 'Only receiving GRNs can be paused';
+  END IF;
+
+  IF v_grn.load_list_id IS NOT NULL THEN
+    SELECT *
+    INTO v_load_list
+    FROM public.load_lists
+    WHERE id = v_grn.load_list_id
+      AND company_id = p_company_id
+      AND deleted_at IS NULL
+    FOR UPDATE;
+
+    IF FOUND AND v_load_list.status = 'receiving' THEN
+      UPDATE public.load_lists
+      SET
+        status = 'arrived',
+        updated_by = p_user_id,
+        updated_at = NOW()
+      WHERE id = v_load_list.id
+        AND company_id = p_company_id;
+    END IF;
+  END IF;
+
+  UPDATE public.grns
+  SET
+    status = 'draft',
+    updated_by = p_user_id,
+    updated_at = NOW()
+  WHERE id = v_grn.id
+    AND company_id = p_company_id;
+END;
+$$;
+
+DROP FUNCTION IF EXISTS public.approve_grn_with_batch_inventory(UUID, UUID, UUID, TEXT);
+
+CREATE OR REPLACE FUNCTION public.confirm_grn_with_putaway(
   p_company_id UUID,
   p_user_id UUID,
   p_grn_id UUID,
@@ -463,9 +691,27 @@ SECURITY INVOKER
 SET search_path = public
 AS $$
 DECLARE
+  v_auth_user_id UUID := auth.uid();
+  v_user_company_id UUID;
   v_grn public.grns%ROWTYPE;
   v_now TIMESTAMPTZ := NOW();
+  v_tx_code TEXT;
 BEGIN
+  IF v_auth_user_id IS NULL OR v_auth_user_id <> p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT u.company_id
+  INTO v_user_company_id
+  FROM public.users u
+  WHERE u.id = v_auth_user_id
+    AND u.deleted_at IS NULL
+    AND u.is_active IS TRUE;
+
+  IF v_user_company_id IS DISTINCT FROM p_company_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
   SELECT *
   INTO v_grn
   FROM public.grns
@@ -479,7 +725,35 @@ BEGIN
   END IF;
 
   IF v_grn.status <> 'pending_approval' THEN
-    RAISE EXCEPTION 'Only GRNs in pending approval can be approved';
+    RAISE EXCEPTION 'Only GRNs in pending confirmation can be confirmed';
+  END IF;
+
+  IF NOT public.user_has_permission(
+    v_auth_user_id,
+    'goods_receipt_notes',
+    'edit',
+    v_grn.business_unit_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT st.transaction_code
+  INTO v_tx_code
+  FROM public.stock_transactions st
+  WHERE st.company_id = p_company_id
+    AND st.reference_type = 'grn'
+    AND st.reference_id = v_grn.id
+    AND st.deleted_at IS NULL
+  ORDER BY st.created_at ASC
+  LIMIT 1;
+
+  IF v_tx_code IS NULL THEN
+    v_tx_code := public.submit_grn_to_putaway(
+      p_company_id,
+      p_user_id,
+      p_grn_id,
+      p_notes
+    );
   END IF;
 
   UPDATE public.grns
@@ -507,7 +781,7 @@ BEGIN
       AND deleted_at IS NULL;
   END IF;
 
-  RETURN NULL;
+  RETURN v_tx_code;
 END;
 $$;
 
@@ -515,6 +789,9 @@ COMMENT ON COLUMN public.putaway_tasks.suggested_location_id IS
   'Optional source-provided destination hint. Final placement is still selected during putaway posting.';
 
 COMMENT ON FUNCTION public.submit_grn_to_putaway(UUID, UUID, UUID, TEXT) IS
-  'Stages received GRN quantities into putaway tasks at submit-for-approval time without writing final batch-location inventory.';
+  'Stages received GRN quantities into putaway tasks at submit-for-confirmation time without writing final batch-location inventory.';
+
+COMMENT ON FUNCTION public.confirm_grn_with_putaway(UUID, UUID, UUID, TEXT) IS
+  'Confirms a GRN after received quantities have been staged into putaway, staging legacy pending GRNs first when needed.';
 
 COMMIT;

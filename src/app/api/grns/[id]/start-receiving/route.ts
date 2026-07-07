@@ -1,0 +1,76 @@
+import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
+import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
+import { NextRequest, NextResponse } from "next/server";
+import { requirePermission } from "@/lib/auth";
+import { RESOURCES } from "@/constants/resources";
+
+type RouteContext = {
+  params: Promise<{ id: string }>;
+};
+
+const userSafeStartMessage = (message: string | undefined) => {
+  const allowedMessages = new Set([
+    "GRN not found",
+    "Load list not found",
+    "Only draft GRNs can start receiving",
+    "Only arrived load lists can start receiving",
+  ]);
+
+  return message && allowedMessages.has(message)
+    ? message
+    : "Failed to start GRN receiving";
+};
+
+async function POSTHandler(_request: NextRequest, context: RouteContext) {
+  try {
+    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    if (unauthorized) return unauthorized;
+    const { id } = await context.params;
+    const { supabase } = await createServerClientWithBU();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!userData?.company_id) {
+      return NextResponse.json({ error: "User company not found" }, { status: 400 });
+    }
+
+    const { error } = await supabase.rpc("start_grn_receiving", {
+      p_company_id: userData.company_id,
+      p_user_id: user.id,
+      p_grn_id: id,
+    });
+
+    if (error) {
+      console.error("Error starting GRN receiving:", error);
+      return NextResponse.json({ error: userSafeStartMessage(error.message) }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      id,
+      status: "receiving",
+      message: "GRN receiving started",
+    });
+  } catch (error) {
+    console.error("Unexpected error starting GRN receiving:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export const POST = withActivityLogging(POSTHandler, {
+  action: "start_receiving",
+  resourceType: "grns",
+  route: "/api/grns/[id]/start-receiving",
+});

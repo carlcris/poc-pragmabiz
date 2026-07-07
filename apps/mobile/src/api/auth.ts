@@ -45,7 +45,8 @@ export const login = async (email: string, password: string): Promise<AuthSessio
     user: payload.user,
     token: payload.token,
     refreshToken: payload.refreshToken,
-    cookieHeader: toCookieHeader(response.headers.get("set-cookie"))
+    cookieHeader: toCookieHeader(response.headers.get("set-cookie")),
+    currentBusinessUnit: payload.currentBusinessUnit ?? null
   };
 };
 

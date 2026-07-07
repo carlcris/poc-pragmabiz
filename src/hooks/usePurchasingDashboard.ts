@@ -275,8 +275,8 @@ export const useTodaysReceivingQueue = (
 };
 
 /**
- * Hook for Pending Approvals widget
- * Shows GRNs awaiting approval
+ * Hook for Pending Confirmations widget
+ * Shows GRNs awaiting confirmation
  */
 export const usePendingApprovals = (
   params?: Omit<DashboardQueryParams, "widgets">,

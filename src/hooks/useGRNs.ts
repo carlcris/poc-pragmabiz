@@ -102,11 +102,11 @@ export function useSubmitGRN() {
   });
 }
 
-export function useApproveGRN() {
+export function useConfirmGRN() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, notes }: { id: string; notes?: string }) => grnsApi.approveGRN(id, notes),
+    mutationFn: ({ id, notes }: { id: string; notes?: string }) => grnsApi.confirmGRN(id, notes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
@@ -118,17 +118,6 @@ export function useApproveGRN() {
       queryClient.invalidateQueries({ queryKey: [REORDER_ALERTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_STATISTICS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [REORDER_STOCK_LEVELS_QUERY_KEY] });
-    },
-  });
-}
-
-export function useRejectGRN() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) => grnsApi.rejectGRN(id, reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
     },
   });
 }

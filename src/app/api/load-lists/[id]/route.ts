@@ -111,6 +111,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
+    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
 
     // Fetch load list with related data
     const { data: ll, error } = await supabase
@@ -186,6 +187,32 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (error) {
       console.error("Error fetching load list:", error);
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+    }
+
+    if (receivingOnly) {
+      if (!currentBusinessUnitId) {
+        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+      }
+
+      const { data: receivingWarehouse, error: warehouseScopeError } = await supabase
+        .from("warehouses")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("business_unit_id", currentBusinessUnitId)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (warehouseScopeError) {
+        console.error("Error checking receiving load list warehouse scope:", warehouseScopeError);
+        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+      }
+
+      if (!receivingWarehouse || receivingWarehouse.id !== ll.warehouse_id) {
+        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+      }
     }
 
     // Format response

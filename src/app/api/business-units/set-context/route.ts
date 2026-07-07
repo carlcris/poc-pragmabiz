@@ -25,6 +25,16 @@ type SetContextRequest = {
   business_unit_id: string;
 };
 
+type ResponseCookieReader = {
+  getAll: () => Array<{ name: string; value: string }>;
+};
+
+const toCookieHeader = (cookies: ResponseCookieReader) =>
+  cookies
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join("; ");
+
 async function POSTHandler(request: NextRequest) {
   try {
     // Note: No permission check - all authenticated users can switch their BU context
@@ -89,6 +99,7 @@ async function POSTHandler(request: NextRequest) {
       requires_refresh: false,
       token: refreshed.session.access_token,
       refreshToken: refreshed.session.refresh_token,
+      cookieHeader: toCookieHeader(response.cookies),
     });
 
     setActivityContext({ businessUnitId: data.business_unit.id });

@@ -94,7 +94,7 @@ Draft → Reserve Inputs → Execute → Complete
 ```
 
 **Shared putaway behavior**:
-Transformation completion hands produced output quantities into the shared putaway station instead of posting outputs into the `UNTRACKED` batch or making them immediately available. GRN receiving uses the same putaway model when received goods are submitted for approval, and the model also applies to chop-and-join production or any other workflow that creates stock before final warehouse placement. See `docs/plans/shared-putaway-station-plan.md`.
+Transformation completion hands produced output quantities into the shared putaway station instead of posting outputs into the `UNTRACKED` batch or making them immediately available. GRN receiving uses the same putaway model when received goods are submitted for confirmation, and the model also applies to chop-and-join production or any other workflow that creates stock before final warehouse placement. See `docs/plans/shared-putaway-station-plan.md`.
 
 **Cost Redistribution**:
 When executing a transformation:

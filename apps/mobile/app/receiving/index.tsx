@@ -10,7 +10,8 @@ import {
   SearchInput,
   StatusBadge
 } from "@/components/ui";
-import { useDeliveryNotes, useLoadLists } from "@/hooks/queries";
+import { useDeliveryNotes, useLoadLists, useReceivingWarehouse } from "@/hooks/queries";
+import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, shadows, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
@@ -30,15 +31,23 @@ const deliveryNoteStatusFilters = [
 ];
 
 export default function ReceivingScreen() {
+  const currentBusinessUnit = useAuthStore((state) => state.session?.currentBusinessUnit);
   const [tab, setTab] = useState("load-lists");
   const [status, setStatus] = useState("in_transit");
   const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("dispatched");
   const [search, setSearch] = useState("");
-  const loadLists = useLoadLists(status, search);
+  const receivingWarehouse = useReceivingWarehouse(currentBusinessUnit?.id);
+  const loadLists = useLoadLists(status, search, receivingWarehouse.data?.warehouseId);
   const deliveryNotes = useDeliveryNotes(deliveryNoteStatus, search);
+  const canLoadLoadLists = Boolean(currentBusinessUnit?.id && receivingWarehouse.data?.warehouseId);
 
-  const loading = tab === "load-lists" ? loadLists.isLoading : deliveryNotes.isLoading;
-  const error = tab === "load-lists" ? loadLists.error : deliveryNotes.error;
+  const loading =
+    tab === "load-lists"
+      ? Boolean(currentBusinessUnit?.id) &&
+        (receivingWarehouse.isFetching || (canLoadLoadLists && loadLists.isFetching))
+      : deliveryNotes.isLoading;
+  const error =
+    tab === "load-lists" ? receivingWarehouse.error || loadLists.error : deliveryNotes.error;
   const selectedStatus = statusFilters.find((item) => item.value === status) || statusFilters[0];
   const selectedDeliveryNoteStatus =
     deliveryNoteStatusFilters.find((item) => item.value === deliveryNoteStatus) ||
@@ -84,17 +93,23 @@ export default function ReceivingScreen() {
       />
 
       {loading ? <LoadingState /> : null}
+      {tab === "load-lists" && !currentBusinessUnit?.id ? (
+        <ErrorState message="Business unit context is syncing. Select a business unit from the header." />
+      ) : null}
       {error ? <ErrorState message="Unable to load receiving records." /> : null}
 
-      {tab === "load-lists" && loadLists.data ? (
+      {tab === "load-lists" && canLoadLoadLists && loadLists.data && !loading ? (
         <>
           <Text style={styles.resultText}>{loadLists.data.length} LOAD LISTS FOUND</Text>
           {loadLists.data.length === 0 ? (
             <>
               <ReceivingEmptyState
                 title={selectedStatus.emptyTitle}
-                subtitle={`There are no loads currently ${selectedStatus.label.toLowerCase()} for Abad Santos today.`}
-                onRefresh={() => void loadLists.refetch()}
+                subtitle={`There are no loads currently ${selectedStatus.label.toLowerCase()} for ${receivingWarehouse.data?.name || "this warehouse"}.`}
+                onRefresh={() => {
+                  void receivingWarehouse.refetch();
+                  void loadLists.refetch();
+                }}
                 onShowAll={() => setStatus("all")}
               />
               <TipCard />

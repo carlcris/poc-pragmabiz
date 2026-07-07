@@ -89,6 +89,7 @@ const ACTION_PHRASES: Record<string, { infinitive: string; past: string; suffix?
   send: { infinitive: "send", past: "sent" },
   start_picking: { infinitive: "start picking", past: "started picking" },
   start_receiving: { infinitive: "start receiving", past: "started receiving" },
+  pause_receiving: { infinitive: "pause receiving", past: "paused receiving" },
   submit: { infinitive: "submit", past: "submitted" },
   submit_receiving: { infinitive: "submit receiving for", past: "submitted receiving for" },
   unacknowledge: { infinitive: "unacknowledge", past: "unacknowledged" },

@@ -648,8 +648,8 @@ function DamagePhotoCapture() {
        - Adds notes
    - Confirms box
 5. Reviews total received quantities
-6. Submits GRN for approval
-7. Supervisor approves GRN on desktop
+6. Submits GRN for confirmation
+7. Supervisor confirms GRN on desktop
 8. Purchase receipt created and posted
 
 ## UI Components

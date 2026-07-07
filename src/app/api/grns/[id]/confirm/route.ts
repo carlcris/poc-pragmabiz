@@ -4,13 +4,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
-// POST /api/grns/[id]/approve - Approve GRN after received stock has been staged to putaway
+const userSafeConfirmMessage = (message: string | undefined) => {
+  const allowedMessages = new Set([
+    "GRN not found",
+    "Only GRNs in pending confirmation can be confirmed",
+    "GRN has no items",
+    "At least one GRN item must have a received quantity",
+  ]);
+
+  return message && allowedMessages.has(message) ? message : "Failed to confirm GRN";
+};
+
+// POST /api/grns/[id]/confirm - Confirm GRN after received stock has been staged to putaway
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
-    const body = await request.json();
+    const body = await request.json().catch(() => ({} as { notes?: string | null }));
 
     const {
       data: { user },
@@ -31,24 +43,9 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Fetch GRN with items
     const { data: grn, error: fetchError } = await supabase
       .from("grns")
-      .select(
-        `
-        id, grn_number, status, load_list_id, warehouse_id, company_id, business_unit_id,
-        items:grn_items(
-          id,
-          item_id,
-          received_qty,
-          damaged_qty,
-          item:items(
-            id,
-            uom_id
-          )
-        )
-      `
-      )
+      .select("id, grn_number, status, load_list_id, company_id, items:grn_items(id)")
       .eq("id", id)
       .eq("company_id", userData.company_id)
       .is("deleted_at", null)
@@ -58,28 +55,20 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "GRN not found" }, { status: 404 });
     }
 
-    // Only allow approving GRNs in pending_approval status
     if (grn.status !== "pending_approval") {
       return NextResponse.json(
-        { error: "Only GRNs in pending approval can be approved" },
+        { error: "Only GRNs in pending confirmation can be confirmed" },
         { status: 400 }
       );
     }
 
-    // Validate all items have been received
-    type GrnApproveItem = {
-      item_id: string;
-      received_qty: number | string | null;
-      damaged_qty?: number | string | null;
-      item?: { uom_id: string | null } | Array<{ uom_id: string | null }> | null;
-    };
-    const items = Array.isArray(grn.items) ? (grn.items as GrnApproveItem[]) : [];
+    const items = Array.isArray(grn.items) ? grn.items : [];
     if (items.length === 0) {
       return NextResponse.json({ error: "GRN has no items" }, { status: 400 });
     }
 
-    const { data: stockTransactionCode, error: approveError } = await supabase.rpc(
-      "approve_grn_with_batch_inventory",
+    const { data: stockTransactionCode, error: confirmError } = await supabase.rpc(
+      "confirm_grn_with_putaway",
       {
         p_company_id: grn.company_id,
         p_user_id: user.id,
@@ -88,9 +77,10 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       }
     );
 
-    if (approveError) {
-      console.error("Error approving GRN via RPC:", approveError);
-      return NextResponse.json({ error: approveError.message }, { status: 400 });
+    if (confirmError) {
+      console.error("Error confirming GRN via RPC:", confirmError);
+      const status = confirmError.message === "Unauthorized" ? 403 : 400;
+      return NextResponse.json({ error: userSafeConfirmMessage(confirmError.message) }, { status });
     }
 
     if (grn.load_list_id) {
@@ -128,7 +118,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       grnNumber: grn.grn_number,
       stockTransactionCode: stockTransactionCode || null,
       status: "approved",
-      message: "GRN approved successfully",
+      message: "GRN confirmed successfully",
     });
   } catch (error) {
     console.error("Internal server error:", error);
@@ -137,7 +127,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
 }
 
 export const POST = withActivityLogging(POSTHandler, {
-  action: "approve",
+  action: "confirm",
   resourceType: "grns",
-  route: "/api/grns/[id]/approve",
+  route: "/api/grns/[id]/confirm",
 });

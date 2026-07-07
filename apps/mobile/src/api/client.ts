@@ -1,7 +1,7 @@
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from "@/config/env";
 import { useAuthStore } from "@/stores/authStore";
 
-type ApiMethod = "GET" | "POST" | "PATCH" | "DELETE";
+type ApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 type ApiOptions = {
   method?: ApiMethod;

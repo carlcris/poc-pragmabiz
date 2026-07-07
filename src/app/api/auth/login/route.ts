@@ -191,6 +191,18 @@ async function POSTHandler(request: NextRequest) {
     const fullName = [firstName, lastName].filter(Boolean).join(" ");
     const actorLabel =
       formatActivityActorUsername(userData.username) || fullName || data.user.email || email;
+    const currentBusinessUnitId = await resolveBusinessUnitId(
+      supabase,
+      data.user.id,
+      data.session.access_token
+    );
+    const { data: currentBusinessUnit } = currentBusinessUnitId
+      ? await supabase
+          .from("business_units")
+          .select("id, code, name")
+          .eq("id", currentBusinessUnitId)
+          .maybeSingle()
+      : { data: null };
 
     const jsonResponse = NextResponse.json({
       user: {
@@ -205,6 +217,13 @@ async function POSTHandler(request: NextRequest) {
       },
       token: data.session.access_token,
       refreshToken: data.session.refresh_token,
+      currentBusinessUnit: currentBusinessUnit
+        ? {
+            id: currentBusinessUnit.id,
+            code: currentBusinessUnit.code,
+            name: currentBusinessUnit.name,
+          }
+        : null,
       landingPage: await resolveLandingPage(supabase, data.user.id, data.session.access_token),
     });
 
@@ -212,7 +231,7 @@ async function POSTHandler(request: NextRequest) {
       userId: data.user.id,
       actorLabel,
       companyId: userData.company_id,
-      businessUnitId: decodeBusinessUnitIdFromToken(data.session.access_token),
+      businessUnitId: currentBusinessUnitId,
     });
 
     response.cookies.getAll().forEach((cookie) => {

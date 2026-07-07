@@ -1,21 +1,171 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, StatusBadge } from "@/components/ui";
-import { useLoadListReceiving } from "@/hooks/queries";
+import {
+  useLoadListReceiving,
+  usePauseGrnReceiving,
+  useStartGrnReceiving,
+  useSubmitGrnReceiving,
+  useUpdateGrnReceiving
+} from "@/hooks/queries";
+import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
 
+type GrnLineDraft = Omit<UpdateGrnLinePayload, "id" | "numBoxes">;
+
+const todayIsoDate = () => new Date().toISOString().split("T")[0];
+
+const parseQuantity = (value: string) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
+const getInitialDraft = (item: GrnLine): GrnLineDraft => ({
+  receivedQty: item.receivedQty,
+  damagedQty: item.damagedQty,
+  notes: item.notes || ""
+});
+
 export default function LoadListReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [lineEdits, setLineEdits] = useState<Record<string, GrnLineDraft>>({});
+  const [actionMessage, setActionMessage] = useState("");
+  const [actionError, setActionError] = useState("");
   const detail = useLoadListReceiving(id);
   const loadList = detail.data?.loadList;
   const grn = detail.data?.grn;
-  const checkedItems = grn?.items.filter((item) => item.receivedQty > 0 || item.damagedQty > 0).length || 0;
+  const updateGrn = useUpdateGrnReceiving(id, grn?.id || "");
+  const startGrn = useStartGrnReceiving(id, grn?.id || "");
+  const pauseGrn = usePauseGrnReceiving(id, grn?.id || "");
+  const submitGrn = useSubmitGrnReceiving(id, grn?.id || "");
+  const canStart = grn?.status === "draft";
+  const canEdit = grn?.status === "receiving";
+  const hasUnsavedChanges = Object.keys(lineEdits).length > 0;
+  const busy = updateGrn.isPending || startGrn.isPending || pauseGrn.isPending || submitGrn.isPending;
+
+  useEffect(() => {
+    setLineEdits({});
+    setActionError("");
+    setActionMessage("");
+  }, [grn?.id]);
+
+  const getLineDraft = (item: GrnLine) => lineEdits[item.id] || getInitialDraft(item);
+
+  const checkedItems = grn?.items.filter((item) => {
+    const draft = getLineDraft(item);
+    return draft.receivedQty > 0 || draft.damagedQty > 0;
+  }).length || 0;
   const totalItems = grn?.items.length || 0;
   const progress = totalItems > 0 ? checkedItems / totalItems : 0;
+  const hasReceivedQty = Boolean(grn?.items.some((item) => getLineDraft(item).receivedQty > 0));
+
+  const handleLineChange = (
+    item: GrnLine,
+    field: keyof GrnLineDraft,
+    value: number | string
+  ) => {
+    setActionError("");
+    setActionMessage("");
+    setLineEdits((current) => ({
+      ...current,
+      [item.id]: {
+        ...getInitialDraft(item),
+        ...current[item.id],
+        [field]: value
+      }
+    }));
+  };
+
+  const buildUpdatePayload = () => {
+    if (!grn) return [];
+    return Object.entries(lineEdits).map(([lineId, draft]) => ({
+      id: lineId,
+      receivedQty: draft.receivedQty,
+      damagedQty: draft.damagedQty,
+      numBoxes: grn.items.find((item) => item.id === lineId)?.boxCount || 0,
+      notes: draft.notes
+    }));
+  };
+
+  const saveChanges = async (silent = false) => {
+    if (!grn || !hasUnsavedChanges) return true;
+
+    const items = buildUpdatePayload();
+    if (items.length === 0) return true;
+
+    try {
+      await updateGrn.mutateAsync({
+        receivingDate: grn.receivingDate || todayIsoDate(),
+        items
+      });
+      setLineEdits({});
+      if (!silent) {
+        setActionMessage("Receiving quantities saved.");
+      }
+      return true;
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to save receiving quantities.");
+      return false;
+    }
+  };
+
+  const handleSubmit = async () => {
+    setActionError("");
+    setActionMessage("");
+
+    if (!grn) return;
+    if (!hasReceivedQty) {
+      setActionError("Enter a received quantity before submitting this GRN.");
+      return;
+    }
+
+    const saved = await saveChanges(true);
+    if (!saved) return;
+
+    try {
+      await submitGrn.mutateAsync();
+      setActionMessage("GRN submitted to putaway.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to submit GRN.");
+    }
+  };
+
+  const handleStartReceiving = async () => {
+    setActionError("");
+    setActionMessage("");
+
+    if (!grn) return;
+
+    try {
+      await startGrn.mutateAsync();
+      setActionMessage("Receiving started.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to start receiving.");
+    }
+  };
+
+  const handlePauseReceiving = async () => {
+    setActionError("");
+    setActionMessage("");
+
+    if (!grn) return;
+
+    const saved = await saveChanges(true);
+    if (!saved) return;
+
+    try {
+      await pauseGrn.mutateAsync();
+      setLineEdits({});
+      setActionMessage("Receiving paused.");
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Failed to pause receiving.");
+    }
+  };
 
   return (
     <Screen title={loadList?.llNumber || "Load List"} subtitle="Goods Receipt Note" back>
@@ -68,11 +218,95 @@ export default function LoadListReceivingDetailScreen() {
                 <StatusBadge status={grn.status} />
               </Card>
 
+              {canStart || canEdit ? (
+                <Card style={styles.actionCard}>
+                  <View style={styles.actionHeader}>
+                    <View style={styles.actionTitleBlock}>
+                      <Text style={styles.actionTitle}>
+                        {canStart ? "Ready to receive" : "Receive items"}
+                      </Text>
+                      <Text style={styles.actionSubtitle}>
+                        {canStart
+                          ? "Start receiving before entering quantities."
+                          : "Save quantities, then submit to create putaway tasks."}
+                      </Text>
+                    </View>
+                    {hasUnsavedChanges ? (
+                      <Text style={styles.unsavedText}>Unsaved</Text>
+                    ) : null}
+                  </View>
+                  {actionError ? <Text style={styles.errorText}>{actionError}</Text> : null}
+                  {actionMessage ? <Text style={styles.successText}>{actionMessage}</Text> : null}
+                  {canStart ? (
+                    <Pressable
+                      onPress={() => void handleStartReceiving()}
+                      disabled={busy}
+                      style={({ pressed }) => [
+                        styles.primaryButton,
+                        busy && styles.buttonDisabled,
+                        pressed && !busy ? styles.primaryButtonPressed : null
+                      ]}
+                    >
+                      <Ionicons name="play-outline" size={18} color="#fff" />
+                      <Text style={styles.primaryButtonText}>
+                        {startGrn.isPending ? "Starting..." : "Start Receiving"}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <View style={styles.actionButtons}>
+                      <Pressable
+                        onPress={() => void handlePauseReceiving()}
+                        disabled={busy}
+                        style={({ pressed }) => [
+                          styles.secondaryButton,
+                          busy && styles.buttonDisabled,
+                          pressed && !busy ? styles.secondaryButtonPressed : null
+                        ]}
+                      >
+                        <Ionicons name="pause-outline" size={18} color={colors.text} />
+                        <Text style={styles.secondaryButtonText}>
+                          {pauseGrn.isPending ? "Pausing..." : "Pause"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void saveChanges()}
+                        disabled={!hasUnsavedChanges || busy}
+                        style={({ pressed }) => [
+                          styles.secondaryButton,
+                          (!hasUnsavedChanges || busy) && styles.buttonDisabled,
+                          pressed && hasUnsavedChanges && !busy ? styles.secondaryButtonPressed : null
+                        ]}
+                      >
+                        <Ionicons name="save-outline" size={18} color={colors.text} />
+                        <Text style={styles.secondaryButtonText}>
+                          {updateGrn.isPending ? "Saving..." : "Save"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void handleSubmit()}
+                        disabled={busy || !hasReceivedQty}
+                        style={({ pressed }) => [
+                          styles.primaryButton,
+                          (busy || !hasReceivedQty) && styles.buttonDisabled,
+                          pressed && !busy && hasReceivedQty ? styles.primaryButtonPressed : null
+                        ]}
+                      >
+                        <Ionicons name="paper-plane-outline" size={18} color="#fff" />
+                        <Text style={styles.primaryButtonText}>
+                          {submitGrn.isPending ? "Submitting..." : "Submit"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </Card>
+              ) : null}
+
               <View style={styles.itemsSection}>
                 {grn.items.map((item) => {
-                  const hasEntry = item.receivedQty > 0 || item.damagedQty > 0;
-                  const variance = hasEntry ? item.receivedQty + item.damagedQty - item.expectedQty : null;
-                  const hasIssue = item.damagedQty > 0 || (variance !== null && variance < 0);
+                  const draft = getLineDraft(item);
+                  const hasEntry = draft.receivedQty > 0 || draft.damagedQty > 0;
+                  const variance = hasEntry ? draft.receivedQty + draft.damagedQty - item.expectedQty : null;
+                  const hasIssue = draft.damagedQty > 0 || (variance !== null && variance < 0);
 
                   return (
                     <Card
@@ -103,9 +337,33 @@ export default function LoadListReceivingDetailScreen() {
                       </View>
 
                       <View style={styles.quantityGrid}>
-                        <QuantityBox label="Received" value={item.receivedQty} tone="green" />
-                        <QuantityBox label="Damaged" value={item.damagedQty} tone="red" />
-                        <QuantityBox label="Boxes" value={item.boxCount} tone="blue" />
+                        {canEdit ? (
+                          <>
+                            <QuantityInput
+                              label="Received"
+                              value={draft.receivedQty}
+                              tone="green"
+                              disabled={busy}
+                              onChange={(value) =>
+                                handleLineChange(item, "receivedQty", parseQuantity(value))
+                              }
+                            />
+                            <QuantityInput
+                              label="Damaged"
+                              value={draft.damagedQty}
+                              tone="red"
+                              disabled={busy}
+                              onChange={(value) =>
+                                handleLineChange(item, "damagedQty", parseQuantity(value))
+                              }
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <QuantityBox label="Received" value={draft.receivedQty} tone="green" />
+                            <QuantityBox label="Damaged" value={draft.damagedQty} tone="red" />
+                          </>
+                        )}
                       </View>
 
                       {variance !== null && variance !== 0 ? (
@@ -162,6 +420,41 @@ const QuantityBox = ({
       {label}
     </Text>
     <Text style={styles.quantityValue}>{value}</Text>
+  </View>
+);
+
+const QuantityInput = ({
+  label,
+  value,
+  tone,
+  disabled,
+  onChange
+}: {
+  label: string;
+  value: number;
+  tone: "green" | "red" | "blue";
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) => (
+  <View style={[styles.quantityBox, disabled ? styles.quantityBoxDisabled : null]}>
+    <Text
+      style={[
+        styles.quantityLabel,
+        tone === "green" ? styles.quantityGreen : null,
+        tone === "red" ? styles.quantityRed : null,
+        tone === "blue" ? styles.quantityBlue : null
+      ]}
+    >
+      {label}
+    </Text>
+    <TextInput
+      value={String(value)}
+      editable={!disabled}
+      keyboardType="decimal-pad"
+      selectTextOnFocus
+      onChangeText={onChange}
+      style={styles.quantityInput}
+    />
   </View>
 );
 
@@ -251,6 +544,87 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: colors.primary
   },
+  actionCard: {
+    gap: spacing.md
+  },
+  actionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md
+  },
+  actionTitleBlock: {
+    flex: 1
+  },
+  actionTitle: {
+    ...typography.body,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text
+  },
+  actionSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: spacing.xs
+  },
+  unsavedText: {
+    ...typography.caption,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.amberDark
+  },
+  actionButtons: {
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  primaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  primaryButtonPressed: {
+    backgroundColor: colors.primaryDark
+  },
+  primaryButtonText: {
+    ...typography.bodySmall,
+    fontWeight: typography.fontWeights.bold,
+    color: "#fff"
+  },
+  secondaryButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm
+  },
+  secondaryButtonPressed: {
+    backgroundColor: colors.faint
+  },
+  secondaryButtonText: {
+    ...typography.bodySmall,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text
+  },
+  buttonDisabled: {
+    opacity: 0.45
+  },
+  errorText: {
+    ...typography.bodySmall,
+    color: colors.dangerDark,
+    fontWeight: typography.fontWeights.semibold
+  },
+  successText: {
+    ...typography.bodySmall,
+    color: colors.greenDark,
+    fontWeight: typography.fontWeights.semibold
+  },
   itemsSection: {
     gap: spacing.md
   },
@@ -314,6 +688,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     alignItems: "center"
   },
+  quantityBoxDisabled: {
+    opacity: 0.7
+  },
   quantityLabel: {
     ...typography.caption,
     fontWeight: typography.fontWeights.semibold
@@ -329,6 +706,20 @@ const styles = StyleSheet.create({
   },
   quantityValue: {
     marginTop: spacing.xs,
+    fontSize: 18,
+    fontWeight: typography.fontWeights.bold,
+    color: colors.text
+  },
+  quantityInput: {
+    marginTop: spacing.xs,
+    minWidth: 56,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.faint,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    textAlign: "center",
     fontSize: 18,
     fontWeight: typography.fontWeights.bold,
     color: colors.text

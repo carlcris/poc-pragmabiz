@@ -10,11 +10,10 @@ import {
   MoreVertical,
   Send,
   CheckCircle,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useGRNs, useDeleteGRN, useSubmitGRN, useApproveGRN, useRejectGRN } from "@/hooks/useGRNs";
+import { useGRNs, useDeleteGRN, useSubmitGRN, useConfirmGRN } from "@/hooks/useGRNs";
 import { grnsApi } from "@/lib/api/grns";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusText } from "@/components/shared/StatusText";
 import {
@@ -70,16 +68,12 @@ export default function GRNsPage() {
   const [grnToDelete, setGRNToDelete] = useState<GRN | null>(null);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [grnToSubmit, setGRNToSubmit] = useState<GRN | null>(null);
-  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
-  const [grnToApprove, setGRNToApprove] = useState<GRN | null>(null);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [grnToReject, setGRNToReject] = useState<GRN | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [grnToConfirm, setGRNToConfirm] = useState<GRN | null>(null);
 
   const deleteMutation = useDeleteGRN();
   const submitMutation = useSubmitGRN();
-  const approveMutation = useApproveGRN();
-  const rejectMutation = useRejectGRN();
+  const confirmMutation = useConfirmGRN();
 
   const { data, isLoading, error } = useGRNs({
     search,
@@ -132,15 +126,9 @@ export default function GRNsPage() {
     setSubmitDialogOpen(true);
   };
 
-  const handleApproveGRN = (grn: GRN) => {
-    setGRNToApprove(grn);
-    setApproveDialogOpen(true);
-  };
-
-  const handleRejectGRN = (grn: GRN) => {
-    setGRNToReject(grn);
-    setRejectReason("");
-    setRejectDialogOpen(true);
+  const handleConfirmGRN = (grn: GRN) => {
+    setGRNToConfirm(grn);
+    setConfirmDialogOpen(true);
   };
 
   const confirmDelete = async () => {
@@ -180,37 +168,17 @@ export default function GRNsPage() {
     }
   };
 
-  const confirmApprove = async () => {
-    if (!grnToApprove) return;
+  const confirmGRN = async () => {
+    if (!grnToConfirm) return;
 
     try {
-      await approveMutation.mutateAsync({ id: grnToApprove.id });
-      toast.success(t("approveSuccess"));
-      setApproveDialogOpen(false);
-      setGRNToApprove(null);
+      await confirmMutation.mutateAsync({ id: grnToConfirm.id });
+      toast.success(t("confirmSuccess"));
+      setConfirmDialogOpen(false);
+      setGRNToConfirm(null);
     } catch (err) {
-      console.error("Failed to approve GRN:", err);
-      toast.error(t("approveError"));
-    }
-  };
-
-  const confirmReject = async () => {
-    if (!grnToReject) return;
-
-    if (!rejectReason.trim()) {
-      toast.error(t("rejectReasonRequired"));
-      return;
-    }
-
-    try {
-      await rejectMutation.mutateAsync({ id: grnToReject.id, reason: rejectReason.trim() });
-      toast.success(t("rejectSuccess"));
-      setRejectDialogOpen(false);
-      setGRNToReject(null);
-      setRejectReason("");
-    } catch (err) {
-      console.error("Failed to reject GRN:", err);
-      toast.error(t("rejectError"));
+      console.error("Failed to confirm GRN:", err);
+      toast.error(t("confirmError"));
     }
   };
 
@@ -454,14 +422,14 @@ export default function GRNsPage() {
                               variant="outline"
                               size="sm"
                               className="h-8 px-2"
-                              onClick={() => handleApproveGRN(grn)}
-                              aria-label={t("approve")}
+                              onClick={() => handleConfirmGRN(grn)}
+                              aria-label={t("confirm")}
                             >
                               <CheckCircle className="mr-2 h-4 w-4" />
-                              <span>{t("approve")}</span>
+                              <span>{t("confirm")}</span>
                             </Button>
                           )}
-                          {(grn.status === "draft" || grn.status === "pending_approval") && (
+                          {grn.status === "draft" && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
@@ -474,26 +442,14 @@ export default function GRNsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {grn.status === "pending_approval" && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleRejectGRN(grn)}
-                                    disabled={rejectMutation.isPending}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <XCircle className="h-4 w-4" />
-                                    <span>{t("reject")}</span>
-                                  </DropdownMenuItem>
-                                )}
-                                {grn.status === "draft" && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteGRN(grn)}
-                                    disabled={deleteMutation.isPending}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span>{t("delete")}</span>
-                                  </DropdownMenuItem>
-                                )}
+                                <DropdownMenuItem
+                                  onClick={() => handleDeleteGRN(grn)}
+                                  disabled={deleteMutation.isPending}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>{t("delete")}</span>
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
@@ -559,54 +515,22 @@ export default function GRNsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("approveTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>{t("confirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("approveDescription", { grnNumber: grnToApprove?.grnNumber ?? "" })}
+              {t("confirmDescription", { grnNumber: grnToConfirm?.grnNumber ?? "" })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmApprove}
-              disabled={approveMutation.isPending}
+              onClick={confirmGRN}
+              disabled={confirmMutation.isPending}
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
-              {approveMutation.isPending ? t("approving") : t("approve")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("rejectTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("rejectDescription", { grnNumber: grnToReject?.grnNumber ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <label htmlFor="grn-reject-reason" className="text-sm font-medium">
-              {t("rejectionReason")}
-            </label>
-            <Textarea
-              id="grn-reject-reason"
-              value={rejectReason}
-              onChange={(event) => setRejectReason(event.target.value)}
-              placeholder={t("rejectionReasonPlaceholder")}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmReject}
-              disabled={rejectMutation.isPending || !rejectReason.trim()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {rejectMutation.isPending ? t("rejecting") : t("reject")}
+              {confirmMutation.isPending ? t("confirming") : t("confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

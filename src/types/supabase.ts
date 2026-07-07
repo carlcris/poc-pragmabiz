@@ -10614,20 +10614,11 @@ export type Database = {
         }
         Returns: string
       }
-      approve_grn_with_batch_inventory: {
-        Args: {
-          p_company_id: string
-          p_grn_id: string
-          p_notes?: string | null
-          p_user_id: string
-        }
-        Returns: string
-      }
       approve_grn_with_batch_inventory_apply_inventory: {
         Args: {
           p_company_id: string
           p_grn_id: string
-          p_notes?: string | null
+          p_notes?: string
           p_user_id: string
         }
         Returns: string
@@ -10684,6 +10675,15 @@ export type Database = {
           p_company_id: string
           p_pick_list_id: string
           p_pick_rows?: Json
+          p_user_id: string
+        }
+        Returns: string
+      }
+      confirm_grn_with_putaway: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_notes?: string
           p_user_id: string
         }
         Returns: string
@@ -10765,47 +10765,47 @@ export type Database = {
         }
         Returns: Json
       }
-      create_putaway_task: {
-        Args: {
-          p_business_unit_id: string
-          p_company_id: string
-          p_in_transit_decrease?: number
-          p_item_id: string
-          p_notes?: string | null
-          p_quantity: number
-          p_source_batch_code?: string | null
-          p_source_id: string
-          p_source_line_id: string
-          p_source_reference: string
-          p_source_type: string
-          p_suggested_location_id?: string | null
-          p_unit_cost: number
-          p_uom_id: string
-          p_user_id: string
-          p_warehouse_id: string
-        }
-        Returns: string
-      }
-      create_transformation_output_putaway: {
-        Args: {
-          p_business_unit_id: string | null
-          p_company_id: string
-          p_item_id: string
-          p_order_code: string
-          p_order_id: string
-          p_output_line_id: string
-          p_produced_quantity: number
-          p_total_cost: number
-          p_transaction_date: string
-          p_unit_cost: number
-          p_uom_id: string
-          p_user_id: string
-          p_warehouse_id: string
-          p_waste_reason: string | null
-          p_wasted_quantity: number
-        }
-        Returns: string
-      }
+      create_putaway_task:
+        | {
+            Args: {
+              p_business_unit_id: string
+              p_company_id: string
+              p_item_id: string
+              p_notes?: string
+              p_quantity: number
+              p_source_batch_code?: string
+              p_source_id: string
+              p_source_line_id: string
+              p_source_reference: string
+              p_source_type: string
+              p_unit_cost: number
+              p_uom_id: string
+              p_user_id: string
+              p_warehouse_id: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_business_unit_id: string
+              p_company_id: string
+              p_in_transit_decrease: number
+              p_item_id: string
+              p_notes?: string
+              p_quantity: number
+              p_source_batch_code?: string
+              p_source_id: string
+              p_source_line_id: string
+              p_source_reference: string
+              p_source_type: string
+              p_suggested_location_id: string
+              p_unit_cost: number
+              p_uom_id: string
+              p_user_id: string
+              p_warehouse_id: string
+            }
+            Returns: string
+          }
       create_sales_order_transaction: {
         Args: { p_business_unit_id: string; p_quotation_id: string }
         Returns: {
@@ -10844,6 +10844,26 @@ export type Database = {
           adjustment_id: string
           status: string
         }[]
+      }
+      create_transformation_output_putaway: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_item_id: string
+          p_order_code: string
+          p_order_id: string
+          p_output_line_id: string
+          p_produced_quantity: number
+          p_total_cost: number
+          p_transaction_date: string
+          p_unit_cost: number
+          p_uom_id: string
+          p_user_id: string
+          p_warehouse_id: string
+          p_waste_reason: string
+          p_wasted_quantity: number
+        }
+        Returns: string
       }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_item_custom_field: {
@@ -11289,6 +11309,10 @@ export type Database = {
             }
             Returns: number
           }
+      pause_grn_receiving: {
+        Args: { p_company_id: string; p_grn_id: string; p_user_id: string }
+        Returns: undefined
+      }
       post_delivery_note_dispatch:
         | {
             Args: {
@@ -11363,15 +11387,6 @@ export type Database = {
           stock_transaction_code: string
           stock_transaction_id: string
         }[]
-      }
-      submit_grn_to_putaway: {
-        Args: {
-          p_company_id: string
-          p_grn_id: string
-          p_notes?: string | null
-          p_user_id: string
-        }
-        Returns: string
       }
       recalculate_sales_order_linked_quotation_statuses: {
         Args: { p_sales_order_id: string }
@@ -11467,6 +11482,10 @@ export type Database = {
       setup_company_rbac: { Args: { p_company_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      start_grn_receiving: {
+        Args: { p_company_id: string; p_grn_id: string; p_user_id: string }
+        Returns: undefined
+      }
       submit_delivery_note_receiving:
         | {
             Args: {
@@ -11492,6 +11511,15 @@ export type Database = {
             }
             Returns: undefined
           }
+      submit_grn_to_putaway: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_notes?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       sync_reorder_alert_notifications: {
         Args: { p_company_id: string }
         Returns: number

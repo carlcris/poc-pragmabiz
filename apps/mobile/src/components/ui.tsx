@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, usePathname } from "expo-router";
 import type { Href } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -129,6 +129,22 @@ export const BusinessDateBar = () => {
     businessUnits.data?.find((unit) => unit.access?.is_default) ||
     businessUnits.data?.[0] ||
     null;
+
+  useEffect(() => {
+    if (
+      session &&
+      currentBusinessUnit?.id &&
+      session.currentBusinessUnit?.id !== currentBusinessUnit.id &&
+      !setBusinessUnit.isPending
+    ) {
+      setBusinessUnit.mutate(currentBusinessUnit.id);
+    }
+  }, [
+    currentBusinessUnit?.id,
+    session,
+    session?.currentBusinessUnit?.id,
+    setBusinessUnit
+  ]);
 
   const handleSelect = (businessUnitId: string) => {
     setBusinessUnit.mutate(businessUnitId, {

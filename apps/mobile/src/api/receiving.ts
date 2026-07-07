@@ -7,10 +7,12 @@ import type {
   LoadListDetail,
   LoadListReceivingDetail,
   LoadListSummary,
+  ReceivingWarehouse,
   ReceivingLine,
   RecordDeliveryNoteReceivingScanResult,
   RecordDeliveryNoteReceivingScanPayload,
-  SubmitDeliveryNoteReceivingPayload
+  SubmitDeliveryNoteReceivingPayload,
+  UpdateGrnReceivingPayload
 } from "@/contracts/receiving";
 import { asArray, asRecord, firstRecord, maybeStr, num, str } from "@/utils/record";
 
@@ -28,6 +30,16 @@ const normalizeLoadList = (value: unknown): LoadListSummary => {
     supplierName: str(supplier.name || supplier.supplier_name, "Unknown supplier"),
     estimatedArrivalDate: maybeStr(record.estimatedArrivalDate || record.estimated_arrival_date),
     itemCount: num(record.itemCount || record.item_count || asArray(record.items).length)
+  };
+};
+
+const normalizeReceivingWarehouse = (value: unknown): ReceivingWarehouse => {
+  const record = asRecord(value);
+  return {
+    id: str(record.id || record.warehouseId),
+    warehouseId: str(record.warehouseId || record.id),
+    code: str(record.code),
+    name: str(record.name)
   };
 };
 
@@ -177,9 +189,14 @@ const normalizeReceivingScanResult = (
   };
 };
 
-export const listLoadLists = async (status: string, search: string) => {
+export const getReceivingWarehouse = async () => {
+  const response = await apiRequest<unknown>("/api/load-lists/receiving-warehouse");
+  return normalizeReceivingWarehouse(response);
+};
+
+export const listLoadLists = async (status: string, search: string, warehouseId: string) => {
   const response = await apiRequest<ListResponse>("/api/load-lists", {
-    query: { status, search, page: 1, limit: 20 }
+    query: { status, search, receivingOnly: true, warehouseId, page: 1, limit: 20 }
   });
   return asArray(response.data).map(normalizeLoadList);
 };
@@ -187,7 +204,9 @@ export const listLoadLists = async (status: string, search: string) => {
 export const getLoadListReceiving = async (
   id: string
 ): Promise<LoadListReceivingDetail> => {
-  const loadListResponse = await apiRequest<unknown>(`/api/load-lists/${id}`);
+  const loadListResponse = await apiRequest<unknown>(`/api/load-lists/${id}`, {
+    query: { receivingOnly: true }
+  });
   const grnsResponse = await apiRequest<ListResponse>("/api/grns", {
     query: { load_list_id: id, page: 1, limit: 1 }
   });
@@ -201,6 +220,32 @@ export const getLoadListReceiving = async (
     grn
   };
 };
+
+export const updateGrnReceiving = async (
+  id: string,
+  data: UpdateGrnReceivingPayload
+): Promise<GrnDetail> => {
+  await apiRequest<unknown>(`/api/grns/${id}`, {
+    method: "PUT",
+    body: data
+  });
+  return normalizeGrn(await apiRequest<unknown>(`/api/grns/${id}`));
+};
+
+export const startGrnReceiving = (id: string) =>
+  apiRequest<unknown>(`/api/grns/${id}/start-receiving`, {
+    method: "POST"
+  });
+
+export const pauseGrnReceiving = (id: string) =>
+  apiRequest<unknown>(`/api/grns/${id}/pause-receiving`, {
+    method: "POST"
+  });
+
+export const submitGrnReceiving = (id: string) =>
+  apiRequest<unknown>(`/api/grns/${id}/submit`, {
+    method: "POST"
+  });
 
 export const listDeliveryNotes = async (status: string, search: string) => {
   const response = await apiRequest<ListResponse>("/api/delivery-notes", {

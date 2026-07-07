@@ -63,6 +63,54 @@ async function GETHandler(request: NextRequest) {
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const { searchParams } = new URL(request.url);
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
+    const receivingOnly = searchParams.get("receivingOnly") === "true";
+    const warehouseId = searchParams.get("warehouseId");
+    let receivingWarehouseId: string | null = null;
+
+    if (receivingOnly) {
+      if (!currentBusinessUnitId) {
+        return NextResponse.json({
+          data: [],
+          capabilities,
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: DEFAULT_PAGE_SIZE,
+            totalPages: 0,
+          },
+        });
+      }
+
+      const { data: warehouse, error: warehousesError } = await supabase
+        .from("warehouses")
+        .select("id")
+        .eq("company_id", companyId)
+        .eq("business_unit_id", currentBusinessUnitId)
+        .eq("is_active", true)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (warehousesError) {
+        console.error("Error loading receiving warehouses:", warehousesError);
+        return NextResponse.json({ error: "Failed to fetch load lists" }, { status: 500 });
+      }
+
+      receivingWarehouseId = warehouse?.id ?? null;
+      if (!receivingWarehouseId || !warehouseId || warehouseId !== receivingWarehouseId) {
+        return NextResponse.json({
+          data: [],
+          capabilities,
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: DEFAULT_PAGE_SIZE,
+            totalPages: 0,
+          },
+        });
+      }
+    }
 
     // Build query
     let query = supabase
@@ -110,6 +158,10 @@ async function GETHandler(request: NextRequest) {
       .eq("company_id", companyId)
       .is("deleted_at", null);
 
+    if (receivingOnly) {
+      query = query.eq("warehouse_id", warehouseId);
+    }
+
     // Apply filters
     const status = searchParams.get("status");
     if (status && status !== "all") {
@@ -121,8 +173,7 @@ async function GETHandler(request: NextRequest) {
       query = query.eq("supplier_id", supplierId);
     }
 
-    const warehouseId = searchParams.get("warehouseId");
-    if (warehouseId) {
+    if (!receivingOnly && warehouseId) {
       query = query.eq("warehouse_id", warehouseId);
     }
 
