@@ -11396,6 +11396,10 @@ export type Database = {
         Args: { p_quotation_id: string }
         Returns: undefined
       }
+      recalculate_stock_requisition_fulfillment_for_items: {
+        Args: { p_company_id: string; p_sr_item_ids: string[] }
+        Returns: undefined
+      }
       recalculate_stock_requisition_fulfillment_for_load_list: {
         Args: { p_company_id: string; p_load_list_id: string }
         Returns: undefined
@@ -11447,6 +11451,16 @@ export type Database = {
       }
       release_sales_order_item_quotation_fulfillment: {
         Args: { p_fulfilled_qty: number; p_quotation_item_id: string }
+        Returns: undefined
+      }
+      remove_load_list_sr_link: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_link_id: string
+          p_load_list_id: string
+          p_user_id: string
+        }
         Returns: undefined
       }
       reserve_delivery_note_inventory: {

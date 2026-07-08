@@ -23,7 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useLinkSRsToLoadList } from "@/hooks/useLoadLists";
+import {
+  useLinkSRsToLoadList,
+  useLoadListSRLinks,
+  useRemoveLoadListSRLink,
+} from "@/hooks/useLoadLists";
 import { useStockRequisitions } from "@/hooks/useStockRequisitions";
 import type { LoadList } from "@/types/load-list";
 
@@ -52,12 +56,15 @@ export function LinkStockRequisitionsDialog({
 }: LinkStockRequisitionsDialogProps) {
   const t = useTranslations("linkStockRequisitionsDialog");
   const linkMutation = useLinkSRsToLoadList();
+  const removeLinkMutation = useRemoveLoadListSRLink();
+  const { data: existingLinksData } = useLoadListSRLinks(loadList.id);
 
   const [links, setLinks] = useState<LinkFormItem[]>([]);
   const [selectedLLItemId, setSelectedLLItemId] = useState("");
   const [selectedSRItemId, setSelectedSRItemId] = useState("");
   const [linkQuantity, setLinkQuantity] = useState("");
   const [addLinkError, setAddLinkError] = useState("");
+  const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
 
   // Fetch stock requisitions that can be linked (submitted or partially_fulfilled)
   const { data: srsData } = useStockRequisitions({
@@ -82,12 +89,40 @@ export function LinkStockRequisitionsDialog({
           srId: sr.id,
         })) || []
   );
+  const existingLinks = existingLinksData?.data ?? [];
+  const existingLinkPairs = new Set(
+    existingLinks
+      .filter((link) => link.loadListItem?.id && link.srItem?.id)
+      .map((link) => `${link.loadListItem.id}:${link.srItem.id}`)
+  );
+  const pendingLinkPairs = new Set(links.map((link) => `${link.loadListItemId}:${link.srItemId}`));
+  const canModifyLinks = loadList.status === "draft" || loadList.status === "confirmed";
+  const existingLinkedQtyByLLItem = existingLinks.reduce((totals, link) => {
+    const loadListItemId = link.loadListItem?.id;
+    if (!loadListItemId) return totals;
+    totals.set(loadListItemId, (totals.get(loadListItemId) || 0) + link.fulfilledQty);
+    return totals;
+  }, new Map<string, number>());
+  const pendingLinkedQtyByLLItem = links.reduce((totals, link) => {
+    totals.set(link.loadListItemId, (totals.get(link.loadListItemId) || 0) + link.fulfilledQty);
+    return totals;
+  }, new Map<string, number>());
 
   // Get selected LL item details
   const selectedLLItem = loadList.items?.find((item) => item.id === selectedLLItemId);
+  const selectedLLItemAvailableQty = selectedLLItem
+    ? Math.max(
+        0,
+        selectedLLItem.loadListQty -
+          (existingLinkedQtyByLLItem.get(selectedLLItem.id) || 0) -
+          (pendingLinkedQtyByLLItem.get(selectedLLItem.id) || 0)
+      )
+    : 0;
 
   // Get selected SR item details
   const selectedSRItem = availableSRItems.find((item) => item.id === selectedSRItemId);
+  const selectedPairKey =
+    selectedLLItemId && selectedSRItemId ? `${selectedLLItemId}:${selectedSRItemId}` : "";
 
   useEffect(() => {
     if (open) {
@@ -103,9 +138,13 @@ export function LinkStockRequisitionsDialog({
     // Clear previous error
     setAddLinkError("");
 
+    if (!canModifyLinks) {
+      setAddLinkError(t("loadListNotModifiable"));
+      return;
+    }
+
     // Validation
     if (!selectedLLItemId || !selectedSRItemId || !linkQuantity) {
-      setAddLinkError("Please select items and enter quantity");
       setAddLinkError(t("addLinkError"));
       return;
     }
@@ -117,15 +156,25 @@ export function LinkStockRequisitionsDialog({
       return;
     }
 
+    if (existingLinkPairs.has(selectedPairKey)) {
+      setAddLinkError(t("alreadyLinked"));
+      return;
+    }
+
+    if (pendingLinkPairs.has(selectedPairKey)) {
+      setAddLinkError(t("alreadyPending"));
+      return;
+    }
+
     // Validate quantity doesn't exceed outstanding
     if (qty > selectedSRItem.outstandingQty) {
       setAddLinkError(t("exceedOutstanding", { qty: selectedSRItem.outstandingQty }));
       return;
     }
 
-    // Validate quantity doesn't exceed LL item qty
-    if (selectedLLItem && qty > selectedLLItem.loadListQty) {
-      setAddLinkError(t("exceedLoadListQty", { qty: selectedLLItem.loadListQty }));
+    // Validate quantity doesn't exceed remaining LL item qty after existing and pending links
+    if (selectedLLItem && qty > selectedLLItemAvailableQty) {
+      setAddLinkError(t("exceedAvailableLoadListQty", { qty: selectedLLItemAvailableQty }));
       return;
     }
 
@@ -152,7 +201,25 @@ export function LinkStockRequisitionsDialog({
     setLinks(links.filter((_, i) => i !== index));
   };
 
+  const handleRemoveExistingLink = async (linkId: string) => {
+    setRemovingLinkId(linkId);
+
+    try {
+      await removeLinkMutation.mutateAsync({ id: loadList.id, linkId });
+      toast.success(t("removeLinkSuccess"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("removeLinkError"));
+    } finally {
+      setRemovingLinkId(null);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!canModifyLinks) {
+      toast.error(t("loadListNotModifiable"));
+      return;
+    }
+
     if (links.length === 0) {
       toast.error(t("linksRequired"));
       return;
@@ -277,6 +344,87 @@ export function LinkStockRequisitionsDialog({
               )}
             </div>
 
+            {/* Existing Links */}
+            {existingLinks.length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="border-b border-gray-200 bg-gray-50 px-5 py-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100">
+                      <ListChecks className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-900">{t("currentLinks")}</h3>
+                    <Badge variant="secondary" className="text-xs">
+                      {existingLinks.length}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="text-xs font-semibold text-gray-700">
+                          {t("llItem")}
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-700">
+                          {t("srReference")}
+                        </TableHead>
+                        <TableHead className="text-xs font-semibold text-gray-700">
+                          {t("srItem")}
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-gray-700">
+                          {t("linkedQty")}
+                        </TableHead>
+                        {canModifyLinks && <TableHead className="w-12"></TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {existingLinks.map((link) => (
+                        <TableRow key={link.id} className="border-b border-gray-100">
+                          <TableCell className="text-sm font-semibold text-gray-900">
+                            {link.loadListItem?.item?.name ?? t("unknownItem")}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700">
+                            {link.srItem?.sr?.srNumber ?? t("unknownReference")}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700">
+                            {availableSRItems.find((item) => item.id === link.srItem?.id)?.item
+                              ?.name ??
+                              link.srItem?.item?.name ??
+                              t("unknownItem")}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                              {link.fulfilledQty}
+                            </span>
+                          </TableCell>
+                          {canModifyLinks && (
+                            <TableCell>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveExistingLink(link.id)}
+                                disabled={removingLinkId === link.id}
+                                title={t("removeLink")}
+                                aria-label={t("removeLink")}
+                                className="h-8 w-8 rounded-lg p-0 hover:bg-red-50 hover:text-red-600"
+                              >
+                                {removingLinkId === link.id ? (
+                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-200 border-t-red-600" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
             {/* Add Link Form */}
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 px-5 py-3.5">
@@ -306,7 +454,8 @@ export function LinkStockRequisitionsDialog({
                       <SelectContent>
                         {loadList.items?.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
-                            {item.item?.code} - {item.item?.name} (Qty: {item.loadListQty})
+                            {item.item?.code} - {item.item?.name} (
+                            {t("loadListQtyPrefix", { qty: item.loadListQty })})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -329,12 +478,28 @@ export function LinkStockRequisitionsDialog({
                         <SelectValue placeholder={t("selectSrItem")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableSRItems.map((item) => (
-                          <SelectItem key={item.id} value={item.id}>
-                            {item.srNumber} - {item.item?.name} (
-                            {t("outstandingPrefix", { qty: item.outstandingQty })})
-                          </SelectItem>
-                        ))}
+                        {availableSRItems.map((item) => {
+                          const pairKey = `${selectedLLItemId}:${item.id}`;
+                          const isAlreadyLinked = selectedLLItemId
+                            ? existingLinkPairs.has(pairKey)
+                            : false;
+                          const isPending = selectedLLItemId
+                            ? pendingLinkPairs.has(pairKey)
+                            : false;
+
+                          return (
+                            <SelectItem
+                              key={item.id}
+                              value={item.id}
+                              disabled={isAlreadyLinked || isPending}
+                            >
+                              {item.srNumber} - {item.item?.name} (
+                              {t("outstandingPrefix", { qty: item.outstandingQty })})
+                              {isAlreadyLinked ? ` - ${t("alreadyLinkedLabel")}` : ""}
+                              {isPending ? ` - ${t("pendingLabel")}` : ""}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -354,10 +519,7 @@ export function LinkStockRequisitionsDialog({
                       step="0.01"
                       max={
                         selectedSRItem
-                          ? Math.min(
-                              selectedSRItem.outstandingQty,
-                              selectedLLItem?.loadListQty || 0
-                            )
+                          ? Math.min(selectedSRItem.outstandingQty, selectedLLItemAvailableQty)
                           : undefined
                       }
                       className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500"
@@ -368,6 +530,7 @@ export function LinkStockRequisitionsDialog({
                     <Button
                       type="button"
                       onClick={handleAddLink}
+                      disabled={!canModifyLinks}
                       className="h-10 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
                     >
                       <Plus className="mr-2 h-4 w-4" />
@@ -518,7 +681,7 @@ export function LinkStockRequisitionsDialog({
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={linkMutation.isPending || links.length === 0}
+                disabled={!canModifyLinks || linkMutation.isPending || links.length === 0}
                 className="h-10 min-w-[140px] bg-gradient-to-r from-purple-600 to-violet-600 text-sm font-semibold shadow-lg hover:from-purple-700 hover:to-violet-700"
               >
                 {linkMutation.isPending ? (

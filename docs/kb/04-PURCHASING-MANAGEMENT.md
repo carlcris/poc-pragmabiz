@@ -37,6 +37,7 @@ Purchase Receipt (Inventory Update)
 A **Supplier** (vendor) is an external party from whom the company purchases goods.
 
 **Key Attributes**:
+
 - **Code**: Unique supplier identifier
 - **Name**: Supplier business name
 - **Contact Information**: Email, phone, address
@@ -52,6 +53,7 @@ Suppliers are now scoped to `company_id` to support multi-tenant scenarios where
 A **Stock Requisition** is an internal request for items needed by a warehouse or department.
 
 **Key Features**:
+
 - Created by warehouse managers
 - Status workflow: Draft → Submitted → Approved → In Load List
 - Can be linked to a load list
@@ -59,6 +61,7 @@ A **Stock Requisition** is an internal request for items needed by a warehouse o
 - Approval workflow before procurement
 
 **Workflow**:
+
 1. User creates requisition for needed items
 2. Submits for approval
 3. Manager reviews and approves/rejects
@@ -69,6 +72,7 @@ A **Stock Requisition** is an internal request for items needed by a warehouse o
 A **Load List** consolidates multiple stock requisitions into a single procurement document.
 
 **Key Features**:
+
 - Combines multiple requisitions
 - Aggregates quantities for same items
 - Status workflow: Draft → Confirmed → Ordered
@@ -76,6 +80,7 @@ A **Load List** consolidates multiple stock requisitions into a single procureme
 - Optimizes bulk ordering
 
 **Example**:
+
 ```
 Load List #001
   Requisition A: Widget ABC (50 units)
@@ -92,6 +97,7 @@ Consolidated:
 A **Purchase Order** is a formal request to a supplier to provide goods at agreed prices.
 
 **Key Features**:
+
 - Linked to load list (optional)
 - Status workflow: Draft → Submitted → Approved → Ordered → Completed
 - Approval workflow for large orders
@@ -100,6 +106,7 @@ A **Purchase Order** is a formal request to a supplier to provide goods at agree
 - Total amount calculations
 
 **Approval Workflow**:
+
 - Orders above threshold require approval
 - Approval capability: `approve_purchase_orders`
 - Tracks approver and approval timestamp
@@ -109,6 +116,7 @@ A **Purchase Order** is a formal request to a supplier to provide goods at agree
 A **GRN** documents the receipt of goods from suppliers with multi-box receiving capability.
 
 **Key Features**:
+
 - **Multi-box receiving**: Track items across multiple boxes/containers
 - Linked to purchase order
 - Box-level item tracking
@@ -119,6 +127,7 @@ A **GRN** documents the receipt of goods from suppliers with multi-box receiving
 - Photo capture for damaged items
 
 **Multi-Box Workflow**:
+
 ```
 GRN #001 (PO #123)
   Box 1:
@@ -135,6 +144,7 @@ GRN #001 (PO #123)
 A **Purchase Receipt** updates inventory based on received goods from GRN.
 
 **Key Features**:
+
 - Created from confirmed GRN
 - Updates warehouse inventory
 - Records purchase price per item
@@ -143,6 +153,7 @@ A **Purchase Receipt** updates inventory based on received goods from GRN.
 - Separates good vs damaged items
 
 **Inventory Impact**:
+
 - Increases `on_hand` quantity in warehouse
 - Creates positive stock transactions
 - Updates item `average_cost` based on purchase price
@@ -153,6 +164,7 @@ A **Purchase Receipt** updates inventory based on received goods from GRN.
 **Damaged Items** tracks defective goods received from suppliers.
 
 **Key Features**:
+
 - Linked to GRN and purchase receipt
 - Photo documentation
 - Damage reason/description
@@ -165,6 +177,7 @@ A **Purchase Receipt** updates inventory based on received goods from GRN.
 ### Core Tables
 
 #### suppliers
+
 ```sql
 CREATE TABLE suppliers (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -185,6 +198,7 @@ CREATE TABLE suppliers (
 ```
 
 #### stock_requisitions
+
 ```sql
 CREATE TABLE stock_requisitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -203,6 +217,7 @@ CREATE TABLE stock_requisitions (
 ```
 
 #### stock_requisition_lines
+
 ```sql
 CREATE TABLE stock_requisition_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -216,6 +231,7 @@ CREATE TABLE stock_requisition_lines (
 ```
 
 #### load_lists
+
 ```sql
 CREATE TABLE load_lists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -230,6 +246,7 @@ CREATE TABLE load_lists (
 ```
 
 #### load_list_items
+
 ```sql
 CREATE TABLE load_list_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -243,6 +260,7 @@ CREATE TABLE load_list_items (
 ```
 
 #### purchase_orders
+
 ```sql
 CREATE TABLE purchase_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -265,6 +283,7 @@ CREATE TABLE purchase_orders (
 ```
 
 #### purchase_order_lines
+
 ```sql
 CREATE TABLE purchase_order_lines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -281,6 +300,7 @@ CREATE TABLE purchase_order_lines (
 ```
 
 #### grns (Goods Receipt Notes)
+
 ```sql
 CREATE TABLE grns (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -301,6 +321,7 @@ CREATE TABLE grns (
 ```
 
 #### grn_boxes
+
 ```sql
 CREATE TABLE grn_boxes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -313,6 +334,7 @@ CREATE TABLE grn_boxes (
 ```
 
 #### grn_items
+
 ```sql
 CREATE TABLE grn_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -329,6 +351,7 @@ CREATE TABLE grn_items (
 ```
 
 #### purchase_receipts
+
 ```sql
 CREATE TABLE purchase_receipts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -348,6 +371,7 @@ CREATE TABLE purchase_receipts (
 ```
 
 #### purchase_receipt_items
+
 ```sql
 CREATE TABLE purchase_receipt_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -363,6 +387,7 @@ CREATE TABLE purchase_receipt_items (
 ```
 
 #### damaged_items
+
 ```sql
 CREATE TABLE damaged_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -384,11 +409,13 @@ CREATE TABLE damaged_items (
 ### Supplier Management
 
 #### GET /api/suppliers
+
 List all suppliers (company-scoped).
 
 **Permissions**: `view` on `suppliers`
 
 **Response**:
+
 ```json
 {
   "suppliers": [
@@ -406,11 +433,13 @@ List all suppliers (company-scoped).
 ```
 
 #### POST /api/suppliers
+
 Create new supplier.
 
 **Permissions**: `create` on `suppliers`
 
 **Request**:
+
 ```json
 {
   "code": "SUPP-002",
@@ -424,11 +453,13 @@ Create new supplier.
 ```
 
 #### GET /api/suppliers/[id]
+
 Get supplier details with analytics.
 
 **Permissions**: `view` on `suppliers`
 
 **Response**:
+
 ```json
 {
   "supplier": { "id": "uuid", "name": "ABC Supplies Inc", ... },
@@ -447,11 +478,13 @@ Get supplier details with analytics.
 Stock requisition cost fields are protected by granular permissions. The API returns `null` for unit cost and total amount fields when the user does not have the matching stock requisition cost capability. Printed and downloaded stock requisition PDFs also require both the document display setting and the user's cost-view permission before showing Unit Price, line Total, or Total Amount.
 
 #### POST /api/stock-requisitions
+
 Create stock requisition.
 
 **Permissions**: `create` on `stock_requisitions`
 
 **Request**:
+
 ```json
 {
   "warehouse_id": "uuid",
@@ -468,6 +501,7 @@ Create stock requisition.
 ```
 
 #### POST /api/stock-requisitions/[id]/submit
+
 Submit requisition for approval.
 
 **Permissions**: `edit` on `stock_requisitions`
@@ -475,6 +509,7 @@ Submit requisition for approval.
 **Effect**: Status changes to 'submitted'
 
 #### POST /api/stock-requisitions/[id]/approve
+
 Approve requisition.
 
 **Permissions**: `approve_stock_requisitions` capability
@@ -482,6 +517,7 @@ Approve requisition.
 **Effect**: Status changes to 'approved', can be added to load list
 
 #### POST /api/stock-requisitions/[id]/reject
+
 Reject requisition.
 
 **Permissions**: `approve_stock_requisitions` capability
@@ -490,12 +526,18 @@ Reject requisition.
 
 Load list unit price and total amount fields are display-controlled by granular permissions. Create and edit forms hide item costs, unit price inputs, line totals, and total amount when the user lacks `load_lists.field.unit_price.view`, while mutation payloads still preserve the stored prices.
 
+The Link Stock Requisitions dialog shows existing load-list item to stock-requisition item links before new links are added. Users with load-list edit permission can remove existing links only while the load list is `draft` or `confirmed`; removal recalculates stock-requisition fulfillment and frees the load-list quantity for another link. Once the load list is `in_transit` or later, existing links remain visible but cannot be modified. When a load-list item is selected, requisition item options that are already linked to that same load-list item are marked and disabled so duplicate link pairs are prevented before submission. A load-list item can be split across multiple stock-requisition items only up to the load-list item quantity; existing links plus pending links cannot exceed the load-list line quantity.
+
+Load lists keep `business_unit_id` as the creator/source business unit. The selected `warehouse_id` is the receiving target and may belong to a different business unit. When a load list arrives and auto-creates a GRN, the GRN uses the target warehouse's business unit while receiving queues continue to scope by target warehouse.
+
 #### POST /api/load-lists
+
 Create load list from requisitions.
 
 **Permissions**: `create` on `load_lists`
 
 **Request**:
+
 ```json
 {
   "load_list_date": "2025-06-14",
@@ -505,12 +547,14 @@ Create load list from requisitions.
 ```
 
 **Process**:
+
 1. Validates all requisitions are approved
 2. Aggregates items from all requisitions
 3. Creates load list with consolidated items
 4. Links requisitions to load list
 
 #### POST /api/load-lists/[id]/confirm
+
 Confirm load list.
 
 **Permissions**: `edit` on `load_lists`
@@ -520,15 +564,17 @@ Confirm load list.
 ### Purchase Order Management
 
 #### POST /api/purchase-orders
+
 Create purchase order.
 
 **Permissions**: `create` on `purchase_orders`
 
 **Request**:
+
 ```json
 {
   "supplier_id": "uuid",
-  "load_list_id": "uuid",  // Optional
+  "load_list_id": "uuid", // Optional
   "order_date": "2025-06-14",
   "expected_delivery_date": "2025-06-21",
   "lines": [
@@ -536,13 +582,14 @@ Create purchase order.
       "item_id": "uuid",
       "quantity": 100,
       "unit_id": "uuid",
-      "unit_price": 8.50
+      "unit_price": 8.5
     }
   ]
 }
 ```
 
 #### POST /api/purchase-orders/[id]/submit
+
 Submit PO for approval.
 
 **Permissions**: `edit` on `purchase_orders`
@@ -550,16 +597,19 @@ Submit PO for approval.
 **Effect**: Status changes to 'submitted'
 
 #### POST /api/purchase-orders/[id]/approve
+
 Approve purchase order.
 
 **Permissions**: `approve_purchase_orders` capability
 
 **Effect**:
+
 1. Status changes to 'approved'
 2. Records approver and timestamp
 3. Can be sent to supplier
 
 #### POST /api/purchase-orders/[id]/complete
+
 Mark PO as completed.
 
 **Permissions**: `edit` on `purchase_orders`
@@ -569,11 +619,13 @@ Mark PO as completed.
 ### GRN Management
 
 #### POST /api/grns
+
 Create GRN for received goods.
 
 **Permissions**: `create` on `grns`
 
 **Request**:
+
 ```json
 {
   "purchase_order_id": "uuid",
@@ -603,11 +655,13 @@ Create GRN for received goods.
 ```
 
 #### POST /api/grns/[id]/confirm
+
 Confirm GRN.
 
 **Permissions**: `edit` on Goods Receipt Notes
 
 **Effect**:
+
 1. Status changes to 'approved'
 2. Ready to create purchase receipt
 3. Records confirming user and timestamp
@@ -617,11 +671,13 @@ GRN inventory handoff happens earlier, when the receiving user submits the GRN f
 ### Purchase Receipt Management
 
 #### POST /api/purchase-receipts
+
 Create purchase receipt from GRN.
 
 **Permissions**: `create` on `purchase_receipts`
 
 **Request**:
+
 ```json
 {
   "grn_id": "uuid",
@@ -633,18 +689,20 @@ Create purchase receipt from GRN.
       "location_id": "uuid",
       "quantity": 100,
       "unit_id": "uuid",
-      "unit_cost": 8.50
+      "unit_cost": 8.5
     }
   ]
 }
 ```
 
 #### POST /api/purchase-receipts/[id]/post
+
 Post purchase receipt (update inventory).
 
 **Permissions**: `edit` on `purchase_receipts`
 
 **Effect**:
+
 1. Status changes to 'posted'
 2. **Updates warehouse inventory** (increases on_hand)
 3. **Creates stock transactions**
@@ -654,6 +712,7 @@ Post purchase receipt (update inventory).
 7. Cannot be edited after posting
 
 **Inventory Update Process**:
+
 ```
 For each receipt item:
   1. Convert quantity to base unit
@@ -750,9 +809,8 @@ class PurchaseReceiptService {
     purchasePrice: number
   ): number {
     return (
-      (currentOnHand * currentAvgCost + receivedQty * purchasePrice) /
-      (currentOnHand + receivedQty)
-    )
+      (currentOnHand * currentAvgCost + receivedQty * purchasePrice) / (currentOnHand + receivedQty)
+    );
   }
 }
 ```
@@ -762,48 +820,60 @@ class PurchaseReceiptService {
 ### Key Components
 
 #### SupplierList
+
 **Location**: `src/components/purchasing/SupplierList.tsx`
 
 #### StockRequisitionForm
+
 **Location**: `src/components/purchasing/StockRequisitionForm.tsx`
 
 #### LoadListForm
+
 **Location**: `src/components/purchasing/LoadListForm.tsx`
+
 - Select approved requisitions
 - Preview consolidated items
 - Create load list
 
 #### PurchaseOrderForm
+
 **Location**: `src/components/purchasing/PurchaseOrderForm.tsx`
 
 #### GRNReceivingUI
+
 **Location**: `src/components/purchasing/GRNReceivingUI.tsx`
+
 - Tablet-optimized interface
 - Multi-box receiving workflow
 - Barcode scanning
 - Photo capture for damages
 
 #### PurchaseReceiptForm
+
 **Location**: `src/components/purchasing/PurchaseReceiptForm.tsx`
 
 ## Reports
 
 ### Supplier Spend Report
+
 **Location**: `/api/analytics/purchasing`
 
 Shows total spending per supplier for a period.
 
 ### Outstanding Purchase Orders
+
 **Location**: `/api/reports/purchasing/outstanding-pos`
 
 Lists all POs not yet completed with amounts.
 
 ### Damaged Items Report
+
 **Location**: `/api/reports/purchasing/damaged-items`
 
 Shows all damaged items with claim status.
 
 ### Purchasing Capacity
+
 **Location**: `/api/analytics/purchasing/capacity`
 
 Shows warehouse receiving capacity and workload.
@@ -811,31 +881,39 @@ Shows warehouse receiving capacity and workload.
 ## Troubleshooting
 
 ### Issue: Supplier not found after June 2025
+
 **Symptoms**: Supplier list empty or missing suppliers
 **Solution**:
+
 1. Check company_id scoping
 2. Verify user's company context
 3. Ensure suppliers migrated to new schema
 4. Check RLS policies
 
 ### Issue: Cannot approve requisition
+
 **Symptoms**: Approval button disabled or permission error
 **Solution**:
+
 1. Check user has `approve_stock_requisitions` capability
 2. Verify requisition status is 'submitted'
 3. Check business unit access
 
 ### Issue: GRN quantities don't match PO
+
 **Symptoms**: Validation error on GRN creation
 **Solution**:
+
 1. Verify item matching between GRN and PO
 2. Check unit conversions
 3. Allow over/under receiving if policy permits
 4. Document variance in notes
 
 ### Issue: Average cost calculation incorrect
+
 **Symptoms**: Item cost doesn't update properly
 **Solution**:
+
 1. Check purchase receipt posting logic
 2. Verify quantity conversions to base unit
 3. Review moving average formula

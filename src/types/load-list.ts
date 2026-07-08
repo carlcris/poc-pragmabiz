@@ -174,6 +174,11 @@ export type LoadListSRLink = {
     id: string;
     requestedQty: number;
     fulfilledQty: number;
+    item?: {
+      id: string;
+      code: string;
+      name: string;
+    };
     sr: {
       id: string;
       srNumber: string;

@@ -66,4 +66,14 @@ export const loadListsApi = {
   getLoadListSRLinks: async (id: string): Promise<{ data: LoadListSRLink[] }> => {
     return apiClient.get<{ data: LoadListSRLink[] }>(`${API_BASE}/${id}/link-requisitions`);
   },
+
+  removeLoadListSRLink: async (
+    id: string,
+    linkId: string
+  ): Promise<{ message: string }> => {
+    const params = new URLSearchParams({ link_id: linkId });
+    return apiClient.delete<{ message: string }>(
+      `${API_BASE}/${id}/link-requisitions?${params.toString()}`
+    );
+  },
 };

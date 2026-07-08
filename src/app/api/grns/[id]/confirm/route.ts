@@ -8,6 +8,7 @@ const userSafeConfirmMessage = (message: string | undefined) => {
   const allowedMessages = new Set([
     "GRN not found",
     "Only GRNs in pending confirmation can be confirmed",
+    "GRN must be submitted before confirmation",
     "GRN has no items",
     "At least one GRN item must have a received quantity",
   ]);

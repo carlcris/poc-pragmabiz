@@ -95,6 +95,22 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
     }
 
+    const { data: targetWarehouse, error: targetWarehouseError } = await supabase
+      .from("warehouses")
+      .select("id, business_unit_id")
+      .eq("id", ll.warehouse_id)
+      .eq("company_id", companyId)
+      .is("deleted_at", null)
+      .single();
+
+    if (targetWarehouseError || !targetWarehouse?.business_unit_id) {
+      console.error("Error resolving load list target warehouse:", targetWarehouseError);
+      return NextResponse.json(
+        { error: "Failed to resolve load list target warehouse" },
+        { status: 500 }
+      );
+    }
+
     const currentStatus = ll.status;
     const newStatus = body.status;
     const isArrivalReversal = currentStatus === "arrived" && newStatus === "in_transit";
@@ -405,7 +421,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
             .insert({
               load_list_id: ll.id,
               company_id: companyId,
-              business_unit_id: ll.business_unit_id,
+              business_unit_id: targetWarehouse.business_unit_id,
               warehouse_id: ll.warehouse_id,
               container_number: ll.container_number,
               seal_number: ll.seal_number,

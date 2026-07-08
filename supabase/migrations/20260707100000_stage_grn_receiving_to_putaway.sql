@@ -687,8 +687,8 @@ CREATE OR REPLACE FUNCTION public.confirm_grn_with_putaway(
 )
 RETURNS TEXT
 LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = public
+SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_auth_user_id UUID := auth.uid();
@@ -748,12 +748,7 @@ BEGIN
   LIMIT 1;
 
   IF v_tx_code IS NULL THEN
-    v_tx_code := public.submit_grn_to_putaway(
-      p_company_id,
-      p_user_id,
-      p_grn_id,
-      p_notes
-    );
+    RAISE EXCEPTION 'GRN must be submitted before confirmation';
   END IF;
 
   UPDATE public.grns
@@ -785,6 +780,190 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.recalculate_stock_requisition_fulfillment_for_items(
+  p_company_id UUID,
+  p_sr_item_ids UUID[]
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  WITH affected_sr_items AS (
+    SELECT DISTINCT sri.id AS sr_item_id, sri.sr_id
+    FROM public.stock_requisition_items sri
+    JOIN public.stock_requisitions sr
+      ON sr.id = sri.sr_id
+    WHERE sri.id = ANY(COALESCE(p_sr_item_ids, ARRAY[]::UUID[]))
+      AND sr.company_id = p_company_id
+      AND sr.deleted_at IS NULL
+  ),
+  approved_load_list_actuals AS (
+    SELECT
+      gi.load_list_item_id,
+      SUM(COALESCE(gi.received_qty, 0) + COALESCE(gi.damaged_qty, 0))::NUMERIC AS accounted_qty
+    FROM public.grn_items gi
+    JOIN public.grns g
+      ON g.id = gi.grn_id
+    WHERE gi.load_list_item_id IS NOT NULL
+      AND g.company_id = p_company_id
+      AND g.status = 'approved'
+      AND g.deleted_at IS NULL
+    GROUP BY gi.load_list_item_id
+  ),
+  distributed_link_fulfillment AS (
+    SELECT
+      llsi.sr_item_id,
+      GREATEST(
+        LEAST(
+          COALESCE(llsi.fulfilled_qty, 0),
+          COALESCE(ala.accounted_qty, 0) -
+            COALESCE(
+              SUM(COALESCE(llsi.fulfilled_qty, 0)) OVER (
+                PARTITION BY llsi.load_list_item_id
+                ORDER BY llsi.created_at, llsi.id
+                ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+              ),
+              0
+            )
+        ),
+        0
+      ) AS actual_fulfilled_qty
+    FROM public.load_list_sr_items llsi
+    JOIN affected_sr_items asi
+      ON asi.sr_item_id = llsi.sr_item_id
+    LEFT JOIN approved_load_list_actuals ala
+      ON ala.load_list_item_id = llsi.load_list_item_id
+  ),
+  aggregated_sr_fulfillment AS (
+    SELECT
+      asi.sr_item_id,
+      COALESCE(SUM(dlf.actual_fulfilled_qty), 0)::NUMERIC AS fulfilled_qty
+    FROM affected_sr_items asi
+    LEFT JOIN distributed_link_fulfillment dlf
+      ON dlf.sr_item_id = asi.sr_item_id
+    GROUP BY asi.sr_item_id
+  )
+  UPDATE public.stock_requisition_items sri
+  SET fulfilled_qty = agg.fulfilled_qty
+  FROM aggregated_sr_fulfillment agg
+  WHERE sri.id = agg.sr_item_id;
+
+  WITH affected_srs AS (
+    SELECT DISTINCT sri.sr_id
+    FROM public.stock_requisition_items sri
+    JOIN public.stock_requisitions sr
+      ON sr.id = sri.sr_id
+    WHERE sri.id = ANY(COALESCE(p_sr_item_ids, ARRAY[]::UUID[]))
+      AND sr.company_id = p_company_id
+      AND sr.deleted_at IS NULL
+  ),
+  sr_status AS (
+    SELECT
+      sri.sr_id,
+      BOOL_AND(COALESCE(sri.fulfilled_qty, 0) >= COALESCE(sri.requested_qty, 0)) AS all_fulfilled,
+      BOOL_OR(COALESCE(sri.fulfilled_qty, 0) > 0) AS any_fulfilled
+    FROM public.stock_requisition_items sri
+    WHERE sri.sr_id IN (SELECT sr_id FROM affected_srs)
+    GROUP BY sri.sr_id
+  )
+  UPDATE public.stock_requisitions sr
+  SET status = CASE
+    WHEN sr.status = 'draft' THEN sr.status
+    WHEN ss.all_fulfilled THEN 'fulfilled'
+    WHEN ss.any_fulfilled THEN 'partially_fulfilled'
+    ELSE 'submitted'
+  END
+  FROM sr_status ss
+  WHERE sr.id = ss.sr_id
+    AND sr.company_id = p_company_id
+    AND sr.status <> 'cancelled';
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.remove_load_list_sr_link(
+  p_company_id UUID,
+  p_business_unit_id UUID,
+  p_user_id UUID,
+  p_load_list_id UUID,
+  p_link_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_auth_user_id UUID := auth.uid();
+  v_user_company_id UUID;
+  v_load_list public.load_lists%ROWTYPE;
+  v_link public.load_list_sr_items%ROWTYPE;
+BEGIN
+  IF v_auth_user_id IS NULL OR v_auth_user_id <> p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT u.company_id
+  INTO v_user_company_id
+  FROM public.users u
+  WHERE u.id = v_auth_user_id
+    AND u.deleted_at IS NULL
+    AND u.is_active IS TRUE;
+
+  IF v_user_company_id IS DISTINCT FROM p_company_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT *
+  INTO v_load_list
+  FROM public.load_lists
+  WHERE id = p_load_list_id
+    AND company_id = p_company_id
+    AND business_unit_id = p_business_unit_id
+    AND deleted_at IS NULL
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Load list not found';
+  END IF;
+
+  IF NOT public.user_has_permission(
+    v_auth_user_id,
+    'load_lists',
+    'edit',
+    v_load_list.business_unit_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  IF v_load_list.status NOT IN ('draft', 'confirmed') THEN
+    RAISE EXCEPTION 'Only draft or confirmed load lists can be modified';
+  END IF;
+
+  SELECT llsi.*
+  INTO v_link
+  FROM public.load_list_sr_items llsi
+  JOIN public.load_list_items lli
+    ON lli.id = llsi.load_list_item_id
+  WHERE llsi.id = p_link_id
+    AND lli.load_list_id = p_load_list_id
+  FOR UPDATE OF llsi;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Link not found';
+  END IF;
+
+  DELETE FROM public.load_list_sr_items
+  WHERE id = v_link.id;
+
+  PERFORM public.recalculate_stock_requisition_fulfillment_for_items(
+    p_company_id,
+    ARRAY[v_link.sr_item_id]
+  );
+END;
+$$;
+
 COMMENT ON COLUMN public.putaway_tasks.suggested_location_id IS
   'Optional source-provided destination hint. Final placement is still selected during putaway posting.';
 
@@ -792,6 +971,12 @@ COMMENT ON FUNCTION public.submit_grn_to_putaway(UUID, UUID, UUID, TEXT) IS
   'Stages received GRN quantities into putaway tasks at submit-for-confirmation time without writing final batch-location inventory.';
 
 COMMENT ON FUNCTION public.confirm_grn_with_putaway(UUID, UUID, UUID, TEXT) IS
-  'Confirms a GRN after received quantities have been staged into putaway, staging legacy pending GRNs first when needed.';
+  'Confirms a GRN only after received quantities have already been staged into putaway.';
+
+COMMENT ON FUNCTION public.recalculate_stock_requisition_fulfillment_for_items(UUID, UUID[]) IS
+  'Recalculates fulfillment quantity and parent status for explicit stock requisition item IDs, including items whose last load-list link was removed.';
+
+COMMENT ON FUNCTION public.remove_load_list_sr_link(UUID, UUID, UUID, UUID, UUID) IS
+  'Atomically removes one load-list to stock-requisition item link and reconciles the affected requisition item.';
 
 COMMIT;

@@ -87,8 +87,25 @@ export function useLinkSRsToLoadList() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: CreateLoadListSRLinkRequest }) =>
       loadListsApi.linkSRsToLoadList(id, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id, "sr-links"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
+    },
+  });
+}
+
+export function useRemoveLoadListSRLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, linkId }: { id: string; linkId: string }) =>
+      loadListsApi.removeLoadListSRLink(id, linkId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, variables.id, "sr-links"] });
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
     },
   });
