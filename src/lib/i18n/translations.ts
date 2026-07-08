@@ -1959,6 +1959,7 @@ export type TranslationKeys = {
     onHand: string;
     allocated: string;
     inTransitQty: string;
+    putawayQty: string;
     available: string;
     normal: string;
     overstock: string;
@@ -4849,6 +4850,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       onHand: "On Hand",
       allocated: "Allocated",
       inTransitQty: "In Transit Qty",
+      putawayQty: "Putaway Qty",
       available: "Available",
       normal: "Normal",
       overstock: "Overstock",
@@ -10321,6 +10323,7 @@ export const translations: Record<Locale, TranslationKeys> = {
       onHand: "现有库存",
       allocated: "已分配",
       inTransitQty: "在途数量",
+      putawayQty: "待上架数量",
       available: "可用数量",
       normal: "正常",
       overstock: "超储",

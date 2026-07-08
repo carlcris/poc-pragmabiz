@@ -11075,6 +11075,7 @@ export type Database = {
         Returns: {
           allocated: number
           available: number
+          putaway_qty: number
           category_id: string
           category_name: string
           custom_fields: Json

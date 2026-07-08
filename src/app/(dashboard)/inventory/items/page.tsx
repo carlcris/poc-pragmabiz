@@ -299,13 +299,13 @@ function ItemsPageContent() {
 
   const getExportColumns = () => [
     t("itemCode"),
-    t("supplierCode"),
     t("itemName"),
     t("category"),
     t("uom"),
     t("onHand"),
     t("allocated"),
     t("inTransitQty"),
+    t("putawayQty"),
     t("available"),
     tCommon("status"),
     t("purchasePrice"),
@@ -327,13 +327,13 @@ function ItemsPageContent() {
   const getExportRows = (exportItems: ItemWithStock[]) =>
     exportItems.map((item) => [
       item.code,
-      item.supplierCode || "",
       item.name,
       item.category,
       item.uom || "",
       item.onHand,
       item.allocated,
       item.inTransit,
+      item.putawayQty,
       item.available,
       getStatusLabel(item.status),
       item.purchasePrice,
@@ -363,7 +363,7 @@ function ItemsPageContent() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const tableWidth = pageWidth - margin * 2;
-    const columnWidths = [58, 58, 116, 76, 42, 48, 48, 58, 48, 58, 58, 58];
+    const columnWidths = [58, 140, 76, 42, 48, 48, 58, 58, 48, 58, 58, 58];
     const scale = tableWidth / columnWidths.reduce((sum, width) => sum + width, 0);
     const widths = columnWidths.map((width) => width * scale);
     const rowHeight = 24;
@@ -634,12 +634,12 @@ function ItemsPageContent() {
                   <TableRow>
                     <TableHead className="w-[80px]">{t("image")}</TableHead>
                     <TableHead>{t("itemCode")}</TableHead>
-                    <TableHead>{t("supplierCode")}</TableHead>
-                    <TableHead>{t("itemName")}</TableHead>
+                    <TableHead className="w-72">{t("itemName")}</TableHead>
                     <TableHead>{t("category")}</TableHead>
                     <TableHead className="text-right">{t("onHand")}</TableHead>
                     <TableHead className="text-right">{t("allocated")}</TableHead>
                     <TableHead className="text-right">{t("inTransitQty")}</TableHead>
+                    <TableHead className="text-right">{t("putawayQty")}</TableHead>
                     <TableHead className="text-right">{t("available")}</TableHead>
                     <TableHead>{tCommon("status")}</TableHead>
                     <TableHead className="text-right">{tCommon("actions")}</TableHead>
@@ -655,13 +655,13 @@ function ItemsPageContent() {
                         <Skeleton className="h-4 w-20" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-40" />
+                        <Skeleton className="h-8 w-56" />
                       </TableCell>
                       <TableCell>
                         <Skeleton className="h-4 w-28" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-16" />
                       </TableCell>
                       <TableCell className="text-right">
                         <Skeleton className="ml-auto h-4 w-16" />
@@ -714,12 +714,12 @@ function ItemsPageContent() {
                   <TableRow>
                     <TableHead className="w-[80px]">{t("image")}</TableHead>
                     <TableHead>{t("itemCode")}</TableHead>
-                    <TableHead>{t("supplierCode")}</TableHead>
-                    <TableHead>{t("itemName")}</TableHead>
+                    <TableHead className="w-72">{t("itemName")}</TableHead>
                     <TableHead>{t("category")}</TableHead>
                     <TableHead className="text-right">{t("onHand")}</TableHead>
                     <TableHead className="text-right">{t("allocated")}</TableHead>
                     <TableHead className="text-right">{t("inTransitQty")}</TableHead>
+                    <TableHead className="text-right">{t("putawayQty")}</TableHead>
                     <TableHead className="text-right">{t("available")}</TableHead>
                     <TableHead>{tCommon("status")}</TableHead>
                     <TableHead className="text-right">{tCommon("actions")}</TableHead>
@@ -743,13 +743,15 @@ function ItemsPageContent() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono font-medium">{item.code}</TableCell>
-                      <TableCell className="font-mono text-muted-foreground">
-                        {item.supplierCode || "-"}
-                      </TableCell>
-                      <TableCell className="text-primary">
-                        <div className="font-medium hover:underline">{item.name}</div>
+                      <TableCell className="w-72 max-w-72 whitespace-normal break-words text-primary">
+                        <div className="font-medium leading-snug hover:underline" title={item.name}>
+                          {item.name}
+                        </div>
                         {item.chineseName ? (
-                          <div className="font-medium text-muted-foreground">
+                          <div
+                            className="mt-1 font-medium leading-snug text-muted-foreground"
+                            title={item.chineseName}
+                          >
                             {item.chineseName}
                           </div>
                         ) : null}
@@ -763,6 +765,9 @@ function ItemsPageContent() {
                       </TableCell>
                       <TableCell className="text-right text-blue-600">
                         {Math.trunc(toNumber(item.inTransit))}
+                      </TableCell>
+                      <TableCell className="text-right text-purple-600">
+                        {Math.trunc(toNumber(item.putawayQty))}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
                         {(() => {

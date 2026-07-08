@@ -68,7 +68,8 @@ Each item can have multiple unit options (e.g., box, piece, dozen) with conversi
 **Exports**:
 The Item Master export supports CSV, XLSX, and PDF formats. Each export uses the current search,
 category, status, warehouse, and business-unit scope filters. Export requests are bounded to 5,000
-filtered rows; users must narrow filters before exporting larger result sets.
+filtered rows; users must narrow filters before exporting larger result sets. The Item Master list
+and export show pending putaway quantity separately from in-transit and available stock.
 
 ```typescript
 // Example: Item with multiple units

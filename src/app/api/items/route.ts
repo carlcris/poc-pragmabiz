@@ -33,6 +33,8 @@ export interface ItemWithStock {
   allocated: number;
   // Aggregated from item_warehouse.available_stock across the scoped warehouse set.
   available: number;
+  // Aggregated from item_warehouse.putaway_qty across the scoped warehouse set.
+  putawayQty: number;
   reorderPoint: number;
   maxStockLevel: number;
   inTransit: number;
@@ -75,6 +77,7 @@ type ItemsRpcRow = {
   on_hand: number;
   allocated: number;
   available: number;
+  putaway_qty: number;
   reorder_point: number;
   max_stock_level: number;
   in_transit: number;
@@ -711,8 +714,9 @@ async function GETHandler(request: NextRequest) {
     );
 
     if (rpcError) {
+      console.error("Failed to fetch items via enhanced page RPC:", rpcError);
       return NextResponse.json(
-        { error: "Failed to fetch items", details: rpcError.message },
+        { error: "Failed to fetch items" },
         { status: 500 }
       );
     }
@@ -760,6 +764,7 @@ async function GETHandler(request: NextRequest) {
         onHand: row.on_hand,
         allocated: row.allocated,
         available: row.available,
+        putawayQty: row.putaway_qty,
         reorderPoint: row.reorder_point,
         maxStockLevel: row.max_stock_level,
         inTransit: row.in_transit,

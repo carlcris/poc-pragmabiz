@@ -64,6 +64,7 @@ export type Item = {
   onHand?: number;
   allocated?: number;
   available?: number;
+  putawayQty?: number;
   reorderLevel: number;
   reorderQty: number;
   maxStockLevel: number;
