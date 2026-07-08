@@ -28,6 +28,10 @@ export const queryKeys = {
   pickList: (id: string) => ["pick-list", id] as const
 };
 
+export const mutationKeys = {
+  businessUnitContext: ["business-unit-context"] as const
+};
+
 export const useBusinessUnits = () =>
   useQuery({
     queryKey: queryKeys.businessUnits,
@@ -36,16 +40,20 @@ export const useBusinessUnits = () =>
 
 export const useSetBusinessUnit = () => {
   const client = useQueryClient();
-  const { session, setSession } = useAuthStore();
+  const setSession = useAuthStore((state) => state.setSession);
+  const setBusinessUnitSwitching = useAuthStore((state) => state.setBusinessUnitSwitching);
 
   return useMutation({
+    mutationKey: mutationKeys.businessUnitContext,
     mutationFn: businessUnitsApi.setBusinessUnitContext,
     onMutate: async () => {
-      client.removeQueries({ queryKey: ["receiving-warehouse"] });
-      client.removeQueries({ queryKey: ["load-lists"] });
-      client.removeQueries({ queryKey: ["load-list-receiving"] });
+      setBusinessUnitSwitching(true);
+      await client.cancelQueries({ queryKey: ["receiving-warehouse"] });
+      await client.cancelQueries({ queryKey: ["load-lists"] });
+      await client.cancelQueries({ queryKey: ["load-list-receiving"] });
     },
     onSuccess: async (result) => {
+      const session = useAuthStore.getState().session;
       if (session) {
         await setSession({
           ...session,
@@ -69,6 +77,9 @@ export const useSetBusinessUnit = () => {
       client.removeQueries({ queryKey: ["pick-lists"] });
       client.removeQueries({ queryKey: ["pick-list"] });
       await client.invalidateQueries({ queryKey: queryKeys.businessUnits });
+    },
+    onSettled: () => {
+      setBusinessUnitSwitching(false);
     }
   });
 };

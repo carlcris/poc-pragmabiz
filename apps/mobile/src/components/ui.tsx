@@ -147,8 +147,9 @@ export const BusinessDateBar = () => {
   ]);
 
   const handleSelect = (businessUnitId: string) => {
+    setOpen(false);
     setBusinessUnit.mutate(businessUnitId, {
-      onSuccess: () => setOpen(false)
+      onError: () => setOpen(true)
     });
   };
 

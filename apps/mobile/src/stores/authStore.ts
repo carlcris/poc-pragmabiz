@@ -6,20 +6,23 @@ import * as authApi from "@/api/auth";
 type AuthState = {
   session: AuthSession | null;
   isRestoring: boolean;
+  isSwitchingBusinessUnit: boolean;
   error: string | null;
   restore: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (session: AuthSession) => Promise<void>;
+  setBusinessUnitSwitching: (isSwitching: boolean) => void;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   isRestoring: true,
+  isSwitchingBusinessUnit: false,
   error: null,
   restore: async () => {
     const session = await loadSession();
-    set({ session, isRestoring: false });
+    set({ session, isRestoring: false, isSwitchingBusinessUnit: false });
   },
   login: async (email, password) => {
     set({ error: null });
@@ -36,10 +39,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     await authApi.logout();
     await clearSession();
-    set({ session: null, error: null });
+    set({ session: null, error: null, isSwitchingBusinessUnit: false });
   },
   setSession: async (session) => {
-    await saveSession(session);
+    const previousSession = get().session;
     set({ session });
+    try {
+      await saveSession(session);
+    } catch (error) {
+      set({ session: previousSession });
+      throw error;
+    }
+  },
+  setBusinessUnitSwitching: (isSwitching) => {
+    set({ isSwitchingBusinessUnit: isSwitching });
   }
 }));

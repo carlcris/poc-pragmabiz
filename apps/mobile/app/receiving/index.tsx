@@ -32,6 +32,7 @@ const deliveryNoteStatusFilters = [
 
 export default function ReceivingScreen() {
   const currentBusinessUnit = useAuthStore((state) => state.session?.currentBusinessUnit);
+  const isSwitchingBusinessUnit = useAuthStore((state) => state.isSwitchingBusinessUnit);
   const [tab, setTab] = useState("load-lists");
   const [status, setStatus] = useState("in_transit");
   const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("dispatched");
@@ -40,14 +41,17 @@ export default function ReceivingScreen() {
   const loadLists = useLoadLists(status, search, receivingWarehouse.data?.warehouseId);
   const deliveryNotes = useDeliveryNotes(deliveryNoteStatus, search);
   const canLoadLoadLists = Boolean(currentBusinessUnit?.id && receivingWarehouse.data?.warehouseId);
+  const isLoadListTab = tab === "load-lists";
+  const isWarehouseInitialLoading =
+    Boolean(currentBusinessUnit?.id) && !receivingWarehouse.data && receivingWarehouse.isFetching;
+  const isLoadListsInitialLoading =
+    canLoadLoadLists && !loadLists.data && loadLists.isFetching;
+  const isLoadListsLoading =
+    isSwitchingBusinessUnit || isWarehouseInitialLoading || isLoadListsInitialLoading;
 
-  const loading =
-    tab === "load-lists"
-      ? Boolean(currentBusinessUnit?.id) &&
-        (receivingWarehouse.isFetching || (canLoadLoadLists && loadLists.isFetching))
-      : deliveryNotes.isLoading;
+  const loading = isLoadListTab ? isLoadListsLoading : deliveryNotes.isLoading;
   const error =
-    tab === "load-lists" ? receivingWarehouse.error || loadLists.error : deliveryNotes.error;
+    isLoadListTab ? receivingWarehouse.error || loadLists.error : deliveryNotes.error;
   const selectedStatus = statusFilters.find((item) => item.value === status) || statusFilters[0];
   const selectedDeliveryNoteStatus =
     deliveryNoteStatusFilters.find((item) => item.value === deliveryNoteStatus) ||
@@ -93,12 +97,12 @@ export default function ReceivingScreen() {
       />
 
       {loading ? <LoadingState /> : null}
-      {tab === "load-lists" && !currentBusinessUnit?.id ? (
+      {isLoadListTab && !currentBusinessUnit?.id && !isSwitchingBusinessUnit ? (
         <ErrorState message="Business unit context is syncing. Select a business unit from the header." />
       ) : null}
       {error ? <ErrorState message="Unable to load receiving records." /> : null}
 
-      {tab === "load-lists" && canLoadLoadLists && loadLists.data && !loading ? (
+      {isLoadListTab && canLoadLoadLists && loadLists.data && !loading ? (
         <>
           <Text style={styles.resultText}>{loadLists.data.length} LOAD LISTS FOUND</Text>
           {loadLists.data.length === 0 ? (

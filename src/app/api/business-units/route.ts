@@ -54,7 +54,8 @@ async function GETHandler() {
         )
       `
       )
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .order("business_units(name)", { ascending: true });
 
     if (accessError) {
       return NextResponse.json({ error: "Failed to fetch business units" }, { status: 500 });
