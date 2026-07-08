@@ -15,6 +15,9 @@ export type PutawayTask = {
   uomId: string | null;
   uomCode: string | null;
   uomName: string | null;
+  sourceUnitCode: string | null;
+  sourceUnitName: string | null;
+  sourceQtyPerUnit: number;
   sourceType: string;
   sourceId: string;
   sourceLineId: string | null;

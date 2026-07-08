@@ -43,6 +43,9 @@ const formatQty = (value: number) =>
     maximumFractionDigits: 2,
   }).format(value);
 
+const formatInputQuantity = (value: number) =>
+  Number.isFinite(value) ? String(Math.ceil(Math.max(1, value))) : "1";
+
 const sourceLabel = (sourceType: string) =>
   sourceType
     .split("_")
@@ -221,12 +224,14 @@ export default function PutawayStationPage() {
   );
 
   const selectTask = (task: PutawayTask) => {
+    const selectedQuantity = task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
+    const sourceQuantity = selectedQuantity / (task.sourceQtyPerUnit || 1);
     setSelectedTask(task);
     setLocationId(task.suggestedLocationId ?? "");
-    setQuantity(String(task.status === "completed" ? task.postedQuantity : task.pendingQuantity));
+    setQuantity(String(selectedQuantity));
     setBatchCode(task.sourceBatchCode ?? "");
     setShouldPrintLabels(true);
-    setLabelCount("1");
+    setLabelCount(formatInputQuantity(sourceQuantity));
   };
 
   const handleApplySearch = () => {
@@ -396,6 +401,9 @@ export default function PutawayStationPage() {
                 <TableHead>{t("source")}</TableHead>
                 <TableHead>{t("item")}</TableHead>
                 <TableHead>{t("warehouse")}</TableHead>
+                <TableHead className="text-right">{t("quantity")}</TableHead>
+                <TableHead>{t("unit")}</TableHead>
+                <TableHead className="text-right">{t("qtyPerUnit")}</TableHead>
                 <TableHead className="text-right">{t("pendingQty")}</TableHead>
                 <TableHead>{t("status")}</TableHead>
                 <TableHead className="text-right">{t("action")}</TableHead>
@@ -404,13 +412,13 @@ export default function PutawayStationPage() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                     {t("loading")}
                   </TableCell>
                 </TableRow>
               ) : tasks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="h-32 text-center text-muted-foreground">
                     {t("empty")}
                   </TableCell>
                 </TableRow>
@@ -418,6 +426,8 @@ export default function PutawayStationPage() {
                 tasks.map((task) => {
                   const displayQuantity =
                     task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
+                  const sourceQtyPerUnit = task.sourceQtyPerUnit || 1;
+                  const sourceQuantity = displayQuantity / sourceQtyPerUnit;
                   const isPrintingThisTask = printingTaskId === task.id;
 
                   return (
@@ -437,6 +447,15 @@ export default function PutawayStationPage() {
                         <div className="text-sm text-muted-foreground">
                           {task.warehouseCode || "-"}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-medium">{formatQty(sourceQuantity)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span>{task.sourceUnitCode || task.sourceUnitName || "-"}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span>{formatQty(sourceQtyPerUnit)}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="font-medium">{formatQty(displayQuantity)}</span>

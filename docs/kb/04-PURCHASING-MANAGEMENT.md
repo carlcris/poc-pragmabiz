@@ -666,7 +666,7 @@ Confirm GRN.
 2. Ready to create purchase receipt
 3. Records confirming user and timestamp
 
-GRN inventory handoff happens earlier, when the receiving user submits the GRN for confirmation. The submit action creates putaway tasks grouped by GRN line and batch code, increments `item_warehouse.current_stock` and `item_warehouse.putaway_qty` by the actual good received quantity, decreases `item_warehouse.in_transit` by the expected/to-be-received line quantity, and does not write final `item_batches` or `item_batch_locations`. Confirmation completes the GRN workflow status; final batch/location inventory is created later when the Putaway Station posts the stock into a selected warehouse location. Damaged stock handling will be implemented in a separate workflow.
+GRN inventory handoff happens earlier, when the receiving user submits the GRN for confirmation. The submit action creates putaway tasks grouped by GRN line and batch code, increments `item_warehouse.current_stock` and `item_warehouse.putaway_qty` by the actual good received quantity, decreases `item_warehouse.in_transit` by the expected/to-be-received line quantity, and does not write final `item_batches` or `item_batch_locations`. Confirmation completes the GRN workflow status; final batch/location inventory is created later when the Putaway Station posts the stock into a selected warehouse location. The Putaway Station list shows the source quantity, source unit, qty/unit conversion, and base quantity so receiving unit conversions are visible before posting. Damaged stock handling will be implemented in a separate workflow.
 
 ### Purchase Receipt Management
 

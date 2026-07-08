@@ -162,6 +162,8 @@ export type TranslationKeys = {
     source: string;
     item: string;
     warehouse: string;
+    unit: string;
+    qtyPerUnit: string;
     pendingQty: string;
     status: string;
     statusPending: string;
@@ -2947,7 +2949,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       source: "Source",
       item: "Item",
       warehouse: "Warehouse",
-      pendingQty: "Qty",
+      unit: "Unit",
+      qtyPerUnit: "Qty/Unit",
+      pendingQty: "Base Qty",
       status: "Status",
       statusPending: "Pending",
       statusPartial: "Partial",
@@ -8447,7 +8451,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       source: "来源",
       item: "物料",
       warehouse: "仓库",
-      pendingQty: "数量",
+      unit: "单位",
+      qtyPerUnit: "每单位数量",
+      pendingQty: "基础数量",
       status: "状态",
       statusPending: "待处理",
       statusPartial: "部分完成",

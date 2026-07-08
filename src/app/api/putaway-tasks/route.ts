@@ -33,6 +33,32 @@ type PutawayTaskRow = {
   uom: { code: string | null; name: string | null } | { code: string | null; name: string | null }[] | null;
 };
 
+type SourceUnitMetadata = {
+  unitCode: string | null;
+  unitName: string | null;
+  qtyPerUnit: number;
+};
+
+type GrnSourceLineRow = {
+  id: string;
+  item_unit_options:
+    | {
+        qty_per_unit: number | string | null;
+        units_of_measure:
+          | { code: string | null; name: string | null }
+          | { code: string | null; name: string | null }[]
+          | null;
+      }
+    | {
+        qty_per_unit: number | string | null;
+        units_of_measure:
+          | { code: string | null; name: string | null }
+          | { code: string | null; name: string | null }[]
+          | null;
+      }[]
+    | null;
+};
+
 const parsePositiveInt = (value: string | null, fallback: number, max: number) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) return fallback;
@@ -50,33 +76,89 @@ const quotePostgrestFilterValue = (value: string) =>
 const one = <T,>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
-const mapTask = (row: PutawayTaskRow): PutawayTask => ({
-  id: row.id,
-  companyId: row.company_id,
-  businessUnitId: row.business_unit_id,
-  warehouseId: row.warehouse_id,
-  warehouseCode: one(row.warehouse)?.warehouse_code ?? null,
-  warehouseName: one(row.warehouse)?.warehouse_name ?? null,
-  itemId: row.item_id,
-  itemCode: one(row.item)?.item_code ?? null,
-  itemName: one(row.item)?.item_name ?? null,
-  uomId: row.uom_id,
-  uomCode: one(row.uom)?.code ?? null,
-  uomName: one(row.uom)?.name ?? null,
-  sourceType: row.source_type,
-  sourceId: row.source_id,
-  sourceLineId: row.source_line_id,
-  sourceReference: row.source_reference,
-  sourceBatchCode: row.source_batch_code,
-  suggestedLocationId: row.suggested_location_id,
-  quantity: parseNumber(row.quantity),
-  pendingQuantity: parseNumber(row.pending_quantity),
-  postedQuantity: parseNumber(row.posted_quantity),
-  unitCost: parseNumber(row.unit_cost),
-  status: row.status,
-  notes: row.notes,
-  createdAt: row.created_at,
-});
+const mapTask = (
+  row: PutawayTaskRow,
+  sourceUnitMetadata?: SourceUnitMetadata | null
+): PutawayTask => {
+  const taskUom = one(row.uom);
+
+  return {
+    id: row.id,
+    companyId: row.company_id,
+    businessUnitId: row.business_unit_id,
+    warehouseId: row.warehouse_id,
+    warehouseCode: one(row.warehouse)?.warehouse_code ?? null,
+    warehouseName: one(row.warehouse)?.warehouse_name ?? null,
+    itemId: row.item_id,
+    itemCode: one(row.item)?.item_code ?? null,
+    itemName: one(row.item)?.item_name ?? null,
+    uomId: row.uom_id,
+    uomCode: taskUom?.code ?? null,
+    uomName: taskUom?.name ?? null,
+    sourceUnitCode: sourceUnitMetadata?.unitCode ?? taskUom?.code ?? null,
+    sourceUnitName: sourceUnitMetadata?.unitName ?? taskUom?.name ?? null,
+    sourceQtyPerUnit: sourceUnitMetadata?.qtyPerUnit ?? 1,
+    sourceType: row.source_type,
+    sourceId: row.source_id,
+    sourceLineId: row.source_line_id,
+    sourceReference: row.source_reference,
+    sourceBatchCode: row.source_batch_code,
+    suggestedLocationId: row.suggested_location_id,
+    quantity: parseNumber(row.quantity),
+    pendingQuantity: parseNumber(row.pending_quantity),
+    postedQuantity: parseNumber(row.posted_quantity),
+    unitCost: parseNumber(row.unit_cost),
+    status: row.status,
+    notes: row.notes,
+    createdAt: row.created_at,
+  };
+};
+
+const fetchSourceUnitMetadata = async (
+  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
+  rows: PutawayTaskRow[]
+) => {
+  const metadata = new Map<string, SourceUnitMetadata>();
+  const grnSourceLineIds = rows
+    .filter((row) => row.source_type === "grn")
+    .map((row) => row.source_line_id)
+    .filter((sourceLineId): sourceLineId is string => Boolean(sourceLineId));
+
+  if (grnSourceLineIds.length === 0) return metadata;
+
+  const uniqueGrnSourceLineIds = [...new Set(grnSourceLineIds)];
+  const { data, error } = await supabase
+    .from("grn_items")
+    .select(
+      `
+      id,
+      item_unit_options(
+        qty_per_unit,
+        units_of_measure(code, name)
+      )
+    `
+    )
+    .in("id", uniqueGrnSourceLineIds);
+
+  if (error) {
+    console.error("Error fetching putaway source unit metadata:", error);
+    return metadata;
+  }
+
+  ((data || []) as unknown as GrnSourceLineRow[]).forEach((row) => {
+    const unitOption = one(row.item_unit_options);
+    const unit = one(unitOption?.units_of_measure);
+    const qtyPerUnit = parseNumber(unitOption?.qty_per_unit) || 1;
+
+    metadata.set(row.id, {
+      unitCode: unit?.code ?? null,
+      unitName: unit?.name ?? null,
+      qtyPerUnit,
+    });
+  });
+
+  return metadata;
+};
 
 async function GETHandler(request: NextRequest) {
   const unauthorized = await requirePermission(RESOURCES.WAREHOUSES, "view");
@@ -158,9 +240,11 @@ async function GETHandler(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch putaway tasks" }, { status: 500 });
   }
 
+  const rows = (data || []) as unknown as PutawayTaskRow[];
+  const sourceUnitMetadataByLineId = await fetchSourceUnitMetadata(supabase, rows);
   const total = count ?? 0;
   return NextResponse.json({
-    data: ((data || []) as unknown as PutawayTaskRow[]).map(mapTask),
+    data: rows.map((row) => mapTask(row, sourceUnitMetadataByLineId.get(row.source_line_id))),
     pagination: {
       page,
       limit,
