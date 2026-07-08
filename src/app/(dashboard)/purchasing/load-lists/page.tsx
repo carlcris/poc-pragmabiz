@@ -20,7 +20,6 @@ import { useLoadLists, useDeleteLoadList, useUpdateLoadListStatus } from "@/hook
 import { useResourcePermissions } from "@/hooks/usePermissions";
 import { useSuppliers } from "@/hooks/useSuppliers";
 import { useWarehouses } from "@/hooks/useWarehouses";
-import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { RESOURCES } from "@/constants/resources";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,14 +124,6 @@ export default function LoadListsPage() {
 
   const { data: warehousesData } = useWarehouses({ page: 1, limit: 50 });
   const warehouses = useMemo(() => warehousesData?.data || [], [warehousesData?.data]);
-
-  const currentBusinessUnit = useBusinessUnitStore((state) => state.currentBusinessUnit);
-  const defaultWarehouseId = useMemo(() => {
-    if (!currentBusinessUnit?.id) return "";
-    return (
-      warehouses.find((warehouse) => warehouse.businessUnitId === currentBusinessUnit.id)?.id || ""
-    );
-  }, [currentBusinessUnit?.id, warehouses]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -636,7 +627,6 @@ export default function LoadListsPage() {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           loadList={selectedLL}
-          defaultWarehouseId={defaultWarehouseId}
         />
       )}
 

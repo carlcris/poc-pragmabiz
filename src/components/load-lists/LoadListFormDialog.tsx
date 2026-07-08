@@ -134,7 +134,6 @@ type LoadListFormDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   loadList?: LoadList | null;
-  defaultWarehouseId?: string;
 };
 
 const LOAD_LIST_COST_CAPABILITY_KEYS = [
@@ -146,7 +145,6 @@ export function LoadListFormDialog({
   open,
   onOpenChange,
   loadList,
-  defaultWarehouseId = "",
 }: LoadListFormDialogProps) {
   const t = useTranslations("loadListForm");
   const tValidation = useTranslations("loadListValidation");
@@ -231,7 +229,7 @@ export function LoadListFormDialog({
   const defaultValues = useMemo<LoadListFormValues>(
     () => ({
       supplierId: "",
-      warehouseId: defaultWarehouseId,
+      warehouseId: "",
       supplierLlNumber: "",
       containerNumber: "",
       sealNumber: "",
@@ -241,7 +239,7 @@ export function LoadListFormDialog({
       loadDate: new Date().toISOString().split("T")[0],
       notes: "",
     }),
-    [defaultWarehouseId]
+    []
   );
 
   const form = useForm<LoadListFormValues>({

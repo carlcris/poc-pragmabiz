@@ -528,7 +528,7 @@ Load list unit price and total amount fields are display-controlled by granular 
 
 The Link Stock Requisitions dialog shows existing load-list item to stock-requisition item links before new links are added. Users with load-list edit permission can remove existing links only while the load list is `draft` or `confirmed`; removal recalculates stock-requisition fulfillment and frees the load-list quantity for another link. Once the load list is `in_transit` or later, existing links remain visible but cannot be modified. When a load-list item is selected, requisition item options that are already linked to that same load-list item are marked and disabled so duplicate link pairs are prevented before submission. A load-list item can be split across multiple stock-requisition items only up to the load-list item quantity; existing links plus pending links cannot exceed the load-list line quantity.
 
-Load lists keep `business_unit_id` as the creator/source business unit. The selected `warehouse_id` is the receiving target and may belong to a different business unit. When a load list arrives and auto-creates a GRN, the GRN uses the target warehouse's business unit while receiving queues continue to scope by target warehouse.
+Load lists keep `business_unit_id` as the creator/source business unit. The selected `warehouse_id` is the receiving target and may belong to a different business unit; create forms require users to choose this target warehouse explicitly instead of defaulting it from the current business unit. When a load list arrives and auto-creates a GRN, the GRN uses the target warehouse's business unit while receiving queues continue to scope by target warehouse.
 
 #### POST /api/load-lists
 
