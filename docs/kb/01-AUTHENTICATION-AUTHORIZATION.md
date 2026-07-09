@@ -365,10 +365,26 @@ Login with email and password.
   "user": {
     "id": "uuid",
     "email": "user@example.com",
-    "name": "John Doe"
+    "name": "John Doe",
+    "companyId": "uuid"
   },
-  "session": { ... },
-  "landing_page": "/dashboard/sales"
+  "token": "jwt-access-token",
+  "refreshToken": "refresh-token",
+  "currentBusinessUnit": {
+    "id": "uuid",
+    "code": "MAIN",
+    "name": "Main"
+  },
+  "landingPage": "/dashboard"
+}
+```
+
+Mobile clients that send `X-Client-Source: mobile` also receive a strict session cookie header for
+manual replay because native fetch must not rely on the platform cookie jar:
+
+```json
+{
+  "cookieHeader": "sb-project-auth-token=..."
 }
 ```
 

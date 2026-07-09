@@ -37,7 +37,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   logout: async () => {
-    await authApi.logout();
+    const session = get().session;
+    await authApi.logout(session);
     await clearSession();
     set({ session: null, error: null, isSwitchingBusinessUnit: false });
   },

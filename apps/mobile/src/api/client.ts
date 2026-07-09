@@ -59,6 +59,7 @@ export const apiRequest = async <T>(path: string, options: ApiOptions = {}): Pro
   try {
     const response = await fetch(buildUrl(path, options.query), {
       method: options.method || "GET",
+      credentials: "omit",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",

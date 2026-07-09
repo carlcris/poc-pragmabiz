@@ -25,6 +25,7 @@ export type LoginResponse = {
   user: MobileUser;
   token: string;
   refreshToken: string;
+  cookieHeader: string;
   currentBusinessUnit?: {
     id: string;
     code: string;

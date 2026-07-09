@@ -19,6 +19,19 @@ type UserRoleWithRole = {
   roles?: { name?: string | null } | { name?: string | null }[] | null;
 };
 
+type ResponseCookieReader = {
+  getAll: () => Array<{ name: string; value: string }>;
+};
+
+const toCookieHeader = (cookies: ResponseCookieReader) =>
+  cookies
+    .getAll()
+    .map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join("; ");
+
+const isMobileLoginRequest = (request: NextRequest) =>
+  request.headers.get("x-client-source")?.toLowerCase() === "mobile";
+
 function decodeBusinessUnitIdFromToken(token: string): string | null {
   try {
     const [, payloadPart] = token.split(".");
@@ -204,7 +217,7 @@ async function POSTHandler(request: NextRequest) {
           .maybeSingle()
       : { data: null };
 
-    const jsonResponse = NextResponse.json({
+    const responseBody = {
       user: {
         id: data.user.id,
         email: data.user.email,
@@ -225,7 +238,10 @@ async function POSTHandler(request: NextRequest) {
           }
         : null,
       landingPage: await resolveLandingPage(supabase, data.user.id, data.session.access_token),
-    });
+      ...(isMobileLoginRequest(request) ? { cookieHeader: toCookieHeader(response.cookies) } : {}),
+    };
+
+    const jsonResponse = NextResponse.json(responseBody);
 
     setActivityContext({
       userId: data.user.id,

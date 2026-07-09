@@ -18,12 +18,9 @@ import { colors } from "@/theme/colors";
 import { spacing, borderRadius, shadows, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 
-const DEV_EMAIL = "demo@pragmatica.app";
-const DEV_PASSWORD = "demo1234";
-
 export default function LoginScreen() {
-  const [email, setEmail] = useState(__DEV__ ? DEV_EMAIL : "");
-  const [password, setPassword] = useState(__DEV__ ? DEV_PASSWORD : "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { login, error } = useAuthStore();
 
@@ -32,6 +29,8 @@ export default function LoginScreen() {
     try {
       await login(email.trim(), password);
       router.replace("/");
+    } catch {
+      // The auth store owns the displayed error state.
     } finally {
       setSubmitting(false);
     }

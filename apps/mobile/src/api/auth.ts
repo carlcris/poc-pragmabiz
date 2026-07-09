@@ -1,15 +1,6 @@
 import type { AuthSession, LoginResponse } from "@/contracts/auth";
 import { API_BASE_URL } from "@/config/env";
 
-const toCookieHeader = (setCookieHeader: string | null) => {
-  if (!setCookieHeader) return "";
-  return setCookieHeader
-    .split(/,(?=\s*[^;,]+=)/)
-    .map((cookie) => cookie.split(";")[0]?.trim())
-    .filter(Boolean)
-    .join("; ");
-};
-
 const readPayload = async (response: Response) => {
   const text = await response.text();
   if (!text) return {};
@@ -28,16 +19,24 @@ const readPayload = async (response: Response) => {
 export const login = async (email: string, password: string): Promise<AuthSession> => {
   const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
     method: "POST",
+    credentials: "omit",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
+      "X-Client-Source": "mobile"
     },
     body: JSON.stringify({ email, password })
   });
 
   const payload = await readPayload(response);
 
-  if (!response.ok || !payload.user || !payload.token || !payload.refreshToken) {
+  if (
+    !response.ok ||
+    !payload.user ||
+    !payload.token ||
+    !payload.refreshToken ||
+    !payload.cookieHeader
+  ) {
     throw new Error(payload.message || payload.error || "Sign in failed");
   }
 
@@ -45,11 +44,19 @@ export const login = async (email: string, password: string): Promise<AuthSessio
     user: payload.user,
     token: payload.token,
     refreshToken: payload.refreshToken,
-    cookieHeader: toCookieHeader(response.headers.get("set-cookie")),
+    cookieHeader: payload.cookieHeader,
     currentBusinessUnit: payload.currentBusinessUnit ?? null
   };
 };
 
-export const logout = async () => {
-  await fetch(`${API_BASE_URL}/api/auth/logout`, { method: "POST" }).catch(() => undefined);
+export const logout = async (session: AuthSession | null) => {
+  await fetch(`${API_BASE_URL}/api/auth/logout`, {
+    method: "POST",
+    credentials: "omit",
+    headers: {
+      Accept: "application/json",
+      ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
+      ...(session?.cookieHeader ? { Cookie: session.cookieHeader } : {})
+    }
+  }).catch(() => undefined);
 };
