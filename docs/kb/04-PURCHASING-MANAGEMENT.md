@@ -477,6 +477,8 @@ Get supplier details with analytics.
 
 Stock requisition cost fields are protected by granular permissions. The API returns `null` for unit cost and total amount fields when the user does not have the matching stock requisition cost capability. Printed and downloaded stock requisition PDFs also require both the document display setting and the user's cost-view permission before showing Unit Price, line Total, or Total Amount.
 
+The Purchasing > On Order page shows item-level stock requisition quantities still pending from suppliers. It includes submitted and partially fulfilled stock requisition lines in the current business unit where requested quantity is greater than fulfilled quantity. Ordered is the requisition requested quantity, Received is the fulfilled quantity reconciled from approved GRN/accounted receiving, and Outstanding is the remaining supplier quantity. Users can filter by a searchable supplier selector, delivery status, expected delivery date, and search by supplier, stock requisition number, or item. The supplier selector loads the first 10 suppliers ordered by name and searches suppliers remotely. The list is served by `get_purchase_on_order_items` with server-side filtering, sorting, bounded pagination, and last-page clamping for stale page requests.
+
 #### POST /api/stock-requisitions
 
 Create stock requisition.

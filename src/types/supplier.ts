@@ -115,6 +115,7 @@ export interface SupplierFilters {
   status?: SupplierStatus | "all";
   page?: number;
   limit?: number;
+  sort?: "name" | "createdAt";
 }
 
 export interface SuppliersResponse {

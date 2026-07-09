@@ -4,6 +4,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission, requireLookupDataAccess } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
 
+const DEFAULT_PAGE_SIZE = 10;
+const MAX_PAGE_SIZE = 100;
+const MAX_PAGE = 100000;
+
+const parsePositiveInteger = (value: string | null, fallback: number, max: number) => {
+  const parsed = Number.parseInt(value || "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, max);
+};
+
 // GET /api/suppliers
 async function GETHandler(request: NextRequest) {
   try {
@@ -58,12 +68,23 @@ async function GETHandler(request: NextRequest) {
     }
 
     // Pagination
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const page = parsePositiveInteger(searchParams.get("page"), 1, MAX_PAGE);
+    const limit = parsePositiveInteger(
+      searchParams.get("limit"),
+      DEFAULT_PAGE_SIZE,
+      MAX_PAGE_SIZE
+    );
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    query = query.range(from, to).order("created_at", { ascending: false });
+    const sort = searchParams.get("sort");
+    query = query.range(from, to);
+    query =
+      sort === "name"
+        ? query
+            .order("supplier_name", { ascending: true })
+            .order("supplier_code", { ascending: true })
+        : query.order("created_at", { ascending: false });
 
     const { data: suppliers, error, count } = await query;
 

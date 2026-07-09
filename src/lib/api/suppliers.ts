@@ -15,6 +15,7 @@ export const suppliersApi = {
     if (filters?.status && filters.status !== "all") params.append("status", filters.status);
     if (filters?.page) params.append("page", filters.page.toString());
     if (filters?.limit) params.append("limit", filters.limit.toString());
+    if (filters?.sort) params.append("sort", filters.sort);
 
     const response = await fetch(`${API_BASE}?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch suppliers");

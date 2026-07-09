@@ -25,6 +25,7 @@ import {
   Users,
   Building2,
   PackageCheck,
+  PackageSearch,
   Factory,
   ChefHat,
   Activity,
@@ -201,6 +202,12 @@ const menuItems = [
         href: "/purchasing/stock-requisitions",
         resource: RESOURCES.STOCK_REQUISITIONS as Resource,
         icon: ClipboardList,
+      },
+      {
+        title: "On Order",
+        href: "/purchasing/on-order",
+        resource: RESOURCES.STOCK_REQUISITIONS as Resource,
+        icon: PackageSearch,
       },
       {
         title: "Load Lists",

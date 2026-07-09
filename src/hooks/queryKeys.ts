@@ -8,6 +8,7 @@ export const STOCK_ADJUSTMENT_BATCH_LOCATIONS_QUERY_KEY = "stock-adjustment-batc
 export const STOCK_TRANSACTIONS_QUERY_KEY = "stock-transactions";
 export const STOCK_BALANCES_QUERY_KEY = "stock-balances";
 export const STOCK_REQUISITIONS_QUERY_KEY = "stockRequisitions";
+export const PURCHASE_ON_ORDER_QUERY_KEY = "purchaseOnOrder";
 export const LOAD_LISTS_QUERY_KEY = "loadLists";
 export const GRNS_QUERY_KEY = "grns";
 export const REORDER_ALERTS_QUERY_KEY = "reorderAlerts";

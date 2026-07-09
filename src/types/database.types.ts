@@ -11075,7 +11075,6 @@ export type Database = {
         Returns: {
           allocated: number
           available: number
-          putaway_qty: number
           category_id: string
           category_name: string
           custom_fields: Json
@@ -11093,6 +11092,7 @@ export type Database = {
           max_stock_level: number
           on_hand: number
           purchase_price: number
+          putaway_qty: number
           reorder_point: number
           sales_price: number
           status: string
@@ -11155,6 +11155,36 @@ export type Database = {
           transaction_count: number
           unit_cost: number
           uom: string
+        }[]
+      }
+      get_purchase_on_order_items: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_expected_from?: string
+          p_expected_to?: string
+          p_limit?: number
+          p_page?: number
+          p_search?: string
+          p_status?: string
+          p_supplier_id?: string
+        }
+        Returns: {
+          expected_delivery: string
+          item_code: string
+          item_id: string
+          item_name: string
+          ordered_qty: number
+          outstanding_qty: number
+          received_qty: number
+          sr_id: string
+          sr_item_id: string
+          sr_number: string
+          status: string
+          supplier_code: string
+          supplier_id: string
+          supplier_name: string
+          total_count: number
         }[]
       }
       get_reorder_statistics: {
