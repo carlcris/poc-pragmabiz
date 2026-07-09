@@ -56,6 +56,8 @@ export type TranslationKeys = {
     usageCount: string;
     locked: string;
     loadMore: string;
+    showPassword: string;
+    hidePassword: string;
   };
   forms: {
     required: string;
@@ -2842,6 +2844,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       usageCount: "Usage Count",
       locked: "(locked)",
       loadMore: "Load more",
+      showPassword: "Show password",
+      hidePassword: "Hide password",
     },
     forms: {
       required: "This field is required",
@@ -8379,6 +8383,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       usageCount: "使用次数",
       locked: "(已锁定)",
       loadMore: "加载更多",
+      showPassword: "显示密码",
+      hidePassword: "隐藏密码",
     },
     forms: {
       required: "此字段为必填项",

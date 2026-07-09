@@ -78,6 +78,15 @@ export const RESOURCES = {
 // Type-safe resource keys
 export type Resource = (typeof RESOURCES)[keyof typeof RESOURCES];
 
+export const PURCHASING_MODULE_RESOURCES = [
+  RESOURCES.SUPPLIERS,
+  RESOURCES.PURCHASE_ORDERS,
+  RESOURCES.PURCHASE_RECEIPTS,
+  RESOURCES.STOCK_REQUISITIONS,
+  RESOURCES.LOAD_LISTS,
+  RESOURCES.GOODS_RECEIPT_NOTES,
+] as const satisfies readonly Resource[];
+
 /**
  * Resource metadata for UI display
  */

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Package, BarChart3, Calendar } from "lucide-react";
+import { Package, BarChart3, Calendar, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -29,10 +30,12 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const tCommon = useTranslations("common");
   const { login, isLoading, error, setLoading } = useAuthStore();
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const isBusy = isLoading || isSubmitting;
 
   // Set loading to false when login page mounts
@@ -209,15 +212,32 @@ export default function LoginPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-sm font-medium text-gray-600">Password</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="password"
-                          placeholder="••••••••••••"
-                          {...field}
+                      <div className="relative">
+                        <FormControl>
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="••••••••••••"
+                            {...field}
+                            disabled={isBusy}
+                            className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white px-4 pr-12 text-base text-gray-800 placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus-visible:ring-2 focus-visible:ring-purple-500/20"
+                          />
+                        </FormControl>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((value) => !value)}
                           disabled={isBusy}
-                          className="h-12 w-full rounded-lg border-2 border-gray-200 bg-white px-4 text-base text-gray-800 placeholder:text-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus-visible:ring-2 focus-visible:ring-purple-500/20"
-                        />
-                      </FormControl>
+                          aria-label={
+                            showPassword ? tCommon("hidePassword") : tCommon("showPassword")
+                          }
+                          className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" aria-hidden="true" />
+                          ) : (
+                            <Eye className="h-4 w-4" aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

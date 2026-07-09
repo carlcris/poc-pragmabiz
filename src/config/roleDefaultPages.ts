@@ -3,6 +3,7 @@
  * Maps role names to their default page after login
  */
 
+import { PURCHASING_MODULE_RESOURCES } from "@/constants/resources";
 import type { Resource } from "@/constants/resources";
 import type { UserPermissions } from "@/types/rbac";
 
@@ -19,7 +20,9 @@ export const ROLE_DEFAULT_PAGES: Record<string, string> = {
  * Page to resource mapping
  * Maps page paths to the required permission resource
  */
-const PAGE_RESOURCE_MAP: Record<string, Resource> = {
+type PageRequiredResource = Resource | readonly Resource[];
+
+const PAGE_RESOURCE_MAP: Record<string, PageRequiredResource> = {
   "/dashboard": "dashboard",
   "/sales/pos": "pos",
   "/sales/customers": "customers",
@@ -34,9 +37,14 @@ const PAGE_RESOURCE_MAP: Record<string, Resource> = {
   "/manufacturing/orders": "stock_transformations",
   "/manufacturing/floor": "stock_transformations",
   "/inventory/reorder": "reorder_management",
+  "/purchasing/overview": PURCHASING_MODULE_RESOURCES,
   "/purchasing/suppliers": "suppliers",
   "/purchasing/orders": "purchase_orders",
   "/purchasing/receipts": "purchase_receipts",
+  "/purchasing/stock-requisitions": "stock_requisitions",
+  "/purchasing/on-order": "stock_requisitions",
+  "/purchasing/load-lists": "load_lists",
+  "/purchasing/grns": "goods_receipt_notes",
   "/accounting/chart-of-accounts": "chart_of_accounts",
   "/accounting/journals": "journal_entries",
   "/accounting/ledger": "general_ledger",
@@ -65,6 +73,19 @@ const PAGE_PRIORITY = [
   "/purchasing/orders",
   "/reports/sales-analytics",
 ];
+
+const canViewPageRequiredResource = (
+  requiredResource: PageRequiredResource | undefined,
+  permissions: UserPermissions
+): boolean => {
+  if (!requiredResource) return false;
+
+  if (typeof requiredResource === "string") {
+    return permissions[requiredResource]?.can_view ?? false;
+  }
+
+  return requiredResource.some((resource) => permissions[resource]?.can_view);
+};
 
 /**
  * Get the default page for a given role
@@ -121,7 +142,7 @@ export function getFirstAccessiblePage(
     const roleDefaultPage = getDefaultPageForUser(roleNames);
     const requiredResource = PAGE_RESOURCE_MAP[roleDefaultPage];
 
-    if (requiredResource && permissions[requiredResource]?.can_view) {
+    if (canViewPageRequiredResource(requiredResource, permissions)) {
       return roleDefaultPage;
     }
   }
@@ -129,7 +150,7 @@ export function getFirstAccessiblePage(
   // If role default is not accessible, find first accessible page
   for (const page of PAGE_PRIORITY) {
     const requiredResource = PAGE_RESOURCE_MAP[page];
-    if (requiredResource && permissions[requiredResource]?.can_view) {
+    if (canViewPageRequiredResource(requiredResource, permissions)) {
       return page;
     }
   }
@@ -140,7 +161,7 @@ export function getFirstAccessiblePage(
   if (hasAnyPermission) {
     // Find any page user can access
     for (const [page, resource] of Object.entries(PAGE_RESOURCE_MAP)) {
-      if (permissions[resource]?.can_view) {
+      if (canViewPageRequiredResource(resource, permissions)) {
         return page;
       }
     }
@@ -162,5 +183,5 @@ export function canAccessPage(page: string, permissions: UserPermissions | null)
   const requiredResource = PAGE_RESOURCE_MAP[page];
   if (!requiredResource) return true; // Unknown pages are accessible (will be caught by route guards)
 
-  return permissions[requiredResource]?.can_view ?? false;
+  return canViewPageRequiredResource(requiredResource, permissions);
 }

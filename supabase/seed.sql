@@ -52,7 +52,6 @@ VALUES
 -- SEED DATA: Auth Users
 -- ============================================================================
 -- Auth users are seeded in this file (auth.users + public.users + role assignments).
--- Default password for seeded users uses the same bcrypt hash as existing demo users.
 
 -- ============================================================================
 -- SEED DATA: Units of Measure
@@ -500,13 +499,13 @@ END $$;
 
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
-('00000000-0000-0000-0000-000000000000','5745e13c-ab07-48b7-9db7-24372b16f5a9','authenticated','authenticated','demo@pragmatica.app','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5745e13c-ab07-48b7-9db7-24372b16f5a9", "email": "demo@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+('00000000-0000-0000-0000-000000000000','5745e13c-ab07-48b7-9db7-24372b16f5a9','authenticated','authenticated','demo@pragmatica.app','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5745e13c-ab07-48b7-9db7-24372b16f5a9", "email": "demo@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
-('00000000-0000-0000-0000-000000000000','5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','authenticated','authenticated','cashier@pragmatica.app','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5fa2a5a4-14ca-4afb-bfeb-abc345335a1f", "email": "cashier@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+('00000000-0000-0000-0000-000000000000','5fa2a5a4-14ca-4afb-bfeb-abc345335a1f','authenticated','authenticated','cashier@pragmatica.app','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "5fa2a5a4-14ca-4afb-bfeb-abc345335a1f", "email": "cashier@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
-('00000000-0000-0000-0000-000000000000','b6f62b1e-8eae-4ba2-93b2-353d20fe94e0','authenticated','authenticated','admin@pragmatica.ph','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "b6f62b1e-8eae-4ba2-93b2-353d20fe94e0", "email": "admin@pragmatica.ph", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+('00000000-0000-0000-0000-000000000000','b6f62b1e-8eae-4ba2-93b2-353d20fe94e0','authenticated','authenticated','admin@pragmatica.ph','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "b6f62b1e-8eae-4ba2-93b2-353d20fe94e0", "email": "admin@pragmatica.ph", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
@@ -516,10 +515,21 @@ VALUES
 
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
-('00000000-0000-0000-0000-000000000000','bcb8f5df-b678-4c22-ba71-59b33ba06227','authenticated','authenticated','mflores@pragmatica.app','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "bcb8f5df-b678-4c22-ba71-59b33ba06227", "email": "mflores@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+('00000000-0000-0000-0000-000000000000','bcb8f5df-b678-4c22-ba71-59b33ba06227','authenticated','authenticated','mflores@pragmatica.app','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "bcb8f5df-b678-4c22-ba71-59b33ba06227", "email": "mflores@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES
 ('bcb8f5df-b678-4c22-ba71-59b33ba06227','1e10e2dd-655e-41e0-a508-edfd660a9bcf','Miguel','mflores@pragmatica.app','Miguel','Flores',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,'c830f462-6973-42cd-8125-898376fbc291');
+
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','1d2f3a4b-5c6d-47e8-9f01-23456789abcd','authenticated','authenticated','stockman@pragmatica.app','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,NULL,'{"provider": "email", "providers": ["email"]}','{"sub": "1d2f3a4b-5c6d-47e8-9f01-23456789abcd", "email": "stockman@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
+VALUES
+('00000000-0000-0000-0000-000000000000','2e3f4a5b-6c7d-48e9-af01-3456789abcde','authenticated','authenticated','picker@pragmatica.app','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,NULL,'{"provider": "email", "providers": ["email"]}','{"sub": "2e3f4a5b-6c7d-48e9-af01-3456789abcde", "email": "picker@pragmatica.app", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
+VALUES
+('1d2f3a4b-5c6d-47e8-9f01-23456789abcd','1e10e2dd-655e-41e0-a508-edfd660a9bcf','stockman','stockman@pragmatica.app','Warehouse','Stockman',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,NULL),
+('2e3f4a5b-6c7d-48e9-af01-3456789abcde','1e10e2dd-655e-41e0-a508-edfd660a9bcf','picker','picker@pragmatica.app','Warehouse','Picker',NULL,TRUE,NULL,'2025-11-06 07:17:41.17002','2025-11-06 07:17:41.17002',NULL,NULL);
 
 -- ============================================================================
 -- SEED DATA: Grant Default BU Access to Users
@@ -535,7 +545,9 @@ VALUES
   ('b6f62b1e-8eae-4ba2-93b2-353d20fe94e0', 'd5d09f49-c3d7-4f24-aca9-57bea45e0a54', 'admin', false, false, now()),
   ('b6f62b1e-8eae-4ba2-93b2-353d20fe94e0', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'admin', false, false, now()),
   ('5fa2a5a4-14ca-4afb-bfeb-abc345335a1f', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'admin', false, true, now()),
-  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'admin', false, true, now());
+  ('bcb8f5df-b678-4c22-ba71-59b33ba06227', 'bbce384d-dd71-441c-a5e3-2b5e5d1543ce', 'admin', false, true, now()),
+  ('1d2f3a4b-5c6d-47e8-9f01-23456789abcd', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'staff', true, true, now()),
+  ('2e3f4a5b-6c7d-48e9-af01-3456789abcde', 'd69c52d5-6755-4e28-87e3-24c680a5897b', 'staff', true, true, now());
 
 -- ============================================================================
 -- SEED DATA: Cashier Role and Permissions
@@ -618,6 +630,155 @@ INSERT INTO permissions (resource, description, can_view, can_create, can_edit, 
 VALUES ('stock_requests', 'Manage stock requests', true, true, true, true)
 ON CONFLICT (resource) DO NOTHING;
 
+-- ============================================================================
+-- SEED DATA: Stockman Role and Permissions
+-- ============================================================================
+-- Stockman can run warehouse operations without purchasing, admin, sales,
+-- accounting, role, or user-management access.
+
+INSERT INTO roles (
+  company_id,
+  name,
+  description,
+  created_at,
+  updated_at
+)
+VALUES (
+  '1e10e2dd-655e-41e0-a508-edfd660a9bcf',
+  'Stockman',
+  'Warehouse operator with access to picking, putaway, transfers, stock requests, and stock visibility',
+  NOW(),
+  NOW()
+)
+ON CONFLICT ON CONSTRAINT uq_role_name_per_company DO UPDATE
+SET
+  description = EXCLUDED.description,
+  updated_at = NOW();
+
+DELETE FROM role_permissions rp
+USING roles r, permissions p
+WHERE rp.role_id = r.id
+  AND rp.permission_id = p.id
+  AND r.name = 'Stockman'
+  AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+  AND p.resource IN (
+    'suppliers',
+    'purchase_orders',
+    'purchase_receipts',
+    'stock_requisitions',
+    'load_lists',
+    'goods_receipt_notes'
+  );
+
+WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) AS (
+  VALUES
+    ('dashboard', true, false, false, false),
+    ('dashboard.card.incoming_shipments.view', true, false, false, false),
+    ('dashboard.card.pick_list.view', true, false, false, false),
+    ('dashboard.card.stock_requests.view', true, false, false, false),
+    ('dashboard.queue.incoming_deliveries.view', true, false, false, false),
+    ('dashboard.queue.pick_list.view', true, false, false, false),
+    ('dashboard.queue.stock_requests.view', true, false, false, false),
+    ('items', true, false, false, false),
+    ('warehouses', true, false, true, false),
+    ('manage_locations', true, true, true, false),
+    ('view_location_stock', true, false, false, false),
+    ('transfer_between_locations', true, true, true, false),
+    ('stock_adjustments', true, true, true, false),
+    ('stock_requests', true, true, true, false),
+    ('stock_transfers', true, true, true, false),
+    ('stock_transactions', true, true, false, false)
+)
+INSERT INTO role_permissions (
+  role_id,
+  permission_id,
+  can_view,
+  can_create,
+  can_edit,
+  can_delete
+)
+SELECT
+  r.id,
+  p.id,
+  sp.can_view,
+  sp.can_create,
+  sp.can_edit,
+  sp.can_delete
+FROM roles r
+JOIN stockman_permissions sp ON true
+JOIN permissions p ON p.resource = sp.resource
+WHERE r.name = 'Stockman'
+  AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+ON CONFLICT (role_id, permission_id) DO UPDATE
+SET
+  can_view = EXCLUDED.can_view,
+  can_create = EXCLUDED.can_create,
+  can_edit = EXCLUDED.can_edit,
+  can_delete = EXCLUDED.can_delete;
+
+-- ============================================================================
+-- SEED DATA: Picker Role and Permissions
+-- ============================================================================
+-- Picker can access warehouse picking queues and record picked quantities
+-- without receiving, putaway, adjustment, transfer, delete, or admin access.
+
+INSERT INTO roles (
+  company_id,
+  name,
+  description,
+  created_at,
+  updated_at
+)
+VALUES (
+  '1e10e2dd-655e-41e0-a508-edfd660a9bcf',
+  'Picker',
+  'Warehouse picker with access to pick lists, picking queues, and stock visibility',
+  NOW(),
+  NOW()
+)
+ON CONFLICT ON CONSTRAINT uq_role_name_per_company DO UPDATE
+SET
+  description = EXCLUDED.description,
+  updated_at = NOW();
+
+WITH picker_permissions(resource, can_view, can_create, can_edit, can_delete) AS (
+  VALUES
+    ('dashboard', true, false, false, false),
+    ('dashboard.card.pick_list.view', true, false, false, false),
+    ('dashboard.queue.pick_list.view', true, false, false, false),
+    ('items', true, false, false, false),
+    ('warehouses', true, false, false, false),
+    ('view_location_stock', true, false, false, false),
+    ('stock_requests', true, false, true, false),
+    ('stock_transactions', true, false, false, false)
+)
+INSERT INTO role_permissions (
+  role_id,
+  permission_id,
+  can_view,
+  can_create,
+  can_edit,
+  can_delete
+)
+SELECT
+  r.id,
+  p.id,
+  pp.can_view,
+  pp.can_create,
+  pp.can_edit,
+  pp.can_delete
+FROM roles r
+JOIN picker_permissions pp ON true
+JOIN permissions p ON p.resource = pp.resource
+WHERE r.name = 'Picker'
+  AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+ON CONFLICT (role_id, permission_id) DO UPDATE
+SET
+  can_view = EXCLUDED.can_view,
+  can_create = EXCLUDED.can_create,
+  can_edit = EXCLUDED.can_edit,
+  can_delete = EXCLUDED.can_delete;
+
 -- Grant Super Admin full access to all permissions
 INSERT INTO role_permissions (role_id, permission_id, can_view, can_create, can_edit, can_delete)
 SELECT r.id, p.id, p.can_view, p.can_create, p.can_edit, p.can_delete
@@ -690,6 +851,30 @@ SELECT
   NOW()
 FROM roles r
 WHERE r.name = 'Cashier'
+  AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+ON CONFLICT (user_id, role_id, business_unit_id) DO NOTHING;
+
+-- Assign Stockman role to stockman demo user for Main-Bulacan
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  '1d2f3a4b-5c6d-47e8-9f01-23456789abcd',
+  r.id,
+  'd69c52d5-6755-4e28-87e3-24c680a5897b',
+  NOW()
+FROM roles r
+WHERE r.name = 'Stockman'
+  AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
+ON CONFLICT (user_id, role_id, business_unit_id) DO NOTHING;
+
+-- Assign Picker role to picker demo user for Main-Bulacan
+INSERT INTO user_roles (user_id, role_id, business_unit_id, created_at)
+SELECT
+  '2e3f4a5b-6c7d-48e9-af01-3456789abcde',
+  r.id,
+  'd69c52d5-6755-4e28-87e3-24c680a5897b',
+  NOW()
+FROM roles r
+WHERE r.name = 'Picker'
   AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf'
 ON CONFLICT (user_id, role_id, business_unit_id) DO NOTHING;
 
@@ -1144,7 +1329,6 @@ END $$;
 --
 -- Login credentials:
 --   Email: cashier@pragmatica.app
---   Password: password (default bcrypt hash in seed data)
 --
 -- The cashier has access to:
 --   - Dashboard (view only)
@@ -1368,7 +1552,7 @@ VALUES
 
 INSERT INTO "auth"."users"("instance_id","id","aud","role","email","encrypted_password","email_confirmed_at","invited_at","confirmation_token","confirmation_sent_at","recovery_token","recovery_sent_at","email_change_token_new","email_change","email_change_sent_at","last_sign_in_at","raw_app_meta_data","raw_user_meta_data","is_super_admin","created_at","updated_at","phone","phone_confirmed_at","phone_change","phone_change_token","phone_change_sent_at","email_change_token_current","email_change_confirm_status","banned_until","reauthentication_token","reauthentication_sent_at","is_sso_user","deleted_at","is_anonymous")
 VALUES
-('00000000-0000-0000-0000-000000000000','c313f071-c097-4a8a-9f08-b1e759dcaf12','authenticated','authenticated','lato_rosie@yahoo.com','$2a$10$av68P//OXhBrmx9R0WRL3.8DdVeIlcy.Wcf/yNgriwFcah51r500u','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "c313f071-c097-4a8a-9f08-b1e759dcaf12", "email": "lato_rosie@yahoo.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
+('00000000-0000-0000-0000-000000000000','c313f071-c097-4a8a-9f08-b1e759dcaf12','authenticated','authenticated','lato_rosie@yahoo.com','$2a$10$fl1NcrikDWUCdcVrOa2MRebN.HByAT8m80Jk2K9P5L09INoP1omFG','2025-11-06 07:07:59.211291+00',NULL,'',NULL,'',NULL,'','',NULL,'2025-11-06 07:07:59.218139+00','{"provider": "email", "providers": ["email"]}','{"sub": "c313f071-c097-4a8a-9f08-b1e759dcaf12", "email": "lato_rosie@yahoo.com", "email_verified": true, "phone_verified": false}',NULL,'2025-11-06 07:07:59.200435+00','2025-11-06 07:07:59.22046+00',NULL,NULL,'','',NULL,'',0,NULL,'',NULL,FALSE,NULL,FALSE);
 
 INSERT INTO "public"."users"("id","company_id","username","email","first_name","last_name","phone","is_active","last_login_at","created_at","updated_at","deleted_at","van_warehouse_id")
 VALUES

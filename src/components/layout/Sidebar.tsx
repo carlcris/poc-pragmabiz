@@ -33,7 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { BusinessUnitSwitcher } from "@/components/business-unit/BusinessUnitSwitcher";
 import { usePermissions } from "@/hooks/usePermissions";
-import { RESOURCES } from "@/constants/resources";
+import { PURCHASING_MODULE_RESOURCES, RESOURCES } from "@/constants/resources";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import type { Resource } from "@/constants/resources";
 import type { UserPermissions } from "@/types/rbac";
@@ -188,7 +188,7 @@ const menuItems = [
       {
         title: "Overview",
         href: "/purchasing/overview",
-        resource: RESOURCES.DASHBOARD as Resource,
+        resources: PURCHASING_MODULE_RESOURCES,
         icon: LayoutDashboard,
       },
       {
@@ -315,6 +315,12 @@ export function Sidebar({
   const sidebarOpen = hasMounted ? isOpen : true;
   const canViewResource = (resource: Resource) =>
     Boolean(effectivePermissions?.[resource]?.can_view);
+  const canViewAnyResource = (resources: readonly Resource[]) =>
+    resources.some((resource) => canViewResource(resource));
+  const canViewMenuItem = (item: { resource?: Resource; resources?: readonly Resource[] }) => {
+    if (item.resources) return canViewAnyResource(item.resources);
+    return item.resource ? canViewResource(item.resource) : false;
+  };
 
   // Don't render menu items until permissions are loaded
   // If cached permissions exist (persisted), render immediately and refresh in background.
@@ -417,9 +423,7 @@ export function Sidebar({
                   const isParentActive = !item.children && pathname === item.href;
 
                   if (item.children) {
-                    const visibleChildren = item.children.filter((child) =>
-                      canViewResource(child.resource)
-                    );
+                    const visibleChildren = item.children.filter((child) => canViewMenuItem(child));
                     if (visibleChildren.length === 0) {
                       return null;
                     }
@@ -490,9 +494,7 @@ export function Sidebar({
                   const Icon = item.icon;
 
                   if (item.children) {
-                    const visibleChildren = item.children.filter((child) =>
-                      canViewResource(child.resource)
-                    );
+                    const visibleChildren = item.children.filter((child) => canViewMenuItem(child));
                     if (visibleChildren.length === 0) {
                       return null;
                     }

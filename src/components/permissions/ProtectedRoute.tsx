@@ -74,7 +74,7 @@ export function ProtectedRoute({
 }
 
 type MultiResourceProtectedRouteProps = {
-  resources: Resource[];
+  resources: readonly Resource[];
   requireAll?: boolean;
   children: ReactNode;
   redirectTo?: string;

@@ -2,20 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { User, Lock, Loader2, AlertCircle } from "lucide-react";
+import { User, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import Image from "next/image";
 
 export default function TabletLoginPage() {
   const router = useRouter();
+  const tCommon = useTranslations("common");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuthStore();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -85,14 +88,27 @@ export default function TabletLoginPage() {
                 <Lock className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-400" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 w-full rounded-xl border-none bg-gray-100 pl-11 pr-3.5 text-sm placeholder:text-gray-400 focus:outline-none focus-visible:ring-0"
+                  className="h-12 w-full rounded-xl border-none bg-gray-100 pl-11 pr-12 text-sm placeholder:text-gray-400 focus:outline-none focus-visible:ring-0"
                   required
                   disabled={isLoading}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  disabled={isLoading}
+                  aria-label={showPassword ? tCommon("hidePassword") : tCommon("showPassword")}
+                  className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
               </div>
             </div>
 
