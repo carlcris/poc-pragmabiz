@@ -1,7 +1,6 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
-import { RESOURCES } from "@/constants/resources";
+import { requireDeliveryNoteReceivingAccess } from "@/lib/delivery-notes/permissions";
 import {
   fetchDeliveryNote,
   fetchDeliveryNoteHeader,
@@ -20,7 +19,7 @@ type VoidReceivingScanBody = {
 // POST /api/delivery-notes/[id]/receiving-scans/[scanId]/void
 async function POSTHandler(request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "edit");
+    const unauthorized = await requireDeliveryNoteReceivingAccess("edit");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

@@ -471,34 +471,60 @@ export const BottomNav = () => {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.bottomSafe}>
       <View style={styles.bottomNav}>
-        {showReceiving ? (
-          <Pressable style={styles.navItem} onPress={() => handleNavigation("/receiving", "receiving")}>
-            <MaterialCommunityIcons
-              name="package-variant-closed"
-              size={22}
-              color={active === "receiving" ? colors.primary : "#9B8FC4"}
-            />
-            <Text style={[styles.navText, active === "receiving" ? styles.navTextActive : null]}>
-              Receiving
-            </Text>
-          </Pressable>
-        ) : (
-          <View style={styles.navItem} />
-        )}
-        {showPicking ? (
-          <Pressable style={styles.navItem} onPress={() => handleNavigation("/picking", "picking")}>
-            <MaterialCommunityIcons
-              name="package-variant-plus"
-              size={22}
-              color={active === "picking" ? colors.primary : "#9B8FC4"}
-            />
-            <Text style={[styles.navText, active === "picking" ? styles.navTextActive : null]}>
-              Picking
-            </Text>
-          </Pressable>
-        ) : (
-          <View style={styles.navItem} />
-        )}
+        <Pressable
+          style={styles.navItem}
+          disabled={!showReceiving}
+          accessibilityState={{ disabled: !showReceiving }}
+          onPress={() => handleNavigation("/receiving", "receiving")}
+        >
+          <MaterialCommunityIcons
+            name="package-variant-closed"
+            size={22}
+            color={
+              !showReceiving
+                ? colors.textDisabled
+                : active === "receiving"
+                  ? colors.primary
+                  : "#9B8FC4"
+            }
+          />
+          <Text
+            style={[
+              styles.navText,
+              active === "receiving" && showReceiving ? styles.navTextActive : null,
+              !showReceiving ? styles.navTextDisabled : null
+            ]}
+          >
+            Receiving
+          </Text>
+        </Pressable>
+        <Pressable
+          style={styles.navItem}
+          disabled={!showPicking}
+          accessibilityState={{ disabled: !showPicking }}
+          onPress={() => handleNavigation("/picking", "picking")}
+        >
+          <MaterialCommunityIcons
+            name="package-variant-plus"
+            size={22}
+            color={
+              !showPicking
+                ? colors.textDisabled
+                : active === "picking"
+                  ? colors.primary
+                  : "#9B8FC4"
+            }
+          />
+          <Text
+            style={[
+              styles.navText,
+              active === "picking" && showPicking ? styles.navTextActive : null,
+              !showPicking ? styles.navTextDisabled : null
+            ]}
+          >
+            Picking
+          </Text>
+        </Pressable>
         <Pressable style={styles.navCenter} onPress={() => handleNavigation("/", "dashboard")}>
           <Ionicons name="grid-outline" size={26} color="#fff" />
         </Pressable>
@@ -844,6 +870,9 @@ export const styles = StyleSheet.create({
   },
   navTextActive: {
     color: colors.primary
+  },
+  navTextDisabled: {
+    color: colors.textDisabled
   },
   navCenter: {
     width: 56,

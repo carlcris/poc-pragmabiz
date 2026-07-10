@@ -17,8 +17,9 @@ import { borderRadius, shadows, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
 import {
-  canAccessReceiving,
-  hasResourcePermission
+  canAccessDeliveryNoteReceiving,
+  canAccessLoadListReceiving,
+  canAccessReceiving
 } from "@/utils/permissions";
 
 const statusFilters = [
@@ -42,9 +43,9 @@ export default function ReceivingScreen() {
   const [status, setStatus] = useState("in_transit");
   const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("dispatched");
   const [search, setSearch] = useState("");
-  const canViewLoadListReceiving = canAccessReceiving(session);
-  const canViewDeliveryNoteReceiving = hasResourcePermission(session, "stock_requests", "view");
-  const canViewReceiving = canViewLoadListReceiving || canViewDeliveryNoteReceiving;
+  const canViewLoadListReceiving = canAccessLoadListReceiving(session);
+  const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
+  const canViewReceiving = canAccessReceiving(session);
   const receivingWarehouse = useReceivingWarehouse(currentBusinessUnit?.id, canViewLoadListReceiving);
   const loadLists = useLoadLists(
     status,

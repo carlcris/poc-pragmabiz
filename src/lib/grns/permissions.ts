@@ -5,6 +5,7 @@ import { getAuthenticatedUser, requirePermission } from "@/lib/auth";
 import { canAccessCapability } from "@/services/permissions/permissionResolver";
 
 export const GRN_RECEIVING_SAVE_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE;
+export const GRN_RECEIVING_START_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_START;
 export const GRN_RECEIVING_SUBMIT_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT;
 
 export async function requireGrnReceivingOperation(

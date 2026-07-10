@@ -17,9 +17,11 @@ import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
 import {
-  canAccessReceiving,
+  canAccessLoadListReceiving,
   canSaveGrnReceiving,
-  canSubmitGrnReceiving
+  canStartGrnReceiving,
+  canSubmitGrnReceiving,
+  hasResourcePermission
 } from "@/utils/permissions";
 
 type GrnLineDraft = Omit<UpdateGrnLinePayload, "id" | "numBoxes">;
@@ -40,20 +42,26 @@ const getInitialDraft = (item: GrnLine): GrnLineDraft => ({
 export default function LoadListReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useAuthStore((state) => state.session);
-  const canViewReceiving = canAccessReceiving(session);
+  const canViewReceiving = canAccessLoadListReceiving(session);
+  const canViewGrn = hasResourcePermission(session, "goods_receipt_notes", "view");
+  const canStartReceiving = canStartGrnReceiving(session);
   const canSaveReceiving = canSaveGrnReceiving(session);
   const canSubmitReceiving = canSubmitGrnReceiving(session);
   const [lineEdits, setLineEdits] = useState<Record<string, GrnLineDraft>>({});
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
-  const detail = useLoadListReceiving(id, canViewReceiving);
+  const detail = useLoadListReceiving(id, {
+    enabled: canViewReceiving,
+    includeGrn: canViewGrn
+  });
   const loadList = detail.data?.loadList;
   const grn = detail.data?.grn;
   const updateGrn = useUpdateGrnReceiving(id, grn?.id || "");
   const startGrn = useStartGrnReceiving(id, grn?.id || "");
   const pauseGrn = usePauseGrnReceiving(id, grn?.id || "");
   const submitGrn = useSubmitGrnReceiving(id, grn?.id || "");
-  const canStart = grn?.status === "draft" && canSaveReceiving;
+  const canStart = grn?.status === "draft" && canStartReceiving;
+  const canPause = grn?.status === "receiving" && canStartReceiving;
   const canEdit = grn?.status === "receiving" && canSaveReceiving;
   const hasUnsavedChanges = Object.keys(lineEdits).length > 0;
   const busy = updateGrn.isPending || startGrn.isPending || pauseGrn.isPending || submitGrn.isPending;
@@ -158,7 +166,7 @@ export default function LoadListReceivingDetailScreen() {
     setActionMessage("");
 
     if (!grn) return;
-    if (!canSaveReceiving) {
+    if (!canStartReceiving) {
       setActionError("You do not have permission to start receiving.");
       return;
     }
@@ -176,7 +184,7 @@ export default function LoadListReceivingDetailScreen() {
     setActionMessage("");
 
     if (!grn) return;
-    if (!canSaveReceiving) {
+    if (!canStartReceiving) {
       setActionError("You do not have permission to pause receiving.");
       return;
     }
@@ -252,18 +260,20 @@ export default function LoadListReceivingDetailScreen() {
                 <StatusBadge status={grn.status} />
               </Card>
 
-              {canStart || canEdit ? (
+              {canStart || canPause || canEdit ? (
                 <Card style={styles.actionCard}>
                   <View style={styles.actionHeader}>
                     <View style={styles.actionTitleBlock}>
                       <Text style={styles.actionTitle}>
                         {canStart ? "Ready to receive" : "Receive items"}
                       </Text>
-                      <Text style={styles.actionSubtitle}>
-                        {canStart
-                          ? "Start receiving before entering quantities."
-                          : "Save quantities, then submit to create putaway tasks."}
-                      </Text>
+                      {canStart || canEdit ? (
+                        <Text style={styles.actionSubtitle}>
+                          {canStart
+                            ? "Start receiving before entering quantities."
+                            : "Save quantities, then submit to create putaway tasks."}
+                        </Text>
+                      ) : null}
                     </View>
                     {hasUnsavedChanges ? (
                       <Text style={styles.unsavedText}>Unsaved</Text>
@@ -288,34 +298,40 @@ export default function LoadListReceivingDetailScreen() {
                     </Pressable>
                   ) : (
                     <View style={styles.actionButtons}>
-                      <Pressable
-                        onPress={() => void handlePauseReceiving()}
-                        disabled={busy}
-                        style={({ pressed }) => [
-                          styles.secondaryButton,
-                          busy && styles.buttonDisabled,
-                          pressed && !busy ? styles.secondaryButtonPressed : null
-                        ]}
-                      >
-                        <Ionicons name="pause-outline" size={18} color={colors.text} />
-                        <Text style={styles.secondaryButtonText}>
-                          {pauseGrn.isPending ? "Pausing..." : "Pause"}
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void saveChanges()}
-                        disabled={!hasUnsavedChanges || busy}
-                        style={({ pressed }) => [
-                          styles.secondaryButton,
-                          (!hasUnsavedChanges || busy) && styles.buttonDisabled,
-                          pressed && hasUnsavedChanges && !busy ? styles.secondaryButtonPressed : null
-                        ]}
-                      >
-                        <Ionicons name="save-outline" size={18} color={colors.text} />
-                        <Text style={styles.secondaryButtonText}>
-                          {updateGrn.isPending ? "Saving..." : "Save"}
-                        </Text>
-                      </Pressable>
+                      {canPause ? (
+                        <Pressable
+                          onPress={() => void handlePauseReceiving()}
+                          disabled={busy}
+                          style={({ pressed }) => [
+                            styles.secondaryButton,
+                            busy && styles.buttonDisabled,
+                            pressed && !busy ? styles.secondaryButtonPressed : null
+                          ]}
+                        >
+                          <Ionicons name="pause-outline" size={18} color={colors.text} />
+                          <Text style={styles.secondaryButtonText}>
+                            {pauseGrn.isPending ? "Pausing..." : "Pause"}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                      {canEdit ? (
+                        <Pressable
+                          onPress={() => void saveChanges()}
+                          disabled={!hasUnsavedChanges || busy}
+                          style={({ pressed }) => [
+                            styles.secondaryButton,
+                            (!hasUnsavedChanges || busy) && styles.buttonDisabled,
+                            pressed && hasUnsavedChanges && !busy
+                              ? styles.secondaryButtonPressed
+                              : null
+                          ]}
+                        >
+                          <Ionicons name="save-outline" size={18} color={colors.text} />
+                          <Text style={styles.secondaryButtonText}>
+                            {updateGrn.isPending ? "Saving..." : "Save"}
+                          </Text>
+                        </Pressable>
+                      ) : null}
                       {canSubmitReceiving ? (
                         <Pressable
                           onPress={() => void handleSubmit()}
@@ -413,7 +429,7 @@ export default function LoadListReceivingDetailScreen() {
                 })}
               </View>
             </>
-          ) : (
+          ) : canViewGrn ? (
             <Card style={styles.emptyCard}>
               <Ionicons name="document-text-outline" size={48} color={colors.muted} />
               <Text style={styles.emptyTitle}>No GRN Found</Text>
@@ -421,7 +437,7 @@ export default function LoadListReceivingDetailScreen() {
                 A goods receipt note has not been created for this load list yet.
               </Text>
             </Card>
-          )}
+          ) : null}
         </>
       ) : null}
     </Screen>

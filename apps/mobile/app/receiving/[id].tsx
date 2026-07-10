@@ -32,7 +32,10 @@ import type { ReceivingLine, RecordDeliveryNoteReceivingScanPayload } from "@/co
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius, shadows } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
-import { hasResourcePermission } from "@/utils/permissions";
+import {
+  canAccessDeliveryNoteReceiving,
+  canManageDeliveryNoteReceiving
+} from "@/utils/permissions";
 
 const normalizeScanValue = (value: string) => value.trim().toLowerCase();
 
@@ -176,7 +179,8 @@ const resolveLineFromScan = (lines: ReceivingLine[], rawScan: string, parsed: Pa
 export default function ReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useAuthStore((state) => state.session);
-  const canViewDeliveryNoteReceiving = hasResourcePermission(session, "stock_requests", "view");
+  const canViewDeliveryNoteReceiving = canAccessDeliveryNoteReceiving(session);
+  const canManageReceiving = canManageDeliveryNoteReceiving(session);
   const [discrepancyNotes, setDiscrepancyNotes] = useState("");
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -385,7 +389,7 @@ export default function ReceivingDetailScreen() {
             <StatusBadge status={displayStatus} />
           </Card>
 
-          {isReceiving ? (
+          {isReceiving && canManageReceiving ? (
             <View style={styles.actionRow}>
               {!isReceivingStarted ? (
                 <Pressable
@@ -433,7 +437,7 @@ export default function ReceivingDetailScreen() {
           ) : null}
           {submitError ? <Text style={styles.submitErrorText}>{submitError}</Text> : null}
 
-          {isReceiving ? (
+          {isReceiving && canManageReceiving ? (
             <>
               <Text style={styles.sectionTitle}>QR / BARCODE</Text>
 
@@ -477,7 +481,7 @@ export default function ReceivingDetailScreen() {
             </>
           ) : null}
 
-          {isReceiving && hasVariance ? (
+          {isReceiving && canManageReceiving && hasVariance ? (
             <>
               <Card style={styles.warningCard}>
                 <Ionicons name="alert-circle-outline" size={18} color={colors.amberDark} />
@@ -609,14 +613,14 @@ export default function ReceivingDetailScreen() {
         </>
       ) : null}
       <ScannerModal
-        visible={scannerOpen}
+        visible={canManageReceiving && scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={(value) => {
           void processScan(value);
         }}
       />
       <Modal
-        visible={discrepancySheetOpen}
+        visible={canManageReceiving && discrepancySheetOpen}
         transparent
         animationType="slide"
         onRequestClose={() => setDiscrepancySheetOpen(false)}
@@ -686,7 +690,7 @@ export default function ReceivingDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
       <Modal
-        visible={Boolean(scanConfirmation)}
+        visible={canManageReceiving && Boolean(scanConfirmation)}
         transparent
         animationType="slide"
         onRequestClose={() => {

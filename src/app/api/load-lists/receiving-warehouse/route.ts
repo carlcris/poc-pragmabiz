@@ -1,12 +1,11 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
-import { RESOURCES } from "@/constants/resources";
+import { requireLoadListReceivingView } from "@/lib/receiving/permissions";
 
 async function GETHandler() {
   try {
-    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    const unauthorized = await requireLoadListReceivingView();
     if (unauthorized) return unauthorized;
 
     const context = await requireRequestContext();

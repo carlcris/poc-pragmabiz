@@ -20,7 +20,9 @@ export const queryKeys = {
   receivingWarehouse: (businessUnitId: string) => ["receiving-warehouse", businessUnitId] as const,
   loadLists: (status: string, search: string, warehouseId: string) =>
     ["load-lists", status, search, warehouseId] as const,
-  loadListReceiving: (id: string) => ["load-list-receiving", id] as const,
+  loadListReceivingScope: (id: string) => ["load-list-receiving", id] as const,
+  loadListReceiving: (id: string, includeGrn: boolean) =>
+    [...queryKeys.loadListReceivingScope(id), includeGrn] as const,
   deliveryNotes: (status: string, search: string) => ["delivery-notes", status, search] as const,
   deliveryNote: (id: string) => ["delivery-note", id] as const,
   scannedItemInfo: (payload: string) => ["scanned-item-info", payload] as const,
@@ -142,12 +144,18 @@ export const useLoadLists = (status: string, search: string, warehouseId?: strin
     enabled: Boolean(warehouseId) && enabled
   });
 
-export const useLoadListReceiving = (id: string, enabled = true) =>
-  useQuery({
-    queryKey: queryKeys.loadListReceiving(id),
-    queryFn: () => receivingApi.getLoadListReceiving(id),
-    enabled: Boolean(id) && enabled
+export const useLoadListReceiving = (
+  id: string,
+  options: { enabled?: boolean; includeGrn?: boolean } = {}
+) => {
+  const includeGrn = options.includeGrn === true;
+
+  return useQuery({
+    queryKey: queryKeys.loadListReceiving(id, includeGrn),
+    queryFn: () => receivingApi.getLoadListReceiving(id, includeGrn),
+    enabled: Boolean(id) && options.enabled !== false
   });
+};
 
 export const useUpdateGrnReceiving = (loadListId: string, grnId: string) => {
   const client = useQueryClient();
@@ -155,7 +163,7 @@ export const useUpdateGrnReceiving = (loadListId: string, grnId: string) => {
     mutationFn: (data: UpdateGrnReceivingPayload) => receivingApi.updateGrnReceiving(grnId, data),
     onSuccess: async (updated) => {
       client.setQueryData<LoadListReceivingDetail | undefined>(
-        queryKeys.loadListReceiving(loadListId),
+        queryKeys.loadListReceiving(loadListId, true),
         (cached) => {
           if (!cached) return cached;
           return {
@@ -175,7 +183,7 @@ export const useStartGrnReceiving = (loadListId: string, grnId: string) => {
   return useMutation({
     mutationFn: () => receivingApi.startGrnReceiving(grnId),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: queryKeys.loadListReceiving(loadListId) });
+      await client.invalidateQueries({ queryKey: queryKeys.loadListReceivingScope(loadListId) });
       await client.invalidateQueries({ queryKey: ["load-lists"] });
       await client.invalidateQueries({ queryKey: queryKeys.dashboard });
     }
@@ -187,7 +195,7 @@ export const usePauseGrnReceiving = (loadListId: string, grnId: string) => {
   return useMutation({
     mutationFn: () => receivingApi.pauseGrnReceiving(grnId),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: queryKeys.loadListReceiving(loadListId) });
+      await client.invalidateQueries({ queryKey: queryKeys.loadListReceivingScope(loadListId) });
       await client.invalidateQueries({ queryKey: ["load-lists"] });
       await client.invalidateQueries({ queryKey: queryKeys.dashboard });
     }
@@ -199,7 +207,7 @@ export const useSubmitGrnReceiving = (loadListId: string, grnId: string) => {
   return useMutation({
     mutationFn: () => receivingApi.submitGrnReceiving(grnId),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: queryKeys.loadListReceiving(loadListId) });
+      await client.invalidateQueries({ queryKey: queryKeys.loadListReceivingScope(loadListId) });
       await client.invalidateQueries({ queryKey: ["load-lists"] });
       await client.invalidateQueries({ queryKey: queryKeys.dashboard });
     }

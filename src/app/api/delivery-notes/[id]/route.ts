@@ -2,6 +2,7 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { requireDeliveryNoteReceivingAccess } from "@/lib/delivery-notes/permissions";
 import { fetchDeliveryNote, getAuthContext } from "../_lib";
 
 type RouteContext = {
@@ -9,9 +10,12 @@ type RouteContext = {
 };
 
 // GET /api/delivery-notes/[id]
-async function GETHandler(_request: NextRequest, context: RouteContext) {
+async function GETHandler(request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
+    const unauthorized = receivingOnly
+      ? await requireDeliveryNoteReceivingAccess("view")
+      : await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();

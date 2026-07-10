@@ -2,6 +2,7 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { requireDeliveryNoteReceivingAccess } from "@/lib/delivery-notes/permissions";
 import { fetchDeliveryNote, getAuthContext, mapDeliveryNoteRecord, toNumber } from "./_lib";
 
 type CreateDeliveryNoteBody = {
@@ -33,14 +34,16 @@ const parsePositiveInt = (value: string | null, fallback: number) => {
 // GET /api/delivery-notes
 async function GETHandler(request: NextRequest) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
+    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
+    const unauthorized = receivingOnly
+      ? await requireDeliveryNoteReceivingAccess("view")
+      : await requirePermission(RESOURCES.STOCK_REQUESTS, "view");
     if (unauthorized) return unauthorized;
 
     const auth = await getAuthContext();
     if (auth instanceof NextResponse) return auth;
 
     const status = request.nextUrl.searchParams.get("status");
-    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
     const requestingWarehouseId = request.nextUrl.searchParams.get("requestingWarehouseId");
     const search = request.nextUrl.searchParams.get("search")?.trim();
     const hasPagination =

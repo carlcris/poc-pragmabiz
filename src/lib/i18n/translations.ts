@@ -701,6 +701,10 @@ export type TranslationKeys = {
     saveChanges: string;
     permissionsUpdatedSuccess: string;
     permissionsUpdatedError: string;
+    capabilities: {
+      startGrnReceiving: string;
+      startGrnReceivingDescription: string;
+    };
   };
   adminCreateRoleDialog: {
     title: string;
@@ -3575,6 +3579,11 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveChanges: "Save Changes",
       permissionsUpdatedSuccess: "Permissions updated successfully",
       permissionsUpdatedError: "Failed to update permissions",
+      capabilities: {
+        startGrnReceiving: "Start GRN Receiving",
+        startGrnReceivingDescription:
+          "Allows transitioning a draft GRN and its linked arrived load list into receiving.",
+      },
     },
     adminCreateRoleDialog: {
       title: "Create New Role",
@@ -9103,6 +9112,10 @@ export const translations: Record<Locale, TranslationKeys> = {
       saveChanges: "保存更改",
       permissionsUpdatedSuccess: "权限更新成功",
       permissionsUpdatedError: "权限更新失败",
+      capabilities: {
+        startGrnReceiving: "开始收货单收货",
+        startGrnReceivingDescription: "允许将草稿收货单及其关联的已到货装载单转为收货中状态。",
+      },
     },
     adminCreateRoleDialog: {
       title: "创建新角色",

@@ -49,6 +49,8 @@ export const GRANULAR_CAPABILITIES = {
   LOAD_LISTS_TOTAL_AMOUNT: "load_lists.field.total_amount.view",
   LOAD_LISTS_UNIT_PRICE: "load_lists.field.unit_price.view",
 
+  DELIVERY_NOTE_RECEIVING: "stock_requests.operation.receive_delivery_notes.edit",
+  GRN_RECEIVING_START: "goods_receipt_notes.operation.start_receiving.edit",
   GRN_RECEIVING_SAVE: "goods_receipt_notes.operation.save_receiving.edit",
   GRN_RECEIVING_SUBMIT: "goods_receipt_notes.operation.submit_receiving.edit",
 } as const;
@@ -120,6 +122,11 @@ export type LoadListCapabilities = {
 };
 
 export type GrnReceivingCapabilities = {
+  canStartReceiving: boolean;
   canSaveReceiving: boolean;
   canSubmitReceiving: boolean;
+};
+
+export type DeliveryNoteReceivingCapabilities = {
+  canReceiveDeliveryNotes: boolean;
 };

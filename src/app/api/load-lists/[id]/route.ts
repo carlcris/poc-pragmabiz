@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import { requireLoadListReceivingView } from "@/lib/receiving/permissions";
 import {
   LoadListLineValidationError,
   resolveLoadListLineUnitOptions,
@@ -104,14 +105,16 @@ type LoadListItemRow = {
 // GET /api/load-lists/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
+    const unauthorized = receivingOnly
+      ? await requireLoadListReceivingView()
+      : await requirePermission(RESOURCES.LOAD_LISTS, "view");
     if (unauthorized) return unauthorized;
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
-    const receivingOnly = request.nextUrl.searchParams.get("receivingOnly") === "true";
 
     // Fetch load list with related data
     const { data: ll, error } = await supabase

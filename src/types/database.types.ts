@@ -11515,6 +11515,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      save_grn_receiving: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_patch: Json
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       save_sales_quotation_item_frame_details: {
         Args: {
           p_company_id: string

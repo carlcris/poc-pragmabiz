@@ -25,12 +25,26 @@ export const hasCapability = (
   action: PermissionAction
 ) => Boolean(session?.capabilities[capability]?.[permissionFlag(action)]);
 
-export const canAccessReceiving = (session: AuthSession | null | undefined) =>
-  hasResourcePermission(session, "load_lists", "view") &&
+export const canAccessLoadListReceiving = (session: AuthSession | null | undefined) =>
+  hasResourcePermission(session, "load_lists", "view") ||
   hasResourcePermission(session, "goods_receipt_notes", "view");
+
+export const canAccessDeliveryNoteReceiving = (session: AuthSession | null | undefined) =>
+  hasResourcePermission(session, "stock_requests", "view") &&
+  hasCapability(session, "stock_requests.operation.receive_delivery_notes.edit", "edit");
+
+export const canManageDeliveryNoteReceiving = (session: AuthSession | null | undefined) =>
+  hasResourcePermission(session, "stock_requests", "edit") &&
+  hasCapability(session, "stock_requests.operation.receive_delivery_notes.edit", "edit");
+
+export const canAccessReceiving = (session: AuthSession | null | undefined) =>
+  canAccessLoadListReceiving(session) || canAccessDeliveryNoteReceiving(session);
 
 export const canAccessPicking = (session: AuthSession | null | undefined) =>
   hasResourcePermission(session, "stock_requests", "view");
+
+export const canStartGrnReceiving = (session: AuthSession | null | undefined) =>
+  hasCapability(session, "goods_receipt_notes.operation.start_receiving.edit", "edit");
 
 export const canSaveGrnReceiving = (session: AuthSession | null | undefined) =>
   hasCapability(session, "goods_receipt_notes.operation.save_receiving.edit", "edit");

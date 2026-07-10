@@ -202,11 +202,19 @@ export const listLoadLists = async (status: string, search: string, warehouseId:
 };
 
 export const getLoadListReceiving = async (
-  id: string
+  id: string,
+  includeGrn: boolean
 ): Promise<LoadListReceivingDetail> => {
   const loadListResponse = await apiRequest<unknown>(`/api/load-lists/${id}`, {
     query: { receivingOnly: true }
   });
+  if (!includeGrn) {
+    return {
+      loadList: normalizeLoadListDetail(loadListResponse),
+      grn: null
+    };
+  }
+
   const grnsResponse = await apiRequest<ListResponse>("/api/grns", {
     query: { load_list_id: id, page: 1, limit: 1 }
   });
@@ -261,7 +269,9 @@ export const listDeliveryNotes = async (status: string, search: string) => {
 };
 
 export const getDeliveryNote = async (id: string) => {
-  const response = await apiRequest<ListResponse | unknown>(`/api/delivery-notes/${id}`);
+  const response = await apiRequest<ListResponse | unknown>(`/api/delivery-notes/${id}`, {
+    query: { receivingOnly: true }
+  });
   return normalizeDeliveryDetail(asRecord(response).data || response);
 };
 

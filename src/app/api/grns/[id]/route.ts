@@ -8,20 +8,30 @@ import {
   requireGrnReceivingOperation,
 } from "@/lib/grns/permissions";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+import { z } from "zod";
 
-type UpdateGrnLineBody = {
-  id: string;
-  receivedQty: number;
-  damagedQty: number;
-  numBoxes: number;
-  notes?: string | null;
-};
+const updateGrnLineSchema = z
+  .object({
+    id: z.string().uuid(),
+    receivedQty: z.number().finite().min(0).max(1_000_000_000),
+    damagedQty: z.number().finite().min(0).max(1_000_000_000),
+    numBoxes: z.number().int().min(0).max(1_000_000),
+    notes: z.string().max(2_000).nullable().optional(),
+  })
+  .strict();
 
-type UpdateGrnBody = {
-  receivingDate?: string | null;
-  notes?: string | null;
-  items?: UpdateGrnLineBody[];
-};
+const updateGrnSchema = z
+  .object({
+    receivingDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .nullable()
+      .optional(),
+    notes: z.string().max(2_000).nullable().optional(),
+    items: z.array(updateGrnLineSchema).max(500).optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, { message: "At least one field is required" });
 
 // GET /api/grns/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -261,7 +271,12 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
-    const body = (await request.json()) as UpdateGrnBody;
+    const body = await request.json().catch(() => null);
+    const parsed = updateGrnSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid GRN receiving payload" }, { status: 400 });
+    }
 
     const {
       data: { user },
@@ -282,112 +297,26 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Check if GRN exists and is editable
-    const { data: existingGRN, error: fetchError } = await supabase
-      .from("grns")
-      .select("id, status, load_list_id")
-      .eq("id", id)
-      .eq("company_id", userData.company_id)
-      .is("deleted_at", null)
-      .single();
+    const { error } = await supabase.rpc("save_grn_receiving", {
+      p_company_id: userData.company_id,
+      p_user_id: user.id,
+      p_grn_id: id,
+      p_patch: parsed.data,
+    });
 
-    if (fetchError || !existingGRN) {
-      return NextResponse.json({ error: "GRN not found" }, { status: 404 });
-    }
-
-    // Only allow editing draft and receiving status
-    if (!["draft", "receiving"].includes(existingGRN.status)) {
-      return NextResponse.json(
-        { error: "Only draft or receiving GRNs can be edited" },
-        { status: 400 }
-      );
-    }
-
-    // Update GRN header
-    const { error: updateError } = await supabase
-      .from("grns")
-      .update({
-        receiving_date: body.receivingDate,
-        notes: body.notes,
-        status: "receiving", // Auto-change to receiving when items are being entered
-        received_by: user.id,
-        updated_by: user.id,
-      })
-      .eq("id", id);
-
-    if (updateError) {
-      console.error("Error updating GRN:", updateError);
-      return NextResponse.json(
-        { error: "Failed to update GRN" },
-        { status: 500 }
-      );
-    }
-
-    // Update GRN items if provided
-    if (Array.isArray(body.items) && body.items.length > 0) {
-      for (const item of body.items) {
-        const { error: itemError } = await supabase
-          .from("grn_items")
-          .update({
-            received_qty: item.receivedQty,
-            damaged_qty: item.damagedQty,
-            num_boxes: item.numBoxes,
-            notes: item.notes,
-          })
-          .eq("id", item.id);
-
-        if (itemError) {
-          console.error("Error updating GRN item:", itemError);
-          return NextResponse.json({ error: "Failed to update GRN items" }, { status: 500 });
-        }
-      }
-    }
-
-    if (existingGRN.load_list_id) {
-      const { data: loadList } = await supabase
-        .from("load_lists")
-        .select("id, status, ll_number, created_by, business_unit_id")
-        .eq("id", existingGRN.load_list_id)
-        .eq("company_id", userData.company_id)
-        .is("deleted_at", null)
-        .single();
-
-      if (
-        loadList &&
-        loadList.status !== "receiving" &&
-        loadList.status !== "received" &&
-        loadList.status !== "cancelled"
-      ) {
-        const { error: updateLoadListError } = await supabase
-          .from("load_lists")
-          .update({
-            status: "receiving",
-            updated_by: user.id,
-          })
-          .eq("id", loadList.id);
-
-        if (updateLoadListError) {
-          console.error("Error updating load list status:", updateLoadListError);
-        } else if (loadList.created_by) {
-          const { error: notificationError } = await supabase.from("notifications").insert({
-            company_id: userData.company_id,
-            business_unit_id: loadList.business_unit_id || null,
-            user_id: loadList.created_by,
-            title: "Shipments receiving started",
-            message: `Load list ${loadList.ll_number} is now receiving.`,
-            type: "load_list_status",
-            metadata: {
-              load_list_id: loadList.id,
-              ll_number: loadList.ll_number,
-              status: "receiving",
-            },
-          });
-
-          if (notificationError) {
-            console.error("Error creating load list notification:", notificationError);
-          }
-        }
-      }
+    if (error) {
+      console.error("Error saving GRN receiving:", error);
+      const status = error.message === "Unauthorized" ? 403 : 400;
+      const allowedMessages = new Set([
+        "GRN not found",
+        "Only receiving GRNs can be saved",
+        "GRN item not found",
+        "Duplicate GRN item",
+      ]);
+      const message = allowedMessages.has(error.message)
+        ? error.message
+        : "Failed to save GRN receiving";
+      return NextResponse.json({ error: message }, { status });
     }
 
     return NextResponse.json({ id, message: "GRN updated successfully" });

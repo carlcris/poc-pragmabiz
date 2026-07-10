@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import { requireLoadListReceivingView } from "@/lib/receiving/permissions";
 import {
   LoadListLineValidationError,
   resolveLoadListLineUnitOptions,
@@ -56,14 +57,16 @@ const toNumber = (value: number | string | null | undefined) => {
 // GET /api/load-lists
 async function GETHandler(request: NextRequest) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
+    const { searchParams } = new URL(request.url);
+    const receivingOnly = searchParams.get("receivingOnly") === "true";
+    const unauthorized = receivingOnly
+      ? await requireLoadListReceivingView()
+      : await requirePermission(RESOURCES.LOAD_LISTS, "view");
     if (unauthorized) return unauthorized;
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
-    const { searchParams } = new URL(request.url);
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
-    const receivingOnly = searchParams.get("receivingOnly") === "true";
     const warehouseId = searchParams.get("warehouseId");
     let receivingWarehouseId: string | null = null;
 

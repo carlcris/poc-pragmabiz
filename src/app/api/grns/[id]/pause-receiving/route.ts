@@ -2,7 +2,7 @@ import { withActivityLogging } from "@/lib/activity-logging/route-activity-logge
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  GRN_RECEIVING_SAVE_CAPABILITY,
+  GRN_RECEIVING_START_CAPABILITY,
   requireGrnReceivingOperation,
 } from "@/lib/grns/permissions";
 
@@ -20,7 +20,7 @@ const userSafePauseMessage = (message: string | undefined) => {
 
 async function POSTHandler(_request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_SAVE_CAPABILITY);
+    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_START_CAPABILITY);
     if (unauthorized) return unauthorized;
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();
@@ -52,7 +52,8 @@ async function POSTHandler(_request: NextRequest, context: RouteContext) {
 
     if (error) {
       console.error("Error pausing GRN receiving:", error);
-      return NextResponse.json({ error: userSafePauseMessage(error.message) }, { status: 400 });
+      const status = error.message === "Unauthorized" ? 403 : 400;
+      return NextResponse.json({ error: userSafePauseMessage(error.message) }, { status });
     }
 
     return NextResponse.json({

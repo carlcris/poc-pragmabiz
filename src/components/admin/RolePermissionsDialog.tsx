@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
 
 type Role = {
   id: string;
@@ -84,13 +85,40 @@ type PermissionSectionDraft = Omit<PermissionSection, "childGroups"> & {
 };
 
 const ACTION_FLAGS = ["can_view", "can_create", "can_edit", "can_delete"] as const;
+type PermissionActionFlag = (typeof ACTION_FLAGS)[number];
+type PermissionCopy = {
+  title: string;
+  description: string;
+};
+type PermissionCopyByResource = Record<string, PermissionCopy | undefined>;
 
 const getModuleTitle = (resource: string) => toProperCase(resource.replace(/[_-]+/g, " "));
 
-const getPermissionTitle = (permission: Permission) =>
-  permission.label?.trim() || getModuleTitle(permission.resource);
+const getPermissionTitle = (
+  permission: Permission,
+  permissionCopyByResource: PermissionCopyByResource
+) =>
+  permissionCopyByResource[permission.resource]?.title ||
+  permission.label?.trim() ||
+  getModuleTitle(permission.resource);
 
-const permissionMatchesSearch = (permission: Permission, query: string) => {
+const getPermissionDescription = (
+  permission: Permission,
+  permissionCopyByResource: PermissionCopyByResource
+) => permissionCopyByResource[permission.resource]?.description || permission.description;
+
+const getGranularActionFlag = (permission: Permission): PermissionActionFlag | null => {
+  const actionFlag = `can_${permission.capability_action || ""}`;
+  return ACTION_FLAGS.includes(actionFlag as PermissionActionFlag)
+    ? (actionFlag as PermissionActionFlag)
+    : null;
+};
+
+const permissionMatchesSearch = (
+  permission: Permission,
+  query: string,
+  permissionCopyByResource: PermissionCopyByResource
+) => {
   if (!query) return true;
 
   const haystack = [
@@ -101,6 +129,8 @@ const permissionMatchesSearch = (permission: Permission, query: string) => {
     permission.parent_resource,
     permission.surface,
     permission.capability_key,
+    getPermissionTitle(permission, permissionCopyByResource),
+    getPermissionDescription(permission, permissionCopyByResource),
   ]
     .filter(Boolean)
     .join(" ")
@@ -109,7 +139,11 @@ const permissionMatchesSearch = (permission: Permission, query: string) => {
   return haystack.includes(query);
 };
 
-const groupPermissions = (permissions: Permission[], searchQuery: string): PermissionSection[] => {
+const groupPermissions = (
+  permissions: Permission[],
+  searchQuery: string,
+  permissionCopyByResource: PermissionCopyByResource
+): PermissionSection[] => {
   const sections = new Map<string, PermissionSectionDraft>();
 
   const ensureSection = (key: string) => {
@@ -146,7 +180,11 @@ const groupPermissions = (permissions: Permission[], searchQuery: string): Permi
   return Array.from(sections.values())
     .map((section) => {
       const moduleMatches = section.modulePermission
-        ? permissionMatchesSearch(section.modulePermission, searchQuery)
+        ? permissionMatchesSearch(
+            section.modulePermission,
+            searchQuery,
+            permissionCopyByResource
+          )
         : false;
       const childGroups = Array.from(section.childGroups.entries())
         .map(([title, permissions]) => ({
@@ -154,9 +192,15 @@ const groupPermissions = (permissions: Permission[], searchQuery: string): Permi
           permissions: permissions
             .filter(
               (permission) =>
-                !searchQuery || moduleMatches || permissionMatchesSearch(permission, searchQuery)
+                !searchQuery ||
+                moduleMatches ||
+                permissionMatchesSearch(permission, searchQuery, permissionCopyByResource)
             )
-            .sort((a, b) => getPermissionTitle(a).localeCompare(getPermissionTitle(b))),
+            .sort((a, b) =>
+              getPermissionTitle(a, permissionCopyByResource).localeCompare(
+                getPermissionTitle(b, permissionCopyByResource)
+              )
+            ),
         }))
         .filter((group) => group.permissions.length > 0);
 
@@ -177,6 +221,15 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
   const { data: roleData, isLoading: loadingRole } = useRole(role.id);
   const { data: permissionsData, isLoading: loadingPermissions } = usePermissionsList();
   const assignPermissions = useAssignPermissions();
+  const permissionCopyByResource = useMemo<PermissionCopyByResource>(
+    () => ({
+      [GRANULAR_CAPABILITIES.GRN_RECEIVING_START]: {
+        title: t("capabilities.startGrnReceiving"),
+        description: t("capabilities.startGrnReceivingDescription"),
+      },
+    }),
+    [t]
+  );
 
   // Track permission settings { permission_id: { can_view, can_create, can_edit, can_delete } }
   const [permissionSettings, setPermissionSettings] = useState<Map<string, PermissionSettings>>(
@@ -188,8 +241,8 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
   const allPermissions = useMemo(() => permissionsData?.data || [], [permissionsData?.data]);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const permissionSections = useMemo(
-    () => groupPermissions(allPermissions, normalizedSearchQuery),
-    [allPermissions, normalizedSearchQuery]
+    () => groupPermissions(allPermissions, normalizedSearchQuery, permissionCopyByResource),
+    [allPermissions, normalizedSearchQuery, permissionCopyByResource]
   );
   const shownPermissionCount = permissionSections.reduce((count, section) => {
     const moduleCount = section.modulePermission ? 1 : 0;
@@ -270,6 +323,9 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
   };
 
   const toggleGranularPermission = (section: PermissionSection, permission: Permission) => {
+    const actionFlag = getGranularActionFlag(permission);
+    if (!actionFlag || !permission[actionFlag]) return;
+
     setPermissionSettings((prev) => {
       const newSettings = new Map(prev);
 
@@ -457,26 +513,45 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                 key={permission.id}
                                 className={cn(
                                   "flex cursor-pointer items-start gap-3 rounded-md border px-3 py-3 transition-colors",
-                                  isPermissionActionEnabled(permission.id, "can_view")
+                                  getGranularActionFlag(permission) &&
+                                    isPermissionActionEnabled(
+                                      permission.id,
+                                      getGranularActionFlag(permission)!
+                                    )
                                     ? "border-primary/30 bg-primary/5"
                                     : "hover:bg-muted/40"
                                 )}
                               >
                                 <Checkbox
-                                  checked={isPermissionActionEnabled(permission.id, "can_view")}
+                                  checked={Boolean(
+                                    getGranularActionFlag(permission) &&
+                                      isPermissionActionEnabled(
+                                        permission.id,
+                                        getGranularActionFlag(permission)!
+                                      )
+                                  )}
                                   onCheckedChange={() =>
                                     toggleGranularPermission(section, permission)
                                   }
-                                  disabled={!permission.can_view}
+                                  disabled={
+                                    !getGranularActionFlag(permission) ||
+                                    !permission[getGranularActionFlag(permission)!]
+                                  }
                                   className="mt-0.5"
                                 />
                                 <span className="min-w-0">
                                   <span className="block text-sm font-medium">
-                                    {getPermissionTitle(permission)}
+                                    {getPermissionTitle(permission, permissionCopyByResource)}
                                   </span>
-                                  {permission.description && (
+                                  {getPermissionDescription(
+                                    permission,
+                                    permissionCopyByResource
+                                  ) && (
                                     <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">
-                                      {permission.description}
+                                      {getPermissionDescription(
+                                        permission,
+                                        permissionCopyByResource
+                                      )}
                                     </span>
                                   )}
                                 </span>

@@ -5,6 +5,13 @@ import {
   GRN_RECEIVING_SUBMIT_CAPABILITY,
   requireGrnReceivingOperation,
 } from "@/lib/grns/permissions";
+import { z } from "zod";
+
+const submitGrnSchema = z
+  .object({
+    notes: z.string().trim().max(2_000).nullable().optional(),
+  })
+  .strict();
 
 const userSafeSubmitMessage = (message: string | undefined) => {
   const allowedMessages = new Set([
@@ -44,12 +51,17 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    const body = await request.json().catch(() => ({} as { notes?: string | null }));
+    const body = await request.json().catch(() => ({}));
+    const parsed = submitGrnSchema.safeParse(body);
 
-    // Fetch GRN
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Invalid GRN submit payload" }, { status: 400 });
+    }
+
+    // Load response context; the RPC owns workflow validation and all writes.
     const { data: grn, error: fetchError } = await supabase
       .from("grns")
-      .select("id, grn_number, status, company_id, items:grn_items(id, received_qty)")
+      .select("id, grn_number, company_id")
       .eq("id", id)
       .eq("company_id", userData.company_id)
       .is("deleted_at", null)
@@ -59,38 +71,13 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "GRN not found" }, { status: 404 });
     }
 
-    // Only allow submitting GRNs in draft or receiving status
-    if (!["draft", "receiving"].includes(grn.status)) {
-      return NextResponse.json(
-        { error: "Only draft or receiving GRNs can be submitted" },
-        { status: 400 }
-      );
-    }
-
-    // Validate at least one item has a received quantity. Partial receiving is allowed.
-    type GrnSubmitItem = {
-      received_qty: number | string | null;
-    };
-    const items = Array.isArray(grn.items) ? (grn.items as GrnSubmitItem[]) : [];
-    if (items.length === 0) {
-      return NextResponse.json({ error: "GRN has no items" }, { status: 400 });
-    }
-
-    const hasReceivedQty = items.some((item) => Number(item.received_qty ?? 0) > 0);
-    if (!hasReceivedQty) {
-      return NextResponse.json(
-        { error: "At least one item must have a received quantity" },
-        { status: 400 }
-      );
-    }
-
     const { data: stockTransactionCode, error: submitError } = await supabase.rpc(
       "submit_grn_to_putaway",
       {
         p_company_id: grn.company_id,
         p_user_id: user.id,
         p_grn_id: grn.id,
-        p_notes: body.notes || null,
+        p_notes: parsed.data.notes || null,
       }
     );
 

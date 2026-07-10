@@ -388,12 +388,18 @@ Complete picking.
 #### GET /api/load-lists/receiving-warehouse
 Resolve the current business unit warehouse used by native mobile load-list receiving.
 
-**Permissions**: `view` on Load Lists
+**Permissions**: `view` on either Load Lists or Goods Receipt Notes
 
 #### GET /api/load-lists?receivingOnly=true&warehouseId=:id
 Fetch native mobile load-list receiving candidates. The API only returns rows when `warehouseId` matches the current business unit warehouse.
 
-**Permissions**: `view` on Load Lists
+**Permissions**: `view` on either Load Lists or Goods Receipt Notes. Goods Receipt Notes access grants only the business-unit-scoped load-list context required by the receiving workflow; ordinary load-list APIs still require Load Lists access.
+
+#### GET /api/load-lists/[id]?receivingOnly=true
+
+Get business-unit-scoped load-list context for native mobile receiving.
+
+**Permissions**: `view` on either Load Lists or Goods Receipt Notes
 
 #### GET /api/grns?load_list_id=:id
 Get the GRN linked to a load list for native mobile receiving.
@@ -401,7 +407,7 @@ Get the GRN linked to a load list for native mobile receiving.
 **Permissions**: `view` on Goods Receipt Notes
 
 #### PUT /api/grns/[id]
-Save native mobile GRN receiving quantities.
+Save native mobile GRN receiving quantities. The GRN must already be in `receiving`; bounded header and line patches are applied atomically by the database.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
 
@@ -423,22 +429,49 @@ Save native mobile GRN receiving quantities.
 #### POST /api/grns/[id]/start-receiving
 Start native mobile GRN receiving. This transitions the GRN and linked arrived load list into `receiving`.
 
-**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
+**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.start_receiving.edit`
 
 #### POST /api/grns/[id]/pause-receiving
 Pause native mobile GRN receiving. This saves the session state by returning the GRN to `draft` and the linked load list to `arrived`; entered quantities remain on the GRN lines.
 
-**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
+**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.start_receiving.edit`
 
 #### POST /api/grns/[id]/submit
 Submit native mobile GRN receiving for confirmation. Submission stages received good quantities into Putaway Station using the shared GRN putaway workflow; final batch/location placement happens when putaway is posted.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.submit_receiving.edit`
 
+#### GET /api/delivery-notes?receivingOnly=true
+
+Fetch delivery notes available to the current business unit for native mobile receiving.
+
+**Permissions**: `view` on Stock Requests and granular capability `stock_requests.operation.receive_delivery_notes.edit`
+
+#### GET /api/delivery-notes/[id]?receivingOnly=true
+
+Get a delivery note for native mobile receiving.
+
+**Permissions**: `view` on Stock Requests and granular capability `stock_requests.operation.receive_delivery_notes.edit`
+
+#### Delivery-note receiving mutations
+
+The following operations require `edit` on Stock Requests and granular capability `stock_requests.operation.receive_delivery_notes.edit`:
+
+- `POST /api/delivery-notes/[id]/start-receiving`
+- `POST /api/delivery-notes/[id]/receiving-scans`
+- `POST /api/delivery-notes/[id]/receiving-scans/[scanId]/void`
+- `POST /api/delivery-notes/[id]/receiving-exceptions/[exceptionId]/accept`
+- `POST /api/delivery-notes/[id]/receiving-exceptions/[exceptionId]/reject`
+- `POST /api/delivery-notes/[id]/receiving-overages/[itemId]/accept`
+- `POST /api/delivery-notes/[id]/receiving-overages/[itemId]/reject`
+- `POST /api/delivery-notes/[id]/submit-receiving`
+
 The native mobile app stores the permission and capability maps returned by login and business-unit
-switching. Receiving and picking navigation, dashboard quick actions, list queries, and detail
-queries are gated from that stored session so roles without the matching resource permission do not
-call the protected APIs.
+switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables
+destinations the current role cannot access. Dashboard quick actions, list queries, detail queries,
+and receiving mutations are gated from the stored session so roles without the matching parent and
+granular permissions do not call the protected APIs. Picking rights alone do not grant delivery-note
+receiving access.
 
 #### GET /api/mobile/items/search
 Search items for mobile (autocomplete).

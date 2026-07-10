@@ -118,7 +118,9 @@ The seed data includes operational roles for demo/local environments:
 
 - `Cashier`: limited point-of-sale access with dashboard and inventory viewing.
 - `Picker`: warehouse picking access for pick-list dashboard queues, item and warehouse lookup, location-stock visibility, stock request picking actions, and stock transaction review. Picker does not receive create/delete, receiving, putaway, adjustment, transfer, admin, accounting, sales, user, role, or permission-management access.
-- `Stockman`: warehouse operator access for picking, load-list receiving, GRN receiving save/submit operations, putaway, location management, transfers, stock requests, stock adjustments, stock transactions, and warehouse stock visibility. Stockman receives `load_lists.view`, `goods_receipt_notes.view`, and the granular GRN receiving operation capabilities, but does not receive broad purchasing workbench, GRN confirmation/delete, supplier, purchase order, purchase receipt, stock requisition, admin, accounting, sales, user, role, or permission-management access.
+- `Stockman`: warehouse operator access for picking, delivery-note receiving, load-list receiving, GRN receiving start/save/submit operations, putaway, location management, transfers, stock requests, stock adjustments, stock transactions, and warehouse stock visibility. Stockman receives `stock_requests.edit` plus the granular delivery-note receiving capability, `load_lists.view`, `goods_receipt_notes.view`, and the granular GRN receiving operation capabilities, but does not receive broad purchasing workbench, GRN confirmation/delete, supplier, purchase order, purchase receipt, stock requisition, admin, accounting, sales, user, role, or permission-management access.
+
+GRN receiving start/pause, save, and submit operations require `goods_receipt_notes.view` plus their documented granular capability. They do not require or implicitly grant broad `goods_receipt_notes.edit` access.
 
 **Permission Types per Resource**:
 
@@ -395,6 +397,12 @@ rely on the platform cookie jar:
     }
   },
   "capabilities": {
+    "goods_receipt_notes.operation.start_receiving.edit": {
+      "can_view": false,
+      "can_create": false,
+      "can_edit": true,
+      "can_delete": false
+    },
     "goods_receipt_notes.operation.save_receiving.edit": {
       "can_view": false,
       "can_create": false,
