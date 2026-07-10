@@ -27,6 +27,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { spacing, borderRadius, shadows, sizes } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { todayLabel } from "@/utils/format";
+import { canAccessPicking, canAccessReceiving } from "@/utils/permissions";
 import { titleCaseStatus } from "@/utils/record";
 
 export const Screen = ({
@@ -450,6 +451,9 @@ export const ScannerModal = ({
 
 export const BottomNav = () => {
   const pathname = usePathname();
+  const session = useAuthStore((state) => state.session);
+  const showReceiving = canAccessReceiving(session);
+  const showPicking = canAccessPicking(session);
   const active = useMemo(() => {
     if (pathname.startsWith("/receiving")) return "receiving";
     if (pathname.startsWith("/picking")) return "picking";
@@ -467,26 +471,34 @@ export const BottomNav = () => {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.bottomSafe}>
       <View style={styles.bottomNav}>
-        <Pressable style={styles.navItem} onPress={() => handleNavigation("/receiving", "receiving")}>
-          <MaterialCommunityIcons
-            name="package-variant-closed"
-            size={22}
-            color={active === "receiving" ? colors.primary : "#9B8FC4"}
-          />
-          <Text style={[styles.navText, active === "receiving" ? styles.navTextActive : null]}>
-            Receiving
-          </Text>
-        </Pressable>
-        <Pressable style={styles.navItem} onPress={() => handleNavigation("/picking", "picking")}>
-          <MaterialCommunityIcons
-            name="package-variant-plus"
-            size={22}
-            color={active === "picking" ? colors.primary : "#9B8FC4"}
-          />
-          <Text style={[styles.navText, active === "picking" ? styles.navTextActive : null]}>
-            Picking
-          </Text>
-        </Pressable>
+        {showReceiving ? (
+          <Pressable style={styles.navItem} onPress={() => handleNavigation("/receiving", "receiving")}>
+            <MaterialCommunityIcons
+              name="package-variant-closed"
+              size={22}
+              color={active === "receiving" ? colors.primary : "#9B8FC4"}
+            />
+            <Text style={[styles.navText, active === "receiving" ? styles.navTextActive : null]}>
+              Receiving
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={styles.navItem} />
+        )}
+        {showPicking ? (
+          <Pressable style={styles.navItem} onPress={() => handleNavigation("/picking", "picking")}>
+            <MaterialCommunityIcons
+              name="package-variant-plus"
+              size={22}
+              color={active === "picking" ? colors.primary : "#9B8FC4"}
+            />
+            <Text style={[styles.navText, active === "picking" ? styles.navTextActive : null]}>
+              Picking
+            </Text>
+          </Pressable>
+        ) : (
+          <View style={styles.navItem} />
+        )}
         <Pressable style={styles.navCenter} onPress={() => handleNavigation("/", "dashboard")}>
           <Ionicons name="grid-outline" size={26} color="#fff" />
         </Pressable>

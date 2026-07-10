@@ -10,11 +10,17 @@ import {
   useSubmitGrnReceiving,
   useUpdateGrnReceiving
 } from "@/hooks/queries";
+import { useAuthStore } from "@/stores/authStore";
 import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
+import {
+  canAccessReceiving,
+  canSaveGrnReceiving,
+  canSubmitGrnReceiving
+} from "@/utils/permissions";
 
 type GrnLineDraft = Omit<UpdateGrnLinePayload, "id" | "numBoxes">;
 
@@ -33,18 +39,22 @@ const getInitialDraft = (item: GrnLine): GrnLineDraft => ({
 
 export default function LoadListReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useAuthStore((state) => state.session);
+  const canViewReceiving = canAccessReceiving(session);
+  const canSaveReceiving = canSaveGrnReceiving(session);
+  const canSubmitReceiving = canSubmitGrnReceiving(session);
   const [lineEdits, setLineEdits] = useState<Record<string, GrnLineDraft>>({});
   const [actionMessage, setActionMessage] = useState("");
   const [actionError, setActionError] = useState("");
-  const detail = useLoadListReceiving(id);
+  const detail = useLoadListReceiving(id, canViewReceiving);
   const loadList = detail.data?.loadList;
   const grn = detail.data?.grn;
   const updateGrn = useUpdateGrnReceiving(id, grn?.id || "");
   const startGrn = useStartGrnReceiving(id, grn?.id || "");
   const pauseGrn = usePauseGrnReceiving(id, grn?.id || "");
   const submitGrn = useSubmitGrnReceiving(id, grn?.id || "");
-  const canStart = grn?.status === "draft";
-  const canEdit = grn?.status === "receiving";
+  const canStart = grn?.status === "draft" && canSaveReceiving;
+  const canEdit = grn?.status === "receiving" && canSaveReceiving;
   const hasUnsavedChanges = Object.keys(lineEdits).length > 0;
   const busy = updateGrn.isPending || startGrn.isPending || pauseGrn.isPending || submitGrn.isPending;
 
@@ -94,6 +104,10 @@ export default function LoadListReceivingDetailScreen() {
 
   const saveChanges = async (silent = false) => {
     if (!grn || !hasUnsavedChanges) return true;
+    if (!canSaveReceiving) {
+      setActionError("You do not have permission to save receiving quantities.");
+      return false;
+    }
 
     const items = buildUpdatePayload();
     if (items.length === 0) return true;
@@ -119,6 +133,10 @@ export default function LoadListReceivingDetailScreen() {
     setActionMessage("");
 
     if (!grn) return;
+    if (!canSubmitReceiving) {
+      setActionError("You do not have permission to submit this GRN.");
+      return;
+    }
     if (!hasReceivedQty) {
       setActionError("Enter a received quantity before submitting this GRN.");
       return;
@@ -140,6 +158,10 @@ export default function LoadListReceivingDetailScreen() {
     setActionMessage("");
 
     if (!grn) return;
+    if (!canSaveReceiving) {
+      setActionError("You do not have permission to start receiving.");
+      return;
+    }
 
     try {
       await startGrn.mutateAsync();
@@ -154,6 +176,10 @@ export default function LoadListReceivingDetailScreen() {
     setActionMessage("");
 
     if (!grn) return;
+    if (!canSaveReceiving) {
+      setActionError("You do not have permission to pause receiving.");
+      return;
+    }
 
     const saved = await saveChanges(true);
     if (!saved) return;
@@ -166,6 +192,14 @@ export default function LoadListReceivingDetailScreen() {
       setActionError(error instanceof Error ? error.message : "Failed to pause receiving.");
     }
   };
+
+  if (!canViewReceiving) {
+    return (
+      <Screen title="Load List" subtitle="Goods Receipt Note" back>
+        <ErrorState message="You do not have permission to access receiving." />
+      </Screen>
+    );
+  }
 
   return (
     <Screen title={loadList?.llNumber || "Load List"} subtitle="Goods Receipt Note" back>
@@ -282,20 +316,22 @@ export default function LoadListReceivingDetailScreen() {
                           {updateGrn.isPending ? "Saving..." : "Save"}
                         </Text>
                       </Pressable>
-                      <Pressable
-                        onPress={() => void handleSubmit()}
-                        disabled={busy || !hasReceivedQty}
-                        style={({ pressed }) => [
-                          styles.primaryButton,
-                          (busy || !hasReceivedQty) && styles.buttonDisabled,
-                          pressed && !busy && hasReceivedQty ? styles.primaryButtonPressed : null
-                        ]}
-                      >
-                        <Ionicons name="paper-plane-outline" size={18} color="#fff" />
-                        <Text style={styles.primaryButtonText}>
-                          {submitGrn.isPending ? "Submitting..." : "Submit"}
-                        </Text>
-                      </Pressable>
+                      {canSubmitReceiving ? (
+                        <Pressable
+                          onPress={() => void handleSubmit()}
+                          disabled={busy || !hasReceivedQty}
+                          style={({ pressed }) => [
+                            styles.primaryButton,
+                            (busy || !hasReceivedQty) && styles.buttonDisabled,
+                            pressed && !busy && hasReceivedQty ? styles.primaryButtonPressed : null
+                          ]}
+                        >
+                          <Ionicons name="paper-plane-outline" size={18} color="#fff" />
+                          <Text style={styles.primaryButtonText}>
+                            {submitGrn.isPending ? "Submitting..." : "Submit"}
+                          </Text>
+                        </Pressable>
+                      ) : null}
                     </View>
                   )}
                 </Card>

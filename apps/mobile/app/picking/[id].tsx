@@ -18,7 +18,9 @@ import {
   usePickList,
   useSetPickListStatus
 } from "@/hooks/queries";
+import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
+import { canAccessPicking } from "@/utils/permissions";
 
 const normalizeScanValue = (value: string) => value.trim().toLowerCase();
 
@@ -136,7 +138,9 @@ const defaultPickSource = (item: PickListItem): PickSource => ({
 
 export default function PickingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const pickList = usePickList(id);
+  const session = useAuthStore((state) => state.session);
+  const canViewPicking = canAccessPicking(session);
+  const pickList = usePickList(id, canViewPicking);
   const setStatus = useSetPickListStatus(id);
   const completePickList = useCompletePickList(id);
   const [barcode, setBarcode] = useState("");
@@ -179,6 +183,14 @@ export default function PickingDetailScreen() {
     Number.isFinite(pickedQtyValue) &&
     pickedQtyValue > 0 &&
     pickedQtyValue <= verifiedRemainingQty;
+
+  if (!canViewPicking) {
+    return (
+      <Screen title="Picking" subtitle="Pick list detail" back>
+        <ErrorState message="You do not have permission to access picking." />
+      </Screen>
+    );
+  }
 
   const verifyBarcode = async (value = barcode) => {
     if (!pickingActive) {

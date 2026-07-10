@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   Card,
@@ -16,6 +16,10 @@ import { colors } from "@/theme/colors";
 import { borderRadius, shadows, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
+import {
+  canAccessReceiving,
+  hasResourcePermission
+} from "@/utils/permissions";
 
 const statusFilters = [
   { value: "in_transit", label: "In Transit", emptyTitle: "No load lists in transit" },
@@ -31,15 +35,28 @@ const deliveryNoteStatusFilters = [
 ];
 
 export default function ReceivingScreen() {
-  const currentBusinessUnit = useAuthStore((state) => state.session?.currentBusinessUnit);
+  const session = useAuthStore((state) => state.session);
+  const currentBusinessUnit = session?.currentBusinessUnit;
   const isSwitchingBusinessUnit = useAuthStore((state) => state.isSwitchingBusinessUnit);
   const [tab, setTab] = useState("load-lists");
   const [status, setStatus] = useState("in_transit");
   const [deliveryNoteStatus, setDeliveryNoteStatus] = useState("dispatched");
   const [search, setSearch] = useState("");
-  const receivingWarehouse = useReceivingWarehouse(currentBusinessUnit?.id);
-  const loadLists = useLoadLists(status, search, receivingWarehouse.data?.warehouseId);
-  const deliveryNotes = useDeliveryNotes(deliveryNoteStatus, search);
+  const canViewLoadListReceiving = canAccessReceiving(session);
+  const canViewDeliveryNoteReceiving = hasResourcePermission(session, "stock_requests", "view");
+  const canViewReceiving = canViewLoadListReceiving || canViewDeliveryNoteReceiving;
+  const receivingWarehouse = useReceivingWarehouse(currentBusinessUnit?.id, canViewLoadListReceiving);
+  const loadLists = useLoadLists(
+    status,
+    search,
+    receivingWarehouse.data?.warehouseId,
+    canViewLoadListReceiving
+  );
+  const deliveryNotes = useDeliveryNotes(
+    deliveryNoteStatus,
+    search,
+    canViewDeliveryNoteReceiving
+  );
   const canLoadLoadLists = Boolean(currentBusinessUnit?.id && receivingWarehouse.data?.warehouseId);
   const isLoadListTab = tab === "load-lists";
   const isWarehouseInitialLoading =
@@ -57,11 +74,30 @@ export default function ReceivingScreen() {
     deliveryNoteStatusFilters.find((item) => item.value === deliveryNoteStatus) ||
     deliveryNoteStatusFilters[0];
 
+  useEffect(() => {
+    if (tab === "load-lists" && !canViewLoadListReceiving && canViewDeliveryNoteReceiving) {
+      setTab("delivery-notes");
+    }
+    if (tab === "delivery-notes" && !canViewDeliveryNoteReceiving && canViewLoadListReceiving) {
+      setTab("load-lists");
+    }
+  }, [canViewDeliveryNoteReceiving, canViewLoadListReceiving, tab]);
+
+  if (!canViewReceiving) {
+    return (
+      <Screen title="Receiving" subtitle="Manage incoming deliveries">
+        <ErrorState message="You do not have permission to access receiving." />
+      </Screen>
+    );
+  }
+
   return (
     <Screen title="Receiving" subtitle="Manage incoming deliveries">
       <TopTabs
         value={tab}
         onChange={setTab}
+        showLoadLists={canViewLoadListReceiving}
+        showDeliveryNotes={canViewDeliveryNoteReceiving}
       />
 
       <View style={styles.statusRow}>
@@ -203,40 +239,48 @@ export default function ReceivingScreen() {
 
 const TopTabs = ({
   value,
-  onChange
+  onChange,
+  showLoadLists,
+  showDeliveryNotes
 }: {
   value: string;
   onChange: (value: string) => void;
+  showLoadLists: boolean;
+  showDeliveryNotes: boolean;
 }) => (
   <View style={styles.topTabs}>
-    <Pressable
-      onPress={() => onChange("load-lists")}
-      style={[styles.topTab, value === "load-lists" ? styles.topTabActive : null]}
-    >
-      <Ionicons
-        name="bus-outline"
-        size={20}
-        color={value === "load-lists" ? colors.primary : colors.textSecondary}
-      />
-      <Text style={[styles.topTabText, value === "load-lists" ? styles.topTabTextActive : null]}>
-        Load Lists
-      </Text>
-    </Pressable>
-    <Pressable
-      onPress={() => onChange("delivery-notes")}
-      style={[styles.topTab, value === "delivery-notes" ? styles.topTabActive : null]}
-    >
-      <Ionicons
-        name="clipboard-outline"
-        size={20}
-        color={value === "delivery-notes" ? colors.primary : colors.textSecondary}
-      />
-      <Text
-        style={[styles.topTabText, value === "delivery-notes" ? styles.topTabTextActive : null]}
+    {showLoadLists ? (
+      <Pressable
+        onPress={() => onChange("load-lists")}
+        style={[styles.topTab, value === "load-lists" ? styles.topTabActive : null]}
       >
-        Delivery Notes
-      </Text>
-    </Pressable>
+        <Ionicons
+          name="bus-outline"
+          size={20}
+          color={value === "load-lists" ? colors.primary : colors.textSecondary}
+        />
+        <Text style={[styles.topTabText, value === "load-lists" ? styles.topTabTextActive : null]}>
+          Load Lists
+        </Text>
+      </Pressable>
+    ) : null}
+    {showDeliveryNotes ? (
+      <Pressable
+        onPress={() => onChange("delivery-notes")}
+        style={[styles.topTab, value === "delivery-notes" ? styles.topTabActive : null]}
+      >
+        <Ionicons
+          name="clipboard-outline"
+          size={20}
+          color={value === "delivery-notes" ? colors.primary : colors.textSecondary}
+        />
+        <Text
+          style={[styles.topTabText, value === "delivery-notes" ? styles.topTabTextActive : null]}
+        >
+          Delivery Notes
+        </Text>
+      </Pressable>
+    ) : null}
   </View>
 );
 

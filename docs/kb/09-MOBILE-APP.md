@@ -403,7 +403,7 @@ Get the GRN linked to a load list for native mobile receiving.
 #### PUT /api/grns/[id]
 Save native mobile GRN receiving quantities.
 
-**Permissions**: `edit` on Goods Receipt Notes
+**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
 
 **Request**:
 ```json
@@ -423,17 +423,22 @@ Save native mobile GRN receiving quantities.
 #### POST /api/grns/[id]/start-receiving
 Start native mobile GRN receiving. This transitions the GRN and linked arrived load list into `receiving`.
 
-**Permissions**: `edit` on Goods Receipt Notes
+**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
 
 #### POST /api/grns/[id]/pause-receiving
 Pause native mobile GRN receiving. This saves the session state by returning the GRN to `draft` and the linked load list to `arrived`; entered quantities remain on the GRN lines.
 
-**Permissions**: `edit` on Goods Receipt Notes
+**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
 
 #### POST /api/grns/[id]/submit
 Submit native mobile GRN receiving for confirmation. Submission stages received good quantities into Putaway Station using the shared GRN putaway workflow; final batch/location placement happens when putaway is posted.
 
-**Permissions**: `edit` on Goods Receipt Notes
+**Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.submit_receiving.edit`
+
+The native mobile app stores the permission and capability maps returned by login and business-unit
+switching. Receiving and picking navigation, dashboard quick actions, list queries, and detail
+queries are gated from that stored session so roles without the matching resource permission do not
+call the protected APIs.
 
 #### GET /api/mobile/items/search
 Search items for mobile (autocomplete).

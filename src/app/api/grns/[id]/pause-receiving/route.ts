@@ -1,8 +1,10 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
-import { RESOURCES } from "@/constants/resources";
+import {
+  GRN_RECEIVING_SAVE_CAPABILITY,
+  requireGrnReceivingOperation,
+} from "@/lib/grns/permissions";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -18,7 +20,7 @@ const userSafePauseMessage = (message: string | undefined) => {
 
 async function POSTHandler(_request: NextRequest, context: RouteContext) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_SAVE_CAPABILITY);
     if (unauthorized) return unauthorized;
     const { id } = await context.params;
     const { supabase } = await createServerClientWithBU();

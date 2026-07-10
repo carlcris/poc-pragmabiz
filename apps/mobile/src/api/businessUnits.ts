@@ -30,6 +30,7 @@ export const setBusinessUnitContext = async (
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
+      "X-Client-Source": "mobile",
       ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
       ...(session?.cookieHeader ? { Cookie: session.cookieHeader } : {})
     },
@@ -42,7 +43,9 @@ export const setBusinessUnitContext = async (
     !payload.token ||
     !payload.refreshToken ||
     !payload.business_unit ||
-    !payload.cookieHeader
+    !payload.cookieHeader ||
+    !payload.permissions ||
+    !payload.capabilities
   ) {
     throw new ApiError(payload.message || payload.error || "Failed to switch business unit", response.status);
   }

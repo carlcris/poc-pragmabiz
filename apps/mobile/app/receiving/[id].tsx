@@ -27,10 +27,12 @@ import {
   useStartReceiving,
   useSubmitReceiving
 } from "@/hooks/queries";
+import { useAuthStore } from "@/stores/authStore";
 import type { ReceivingLine, RecordDeliveryNoteReceivingScanPayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius, shadows } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { hasResourcePermission } from "@/utils/permissions";
 
 const normalizeScanValue = (value: string) => value.trim().toLowerCase();
 
@@ -173,6 +175,8 @@ const resolveLineFromScan = (lines: ReceivingLine[], rawScan: string, parsed: Pa
 
 export default function ReceivingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const session = useAuthStore((state) => state.session);
+  const canViewDeliveryNoteReceiving = hasResourcePermission(session, "stock_requests", "view");
   const [discrepancyNotes, setDiscrepancyNotes] = useState("");
   const [barcode, setBarcode] = useState("");
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -182,7 +186,7 @@ export default function ReceivingDetailScreen() {
   const [scanConfirmation, setScanConfirmation] = useState<ScanConfirmation | null>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const discrepancyBackdropOpacity = useRef(new Animated.Value(0)).current;
-  const deliveryNote = useDeliveryNote(id);
+  const deliveryNote = useDeliveryNote(id, canViewDeliveryNoteReceiving);
   const startReceiving = useStartReceiving(id);
   const recordScan = useRecordDeliveryNoteReceivingScan(id);
   const submitReceiving = useSubmitReceiving(id);
@@ -235,6 +239,14 @@ export default function ReceivingDetailScreen() {
     () => Boolean(deliveryNote.data?.items.some((item) => item.receivedQty !== item.allocatedQty)),
     [deliveryNote.data]
   );
+
+  if (!canViewDeliveryNoteReceiving) {
+    return (
+      <Screen title="Receiving" subtitle="Delivery note receiving" back>
+        <ErrorState message="You do not have permission to access receiving." />
+      </Screen>
+    );
+  }
 
   const submitReceivingWithNotes = async (notes: string) => {
     setSubmitError("");

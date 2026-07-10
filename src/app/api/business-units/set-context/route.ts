@@ -20,6 +20,9 @@ import {
 
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
+import { RESOURCES, type Resource } from "@/constants/resources";
+import type { UserPermissions } from "@/types/rbac";
+import type { RawPermissionRow, UserCapabilityMap } from "@/services/permissions/types";
 
 type SetContextRequest = {
   business_unit_id: string;
@@ -29,11 +32,89 @@ type ResponseCookieReader = {
   getAll: () => Array<{ name: string; value: string }>;
 };
 
+const isMobileContextRequest = (request: NextRequest) =>
+  request.headers.get("x-client-source")?.toLowerCase() === "mobile";
+
 const toCookieHeader = (cookies: ResponseCookieReader) =>
   cookies
     .getAll()
     .map((cookie) => `${cookie.name}=${cookie.value}`)
     .join("; ");
+
+function createEmptyPermissions(): UserPermissions {
+  const permissions: Partial<UserPermissions> = {};
+
+  Object.values(RESOURCES).forEach((resource) => {
+    permissions[resource as Resource] = {
+      can_view: false,
+      can_create: false,
+      can_edit: false,
+      can_delete: false,
+    };
+  });
+
+  return permissions as UserPermissions;
+}
+
+function aggregatePermissions(rows: RawPermissionRow[]): UserPermissions {
+  const permissions = createEmptyPermissions();
+
+  rows.forEach((row) => {
+    const resource = row.resource as Resource;
+    if (!permissions[resource]) return;
+
+    permissions[resource].can_view = permissions[resource].can_view || row.can_view;
+    permissions[resource].can_create = permissions[resource].can_create || row.can_create;
+    permissions[resource].can_edit = permissions[resource].can_edit || row.can_edit;
+    permissions[resource].can_delete = permissions[resource].can_delete || row.can_delete;
+  });
+
+  return permissions;
+}
+
+function aggregateCapabilities(rows: RawPermissionRow[]): UserCapabilityMap {
+  const capabilities: UserCapabilityMap = {};
+
+  rows.forEach((row) => {
+    capabilities[row.resource] = {
+      can_view: row.can_view,
+      can_create: row.can_create,
+      can_edit: row.can_edit,
+      can_delete: row.can_delete,
+    };
+  });
+
+  return capabilities;
+}
+
+async function resolveUserAccess(
+  supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
+  userId: string,
+  businessUnitId: string | null
+) {
+  const { data, error } = await supabase.rpc("get_user_permissions", {
+    p_user_id: userId,
+    p_business_unit_id: businessUnitId,
+  });
+
+  if (error) {
+    console.error("Failed to resolve switched business unit access", {
+      userId,
+      businessUnitId,
+      error: error.message,
+    });
+    return {
+      permissions: createEmptyPermissions(),
+      capabilities: {},
+    };
+  }
+
+  const rows = (data || []) as RawPermissionRow[];
+  return {
+    permissions: aggregatePermissions(rows),
+    capabilities: aggregateCapabilities(rows),
+  };
+}
 
 async function POSTHandler(request: NextRequest) {
   try {
@@ -91,6 +172,10 @@ async function POSTHandler(request: NextRequest) {
       );
     }
 
+    const mobileAccess = isMobileContextRequest(request)
+      ? await resolveUserAccess(supabase, user.id, data.business_unit.id)
+      : null;
+
     const jsonResponse = NextResponse.json({
       success: data.success,
       message: data.message,
@@ -99,7 +184,12 @@ async function POSTHandler(request: NextRequest) {
       requires_refresh: false,
       token: refreshed.session.access_token,
       refreshToken: refreshed.session.refresh_token,
-      cookieHeader: toCookieHeader(response.cookies),
+      ...(mobileAccess
+        ? {
+            ...mobileAccess,
+            cookieHeader: toCookieHeader(response.cookies),
+          }
+        : {}),
     });
 
     setActivityContext({ businessUnitId: data.business_unit.id });

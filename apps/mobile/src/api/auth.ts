@@ -35,7 +35,9 @@ export const login = async (email: string, password: string): Promise<AuthSessio
     !payload.user ||
     !payload.token ||
     !payload.refreshToken ||
-    !payload.cookieHeader
+    !payload.cookieHeader ||
+    !payload.permissions ||
+    !payload.capabilities
   ) {
     throw new Error(payload.message || payload.error || "Sign in failed");
   }
@@ -45,6 +47,8 @@ export const login = async (email: string, password: string): Promise<AuthSessio
     token: payload.token,
     refreshToken: payload.refreshToken,
     cookieHeader: payload.cookieHeader,
+    permissions: payload.permissions,
+    capabilities: payload.capabilities,
     currentBusinessUnit: payload.currentBusinessUnit ?? null
   };
 };

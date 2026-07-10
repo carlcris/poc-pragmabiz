@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getFirstAccessiblePage } from "@/config/roleDefaultPages";
 import { RESOURCES, type Resource } from "@/constants/resources";
 import type { UserPermissions } from "@/types/rbac";
-import type { RawPermissionRow } from "@/services/permissions/types";
+import type { RawPermissionRow, UserCapabilityMap } from "@/services/permissions/types";
 
 type JwtPayload = {
   current_business_unit_id?: string;
@@ -74,6 +74,50 @@ function aggregatePermissions(rows: RawPermissionRow[]): UserPermissions {
   });
 
   return permissions;
+}
+
+function aggregateCapabilities(rows: RawPermissionRow[]): UserCapabilityMap {
+  const capabilities: UserCapabilityMap = {};
+
+  rows.forEach((row) => {
+    capabilities[row.resource] = {
+      can_view: row.can_view,
+      can_create: row.can_create,
+      can_edit: row.can_edit,
+      can_delete: row.can_delete,
+    };
+  });
+
+  return capabilities;
+}
+
+async function resolveUserAccess(
+  supabase: ReturnType<typeof createRouteHandlerClient>["supabase"],
+  userId: string,
+  businessUnitId: string | null
+) {
+  const { data, error } = await supabase.rpc("get_user_permissions", {
+    p_user_id: userId,
+    p_business_unit_id: businessUnitId,
+  });
+
+  if (error) {
+    console.error("Failed to resolve user access", {
+      userId,
+      businessUnitId,
+      error: error.message,
+    });
+    return {
+      permissions: createEmptyPermissions(),
+      capabilities: {},
+    };
+  }
+
+  const rows = (data || []) as RawPermissionRow[];
+  return {
+    permissions: aggregatePermissions(rows),
+    capabilities: aggregateCapabilities(rows),
+  };
 }
 
 async function resolveBusinessUnitId(
@@ -238,7 +282,12 @@ async function POSTHandler(request: NextRequest) {
           }
         : null,
       landingPage: await resolveLandingPage(supabase, data.user.id, data.session.access_token),
-      ...(isMobileLoginRequest(request) ? { cookieHeader: toCookieHeader(response.cookies) } : {}),
+      ...(isMobileLoginRequest(request)
+        ? {
+            ...(await resolveUserAccess(supabase, data.user.id, currentBusinessUnitId)),
+            cookieHeader: toCookieHeader(response.cookies),
+          }
+        : {}),
     };
 
     const jsonResponse = NextResponse.json(responseBody);

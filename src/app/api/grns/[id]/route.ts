@@ -3,12 +3,31 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import {
+  GRN_RECEIVING_SAVE_CAPABILITY,
+  requireGrnReceivingOperation,
+} from "@/lib/grns/permissions";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
+
+type UpdateGrnLineBody = {
+  id: string;
+  receivedQty: number;
+  damagedQty: number;
+  numBoxes: number;
+  notes?: string | null;
+};
+
+type UpdateGrnBody = {
+  receivingDate?: string | null;
+  notes?: string | null;
+  items?: UpdateGrnLineBody[];
+};
 
 // GET /api/grns/[id]
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "view");
+    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "view");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
 
@@ -238,10 +257,11 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
 // PUT /api/grns/[id] - Update GRN (receiving quantities)
 async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_SAVE_CAPABILITY);
+    if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
-    const body = await request.json();
+    const body = (await request.json()) as UpdateGrnBody;
 
     const {
       data: { user },
@@ -298,13 +318,13 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     if (updateError) {
       console.error("Error updating GRN:", updateError);
       return NextResponse.json(
-        { error: updateError.message || "Failed to update GRN" },
+        { error: "Failed to update GRN" },
         { status: 500 }
       );
     }
 
     // Update GRN items if provided
-    if (body.items && body.items.length > 0) {
+    if (Array.isArray(body.items) && body.items.length > 0) {
       for (const item of body.items) {
         const { error: itemError } = await supabase
           .from("grn_items")
@@ -383,7 +403,8 @@ async function DELETEHandler(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "delete");
+    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "delete");
+    if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
 

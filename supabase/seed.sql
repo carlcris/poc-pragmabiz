@@ -633,8 +633,8 @@ ON CONFLICT (resource) DO NOTHING;
 -- ============================================================================
 -- SEED DATA: Stockman Role and Permissions
 -- ============================================================================
--- Stockman can run warehouse operations without purchasing, admin, sales,
--- accounting, role, or user-management access.
+-- Stockman can run warehouse operations without purchasing workbench, admin,
+-- sales, accounting, role, or user-management access.
 
 INSERT INTO roles (
   company_id,
@@ -646,7 +646,7 @@ INSERT INTO roles (
 VALUES (
   '1e10e2dd-655e-41e0-a508-edfd660a9bcf',
   'Stockman',
-  'Warehouse operator with access to picking, putaway, transfers, stock requests, and stock visibility',
+  'Warehouse operator with access to picking, receiving, putaway, transfers, stock requests, and stock visibility',
   NOW(),
   NOW()
 )
@@ -665,9 +665,7 @@ WHERE rp.role_id = r.id
     'suppliers',
     'purchase_orders',
     'purchase_receipts',
-    'stock_requisitions',
-    'load_lists',
-    'goods_receipt_notes'
+    'stock_requisitions'
   );
 
 WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) AS (
@@ -680,6 +678,10 @@ WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) 
     ('dashboard.queue.pick_list.view', true, false, false, false),
     ('dashboard.queue.stock_requests.view', true, false, false, false),
     ('items', true, false, false, false),
+    ('load_lists', true, false, false, false),
+    ('goods_receipt_notes', true, false, false, false),
+    ('goods_receipt_notes.operation.save_receiving.edit', false, false, true, false),
+    ('goods_receipt_notes.operation.submit_receiving.edit', false, false, true, false),
     ('warehouses', true, false, true, false),
     ('manage_locations', true, true, true, false),
     ('view_location_stock', true, false, false, false),

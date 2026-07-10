@@ -5,9 +5,11 @@ import { Pressable, StyleSheet, Text, View, ScrollView } from "react-native";
 import { Card, ErrorState, LoadingState, Screen, SearchInput } from "@/components/ui";
 import type { PickListSummary } from "@/contracts/picking";
 import { usePickLists, useSetPickListStatus } from "@/hooks/queries";
+import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { borderRadius, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { canAccessPicking } from "@/utils/permissions";
 
 const statusFilters = [
   { value: "pending", label: "Pending" },
@@ -26,11 +28,13 @@ const PRIORITY_COLORS = {
 };
 
 export default function PickingScreen() {
+  const session = useAuthStore((state) => state.session);
+  const canViewPicking = canAccessPicking(session);
   const [status, setStatus] = useState("pending");
   const [search, setSearch] = useState("");
 
-  const pickListsQuery = usePickLists(status, search);
-  const kpiQuery = usePickLists("all", "");
+  const pickListsQuery = usePickLists(status, search, canViewPicking);
+  const kpiQuery = usePickLists("all", "", canViewPicking);
   const pickLists = pickListsQuery.data || [];
   const allPickLists = kpiQuery.data || [];
 
@@ -39,6 +43,14 @@ export default function PickingScreen() {
     inProgress: allPickLists.filter((pl) => pl.status === "in_progress" || pl.status === "paused").length,
     done: allPickLists.filter((pl) => pl.status === "done").length
   };
+
+  if (!canViewPicking) {
+    return (
+      <Screen title="Picking" subtitle="Process orders and pack items">
+        <ErrorState message="You do not have permission to access picking." />
+      </Screen>
+    );
+  }
 
   return (
     <Screen title="Picking" subtitle="Process orders and pack items">

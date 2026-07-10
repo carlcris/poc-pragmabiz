@@ -48,6 +48,9 @@ export const GRANULAR_CAPABILITIES = {
 
   LOAD_LISTS_TOTAL_AMOUNT: "load_lists.field.total_amount.view",
   LOAD_LISTS_UNIT_PRICE: "load_lists.field.unit_price.view",
+
+  GRN_RECEIVING_SAVE: "goods_receipt_notes.operation.save_receiving.edit",
+  GRN_RECEIVING_SUBMIT: "goods_receipt_notes.operation.submit_receiving.edit",
 } as const;
 
 export type GranularCapability = (typeof GRANULAR_CAPABILITIES)[keyof typeof GRANULAR_CAPABILITIES];
@@ -114,4 +117,9 @@ export type StockRequisitionCapabilities = {
 export type LoadListCapabilities = {
   canViewTotalAmount: boolean;
   canViewUnitPrice: boolean;
+};
+
+export type GrnReceivingCapabilities = {
+  canSaveReceiving: boolean;
+  canSubmitReceiving: boolean;
 };

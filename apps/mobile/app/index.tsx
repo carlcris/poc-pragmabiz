@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { colors } from "@/theme/colors";
 import { spacing, borderRadius } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
+import { canAccessPicking, canAccessReceiving } from "@/utils/permissions";
 
 const getGreeting = (date = new Date()) => {
   const hour = date.getHours();
@@ -24,8 +25,12 @@ const getDisplayName = (user: MobileUser | null) => {
 
 export default function DashboardScreen() {
   const dashboard = useDashboard();
-  const user = useAuthStore((state) => state.session?.user ?? null);
+  const session = useAuthStore((state) => state.session);
+  const user = session?.user ?? null;
   const displayName = getDisplayName(user);
+  const showReceiving = canAccessReceiving(session);
+  const showPicking = canAccessPicking(session);
+  const showQuickActions = showReceiving || showPicking;
 
   return (
     <Screen title={`Hi ${displayName}`} subtitle={`${getGreeting()}!`}>
@@ -56,27 +61,35 @@ export default function DashboardScreen() {
             />
           </View>
 
-          <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+          {showQuickActions ? (
+            <>
+              <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
 
-          <Card style={styles.actionsCard}>
-            <ActionRow
-              title="Receiving"
-              subtitle="Receive incoming shipments"
-              icon="package-variant-closed"
-              count={dashboard.data.summary.incoming_deliveries_today}
-              tone="blue"
-              onPress={() => router.push("/receiving")}
-            />
-            <View style={styles.divider} />
-            <ActionRow
-              title="Picking"
-              subtitle="Pick from assigned lists"
-              icon="package-variant-plus"
-              count={dashboard.data.summary.pick_list_to_pick}
-              tone="green"
-              onPress={() => router.push("/picking")}
-            />
-          </Card>
+              <Card style={styles.actionsCard}>
+                {showReceiving ? (
+                  <ActionRow
+                    title="Receiving"
+                    subtitle="Receive incoming shipments"
+                    icon="package-variant-closed"
+                    count={dashboard.data.summary.incoming_deliveries_today}
+                    tone="blue"
+                    onPress={() => router.push("/receiving")}
+                  />
+                ) : null}
+                {showReceiving && showPicking ? <View style={styles.divider} /> : null}
+                {showPicking ? (
+                  <ActionRow
+                    title="Picking"
+                    subtitle="Pick from assigned lists"
+                    icon="package-variant-plus"
+                    count={dashboard.data.summary.pick_list_to_pick}
+                    tone="green"
+                    onPress={() => router.push("/picking")}
+                  />
+                ) : null}
+              </Card>
+            </>
+          ) : null}
 
           <Card style={styles.statusCard}>
             <MaterialCommunityIcons

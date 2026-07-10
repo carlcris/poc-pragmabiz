@@ -60,6 +60,8 @@ export const useSetBusinessUnit = () => {
           token: result.token,
           refreshToken: result.refreshToken,
           cookieHeader: result.cookieHeader,
+          permissions: result.permissions,
+          capabilities: result.capabilities,
           currentBusinessUnit: {
             id: result.business_unit.id,
             code: result.business_unit.code,
@@ -126,25 +128,25 @@ export const useDashboard = () =>
     queryFn: dashboardApi.getDashboard
   });
 
-export const useReceivingWarehouse = (businessUnitId?: string) =>
+export const useReceivingWarehouse = (businessUnitId?: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.receivingWarehouse(businessUnitId || ""),
     queryFn: receivingApi.getReceivingWarehouse,
-    enabled: Boolean(businessUnitId)
+    enabled: Boolean(businessUnitId) && enabled
   });
 
-export const useLoadLists = (status: string, search: string, warehouseId?: string) =>
+export const useLoadLists = (status: string, search: string, warehouseId?: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.loadLists(status, search, warehouseId || ""),
     queryFn: () => receivingApi.listLoadLists(status, search, warehouseId || ""),
-    enabled: Boolean(warehouseId)
+    enabled: Boolean(warehouseId) && enabled
   });
 
-export const useLoadListReceiving = (id: string) =>
+export const useLoadListReceiving = (id: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.loadListReceiving(id),
     queryFn: () => receivingApi.getLoadListReceiving(id),
-    enabled: Boolean(id)
+    enabled: Boolean(id) && enabled
   });
 
 export const useUpdateGrnReceiving = (loadListId: string, grnId: string) => {
@@ -204,16 +206,18 @@ export const useSubmitGrnReceiving = (loadListId: string, grnId: string) => {
   });
 };
 
-export const useDeliveryNotes = (status: string, search: string) =>
+export const useDeliveryNotes = (status: string, search: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.deliveryNotes(status, search),
-    queryFn: () => receivingApi.listDeliveryNotes(status, search)
+    queryFn: () => receivingApi.listDeliveryNotes(status, search),
+    enabled
   });
 
-export const useDeliveryNote = (id: string) =>
+export const useDeliveryNote = (id: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.deliveryNote(id),
-    queryFn: () => receivingApi.getDeliveryNote(id)
+    queryFn: () => receivingApi.getDeliveryNote(id),
+    enabled: Boolean(id) && enabled
   });
 
 export const useScannedItemInfo = (payload: string) =>
@@ -258,16 +262,18 @@ export const useSubmitReceiving = (id: string) => {
   });
 };
 
-export const usePickLists = (status: string, search: string) =>
+export const usePickLists = (status: string, search: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.pickLists(status, search),
-    queryFn: () => pickingApi.listPickLists({ status, search })
+    queryFn: () => pickingApi.listPickLists({ status, search }),
+    enabled
   });
 
-export const usePickList = (id: string) =>
+export const usePickList = (id: string, enabled = true) =>
   useQuery({
     queryKey: queryKeys.pickList(id),
-    queryFn: () => pickingApi.getPickList(id)
+    queryFn: () => pickingApi.getPickList(id),
+    enabled: Boolean(id) && enabled
   });
 
 export const useSetPickListStatus = (id: string) => {

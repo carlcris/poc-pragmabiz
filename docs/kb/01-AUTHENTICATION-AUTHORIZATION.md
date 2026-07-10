@@ -118,7 +118,7 @@ The seed data includes operational roles for demo/local environments:
 
 - `Cashier`: limited point-of-sale access with dashboard and inventory viewing.
 - `Picker`: warehouse picking access for pick-list dashboard queues, item and warehouse lookup, location-stock visibility, stock request picking actions, and stock transaction review. Picker does not receive create/delete, receiving, putaway, adjustment, transfer, admin, accounting, sales, user, role, or permission-management access.
-- `Stockman`: warehouse operator access for picking, putaway, location management, transfers, stock requests, stock adjustments, stock transactions, and warehouse stock visibility. Stockman does not receive purchasing-module, delete, admin, accounting, sales, user, role, or permission-management access.
+- `Stockman`: warehouse operator access for picking, load-list receiving, GRN receiving save/submit operations, putaway, location management, transfers, stock requests, stock adjustments, stock transactions, and warehouse stock visibility. Stockman receives `load_lists.view`, `goods_receipt_notes.view`, and the granular GRN receiving operation capabilities, but does not receive broad purchasing workbench, GRN confirmation/delete, supplier, purchase order, purchase receipt, stock requisition, admin, accounting, sales, user, role, or permission-management access.
 
 **Permission Types per Resource**:
 
@@ -380,13 +380,34 @@ Login with email and password.
 ```
 
 Mobile clients that send `X-Client-Source: mobile` also receive a strict session cookie header for
-manual replay because native fetch must not rely on the platform cookie jar:
+manual replay plus permission maps for current-business-unit UI gating because native fetch must not
+rely on the platform cookie jar:
 
 ```json
 {
-  "cookieHeader": "sb-project-auth-token=..."
+  "cookieHeader": "sb-project-auth-token=...",
+  "permissions": {
+    "load_lists": {
+      "can_view": true,
+      "can_create": false,
+      "can_edit": false,
+      "can_delete": false
+    }
+  },
+  "capabilities": {
+    "goods_receipt_notes.operation.save_receiving.edit": {
+      "can_view": false,
+      "can_create": false,
+      "can_edit": true,
+      "can_delete": false
+    }
+  }
 }
 ```
+
+The same mobile-only contract applies to `POST /api/business-units/set-context`; browser callers
+receive refreshed tokens through the normal response body/cookie flow, while mobile callers receive
+the refreshed `cookieHeader`, `permissions`, and `capabilities` for the selected business unit.
 
 #### POST /api/auth/logout
 

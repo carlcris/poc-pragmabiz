@@ -1,3 +1,5 @@
+import type { MobileCapabilityMap, MobilePermissionMap } from "@/contracts/auth";
+
 export type BusinessUnit = {
   id: string;
   company_id: string;
@@ -23,4 +25,6 @@ export type SetBusinessUnitResponse = {
   token: string;
   refreshToken: string;
   cookieHeader: string;
+  permissions: MobilePermissionMap;
+  capabilities: MobileCapabilityMap;
 };
