@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
 import { PICK_LISTS_QUERY_KEY, DELIVERY_NOTES_QUERY_KEY } from "@/hooks/queryKeys";
 import { useInventoryRealtimeInvalidation } from "@/hooks/useInventoryRealtimeInvalidation";
+import { DELIVERY_NOTE_ALLOCATION_AVAILABILITY_MAX_LINES } from "@/constants/delivery-notes";
 import type {
   AddDeliveryNoteItemsPayload,
   AdjustDispatchedDeliveryNoteItemPayload,
@@ -61,6 +62,32 @@ export function useCreateDeliveryNote() {
     onError: () => {
       queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
     },
+  });
+}
+
+export function useDeliveryNoteAllocationAvailability(srItemIds: string[], enabled = true) {
+  const normalizedIds = Array.from(new Set(srItemIds)).sort();
+
+  return useQuery({
+    queryKey: [DELIVERY_NOTES_QUERY_KEY, "allocation-availability", normalizedIds],
+    queryFn: async () => {
+      const chunks = Array.from(
+        {
+          length: Math.ceil(normalizedIds.length / DELIVERY_NOTE_ALLOCATION_AVAILABILITY_MAX_LINES),
+        },
+        (_, index) =>
+          normalizedIds.slice(
+            index * DELIVERY_NOTE_ALLOCATION_AVAILABILITY_MAX_LINES,
+            (index + 1) * DELIVERY_NOTE_ALLOCATION_AVAILABILITY_MAX_LINES
+          )
+      );
+      const responses = await Promise.all(
+        chunks.map((chunk) => deliveryNotesApi.getAllocationAvailability(chunk))
+      );
+
+      return { data: responses.flatMap((response) => response.data) };
+    },
+    enabled: enabled && normalizedIds.length > 0,
   });
 }
 

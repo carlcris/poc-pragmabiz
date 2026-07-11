@@ -10710,6 +10710,20 @@ export type Database = {
               status: string
             }[]
           }
+      create_delivery_note_transactionally: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_driver_name: string
+          p_fulfilling_warehouse_id: string
+          p_fulfillment_mode: string
+          p_lines: Json
+          p_notes: string
+          p_requesting_warehouse_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       create_draft_stock_adjustment: {
         Args: {
           p_adjustment_date?: string
@@ -11011,6 +11025,22 @@ export type Database = {
           period_credits: number
           period_debits: number
           pos_sales: number
+        }[]
+      }
+      get_delivery_note_allocation_availability: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_sr_item_ids: string[]
+          p_user_id: string
+        }
+        Returns: {
+          available_base_qty: number
+          available_qty: number
+          base_unit_label: string
+          qty_per_unit: number
+          selected_item_batch_id: string
+          sr_item_id: string
         }[]
       }
       get_effective_reorder_alerts: {

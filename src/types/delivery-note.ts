@@ -242,6 +242,19 @@ export type CreateDeliveryNotePayload = {
   }>;
 };
 
+export type DeliveryNoteAllocationAvailability = {
+  srItemId: string;
+  availableQty: number;
+  availableBaseQty: number;
+  qtyPerUnit: number;
+  selectedItemBatchId: string | null;
+  baseUnitLabel: string;
+};
+
+export type DeliveryNoteAllocationAvailabilityResponse = {
+  data: DeliveryNoteAllocationAvailability[];
+};
+
 export type MarkDispatchReadyPayload = {
   items: Array<{
     deliveryNoteItemId: string;

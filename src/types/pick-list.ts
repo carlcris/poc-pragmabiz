@@ -123,38 +123,6 @@ export type PickListListResponse = {
 
 export type PickListBatchAllocationMode = "single_sufficient" | "split";
 
-export type PickListBatchAllocationSource = {
-  batchLocationSku: string | null;
-  locationId: string;
-  locationCode: string | null;
-  locationName: string | null;
-  batchCode: string;
-  batchReceivedAt: string;
-  availableQty: number;
-  availableBaseQty: number;
-};
-
-export type PickListBatchAllocationChoiceLine = {
-  deliveryNoteItemId: string;
-  itemId: string;
-  itemLabel: string;
-  unitLabel: string;
-  requiredQty: number;
-  requiredBaseQty: number;
-  suggestedSource: PickListBatchAllocationSource | null;
-  singleSource: PickListBatchAllocationSource | null;
-  splitSources: PickListBatchAllocationSource[];
-  totalAvailableQty: number;
-  totalAvailableBaseQty: number;
-};
-
-export type PickListBatchAllocationChoiceError = {
-  error: string;
-  code: "batch_allocation_choice_required";
-  requiresBatchAllocationChoice: true;
-  lines: PickListBatchAllocationChoiceLine[];
-};
-
 export type CreatePickListPayload = {
   dnId: string;
   pickerUserIds: string[];

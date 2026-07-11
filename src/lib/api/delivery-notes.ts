@@ -3,6 +3,7 @@ import type {
   AddDeliveryNoteItemsPayload,
   AdjustDispatchedDeliveryNoteItemPayload,
   CreateDeliveryNotePayload,
+  DeliveryNoteAllocationAvailabilityResponse,
   DeliveryNoteAllocatableItem,
   DeliveryNote,
   DeliveryNoteListParams,
@@ -43,6 +44,15 @@ export const deliveryNotesApi = {
 
   async create(data: CreateDeliveryNotePayload): Promise<DeliveryNote> {
     return apiClient.post<DeliveryNote>("/api/delivery-notes", data);
+  },
+
+  async getAllocationAvailability(
+    srItemIds: string[]
+  ): Promise<DeliveryNoteAllocationAvailabilityResponse> {
+    return apiClient.post<DeliveryNoteAllocationAvailabilityResponse>(
+      "/api/delivery-notes/allocation-availability",
+      { srItemIds }
+    );
   },
 
   async confirm(id: string): Promise<DeliveryNote> {

@@ -33,11 +33,9 @@ import { useCreatePickList } from "@/hooks/usePickLists";
 import { useUsers } from "@/hooks/useUsers";
 import { useWarehouse } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
-import { getPickListBatchAllocationChoiceError } from "@/lib/api/pick-lists";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
 import { MetricCard } from "@/components/shared/MetricCard";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { BatchAllocationChoiceDialog } from "@/components/delivery-notes/BatchAllocationChoiceDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,11 +61,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toProperCase } from "@/lib/string";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
-import type {
-  CreatePickListPayload,
-  PickListBatchAllocationChoiceError,
-  PickListBatchAllocationMode,
-} from "@/types/pick-list";
+import type { CreatePickListPayload } from "@/types/pick-list";
 
 const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "--";
@@ -118,10 +112,6 @@ export default function DeliveryNoteDetailPage() {
   const [queuePickerSearch, setQueuePickerSearch] = useState("");
   const [queueNotes, setQueueNotes] = useState("");
   const [selectedQueuePickerIds, setSelectedQueuePickerIds] = useState<Set<string>>(new Set());
-  const [pendingPickListPayload, setPendingPickListPayload] =
-    useState<CreatePickListPayload | null>(null);
-  const [batchAllocationChoice, setBatchAllocationChoice] =
-    useState<PickListBatchAllocationChoiceError | null>(null);
 
   const [adjustItemId, setAdjustItemId] = useState<string | null>(null);
   const [adjustDispatchedQty, setAdjustDispatchedQty] = useState("");
@@ -577,8 +567,6 @@ export default function DeliveryNoteDetailPage() {
     setQueuePickerSearch("");
     setQueueNotes("");
     setSelectedQueuePickerIds(new Set());
-    setPendingPickListPayload(null);
-    setBatchAllocationChoice(null);
   };
 
   const createPickListWithAllocationHandling = async (payload: CreatePickListPayload) => {
@@ -586,12 +574,6 @@ export default function DeliveryNoteDetailPage() {
       await createPickListMutation.mutateAsync(payload);
       resetQueueState();
     } catch (error) {
-      const allocationChoice = getPickListBatchAllocationChoiceError(error);
-      if (allocationChoice && !payload.batchAllocationMode) {
-        setPendingPickListPayload(payload);
-        setBatchAllocationChoice(allocationChoice);
-        return;
-      }
       toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
     }
   };
@@ -605,14 +587,6 @@ export default function DeliveryNoteDetailPage() {
       dnId: dn.id,
       pickerUserIds,
       notes: queueNotes.trim() || undefined,
-    });
-  };
-
-  const submitBatchAllocationChoice = async (mode: PickListBatchAllocationMode) => {
-    if (!pendingPickListPayload) return;
-    await createPickListWithAllocationHandling({
-      ...pendingPickListPayload,
-      batchAllocationMode: mode,
     });
   };
 
@@ -1657,20 +1631,6 @@ export default function DeliveryNoteDetailPage() {
           </DialogContent>
         </Dialog>
       ) : null}
-
-      <BatchAllocationChoiceDialog
-        open={!!batchAllocationChoice}
-        choice={batchAllocationChoice}
-        isPending={createPickListMutation.isPending}
-        namespace="deliveryNoteDetailPage"
-        onOpenChange={(open) => {
-          if (!open) {
-            setBatchAllocationChoice(null);
-            setPendingPickListPayload(null);
-          }
-        }}
-        onChoose={submitBatchAllocationChoice}
-      />
 
       <Dialog
         open={!!adjustItemId}

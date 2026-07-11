@@ -803,7 +803,13 @@ Create stock replenishment transfer request.
 }
 ```
 
-`selected_item_batch_id` is optional. When provided, the API validates that the batch belongs to the requested item and fulfilling warehouse and has enough available base quantity for the line. Downstream pick-list allocation treats the selected batch as authoritative: it allocates from that batch instead of FIFO, and insufficient selected-batch quantity fails the operation rather than opening the FIFO batch-allocation choice.
+`selected_item_batch_id` is optional. When provided, the API validates that the batch belongs to the requested item and fulfilling warehouse and has enough available base quantity for the line. Downstream pick-list allocation treats the selected batch as authoritative: it allocates from that batch instead of FIFO, and insufficient selected-batch quantity fails the operation.
+
+When the field is null, delivery-note availability and pick-list creation use automatic whole-unit FIFO allocation. Capacity is calculated independently for each FIFO batch-location source as `floor(available base quantity / qty_per_unit)`, so an incomplete remainder is never combined with another source to form one requested unit. A source with 96 base units contributes zero `BOX (144)` units; a source with 150 contributes one box and leaves six base units. Allocation continues through later FIFO sources until the requested unit quantity is covered. Insufficient inventory is reported only when the summed complete-unit capacity, after warehouse reservations and putaway exclusions, is below the requested quantity.
+
+`POST /api/delivery-notes/allocation-availability` accepts a bounded list of up to 100 stock-request item IDs and returns availability in each line's requested unit. `POST /api/delivery-notes` revalidates the same whole-unit capacity while locking the stock-request and inventory rows, then creates the header, sources, lines, and warehouse reservation in one transaction.
+
+The delivery-note creation table displays availability in the stock-request line's unit, for example `100 BOX (144)`. `Qty / Unit` shows the conversion factor, while `Total Qty` shows the current allocated quantity converted to base units. Availability requests are sent in bounded groups of up to 100 stock-request lines; every group must load successfully before allocation controls and delivery-note creation are enabled.
 
 #### POST /api/stock-requests/[id]/approve
 Approve stock transfer.

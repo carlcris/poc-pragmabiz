@@ -11,7 +11,6 @@ import {
   type BatchAllocationMode,
   createPickListForDn,
   fetchPickList,
-  getPickListAllocationChoice,
   getPickListAuthContext,
   mapPickListRecord,
   type PickListStatus,
@@ -199,8 +198,8 @@ async function POSTHandler(request: NextRequest) {
       return NextResponse.json({ error: "At least one picker must be assigned" }, { status: 400 });
     }
 
-    const batchAllocationMode = body.batchAllocationMode;
-    if (batchAllocationMode && !BATCH_ALLOCATION_MODES.has(batchAllocationMode)) {
+    const batchAllocationMode = body.batchAllocationMode ?? "split";
+    if (!BATCH_ALLOCATION_MODES.has(batchAllocationMode)) {
       return NextResponse.json({ error: "Invalid batch allocation mode" }, { status: 400 });
     }
 
@@ -214,39 +213,6 @@ async function POSTHandler(request: NextRequest) {
         { error: "Pick list can only be created from confirmed or dispatched delivery notes" },
         { status: 400 }
       );
-    }
-
-    if (!batchAllocationMode) {
-      let allocationChoice;
-      try {
-        allocationChoice = await getPickListAllocationChoice(auth.supabase, auth.companyId, dnId);
-      } catch (allocationError) {
-        console.error("Failed to preflight pick-list batch allocation", allocationError);
-        return NextResponse.json({ error: "Failed to check batch allocation" }, { status: 500 });
-      }
-
-      if (allocationChoice.insufficientLines.length > 0) {
-        return NextResponse.json(
-          {
-            error: "Batch quantity is not enough for this allocation",
-            code: "batch_allocation_insufficient",
-            lines: allocationChoice.insufficientLines,
-          },
-          { status: 400 }
-        );
-      }
-
-      if (allocationChoice.lines.length > 0) {
-        return NextResponse.json(
-          {
-            error: "Batch allocation choice is required",
-            code: "batch_allocation_choice_required",
-            requiresBatchAllocationChoice: true,
-            lines: allocationChoice.lines,
-          },
-          { status: 409 }
-        );
-      }
     }
 
     let createdPickList;

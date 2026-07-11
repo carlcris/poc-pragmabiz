@@ -26,6 +26,49 @@ type DeliveryNoteApiRecord = {
   [key: string]: unknown;
 };
 
+const CREATE_DELIVERY_NOTE_ERROR: Record<string, { message: string; status: number }> = {
+  DELIVERY_NOTE_UNAUTHORIZED: { message: "Not authorized to create delivery note", status: 403 },
+  DELIVERY_NOTE_BUSINESS_UNIT_REQUIRED: {
+    message: "Business unit context is required",
+    status: 400,
+  },
+  DELIVERY_NOTE_INVALID_WAREHOUSE_MAPPING: {
+    message: "Stock request warehouse mapping is invalid",
+    status: 400,
+  },
+  DELIVERY_NOTE_INVALID_FULFILLMENT_MODE: {
+    message: "Invalid fulfillment mode",
+    status: 400,
+  },
+  DELIVERY_NOTE_INVALID_LINES: { message: "Invalid delivery note lines", status: 400 },
+  DELIVERY_NOTE_INVALID_LINE_QUANTITY: {
+    message: "Allocated quantity must be greater than zero",
+    status: 400,
+  },
+  DELIVERY_NOTE_INVALID_STOCK_REQUEST_ITEM: {
+    message: "One or more stock request items are invalid",
+    status: 400,
+  },
+  DELIVERY_NOTE_INELIGIBLE_STOCK_REQUEST: {
+    message: "One or more stock requests are not eligible for allocation",
+    status: 400,
+  },
+  DELIVERY_NOTE_REQUEST_QUANTITY_EXCEEDED: {
+    message: "Allocated quantity exceeds the stock request quantity",
+    status: 400,
+  },
+  DELIVERY_NOTE_INSUFFICIENT_INVENTORY: {
+    message: "Insufficient complete-unit inventory for this allocation",
+    status: 400,
+  },
+};
+
+const mapCreateDeliveryNoteError = (message: string) =>
+  CREATE_DELIVERY_NOTE_ERROR[message] || {
+    message: "Failed to create delivery note",
+    status: 400,
+  };
+
 const parsePositiveInt = (value: string | null, fallback: number) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -308,102 +351,50 @@ async function POSTHandler(request: NextRequest) {
       }
     }
 
-    const nowIso = new Date().toISOString();
-
-    const { data: dn, error: createError } = await auth.supabase
-      .from("delivery_notes")
-      .insert({
-        company_id: auth.companyId,
-        business_unit_id: auth.currentBusinessUnitId,
-        status: "draft",
-        requesting_warehouse_id: inferredRequestingWarehouseId,
-        fulfilling_warehouse_id: inferredFulfillingWarehouseId,
-        fulfillment_mode: fulfillmentMode,
-        notes: body.notes?.trim() || null,
-        driver_name: body.driverName?.trim() || null,
-        created_by: auth.userId,
-        updated_by: auth.userId,
-        created_at: nowIso,
-        updated_at: nowIso,
-      })
-      .select("id, dn_no")
-      .single();
-
-    if (createError || !dn) {
-      return NextResponse.json(
-        { error: createError?.message || "Failed to create delivery note" },
-        { status: 500 }
-      );
+    if (!auth.currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context is required" }, { status: 400 });
     }
 
-    const dnSources = distinctSrIds.map((srId) => ({
-      company_id: auth.companyId,
-      dn_id: dn.id,
-      sr_id: srId,
-      created_at: nowIso,
-    }));
-
-    const { error: sourceError } = await auth.supabase
-      .from("delivery_note_sources")
-      .insert(dnSources);
-    if (sourceError) {
-      return NextResponse.json({ error: sourceError.message }, { status: 500 });
-    }
-
-    const dnItems = body.items.map((line) => {
-      const sr = requestMap.get(line.srId)!;
-      const srItem = requestItemMap.get(line.srItemId)!;
-      return {
-        company_id: auth.companyId,
-        dn_id: dn.id,
-        sr_id: line.srId,
-        sr_item_id: line.srItemId,
-        item_id: line.itemId,
-        item_unit_option_id: srItem.item_unit_option_id || null,
-        uom_id: line.uomId,
-        requesting_warehouse_id: sr.requesting_warehouse_id,
-        fulfilling_warehouse_id: sr.fulfilling_warehouse_id,
-        allocated_qty: toNumber(line.allocatedQty),
-        picked_qty: 0,
-        short_qty: toNumber(line.allocatedQty),
-        dispatched_qty: 0,
-        created_at: nowIso,
-        updated_at: nowIso,
-      };
-    });
-
-    const { error: itemError } = await auth.supabase.from("delivery_note_items").insert(dnItems);
-    if (itemError) {
-      return NextResponse.json({ error: itemError.message }, { status: 500 });
-    }
-
-    const { error: reserveError } = await auth.supabase.rpc("reserve_delivery_note_inventory", {
-      p_company_id: auth.companyId,
-      p_user_id: auth.userId,
-      p_dn_id: dn.id,
-    });
-
-    if (reserveError) {
-      // Best-effort cleanup of the just-created draft DN and dependent rows.
-      const { error: cleanupError } = await auth.supabase
-        .from("delivery_notes")
-        .delete()
-        .eq("id", dn.id)
-        .eq("company_id", auth.companyId)
-        .eq("status", "draft");
-
-      if (cleanupError) {
-        console.error("Failed to cleanup delivery note after reservation error:", cleanupError);
+    const { data: result, error: createError } = await auth.supabase.rpc(
+      "create_delivery_note_transactionally",
+      {
+        p_company_id: auth.companyId,
+        p_user_id: auth.userId,
+        p_business_unit_id: auth.currentBusinessUnitId,
+        p_requesting_warehouse_id: inferredRequestingWarehouseId,
+        p_fulfilling_warehouse_id: inferredFulfillingWarehouseId,
+        p_fulfillment_mode: fulfillmentMode,
+        p_notes: body.notes?.trim() || "",
+        p_driver_name: body.driverName?.trim() || "",
+        p_lines: body.items.map((line) => ({
+          sr_item_id: line.srItemId,
+          allocated_qty: toNumber(line.allocatedQty),
+        })),
       }
+    );
 
-      return NextResponse.json({ error: reserveError.message }, { status: 400 });
+    if (createError) {
+      console.error("Failed to create delivery note transactionally", createError);
+      const mapped = mapCreateDeliveryNoteError(createError.message);
+      return NextResponse.json({ error: mapped.message }, { status: mapped.status });
     }
 
-    const created = await fetchDeliveryNote(auth.supabase, auth.companyId, dn.id);
+    const deliveryNoteId =
+      result && typeof result === "object" && "deliveryNoteId" in result
+        ? String(result.deliveryNoteId || "")
+        : "";
+    if (!deliveryNoteId) {
+      return NextResponse.json({ error: "Failed to create delivery note" }, { status: 500 });
+    }
+
+    const created = await fetchDeliveryNote(auth.supabase, auth.companyId, deliveryNoteId);
+    if (!created) {
+      return NextResponse.json({ error: "Failed to load created delivery note" }, { status: 500 });
+    }
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected delivery note creation error", error);
+    return NextResponse.json({ error: "Failed to create delivery note" }, { status: 500 });
   }
 }
 

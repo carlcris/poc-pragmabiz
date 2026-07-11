@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import {
 import {
   useConfirmDeliveryNote,
   useCreateDeliveryNote,
+  useDeliveryNoteAllocationAvailability,
   useDeliveryNote,
   useDeliveryNotes,
   useDispatchDeliveryNote,
@@ -34,8 +35,6 @@ import { useUsers } from "@/hooks/useUsers";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { useBusinessUnitStore } from "@/stores/businessUnitStore";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
-import { getPickListBatchAllocationChoiceError } from "@/lib/api/pick-lists";
-import { BatchAllocationChoiceDialog } from "@/components/delivery-notes/BatchAllocationChoiceDialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,14 +73,11 @@ import {
 } from "@/components/ui/table";
 import type {
   DeliveryNote,
+  DeliveryNoteAllocationAvailability,
   DeliveryNoteFulfillmentMode,
   DeliveryNotePickListSummary,
 } from "@/types/delivery-note";
-import type {
-  CreatePickListPayload,
-  PickListBatchAllocationChoiceError,
-  PickListBatchAllocationMode,
-} from "@/types/pick-list";
+import type { CreatePickListPayload } from "@/types/pick-list";
 import type { Warehouse } from "@/types/warehouse";
 import { toProperCase } from "@/lib/string";
 import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
@@ -150,15 +146,6 @@ type DraftLine = {
   sourceBuId: string;
 };
 
-type WarehouseInventoryApiResponse = {
-  data?: {
-    inventory?: Array<{
-      itemId: string;
-      availableStock: number;
-    }>;
-  };
-};
-
 const resolveActivePickList = (deliveryNote: DeliveryNote): DeliveryNotePickListSummary | null => {
   const rows = deliveryNote.pick_lists || [];
   const active = rows
@@ -185,10 +172,6 @@ export default function DeliveryNotesPage() {
   const [queuePickerSearch, setQueuePickerSearch] = useState("");
   const [queueNotes, setQueueNotes] = useState("");
   const [selectedQueuePickerIds, setSelectedQueuePickerIds] = useState<Set<string>>(new Set());
-  const [pendingPickListPayload, setPendingPickListPayload] =
-    useState<CreatePickListPayload | null>(null);
-  const [batchAllocationChoice, setBatchAllocationChoice] =
-    useState<PickListBatchAllocationChoiceError | null>(null);
   const [driverName, setDriverName] = useState("");
   const [helperName, setHelperName] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
@@ -204,11 +187,6 @@ export default function DeliveryNotesPage() {
   const [draftLines, setDraftLines] = useState<DraftLine[]>([]);
   const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(new Set());
   const [createValidationError, setCreateValidationError] = useState<string>("");
-  const [availableQtyByWarehouseItem, setAvailableQtyByWarehouseItem] = useState<
-    Record<string, number>
-  >({});
-  const [isLoadingInventory, setIsLoadingInventory] = useState(false);
-
   const { data: deliveryNotesData, isLoading } = useDeliveryNotes();
   const { data: stockRequestsData } = useStockRequests({ page: 1, limit: 50 });
   const { data: usersData } = useUsers();
@@ -221,6 +199,34 @@ export default function DeliveryNotesPage() {
   const dispatchMutation = useDispatchDeliveryNote();
   const receiveMutation = useReceiveDeliveryNote();
   const voidMutation = useVoidDeliveryNote();
+  const availabilitySrItemIds = useMemo(
+    () => draftLines.map((line) => line.srItemId),
+    [draftLines]
+  );
+  const allocationAvailability = useDeliveryNoteAllocationAvailability(
+    availabilitySrItemIds,
+    createOpen && Boolean(selectedSourceBuId) && availabilitySrItemIds.length > 0
+  );
+  const availabilityBySrItemId = useMemo<Record<string, DeliveryNoteAllocationAvailability>>(
+    () =>
+      Object.fromEntries(
+        (allocationAvailability.data?.data || []).map((line) => [line.srItemId, line])
+      ),
+    [allocationAvailability.data]
+  );
+  const isInventoryAvailabilityRequired =
+    createOpen && Boolean(selectedSourceBuId) && availabilitySrItemIds.length > 0;
+  const isLoadingInventory = isInventoryAvailabilityRequired && allocationAvailability.isFetching;
+  const isInventoryAvailabilityComplete =
+    !isInventoryAvailabilityRequired ||
+    availabilitySrItemIds.every((srItemId) => Boolean(availabilityBySrItemId[srItemId]));
+  const hasInventoryAvailabilityError =
+    isInventoryAvailabilityRequired &&
+    !isLoadingInventory &&
+    (allocationAvailability.isError || !isInventoryAvailabilityComplete);
+  const isInventoryAvailabilityBlocked =
+    isInventoryAvailabilityRequired &&
+    (isLoadingInventory || allocationAvailability.isError || !isInventoryAvailabilityComplete);
 
   const warehouseLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -536,8 +542,6 @@ export default function DeliveryNotesPage() {
     setDraftLines([]);
     setSelectedLineIds(new Set());
     setCreateValidationError("");
-    setAvailableQtyByWarehouseItem({});
-    setIsLoadingInventory(false);
   };
 
   const resetActionState = () => {
@@ -553,8 +557,6 @@ export default function DeliveryNotesPage() {
     setDispatchNotes("");
     setReceiveNotes("");
     setVoidReason("");
-    setPendingPickListPayload(null);
-    setBatchAllocationChoice(null);
   };
 
   const createPickListWithAllocationHandling = async (payload: CreatePickListPayload) => {
@@ -562,26 +564,9 @@ export default function DeliveryNotesPage() {
       await createPickListMutation.mutateAsync(payload);
       return true;
     } catch (error) {
-      const allocationChoice = getPickListBatchAllocationChoiceError(error);
-      if (allocationChoice && !payload.batchAllocationMode) {
-        setPendingPickListPayload(payload);
-        setBatchAllocationChoice(allocationChoice);
-        return false;
-      }
       toast.error(getMutationErrorMessage(error, "Failed to create pick list"));
       return false;
     }
-  };
-
-  const submitBatchAllocationChoice = async (mode: PickListBatchAllocationMode) => {
-    if (!pendingPickListPayload) return;
-    const created = await createPickListWithAllocationHandling({
-      ...pendingPickListPayload,
-      batchAllocationMode: mode,
-    });
-    if (!created) return;
-    setActionOpen(false);
-    resetActionState();
   };
 
   const onSelectSourceBu = (buId: string) => {
@@ -634,17 +619,14 @@ export default function DeliveryNotesPage() {
   };
 
   const getAvailableQty = useCallback(
-    (line: DraftLine) => {
-      const key = `${line.fulfillingWarehouseId}:${line.itemId}`;
-      return availableQtyByWarehouseItem[key];
-    },
-    [availableQtyByWarehouseItem]
+    (line: DraftLine) => availabilityBySrItemId[line.srItemId]?.availableQty,
+    [availabilityBySrItemId]
   );
 
   const getMaxAllowedQty = useCallback(
     (line: DraftLine) => {
       const availableQty = getAvailableQty(line);
-      if (availableQty === undefined) return line.allocatableQty;
+      if (availableQty === undefined) return 0;
       return Math.max(0, Math.min(line.allocatableQty, availableQty));
     },
     [getAvailableQty]
@@ -680,57 +662,6 @@ export default function DeliveryNotesPage() {
     [draftLines, selectedLineIds]
   );
 
-  useEffect(() => {
-    if (!createOpen || !selectedSourceBuId || draftLines.length === 0) {
-      setAvailableQtyByWarehouseItem({});
-      setIsLoadingInventory(false);
-      return;
-    }
-
-    const warehouseIds = Array.from(new Set(draftLines.map((line) => line.fulfillingWarehouseId)));
-    if (warehouseIds.length === 0) {
-      setAvailableQtyByWarehouseItem({});
-      setIsLoadingInventory(false);
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoadingInventory(true);
-
-    const loadWarehouseInventory = async () => {
-      const responses = await Promise.all(
-        warehouseIds.map(async (warehouseId) => {
-          try {
-            const response = await fetch(`/api/warehouses/${warehouseId}/inventory`);
-            if (!response.ok) return { warehouseId, inventory: [] };
-            const payload = (await response.json()) as WarehouseInventoryApiResponse;
-            return { warehouseId, inventory: payload.data?.inventory || [] };
-          } catch {
-            return { warehouseId, inventory: [] };
-          }
-        })
-      );
-
-      if (cancelled) return;
-
-      const next: Record<string, number> = {};
-      for (const entry of responses) {
-        for (const row of entry.inventory) {
-          next[`${entry.warehouseId}:${row.itemId}`] = Number(row.availableStock || 0);
-        }
-      }
-
-      setAvailableQtyByWarehouseItem(next);
-      setIsLoadingInventory(false);
-    };
-
-    void loadWarehouseInventory();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [createOpen, draftLines, selectedSourceBuId]);
-
   const invalidSelectedLine = useMemo(
     () =>
       selectedLines.find((line) => {
@@ -746,13 +677,20 @@ export default function DeliveryNotesPage() {
     const lines = selectedLines;
     if (lines.length === 0) return;
     if (isLoadingInventory) {
-      setCreateValidationError("Please wait for inventory availability to finish loading.");
+      setCreateValidationError(t("inventoryAvailabilityLoading"));
+      return;
+    }
+    if (hasInventoryAvailabilityError || !isInventoryAvailabilityComplete) {
+      setCreateValidationError(t("inventoryAvailabilityError"));
       return;
     }
     if (invalidSelectedLine) {
       const maxAllocatableQty = getMaxAllowedQty(invalidSelectedLine);
       setCreateValidationError(
-        `Allocated quantity for ${invalidSelectedLine.itemName} exceeds the allowed maximum (${maxAllocatableQty.toFixed(2)}).`
+        t("allocationExceedsAvailable", {
+          item: invalidSelectedLine.itemName,
+          quantity: maxAllocatableQty.toFixed(2),
+        })
       );
       return;
     }
@@ -778,7 +716,7 @@ export default function DeliveryNotesPage() {
         })),
       });
 
-      toast.success("Delivery note created");
+      toast.success(t("createSuccess"));
       setCreateOpen(false);
       resetCreateState();
     } catch (error) {
@@ -1150,7 +1088,7 @@ export default function DeliveryNotesPage() {
           if (!open) resetCreateState();
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] max-w-7xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("createDialogTitle")}</DialogTitle>
             <DialogDescription>{t("createDialogDescription")}</DialogDescription>
@@ -1205,6 +1143,20 @@ export default function DeliveryNotesPage() {
               </div>
             ) : null}
 
+            {hasInventoryAvailabilityError ? (
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <span>{t("inventoryAvailabilityError")}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void allocationAvailability.refetch()}
+                >
+                  {t("retryInventoryAvailability")}
+                </Button>
+              </div>
+            ) : null}
+
             {selectedSourceBuId && (
               <div className="rounded-lg border bg-blue-50 p-3 text-sm">
                 <div className="flex items-center justify-between">
@@ -1234,21 +1186,26 @@ export default function DeliveryNotesPage() {
                 <p className="text-sm text-muted-foreground">{t("selectSourceBuHint")}</p>
               </div>
             ) : draftLines.length > 0 ? (
-              <div className="overflow-hidden rounded-lg border">
-                <Table>
+              <div className="overflow-x-auto rounded-lg border">
+                <Table className="min-w-max">
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-12">{t("use")}</TableHead>
                       <TableHead>{t("sr")}</TableHead>
-                      <TableHead>{t("item")}</TableHead>
-                      <TableHead>{t("unit")}</TableHead>
+                      <TableHead className="w-48 max-w-48 whitespace-normal">
+                        {t("item")}
+                      </TableHead>
                       <TableHead className="text-right">{t("requested")}</TableHead>
+                      <TableHead>{t("unit")}</TableHead>
+                      <TableHead className="text-right">{t("qtyPerUnit")}</TableHead>
+                      <TableHead className="text-right">{t("totalQty")}</TableHead>
                       <TableHead className="text-right">{t("allocatable")}</TableHead>
                       <TableHead className="text-right">{t("allocated")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {draftLines.map((line) => {
+                      const availability = availabilityBySrItemId[line.srItemId];
                       const availableQty = getAvailableQty(line);
                       const maxAllowedQty = getMaxAllowedQty(line);
                       const hasInsufficientInventory =
@@ -1270,17 +1227,22 @@ export default function DeliveryNotesPage() {
                           <TableCell>
                             <Checkbox
                               checked={selectedLineIds.has(line.srItemId)}
+                              disabled={isInventoryAvailabilityBlocked}
                               onCheckedChange={(checked) => toggleLine(line, checked === true)}
                             />
                           </TableCell>
                           <TableCell className="font-mono text-xs">{line.requestCode}</TableCell>
-                          <TableCell className="text-sm">
-                            <div className="font-medium">{line.itemName}</div>
+                          <TableCell className="w-48 max-w-48 whitespace-normal text-sm">
+                            <div className="break-words font-medium leading-snug">
+                              {line.itemName}
+                            </div>
                             <div className="text-xs font-medium text-orange-600">
                               {t("availableLabel")}{" "}
                               {isLoadingInventory && getAvailableQty(line) === undefined
                                 ? t("noValue")
-                                : (getAvailableQty(line) || 0).toFixed(2)}
+                                : availableQty === undefined
+                                  ? t("noValue")
+                                  : `${availableQty.toFixed(2)} ${line.uomLabel || t("noValue")}`}
                             </div>
                             {hasInsufficientInventory && (
                               <div className="text-xs font-medium text-red-600">
@@ -1288,9 +1250,15 @@ export default function DeliveryNotesPage() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="text-sm">{line.uomLabel || t("noValue")}</TableCell>
                           <TableCell className="text-right">
                             {line.requestedQty.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-sm">{line.uomLabel || t("noValue")}</TableCell>
+                          <TableCell className="text-right">
+                            {(availability?.qtyPerUnit || 1).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {(line.allocatedQty * (availability?.qtyPerUnit || 1)).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {line.allocatableQty.toFixed(2)}
@@ -1303,7 +1271,10 @@ export default function DeliveryNotesPage() {
                               max={line.allocatableQty}
                               step="0.01"
                               value={line.allocatedQty}
-                              disabled={!selectedLineIds.has(line.srItemId)}
+                              disabled={
+                                isInventoryAvailabilityBlocked ||
+                                !selectedLineIds.has(line.srItemId)
+                              }
                               onChange={(event) =>
                                 updateAllocatedQty(
                                   line.srItemId,
@@ -1335,6 +1306,7 @@ export default function DeliveryNotesPage() {
                 !selectedSourceBuId ||
                 selectedLines.length === 0 ||
                 !!invalidSelectedLine ||
+                isInventoryAvailabilityBlocked ||
                 createMutation.isPending
               }
             >
@@ -1343,20 +1315,6 @@ export default function DeliveryNotesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <BatchAllocationChoiceDialog
-        open={!!batchAllocationChoice}
-        choice={batchAllocationChoice}
-        isPending={createPickListMutation.isPending}
-        namespace="deliveryNotesPage"
-        onOpenChange={(open) => {
-          if (!open) {
-            setBatchAllocationChoice(null);
-            setPendingPickListPayload(null);
-          }
-        }}
-        onChoose={submitBatchAllocationChoice}
-      />
 
       <Dialog
         open={actionOpen}

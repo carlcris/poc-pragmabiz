@@ -1,26 +1,11 @@
 import { apiClient } from "@/lib/api";
 import type {
   CreatePickListPayload,
-  PickListBatchAllocationChoiceError,
   PickList,
   PickListListResponse,
   UpdatePickListItemsPayload,
   UpdatePickListStatusPayload,
 } from "@/types/pick-list";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === "object";
-
-export const getPickListBatchAllocationChoiceError = (
-  error: unknown
-): PickListBatchAllocationChoiceError | null => {
-  const cause = error instanceof Error ? error.cause : null;
-  if (!isRecord(cause)) return null;
-  if (cause.code !== "batch_allocation_choice_required") return null;
-  if (cause.requiresBatchAllocationChoice !== true) return null;
-  if (!Array.isArray(cause.lines)) return null;
-  return cause as PickListBatchAllocationChoiceError;
-};
 
 export const pickListsApi = {
   async list(params?: { status?: string; dnId?: string }): Promise<PickListListResponse> {

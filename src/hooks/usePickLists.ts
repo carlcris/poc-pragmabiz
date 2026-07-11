@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getPickListBatchAllocationChoiceError, pickListsApi } from "@/lib/api/pick-lists";
+import { pickListsApi } from "@/lib/api/pick-lists";
 import {
   DELIVERY_NOTES_QUERY_KEY,
   PICK_LISTS_QUERY_KEY,
@@ -98,7 +98,6 @@ export function useCreatePickList() {
       toast.success("Pick list created");
     },
     onError: (error: unknown) => {
-      if (getPickListBatchAllocationChoiceError(error)) return;
       toast.error(getErrorMessage(error, "Failed to create pick list"));
     },
   });
