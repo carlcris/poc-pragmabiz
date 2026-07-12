@@ -706,6 +706,8 @@ export type TranslationKeys = {
       startGrnReceivingDescription: string;
       viewAssignedPickLists: string;
       viewAssignedPickListsDescription: string;
+      printBatchQr: string;
+      printBatchQrDescription: string;
     };
   };
   adminCreateRoleDialog: {
@@ -2212,6 +2214,20 @@ export type TranslationKeys = {
     defaultBadge: string;
     setDefault: string;
     editMaxStock: string;
+    printBatchQr: string;
+    printingBatchQr: string;
+    printBatchQrSuccess: string;
+    printBatchQrError: string;
+    batchLabelReference: string;
+    batchPrintDialogTitle: string;
+    batchPrintDialogDescription: string;
+    batchLabelCount: string;
+    batchLabelCountHelp: string;
+    invalidBatchLabelCount: string;
+    printBatchLabels: string;
+    batchPrintUnit: string;
+    selectBatchPrintUnit: string;
+    batchPrintUnitHelp: string;
     defaultUpdated: string;
     updateDefaultError: string;
     maxStockUpdated: string;
@@ -3588,6 +3604,9 @@ export const translations: Record<Locale, TranslationKeys> = {
         viewAssignedPickLists: "View Only Assigned Pick Lists",
         viewAssignedPickListsDescription:
           "When enabled, shows only pick lists assigned to the current user. When disabled, shows all pick lists in the current business unit.",
+        printBatchQr: "Print Item Batch QR Codes",
+        printBatchQrDescription:
+          "Allows printing item batch-location QR labels from an item's Locations tab.",
       },
     },
     adminCreateRoleDialog: {
@@ -5125,6 +5144,22 @@ export const translations: Record<Locale, TranslationKeys> = {
       defaultBadge: "Default",
       setDefault: "Set Default",
       editMaxStock: "Set Max",
+      printBatchQr: "Print QR",
+      printingBatchQr: "Printing...",
+      printBatchQrSuccess: "{count} batch QR labels opened for printing",
+      printBatchQrError: "Failed to print batch QR label",
+      batchLabelReference: "ITEM BATCH",
+      batchPrintDialogTitle: "Print Batch QR Labels",
+      batchPrintDialogDescription:
+        "Print labels for batch {batch}, with {quantity} currently on hand.",
+      batchLabelCount: "Number of labels",
+      batchLabelCountHelp: "Enter a whole number from 1 to {max}.",
+      invalidBatchLabelCount: "Enter a whole-number label count from 1 to {max}.",
+      printBatchLabels: "Print Labels",
+      batchPrintUnit: "Unit",
+      selectBatchPrintUnit: "Select a unit",
+      batchPrintUnitHelp:
+        "Each label's Qty uses the selected unit's Qty / Unit. Current on-hand is not divided.",
       defaultUpdated: "Default location updated",
       updateDefaultError: "Failed to update default location",
       maxStockUpdated: "Max stock level updated",
@@ -9111,6 +9146,8 @@ export const translations: Record<Locale, TranslationKeys> = {
         viewAssignedPickLists: "仅查看已分配的拣货单",
         viewAssignedPickListsDescription:
           "启用后，仅显示分配给当前用户的拣货单；禁用后，显示当前业务单位内的所有拣货单。",
+        printBatchQr: "打印商品批次二维码",
+        printBatchQrDescription: "允许从商品的库位标签页打印商品批次库位二维码标签。",
       },
     },
     adminCreateRoleDialog: {
@@ -10623,6 +10660,20 @@ export const translations: Record<Locale, TranslationKeys> = {
       defaultBadge: "默认",
       setDefault: "设为默认",
       editMaxStock: "设置最高",
+      printBatchQr: "打印二维码",
+      printingBatchQr: "正在打印...",
+      printBatchQrSuccess: "已打开 {count} 个批次二维码标签，可进行打印",
+      printBatchQrError: "打印批次二维码标签失败",
+      batchLabelReference: "商品批次",
+      batchPrintDialogTitle: "打印批次二维码标签",
+      batchPrintDialogDescription: "为批次 {batch} 打印标签，当前现有数量为 {quantity}。",
+      batchLabelCount: "标签数量",
+      batchLabelCountHelp: "请输入 1 到 {max} 之间的整数。",
+      invalidBatchLabelCount: "请输入 1 到 {max} 之间的整数标签数量。",
+      printBatchLabels: "打印标签",
+      batchPrintUnit: "单位",
+      selectBatchPrintUnit: "选择单位",
+      batchPrintUnitHelp: "每个标签的数量采用所选单位的每单位数量。不会拆分当前现有数量。",
       defaultUpdated: "默认库位已更新",
       updateDefaultError: "更新默认库位失败",
       maxStockUpdated: "最高库存水平已更新",

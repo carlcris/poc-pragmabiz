@@ -227,6 +227,10 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         title: t("capabilities.viewAssignedPickLists"),
         description: t("capabilities.viewAssignedPickListsDescription"),
       },
+      [GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT]: {
+        title: t("capabilities.printBatchQr"),
+        description: t("capabilities.printBatchQrDescription"),
+      },
     }),
     [t]
   );

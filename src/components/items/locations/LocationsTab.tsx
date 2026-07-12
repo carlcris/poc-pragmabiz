@@ -32,22 +32,54 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
-import type { ItemLocation } from "@/types/inventory-location";
+import { useCanView } from "@/hooks/usePermissions";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { RESOURCES } from "@/constants/resources";
+import type { BarcodeData } from "@/lib/barcode";
+import type { ItemLocation, ItemLocationBatch } from "@/types/inventory-location";
 import type { WarehouseLocation } from "@/types/inventory-location";
 
 type ItemLocationsResponse = {
   data: ItemLocation[];
 };
 
+type BatchPrintLabelResponse = {
+  data: {
+    batchLocationId: string;
+    itemId: string;
+    batchLocationSku: string;
+    batchCode: string;
+    receivedAt: string;
+    qtyOnHand: number;
+    itemCode: string;
+    itemName: string;
+    warehouseCode: string;
+    locationId: string;
+    locationCode: string;
+  };
+};
+
 type LocationsTabProps = {
   itemId: string;
 };
 
+const MAX_BATCH_LABEL_COUNT = 100;
+
 const formatQty = (value: number, locale: string) =>
   value.toLocaleString(locale, { maximumFractionDigits: 4 });
+
+const createBatchLabelId = (batchLocationId: string, labelNumber: number) => {
+  const uniquePart =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${labelNumber}`;
+
+  return `batch-${batchLocationId}-${uniquePart}`;
+};
 
 export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const t = useTranslations("itemLocationsTab");
@@ -65,12 +97,39 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     null
   );
   const [maxStockInput, setMaxStockInput] = useState("");
+  const [printingBatchLocationId, setPrintingBatchLocationId] = useState<string | null>(null);
+  const [batchToPrint, setBatchToPrint] = useState<ItemLocationBatch | null>(null);
+  const [batchLabelCount, setBatchLabelCount] = useState("1");
+  const [batchPrintUnitId, setBatchPrintUnitId] = useState("");
+  const canViewItems = useCanView(RESOURCES.ITEMS);
+  const { data: granularCapabilities = {} } = useGranularCapabilities([
+    GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT,
+  ]);
+  const canPrintBatchQr =
+    canViewItems && granularCapabilities[GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT] === true;
   const { data, isLoading, error } = useQuery<ItemLocationsResponse>({
     queryKey: ["item-locations", itemId],
     queryFn: async () => apiClient.get<ItemLocationsResponse>(`/api/items/${itemId}/locations`),
   });
   const { data: itemResponse } = useItem(itemId);
   const item = itemResponse?.data;
+  const batchPrintUnitOptions = useMemo(
+    () =>
+      (item?.unitOptions || []).filter(
+        (option) => option.isActive && Number.isFinite(option.qtyPerUnit) && option.qtyPerUnit > 0
+      ),
+    [item?.unitOptions]
+  );
+  const defaultBatchPrintUnit = useMemo(
+    () =>
+      batchPrintUnitOptions.find((option) => option.isDefault) ||
+      batchPrintUnitOptions.find((option) => option.isBase) ||
+      batchPrintUnitOptions[0] ||
+      null,
+    [batchPrintUnitOptions]
+  );
+  const selectedBatchPrintUnit =
+    batchPrintUnitOptions.find((option) => option.id === batchPrintUnitId) || null;
 
   const toggleLocation = (locationId: string) => {
     setExpandedLocations((prev) => {
@@ -214,6 +273,73 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
     setMaxStockDialogOpen(true);
   };
 
+  const openBatchPrintDialog = (batch: ItemLocationBatch) => {
+    setBatchToPrint(batch);
+    setBatchLabelCount("1");
+    setBatchPrintUnitId(defaultBatchPrintUnit?.id || "");
+  };
+
+  const closeBatchPrintDialog = () => {
+    if (printingBatchLocationId) return;
+    setBatchToPrint(null);
+    setBatchLabelCount("1");
+    setBatchPrintUnitId("");
+  };
+
+  const parsedBatchLabelCount = Number(batchLabelCount);
+  const isBatchLabelCountValid =
+    Number.isInteger(parsedBatchLabelCount) &&
+    parsedBatchLabelCount >= 1 &&
+    parsedBatchLabelCount <= MAX_BATCH_LABEL_COUNT;
+
+  const handlePrintBatchQr = async () => {
+    if (!batchToPrint || !isBatchLabelCountValid) {
+      toast.error(t("invalidBatchLabelCount", { max: MAX_BATCH_LABEL_COUNT }));
+      return;
+    }
+    if (!selectedBatchPrintUnit) {
+      toast.error(t("selectBatchPrintUnit"));
+      return;
+    }
+
+    try {
+      setPrintingBatchLocationId(batchToPrint.id);
+      const response = await apiClient.get<BatchPrintLabelResponse>(
+        `/api/item-batch-locations/${batchToPrint.id}/print-label`
+      );
+      const label = response.data;
+      const barcodeData: BarcodeData[] = Array.from(
+        { length: parsedBatchLabelCount },
+        (_, index) => ({
+          boxId: createBatchLabelId(label.batchLocationId, index + 1),
+          itemId: label.itemId,
+          batchLocationSku: label.batchLocationSku,
+          batchNumber: label.batchCode,
+          grnNumber: t("batchLabelReference"),
+          itemCode: label.itemCode,
+          itemName: label.itemName,
+          boxNumber: index + 1,
+          qtyPerBox: selectedBatchPrintUnit.qtyPerUnit,
+          deliveryDate: label.receivedAt,
+          warehouseCode: label.warehouseCode,
+          locationId: label.locationId,
+          locationCode: label.locationCode,
+        })
+      );
+      const { printBarcodeLabels } = await import("@/lib/barcode");
+      await printBarcodeLabels(barcodeData);
+      toast.success(t("printBatchQrSuccess", { count: parsedBatchLabelCount }));
+      setBatchToPrint(null);
+      setBatchLabelCount("1");
+      setBatchPrintUnitId("");
+    } catch (printError) {
+      console.error("Failed to print item batch QR label", printError);
+      toast.error(t("printBatchQrError"));
+    } finally {
+      setPrintingBatchLocationId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -323,7 +449,9 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                           {formatQty(location.qtyAvailable, locale)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {location.maxQuantity == null ? "--" : formatQty(location.maxQuantity, locale)}
+                          {location.maxQuantity == null
+                            ? "--"
+                            : formatQty(location.maxQuantity, locale)}
                         </TableCell>
                         <TableCell className="text-right">
                           {formatQty(location.inTransit || 0, locale)}
@@ -371,6 +499,11 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                                     <TableHead className="h-8 text-right text-xs">
                                       {t("available")}
                                     </TableHead>
+                                    {canPrintBatchQr ? (
+                                      <TableHead className="h-8 text-right text-xs">
+                                        {tCommon("actions")}
+                                      </TableHead>
+                                    ) : null}
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -391,6 +524,34 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
                                       <TableCell className="py-2 text-right text-xs">
                                         {formatQty(batch.qtyAvailable, locale)}
                                       </TableCell>
+                                      {canPrintBatchQr ? (
+                                        <TableCell className="py-2 text-right">
+                                          <div className="flex justify-end gap-2">
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              className="h-8 px-2"
+                                              aria-label={t("printBatchQr")}
+                                              disabled={
+                                                batchPrintUnitOptions.length === 0 ||
+                                                printingBatchLocationId !== null
+                                              }
+                                              onClick={() => openBatchPrintDialog(batch)}
+                                            >
+                                              {printingBatchLocationId === batch.id ? (
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                              ) : (
+                                                <Printer className="mr-2 h-4 w-4" />
+                                              )}
+                                              <span>
+                                                {printingBatchLocationId === batch.id
+                                                  ? t("printingBatchQr")
+                                                  : t("printBatchQr")}
+                                              </span>
+                                            </Button>
+                                          </div>
+                                        </TableCell>
+                                      ) : null}
                                     </TableRow>
                                   ))}
                                 </TableBody>
@@ -407,6 +568,88 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
           </div>
         )}
       </CardContent>
+      <Dialog
+        open={batchToPrint !== null}
+        onOpenChange={(open) => {
+          if (!open) closeBatchPrintDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("batchPrintDialogTitle")}</DialogTitle>
+            <DialogDescription>
+              {batchToPrint
+                ? t("batchPrintDialogDescription", {
+                    batch: batchToPrint.batchCode,
+                    quantity: formatQty(batchToPrint.qtyOnHand, locale),
+                  })
+                : null}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label htmlFor="batch-label-count" className="text-sm font-medium">
+              {t("batchLabelCount")}
+            </label>
+            <Input
+              id="batch-label-count"
+              type="number"
+              min="1"
+              max={MAX_BATCH_LABEL_COUNT}
+              step="1"
+              value={batchLabelCount}
+              disabled={printingBatchLocationId !== null}
+              onChange={(event) => setBatchLabelCount(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("batchLabelCountHelp", { max: MAX_BATCH_LABEL_COUNT })}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("batchPrintUnit")}</label>
+            <Select
+              value={batchPrintUnitId}
+              disabled={printingBatchLocationId !== null}
+              onValueChange={setBatchPrintUnitId}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={t("selectBatchPrintUnit")} />
+              </SelectTrigger>
+              <SelectContent>
+                {batchPrintUnitOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.displayLabel}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">{t("batchPrintUnitHelp")}</p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={printingBatchLocationId !== null}
+              onClick={closeBatchPrintDialog}
+            >
+              {t("cancel")}
+            </Button>
+            <Button
+              disabled={
+                !isBatchLabelCountValid ||
+                !selectedBatchPrintUnit ||
+                printingBatchLocationId !== null
+              }
+              onClick={handlePrintBatchQr}
+            >
+              {printingBatchLocationId ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Printer className="mr-2 h-4 w-4" />
+              )}
+              {printingBatchLocationId ? t("printingBatchQr") : t("printBatchLabels")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={moveDialogOpen}
         onOpenChange={(open) => {
