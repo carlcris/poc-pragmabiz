@@ -13,7 +13,7 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import type { GrnLine, UpdateGrnLinePayload } from "@/contracts/receiving";
 import { colors } from "@/theme/colors";
-import { borderRadius, spacing } from "@/theme/spacing";
+import { borderRadius, sizes, spacing } from "@/theme/spacing";
 import { typography } from "@/theme/typography";
 import { formatDate } from "@/utils/format";
 import {
@@ -487,28 +487,34 @@ const QuantityInput = ({
   tone: "green" | "red" | "blue";
   disabled: boolean;
   onChange: (value: string) => void;
-}) => (
-  <View style={[styles.quantityBox, disabled ? styles.quantityBoxDisabled : null]}>
-    <Text
-      style={[
-        styles.quantityLabel,
-        tone === "green" ? styles.quantityGreen : null,
-        tone === "red" ? styles.quantityRed : null,
-        tone === "blue" ? styles.quantityBlue : null
-      ]}
-    >
-      {label}
-    </Text>
-    <TextInput
-      value={String(value)}
-      editable={!disabled}
-      keyboardType="decimal-pad"
-      selectTextOnFocus
-      onChangeText={onChange}
-      style={styles.quantityInput}
-    />
-  </View>
-);
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <View style={[styles.quantityBox, disabled ? styles.quantityBoxDisabled : null]}>
+      <Text
+        style={[
+          styles.quantityLabel,
+          tone === "green" ? styles.quantityGreen : null,
+          tone === "red" ? styles.quantityRed : null,
+          tone === "blue" ? styles.quantityBlue : null
+        ]}
+      >
+        {label}
+      </Text>
+      <TextInput
+        value={String(value)}
+        editable={!disabled}
+        keyboardType="decimal-pad"
+        selectTextOnFocus
+        onChangeText={onChange}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        style={[styles.quantityInput, isFocused ? styles.quantityInputFocused : null]}
+      />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   summaryCard: {
@@ -734,14 +740,12 @@ const styles = StyleSheet.create({
   quantityBox: {
     flex: 1,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.faint,
     padding: spacing.sm,
     alignItems: "center"
   },
   quantityBoxDisabled: {
-    opacity: 0.7
+    opacity: 0.6
   },
   quantityLabel: {
     ...typography.caption,
@@ -763,18 +767,22 @@ const styles = StyleSheet.create({
     color: colors.text
   },
   quantityInput: {
-    marginTop: spacing.xs,
-    minWidth: 56,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
+    marginTop: spacing.sm,
+    width: "100%",
+    minHeight: sizes.input.base,
+    borderRadius: borderRadius.base,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.faint,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
     textAlign: "center",
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: typography.fontWeights.bold,
     color: colors.text
+  },
+  quantityInputFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft
   },
   variance: {
     ...typography.bodySmall,
