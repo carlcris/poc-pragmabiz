@@ -704,6 +704,8 @@ export type TranslationKeys = {
     capabilities: {
       startGrnReceiving: string;
       startGrnReceivingDescription: string;
+      viewAssignedPickLists: string;
+      viewAssignedPickListsDescription: string;
     };
   };
   adminCreateRoleDialog: {
@@ -3583,6 +3585,9 @@ export const translations: Record<Locale, TranslationKeys> = {
         startGrnReceiving: "Start GRN Receiving",
         startGrnReceivingDescription:
           "Allows transitioning a draft GRN and its linked arrived load list into receiving.",
+        viewAssignedPickLists: "View Only Assigned Pick Lists",
+        viewAssignedPickListsDescription:
+          "When enabled, shows only pick lists assigned to the current user. When disabled, shows all pick lists in the current business unit.",
       },
     },
     adminCreateRoleDialog: {
@@ -6281,7 +6286,8 @@ export const translations: Record<Locale, TranslationKeys> = {
       view: "View",
       loadError: "Error loading on-order items. Please try again.",
       emptyTitle: "No on-order items found",
-      emptyDescription: "Supplier pending items will appear here once stock requisitions are submitted.",
+      emptyDescription:
+        "Supplier pending items will appear here once stock requisitions are submitted.",
       noValue: "--",
     },
     stockRequisitionForm: {
@@ -9102,6 +9108,9 @@ export const translations: Record<Locale, TranslationKeys> = {
       capabilities: {
         startGrnReceiving: "开始收货单收货",
         startGrnReceivingDescription: "允许将草稿收货单及其关联的已到货装载单转为收货中状态。",
+        viewAssignedPickLists: "仅查看已分配的拣货单",
+        viewAssignedPickListsDescription:
+          "启用后，仅显示分配给当前用户的拣货单；禁用后，显示当前业务单位内的所有拣货单。",
       },
     },
     adminCreateRoleDialog: {

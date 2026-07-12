@@ -59,32 +59,52 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: permission.error }, { status: 403 });
     }
 
-    const { data: sourceRow, error: sourceError } = await auth.supabase
-      .from("item_batch_locations")
-      .select(
+    const [sourceResult, deliveryNoteResult] = await Promise.all([
+      auth.supabase
+        .from("item_batch_locations")
+        .select(
+          `
+          id,
+          item_id,
+          warehouse_id,
+          location_id,
+          qty_on_hand,
+          batch_location_sku,
+          warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(id, code, name),
+          item_batch:item_batches!item_batch_locations_item_batch_id_fkey(id, batch_code, received_at)
         `
-        id,
-        item_id,
-        warehouse_id,
-        location_id,
-        qty_on_hand,
-        batch_location_sku,
-        warehouse_location:warehouse_locations!item_batch_locations_location_id_fkey(id, code, name),
-        item_batch:item_batches!item_batch_locations_item_batch_id_fkey(id, batch_code, received_at)
-      `
-      )
-      .eq("company_id", auth.companyId)
-      .eq("batch_location_sku", batchLocationSku)
-      .is("deleted_at", null)
-      .maybeSingle();
+        )
+        .eq("company_id", auth.companyId)
+        .eq("batch_location_sku", batchLocationSku)
+        .is("deleted_at", null)
+        .maybeSingle(),
+      auth.supabase
+        .from("delivery_notes")
+        .select("fulfilling_warehouse_id")
+        .eq("company_id", auth.companyId)
+        .eq("id", header.dn_id)
+        .is("deleted_at", null)
+        .maybeSingle(),
+    ]);
+    const { data: sourceRow, error: sourceError } = sourceResult;
+    const { data: deliveryNote, error: deliveryNoteError } = deliveryNoteResult;
 
     if (sourceError) {
       console.error("Failed to resolve pick-list scan source", sourceError);
       return NextResponse.json({ error: "Failed to resolve scanned source" }, { status: 500 });
     }
 
+    if (deliveryNoteError || !deliveryNote?.fulfilling_warehouse_id) {
+      console.error("Failed to resolve pick-list fulfilling warehouse", deliveryNoteError);
+      return NextResponse.json({ error: "Failed to resolve picking warehouse" }, { status: 500 });
+    }
+
     if (!sourceRow) {
       return scanValidationError("Batch location SKU not found");
+    }
+
+    if (sourceRow.warehouse_id !== deliveryNote.fulfilling_warehouse_id) {
+      return scanValidationError("Item not found");
     }
 
     const itemBatch = Array.isArray(sourceRow.item_batch)
@@ -135,13 +155,16 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
       )
       .eq("company_id", auth.companyId)
       .eq("pick_list_id", id)
-      .eq("item_id", sourceRow.item_id);
+      .eq("item_id", sourceRow.item_id)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
 
     if (pickItemsError) {
-      return NextResponse.json({ error: pickItemsError.message }, { status: 500 });
+      console.error("Failed to load pick-list items for scanned source", pickItemsError);
+      return NextResponse.json({ error: "Failed to match scanned source" }, { status: 500 });
     }
     if (!pickItems || pickItems.length === 0) {
-      return scanValidationError("Scanned batch/location SKU item is not in this pick list");
+      return scanValidationError("Item not found");
     }
 
     const matchable = (pickItems || []).map((row) => {
@@ -189,7 +212,7 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
 
     const suggestedEligible = eligible.filter((row) => row.isSuggestedMatch);
     const linePool = suggestedEligible.length > 0 ? suggestedEligible : eligible;
-    const selectedLine = linePool.sort((a, b) => b.remainingQty - a.remainingQty)[0];
+    const selectedLine = linePool[0];
 
     return NextResponse.json({
       data: {
@@ -205,15 +228,12 @@ async function GETHandler(request: NextRequest, context: RouteContext) {
           qtyOnHand: toNumber(sourceRow.qty_on_hand as number | string),
         },
         line: selectedLine,
-        isMismatch:
-          !!selectedLine &&
-          !selectedLine.isSuggestedMatch &&
-          (!!selectedLine.suggestedPickLocationId || !!selectedLine.suggestedPickBatchCode),
+        isMismatch: !!selectedLine && !selectedLine.isSuggestedMatch,
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("Unexpected error resolving pick-list scan source", error);
+    return NextResponse.json({ error: "Failed to resolve scanned source" }, { status: 500 });
   }
 }
 

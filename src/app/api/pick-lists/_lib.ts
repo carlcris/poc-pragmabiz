@@ -1,6 +1,6 @@
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
-import { checkPermission } from "@/lib/auth";
-import { RESOURCES } from "@/constants/resources";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { canAccessCapability } from "@/services/permissions/permissionResolver";
 import { getAuthContext } from "../delivery-notes/_lib";
 import {
   getWarehouseBusinessUnitMap,
@@ -35,16 +35,99 @@ export const getPickListAuthContext = async () => {
   return auth;
 };
 
+export const isAssignedPickListScopeEnabled = (userId: string, businessUnitId: string | null) =>
+  canAccessCapability(
+    userId,
+    GRANULAR_CAPABILITIES.PICK_LIST_VIEW_ONLY_ASSIGNED,
+    "view",
+    businessUnitId
+  );
+
+export const isPickListAssignee = async (
+  supabase: SupabaseClient,
+  companyId: string,
+  pickListId: string,
+  userId: string
+) => {
+  const { data } = await supabase
+    .from("pick_list_assignees")
+    .select("user_id")
+    .eq("company_id", companyId)
+    .eq("pick_list_id", pickListId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  return data !== null;
+};
+
 export const fetchPickList = async (supabase: SupabaseClient, companyId: string, id: string) => {
   const { data, error } = await supabase
     .from("pick_lists")
     .select(
       `
-      *,
+      id,
+      company_id,
+      business_unit_id,
+      dn_id,
+      pick_list_no,
+      status,
+      notes,
+      cancel_reason,
+      started_at,
+      completed_at,
+      created_by,
+      created_at,
+      updated_by,
+      updated_at,
+      deleted_at,
       delivery_notes(id, dn_no, status, requesting_warehouse_id, fulfilling_warehouse_id),
-      delivery_note_item_picks(*),
+      delivery_note_item_picks(
+        id,
+        company_id,
+        dn_id,
+        delivery_note_item_id,
+        pick_list_item_id,
+        pick_list_id,
+        item_id,
+        source_warehouse_id,
+        picked_location_id,
+        picked_batch_code,
+        picked_batch_received_at,
+        batch_location_sku,
+        picked_qty,
+        dispatched_qty,
+        received_qty,
+        reversed_qty,
+        picker_user_id,
+        picked_at,
+        is_mismatch_warning_acknowledged,
+        mismatch_reason,
+        version,
+        created_by,
+        created_at,
+        updated_by,
+        updated_at,
+        deleted_at
+      ),
       pick_list_items(
-        *,
+        id,
+        company_id,
+        pick_list_id,
+        dn_item_id,
+        sr_id,
+        sr_item_id,
+        item_id,
+        item_unit_option_id,
+        uom_id,
+        allocated_qty,
+        picked_qty,
+        short_qty,
+        suggested_pick_location_id,
+        suggested_pick_batch_code,
+        suggested_pick_batch_received_at,
+        suggested_batch_location_sku,
+        created_at,
+        updated_at,
         item_unit_options!pick_list_items_item_unit_option_id_fkey(
           id,
           item_id,
@@ -74,7 +157,22 @@ export const fetchPickList = async (supabase: SupabaseClient, companyId: string,
         items!pick_list_items_item_id_fkey(item_name, item_code),
         units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
       ),
-      pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name))
+      pick_list_assignees(
+        company_id,
+        pick_list_id,
+        user_id,
+        assigned_at,
+        assigned_by,
+        users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)
+      ),
+      pick_list_item_claims(
+        pick_list_item_id,
+        claimed_by,
+        claimed_at,
+        expires_at,
+        released_at,
+        users:users!pick_list_item_claims_claimed_by_fkey(id, email, first_name, last_name)
+      )
     `
     )
     .eq("id", id)
@@ -127,7 +225,9 @@ export const fetchPickListHeader = async (
 ) => {
   const { data } = await supabase
     .from("pick_lists")
-    .select("*")
+    .select(
+      "id, company_id, business_unit_id, dn_id, pick_list_no, status, notes, cancel_reason, started_at, completed_at, created_by, created_at, updated_by, updated_at, deleted_at"
+    )
     .eq("id", id)
     .eq("company_id", companyId)
     .is("deleted_at", null)
@@ -218,9 +318,11 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const one = <T>(value: RelatedRow<T>) => (Array.isArray(value) ? (value[0] ?? null) : (value ?? null));
+const one = <T>(value: RelatedRow<T>) =>
+  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
-const toText = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : null);
+const toText = (value: unknown) =>
+  typeof value === "string" && value.trim() ? value.trim() : null;
 
 const sortAllocationSources = (a: AllocationSource, b: AllocationSource) => {
   const receivedCompare = a.batchReceivedAt.localeCompare(b.batchReceivedAt);
@@ -410,7 +512,8 @@ export const getPickListAllocationChoice = async (
       continue;
     }
 
-    const singleSource = sources.find((source) => source.availableBaseQty >= requiredBaseQty) || null;
+    const singleSource =
+      sources.find((source) => source.availableBaseQty >= requiredBaseQty) || null;
     const totalAvailableBaseQty = sources.reduce(
       (total, source) => total + source.availableBaseQty,
       0
@@ -515,51 +618,15 @@ export const ensurePickListActorAuthorized = async (
   pickListId: string,
   userId: string
 ) => {
-  const [isAdmin, isSuperAdmin] = await Promise.all([
-    checkPermission(RESOURCES.USERS, "edit"),
-    checkPermission(RESOURCES.ROLES, "view"),
+  const [assignedOnly, assignee] = await Promise.all([
+    isAssignedPickListScopeEnabled(userId, businessUnitId),
+    isPickListAssignee(supabase, companyId, pickListId, userId),
   ]);
-
-  if (isAdmin || isSuperAdmin) {
-    return { ok: true } as const;
+  if (assignedOnly && !assignee) {
+    return {
+      ok: false,
+      error: "Only assigned pickers can perform this action",
+    } as const;
   }
-
-  const { data: assignee } = await supabase
-    .from("pick_list_assignees")
-    .select("user_id")
-    .eq("company_id", companyId)
-    .eq("pick_list_id", pickListId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (assignee) {
-    return { ok: true } as const;
-  }
-
-  let rolesQuery = supabase
-    .from("user_roles")
-    .select("roles(name)")
-    .eq("user_id", userId)
-    .is("deleted_at", null);
-
-  if (businessUnitId) {
-    rolesQuery = rolesQuery.or(`business_unit_id.is.null,business_unit_id.eq.${businessUnitId}`);
-  }
-
-  const { data: roleAssignments } = await rolesQuery;
-
-  const hasPrivilegedRole = (roleAssignments || []).some((assignment) => {
-    const role = Array.isArray(assignment.roles) ? assignment.roles[0] : assignment.roles;
-    const normalized = role?.name?.toLowerCase().trim() || "";
-    return normalized === "admin" || normalized === "super admin";
-  });
-
-  if (hasPrivilegedRole) {
-    return { ok: true } as const;
-  }
-
-  return {
-    ok: false,
-    error: "Only assigned pickers, admins, or super admins can perform this action",
-  } as const;
+  return { ok: true } as const;
 };

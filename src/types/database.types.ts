@@ -4597,6 +4597,127 @@ export type Database = {
           },
         ]
       }
+      pick_list_item_claims: {
+        Row: {
+          claimed_at: string
+          claimed_by: string
+          company_id: string
+          expires_at: string
+          pick_list_id: string
+          pick_list_item_id: string
+          released_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          claimed_at?: string
+          claimed_by: string
+          company_id: string
+          expires_at: string
+          pick_list_id: string
+          pick_list_item_id: string
+          released_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          claimed_at?: string
+          claimed_by?: string
+          company_id?: string
+          expires_at?: string
+          pick_list_id?: string
+          pick_list_item_id?: string
+          released_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pick_list_item_claims_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_item_claims_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_item_claims_pick_list_id_fkey"
+            columns: ["pick_list_id"]
+            isOneToOne: false
+            referencedRelation: "pick_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_item_claims_pick_list_item_id_fkey"
+            columns: ["pick_list_item_id"]
+            isOneToOne: true
+            referencedRelation: "pick_list_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pick_list_item_pick_operations: {
+        Row: {
+          company_id: string
+          created_at: string
+          operation_id: string
+          pick_list_id: string
+          pick_list_item_id: string
+          picked_qty: number
+          picker_user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          operation_id: string
+          pick_list_id: string
+          pick_list_item_id: string
+          picked_qty: number
+          picker_user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          operation_id?: string
+          pick_list_id?: string
+          pick_list_item_id?: string
+          picked_qty?: number
+          picker_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pick_list_item_pick_operations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_item_pick_operations_pick_list_id_fkey"
+            columns: ["pick_list_id"]
+            isOneToOne: false
+            referencedRelation: "pick_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_item_pick_operations_pick_list_item_id_fkey"
+            columns: ["pick_list_item_id"]
+            isOneToOne: false
+            referencedRelation: "pick_list_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pick_list_item_pick_operations_picker_user_id_fkey"
+            columns: ["picker_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pick_list_items: {
         Row: {
           allocated_qty: number
@@ -10655,6 +10776,15 @@ export type Database = {
           status: string
         }[]
       }
+      claim_pick_list_item: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_pick_list_item_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       complete_delivery_note_direct_customer_pickup: {
         Args: {
           p_company_id: string
@@ -11484,6 +11614,23 @@ export type Database = {
         }
         Returns: Json
       }
+      record_pick_list_item_progress: {
+        Args: {
+          p_batch_location_sku?: string
+          p_company_id: string
+          p_mismatch_acknowledged?: boolean
+          p_mismatch_reason?: string
+          p_operation_id: string
+          p_pick_list_id: string
+          p_pick_list_item_id: string
+          p_picked_batch_code?: string
+          p_picked_batch_received_at?: string
+          p_picked_location_id?: string
+          p_picked_qty: number
+          p_user_id: string
+        }
+        Returns: string
+      }
       refresh_delivery_note_item_received_qty: {
         Args: { p_company_id: string; p_dn_item_id: string }
         Returns: number
@@ -11509,6 +11656,15 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      release_pick_list_item_claim: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_pick_list_item_id: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       release_sales_order_item_quotation_fulfillment: {
         Args: { p_fulfilled_qty: number; p_quotation_item_id: string }
@@ -11713,6 +11869,14 @@ export type Database = {
           p_value: string
         }
         Returns: Json
+      }
+      user_can_view_pick_list: {
+        Args: {
+          p_company_id: string
+          p_pick_list_id: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       user_has_permission: {
         Args: {

@@ -46,6 +46,7 @@ The Mobile App module provides a native React Native Expo application for wareho
 **App Location**: `apps/mobile/`
 
 **Directory Structure**:
+
 ```
 apps/mobile/
   ├── app/                  # Expo Router app directory
@@ -70,6 +71,7 @@ apps/mobile/
 **Picking** is the warehouse process of collecting items for delivery.
 
 **Workflow**:
+
 ```
 1. View Assigned Picks
    ↓
@@ -91,9 +93,21 @@ apps/mobile/
 ```
 
 **Mobile Features**:
+
 - Item-by-item picking with progress tracking
 - Location navigation with warehouse map
 - Barcode verification (item + location)
+- Batch-location SKU verification is limited to the delivery note's fulfilling warehouse
+- Exact assigned batch matches take priority; a same-item batch override selects the first unfinished line and requires a visible mismatch acknowledgement
+- Item ID, item code, and barcode fallback skip completed lines and select the first unfinished match
+- Picking requires Stock Requests access. When `stock_requests.operation.view_only_assigned_pick_lists.view` is enabled, list, detail, claim, and progress operations are restricted to pick lists assigned to the current user; when disabled, the user can access all pick lists in the selected business unit
+- Selecting a line creates a two-minute server-enforced claim that is renewed while the picker is entering quantity; other assigned pickers receive claim and progress changes through Supabase Realtime and cannot confirm the claimed line
+- Claims are released on cancel, navigation, or successful confirmation; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
+- Pause and Complete are unavailable while any line has an active claim, and the database rejects completion if a claim appears concurrently
+- Confirm Pick persists a quantity increment and scanned source transactionally with a client operation ID, so retries are idempotent while separate physical picks remain distinct
+- Before confirmation, mobile stores the pending payload, business-unit scope, and operation ID locally, renews the claim, and suppresses lease-heartbeat cleanup until the result is resolved. A manual retry, app restart, or foreground resume retries the same operation first; if the original request did not commit and the lease expired, it reacquires the line and retries without changing the operation ID
+- Delivery-note picked totals are reconciled from execution rows across all non-deleted pick lists, preserving prior progress when a later pick list is created for the same delivery-note line
+- Complete Picking finalizes the already-persisted pick rows instead of replaying mobile-only quantity changes
 - Quantity validation
 - Real-time progress updates
 - Exception handling (short picks, wrong location)
@@ -104,6 +118,7 @@ apps/mobile/
 **GRN Receiving** is the process of checking in goods from suppliers.
 
 **Workflow**:
+
 ```
 1. View inbound load lists
    ↓
@@ -125,6 +140,7 @@ apps/mobile/
 ```
 
 **Mobile Features**:
+
 - Load-list based GRN receiving
 - Load-list receiving queue resolves the current business unit warehouse and fetches load lists with that `warehouseId` filter
 - Start and pause controls for user-triggered receiving sessions
@@ -223,37 +239,37 @@ function DamagePhotoCapture() {
 ### GPS Location Tracking
 
 ```typescript
-import * as Location from 'expo-location'
+import * as Location from "expo-location";
 
 async function getCurrentLocation() {
   // Request permission
-  const { status } = await Location.requestForegroundPermissionsAsync()
+  const { status } = await Location.requestForegroundPermissionsAsync();
 
-  if (status !== 'granted') {
-    throw new Error('Location permission denied')
+  if (status !== "granted") {
+    throw new Error("Location permission denied");
   }
 
   // Get current location
   const location = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.High
-  })
+    accuracy: Location.Accuracy.High,
+  });
 
   return {
     latitude: location.coords.latitude,
     longitude: location.coords.longitude,
-    timestamp: location.timestamp
-  }
+    timestamp: location.timestamp,
+  };
 }
 
 // Use for delivery confirmation
 async function confirmDelivery(deliveryNoteId: string) {
-  const location = await getCurrentLocation()
+  const location = await getCurrentLocation();
 
   await api.post(`/delivery-notes/${deliveryNoteId}/confirm`, {
     confirmed_at: new Date().toISOString(),
     gps_latitude: location.latitude,
-    gps_longitude: location.longitude
-  })
+    gps_longitude: location.longitude,
+  });
 }
 ```
 
@@ -287,11 +303,13 @@ function SignatureCaptureScreen() {
 ### Mobile Endpoints
 
 #### GET /api/mobile/delivery-notes/pending
+
 Get delivery notes pending picking.
 
 **Permissions**: `view` on `delivery_notes`
 
 **Response**:
+
 ```json
 {
   "delivery_notes": [
@@ -311,11 +329,13 @@ Get delivery notes pending picking.
 ```
 
 #### GET /api/mobile/delivery-notes/[id]
+
 Get delivery note details for picking.
 
 **Permissions**: `view` on `delivery_notes`
 
 **Response**:
+
 ```json
 {
   "id": "uuid",
@@ -343,11 +363,13 @@ Get delivery note details for picking.
 ```
 
 #### POST /api/mobile/delivery-notes/[id]/pick-item
+
 Record item picked.
 
 **Permissions**: `edit` on `delivery_notes`
 
 **Request**:
+
 ```json
 {
   "delivery_note_item_id": "uuid",
@@ -358,11 +380,13 @@ Record item picked.
 ```
 
 **Validation**:
+
 - Barcode matches expected item
 - Location barcode matches expected location
 - Quantity doesn't exceed required
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -376,21 +400,25 @@ Record item picked.
 ```
 
 #### POST /api/mobile/delivery-notes/[id]/complete
+
 Complete picking.
 
 **Permissions**: `edit` on `delivery_notes`
 
 **Effect**:
+
 - Marks delivery note as ready for dispatch
 - Locks picking (no more changes)
 - Notifies dispatch team
 
 #### GET /api/load-lists/receiving-warehouse
+
 Resolve the current business unit warehouse used by native mobile load-list receiving.
 
 **Permissions**: `view` on either Load Lists or Goods Receipt Notes
 
 #### GET /api/load-lists?receivingOnly=true&warehouseId=:id
+
 Fetch native mobile load-list receiving candidates. The API only returns rows when `warehouseId` matches the current business unit warehouse.
 
 **Permissions**: `view` on either Load Lists or Goods Receipt Notes. Goods Receipt Notes access grants only the business-unit-scoped load-list context required by the receiving workflow; ordinary load-list APIs still require Load Lists access.
@@ -402,16 +430,19 @@ Get business-unit-scoped load-list context for native mobile receiving.
 **Permissions**: `view` on either Load Lists or Goods Receipt Notes
 
 #### GET /api/grns?load_list_id=:id
+
 Get the GRN linked to a load list for native mobile receiving.
 
 **Permissions**: `view` on Goods Receipt Notes
 
 #### PUT /api/grns/[id]
+
 Save native mobile GRN receiving quantities. The GRN must already be in `receiving`; bounded header and line patches are applied atomically by the database.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.save_receiving.edit`
 
 **Request**:
+
 ```json
 {
   "receivingDate": "2026-07-07",
@@ -427,16 +458,19 @@ Save native mobile GRN receiving quantities. The GRN must already be in `receivi
 ```
 
 #### POST /api/grns/[id]/start-receiving
+
 Start native mobile GRN receiving. This transitions the GRN and linked arrived load list into `receiving`.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.start_receiving.edit`
 
 #### POST /api/grns/[id]/pause-receiving
+
 Pause native mobile GRN receiving. This saves the session state by returning the GRN to `draft` and the linked load list to `arrived`; entered quantities remain on the GRN lines.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.start_receiving.edit`
 
 #### POST /api/grns/[id]/submit
+
 Submit native mobile GRN receiving for confirmation. Submission stages received good quantities into Putaway Station using the shared GRN putaway workflow; final batch/location placement happens when putaway is posted.
 
 **Permissions**: `view` on Goods Receipt Notes and granular capability `goods_receipt_notes.operation.submit_receiving.edit`
@@ -470,20 +504,26 @@ The native mobile app stores the permission and capability maps returned by logi
 switching. Bottom navigation keeps Receiving and Picking visible in fixed positions but disables
 destinations the current role cannot access. Dashboard quick actions, list queries, detail queries,
 and receiving mutations are gated from the stored session so roles without the matching parent and
-granular permissions do not call the protected APIs. Picking rights alone do not grant delivery-note
+granular permissions do not call the protected APIs. Picking requires Stock Requests `view`; the
+`stock_requests.operation.view_only_assigned_pick_lists.view` toggle optionally narrows server-side
+list, detail, and mutation access to current-user assignments. With the toggle disabled, results
+remain restricted to the selected business unit. Picking rights alone do not grant delivery-note
 receiving access.
 
 #### GET /api/mobile/items/search
+
 Search items for mobile (autocomplete).
 
 **Permissions**: `view` on `items`
 
 **Query Parameters**:
+
 - `q` - Search term (code or name)
 - `warehouse_id` - Filter by warehouse
 - `limit` - Results limit (default: 10)
 
 **Response**:
+
 ```json
 {
   "items": [
@@ -550,27 +590,35 @@ Search items for mobile (autocomplete).
 ## UI Components
 
 #### PickingList
+
 **Location**: `apps/mobile/app/(tabs)/picking.tsx`
+
 - List delivery notes assigned to user
 - Filter by status
 - Search by customer
 - Navigate to detail
 
 #### PickingDetail
+
 **Location**: `apps/mobile/app/picking/[id].tsx`
+
 - Show items to pick
 - Barcode scanning interface
 - Item-by-item progress
 - Complete button
 
 #### ScannerScreen
+
 **Location**: `apps/mobile/components/ScannerScreen.tsx`
+
 - Camera view for barcode scanning
 - Scan feedback (success/error)
 - Manual entry fallback
 
 #### GRNReceivingDetail
+
 **Location**: `apps/mobile/app/receiving/load-lists/[id].tsx`
+
 - Load-list linked GRN receiving interface
 - Mobile receiving list resolves the current business unit warehouse and only fetches load lists with that exact `warehouseId`
 - Start and pause receiving controls
@@ -582,8 +630,10 @@ Search items for mobile (autocomplete).
 ## Troubleshooting
 
 ### Issue: Mobile barcode scanner not working
+
 **Symptoms**: Camera not opening or barcodes not scanned
 **Solution**:
+
 1. Check camera permissions granted in app settings
 2. Verify device camera works in other apps
 3. Test barcode format (QR, EAN13, Code128, etc.)
@@ -592,8 +642,10 @@ Search items for mobile (autocomplete).
 6. Clear app cache and restart
 
 ### Issue: Mobile app offline mode issues
+
 **Symptoms**: App crashes when offline
 **Solution**:
+
 1. Implement proper offline detection
 2. Queue operations for when online
 3. Show offline indicator to user
@@ -601,8 +653,10 @@ Search items for mobile (autocomplete).
 5. Test offline scenarios thoroughly
 
 ### Issue: Photos not uploading
+
 **Symptoms**: Damage photos not saving
 **Solution**:
+
 1. Check network connection
 2. Verify file size not too large (compress images)
 3. Check upload endpoint working
@@ -610,8 +664,10 @@ Search items for mobile (autocomplete).
 5. Store locally until upload succeeds
 
 ### Issue: GPS location inaccurate
+
 **Symptoms**: Wrong location recorded
 **Solution**:
+
 1. Check GPS permissions granted
 2. Ensure device has GPS enabled
 3. Wait for location accuracy to improve

@@ -180,11 +180,7 @@ const groupPermissions = (
   return Array.from(sections.values())
     .map((section) => {
       const moduleMatches = section.modulePermission
-        ? permissionMatchesSearch(
-            section.modulePermission,
-            searchQuery,
-            permissionCopyByResource
-          )
+        ? permissionMatchesSearch(section.modulePermission, searchQuery, permissionCopyByResource)
         : false;
       const childGroups = Array.from(section.childGroups.entries())
         .map(([title, permissions]) => ({
@@ -226,6 +222,10 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
       [GRANULAR_CAPABILITIES.GRN_RECEIVING_START]: {
         title: t("capabilities.startGrnReceiving"),
         description: t("capabilities.startGrnReceivingDescription"),
+      },
+      [GRANULAR_CAPABILITIES.PICK_LIST_VIEW_ONLY_ASSIGNED]: {
+        title: t("capabilities.viewAssignedPickLists"),
+        description: t("capabilities.viewAssignedPickListsDescription"),
       },
     }),
     [t]
@@ -525,10 +525,10 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                 <Checkbox
                                   checked={Boolean(
                                     getGranularActionFlag(permission) &&
-                                      isPermissionActionEnabled(
-                                        permission.id,
-                                        getGranularActionFlag(permission)!
-                                      )
+                                    isPermissionActionEnabled(
+                                      permission.id,
+                                      getGranularActionFlag(permission)!
+                                    )
                                   )}
                                   onCheckedChange={() =>
                                     toggleGranularPermission(section, permission)

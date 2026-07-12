@@ -35,7 +35,15 @@ export type PickListItem = {
   batchNumber: string | null;
 };
 
+export type PickListItemClaim = {
+  pickListItemId: string;
+  claimedBy: string;
+  claimedByName: string;
+  expiresAt: string;
+};
+
 export type PickListDetail = PickListSummary & {
   deliveryNoteCode: string | null;
   items: PickListItem[];
+  claims: PickListItemClaim[];
 };

@@ -678,6 +678,7 @@ WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) 
     ('dashboard.queue.pick_list.view', true, false, false, false),
     ('dashboard.queue.stock_requests.view', true, false, false, false),
     ('items', true, false, false, false),
+    ('stock_requests.operation.view_only_assigned_pick_lists.view', true, false, false, false),
     ('stock_requests.operation.receive_delivery_notes.edit', false, false, true, false),
     ('load_lists', true, false, false, false),
     ('goods_receipt_notes', true, false, false, false),
@@ -753,6 +754,7 @@ WITH picker_permissions(resource, can_view, can_create, can_edit, can_delete) AS
     ('items', true, false, false, false),
     ('warehouses', true, false, false, false),
     ('view_location_stock', true, false, false, false),
+    ('stock_requests.operation.view_only_assigned_pick_lists.view', true, false, false, false),
     ('stock_requests', true, false, true, false),
     ('stock_transactions', true, false, false, false)
 )
@@ -805,6 +807,20 @@ WHERE rp.role_id = r.id
   AND rp.permission_id = p.id
   AND r.name = 'Super Admin'
   AND r.company_id = '1e10e2dd-655e-41e0-a508-edfd660a9bcf';
+
+-- Assigned-only picking is a scope restriction. Keep it enabled for warehouse
+-- operator roles and disabled for broader demo roles that should see the full
+-- current-business-unit pick-list queue.
+UPDATE role_permissions rp
+SET can_view = LOWER(BTRIM(r.name)) IN ('picker', 'stockman'),
+    can_create = FALSE,
+    can_edit = FALSE,
+    can_delete = FALSE
+FROM roles r,
+     permissions p
+WHERE rp.role_id = r.id
+  AND rp.permission_id = p.id
+  AND p.resource = 'stock_requests.operation.view_only_assigned_pick_lists.view';
 
 -- ============================================================================
 -- SEED DATA: User Role Assignments

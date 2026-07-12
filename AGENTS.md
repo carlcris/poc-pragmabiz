@@ -41,6 +41,11 @@ Run commands from the repo root unless a nested instruction says otherwise.
 - Do not add backward compatibility, legacy payload support, or version-bridging fallbacks while the app is in active development unless the user explicitly requests it. Keep contracts strict and update all current callers instead.
 - Read the relevant exports, callers, hooks, API routes, migrations, and types before editing.
 - If schema or environment drift is found, stop and report the exact mismatch instead of masking it with compatibility code.
+- Wildcard database projections are strictly prohibited. Never use SQL `SELECT *`, `SELECT alias.*`,
+  Supabase `.select("*")`, or embedded relationship wildcards such as `relation(*)`. Every root and
+  nested query must list only the columns required by its current consumers. When touching an
+  existing query that contains a wildcard projection, replace that wildcard with explicit columns
+  in the same change. `COUNT(*)` is an aggregate and is not considered a projection wildcard.
 - Never expose raw database, Supabase, or internal exception text to API clients. Log internal details server-side and return safe messages.
 - Every API route handling `GET`, `POST`, `PUT`, `PATCH`, or `DELETE` must use the shared activity
   logging wrapper. Mutation payloads must be sanitized and bounded; reads must log route and query

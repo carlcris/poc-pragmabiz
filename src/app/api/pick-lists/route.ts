@@ -12,6 +12,7 @@ import {
   createPickListForDn,
   fetchPickList,
   getPickListAuthContext,
+  isAssignedPickListScopeEnabled,
   mapPickListRecord,
   type PickListStatus,
 } from "./_lib";
@@ -81,6 +82,14 @@ async function GETHandler(request: NextRequest) {
     const auth = await getPickListAuthContext();
     if (auth instanceof NextResponse) return auth;
 
+    if (!auth.currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context is required" }, { status: 400 });
+    }
+    const assignedOnly = await isAssignedPickListScopeEnabled(
+      auth.userId,
+      auth.currentBusinessUnitId
+    );
+
     const status = request.nextUrl.searchParams.get("status") as PickListStatus | null;
     const dnId = request.nextUrl.searchParams.get("dnId");
     const search = request.nextUrl.searchParams.get("search")?.trim() || "";
@@ -92,54 +101,63 @@ async function GETHandler(request: NextRequest) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    let query = auth.supabase
-      .from("pick_lists")
-      .select(
-        `
+    const actorAssignmentSelection = assignedOnly
+      ? "actor_assignment:pick_list_assignees!inner(user_id),"
+      : "";
+    const pickListSelection: string = `
+      *,
+      ${actorAssignmentSelection}
+      delivery_notes(
+        id,
+        dn_no,
+        status,
+        requesting_warehouse_id,
+        fulfilling_warehouse_id,
+        fulfilling_warehouse:warehouses!delivery_notes_fulfilling_warehouse_id_fkey(
+          warehouse_code,
+          warehouse_name
+        )
+      ),
+      delivery_note_item_picks(*),
+      pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)),
+      pick_list_items(
         *,
-        delivery_notes(
+        item_unit_options!pick_list_items_item_unit_option_id_fkey(
           id,
-          dn_no,
-          status,
-          requesting_warehouse_id,
-          fulfilling_warehouse_id,
-          fulfilling_warehouse:warehouses!delivery_notes_fulfilling_warehouse_id_fkey(
-            warehouse_code,
-            warehouse_name
+          item_id,
+          uom_id,
+          option_label,
+          qty_per_unit,
+          barcode,
+          is_base,
+          is_default,
+          is_active,
+          sort_order,
+          units_of_measure(
+            id,
+            code,
+            name,
+            symbol
           )
         ),
-        delivery_note_item_picks(*),
-        pick_list_assignees(*, users:users!pick_list_assignees_user_id_fkey(id, email, first_name, last_name)),
-        pick_list_items(
-          *,
-          item_unit_options!pick_list_items_item_unit_option_id_fkey(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(
-              id,
-              code,
-              name,
-              symbol
-            )
-          ),
-          items!pick_list_items_item_id_fkey(item_name, item_code),
-          units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
-        )
-      `,
-        { count: "exact" }
+        items!pick_list_items_item_id_fkey(item_name, item_code),
+        units_of_measure!pick_list_items_uom_id_fkey(code, symbol, name)
       )
+    `;
+
+    let query = auth.supabase
+      .from("pick_lists")
+      .select(pickListSelection, { count: "exact" })
       .eq("company_id", auth.companyId)
+      .eq("business_unit_id", auth.currentBusinessUnitId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .range(from, to);
+
+    if (assignedOnly) {
+      query = query.eq("actor_assignment.user_id", auth.userId);
+    }
 
     if (status) {
       query =
@@ -162,7 +180,7 @@ async function GETHandler(request: NextRequest) {
 
     const total = count || 0;
     return NextResponse.json({
-      data: (data || []).map((row) => mapPickListRecord(row as PickListApiRecord)),
+      data: (data || []).map((row) => mapPickListRecord(row as unknown as PickListApiRecord)),
       pagination: {
         page,
         limit,

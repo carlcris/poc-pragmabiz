@@ -32,7 +32,9 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as CompletePickListBody;
-    const pickRows = Array.isArray(body.pickRows) ? body.pickRows : [];
+    if (Array.isArray(body.pickRows) && body.pickRows.length > 0) {
+      return safeError("Confirm picks before completing the pick list", 400);
+    }
 
     const header = await fetchPickListHeader(auth.supabase, auth.companyId, id);
     if (!header) {
@@ -55,11 +57,14 @@ async function POSTHandler(request: NextRequest, context: RouteContext) {
       p_company_id: auth.companyId,
       p_user_id: auth.userId,
       p_pick_list_id: id,
-      p_pick_rows: pickRows,
+      p_pick_rows: [],
     });
 
     if (error) {
       console.error("Transactional pick list completion failed", error);
+      if (error.message.includes("PICK_LIST_ACTIVE_CLAIMS")) {
+        return safeError("Another picker is still working on this pick list", 409);
+      }
       return safeError("Unable to complete pick list", 400);
     }
 
