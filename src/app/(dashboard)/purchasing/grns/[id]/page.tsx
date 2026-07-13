@@ -12,10 +12,17 @@ import {
   Calendar,
   User,
   CheckCircle,
+  Play,
   Save,
   Send,
 } from "lucide-react";
-import { useGRN, useUpdateGRN, useSubmitGRN, useConfirmGRN } from "@/hooks/useGRNs";
+import {
+  useConfirmGRN,
+  useGRN,
+  useStartGRNReceiving,
+  useSubmitGRN,
+  useUpdateGRN,
+} from "@/hooks/useGRNs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusText } from "@/components/shared/StatusText";
@@ -83,14 +90,26 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const { id } = use(params);
   const router = useRouter();
   const { data: grn, isLoading, error } = useGRN(id);
+  const startReceivingMutation = useStartGRNReceiving();
   const updateMutation = useUpdateGRN();
   const submitMutation = useSubmitGRN();
   const confirmMutation = useConfirmGRN();
   const canViewGrns = useCanView(RESOURCES.GOODS_RECEIPT_NOTES);
   const { data: granularCapabilities = {} } = useGranularCapabilities(
-    [GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM],
+    [
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_START,
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE,
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT,
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM,
+    ],
     "edit"
   );
+  const canStartGrnReceiving =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_START] === true;
+  const canSaveGrnReceiving =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE] === true;
+  const canSubmitGrnReceiving =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT] === true;
   const canConfirmGrns =
     canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM] === true;
 
@@ -154,7 +173,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
         };
 
         if (field === "receivedQty") {
-          const qtyPerUnit = Number(currentItem?.itemUnitOption?.qtyPerUnit ?? 1) || 1;
+          const qtyPerUnit = currentItem?.qtyPerUnit ?? 1;
           nextItem.numBoxes = qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
         }
 
@@ -188,6 +207,17 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
       setEditedItems({});
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("updateError"));
+    }
+  };
+
+  const handleStartReceiving = async () => {
+    if (!grn) return;
+
+    try {
+      await startReceivingMutation.mutateAsync(grn.id);
+      toast.success(t("startReceivingSuccess"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("startReceivingError"));
     }
   };
 
@@ -225,8 +255,9 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
     return value ?? 0;
   };
 
-  const isEditable = grn?.status === "draft" || grn?.status === "receiving";
-  const canSubmit = grn?.status === "draft" || grn?.status === "receiving";
+  const canStartReceiving = canStartGrnReceiving && grn?.status === "draft";
+  const isEditable = canSaveGrnReceiving && grn?.status === "receiving";
+  const canSubmit = canSubmitGrnReceiving && grn?.status === "receiving";
   const canConfirm = canConfirmGrns && grn?.status === "pending_approval";
 
   if (isLoading) {
@@ -279,6 +310,16 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
             </div>
           </div>
           <div className="flex gap-2">
+            {canStartReceiving && (
+              <Button
+                onClick={handleStartReceiving}
+                disabled={startReceivingMutation.isPending}
+                className="bg-emerald-600 shadow-md hover:bg-emerald-700"
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {startReceivingMutation.isPending ? t("startingReceiving") : t("startReceiving")}
+              </Button>
+            )}
             {isEditable && (
               <Button
                 onClick={handleSave}
@@ -566,11 +607,11 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
                           </TableCell>
                           <TableCell>
                             <div className="font-medium text-gray-900">
-                              {item.itemUnitOption?.displayLabel || t("noValue")}
+                              {item.unitName}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {t("qtyPerUnitInlineLabel", {
-                                qty: (item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                                qty: item.qtyPerUnit.toLocaleString(locale, {
                                   maximumFractionDigits: 4,
                                 }),
                               })}

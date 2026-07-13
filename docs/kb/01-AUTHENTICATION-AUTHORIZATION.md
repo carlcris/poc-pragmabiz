@@ -128,7 +128,7 @@ Final GRN confirmation requires `goods_receipt_notes.view` plus `goods_receipt_n
 
 Adding or removing load-list stock-requisition links requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit`. Moving a confirmed load list into transit requires `load_lists.view` plus `load_lists.operation.mark_in_transit.edit`. Both capabilities preserve access for existing non-warehouse roles with broad load-list edit access and remain opt-in for Picker and Stockman.
 
-Marking an in-transit load list as arrived requires `load_lists.view` plus `load_lists.operation.mark_arrived.edit`. Stockman receives this capability by default; Picker does not. The arrival transition and linked GRN creation remain one atomic operation.
+Marking an in-transit load list as arrived requires `load_lists.view` plus `load_lists.operation.mark_arrived.edit`. Stockman receives this capability by default; Picker does not. The permission is evaluated in the user's current business unit, and the operation accepts either the load list's source business unit or the business unit that owns its target warehouse. The target-business-unit view is otherwise read-only. The arrival transition and linked GRN creation remain one atomic operation.
 
 **Permission Types per Resource**:
 

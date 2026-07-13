@@ -8,6 +8,7 @@ import type {
   UpdateLoadListRequest,
   UpdateLoadListStatusRequest,
   CreateLoadListSRLinkRequest,
+  EligibleLoadListRequisitionItemFilters,
 } from "@/types/load-list";
 
 export function useLoadLists(filters?: LoadListFilters) {
@@ -121,5 +122,18 @@ export function useLoadListSRLinks(id: string) {
     queryKey: [LOAD_LISTS_QUERY_KEY, id, "sr-links"],
     queryFn: () => loadListsApi.getLoadListSRLinks(id),
     enabled: !!id,
+  });
+}
+
+export function useEligibleLoadListRequisitionItems(
+  id: string,
+  filters: EligibleLoadListRequisitionItemFilters,
+  enabled: boolean
+) {
+  return useQuery({
+    queryKey: [LOAD_LISTS_QUERY_KEY, id, "eligible-requisition-items", filters],
+    queryFn: () => loadListsApi.getEligibleRequisitionItems(id, filters),
+    enabled: enabled && !!id,
+    placeholderData: keepPreviousData,
   });
 }

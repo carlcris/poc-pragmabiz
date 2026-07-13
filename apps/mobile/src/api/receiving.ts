@@ -12,7 +12,7 @@ import type {
   RecordDeliveryNoteReceivingScanResult,
   RecordDeliveryNoteReceivingScanPayload,
   SubmitDeliveryNoteReceivingPayload,
-  UpdateGrnReceivingPayload
+  UpdateGrnReceivingPayload,
 } from "@/contracts/receiving";
 import { asArray, asRecord, firstRecord, maybeStr, num, str } from "@/utils/record";
 
@@ -29,7 +29,7 @@ const normalizeLoadList = (value: unknown): LoadListSummary => {
     status: str(record.status, "unknown"),
     supplierName: str(supplier.name || supplier.supplier_name, "Unknown supplier"),
     estimatedArrivalDate: maybeStr(record.estimatedArrivalDate || record.estimated_arrival_date),
-    itemCount: num(record.itemCount || record.item_count || asArray(record.items).length)
+    itemCount: num(record.itemCount || record.item_count || asArray(record.items).length),
   };
 };
 
@@ -39,7 +39,7 @@ const normalizeReceivingWarehouse = (value: unknown): ReceivingWarehouse => {
     id: str(record.id || record.warehouseId),
     warehouseId: str(record.warehouseId || record.id),
     code: str(record.code),
-    name: str(record.name)
+    name: str(record.name),
   };
 };
 
@@ -54,7 +54,7 @@ const normalizeLoadListDetail = (value: unknown): LoadListDetail => {
     actualArrivalDate: maybeStr(record.actualArrivalDate || record.actual_arrival_date),
     containerNumber: maybeStr(record.containerNumber || record.container_number),
     sealNumber: maybeStr(record.sealNumber || record.seal_number),
-    batchNumber: maybeStr(record.batchNumber || record.batch_number)
+    batchNumber: maybeStr(record.batchNumber || record.batch_number),
   };
 };
 
@@ -64,15 +64,31 @@ const normalizeGrnLine = (value: unknown): GrnLine => {
   const unitOption = asRecord(record.itemUnitOption || record.item_unit_option);
   return {
     id: str(record.id),
-    itemName: str(record.itemName || record.item_name || item.name || item.item_name, "Unnamed item"),
+    itemName: str(
+      record.itemName || record.item_name || item.name || item.item_name,
+      "Unnamed item"
+    ),
     itemCode: str(record.itemCode || record.item_code || item.code || item.item_code),
-    unitLabel: str(unitOption.displayLabel || unitOption.display_label || unitOption.optionLabel || unitOption.option_label, "unit"),
+    unitLabel: str(
+      record.unitName ||
+        record.unit_name ||
+        unitOption.displayLabel ||
+        unitOption.display_label ||
+        unitOption.optionLabel ||
+        unitOption.option_label,
+      "unit"
+    ),
     expectedQty: num(record.loadListQty || record.load_list_qty),
-    expectedBaseQty: num(record.expectedBaseQty || record.expected_base_qty || record.loadListQty || record.load_list_qty),
+    expectedBaseQty: num(
+      record.expectedBaseQty ||
+        record.expected_base_qty ||
+        record.loadListQty ||
+        record.load_list_qty
+    ),
     receivedQty: num(record.receivedQty || record.received_qty),
     damagedQty: num(record.damagedQty || record.damaged_qty),
     boxCount: num(record.numBoxes || record.num_boxes),
-    notes: maybeStr(record.notes)
+    notes: maybeStr(record.notes),
   };
 };
 
@@ -84,14 +100,16 @@ const normalizeGrn = (value: unknown): GrnDetail => {
     status: str(record.status, "unknown"),
     receivingDate: maybeStr(record.receivingDate || record.receiving_date),
     deliveryDate: maybeStr(record.deliveryDate || record.delivery_date),
-    items: asArray(record.items).map(normalizeGrnLine)
+    items: asArray(record.items).map(normalizeGrnLine),
   };
 };
 
 const normalizeReceivingLine = (value: unknown): ReceivingLine => {
   const record = asRecord(value);
   const item = firstRecord(record.item || record.items);
-  const unitOption = firstRecord(record.itemUnitOption || record.item_unit_option || record.item_unit_options);
+  const unitOption = firstRecord(
+    record.itemUnitOption || record.item_unit_option || record.item_unit_options
+  );
   const unitOptionUnit = firstRecord(unitOption.units_of_measure);
   const unit = firstRecord(record.unit || record.units_of_measure);
   const allocatedQty = num(
@@ -102,22 +120,22 @@ const normalizeReceivingLine = (value: unknown): ReceivingLine => {
       record.quantity
   );
   const receivedQty = num(record.receivedQty || record.received_qty || record.receivedQuantity);
-  const varianceQty = num(record.receivingVarianceQty || record.receiving_variance_qty, receivedQty - allocatedQty);
+  const varianceQty = num(
+    record.receivingVarianceQty || record.receiving_variance_qty,
+    receivedQty - allocatedQty
+  );
 
   return {
     id: str(record.id || record.delivery_note_item_id),
     itemId: str(record.itemId || record.item_id || item.id),
     itemUnitOptionId: maybeStr(
-      record.itemUnitOptionId ||
-        record.item_unit_option_id ||
-        unitOption.id
+      record.itemUnitOptionId || record.item_unit_option_id || unitOption.id
     ),
     name: str(record.itemName || record.item_name || item.item_name || item.name, "Unnamed item"),
     code: str(record.itemCode || record.item_code || item.item_code || item.code),
     barcode: maybeStr(record.barcode || unitOption.barcode),
     suggestedBatchLocationSku: maybeStr(
-      record.suggestedBatchLocationSku ||
-        record.suggested_batch_location_sku
+      record.suggestedBatchLocationSku || record.suggested_batch_location_sku
     ),
     uom: str(
       record.uomLabel ||
@@ -134,7 +152,10 @@ const normalizeReceivingLine = (value: unknown): ReceivingLine => {
     allocatedQty,
     receivedQty,
     varianceQty,
-    receivingStatus: str(record.receivingStatus || record.receiving_status, varianceQty === 0 ? "exact" : varianceQty < 0 ? "short" : "over")
+    receivingStatus: str(
+      record.receivingStatus || record.receiving_status,
+      varianceQty === 0 ? "exact" : varianceQty < 0 ? "short" : "over"
+    ),
   };
 };
 
@@ -161,7 +182,7 @@ const normalizeDeliveryNote = (value: unknown): DeliveryNoteSummary => {
     dispatchedAt: maybeStr(record.dispatchedAt || record.dispatched_at),
     receivingStartedAt: maybeStr(record.receivingStartedAt || record.receiving_started_at),
     receivedQty,
-    totalQty
+    totalQty,
   };
 };
 
@@ -171,13 +192,11 @@ const normalizeDeliveryDetail = (value: unknown): DeliveryNoteDetail => {
   return {
     ...summary,
     notes: maybeStr(record.notes),
-    items: extractDeliveryItems(record)
+    items: extractDeliveryItems(record),
   };
 };
 
-const normalizeReceivingScanResult = (
-  value: unknown
-): RecordDeliveryNoteReceivingScanResult => {
+const normalizeReceivingScanResult = (value: unknown): RecordDeliveryNoteReceivingScanResult => {
   const record = asRecord(value);
   return {
     type: str(record.type),
@@ -185,7 +204,7 @@ const normalizeReceivingScanResult = (
     exceptionId: maybeStr(record.exceptionId || record.exception_id),
     deliveryNoteItemId: maybeStr(record.deliveryNoteItemId || record.delivery_note_item_id),
     isUnexpected: record.isUnexpected === true || record.is_unexpected === true,
-    isOverReceived: record.isOverReceived === true || record.is_over_received === true
+    isOverReceived: record.isOverReceived === true || record.is_over_received === true,
   };
 };
 
@@ -196,7 +215,7 @@ export const getReceivingWarehouse = async () => {
 
 export const listLoadLists = async (status: string, search: string, warehouseId: string) => {
   const response = await apiRequest<ListResponse>("/api/load-lists", {
-    query: { status, search, receivingOnly: true, warehouseId, page: 1, limit: 20 }
+    query: { status, search, receivingOnly: true, warehouseId, page: 1, limit: 20 },
   });
   return asArray(response.data).map(normalizeLoadList);
 };
@@ -206,17 +225,17 @@ export const getLoadListReceiving = async (
   includeGrn: boolean
 ): Promise<LoadListReceivingDetail> => {
   const loadListResponse = await apiRequest<unknown>(`/api/load-lists/${id}`, {
-    query: { receivingOnly: true }
+    query: { receivingOnly: true },
   });
   if (!includeGrn) {
     return {
       loadList: normalizeLoadListDetail(loadListResponse),
-      grn: null
+      grn: null,
     };
   }
 
   const grnsResponse = await apiRequest<ListResponse>("/api/grns", {
-    query: { load_list_id: id, page: 1, limit: 1 }
+    query: { load_list_id: id, page: 1, limit: 1 },
   });
   const grnSummary = firstRecord(grnsResponse.data);
   const grn = grnSummary.id
@@ -225,7 +244,7 @@ export const getLoadListReceiving = async (
 
   return {
     loadList: normalizeLoadListDetail(loadListResponse),
-    grn
+    grn,
   };
 };
 
@@ -235,24 +254,24 @@ export const updateGrnReceiving = async (
 ): Promise<GrnDetail> => {
   await apiRequest<unknown>(`/api/grns/${id}`, {
     method: "PUT",
-    body: data
+    body: data,
   });
   return normalizeGrn(await apiRequest<unknown>(`/api/grns/${id}`));
 };
 
 export const startGrnReceiving = (id: string) =>
   apiRequest<unknown>(`/api/grns/${id}/start-receiving`, {
-    method: "POST"
+    method: "POST",
   });
 
 export const pauseGrnReceiving = (id: string) =>
   apiRequest<unknown>(`/api/grns/${id}/pause-receiving`, {
-    method: "POST"
+    method: "POST",
   });
 
 export const submitGrnReceiving = (id: string) =>
   apiRequest<unknown>(`/api/grns/${id}/submit`, {
-    method: "POST"
+    method: "POST",
   });
 
 export const listDeliveryNotes = async (status: string, search: string) => {
@@ -262,22 +281,22 @@ export const listDeliveryNotes = async (status: string, search: string) => {
       search,
       receivingOnly: true,
       page: 1,
-      limit: 50
-    }
+      limit: 50,
+    },
   });
   return asArray(response.data).map(normalizeDeliveryNote);
 };
 
 export const getDeliveryNote = async (id: string) => {
   const response = await apiRequest<ListResponse | unknown>(`/api/delivery-notes/${id}`, {
-    query: { receivingOnly: true }
+    query: { receivingOnly: true },
   });
   return normalizeDeliveryDetail(asRecord(response).data || response);
 };
 
 export const startReceiving = (id: string) =>
   apiRequest<{ data?: unknown }>(`/api/delivery-notes/${id}/start-receiving`, {
-    method: "POST"
+    method: "POST",
   });
 
 export const recordDeliveryNoteReceivingScan = async (
@@ -288,23 +307,20 @@ export const recordDeliveryNoteReceivingScan = async (
     `/api/delivery-notes/${id}/receiving-scans`,
     {
       method: "POST",
-      body: data
+      body: data,
     }
   );
 
   return {
     result: normalizeReceivingScanResult(response.result),
-    deliveryNote: normalizeDeliveryDetail(response.deliveryNote)
+    deliveryNote: normalizeDeliveryDetail(response.deliveryNote),
   };
 };
 
-export const submitReceiving = async (
-  id: string,
-  data: SubmitDeliveryNoteReceivingPayload
-) => {
+export const submitReceiving = async (id: string, data: SubmitDeliveryNoteReceivingPayload) => {
   const response = await apiRequest<unknown>(`/api/delivery-notes/${id}/submit-receiving`, {
     method: "POST",
-    body: data
+    body: data,
   });
 
   return normalizeDeliveryDetail(asRecord(response).data || response);

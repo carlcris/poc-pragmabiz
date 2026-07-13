@@ -528,13 +528,15 @@ Reject requisition.
 
 Load list unit price and total amount fields are display-controlled by granular permissions. Create and edit forms hide item costs, unit price inputs, line totals, and total amount when the user lacks `load_lists.field.unit_price.view`, while mutation payloads still preserve the stored prices.
 
-The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit` and shows existing load-list item to stock-requisition item links before new links are added. Authorized users can add or remove links only while the load list is `draft` or `confirmed`; each mutation and fulfillment reconciliation runs in one database transaction. Once the load list is `in_transit` or later, existing links remain visible but cannot be modified. When a load-list item is selected, only outstanding requisition lines for the same item are selectable, and link pairs that already exist are marked and disabled. A load-list item can be split across multiple stock-requisition items only up to the load-list item quantity, and aggregate links cannot exceed either the load-list line quantity or stock-requisition line quantity.
+The Link Stock Requisitions dialog requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit` and shows existing load-list item to stock-requisition item links before new links are added. Authorized users can add or remove links only in the source business unit while the load list is `draft` or `confirmed`; each mutation and fulfillment reconciliation runs in one database transaction. Eligible submitted and partially fulfilled requisition lines are searched and paginated on the server by requisition number, item code, or item name, so qualifying lines are not limited to an initial fixed set. Once the load list is `in_transit` or later, existing links remain visible but cannot be modified. When a load-list item is selected, only outstanding requisition lines for the same item are selectable, and link pairs that already exist are marked and disabled. A load-list item can be split across multiple stock-requisition items only up to the load-list item quantity, and aggregate links cannot exceed either the load-list line quantity or stock-requisition line quantity. If a load-list line is removed by another edit before submission, the API returns a validation error and the dialog refreshes instead of reporting an internal server error.
 
 Mark In Transit requires `load_lists.view` plus `load_lists.operation.mark_in_transit.edit`. The transition locks the confirmed load list, increments target-warehouse in-transit stock using each line's quantity-per-unit conversion, and changes the load-list status atomically.
 
 Mark Arrived requires `load_lists.view` plus `load_lists.operation.mark_arrived.edit`; Stockman receives this capability by default. The transition locks the in-transit load list, records its arrival date, and creates the target-business-unit GRN and all GRN lines in one transaction. A failure at any point leaves the load list in transit without a partial GRN.
 
-Load lists keep `business_unit_id` as the creator/source business unit. The selected `warehouse_id` is the receiving target and may belong to a different business unit; create forms require users to choose this target warehouse explicitly instead of defaulting it from the current business unit. When a load list arrives and auto-creates a GRN, the GRN uses the target warehouse's business unit while receiving queues continue to scope by target warehouse.
+Load lists keep `business_unit_id` as the creator/source business unit. The selected `warehouse_id` is the receiving target and may belong to a different business unit; create forms require users to choose this target warehouse explicitly instead of defaulting it from the current business unit. Users in either the source business unit or the target warehouse's business unit can read the load list. The target business unit receives a read-only view except for Mark Arrived, while editing, linking, cancellation, deletion, Mark In Transit, and arrival reversal remain source-business-unit operations. When a load list arrives and auto-creates a GRN, the GRN uses the target warehouse's business unit while receiving queues continue to scope by target warehouse.
+
+Each load-list line snapshots its unit display name and quantity-per-unit conversion when the line is created. The generated GRN line copies those values, and the putaway task takes its own copy when the GRN is submitted. In-transit, receiving, putaway, and stock-transaction calculations use these transaction-owned snapshots. Later edits, deactivation, or soft deletion of a referenced unit option—and later changes to an upstream transaction snapshot—therefore do not change quantities or labels on an already-created putaway task.
 
 #### POST /api/load-lists
 
@@ -660,6 +662,24 @@ Create GRN for received goods.
 }
 ```
 
+#### POST /api/grns/[id]/start-receiving
+
+Transition a draft GRN and its linked arrived load list into `receiving` before quantities can be edited.
+
+**Permissions**: `view` on Goods Receipt Notes plus `goods_receipt_notes.operation.start_receiving.edit`
+
+#### PUT /api/grns/[id]
+
+Save bounded GRN header and receiving-line changes. The GRN must already be in `receiving`; dashboard, tablet, and mobile clients expose editing only after Start Receiving succeeds.
+
+**Permissions**: `view` on Goods Receipt Notes plus `goods_receipt_notes.operation.save_receiving.edit`
+
+#### POST /api/grns/[id]/submit
+
+Submit a receiving GRN for confirmation and stage its received stock for putaway.
+
+**Permissions**: `view` on Goods Receipt Notes plus `goods_receipt_notes.operation.submit_receiving.edit`
+
 #### POST /api/grns/[id]/confirm
 
 Confirm GRN.
@@ -672,7 +692,7 @@ Confirm GRN.
 2. Ready to create purchase receipt
 3. Records confirming user and timestamp
 
-GRN inventory handoff happens earlier, when the receiving user submits the GRN for confirmation. The submit action creates putaway tasks grouped by GRN line and batch code, increments `item_warehouse.current_stock` and `item_warehouse.putaway_qty` by the actual good received quantity, decreases `item_warehouse.in_transit` by the expected/to-be-received line quantity, and does not write final `item_batches` or `item_batch_locations`. Confirmation completes the GRN workflow status and atomically marks the linked load list received; load lists cannot be marked received directly. Final batch/location inventory is created later when the Putaway Station posts the stock into a selected warehouse location. The Putaway Station list shows the source quantity, source unit, qty/unit conversion, and base quantity so receiving unit conversions are visible before posting. Damaged stock handling will be implemented in a separate workflow.
+GRN inventory handoff happens earlier, when the receiving user submits the GRN for confirmation. The submit action creates putaway tasks grouped by GRN line and batch code, copies each GRN line's source-unit name and quantity-per-unit conversion into the putaway task, increments `item_warehouse.current_stock` and `item_warehouse.putaway_qty` by the actual good received quantity, decreases `item_warehouse.in_transit` by the expected/to-be-received line quantity, and does not write final `item_batches` or `item_batch_locations`. Confirmation completes the GRN workflow status and atomically marks the linked load list received; load lists cannot be marked received directly. Final batch/location inventory is created later when the Putaway Station posts the stock into a selected warehouse location. The Putaway Station list reads its transaction-owned snapshot to show the source quantity, source unit, qty/unit conversion, and base quantity, so upstream unit changes cannot alter a staged task. GRN box regeneration likewise calculates each box's base quantity from the GRN line's snapshotted quantity-per-unit conversion, even if the referenced live unit option is later edited or deleted. Damaged stock handling will be implemented in a separate workflow.
 
 ### Purchase Receipt Management
 
@@ -759,21 +779,23 @@ For each receipt item:
 
 1. Goods arrive from supplier (multiple boxes)
 2. Warehouse creates GRN linked to PO
-3. For each box:
+3. Receiver starts the draft GRN, transitioning it and its linked arrived load list to receiving
+4. For each box:
    - Scan/enter box number
    - Scan/enter items in box
    - Record quantities (good + damaged)
    - Take photos of damaged items
    - Add notes
-4. Complete GRN with all boxes
-5. Submit GRN for confirmation, staging received quantities into Putaway Station
-6. Supervisor confirms GRN
-7. Putaway Station posts staged stock into final warehouse locations and prints final location labels
-8. Create purchase receipt from confirmed GRN
-9. Post receipt:
-   - Costs calculated
-   - Damaged items tracked
-10. PO updated with received quantities
+5. Save receiving quantities as needed
+6. Complete GRN with all boxes
+7. Submit GRN for confirmation, staging received quantities into Putaway Station
+8. Supervisor confirms GRN
+9. Putaway Station posts staged stock into final warehouse locations and prints final location labels
+10. Create purchase receipt from confirmed GRN
+11. Post receipt:
+    - Costs calculated
+    - Damaged items tracked
+12. PO updated with received quantities
 
 ### Workflow 4: Damaged Item Processing
 

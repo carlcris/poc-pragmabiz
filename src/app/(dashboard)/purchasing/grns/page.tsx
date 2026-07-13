@@ -2,19 +2,10 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import {
-  Search,
-  Filter,
-  Package,
-  Trash2,
-  MoreVertical,
-  Send,
-  CheckCircle,
-} from "lucide-react";
+import { Search, Filter, Package, Trash2, MoreVertical, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useGRNs, useDeleteGRN, useSubmitGRN, useConfirmGRN } from "@/hooks/useGRNs";
-import { grnsApi } from "@/lib/api/grns";
+import { useGRNs, useDeleteGRN, useConfirmGRN } from "@/hooks/useGRNs";
 import { useWarehouses } from "@/hooks/useWarehouses";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,13 +61,10 @@ export default function GRNsPage() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [grnToDelete, setGRNToDelete] = useState<GRN | null>(null);
-  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
-  const [grnToSubmit, setGRNToSubmit] = useState<GRN | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [grnToConfirm, setGRNToConfirm] = useState<GRN | null>(null);
 
   const deleteMutation = useDeleteGRN();
-  const submitMutation = useSubmitGRN();
   const confirmMutation = useConfirmGRN();
   const canViewGrns = useCanView(RESOURCES.GOODS_RECEIPT_NOTES);
   const { data: granularCapabilities = {} } = useGranularCapabilities(
@@ -132,11 +120,6 @@ export default function GRNsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleSubmitGRN = (grn: GRN) => {
-    setGRNToSubmit(grn);
-    setSubmitDialogOpen(true);
-  };
-
   const handleConfirmGRN = (grn: GRN) => {
     setGRNToConfirm(grn);
     setConfirmDialogOpen(true);
@@ -153,29 +136,6 @@ export default function GRNsPage() {
     } catch (err) {
       console.error("Failed to delete GRN:", err);
       toast.error(t("deleteError"));
-    }
-  };
-
-  const confirmSubmit = async () => {
-    if (!grnToSubmit) return;
-
-    try {
-      const grn = await grnsApi.getGRN(grnToSubmit.id);
-      const items = Array.isArray(grn.items) ? grn.items : [];
-      const hasReceivedQty =
-        items.length > 0 && items.every((item) => Number(item.receivedQty ?? 0) > 0);
-
-      if (!hasReceivedQty) {
-        toast.error(t("submitMissingReceivedQty"));
-        return;
-      }
-
-      await submitMutation.mutateAsync(grnToSubmit.id);
-      toast.success(t("submitSuccess"));
-      setSubmitDialogOpen(false);
-      setGRNToSubmit(null);
-    } catch {
-      toast.error(t("submitError"));
     }
   };
 
@@ -416,18 +376,6 @@ export default function GRNsPage() {
                           className="flex items-center justify-end gap-2"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {(grn.status === "draft" || grn.status === "receiving") && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2"
-                              onClick={() => handleSubmitGRN(grn)}
-                              aria-label={t("submitForApproval")}
-                            >
-                              <Send className="mr-2 h-4 w-4" />
-                              <span>{t("submit")}</span>
-                            </Button>
-                          )}
                           {canConfirmGrns && grn.status === "pending_approval" && (
                             <Button
                               variant="outline"
@@ -504,23 +452,6 @@ export default function GRNsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? t("deleting") : t("delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("submitTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("submitDescription", { grnNumber: grnToSubmit?.grnNumber ?? "" })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSubmit} disabled={submitMutation.isPending}>
-              {submitMutation.isPending ? t("submitting") : t("submit")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { STOCK_REQUISITIONS_QUERY_KEY } from "@/hooks/queryKeys";
+import { LOAD_LISTS_QUERY_KEY, STOCK_REQUISITIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useRealtimeDomainInvalidation } from "@/hooks/useRealtimeDomainInvalidation";
 import { stockRequisitionsApi } from "@/lib/api/stock-requisitions";
 import type {
@@ -40,6 +40,7 @@ export function useCreateStockRequisition() {
       stockRequisitionsApi.createStockRequisition(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [STOCK_REQUISITIONS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
     },
   });
 }

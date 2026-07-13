@@ -19,6 +19,8 @@ export type GRNItem = {
   loadListItemId?: string | null;
   itemUnitOptionId?: string | null;
   itemUnitOption?: ItemUnitOption | null;
+  unitName: string;
+  qtyPerUnit: number;
   item?: {
     id: string;
     code: string;

@@ -68,7 +68,7 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
 
     if (linkError) {
       console.error("Error linking stock requisitions to load list:", linkError);
-      const safeErrors: Record<string, { error: string; status: number }> = {
+      const safeErrors: Record<string, { error: string; status: number; code?: string }> = {
         Unauthorized: { error: "Unauthorized", status: 403 },
         "Load list not found": { error: "Load list not found", status: 404 },
         "Only draft or confirmed load lists can be modified": {
@@ -102,6 +102,11 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
         "One or more stock requisition items are unavailable": {
           error: "One or more stock requisition items are unavailable",
           status: 400,
+        },
+        "One or more load list items were not found in this load list": {
+          error: "One or more load list items are no longer available. Refresh and try again.",
+          status: 400,
+          code: "LOAD_LIST_ITEMS_NOT_FOUND",
         },
       };
       const safeError = safeErrors[linkError.message];

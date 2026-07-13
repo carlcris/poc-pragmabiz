@@ -18,6 +18,8 @@ export type LoadListItem = {
   uomId?: string;
   uomCode?: string;
   itemUnitOption?: ItemUnitOption | null;
+  unitName: string;
+  qtyPerUnit: number;
   item?: {
     id: string;
     code: string;
@@ -66,6 +68,8 @@ export type LoadList = {
     name: string;
     code: string;
   };
+  isSourceBusinessUnit: boolean;
+  isTargetBusinessUnit: boolean;
   containerNumber?: string;
   sealNumber?: string;
   batchNumber?: string;
@@ -197,4 +201,34 @@ export type CreateLoadListSRLinkRequest = {
     srItemId: string;
     fulfilledQty: number;
   }[];
+};
+
+export type EligibleLoadListRequisitionItem = {
+  id: string;
+  stockRequisitionId: string;
+  stockRequisitionNumber: string;
+  stockRequisitionStatus: "submitted" | "partially_fulfilled";
+  requisitionDate: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  requestedQty: number;
+  fulfilledQty: number;
+  outstandingQty: number;
+};
+
+export type EligibleLoadListRequisitionItemFilters = {
+  search?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type EligibleLoadListRequisitionItemsResponse = {
+  data: EligibleLoadListRequisitionItem[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };

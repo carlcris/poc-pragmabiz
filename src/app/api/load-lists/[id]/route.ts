@@ -8,7 +8,6 @@ import {
   LoadListLineValidationError,
   resolveLoadListLineUnitOptions,
 } from "../line-item-unit-options";
-import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 import { resolveLoadListCapabilities } from "@/lib/load-lists/permissions";
 
 const normalizeOptionalDate = (value: unknown) => {
@@ -35,6 +34,8 @@ type LoadListItemRow = {
   item_id: string;
   item_unit_option_id?: string | null;
   uom_id?: string | null;
+  unit_name: string;
+  qty_per_unit: number | string;
   load_list_qty: number | string;
   received_qty: number | string;
   damaged_qty: number | string;
@@ -53,52 +54,6 @@ type LoadListItemRow = {
         item_code: string;
         item_name: string;
       }[]
-    | null;
-  units_of_measure?:
-    | {
-        id: string;
-        code: string;
-        symbol?: string | null;
-      }
-    | {
-        id: string;
-        code: string;
-        symbol?: string | null;
-      }[]
-    | null;
-  item_unit_options?:
-    | (DbItemUnitOptionRow & {
-        units_of_measure?:
-          | {
-              id: string;
-              code: string;
-              name: string;
-              symbol: string | null;
-            }
-          | {
-              id: string;
-              code: string;
-              name: string;
-              symbol: string | null;
-            }[]
-          | null;
-      })
-    | (DbItemUnitOptionRow & {
-        units_of_measure?:
-          | {
-              id: string;
-              code: string;
-              name: string;
-              symbol: string | null;
-            }
-          | {
-              id: string;
-              code: string;
-              name: string;
-              symbol: string | null;
-            }[]
-          | null;
-      })[]
     | null;
 };
 
@@ -147,7 +102,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         updated_at,
         updated_by,
         supplier:suppliers(id, supplier_name, supplier_code, contact_person, email, phone),
-        warehouse:warehouses(id, warehouse_name, warehouse_code),
+        warehouse:warehouses(id, warehouse_name, warehouse_code, business_unit_id),
         business_unit:business_units(id, name, code),
         created_by_user:users!load_lists_created_by_fkey(id, email, first_name, last_name),
         received_by_user:users!load_lists_received_by_fkey(id, email, first_name, last_name),
@@ -157,6 +112,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           item_id,
           item_unit_option_id,
           uom_id,
+          unit_name,
+          qty_per_unit,
           load_list_qty,
           received_qty,
           damaged_qty,
@@ -164,21 +121,7 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           unit_price,
           total_price,
           notes,
-          item:items(id, item_code, item_name),
-          units_of_measure(id, code, symbol),
-          item_unit_options(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(id, code, name, symbol)
-          )
+          item:items(id, item_code, item_name)
         )
       `
       )
@@ -192,38 +135,21 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
     }
 
-    if (receivingOnly) {
-      if (!currentBusinessUnitId) {
-        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
-      }
-
-      const { data: receivingWarehouse, error: warehouseScopeError } = await supabase
-        .from("warehouses")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("business_unit_id", currentBusinessUnitId)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (warehouseScopeError) {
-        console.error("Error checking receiving load list warehouse scope:", warehouseScopeError);
-        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
-      }
-
-      if (!receivingWarehouse || receivingWarehouse.id !== ll.warehouse_id) {
-        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
-      }
-    }
-
     // Format response
     const businessUnit = Array.isArray(ll.business_unit)
       ? ll.business_unit[0]
       : (ll.business_unit ?? null);
     const supplier = Array.isArray(ll.supplier) ? ll.supplier[0] : (ll.supplier ?? null);
     const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : (ll.warehouse ?? null);
+    const isSourceBusinessUnit = ll.business_unit_id === currentBusinessUnitId;
+    const isTargetBusinessUnit = warehouse?.business_unit_id === currentBusinessUnitId;
+
+    if (
+      !currentBusinessUnitId ||
+      (receivingOnly ? !isTargetBusinessUnit : !isSourceBusinessUnit && !isTargetBusinessUnit)
+    ) {
+      return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+    }
     const createdByUser = Array.isArray(ll.created_by_user)
       ? ll.created_by_user[0]
       : (ll.created_by_user ?? null);
@@ -265,6 +191,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
             code: warehouse.warehouse_code,
           }
         : null,
+      isSourceBusinessUnit,
+      isTargetBusinessUnit,
       containerNumber: ll.container_number,
       sealNumber: ll.seal_number,
       batchNumber: ll.batch_number,
@@ -305,26 +233,17 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
       approvedDate: ll.approved_date,
       notes: ll.notes,
       totalAmount: (ll.items as LoadListItemRow[] | null)?.reduce((sum, item) => {
-        const unitDetails = Array.isArray(item.item_unit_options)
-          ? (item.item_unit_options[0] ?? null)
-          : (item.item_unit_options ?? null);
-        const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
         return (
           sum +
-          parseFloat(String(item.load_list_qty)) * qtyPerUnit * parseFloat(String(item.unit_price))
+          parseFloat(String(item.load_list_qty)) *
+            parseFloat(String(item.qty_per_unit)) *
+            parseFloat(String(item.unit_price))
         );
       }, 0),
       capabilities,
       items: (ll.items as LoadListItemRow[] | null)?.map((item) => {
         const itemDetails = Array.isArray(item.item) ? (item.item[0] ?? null) : (item.item ?? null);
-        const unitDetails = Array.isArray(item.item_unit_options)
-          ? (item.item_unit_options[0] ?? null)
-          : (item.item_unit_options ?? null);
-        const uomDetails = Array.isArray(item.units_of_measure)
-          ? (item.units_of_measure[0] ?? null)
-          : (item.units_of_measure ?? null);
-        const baseUomCode = uomDetails?.code || "";
-        const qtyPerUnit = Number(unitDetails?.qty_per_unit ?? 1) || 1;
+        const qtyPerUnit = parseFloat(String(item.qty_per_unit));
         const loadListQty = parseFloat(String(item.load_list_qty));
         const unitPrice = parseFloat(String(item.unit_price));
         return {
@@ -332,10 +251,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
           itemId: item.item_id,
           itemUnitOptionId: item.item_unit_option_id,
           uomId: item.uom_id || undefined,
-          uomCode: uomDetails?.code || undefined,
-          itemUnitOption: unitDetails
-            ? transformItemUnitOptionRow(unitDetails as DbItemUnitOptionRow, baseUomCode)
-            : null,
+          unitName: item.unit_name,
+          qtyPerUnit,
           item: itemDetails
             ? {
                 id: itemDetails.id,
@@ -372,8 +289,12 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const body = await request.json();
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Check if load list exists
     const { data: existingLL, error: fetchError } = await supabase
@@ -381,6 +302,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
       .select("id, status, currency")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -450,6 +372,7 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
         updated_by: userId,
       })
       .eq("id", id)
+      .eq("business_unit_id", currentBusinessUnitId)
       .select("id, ll_number, status, currency")
       .single();
 
@@ -469,6 +392,8 @@ async function PUTHandler(request: NextRequest, { params }: { params: Promise<{ 
         item_id: item.itemId,
         item_unit_option_id: item.item_unit_option_id,
         uom_id: item.uom_id,
+        unit_name: item.unit_name,
+        qty_per_unit: item.qty_per_unit,
         load_list_qty: item.loadListQty,
         unit_price: Number(item.unitPrice),
         received_qty: 0,
@@ -507,7 +432,11 @@ async function DELETEHandler(
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
 
     // Check if load list exists
     const { data: existingLL, error: fetchError } = await supabase
@@ -515,6 +444,7 @@ async function DELETEHandler(
       .select("id, status")
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -537,7 +467,8 @@ async function DELETEHandler(
         deleted_at: new Date().toISOString(),
         updated_by: userId,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("business_unit_id", currentBusinessUnitId);
 
     if (deleteError) {
       console.error("Error deleting load list:", deleteError);

@@ -2,16 +2,28 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Package, Calendar, Truck, Send, AlertCircle } from "lucide-react";
+import { Package, Calendar, Truck, Send, AlertCircle, Play } from "lucide-react";
 import { useLoadList } from "@/hooks/useLoadLists";
-import { useGRNs, useGRN, useCreateGRN, useSubmitGRN, useUpdateGRN } from "@/hooks/useGRNs";
+import {
+  useCreateGRN,
+  useGRN,
+  useGRNs,
+  useStartGRNReceiving,
+  useSubmitGRN,
+  useUpdateGRN,
+} from "@/hooks/useGRNs";
 import { TabletHeader } from "@/components/tablet/TabletHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { RESOURCES } from "@/constants/resources";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { useCanView } from "@/hooks/usePermissions";
 import type { GRNStatus } from "@/types/grn";
 
 interface TabletGRNPageProps {
@@ -19,6 +31,7 @@ interface TabletGRNPageProps {
 }
 
 export default function TabletGRNPage({ params }: TabletGRNPageProps) {
+  const t = useTranslations("grnDetailPage");
   const { id: loadListId } = use(params);
   const router = useRouter();
 
@@ -38,8 +51,24 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
   const { data: grn, isLoading: isLoadingGRN } = useGRN(grnId || "");
 
   const createGRNMutation = useCreateGRN();
+  const startReceivingMutation = useStartGRNReceiving();
   const submitMutation = useSubmitGRN();
   const updateMutation = useUpdateGRN();
+  const canViewGrns = useCanView(RESOURCES.GOODS_RECEIPT_NOTES);
+  const { data: granularCapabilities = {} } = useGranularCapabilities(
+    [
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_START,
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE,
+      GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT,
+    ],
+    "edit"
+  );
+  const canStartGrnReceiving =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_START] === true;
+  const canSaveGrnReceiving =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE] === true;
+  const canSubmitGrnReceiving =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT] === true;
   const [editedItems, setEditedItems] = useState<
     Record<
       string,
@@ -109,6 +138,17 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
     }
   };
 
+  const handleStartReceiving = async () => {
+    if (!grn) return;
+
+    try {
+      await startReceivingMutation.mutateAsync(grn.id);
+      toast.success(t("startReceivingSuccess"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("startReceivingError"));
+    }
+  };
+
   const handleItemChange = (
     itemId: string,
     field: "receivedQty" | "damagedQty" | "numBoxes" | "notes",
@@ -127,7 +167,7 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
         };
 
         if (field === "receivedQty") {
-          const qtyPerUnit = Number(currentItem?.itemUnitOption?.qtyPerUnit ?? 1) || 1;
+          const qtyPerUnit = currentItem?.qtyPerUnit ?? 1;
           nextItem.numBoxes = qtyPerUnit > 1 ? Math.floor(Number(nextItem.receivedQty || 0)) : 0;
         }
 
@@ -190,8 +230,9 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
   };
 
   const isLoading = isLoadingLL || isLoadingGRNs || (grnId && isLoadingGRN);
-  const isEditable = grn?.status === "draft" || grn?.status === "receiving";
-  const canSubmit = isEditable;
+  const canStartReceiving = canStartGrnReceiving && grn?.status === "draft";
+  const isEditable = canSaveGrnReceiving && grn?.status === "receiving";
+  const canSubmit = canSubmitGrnReceiving && grn?.status === "receiving";
 
   if (isLoading) {
     return (
@@ -479,11 +520,11 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
                             <p className="text-sm text-gray-600">{item.item?.code || "-"}</p>
                             <div className="mt-2 space-y-1">
                               <p className="text-sm font-semibold text-gray-800">
-                                {item.itemUnitOption?.displayLabel || "-"}
+                                {item.unitName}
                               </p>
                               <p className="text-xs text-gray-500">
                                 Qty/Unit:{" "}
-                                {(item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(undefined, {
+                                {item.qtyPerUnit.toLocaleString(undefined, {
                                   maximumFractionDigits: 4,
                                 })}
                               </p>
@@ -625,27 +666,42 @@ export default function TabletGRNPage({ params }: TabletGRNPageProps) {
         </Card>
 
         {/* Bottom Actions - Mobile Optimized */}
-        {canSubmit && (
+        {(canStartReceiving || isEditable || canSubmit) && (
           <div className="sticky bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-4 shadow-2xl">
             <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:justify-center">
-              <Button
-                onClick={handleSave}
-                disabled={updateMutation.isPending || Object.keys(editedItems).length === 0}
-                size="lg"
-                variant="outline"
-                className="h-14 w-full text-base font-semibold sm:w-auto sm:px-8"
-              >
-                {updateMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={submitMutation.isPending || updateMutation.isPending}
-                size="lg"
-                className="h-14 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-base font-semibold hover:from-purple-700 hover:to-violet-700 sm:w-auto sm:px-12"
-              >
-                <Send className="mr-2 h-5 w-5" />
-                {submitMutation.isPending ? "Submitting..." : "Submit for Approval"}
-              </Button>
+              {canStartReceiving && (
+                <Button
+                  onClick={handleStartReceiving}
+                  disabled={startReceivingMutation.isPending}
+                  size="lg"
+                  className="h-14 w-full bg-emerald-600 text-base font-semibold hover:bg-emerald-700 sm:w-auto sm:px-8"
+                >
+                  <Play className="mr-2 h-5 w-5" />
+                  {startReceivingMutation.isPending ? t("startingReceiving") : t("startReceiving")}
+                </Button>
+              )}
+              {isEditable && (
+                <Button
+                  onClick={handleSave}
+                  disabled={updateMutation.isPending || Object.keys(editedItems).length === 0}
+                  size="lg"
+                  variant="outline"
+                  className="h-14 w-full text-base font-semibold sm:w-auto sm:px-8"
+                >
+                  {updateMutation.isPending ? t("saving") : t("saveChanges")}
+                </Button>
+              )}
+              {canSubmit && (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={submitMutation.isPending || updateMutation.isPending}
+                  size="lg"
+                  className="h-14 w-full bg-gradient-to-r from-purple-600 to-violet-600 text-base font-semibold hover:from-purple-700 hover:to-violet-700 sm:w-auto sm:px-12"
+                >
+                  <Send className="mr-2 h-5 w-5" />
+                  {submitMutation.isPending ? t("submitting") : t("submitForApproval")}
+                </Button>
+              )}
             </div>
           </div>
         )}

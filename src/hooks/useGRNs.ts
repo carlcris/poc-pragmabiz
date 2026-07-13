@@ -68,6 +68,19 @@ export function useUpdateGRN() {
   });
 }
 
+export function useStartGRNReceiving() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => grnsApi.startReceiving(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [GRNS_QUERY_KEY, id] });
+      queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY] });
+    },
+  });
+}
+
 export function useDeleteGRN() {
   const queryClient = useQueryClient();
 

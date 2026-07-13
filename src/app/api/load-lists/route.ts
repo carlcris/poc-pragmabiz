@@ -35,18 +35,8 @@ const resolveRequestCurrency = (value: unknown) => {
 type LoadListItemSummaryRow = {
   load_list_qty: number | string | null;
   unit_price: number | string | null;
-  item_unit_options?:
-    | {
-        qty_per_unit: number | string | null;
-      }
-    | {
-        qty_per_unit: number | string | null;
-      }[]
-    | null;
+  qty_per_unit: number | string;
 };
-
-const one = <T>(value: T | T[] | null | undefined): T | null =>
-  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
 const toNumber = (value: number | string | null | undefined) => {
   if (value == null) return 0;
@@ -68,51 +58,47 @@ async function GETHandler(request: NextRequest) {
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const capabilities = await resolveLoadListCapabilities(userId, currentBusinessUnitId);
     const warehouseId = searchParams.get("warehouseId");
-    let receivingWarehouseId: string | null = null;
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({
+        data: [],
+        capabilities,
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: DEFAULT_PAGE_SIZE,
+          totalPages: 0,
+        },
+      });
+    }
 
-    if (receivingOnly) {
-      if (!currentBusinessUnitId) {
-        return NextResponse.json({
-          data: [],
-          capabilities,
-          pagination: {
-            total: 0,
-            page: 1,
-            limit: DEFAULT_PAGE_SIZE,
-            totalPages: 0,
-          },
-        });
-      }
+    const { data: businessUnitWarehouses, error: warehousesError } = await supabase
+      .from("warehouses")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
+      .eq("is_active", true)
+      .is("deleted_at", null);
 
-      const { data: warehouse, error: warehousesError } = await supabase
-        .from("warehouses")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("business_unit_id", currentBusinessUnitId)
-        .eq("is_active", true)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
+    if (warehousesError) {
+      console.error("Error loading business-unit warehouses:", warehousesError);
+      return NextResponse.json({ error: "Failed to fetch load lists" }, { status: 500 });
+    }
 
-      if (warehousesError) {
-        console.error("Error loading receiving warehouses:", warehousesError);
-        return NextResponse.json({ error: "Failed to fetch load lists" }, { status: 500 });
-      }
+    const businessUnitWarehouseIds = (businessUnitWarehouses ?? []).map(
+      (warehouse) => warehouse.id
+    );
 
-      receivingWarehouseId = warehouse?.id ?? null;
-      if (!receivingWarehouseId || !warehouseId || warehouseId !== receivingWarehouseId) {
-        return NextResponse.json({
-          data: [],
-          capabilities,
-          pagination: {
-            total: 0,
-            page: 1,
-            limit: DEFAULT_PAGE_SIZE,
-            totalPages: 0,
-          },
-        });
-      }
+    if (receivingOnly && (!warehouseId || !businessUnitWarehouseIds.includes(warehouseId))) {
+      return NextResponse.json({
+        data: [],
+        capabilities,
+        pagination: {
+          total: 0,
+          page: 1,
+          limit: DEFAULT_PAGE_SIZE,
+          totalPages: 0,
+        },
+      });
     }
 
     // Build query
@@ -145,7 +131,7 @@ async function GETHandler(request: NextRequest) {
         created_at,
         updated_at,
         supplier:suppliers(id, supplier_name, supplier_code),
-        warehouse:warehouses(id, warehouse_name, warehouse_code),
+        warehouse:warehouses(id, warehouse_name, warehouse_code, business_unit_id),
         business_unit:business_units(id, name, code),
         created_by_user:users!load_lists_created_by_fkey(id, email, first_name, last_name),
         received_by_user:users!load_lists_received_by_fkey(id, email, first_name, last_name),
@@ -153,13 +139,20 @@ async function GETHandler(request: NextRequest) {
         items:load_list_items(
           load_list_qty,
           unit_price,
-          item_unit_options(qty_per_unit)
+          qty_per_unit
         )
       `,
         { count: "exact" }
       )
       .eq("company_id", companyId)
       .is("deleted_at", null);
+
+    query =
+      businessUnitWarehouseIds.length > 0
+        ? query.or(
+            `business_unit_id.eq.${currentBusinessUnitId},warehouse_id.in.(${businessUnitWarehouseIds.join(",")})`
+          )
+        : query.eq("business_unit_id", currentBusinessUnitId);
 
     if (receivingOnly) {
       query = query.eq("warehouse_id", warehouseId);
@@ -240,9 +233,10 @@ async function GETHandler(request: NextRequest) {
         : (ll.approved_by_user ?? null);
       const totalAmount = ((ll.items as LoadListItemSummaryRow[] | null) ?? []).reduce(
         (sum, item) => {
-          const unitOption = one(item.item_unit_options);
-          const qtyPerUnit = toNumber(unitOption?.qty_per_unit) || 1;
-          return sum + toNumber(item.load_list_qty) * qtyPerUnit * toNumber(item.unit_price);
+          return (
+            sum +
+            toNumber(item.load_list_qty) * toNumber(item.qty_per_unit) * toNumber(item.unit_price)
+          );
         },
         0
       );
@@ -276,6 +270,8 @@ async function GETHandler(request: NextRequest) {
               code: warehouse.warehouse_code,
             }
           : null,
+        isSourceBusinessUnit: ll.business_unit_id === currentBusinessUnitId,
+        isTargetBusinessUnit: warehouse?.business_unit_id === currentBusinessUnitId,
         containerNumber: ll.container_number,
         sealNumber: ll.seal_number,
         batchNumber: ll.batch_number,
@@ -414,7 +410,7 @@ async function POSTHandler(request: NextRequest) {
         created_by: userId,
         updated_by: userId,
       })
-      .select()
+      .select("id, ll_number, status, currency")
       .single();
 
     if (llError) {
@@ -428,6 +424,8 @@ async function POSTHandler(request: NextRequest) {
       item_id: item.itemId,
       item_unit_option_id: item.item_unit_option_id,
       uom_id: item.uom_id,
+      unit_name: item.unit_name,
+      qty_per_unit: item.qty_per_unit,
       load_list_qty: item.loadListQty,
       unit_price: Number(item.unitPrice),
       received_qty: 0,

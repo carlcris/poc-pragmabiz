@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Link as LinkIcon, Package, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,12 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   useLinkSRsToLoadList,
+  useEligibleLoadListRequisitionItems,
   useLoadListSRLinks,
   useRemoveLoadListSRLink,
 } from "@/hooks/useLoadLists";
-import { useStockRequisitions } from "@/hooks/useStockRequisitions";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { LOAD_LISTS_QUERY_KEY } from "@/hooks/queryKeys";
 import type { LoadList } from "@/types/load-list";
 
 type LinkStockRequisitionsDialogProps = {
@@ -55,9 +58,12 @@ export function LinkStockRequisitionsDialog({
   loadList,
 }: LinkStockRequisitionsDialogProps) {
   const t = useTranslations("linkStockRequisitionsDialog");
+  const queryClient = useQueryClient();
   const linkMutation = useLinkSRsToLoadList();
   const removeLinkMutation = useRemoveLoadListSRLink();
-  const { data: existingLinksData } = useLoadListSRLinks(loadList.id);
+  const { data: existingLinksData, refetch: refetchExistingLinks } = useLoadListSRLinks(
+    loadList.id
+  );
 
   const [links, setLinks] = useState<LinkFormItem[]>([]);
   const [selectedLLItemId, setSelectedLLItemId] = useState("");
@@ -65,33 +71,60 @@ export function LinkStockRequisitionsDialog({
   const [linkQuantity, setLinkQuantity] = useState("");
   const [addLinkError, setAddLinkError] = useState("");
   const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
+  const [requisitionSearch, setRequisitionSearch] = useState("");
+  const [requisitionPage, setRequisitionPage] = useState(1);
+  const debouncedRequisitionSearch = useDebouncedValue(requisitionSearch.trim());
 
-  const { data: submittedSRsData } = useStockRequisitions({
-    status: "submitted",
-    supplierId: loadList.supplierId,
-    limit: 5,
-  });
-  const { data: partiallyFulfilledSRsData } = useStockRequisitions({
-    status: "partially_fulfilled",
-    supplierId: loadList.supplierId,
-    limit: 5,
-  });
-
-  const availableSRs = [
-    ...(submittedSRsData?.data ?? []),
-    ...(partiallyFulfilledSRsData?.data ?? []),
-  ];
-
-  // Get all SR items from available SRs that have outstanding qty
-  const availableSRItems = availableSRs.flatMap(
-    (sr) =>
-      sr.items
-        ?.filter((item) => item.outstandingQty > 0)
-        .map((item) => ({
-          ...item,
-          srNumber: sr.srNumber,
-          srId: sr.id,
-        })) || []
+  const eligibleRequisitionItemsQuery = useEligibleLoadListRequisitionItems(
+    loadList.id,
+    {
+      search: debouncedRequisitionSearch || undefined,
+      page: requisitionPage,
+      limit: 20,
+    },
+    open && loadList.isSourceBusinessUnit
+  );
+  const eligibleRequisitionItems = eligibleRequisitionItemsQuery.data?.data ?? [];
+  const eligiblePagination = eligibleRequisitionItemsQuery.data?.pagination;
+  const availableSRItems = eligibleRequisitionItems.map((item) => ({
+    id: item.id,
+    srId: item.stockRequisitionId,
+    srNumber: item.stockRequisitionNumber,
+    requestedQty: item.requestedQty,
+    fulfilledQty: item.fulfilledQty,
+    outstandingQty: item.outstandingQty,
+    item: {
+      id: item.itemId,
+      code: item.itemCode,
+      name: item.itemName,
+    },
+  }));
+  const availableSRs = Array.from(
+    availableSRItems
+      .reduce(
+        (requisitions, item) => {
+          const existing = requisitions.get(item.srId);
+          if (existing) {
+            existing.items.push(item);
+          } else {
+            requisitions.set(item.srId, {
+              id: item.srId,
+              srNumber: item.srNumber,
+              items: [item],
+            });
+          }
+          return requisitions;
+        },
+        new Map<
+          string,
+          {
+            id: string;
+            srNumber: string;
+            items: typeof availableSRItems;
+          }
+        >()
+      )
+      .values()
   );
   const existingLinks = existingLinksData?.data ?? [];
   const existingLinkPairs = new Set(
@@ -100,7 +133,9 @@ export function LinkStockRequisitionsDialog({
       .map((link) => `${link.loadListItem.id}:${link.srItem.id}`)
   );
   const pendingLinkPairs = new Set(links.map((link) => `${link.loadListItemId}:${link.srItemId}`));
-  const canModifyLinks = loadList.status === "draft" || loadList.status === "confirmed";
+  const canModifyLinks =
+    loadList.isSourceBusinessUnit &&
+    (loadList.status === "draft" || loadList.status === "confirmed");
   const existingLinkedQtyByLLItem = existingLinks.reduce((totals, link) => {
     const loadListItemId = link.loadListItem?.id;
     if (!loadListItemId) return totals;
@@ -138,8 +173,19 @@ export function LinkStockRequisitionsDialog({
       setSelectedSRItemId("");
       setLinkQuantity("");
       setAddLinkError("");
+      setRequisitionSearch("");
+      setRequisitionPage(1);
     }
   }, [open]);
+
+  useEffect(() => {
+    setRequisitionPage(1);
+    setSelectedSRItemId("");
+  }, [debouncedRequisitionSearch]);
+
+  useEffect(() => {
+    setSelectedSRItemId("");
+  }, [requisitionPage]);
 
   const handleAddLink = () => {
     // Clear previous error
@@ -247,6 +293,27 @@ export function LinkStockRequisitionsDialog({
       toast.success(t("linkSuccess", { count: links.length }));
       onOpenChange(false);
     } catch (error) {
+      const cause = error instanceof Error ? error.cause : null;
+      const errorCode =
+        typeof cause === "object" &&
+        cause !== null &&
+        "code" in cause &&
+        typeof cause.code === "string"
+          ? cause.code
+          : null;
+
+      if (errorCode === "LOAD_LIST_ITEMS_NOT_FOUND") {
+        setSelectedLLItemId("");
+        setSelectedSRItemId("");
+        setLinks([]);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: [LOAD_LISTS_QUERY_KEY, loadList.id] }),
+          eligibleRequisitionItemsQuery.refetch(),
+          refetchExistingLinks(),
+        ]);
+        toast.error(t("staleLoadListItems"));
+        return;
+      }
       toast.error(error instanceof Error ? error.message : t("linkError"));
     }
   };
@@ -296,8 +363,17 @@ export function LinkStockRequisitionsDialog({
                 ) : null}
               </div>
 
+              <Input
+                value={requisitionSearch}
+                onChange={(event) => setRequisitionSearch(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                className="mb-4"
+              />
+
               {/* Show available SRs and their items */}
-              {availableSRs.length > 0 ? (
+              {eligibleRequisitionItemsQuery.isLoading ? (
+                <div className="py-8 text-center text-sm text-gray-500">{t("loading")}</div>
+              ) : availableSRs.length > 0 ? (
                 <div className="max-h-[350px] space-y-2 overflow-y-auto">
                   {availableSRs.map((sr) => {
                     const srItems = sr.items?.filter((item) => item.outstandingQty > 0) || [];
@@ -347,6 +423,47 @@ export function LinkStockRequisitionsDialog({
                   <p className="mt-1 text-xs">
                     {t("noRequisitionsSupplier", { supplier: loadList.supplier?.name ?? "" })}
                   </p>
+                </div>
+              )}
+
+              {eligiblePagination && eligiblePagination.totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setRequisitionPage(Math.max(1, eligiblePagination.page - 1))
+                    }
+                    disabled={
+                      eligiblePagination.page <= 1 || eligibleRequisitionItemsQuery.isFetching
+                    }
+                  >
+                    {t("previous")}
+                  </Button>
+                  <span className="text-xs text-gray-500">
+                    {t("pageOfTotal", {
+                      page: eligiblePagination.page,
+                      totalPages: eligiblePagination.totalPages,
+                      total: eligiblePagination.total,
+                    })}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setRequisitionPage(
+                        Math.min(eligiblePagination.totalPages, eligiblePagination.page + 1)
+                      )
+                    }
+                    disabled={
+                      eligiblePagination.page >= eligiblePagination.totalPages ||
+                      eligibleRequisitionItemsQuery.isFetching
+                    }
+                  >
+                    {t("next")}
+                  </Button>
                 </div>
               )}
             </div>

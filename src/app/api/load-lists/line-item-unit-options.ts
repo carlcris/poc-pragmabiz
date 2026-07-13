@@ -12,9 +12,11 @@ type ItemUnitOptionRow = {
   id: string;
   item_id: string;
   uom_id: string;
+  option_label: string | null;
   qty_per_unit: number | string;
   is_active: boolean;
   deleted_at: string | null;
+  units_of_measure: { name: string } | { name: string }[] | null;
 };
 
 export class LoadListLineValidationError extends Error {}
@@ -22,10 +24,18 @@ export class LoadListLineValidationError extends Error {}
 export type ResolvedLoadListLineInput = LoadListLineInput & {
   item_unit_option_id: string;
   uom_id: string;
+  unit_name: string;
   qty_per_unit: number;
 };
 
 const buildOptionMapKey = (itemId: string, uomId: string) => `${itemId}:${uomId}`;
+
+const resolveUnitName = (option: ItemUnitOptionRow) => {
+  const unit = Array.isArray(option.units_of_measure)
+    ? (option.units_of_measure[0] ?? null)
+    : option.units_of_measure;
+  return option.option_label?.trim() || unit?.name;
+};
 
 export const resolveLoadListLineUnitOptions = async (
   supabase: SupabaseLikeClient,
@@ -51,7 +61,9 @@ export const resolveLoadListLineUnitOptions = async (
   if (explicitOptionIds.length > 0) {
     const { data, error } = await supabase
       .from("item_unit_options")
-      .select("id, item_id, uom_id, qty_per_unit, is_active, deleted_at")
+      .select(
+        "id, item_id, uom_id, option_label, qty_per_unit, is_active, deleted_at, units_of_measure(name)"
+      )
       .eq("company_id", companyId)
       .in("id", explicitOptionIds);
 
@@ -70,7 +82,7 @@ export const resolveLoadListLineUnitOptions = async (
     const { data, error } = await supabase
       .from("item_unit_options")
       .select(
-        "id, item_id, uom_id, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at"
+        "id, item_id, uom_id, option_label, qty_per_unit, is_active, deleted_at, is_base, is_default, sort_order, created_at, units_of_measure(name)"
       )
       .eq("company_id", companyId)
       .in("item_id", itemIds)
@@ -110,11 +122,16 @@ export const resolveLoadListLineUnitOptions = async (
       if (item.uomId && item.uomId !== option.uom_id) {
         throw new LoadListLineValidationError("Selected unit option does not match the unit");
       }
+      const unitName = resolveUnitName(option);
+      if (!unitName) {
+        throw new LoadListLineValidationError("Selected unit option has no unit name");
+      }
 
       return {
         ...item,
         item_unit_option_id: option.id,
         uom_id: option.uom_id,
+        unit_name: unitName,
         qty_per_unit: Number(option.qty_per_unit ?? 1) || 1,
       };
     }
@@ -129,11 +146,16 @@ export const resolveLoadListLineUnitOptions = async (
         "No active item unit option matches the selected item and unit"
       );
     }
+    const unitName = resolveUnitName(fallbackOption);
+    if (!unitName) {
+      throw new LoadListLineValidationError("Selected unit option has no unit name");
+    }
 
     return {
       ...item,
       item_unit_option_id: fallbackOption.id,
       uom_id: fallbackOption.uom_id,
+      unit_name: unitName,
       qty_per_unit: Number(fallbackOption.qty_per_unit ?? 1) || 1,
     };
   });

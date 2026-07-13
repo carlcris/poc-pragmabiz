@@ -12,6 +12,15 @@ import type {
 
 const API_BASE = "/api/grns";
 
+type GrnUpdateResponse = {
+  id: string;
+  message: string;
+};
+
+type StartGrnReceivingResponse = GrnUpdateResponse & {
+  status: "receiving";
+};
+
 export const grnsApi = {
   getGRNs: async (filters?: GRNFilters): Promise<GRNsResponse> => {
     const params = new URLSearchParams();
@@ -48,7 +57,7 @@ export const grnsApi = {
     return response.json();
   },
 
-  updateGRN: async (id: string, data: UpdateGRNRequest): Promise<GRN> => {
+  updateGRN: async (id: string, data: UpdateGRNRequest): Promise<GrnUpdateResponse> => {
     const response = await fetch(`${API_BASE}/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -57,6 +66,24 @@ export const grnsApi = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to update GRN");
+    }
+    return response.json();
+  },
+
+  startReceiving: async (id: string): Promise<StartGrnReceivingResponse> => {
+    const response = await fetch(`${API_BASE}/${id}/start-receiving`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const error: unknown = await response.json().catch(() => null);
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error &&
+        typeof error.error === "string"
+          ? error.error
+          : "Failed to start GRN receiving";
+      throw new Error(message);
     }
     return response.json();
   },

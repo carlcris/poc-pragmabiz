@@ -1,5 +1,33 @@
 BEGIN;
 
+ALTER TABLE public.load_list_items
+  ADD COLUMN unit_name TEXT NOT NULL,
+  ADD COLUMN qty_per_unit NUMERIC(20, 2) NOT NULL
+    CONSTRAINT load_list_items_qty_per_unit_positive CHECK (qty_per_unit > 0);
+
+ALTER TABLE public.grn_items
+  ADD COLUMN unit_name TEXT NOT NULL,
+  ADD COLUMN qty_per_unit NUMERIC(20, 2) NOT NULL
+    CONSTRAINT grn_items_qty_per_unit_positive CHECK (qty_per_unit > 0);
+
+ALTER TABLE public.putaway_tasks
+  ADD COLUMN source_unit_name TEXT NOT NULL,
+  ADD COLUMN source_qty_per_unit NUMERIC(20, 2) NOT NULL
+    CONSTRAINT putaway_tasks_source_qty_per_unit_positive CHECK (source_qty_per_unit > 0);
+
+COMMENT ON COLUMN public.load_list_items.unit_name IS
+  'Unit display name snapshotted when the load-list line is created.';
+COMMENT ON COLUMN public.load_list_items.qty_per_unit IS
+  'Quantity-per-unit conversion snapshotted when the load-list line is created.';
+COMMENT ON COLUMN public.grn_items.unit_name IS
+  'Unit display name copied from the source load-list line.';
+COMMENT ON COLUMN public.grn_items.qty_per_unit IS
+  'Quantity-per-unit conversion copied from the source load-list line.';
+COMMENT ON COLUMN public.putaway_tasks.source_unit_name IS
+  'Source unit display name snapshotted when the putaway task is created.';
+COMMENT ON COLUMN public.putaway_tasks.source_qty_per_unit IS
+  'Source quantity-per-unit conversion snapshotted when the putaway task is created.';
+
 WITH granular_permissions(
   resource,
   parent_resource,
@@ -395,6 +423,126 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.list_eligible_load_list_requisition_items(
+  p_company_id UUID,
+  p_business_unit_id UUID,
+  p_user_id UUID,
+  p_load_list_id UUID,
+  p_search TEXT DEFAULT NULL,
+  p_page INTEGER DEFAULT 1,
+  p_limit INTEGER DEFAULT 20
+)
+RETURNS TABLE (
+  sr_item_id UUID,
+  sr_id UUID,
+  sr_number TEXT,
+  sr_status TEXT,
+  requisition_date DATE,
+  item_id UUID,
+  item_code TEXT,
+  item_name TEXT,
+  requested_qty NUMERIC,
+  fulfilled_qty NUMERIC,
+  outstanding_qty NUMERIC,
+  total_count BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_auth_user_id UUID := auth.uid();
+  v_user_company_id UUID;
+  v_supplier_id UUID;
+  v_search TEXT := NULLIF(BTRIM(p_search), '');
+  v_page INTEGER := GREATEST(COALESCE(p_page, 1), 1);
+  v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 20), 1), 50);
+BEGIN
+  IF v_auth_user_id IS NULL OR v_auth_user_id <> p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT u.company_id
+  INTO v_user_company_id
+  FROM public.users u
+  WHERE u.id = v_auth_user_id
+    AND u.deleted_at IS NULL
+    AND u.is_active IS TRUE;
+
+  IF v_user_company_id IS DISTINCT FROM p_company_id THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  SELECT ll.supplier_id
+  INTO v_supplier_id
+  FROM public.load_lists ll
+  WHERE ll.id = p_load_list_id
+    AND ll.company_id = p_company_id
+    AND ll.business_unit_id = p_business_unit_id
+    AND ll.deleted_at IS NULL;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Load list not found';
+  END IF;
+
+  IF NOT public.user_has_permission(
+    v_auth_user_id,
+    'load_lists',
+    'view',
+    p_business_unit_id
+  ) OR NOT public.user_has_permission(
+    v_auth_user_id,
+    'load_lists.operation.link_stock_requisitions.edit',
+    'edit',
+    p_business_unit_id
+  ) THEN
+    RAISE EXCEPTION 'Unauthorized';
+  END IF;
+
+  RETURN QUERY
+  SELECT
+    sri.id,
+    sr.id,
+    sr.sr_number::TEXT,
+    sr.status::TEXT,
+    sr.requisition_date,
+    sri.item_id,
+    i.item_code::TEXT,
+    i.item_name::TEXT,
+    sri.requested_qty,
+    sri.fulfilled_qty,
+    sri.outstanding_qty,
+    COUNT(*) OVER() AS total_count
+  FROM public.stock_requisition_items sri
+  JOIN public.stock_requisitions sr
+    ON sr.id = sri.sr_id
+   AND sr.company_id = p_company_id
+   AND sr.business_unit_id = p_business_unit_id
+   AND sr.supplier_id = v_supplier_id
+   AND sr.status IN ('submitted', 'partially_fulfilled')
+   AND sr.deleted_at IS NULL
+  JOIN public.items i
+    ON i.id = sri.item_id
+   AND i.company_id = p_company_id
+   AND i.deleted_at IS NULL
+  WHERE sri.outstanding_qty > 0
+    AND (
+      v_search IS NULL
+      OR sr.sr_number ILIKE '%' || v_search || '%'
+      OR i.item_code ILIKE '%' || v_search || '%'
+      OR i.item_name ILIKE '%' || v_search || '%'
+    )
+  ORDER BY sr.requisition_date DESC, sr.id DESC, sri.id ASC
+  LIMIT v_limit
+  OFFSET (v_page - 1) * v_limit;
+END;
+$$;
+
+COMMENT ON FUNCTION public.list_eligible_load_list_requisition_items(
+  UUID, UUID, UUID, UUID, TEXT, INTEGER, INTEGER
+) IS
+  'Returns a bounded, searchable page of outstanding supplier requisition lines eligible for source-BU load-list linking.';
+
 CREATE OR REPLACE FUNCTION public.mark_load_list_in_transit(
   p_company_id UUID,
   p_business_unit_id UUID,
@@ -476,12 +624,8 @@ BEGIN
   WITH load_quantities AS (
     SELECT
       lli.item_id,
-      SUM(lli.load_list_qty * COALESCE(iuo.qty_per_unit, 1))::NUMERIC AS in_transit_qty
+      SUM(lli.load_list_qty * lli.qty_per_unit)::NUMERIC AS in_transit_qty
     FROM public.load_list_items lli
-    LEFT JOIN public.item_unit_options iuo
-      ON iuo.id = lli.item_unit_option_id
-     AND iuo.item_id = lli.item_id
-     AND iuo.deleted_at IS NULL
     WHERE lli.load_list_id = p_load_list_id
     GROUP BY lli.item_id
   )

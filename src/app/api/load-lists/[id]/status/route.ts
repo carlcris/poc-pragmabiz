@@ -17,15 +17,9 @@ const normalizeOptionalDate = (value: unknown) => {
 
 const normalizeLoadListItemBaseQty = (item: {
   load_list_qty?: string | number | null;
-  item_unit_option?:
-    | { qty_per_unit?: string | number | null }
-    | { qty_per_unit?: string | number | null }[]
-    | null;
+  qty_per_unit?: string | number | null;
 }) => {
-  const rawUnitOption = Array.isArray(item.item_unit_option)
-    ? (item.item_unit_option[0] ?? null)
-    : (item.item_unit_option ?? null);
-  const qtyPerUnit = Number(rawUnitOption?.qty_per_unit ?? 1) || 1;
+  const qtyPerUnit = Number(item.qty_per_unit);
   const loadListQty = Number(item.load_list_qty ?? 0) || 0;
 
   return { loadListBaseQty: loadListQty * qtyPerUnit };
@@ -74,6 +68,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         `
         id,
         ll_number,
+        business_unit_id,
         status,
         warehouse_id,
         created_by,
@@ -82,21 +77,26 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         items:load_list_items(
           id,
           item_id,
-          item_unit_option_id,
-          load_list_qty,
-          item_unit_option:item_unit_options(
-            qty_per_unit
-          )
-        )
+          qty_per_unit,
+          load_list_qty
+        ),
+        warehouse:warehouses!inner(business_unit_id)
       `
       )
       .eq("id", id)
       .eq("company_id", companyId)
-      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
     if (fetchError || !ll) {
+      return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+    }
+
+    const warehouse = Array.isArray(ll.warehouse) ? ll.warehouse[0] : ll.warehouse;
+    const isSourceBusinessUnit = ll.business_unit_id === currentBusinessUnitId;
+    const isTargetBusinessUnit = warehouse?.business_unit_id === currentBusinessUnitId;
+
+    if (!isSourceBusinessUnit && !isTargetBusinessUnit) {
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
     }
 
@@ -107,6 +107,13 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     const isMarkArrived = newStatus === "arrived";
     const effectiveEstimatedArrivalDate =
       normalizeOptionalDate(body.estimatedArrivalDate) || ll.estimated_arrival_date || null;
+
+    if (!isMarkArrived && !isSourceBusinessUnit) {
+      return NextResponse.json(
+        { error: "Load list is read-only in this business unit" },
+        { status: 403 }
+      );
+    }
 
     const operationDenied = isInitialInTransit
       ? await requireLoadListOperation(LOAD_LIST_MARK_IN_TRANSIT_CAPABILITY)

@@ -7,7 +7,6 @@ import {
   GRN_RECEIVING_SAVE_CAPABILITY,
   requireGrnReceivingOperation,
 } from "@/lib/grns/permissions";
-import { transformItemUnitOptionRow, type DbItemUnitOptionRow } from "@/lib/items/itemUnitOptions";
 import { z } from "zod";
 
 const updateGrnLineSchema = z
@@ -94,21 +93,8 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         received_by_user:users!grns_received_by_fkey(id, email, first_name, last_name),
         checked_by_user:users!grns_checked_by_fkey(id, email, first_name, last_name),
         items:grn_items(
-          id, item_id, load_list_item_id, item_unit_option_id, load_list_qty, received_qty, damaged_qty, num_boxes, barcodes_printed, notes,
-          item:items(id, item_code, item_name),
-          item_unit_options(
-            id,
-            item_id,
-            uom_id,
-            option_label,
-            qty_per_unit,
-            barcode,
-            is_base,
-            is_default,
-            is_active,
-            sort_order,
-            units_of_measure(id, code, name, symbol)
-          )
+          id, item_id, load_list_item_id, item_unit_option_id, unit_name, qty_per_unit, load_list_qty, received_qty, damaged_qty, num_boxes, barcodes_printed, notes,
+          item:items(id, item_code, item_name)
         )
       `
       )
@@ -189,26 +175,16 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
         const itemDetails = Array.isArray(item.item)
           ? (item.item[0] as Record<string, unknown> | undefined)
           : (item.item as Record<string, unknown> | null);
-        const unitOptionDetails = Array.isArray(item.item_unit_options)
-          ? (item.item_unit_options[0] as DbItemUnitOptionRow | undefined)
-          : (item.item_unit_options as DbItemUnitOptionRow | null);
         const expectedQty = parseFloat(String(item.load_list_qty));
-        const qtyPerUnit = unitOptionDetails?.qty_per_unit
-          ? parseFloat(String(unitOptionDetails.qty_per_unit))
-          : 1;
-        const baseUomCodeSource = Array.isArray(unitOptionDetails?.units_of_measure)
-          ? unitOptionDetails?.units_of_measure[0]
-          : unitOptionDetails?.units_of_measure;
-        const baseUomCode = baseUomCodeSource?.code || "";
+        const qtyPerUnit = parseFloat(String(item.qty_per_unit));
         return {
           id: item.id,
           grnId: grn.id,
           itemId: item.item_id as string,
           loadListItemId: (item.load_list_item_id as string | null | undefined) ?? null,
           itemUnitOptionId: (item.item_unit_option_id as string | null | undefined) ?? null,
-          itemUnitOption: unitOptionDetails
-            ? transformItemUnitOptionRow(unitOptionDetails, baseUomCode)
-            : null,
+          unitName: item.unit_name as string,
+          qtyPerUnit,
           item: itemDetails
             ? {
                 id: itemDetails.id as string,

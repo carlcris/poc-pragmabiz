@@ -534,7 +534,8 @@ export default function LoadListsPage() {
                           className="flex items-center justify-end gap-2"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {canEditLoadLists &&
+                          {ll.isSourceBusinessUnit &&
+                            canEditLoadLists &&
                             (ll.status === "draft" || ll.status === "confirmed") && (
                               <Button
                                 variant="outline"
@@ -547,7 +548,7 @@ export default function LoadListsPage() {
                                 <span>{t("edit")}</span>
                               </Button>
                             )}
-                          {canEditLoadLists && ll.status === "draft" && (
+                          {ll.isSourceBusinessUnit && canEditLoadLists && ll.status === "draft" && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -559,8 +560,9 @@ export default function LoadListsPage() {
                               <span>{t("confirm")}</span>
                             </Button>
                           )}
-                          {(canEditLoadLists && canCancelLL(ll)) ||
-                          (canDeleteLoadLists &&
+                          {(ll.isSourceBusinessUnit && canEditLoadLists && canCancelLL(ll)) ||
+                          (ll.isSourceBusinessUnit &&
+                            canDeleteLoadLists &&
                             (ll.status === "draft" || ll.status === "confirmed")) ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -574,7 +576,7 @@ export default function LoadListsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                {canEditLoadLists && canCancelLL(ll) && (
+                                {ll.isSourceBusinessUnit && canEditLoadLists && canCancelLL(ll) && (
                                   <DropdownMenuItem
                                     onClick={() => handleCancelLL(ll)}
                                     disabled={updateStatusMutation.isPending}
@@ -584,7 +586,8 @@ export default function LoadListsPage() {
                                     <span>{t("cancel")}</span>
                                   </DropdownMenuItem>
                                 )}
-                                {canDeleteLoadLists &&
+                                {ll.isSourceBusinessUnit &&
+                                  canDeleteLoadLists &&
                                   (ll.status === "draft" || ll.status === "confirmed") && (
                                     <DropdownMenuItem
                                       onClick={() => handleDeleteLL(ll)}

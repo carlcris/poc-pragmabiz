@@ -12,6 +12,8 @@ type PutawayTaskRow = {
   warehouse_id: string;
   item_id: string;
   uom_id: string | null;
+  source_unit_name: string;
+  source_qty_per_unit: number | string;
   source_type: string;
   source_id: string;
   source_line_id: string;
@@ -33,32 +35,6 @@ type PutawayTaskRow = {
   uom: { code: string | null; name: string | null } | { code: string | null; name: string | null }[] | null;
 };
 
-type SourceUnitMetadata = {
-  unitCode: string | null;
-  unitName: string | null;
-  qtyPerUnit: number;
-};
-
-type GrnSourceLineRow = {
-  id: string;
-  item_unit_options:
-    | {
-        qty_per_unit: number | string | null;
-        units_of_measure:
-          | { code: string | null; name: string | null }
-          | { code: string | null; name: string | null }[]
-          | null;
-      }
-    | {
-        qty_per_unit: number | string | null;
-        units_of_measure:
-          | { code: string | null; name: string | null }
-          | { code: string | null; name: string | null }[]
-          | null;
-      }[]
-    | null;
-};
-
 const parsePositiveInt = (value: string | null, fallback: number, max: number) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) return fallback;
@@ -76,10 +52,7 @@ const quotePostgrestFilterValue = (value: string) =>
 const one = <T,>(value: T | T[] | null | undefined): T | null =>
   Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 
-const mapTask = (
-  row: PutawayTaskRow,
-  sourceUnitMetadata?: SourceUnitMetadata | null
-): PutawayTask => {
+const mapTask = (row: PutawayTaskRow): PutawayTask => {
   const taskUom = one(row.uom);
 
   return {
@@ -95,9 +68,8 @@ const mapTask = (
     uomId: row.uom_id,
     uomCode: taskUom?.code ?? null,
     uomName: taskUom?.name ?? null,
-    sourceUnitCode: sourceUnitMetadata?.unitCode ?? taskUom?.code ?? null,
-    sourceUnitName: sourceUnitMetadata?.unitName ?? taskUom?.name ?? null,
-    sourceQtyPerUnit: sourceUnitMetadata?.qtyPerUnit ?? 1,
+    sourceUnitName: row.source_unit_name,
+    sourceQtyPerUnit: parseNumber(row.source_qty_per_unit),
     sourceType: row.source_type,
     sourceId: row.source_id,
     sourceLineId: row.source_line_id,
@@ -112,52 +84,6 @@ const mapTask = (
     notes: row.notes,
     createdAt: row.created_at,
   };
-};
-
-const fetchSourceUnitMetadata = async (
-  supabase: Awaited<ReturnType<typeof createServerClientWithBU>>["supabase"],
-  rows: PutawayTaskRow[]
-) => {
-  const metadata = new Map<string, SourceUnitMetadata>();
-  const grnSourceLineIds = rows
-    .filter((row) => row.source_type === "grn")
-    .map((row) => row.source_line_id)
-    .filter((sourceLineId): sourceLineId is string => Boolean(sourceLineId));
-
-  if (grnSourceLineIds.length === 0) return metadata;
-
-  const uniqueGrnSourceLineIds = [...new Set(grnSourceLineIds)];
-  const { data, error } = await supabase
-    .from("grn_items")
-    .select(
-      `
-      id,
-      item_unit_options(
-        qty_per_unit,
-        units_of_measure(code, name)
-      )
-    `
-    )
-    .in("id", uniqueGrnSourceLineIds);
-
-  if (error) {
-    console.error("Error fetching putaway source unit metadata:", error);
-    return metadata;
-  }
-
-  ((data || []) as unknown as GrnSourceLineRow[]).forEach((row) => {
-    const unitOption = one(row.item_unit_options);
-    const unit = one(unitOption?.units_of_measure);
-    const qtyPerUnit = parseNumber(unitOption?.qty_per_unit) || 1;
-
-    metadata.set(row.id, {
-      unitCode: unit?.code ?? null,
-      unitName: unit?.name ?? null,
-      qtyPerUnit,
-    });
-  });
-
-  return metadata;
 };
 
 async function GETHandler(request: NextRequest) {
@@ -188,6 +114,8 @@ async function GETHandler(request: NextRequest) {
       warehouse_id,
       item_id,
       uom_id,
+      source_unit_name,
+      source_qty_per_unit,
       source_type,
       source_id,
       source_line_id,
@@ -241,10 +169,9 @@ async function GETHandler(request: NextRequest) {
   }
 
   const rows = (data || []) as unknown as PutawayTaskRow[];
-  const sourceUnitMetadataByLineId = await fetchSourceUnitMetadata(supabase, rows);
   const total = count ?? 0;
   return NextResponse.json({
-    data: rows.map((row) => mapTask(row, sourceUnitMetadataByLineId.get(row.source_line_id))),
+    data: rows.map(mapTask),
     pagination: {
       page,
       limit,

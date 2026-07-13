@@ -225,7 +225,7 @@ export default function PutawayStationPage() {
 
   const selectTask = (task: PutawayTask) => {
     const selectedQuantity = task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
-    const sourceQuantity = selectedQuantity / (task.sourceQtyPerUnit || 1);
+    const sourceQuantity = selectedQuantity / task.sourceQtyPerUnit;
     setSelectedTask(task);
     setLocationId(task.suggestedLocationId ?? "");
     setQuantity(String(selectedQuantity));
@@ -426,7 +426,7 @@ export default function PutawayStationPage() {
                 tasks.map((task) => {
                   const displayQuantity =
                     task.status === "completed" ? task.postedQuantity : task.pendingQuantity;
-                  const sourceQtyPerUnit = task.sourceQtyPerUnit || 1;
+                  const sourceQtyPerUnit = task.sourceQtyPerUnit;
                   const sourceQuantity = displayQuantity / sourceQtyPerUnit;
                   const isPrintingThisTask = printingTaskId === task.id;
 
@@ -452,7 +452,7 @@ export default function PutawayStationPage() {
                         <span className="font-medium">{formatQty(sourceQuantity)}</span>
                       </TableCell>
                       <TableCell>
-                        <span>{task.sourceUnitCode || task.sourceUnitName || "-"}</span>
+                        <span>{task.sourceUnitName}</span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span>{formatQty(sourceQtyPerUnit)}</span>

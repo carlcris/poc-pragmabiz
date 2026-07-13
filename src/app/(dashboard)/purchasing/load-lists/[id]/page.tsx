@@ -212,7 +212,7 @@ export default function LoadListDetailPage() {
         </div>
         {ll && (
           <div className="flex flex-wrap items-center gap-2">
-            {ll.status === "draft" && canViewUnitPrice && (
+            {ll.isSourceBusinessUnit && ll.status === "draft" && canViewUnitPrice && (
               <>
                 <Button variant="outline" onClick={() => updateEditSearchParam(true)}>
                   <Pencil className="mr-2 h-4 w-4" />
@@ -221,7 +221,8 @@ export default function LoadListDetailPage() {
                 <Button onClick={() => setConfirmDialogOpen(true)}>{t("confirm")}</Button>
               </>
             )}
-            {canLinkStockRequisitions &&
+            {ll.isSourceBusinessUnit &&
+              canLinkStockRequisitions &&
               (ll.status === "draft" ||
                 ll.status === "confirmed" ||
                 ll.status === "in_transit" ||
@@ -231,13 +232,13 @@ export default function LoadListDetailPage() {
                   {t("linkStockRequisitions")}
                 </Button>
               )}
-            {canMarkInTransit && ll.status === "confirmed" && (
+            {ll.isSourceBusinessUnit && canMarkInTransit && ll.status === "confirmed" && (
               <Button onClick={() => setInTransitDialogOpen(true)}>{t("markInTransit")}</Button>
             )}
             {canMarkArrived && ll.status === "in_transit" && (
               <Button onClick={() => setArrivedDialogOpen(true)}>{t("markArrived")}</Button>
             )}
-            {ll.status === "arrived" && (
+            {ll.isSourceBusinessUnit && ll.status === "arrived" && (
               <Button
                 variant="outline"
                 onClick={() => setReverseArrivalDialogOpen(true)}
@@ -425,11 +426,11 @@ export default function LoadListDetailPage() {
                           <TableCell>{item.item?.name}</TableCell>
                           <TableCell>
                             <div className="font-medium">
-                              {item.itemUnitOption?.displayLabel || item.uomCode || t("noValue")}
+                              {item.unitName}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {t("qtyPerUnitInlineLabel", {
-                                qty: (item.itemUnitOption?.qtyPerUnit ?? 1).toLocaleString(locale, {
+                                qty: item.qtyPerUnit.toLocaleString(locale, {
                                   maximumFractionDigits: 4,
                                 }),
                               })}
@@ -438,7 +439,7 @@ export default function LoadListDetailPage() {
                           <TableCell className="text-right">{item.loadListQty}</TableCell>
                           <TableCell className="text-right">
                             {(
-                              item.loadListQty * (item.itemUnitOption?.qtyPerUnit ?? 1)
+                              item.loadListQty * item.qtyPerUnit
                             ).toLocaleString(locale, { maximumFractionDigits: 4 })}
                           </TableCell>
                           <TableCell className="text-right">
@@ -601,7 +602,7 @@ export default function LoadListDetailPage() {
       </AlertDialog>
 
       {/* Link Stock Requisitions Dialog */}
-      {ll && canLinkStockRequisitions && (
+      {ll && ll.isSourceBusinessUnit && canLinkStockRequisitions && (
         <LinkStockRequisitionsDialog
           open={linkDialogOpen}
           onOpenChange={setLinkDialogOpen}

@@ -287,15 +287,12 @@ async function POSTHandler(request: NextRequest) {
         created_by: user.id,
         updated_by: user.id,
       })
-      .select()
+      .select("id, grn_number, status")
       .single();
 
     if (createError) {
       console.error("Error creating GRN:", createError);
-      return NextResponse.json(
-        { error: createError.message || "Failed to create GRN" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to create GRN" }, { status: 500 });
     }
 
     const requestedLoadListItemIds = Array.from(
@@ -315,7 +312,7 @@ async function POSTHandler(request: NextRequest) {
 
     const { data: loadListItems, error: loadListItemsError } = await supabase
       .from("load_list_items")
-      .select("id, item_id, item_unit_option_id, load_list_qty")
+      .select("id, item_id, item_unit_option_id, unit_name, qty_per_unit, load_list_qty")
       .eq("load_list_id", body.loadListId)
       .in("id", requestedLoadListItemIds)
       .is("deleted_at", null);
@@ -349,6 +346,8 @@ async function POSTHandler(request: NextRequest) {
           load_list_item_id: sourceLine.id,
           item_id: sourceLine.item_id,
           item_unit_option_id: sourceLine.item_unit_option_id,
+          unit_name: sourceLine.unit_name,
+          qty_per_unit: sourceLine.qty_per_unit,
           load_list_qty: sourceLine.load_list_qty,
           received_qty: (item.receivedQty as number | undefined) || 0,
           damaged_qty: (item.damagedQty as number | undefined) || 0,

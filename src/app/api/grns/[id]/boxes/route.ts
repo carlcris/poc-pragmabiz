@@ -3,6 +3,15 @@ import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { RESOURCES } from "@/constants/resources";
+import { z } from "zod";
+
+const generateBoxesSchema = z
+  .object({
+    grnItemId: z.string().uuid(),
+    numBoxes: z.number().int().min(1).max(1_000_000),
+    warehouseLocationId: z.string().uuid().nullable().optional(),
+  })
+  .strict();
 
 // GET /api/grns/[id]/boxes - List boxes for a GRN item
 async function GETHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -173,10 +182,21 @@ async function GETHandler(request: NextRequest, { params }: { params: Promise<{ 
 // POST /api/grns/[id]/boxes - Generate boxes and barcodes for GRN items
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "create");
+    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "create");
+    if (unauthorized) return unauthorized;
+
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();
-    const body = await request.json();
+    const parsedBody = generateBoxesSchema.safeParse(await request.json());
+
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { error: "GRN item ID and number of boxes are required" },
+        { status: 400 }
+      );
+    }
+
+    const body = parsedBody.data;
 
     const {
       data: { user },
@@ -197,135 +217,45 @@ async function POSTHandler(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "User company not found" }, { status: 400 });
     }
 
-    // Verify GRN exists and belongs to company
-    const { data: grn, error: grnError } = await supabase
-      .from("grns")
-      .select("id, grn_number, company_id, container_number, seal_number, delivery_date")
-      .eq("id", id)
-      .eq("company_id", userData.company_id)
-      .is("deleted_at", null)
-      .single();
+    const { data: createdCount, error: regenerateError } = await supabase.rpc(
+      "regenerate_grn_boxes",
+      {
+        p_company_id: userData.company_id,
+        p_user_id: user.id,
+        p_grn_id: id,
+        p_grn_item_id: body.grnItemId,
+        p_num_boxes: body.numBoxes,
+        p_warehouse_location_id: body.warehouseLocationId ?? null,
+      }
+    );
 
-    if (grnError || !grn) {
-      return NextResponse.json({ error: "GRN not found" }, { status: 404 });
-    }
+    if (regenerateError) {
+      console.error("Error regenerating GRN boxes:", regenerateError);
 
-    // Validate required fields
-    if (!body.grnItemId || !body.numBoxes || body.numBoxes <= 0) {
-      return NextResponse.json(
-        { error: "GRN item ID and number of boxes are required" },
-        { status: 400 }
-      );
-    }
+      if (regenerateError.message === "Unauthorized") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
 
-    // Get GRN item details
-    const { data: grnItem, error: itemError } = await supabase
-      .from("grn_items")
-      .select(
-        `
-        id,
-        item_id,
-        item_unit_option_id,
-        received_qty,
-        num_boxes,
-        item_unit_option:item_unit_options(
-          qty_per_unit
-        )
-      `
-      )
-      .eq("id", body.grnItemId)
-      .eq("grn_id", id)
-      .single();
+      if (regenerateError.message === "GRN item not found") {
+        return NextResponse.json({ error: "GRN item not found" }, { status: 404 });
+      }
 
-    if (itemError || !grnItem) {
-      return NextResponse.json({ error: "GRN item not found" }, { status: 404 });
-    }
+      if (
+        regenerateError.message === "Invalid number of boxes" ||
+        regenerateError.message === "Cannot generate boxes with zero received quantity" ||
+        regenerateError.message === "GRN item unit snapshot is invalid" ||
+        regenerateError.message === "Warehouse location is not valid for this GRN" ||
+        regenerateError.message === "Calculated quantity per box must be greater than zero"
+      ) {
+        return NextResponse.json({ error: "Unable to generate boxes" }, { status: 400 });
+      }
 
-    const receivedQty = parseFloat(grnItem.received_qty);
-    if (!receivedQty || receivedQty <= 0) {
-      return NextResponse.json(
-        { error: "Cannot generate boxes with zero received quantity" },
-        { status: 400 }
-      );
-    }
-
-    const unitOption = Array.isArray(grnItem.item_unit_option)
-      ? (grnItem.item_unit_option[0] ?? null)
-      : (grnItem.item_unit_option ?? null);
-    const qtyPerUnit = Number(unitOption?.qty_per_unit ?? 1) || 1;
-    const receivedBaseQty = receivedQty * qtyPerUnit;
-
-    // Calculate quantity per box
-    const qtyPerBox = receivedBaseQty / body.numBoxes;
-    if (!Number.isFinite(qtyPerBox) || qtyPerBox <= 0) {
-      return NextResponse.json(
-        { error: "Calculated quantity per box must be greater than zero" },
-        { status: 400 }
-      );
-    }
-
-    // Remove existing boxes for this GRN item to allow regeneration
-    const { error: deleteError } = await supabase
-      .from("grn_boxes")
-      .delete()
-      .eq("grn_item_id", body.grnItemId);
-
-    if (deleteError) {
-      console.error("Error deleting existing boxes:", deleteError);
       return NextResponse.json({ error: "Failed to regenerate boxes" }, { status: 500 });
     }
 
-    let batchLocationSku: string | null = null;
-    if (body.warehouseLocationId) {
-      const { data: generatedSku, error: skuError } = await supabase.rpc(
-        "generate_item_batch_location_sku"
-      );
-      if (skuError || !generatedSku) {
-        console.error("Error generating batch_location_sku:", skuError);
-        return NextResponse.json(
-          { error: "Failed to generate batch location SKU" },
-          { status: 500 }
-        );
-      }
-      batchLocationSku = String(generatedSku);
-    }
-
-    // Generate boxes with barcodes
-    const boxesToInsert = [];
-    for (let i = 1; i <= body.numBoxes; i++) {
-      // Generate barcode: GRN-{grnNumber}-ITEM-{itemId}-BOX-{boxNumber}
-      const barcode = `${grn.grn_number}-${body.grnItemId.substring(0, 8)}-${String(i).padStart(3, "0")}`;
-
-      boxesToInsert.push({
-        grn_item_id: body.grnItemId,
-        box_number: i,
-        barcode: barcode,
-        qty_per_box: qtyPerBox,
-        warehouse_location_id: body.warehouseLocationId || null,
-        batch_location_sku: batchLocationSku,
-        delivery_date: grn.delivery_date,
-        container_number: grn.container_number,
-        seal_number: grn.seal_number,
-      });
-    }
-
-    // Insert boxes
-    const { data: boxes, error: insertError } = await supabase
-      .from("grn_boxes")
-      .insert(boxesToInsert)
-      .select("id, batch_location_sku");
-
-    if (insertError) {
-      console.error("Error creating boxes:", insertError);
-      return NextResponse.json({ error: "Failed to create boxes" }, { status: 500 });
-    }
-
-    // Update GRN item to mark barcodes as printed
-    await supabase.from("grn_items").update({ barcodes_printed: true }).eq("id", body.grnItemId);
-
     return NextResponse.json({
       message: `${body.numBoxes} boxes created successfully`,
-      boxes: boxes.length,
+      boxes: createdCount ?? 0,
     });
   } catch (error) {
     console.error("Internal server error:", error);

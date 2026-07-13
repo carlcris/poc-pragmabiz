@@ -7,6 +7,8 @@ import type {
   UpdateLoadListStatusRequest,
   LoadListSRLink,
   CreateLoadListSRLinkRequest,
+  EligibleLoadListRequisitionItemFilters,
+  EligibleLoadListRequisitionItemsResponse,
 } from "@/types/load-list";
 import { apiClient } from "@/lib/api";
 
@@ -67,10 +69,20 @@ export const loadListsApi = {
     return apiClient.get<{ data: LoadListSRLink[] }>(`${API_BASE}/${id}/link-requisitions`);
   },
 
-  removeLoadListSRLink: async (
+  getEligibleRequisitionItems: async (
     id: string,
-    linkId: string
-  ): Promise<{ message: string }> => {
+    filters?: EligibleLoadListRequisitionItemFilters
+  ): Promise<EligibleLoadListRequisitionItemsResponse> => {
+    const params = new URLSearchParams();
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.page) params.set("page", filters.page.toString());
+    if (filters?.limit) params.set("limit", filters.limit.toString());
+    return apiClient.get<EligibleLoadListRequisitionItemsResponse>(
+      `${API_BASE}/${id}/eligible-requisition-items?${params.toString()}`
+    );
+  },
+
+  removeLoadListSRLink: async (id: string, linkId: string): Promise<{ message: string }> => {
     const params = new URLSearchParams({ link_id: linkId });
     return apiClient.delete<{ message: string }>(
       `${API_BASE}/${id}/link-requisitions?${params.toString()}`

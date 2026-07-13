@@ -1977,7 +1977,9 @@ export type Database = {
           load_list_qty: number
           notes: string | null
           num_boxes: number | null
+          qty_per_unit: number
           received_qty: number
+          unit_name: string
           updated_at: string
         }
         Insert: {
@@ -1992,7 +1994,9 @@ export type Database = {
           load_list_qty: number
           notes?: string | null
           num_boxes?: number | null
+          qty_per_unit: number
           received_qty?: number
+          unit_name: string
           updated_at?: string
         }
         Update: {
@@ -2007,7 +2011,9 @@ export type Database = {
           load_list_qty?: number
           notes?: string | null
           num_boxes?: number | null
+          qty_per_unit?: number
           received_qty?: number
+          unit_name?: string
           updated_at?: string
         }
         Relationships: [
@@ -3507,9 +3513,11 @@ export type Database = {
           load_list_id: string
           load_list_qty: number
           notes: string | null
+          qty_per_unit: number
           received_qty: number
           shortage_qty: number | null
           total_price: number | null
+          unit_name: string
           unit_price: number
           uom_id: string
           updated_at: string
@@ -3523,9 +3531,11 @@ export type Database = {
           load_list_id: string
           load_list_qty: number
           notes?: string | null
+          qty_per_unit: number
           received_qty?: number
           shortage_qty?: number | null
           total_price?: number | null
+          unit_name: string
           unit_price?: number
           uom_id: string
           updated_at?: string
@@ -3539,9 +3549,11 @@ export type Database = {
           load_list_id?: string
           load_list_qty?: number
           notes?: string | null
+          qty_per_unit?: number
           received_qty?: number
           shortage_qty?: number | null
           total_price?: number | null
+          unit_name?: string
           unit_price?: number
           uom_id?: string
           updated_at?: string
@@ -5650,8 +5662,10 @@ export type Database = {
           source_batch_code: string | null
           source_id: string
           source_line_id: string
+          source_qty_per_unit: number
           source_reference: string | null
           source_type: string
+          source_unit_name: string
           status: string
           suggested_location_id: string | null
           unit_cost: number
@@ -5676,8 +5690,10 @@ export type Database = {
           source_batch_code?: string | null
           source_id: string
           source_line_id: string
+          source_qty_per_unit: number
           source_reference?: string | null
           source_type: string
+          source_unit_name: string
           status?: string
           suggested_location_id?: string | null
           unit_cost?: number
@@ -5702,8 +5718,10 @@ export type Database = {
           source_batch_code?: string | null
           source_id?: string
           source_line_id?: string
+          source_qty_per_unit?: number
           source_reference?: string | null
           source_type?: string
+          source_unit_name?: string
           status?: string
           suggested_location_id?: string | null
           unit_cost?: number
@@ -11464,6 +11482,31 @@ export type Database = {
         }
         Returns: number
       }
+      list_eligible_load_list_requisition_items: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_limit?: number
+          p_load_list_id: string
+          p_page?: number
+          p_search?: string
+          p_user_id: string
+        }
+        Returns: {
+          fulfilled_qty: number
+          item_code: string
+          item_id: string
+          item_name: string
+          outstanding_qty: number
+          requested_qty: number
+          requisition_date: string
+          sr_id: string
+          sr_item_id: string
+          sr_number: string
+          sr_status: string
+          total_count: number
+        }[]
+      }
       maintain_user_activity_logs: {
         Args: { p_delete_batch_size?: number; p_retention_days?: number }
         Returns: {
@@ -11664,6 +11707,17 @@ export type Database = {
       }
       refresh_delivery_note_item_received_qty: {
         Args: { p_company_id: string; p_dn_item_id: string }
+        Returns: number
+      }
+      regenerate_grn_boxes: {
+        Args: {
+          p_company_id: string
+          p_grn_id: string
+          p_grn_item_id: string
+          p_num_boxes: number
+          p_user_id: string
+          p_warehouse_location_id?: string
+        }
         Returns: number
       }
       reject_delivery_note_receiving_exception: {

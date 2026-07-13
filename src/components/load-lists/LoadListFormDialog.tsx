@@ -141,11 +141,7 @@ const LOAD_LIST_COST_CAPABILITY_KEYS = [
   GRANULAR_CAPABILITIES.LOAD_LISTS_UNIT_PRICE,
 ] as const;
 
-export function LoadListFormDialog({
-  open,
-  onOpenChange,
-  loadList,
-}: LoadListFormDialogProps) {
+export function LoadListFormDialog({ open, onOpenChange, loadList }: LoadListFormDialogProps) {
   const t = useTranslations("loadListForm");
   const tValidation = useTranslations("loadListValidation");
   const locale = useLocale();
@@ -283,8 +279,8 @@ export function LoadListFormDialog({
           itemName: item.item?.name,
           itemUnitOptionId: item.itemUnitOptionId || item.itemUnitOption?.id || "",
           uomId: item.uomId || "",
-          uomLabel: item.itemUnitOption?.displayLabel || item.uomCode || "",
-          qtyPerUnit: item.itemUnitOption?.qtyPerUnit ?? 1,
+          uomLabel: item.unitName,
+          qtyPerUnit: item.qtyPerUnit,
           loadListQty: item.loadListQty,
           unitPrice: item.unitPrice ?? 0,
           unitPriceCurrency: resolvedLoadList.currency ?? currentCurrency.code,

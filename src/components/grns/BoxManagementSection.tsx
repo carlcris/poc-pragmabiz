@@ -329,7 +329,7 @@ export function BoxManagementSection({ grn, isEditable }: BoxManagementSectionPr
                   count: selectedItem
                     ? (
                         ((selectedItem.receivedQty || 0) *
-                          (selectedItem.itemUnitOption?.qtyPerUnit ?? 1)) /
+                          selectedItem.qtyPerUnit) /
                         numBoxes
                       ).toFixed(2)
                     : 0,
