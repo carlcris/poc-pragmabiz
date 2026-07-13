@@ -685,6 +685,7 @@ WITH stockman_permissions(resource, can_view, can_create, can_edit, can_delete) 
     ('goods_receipt_notes.operation.start_receiving.edit', false, false, true, false),
     ('goods_receipt_notes.operation.save_receiving.edit', false, false, true, false),
     ('goods_receipt_notes.operation.submit_receiving.edit', false, false, true, false),
+    ('load_lists.operation.mark_arrived.edit', false, false, true, false),
     ('warehouses', true, false, true, false),
     ('manage_locations', true, true, true, false),
     ('view_location_stock', true, false, false, false),

@@ -49,12 +49,16 @@ export const GRANULAR_CAPABILITIES = {
 
   LOAD_LISTS_TOTAL_AMOUNT: "load_lists.field.total_amount.view",
   LOAD_LISTS_UNIT_PRICE: "load_lists.field.unit_price.view",
+  LOAD_LISTS_LINK_STOCK_REQUISITIONS: "load_lists.operation.link_stock_requisitions.edit",
+  LOAD_LISTS_MARK_IN_TRANSIT: "load_lists.operation.mark_in_transit.edit",
+  LOAD_LISTS_MARK_ARRIVED: "load_lists.operation.mark_arrived.edit",
 
   DELIVERY_NOTE_RECEIVING: "stock_requests.operation.receive_delivery_notes.edit",
   PICK_LIST_VIEW_ONLY_ASSIGNED: "stock_requests.operation.view_only_assigned_pick_lists.view",
   GRN_RECEIVING_START: "goods_receipt_notes.operation.start_receiving.edit",
   GRN_RECEIVING_SAVE: "goods_receipt_notes.operation.save_receiving.edit",
   GRN_RECEIVING_SUBMIT: "goods_receipt_notes.operation.submit_receiving.edit",
+  GRN_RECEIVING_CONFIRM: "goods_receipt_notes.operation.confirm_receiving.edit",
 } as const;
 
 export type GranularCapability = (typeof GRANULAR_CAPABILITIES)[keyof typeof GRANULAR_CAPABILITIES];
@@ -121,12 +125,16 @@ export type StockRequisitionCapabilities = {
 export type LoadListCapabilities = {
   canViewTotalAmount: boolean;
   canViewUnitPrice: boolean;
+  canLinkStockRequisitions: boolean;
+  canMarkInTransit: boolean;
+  canMarkArrived: boolean;
 };
 
 export type GrnReceivingCapabilities = {
   canStartReceiving: boolean;
   canSaveReceiving: boolean;
   canSubmitReceiving: boolean;
+  canConfirmReceiving: boolean;
 };
 
 export type DeliveryNoteReceivingCapabilities = {

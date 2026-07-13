@@ -704,6 +704,14 @@ export type TranslationKeys = {
     capabilities: {
       startGrnReceiving: string;
       startGrnReceivingDescription: string;
+      confirmGrnReceiving: string;
+      confirmGrnReceivingDescription: string;
+      linkStockRequisitions: string;
+      linkStockRequisitionsDescription: string;
+      markLoadListInTransit: string;
+      markLoadListInTransitDescription: string;
+      markLoadListArrived: string;
+      markLoadListArrivedDescription: string;
       viewAssignedPickLists: string;
       viewAssignedPickListsDescription: string;
       printBatchQr: string;
@@ -3601,6 +3609,18 @@ export const translations: Record<Locale, TranslationKeys> = {
         startGrnReceiving: "Start GRN Receiving",
         startGrnReceivingDescription:
           "Allows transitioning a draft GRN and its linked arrived load list into receiving.",
+        confirmGrnReceiving: "Confirm GRN Receiving",
+        confirmGrnReceivingDescription:
+          "Allows confirming a submitted GRN and completing its linked load list receipt.",
+        linkStockRequisitions: "Link Stock Requisitions",
+        linkStockRequisitionsDescription:
+          "Allows adding and removing stock-requisition links on draft or confirmed load lists.",
+        markLoadListInTransit: "Mark Load List In Transit",
+        markLoadListInTransitDescription:
+          "Allows moving a confirmed load list into transit and updating in-transit inventory.",
+        markLoadListArrived: "Mark Load List Arrived",
+        markLoadListArrivedDescription:
+          "Allows marking an in-transit load list as arrived and creating its linked GRN.",
         viewAssignedPickLists: "View Only Assigned Pick Lists",
         viewAssignedPickListsDescription:
           "When enabled, shows only pick lists assigned to the current user. When disabled, shows all pick lists in the current business unit.",
@@ -7816,7 +7836,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       markInTransit: "Mark In Transit",
       markArrived: "Mark Arrived",
       reverseToInTransit: "Reverse to In Transit",
-      markReceived: "Mark Received",
       cancel: "Cancel",
       loadError: "Failed to load load list.",
       notFound: "Load list not found.",
@@ -7871,9 +7890,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       reverseArrivalDescription:
         "This will move the load list back to in transit and delete the untouched draft GRN that was auto-created on arrival.",
       confirmReverseArrival: "Reverse to In Transit",
-      receivedTitle: "Mark as Received",
-      receivedDescription:
-        "This will mark the load list as received and update inventory stock levels. This action cannot be undone.",
       cancelTitle: "Cancel Load List",
       cancelDescription:
         "Are you sure you want to cancel this load list? This action cannot be undone.",
@@ -9143,6 +9159,14 @@ export const translations: Record<Locale, TranslationKeys> = {
       capabilities: {
         startGrnReceiving: "开始收货单收货",
         startGrnReceivingDescription: "允许将草稿收货单及其关联的已到货装载单转为收货中状态。",
+        confirmGrnReceiving: "确认收货单收货",
+        confirmGrnReceivingDescription: "允许确认已提交的收货单，并完成其关联装载单的收货。",
+        linkStockRequisitions: "关联库存请购",
+        linkStockRequisitionsDescription: "允许在草稿或已确认的装载单上添加和移除库存请购关联。",
+        markLoadListInTransit: "将装载单标记为在途",
+        markLoadListInTransitDescription: "允许将已确认的装载单转为在途并更新在途库存。",
+        markLoadListArrived: "将装载单标记为已到达",
+        markLoadListArrivedDescription: "允许将运输中的装载单标记为已到达，并创建其关联收货单。",
         viewAssignedPickLists: "仅查看已分配的拣货单",
         viewAssignedPickListsDescription:
           "启用后，仅显示分配给当前用户的拣货单；禁用后，显示当前业务单位内的所有拣货单。",
@@ -13252,7 +13276,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       markInTransit: "标记为在途",
       markArrived: "标记为已到达",
       reverseToInTransit: "退回在途",
-      markReceived: "标记为已收货",
       cancel: "取消",
       loadError: "加载装载单失败。",
       notFound: "未找到装载单。",
@@ -13303,8 +13326,6 @@ export const translations: Record<Locale, TranslationKeys> = {
       reverseArrivalTitle: "撤销到达",
       reverseArrivalDescription: "这会将装载单退回在途，并删除到达时自动创建且未处理的草稿收货单。",
       confirmReverseArrival: "退回在途",
-      receivedTitle: "标记为已收货",
-      receivedDescription: "这将把装载单标记为已收货，并更新库存水平。此操作无法撤销。",
       cancelTitle: "取消装载单",
       cancelDescription: "确定要取消此装载单吗？此操作无法撤销。",
       cancelBack: "不，返回",

@@ -3,261 +3,116 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import { z } from "zod";
+import {
+  LOAD_LIST_LINK_STOCK_REQUISITIONS_CAPABILITY,
+  requireLoadListOperation,
+} from "@/lib/load-lists/permissions";
 
-type LinkRequest = {
-  loadListItemId: string;
-  srItemId: string;
-  fulfilledQty: number;
-};
-
-const toNumber = (value: unknown) => {
-  const parsed = typeof value === "number" ? value : Number.parseFloat(String(value));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const one = <T>(value: T | T[] | null | undefined): T | null =>
-  Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+const linkRequestSchema = z
+  .object({
+    links: z
+      .array(
+        z
+          .object({
+            loadListItemId: z.string().uuid(),
+            srItemId: z.string().uuid(),
+            fulfilledQty: z.number().finite().positive(),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(100),
+  })
+  .strict();
+const uuidSchema = z.string().uuid();
 
 // POST /api/load-lists/[id]/link-requisitions
 // Link load list items to stock requisition items
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    const unauthorized = await requireLoadListOperation(
+      LOAD_LIST_LINK_STOCK_REQUISITIONS_CAPABILITY
+    );
     if (unauthorized) return unauthorized;
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, companyId, currentBusinessUnitId } = context;
-    const body = await request.json();
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
+    const parsedBody = linkRequestSchema.safeParse(await request.json().catch(() => null));
 
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    // Validate input
-    if (!body.links || !Array.isArray(body.links) || body.links.length === 0) {
-      return NextResponse.json(
-        { error: "Links array is required and must not be empty" },
-        { status: 400 }
-      );
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: "Invalid stock requisition links" }, { status: 400 });
     }
 
-    const requestedLinks: LinkRequest[] = [];
-    for (const rawLink of body.links as unknown[]) {
-      const link = rawLink as Record<string, unknown>;
-      const loadListItemId = typeof link.loadListItemId === "string" ? link.loadListItemId : "";
-      const srItemId = typeof link.srItemId === "string" ? link.srItemId : "";
-      const fulfilledQty = toNumber(link.fulfilledQty);
+    const requestedLinks = parsedBody.data.links;
 
-      if (!loadListItemId || !srItemId || fulfilledQty <= 0) {
-        return NextResponse.json(
-          { error: "Each link must have loadListItemId, srItemId, and a positive fulfilledQty" },
-          { status: 400 }
-        );
-      }
-
-      requestedLinks.push({ loadListItemId, srItemId, fulfilledQty });
-    }
-
-    // Verify load list exists
-    const { data: ll, error: llError } = await supabase
-      .from("load_lists")
-      .select("id, status")
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .eq("business_unit_id", currentBusinessUnitId)
-      .is("deleted_at", null)
-      .single();
-
-    if (llError || !ll) {
-      return NextResponse.json({ error: "Load list not found" }, { status: 404 });
-    }
-
-    if (!["draft", "confirmed"].includes(ll.status)) {
-      return NextResponse.json(
-        { error: "Only draft or confirmed load lists can be modified" },
-        { status: 400 }
-      );
-    }
-
-    const loadListItemIds = [...new Set(requestedLinks.map((link) => link.loadListItemId))];
-    const srItemIds = [...new Set(requestedLinks.map((link) => link.srItemId))];
-
-    const { data: llItems, error: llItemsError } = await supabase
-      .from("load_list_items")
-      .select("id, load_list_id, load_list_qty")
-      .eq("load_list_id", id)
-      .in("id", loadListItemIds);
-
-    if (llItemsError || !llItems || llItems.length !== loadListItemIds.length) {
-      return NextResponse.json(
-        { error: "One or more load list items were not found in this load list" },
-        { status: 400 }
-      );
-    }
-
-    const { data: srItems, error: srItemsError } = await supabase
-      .from("stock_requisition_items")
-      .select(
-        `
-        id,
-        requested_qty,
-        fulfilled_qty,
-        sr:stock_requisitions!inner(id, company_id, business_unit_id, status)
-      `
-      )
-      .in("id", srItemIds);
-
-    if (srItemsError || !srItems || srItems.length !== srItemIds.length) {
-      return NextResponse.json(
-        { error: "One or more stock requisition items were not found" },
-        { status: 400 }
-      );
-    }
-
-    const { data: existingLinks, error: existingLinksError } = await supabase
-      .from("load_list_sr_items")
-      .select("load_list_item_id, fulfilled_qty")
-      .in("load_list_item_id", loadListItemIds);
-
-    if (existingLinksError) {
-      console.error("Error checking existing load list requisition links:", existingLinksError);
-      return NextResponse.json({ error: "Failed to validate load list links" }, { status: 500 });
-    }
-
-    const llItemById = new Map(llItems.map((item) => [item.id, item]));
-    const srItemById = new Map(srItems.map((item) => [item.id, item]));
-    const linkedQtyByLoadListItem = new Map<string, number>();
-    for (const existingLink of existingLinks || []) {
-      const current = linkedQtyByLoadListItem.get(existingLink.load_list_item_id) || 0;
-      linkedQtyByLoadListItem.set(
-        existingLink.load_list_item_id,
-        current + toNumber(existingLink.fulfilled_qty)
-      );
-    }
-
-    const requestedQtyByLoadListItem = new Map<string, number>();
-    const requestedQtyBySrItem = new Map<string, number>();
-    const requestedLinkPairs = new Set<string>();
-
-    for (const link of requestedLinks) {
-      const linkPair = `${link.loadListItemId}:${link.srItemId}`;
-      if (requestedLinkPairs.has(linkPair)) {
-        return NextResponse.json(
-          { error: "One or more selected load list items are duplicated in this request" },
-          { status: 400 }
-        );
-      }
-      requestedLinkPairs.add(linkPair);
-
-      const llItem = llItemById.get(link.loadListItemId);
-      const srItem = srItemById.get(link.srItemId);
-      const sr = one(srItem?.sr);
-
-      if (!sr || sr.company_id !== companyId || sr.business_unit_id !== currentBusinessUnitId) {
-        return NextResponse.json(
-          { error: "Stock requisition does not belong to your business unit" },
-          { status: 403 }
-        );
-      }
-
-      if (sr.status === "cancelled") {
-        return NextResponse.json(
-          { error: "Cannot link to a cancelled stock requisition" },
-          { status: 400 }
-        );
-      }
-
-      const currentLoadListRequestedQty = requestedQtyByLoadListItem.get(link.loadListItemId) || 0;
-      const existingLoadListLinkedQty = linkedQtyByLoadListItem.get(link.loadListItemId) || 0;
-      const nextLoadListLinkedQty =
-        existingLoadListLinkedQty + currentLoadListRequestedQty + link.fulfilledQty;
-      const loadListQty = toNumber(llItem?.load_list_qty);
-
-      if (nextLoadListLinkedQty > loadListQty) {
-        return NextResponse.json(
-          { error: "Linked quantity would exceed load list item quantity" },
-          { status: 400 }
-        );
-      }
-
-      requestedQtyByLoadListItem.set(
-        link.loadListItemId,
-        currentLoadListRequestedQty + link.fulfilledQty
-      );
-
-      const currentSrRequestedQty = requestedQtyBySrItem.get(link.srItemId) || 0;
-      const currentFulfilled = toNumber(srItem?.fulfilled_qty);
-      const requestedQty = toNumber(srItem?.requested_qty);
-      const nextSrFulfilledQty = currentFulfilled + currentSrRequestedQty + link.fulfilledQty;
-
-      if (nextSrFulfilledQty > requestedQty) {
-        return NextResponse.json(
-          { error: "Fulfilled quantity would exceed requested quantity" },
-          { status: 400 }
-        );
-      }
-
-      requestedQtyBySrItem.set(link.srItemId, currentSrRequestedQty + link.fulfilledQty);
-    }
-
-    const linksToInsert = requestedLinks.map((link) => ({
-      load_list_item_id: link.loadListItemId,
-      sr_item_id: link.srItemId,
-      fulfilled_qty: link.fulfilledQty,
-    }));
-
-    // Insert links
-    const { data: insertedLinks, error: insertError } = await supabase
-      .from("load_list_sr_items")
-      .insert(linksToInsert)
-      .select("id");
-
-    if (insertError) {
-      console.error("Error creating links:", insertError);
-      if (insertError.code === "23505") {
-        return NextResponse.json(
-          {
-            error:
-              "One or more selected load list items are already linked to those requisition items",
-          },
-          { status: 409 }
-        );
-      }
-
-      return NextResponse.json({ error: "Failed to create links" }, { status: 500 });
-    }
-
-    const { error: reconcileError } = await supabase.rpc(
-      "recalculate_stock_requisition_fulfillment_for_load_list",
+    const { data: linksCreated, error: linkError } = await supabase.rpc(
+      "link_load_list_stock_requisitions",
       {
         p_company_id: companyId,
+        p_business_unit_id: currentBusinessUnitId,
+        p_user_id: userId,
         p_load_list_id: id,
+        p_links: requestedLinks.map((link) => ({
+          load_list_item_id: link.loadListItemId,
+          sr_item_id: link.srItemId,
+          fulfilled_qty: link.fulfilledQty,
+        })),
       }
     );
 
-    if (reconcileError) {
-      console.error("Error reconciling stock requisition fulfillment:", reconcileError);
-
-      if (insertedLinks && insertedLinks.length > 0) {
-        await supabase
-          .from("load_list_sr_items")
-          .delete()
-          .in(
-            "id",
-            insertedLinks.map((link) => link.id)
-          );
-      }
-
-      return NextResponse.json(
-        { error: "Failed to reconcile linked stock requisitions" },
-        { status: 500 }
-      );
+    if (linkError) {
+      console.error("Error linking stock requisitions to load list:", linkError);
+      const safeErrors: Record<string, { error: string; status: number }> = {
+        Unauthorized: { error: "Unauthorized", status: 403 },
+        "Load list not found": { error: "Load list not found", status: 404 },
+        "Only draft or confirmed load lists can be modified": {
+          error: "Only draft or confirmed load lists can be modified",
+          status: 400,
+        },
+        "One or more selected links already exist": {
+          error: "One or more selected links already exist",
+          status: 409,
+        },
+        "Linked quantity would exceed load list item quantity": {
+          error: "Linked quantity would exceed load list item quantity",
+          status: 400,
+        },
+        "Linked quantity would exceed stock requisition item quantity": {
+          error: "Linked quantity would exceed stock requisition item quantity",
+          status: 400,
+        },
+        "Load list and stock requisition items must reference the same item": {
+          error: "Load list and stock requisition items must reference the same item",
+          status: 400,
+        },
+        "Invalid stock requisition links": {
+          error: "Invalid stock requisition links",
+          status: 400,
+        },
+        "Duplicate stock requisition links are not allowed": {
+          error: "Duplicate stock requisition links are not allowed",
+          status: 400,
+        },
+        "One or more stock requisition items are unavailable": {
+          error: "One or more stock requisition items are unavailable",
+          status: 400,
+        },
+      };
+      const safeError = safeErrors[linkError.message];
+      return NextResponse.json(safeError ?? { error: "Failed to create links" }, {
+        status: safeError?.status ?? 500,
+      });
     }
 
     return NextResponse.json({
       message: "Links created successfully",
-      linksCreated: linksToInsert.length,
+      linksCreated: linksCreated ?? 0,
     });
   } catch (error) {
     console.error("Internal server error:", error);
@@ -390,40 +245,23 @@ async function DELETEHandler(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    const unauthorized = await requireLoadListOperation(
+      LOAD_LIST_LINK_STOCK_REQUISITIONS_CAPABILITY
+    );
     if (unauthorized) return unauthorized;
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
     const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const linkId = request.nextUrl.searchParams.get("link_id");
+    const parsedLinkId = uuidSchema.safeParse(linkId);
 
     if (!currentBusinessUnitId) {
       return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
     }
 
-    if (!linkId) {
+    if (!parsedLinkId.success) {
       return NextResponse.json({ error: "Link id is required" }, { status: 400 });
-    }
-
-    const { data: ll, error: llError } = await supabase
-      .from("load_lists")
-      .select("id, status")
-      .eq("id", id)
-      .eq("company_id", companyId)
-      .eq("business_unit_id", currentBusinessUnitId)
-      .is("deleted_at", null)
-      .single();
-
-    if (llError || !ll) {
-      return NextResponse.json({ error: "Load list not found" }, { status: 404 });
-    }
-
-    if (!["draft", "confirmed"].includes(ll.status)) {
-      return NextResponse.json(
-        { error: "Only draft or confirmed load lists can be modified" },
-        { status: 400 }
-      );
     }
 
     const { error: removeError } = await supabase.rpc("remove_load_list_sr_link", {
@@ -431,7 +269,7 @@ async function DELETEHandler(
       p_business_unit_id: currentBusinessUnitId,
       p_user_id: userId,
       p_load_list_id: id,
-      p_link_id: linkId,
+      p_link_id: parsedLinkId.data,
     });
 
     if (removeError) {
@@ -441,10 +279,11 @@ async function DELETEHandler(
         return NextResponse.json({ error: "Link not found" }, { status: 404 });
       }
 
-      if (
-        removeError.message === "Only draft or confirmed load lists can be modified" ||
-        removeError.message === "Load list not found"
-      ) {
+      if (removeError.message === "Load list not found") {
+        return NextResponse.json({ error: "Load list not found" }, { status: 404 });
+      }
+
+      if (removeError.message === "Only draft or confirmed load lists can be modified") {
         return NextResponse.json({ error: removeError.message }, { status: 400 });
       }
 

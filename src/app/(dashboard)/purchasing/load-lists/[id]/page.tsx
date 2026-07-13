@@ -74,12 +74,14 @@ export default function LoadListDetailPage() {
   const { currentCurrency } = useCurrency();
   const canViewTotalAmount = ll?.capabilities?.canViewTotalAmount === true;
   const canViewUnitPrice = ll?.capabilities?.canViewUnitPrice === true;
+  const canLinkStockRequisitions = ll?.capabilities?.canLinkStockRequisitions === true;
+  const canMarkInTransit = ll?.capabilities?.canMarkInTransit === true;
+  const canMarkArrived = ll?.capabilities?.canMarkArrived === true;
 
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [inTransitDialogOpen, setInTransitDialogOpen] = useState(false);
   const [arrivedDialogOpen, setArrivedDialogOpen] = useState(false);
   const [reverseArrivalDialogOpen, setReverseArrivalDialogOpen] = useState(false);
-  const [receivedDialogOpen, setReceivedDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [inTransitEstimatedArrivalDate, setInTransitEstimatedArrivalDate] = useState("");
   const [inTransitLinerName, setInTransitLinerName] = useState("");
@@ -219,18 +221,20 @@ export default function LoadListDetailPage() {
                 <Button onClick={() => setConfirmDialogOpen(true)}>{t("confirm")}</Button>
               </>
             )}
-            {(ll.status === "confirmed" ||
-              ll.status === "in_transit" ||
-              ll.status === "arrived") && (
-              <Button variant="outline" onClick={() => setLinkDialogOpen(true)}>
-                <LinkIcon className="mr-2 h-4 w-4" />
-                {t("linkStockRequisitions")}
-              </Button>
-            )}
-            {ll.status === "confirmed" && (
+            {canLinkStockRequisitions &&
+              (ll.status === "draft" ||
+                ll.status === "confirmed" ||
+                ll.status === "in_transit" ||
+                ll.status === "arrived") && (
+                <Button variant="outline" onClick={() => setLinkDialogOpen(true)}>
+                  <LinkIcon className="mr-2 h-4 w-4" />
+                  {t("linkStockRequisitions")}
+                </Button>
+              )}
+            {canMarkInTransit && ll.status === "confirmed" && (
               <Button onClick={() => setInTransitDialogOpen(true)}>{t("markInTransit")}</Button>
             )}
-            {ll.status === "in_transit" && (
+            {canMarkArrived && ll.status === "in_transit" && (
               <Button onClick={() => setArrivedDialogOpen(true)}>{t("markArrived")}</Button>
             )}
             {ll.status === "arrived" && (
@@ -241,9 +245,6 @@ export default function LoadListDetailPage() {
               >
                 {t("reverseToInTransit")}
               </Button>
-            )}
-            {ll.status === "pending_approval" && (
-              <Button onClick={() => setReceivedDialogOpen(true)}>{t("markReceived")}</Button>
             )}
           </div>
         )}
@@ -562,7 +563,7 @@ export default function LoadListDetailPage() {
       </Dialog>
 
       {/* Arrived Dialog */}
-      <AlertDialog open={arrivedDialogOpen} onOpenChange={setArrivedDialogOpen}>
+      <AlertDialog open={canMarkArrived && arrivedDialogOpen} onOpenChange={setArrivedDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("arrivedTitle")}</AlertDialogTitle>
@@ -599,28 +600,8 @@ export default function LoadListDetailPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Received Dialog */}
-      <AlertDialog open={receivedDialogOpen} onOpenChange={setReceivedDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("receivedTitle")}</AlertDialogTitle>
-            <AlertDialogDescription>{t("receivedDescription")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleStatusChange("received", setReceivedDialogOpen)}
-              disabled={updateStatusMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {updateStatusMutation.isPending ? t("updating") : t("markReceived")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Link Stock Requisitions Dialog */}
-      {ll && (
+      {ll && canLinkStockRequisitions && (
         <LinkStockRequisitionsDialog
           open={linkDialogOpen}
           onOpenChange={setLinkDialogOpen}

@@ -35,6 +35,9 @@ export type LoadListItem = {
 export type LoadListCapabilities = {
   canViewTotalAmount: boolean;
   canViewUnitPrice: boolean;
+  canLinkStockRequisitions: boolean;
+  canMarkInTransit: boolean;
+  canMarkArrived: boolean;
 };
 
 export type LoadList = {

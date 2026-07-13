@@ -11454,12 +11454,43 @@ export type Database = {
         }
         Returns: string
       }
+      link_load_list_stock_requisitions: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_links: Json
+          p_load_list_id: string
+          p_user_id: string
+        }
+        Returns: number
+      }
       maintain_user_activity_logs: {
         Args: { p_delete_batch_size?: number; p_retention_days?: number }
         Returns: {
           deleted_rows: number
           dropped_partitions: number
         }[]
+      }
+      mark_load_list_arrived: {
+        Args: {
+          p_actual_arrival_date?: string
+          p_business_unit_id: string
+          p_company_id: string
+          p_load_list_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      mark_load_list_in_transit: {
+        Args: {
+          p_business_unit_id: string
+          p_company_id: string
+          p_estimated_arrival_date?: string
+          p_liner_name?: string
+          p_load_list_id: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       notify_business_units: {
         Args: {

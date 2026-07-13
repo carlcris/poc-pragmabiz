@@ -1,8 +1,10 @@
 import { withActivityLogging } from "@/lib/activity-logging/route-activity-logger";
 import { createServerClientWithBU } from "@/lib/supabase/server-with-bu";
 import { NextRequest, NextResponse } from "next/server";
-import { requirePermission } from "@/lib/auth";
-import { RESOURCES } from "@/constants/resources";
+import {
+  GRN_RECEIVING_CONFIRM_CAPABILITY,
+  requireGrnReceivingOperation,
+} from "@/lib/grns/permissions";
 
 const userSafeConfirmMessage = (message: string | undefined) => {
   const allowedMessages = new Set([
@@ -19,7 +21,7 @@ const userSafeConfirmMessage = (message: string | undefined) => {
 // POST /api/grns/[id]/confirm - Confirm GRN after received stock has been staged to putaway
 async function POSTHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.GOODS_RECEIPT_NOTES, "edit");
+    const unauthorized = await requireGrnReceivingOperation(GRN_RECEIVING_CONFIRM_CAPABILITY);
     if (unauthorized) return unauthorized;
     const { id } = await params;
     const { supabase } = await createServerClientWithBU();

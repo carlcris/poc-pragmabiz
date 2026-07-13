@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requirePermission } from "@/lib/auth";
 import { requireRequestContext } from "@/lib/auth/requestContext";
 import { RESOURCES } from "@/constants/resources";
+import {
+  LOAD_LIST_MARK_ARRIVED_CAPABILITY,
+  LOAD_LIST_MARK_IN_TRANSIT_CAPABILITY,
+  requireLoadListOperation,
+} from "@/lib/load-lists/permissions";
 
 const normalizeOptionalDate = (value: unknown) => {
   if (typeof value !== "string") return null;
@@ -12,7 +17,6 @@ const normalizeOptionalDate = (value: unknown) => {
 
 const normalizeLoadListItemBaseQty = (item: {
   load_list_qty?: string | number | null;
-  received_qty?: string | number | null;
   item_unit_option?:
     | { qty_per_unit?: string | number | null }
     | { qty_per_unit?: string | number | null }[]
@@ -23,24 +27,31 @@ const normalizeLoadListItemBaseQty = (item: {
     : (item.item_unit_option ?? null);
   const qtyPerUnit = Number(rawUnitOption?.qty_per_unit ?? 1) || 1;
   const loadListQty = Number(item.load_list_qty ?? 0) || 0;
-  const receivedQty = Number(item.received_qty ?? loadListQty) || 0;
 
-  return {
-    loadListBaseQty: loadListQty * qtyPerUnit,
-    receivedBaseQty: receivedQty * qtyPerUnit,
-  };
+  return { loadListBaseQty: loadListQty * qtyPerUnit };
 };
 
 // PATCH /api/load-lists/[id]/status
 async function PATCHHandler(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    const unauthorized = await requirePermission(RESOURCES.LOAD_LISTS, "view");
     if (unauthorized) return unauthorized;
     const { id } = await params;
     const context = await requireRequestContext();
     if ("status" in context) return context;
-    const { supabase, userId, companyId } = context;
+    const { supabase, userId, companyId, currentBusinessUnitId } = context;
     const body = await request.json();
+
+    if (!currentBusinessUnitId) {
+      return NextResponse.json({ error: "Business unit context required" }, { status: 400 });
+    }
+
+    if (body.status === "received") {
+      return NextResponse.json(
+        { error: "Load lists can only be marked received by confirming the linked GRN" },
+        { status: 400 }
+      );
+    }
 
     // Validate status
     const validStatuses = [
@@ -50,7 +61,6 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       "arrived",
       "receiving",
       "pending_approval",
-      "received",
       "cancelled",
     ];
     if (!body.status || !validStatuses.includes(body.status)) {
@@ -66,20 +76,14 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
         ll_number,
         status,
         warehouse_id,
-        business_unit_id,
         created_by,
-        container_number,
-        seal_number,
-        batch_number,
         liner_name,
         estimated_arrival_date,
-        actual_arrival_date,
         items:load_list_items(
           id,
           item_id,
           item_unit_option_id,
           load_list_qty,
-          received_qty,
           item_unit_option:item_unit_options(
             qty_per_unit
           )
@@ -88,6 +92,7 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       )
       .eq("id", id)
       .eq("company_id", companyId)
+      .eq("business_unit_id", currentBusinessUnitId)
       .is("deleted_at", null)
       .single();
 
@@ -95,27 +100,20 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Load list not found" }, { status: 404 });
     }
 
-    const { data: targetWarehouse, error: targetWarehouseError } = await supabase
-      .from("warehouses")
-      .select("id, business_unit_id")
-      .eq("id", ll.warehouse_id)
-      .eq("company_id", companyId)
-      .is("deleted_at", null)
-      .single();
-
-    if (targetWarehouseError || !targetWarehouse?.business_unit_id) {
-      console.error("Error resolving load list target warehouse:", targetWarehouseError);
-      return NextResponse.json(
-        { error: "Failed to resolve load list target warehouse" },
-        { status: 500 }
-      );
-    }
-
     const currentStatus = ll.status;
     const newStatus = body.status;
     const isArrivalReversal = currentStatus === "arrived" && newStatus === "in_transit";
+    const isInitialInTransit = currentStatus === "confirmed" && newStatus === "in_transit";
+    const isMarkArrived = newStatus === "arrived";
     const effectiveEstimatedArrivalDate =
       normalizeOptionalDate(body.estimatedArrivalDate) || ll.estimated_arrival_date || null;
+
+    const operationDenied = isInitialInTransit
+      ? await requireLoadListOperation(LOAD_LIST_MARK_IN_TRANSIT_CAPABILITY)
+      : isMarkArrived
+        ? await requireLoadListOperation(LOAD_LIST_MARK_ARRIVED_CAPABILITY)
+        : await requirePermission(RESOURCES.LOAD_LISTS, "edit");
+    if (operationDenied) return operationDenied;
 
     // Validate status transition
     if (currentStatus === "cancelled" && newStatus !== "cancelled") {
@@ -152,6 +150,91 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       );
     }
 
+    if (isInitialInTransit) {
+      const { error: markInTransitError } = await supabase.rpc("mark_load_list_in_transit", {
+        p_company_id: companyId,
+        p_business_unit_id: currentBusinessUnitId,
+        p_user_id: userId,
+        p_load_list_id: ll.id,
+        p_estimated_arrival_date: effectiveEstimatedArrivalDate,
+        p_liner_name:
+          typeof body.linerName === "string" ? body.linerName.trim() || null : ll.liner_name,
+      });
+
+      if (markInTransitError) {
+        console.error("Error marking load list in transit:", markInTransitError);
+        const status = markInTransitError.message === "Unauthorized" ? 403 : 400;
+        const error =
+          markInTransitError.message === "Load list not found" ||
+          markInTransitError.message === "Only confirmed load lists can be marked in transit"
+            ? markInTransitError.message
+            : "Failed to mark load list in transit";
+        return NextResponse.json({ error }, { status });
+      }
+
+      return NextResponse.json({
+        id: ll.id,
+        llNumber: ll.ll_number,
+        status: "in_transit",
+        message: "Status updated successfully",
+      });
+    }
+
+    if (isMarkArrived) {
+      const { data: grnNumber, error: markArrivedError } = await supabase.rpc(
+        "mark_load_list_arrived",
+        {
+          p_company_id: companyId,
+          p_business_unit_id: currentBusinessUnitId,
+          p_user_id: userId,
+          p_load_list_id: ll.id,
+          p_actual_arrival_date: new Date().toISOString().split("T")[0],
+        }
+      );
+
+      if (markArrivedError) {
+        console.error("Error marking load list arrived:", markArrivedError);
+        const status = markArrivedError.message === "Unauthorized" ? 403 : 400;
+        const error =
+          markArrivedError.message === "Load list not found" ||
+          markArrivedError.message === "Only in-transit load lists can be marked arrived" ||
+          markArrivedError.message === "Load list has no items" ||
+          markArrivedError.message === "Target warehouse not found"
+            ? markArrivedError.message
+            : "Failed to mark load list arrived";
+        return NextResponse.json({ error }, { status });
+      }
+
+      if (ll.created_by) {
+        const { error: notificationError } = await supabase.from("notifications").insert({
+          company_id: companyId,
+          user_id: ll.created_by,
+          title: "Shipments arrived",
+          message: `Load list ${ll.ll_number} has arrived.`,
+          type: "load_list_status",
+          metadata: {
+            load_list_id: ll.id,
+            ll_number: ll.ll_number,
+            status: "arrived",
+          },
+        });
+
+        if (notificationError) {
+          console.error("Error creating load list arrival notification:", notificationError);
+        }
+      }
+
+      return NextResponse.json({
+        id: ll.id,
+        llNumber: ll.ll_number,
+        status: "arrived",
+        message: grnNumber
+          ? `Status updated successfully. GRN ${grnNumber} created.`
+          : "Status updated successfully",
+        ...(grnNumber ? { grnNumber } : {}),
+      });
+    }
+
     if (isArrivalReversal) {
       const { error: reversalError } = await supabase.rpc("reverse_load_list_arrival", {
         p_company_id: companyId,
@@ -177,59 +260,6 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
     // ========================================================================
 
     try {
-      // Handle transition TO "in_transit" status
-      if (currentStatus !== "in_transit" && newStatus === "in_transit" && !isArrivalReversal) {
-        // Increment in_transit for each item (no RPC dependency)
-        for (const item of ll.items) {
-          const { loadListBaseQty: qty } = normalizeLoadListItemBaseQty(item);
-          if (!qty) continue;
-
-          const { data: existingRecord, error: fetchInvError } = await supabase
-            .from("item_warehouse")
-            .select("id, in_transit")
-            .eq("item_id", item.item_id)
-            .eq("warehouse_id", ll.warehouse_id)
-            .eq("company_id", companyId)
-            .maybeSingle();
-
-          if (fetchInvError) {
-            throw fetchInvError;
-          }
-
-          if (existingRecord) {
-            const newInTransit = parseFloat(existingRecord.in_transit) + qty;
-            const { error: updateError } = await supabase
-              .from("item_warehouse")
-              .update({
-                in_transit: newInTransit,
-                estimated_arrival_date: effectiveEstimatedArrivalDate,
-                updated_by: userId,
-              })
-              .eq("id", existingRecord.id);
-
-            if (updateError) {
-              throw updateError;
-            }
-          } else {
-            const { error: insertError } = await supabase.from("item_warehouse").insert({
-              company_id: companyId,
-              item_id: item.item_id,
-              warehouse_id: ll.warehouse_id,
-              in_transit: qty,
-              estimated_arrival_date: effectiveEstimatedArrivalDate,
-              current_stock: 0,
-              reserved_stock: 0,
-              created_by: userId,
-              updated_by: userId,
-            });
-
-            if (insertError) {
-              throw insertError;
-            }
-          }
-        }
-      }
-
       // Handle transition FROM any active transit state TO "cancelled"
       if (currentStatus === "in_transit" && newStatus === "cancelled") {
         // Decrement in_transit (rollback)
@@ -262,57 +292,6 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
           }
         }
       }
-
-      // Handle transition TO "received" (after GRN confirmation)
-      // Note: This will typically be handled by the GRN confirmation endpoint
-      // but we include it here for completeness
-      if (currentStatus !== "received" && newStatus === "received") {
-        // Decrement in_transit and increment on_hand
-        for (const item of ll.items) {
-          const { loadListBaseQty, receivedBaseQty: receivedQty } =
-            normalizeLoadListItemBaseQty(item);
-
-          // Ensure item_warehouse record exists
-          const { data: existingRecord } = await supabase
-            .from("item_warehouse")
-            .select("id, in_transit, current_stock")
-            .eq("item_id", item.item_id)
-            .eq("warehouse_id", ll.warehouse_id)
-            .eq("company_id", companyId)
-            .single();
-
-          if (existingRecord) {
-            const newInTransit = Math.max(
-              0,
-              parseFloat(existingRecord.in_transit) - loadListBaseQty
-            );
-            const newOnHand = parseFloat(existingRecord.current_stock) + receivedQty;
-
-            await supabase
-              .from("item_warehouse")
-              .update({
-                in_transit: newInTransit,
-                current_stock: newOnHand,
-                updated_by: userId,
-              })
-              .eq("item_id", item.item_id)
-              .eq("warehouse_id", ll.warehouse_id)
-              .eq("company_id", companyId);
-          } else {
-            // Create new record if it doesn't exist
-            await supabase.from("item_warehouse").insert({
-              company_id: companyId,
-              item_id: item.item_id,
-              warehouse_id: ll.warehouse_id,
-              in_transit: 0,
-              current_stock: receivedQty,
-              reserved_stock: 0,
-              created_by: userId,
-              updated_by: userId,
-            });
-          }
-        }
-      }
     } catch (inventoryError) {
       console.error("Error updating inventory:", inventoryError);
       return NextResponse.json(
@@ -327,24 +306,6 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       updated_by: userId,
     };
 
-    if (newStatus === "in_transit") {
-      updateData.estimated_arrival_date = effectiveEstimatedArrivalDate;
-      updateData.liner_name = body.linerName ?? ll.liner_name ?? null;
-      if (isArrivalReversal) {
-        updateData.actual_arrival_date = null;
-      }
-    }
-
-    // Set timestamps based on status
-    if (newStatus === "arrived" && !ll.actual_arrival_date) {
-      updateData.actual_arrival_date = new Date().toISOString().split("T")[0];
-    }
-
-    if (newStatus === "received") {
-      updateData.received_date = new Date().toISOString();
-      updateData.received_by = userId;
-    }
-
     const { data: updatedLL, error: updateError } = await supabase
       .from("load_lists")
       .update(updateData)
@@ -357,16 +318,12 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: "Failed to update status" }, { status: 500 });
     }
 
-    if (currentStatus !== newStatus && ["arrived", "receiving", "received"].includes(newStatus)) {
+    if (currentStatus !== newStatus && newStatus === "receiving") {
       const titleMap: Record<string, string> = {
-        arrived: "Shipments arrived",
         receiving: "Shipments receiving started",
-        received: "Shipments received",
       };
       const messageMap: Record<string, string> = {
-        arrived: `Load list ${ll.ll_number} has arrived.`,
         receiving: `Load list ${ll.ll_number} is now receiving.`,
-        received: `Load list ${ll.ll_number} has been received.`,
       };
 
       const notificationTargets = [ll.created_by].filter(Boolean);
@@ -394,104 +351,12 @@ async function PATCHHandler(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    // ========================================================================
-    // AUTO-CREATE GRN when Load List arrives
-    // ========================================================================
-    let grnNumber = null;
-    if (currentStatus !== "arrived" && newStatus === "arrived") {
-      try {
-        // Check if GRN already exists for this load list
-        const { data: existingGRN } = await supabase
-          .from("grns")
-          .select("id, grn_number")
-          .eq("load_list_id", ll.id)
-          .is("deleted_at", null)
-          .single();
-
-        if (!existingGRN) {
-          // Create GRN header
-          const deliveryDate =
-            ll.actual_arrival_date ||
-            updateData.actual_arrival_date ||
-            ll.estimated_arrival_date ||
-            new Date().toISOString().split("T")[0];
-
-          const { data: grn, error: grnError } = await supabase
-            .from("grns")
-            .insert({
-              load_list_id: ll.id,
-              company_id: companyId,
-              business_unit_id: targetWarehouse.business_unit_id,
-              warehouse_id: ll.warehouse_id,
-              container_number: ll.container_number,
-              seal_number: ll.seal_number,
-              batch_number: ll.batch_number,
-              receiving_date: new Date().toISOString().split("T")[0],
-              delivery_date: deliveryDate,
-              status: "draft",
-              notes: `Auto-created from Load List ${ll.ll_number}`,
-              received_by: userId,
-              created_by: userId,
-              updated_by: userId,
-            })
-            .select("id, grn_number")
-            .single();
-
-          if (grnError) {
-            console.error("Error creating GRN:", grnError);
-            // Don't fail the status update if GRN creation fails
-          } else if (grn) {
-            grnNumber = grn.grn_number;
-            // Create GRN items from load list items
-            const grnItemsToInsert = ll.items.map((item: Record<string, unknown>) => ({
-              grn_id: grn.id,
-              load_list_item_id: item.id as string,
-              item_id: item.item_id as string,
-              item_unit_option_id: (item.item_unit_option_id as string | null | undefined) ?? null,
-              load_list_qty: item.load_list_qty as number,
-              received_qty: 0,
-              damaged_qty: 0,
-              num_boxes: 0,
-              barcodes_printed: false,
-            }));
-
-            const { error: grnItemsError } = await supabase
-              .from("grn_items")
-              .insert(grnItemsToInsert);
-
-            if (grnItemsError) {
-              console.error("Error creating GRN items:", grnItemsError);
-              // Rollback GRN creation if items fail
-              await supabase.from("grns").delete().eq("id", grn.id);
-              grnNumber = null;
-            }
-          }
-        } else {
-          grnNumber = existingGRN.grn_number;
-        }
-      } catch (grnCreationError) {
-        console.error("Error in GRN auto-creation:", grnCreationError);
-        // Don't fail the entire status update
-      }
-    }
-
-    const response: {
-      id: string;
-      llNumber: string;
-      status: string;
-      message: string;
-      grnNumber?: string;
-    } = {
+    const response = {
       id: updatedLL.id,
       llNumber: updatedLL.ll_number,
       status: updatedLL.status,
       message: "Status updated successfully",
     };
-
-    if (grnNumber) {
-      response.grnNumber = grnNumber;
-      response.message = `Status updated successfully. GRN ${grnNumber} created.`;
-    }
 
     return NextResponse.json(response);
   } catch (error) {

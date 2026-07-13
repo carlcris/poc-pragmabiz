@@ -223,6 +223,22 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         title: t("capabilities.startGrnReceiving"),
         description: t("capabilities.startGrnReceivingDescription"),
       },
+      [GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM]: {
+        title: t("capabilities.confirmGrnReceiving"),
+        description: t("capabilities.confirmGrnReceivingDescription"),
+      },
+      [GRANULAR_CAPABILITIES.LOAD_LISTS_LINK_STOCK_REQUISITIONS]: {
+        title: t("capabilities.linkStockRequisitions"),
+        description: t("capabilities.linkStockRequisitionsDescription"),
+      },
+      [GRANULAR_CAPABILITIES.LOAD_LISTS_MARK_IN_TRANSIT]: {
+        title: t("capabilities.markLoadListInTransit"),
+        description: t("capabilities.markLoadListInTransitDescription"),
+      },
+      [GRANULAR_CAPABILITIES.LOAD_LISTS_MARK_ARRIVED]: {
+        title: t("capabilities.markLoadListArrived"),
+        description: t("capabilities.markLoadListArrivedDescription"),
+      },
       [GRANULAR_CAPABILITIES.PICK_LIST_VIEW_ONLY_ASSIGNED]: {
         title: t("capabilities.viewAssignedPickLists"),
         description: t("capabilities.viewAssignedPickListsDescription"),

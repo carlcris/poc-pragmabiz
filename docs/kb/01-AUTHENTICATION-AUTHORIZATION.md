@@ -124,6 +124,12 @@ The seed data includes operational roles for demo/local environments:
 
 GRN receiving start/pause, save, and submit operations require `goods_receipt_notes.view` plus their documented granular capability. They do not require or implicitly grant broad `goods_receipt_notes.edit` access.
 
+Final GRN confirmation requires `goods_receipt_notes.view` plus `goods_receipt_notes.operation.confirm_receiving.edit`. The capability is assigned to Admin and Super Admin by default, preserves access for existing non-warehouse roles that already had broad GRN edit access, and is not implicitly granted to Picker or Stockman. Confirming the GRN is the only supported way to mark its linked load list as received.
+
+Adding or removing load-list stock-requisition links requires `load_lists.view` plus `load_lists.operation.link_stock_requisitions.edit`. Moving a confirmed load list into transit requires `load_lists.view` plus `load_lists.operation.mark_in_transit.edit`. Both capabilities preserve access for existing non-warehouse roles with broad load-list edit access and remain opt-in for Picker and Stockman.
+
+Marking an in-transit load list as arrived requires `load_lists.view` plus `load_lists.operation.mark_arrived.edit`. Stockman receives this capability by default; Picker does not. The arrival transition and linked GRN creation remain one atomic operation.
+
 **Permission Types per Resource**:
 
 - `view` - Read access

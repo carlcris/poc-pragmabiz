@@ -7,6 +7,7 @@ import { canAccessCapability } from "@/services/permissions/permissionResolver";
 export const GRN_RECEIVING_SAVE_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_SAVE;
 export const GRN_RECEIVING_START_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_START;
 export const GRN_RECEIVING_SUBMIT_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_SUBMIT;
+export const GRN_RECEIVING_CONFIRM_CAPABILITY = GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM;
 
 export async function requireGrnReceivingOperation(
   capability: GranularCapability

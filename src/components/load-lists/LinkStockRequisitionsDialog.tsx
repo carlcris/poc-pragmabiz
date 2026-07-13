@@ -66,17 +66,21 @@ export function LinkStockRequisitionsDialog({
   const [addLinkError, setAddLinkError] = useState("");
   const [removingLinkId, setRemovingLinkId] = useState<string | null>(null);
 
-  // Fetch stock requisitions that can be linked (submitted or partially_fulfilled)
-  const { data: srsData } = useStockRequisitions({
-    status: undefined, // We'll filter client-side to get submitted + partially_fulfilled
+  const { data: submittedSRsData } = useStockRequisitions({
+    status: "submitted",
     supplierId: loadList.supplierId,
-    limit: 50,
+    limit: 5,
+  });
+  const { data: partiallyFulfilledSRsData } = useStockRequisitions({
+    status: "partially_fulfilled",
+    supplierId: loadList.supplierId,
+    limit: 5,
   });
 
-  const availableSRs =
-    srsData?.data?.filter(
-      (sr) => sr.status === "submitted" || sr.status === "partially_fulfilled"
-    ) || [];
+  const availableSRs = [
+    ...(submittedSRsData?.data ?? []),
+    ...(partiallyFulfilledSRsData?.data ?? []),
+  ];
 
   // Get all SR items from available SRs that have outstanding qty
   const availableSRItems = availableSRs.flatMap(
@@ -110,6 +114,9 @@ export function LinkStockRequisitionsDialog({
 
   // Get selected LL item details
   const selectedLLItem = loadList.items?.find((item) => item.id === selectedLLItemId);
+  const matchingSRItems = selectedLLItem
+    ? availableSRItems.filter((item) => item.item?.id === selectedLLItem.itemId)
+    : [];
   const selectedLLItemAvailableQty = selectedLLItem
     ? Math.max(
         0,
@@ -120,7 +127,7 @@ export function LinkStockRequisitionsDialog({
     : 0;
 
   // Get selected SR item details
-  const selectedSRItem = availableSRItems.find((item) => item.id === selectedSRItemId);
+  const selectedSRItem = matchingSRItems.find((item) => item.id === selectedSRItemId);
   const selectedPairKey =
     selectedLLItemId && selectedSRItemId ? `${selectedLLItemId}:${selectedSRItemId}` : "";
 
@@ -445,6 +452,7 @@ export function LinkStockRequisitionsDialog({
                       value={selectedLLItemId}
                       onValueChange={(value) => {
                         setSelectedLLItemId(value);
+                        setSelectedSRItemId("");
                         setAddLinkError("");
                       }}
                     >
@@ -472,13 +480,13 @@ export function LinkStockRequisitionsDialog({
                         setSelectedSRItemId(value);
                         setAddLinkError("");
                       }}
-                      disabled={availableSRItems.length === 0}
+                      disabled={!selectedLLItem || matchingSRItems.length === 0}
                     >
                       <SelectTrigger className="h-10 border-gray-300 bg-white focus:border-purple-500 focus:ring-purple-500">
                         <SelectValue placeholder={t("selectSrItem")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {availableSRItems.map((item) => {
+                        {matchingSRItems.map((item) => {
                           const pairKey = `${selectedLLItemId}:${item.id}`;
                           const isAlreadyLinked = selectedLLItemId
                             ? existingLinkPairs.has(pairKey)

@@ -42,6 +42,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { RESOURCES } from "@/constants/resources";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { useCanView } from "@/hooks/usePermissions";
 import type { GRNStatus, GRNItem } from "@/types/grn";
 
 const DamagedItemsSection = dynamic(
@@ -82,6 +86,13 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
   const updateMutation = useUpdateGRN();
   const submitMutation = useSubmitGRN();
   const confirmMutation = useConfirmGRN();
+  const canViewGrns = useCanView(RESOURCES.GOODS_RECEIPT_NOTES);
+  const { data: granularCapabilities = {} } = useGranularCapabilities(
+    [GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM],
+    "edit"
+  );
+  const canConfirmGrns =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM] === true;
 
   const [editedItems, setEditedItems] = useState<
     Record<
@@ -216,7 +227,7 @@ export default function GRNDetailPage({ params }: GRNDetailPageProps) {
 
   const isEditable = grn?.status === "draft" || grn?.status === "receiving";
   const canSubmit = grn?.status === "draft" || grn?.status === "receiving";
-  const canConfirm = grn?.status === "pending_approval";
+  const canConfirm = canConfirmGrns && grn?.status === "pending_approval";
 
   if (isLoading) {
     return (

@@ -53,6 +53,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { DataTablePagination } from "@/components/shared/DataTablePagination";
 import { EmptyStatePanel } from "@/components/shared/EmptyStatePanel";
+import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
+import { RESOURCES } from "@/constants/resources";
+import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
+import { useCanView } from "@/hooks/usePermissions";
 import type { GRN, GRNStatus } from "@/types/grn";
 
 export default function GRNsPage() {
@@ -74,6 +78,13 @@ export default function GRNsPage() {
   const deleteMutation = useDeleteGRN();
   const submitMutation = useSubmitGRN();
   const confirmMutation = useConfirmGRN();
+  const canViewGrns = useCanView(RESOURCES.GOODS_RECEIPT_NOTES);
+  const { data: granularCapabilities = {} } = useGranularCapabilities(
+    [GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM],
+    "edit"
+  );
+  const canConfirmGrns =
+    canViewGrns && granularCapabilities[GRANULAR_CAPABILITIES.GRN_RECEIVING_CONFIRM] === true;
 
   const { data, isLoading, error } = useGRNs({
     search,
@@ -417,7 +428,7 @@ export default function GRNsPage() {
                               <span>{t("submit")}</span>
                             </Button>
                           )}
-                          {grn.status === "pending_approval" && (
+                          {canConfirmGrns && grn.status === "pending_approval" && (
                             <Button
                               variant="outline"
                               size="sm"
