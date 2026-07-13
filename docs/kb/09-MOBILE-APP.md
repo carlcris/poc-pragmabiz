@@ -105,6 +105,7 @@ apps/mobile/
 - Claims are released on cancel, navigation, or successful confirmation; a local nearest-expiry timer and foreground refresh remove expired disconnected-picker claims even when no Realtime event occurs
 - Pause and Complete are unavailable while any line has an active claim, and the database rejects completion if a claim appears concurrently
 - Confirm Pick persists a quantity increment and scanned source transactionally with a client operation ID, so retries are idempotent while separate physical picks remain distinct
+- Pick progress is displayed per pick-list line. When the same item is allocated across multiple batches, confirming one batch updates only its matching line; sibling batch lines retain their own independent progress
 - Before confirmation, mobile stores the pending payload, business-unit scope, and operation ID locally, renews the claim, and suppresses lease-heartbeat cleanup until the result is resolved. A manual retry, app restart, or foreground resume retries the same operation first; if the original request did not commit and the lease expired, it reacquires the line and retries without changing the operation ID
 - Delivery-note picked totals are reconciled from execution rows across all non-deleted pick lists, preserving prior progress when a later pick list is created for the same delivery-note line
 - Complete Picking finalizes the already-persisted pick rows instead of replaying mobile-only quantity changes
