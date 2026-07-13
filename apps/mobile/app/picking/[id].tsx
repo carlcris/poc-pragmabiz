@@ -498,7 +498,6 @@ export default function PickingDetailScreen() {
       }
 
       setVerifyError("Item not found");
-      setBarcode(value);
     } catch (error) {
       setVerifyError(error instanceof Error ? error.message : "Failed to verify scanned item.");
     } finally {
@@ -754,7 +753,6 @@ export default function PickingDetailScreen() {
         visible={scannerOpen}
         onClose={() => setScannerOpen(false)}
         onScan={(value) => {
-          setBarcode(value);
           void verifyBarcode(value);
         }}
       />
