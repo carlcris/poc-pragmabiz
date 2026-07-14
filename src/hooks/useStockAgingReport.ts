@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { STOCK_AGING_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -78,7 +79,7 @@ export function useStockAgingReport(filters: StockAgingReportFilters) {
   const { enabled = true, ...queryFilters } = filters;
 
   return useQuery<StockAgingReportResponse>({
-    queryKey: ["stock-aging-report", queryFilters],
+    queryKey: [STOCK_AGING_REPORT_QUERY_KEY, queryFilters],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams();

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { STOCK_LEDGER_QUERY_KEY } from "@/hooks/queryKeys";
 
 export interface StockLedgerEntry {
   id: string;
@@ -50,7 +51,7 @@ export interface StockLedgerResponse {
 
 export function useStockLedger(filters: StockLedgerFilters) {
   return useQuery<StockLedgerResponse>({
-    queryKey: ["stock-ledger", filters],
+    queryKey: [STOCK_LEDGER_QUERY_KEY, filters],
     queryFn: async () => {
       const params = new URLSearchParams();
 

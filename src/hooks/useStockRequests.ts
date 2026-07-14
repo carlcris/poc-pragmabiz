@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { STOCK_REQUESTS_QUERY_KEY } from "@/hooks/queryKeys";
 import { stockRequestsApi } from "@/lib/api/stock-requests";
 import type {
   StockRequestListParams,
@@ -9,8 +10,6 @@ import type {
   PickStockRequestPayload,
   DispatchStockRequestPayload,
 } from "@/types/stock-request";
-
-export const STOCK_REQUESTS_QUERY_KEY = "stock-requests";
 
 const getErrorMessage = (error: unknown, fallback: string) =>
   error instanceof Error ? error.message : fallback;

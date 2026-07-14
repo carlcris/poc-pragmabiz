@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { INVENTORY_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -86,7 +87,7 @@ export function useInventoryReport(filters: InventoryReportFilters) {
   const { enabled = true, ...queryFilters } = filters;
 
   return useQuery<InventoryReportResponse>({
-    queryKey: ["inventory-report", queryFilters],
+    queryKey: [INVENTORY_REPORT_QUERY_KEY, queryFilters],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams();

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ItemWithStock } from "@/app/api/items/route";
+import { ITEMS_STOCK_QUERY_KEY } from "@/hooks/queryKeys";
 
 export interface ItemsStockFilters {
   search?: string;
@@ -33,7 +34,7 @@ export interface ItemsStockResponse {
 
 export function useItemsStock(filters?: ItemsStockFilters) {
   return useQuery<ItemsStockResponse>({
-    queryKey: ["items-stock", filters],
+    queryKey: [ITEMS_STOCK_QUERY_KEY, filters],
     queryFn: async () => {
       const params = new URLSearchParams();
 

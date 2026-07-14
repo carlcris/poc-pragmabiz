@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { ITEM_LOCATION_BATCH_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -70,7 +71,7 @@ export function useItemLocationBatchReport(filters: ItemLocationBatchReportFilte
   const { enabled = true, ...queryFilters } = filters;
 
   return useQuery<ItemLocationBatchReportResponse>({
-    queryKey: ["item-location-batch-report", queryFilters],
+    queryKey: [ITEM_LOCATION_BATCH_REPORT_QUERY_KEY, queryFilters],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams();

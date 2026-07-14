@@ -5,6 +5,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ITEM_PACKAGES_QUERY_KEY, ITEMS_QUERY_KEY } from "@/hooks/queryKeys";
 
 export type ItemPackage = {
   id: string;
@@ -31,7 +32,7 @@ export type UpdatePackageInput = Record<string, never>;
 
 export function useItemPackages(itemId: string) {
   return useQuery({
-    queryKey: ["items", itemId, "packages"],
+    queryKey: [ITEMS_QUERY_KEY, itemId, ITEM_PACKAGES_QUERY_KEY],
     queryFn: async () => [] as ItemPackage[],
     enabled: !!itemId,
     staleTime: Infinity,
@@ -40,7 +41,7 @@ export function useItemPackages(itemId: string) {
 
 export function useItemPackage(itemId: string, packageId: string) {
   return useQuery({
-    queryKey: ["items", itemId, "packages", packageId],
+    queryKey: [ITEMS_QUERY_KEY, itemId, ITEM_PACKAGES_QUERY_KEY, packageId],
     queryFn: async () => null as ItemPackage | null,
     enabled: !!itemId && !!packageId,
     staleTime: Infinity,
@@ -55,7 +56,9 @@ export function useCreateItemPackage(itemId: string) {
       throw new Error("Packaging is deprecated and cannot be created.");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages"] });
+      queryClient.invalidateQueries({
+        queryKey: [ITEMS_QUERY_KEY, itemId, ITEM_PACKAGES_QUERY_KEY],
+      });
     },
   });
 }
@@ -68,8 +71,12 @@ export function useUpdateItemPackage(itemId: string, packageId: string) {
       throw new Error("Packaging is deprecated and cannot be updated.");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages", packageId] });
-      queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages"] });
+      queryClient.invalidateQueries({
+        queryKey: [ITEMS_QUERY_KEY, itemId, ITEM_PACKAGES_QUERY_KEY, packageId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ITEMS_QUERY_KEY, itemId, ITEM_PACKAGES_QUERY_KEY],
+      });
     },
   });
 }
@@ -82,7 +89,9 @@ export function useDeleteItemPackage(itemId: string) {
       throw new Error("Packaging is deprecated and cannot be deleted.");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["items", itemId, "packages"] });
+      queryClient.invalidateQueries({
+        queryKey: [ITEMS_QUERY_KEY, itemId, ITEM_PACKAGES_QUERY_KEY],
+      });
     },
   });
 }

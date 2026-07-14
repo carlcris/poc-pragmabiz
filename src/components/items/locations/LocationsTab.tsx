@@ -35,6 +35,7 @@ import {
 import { ChevronDown, ChevronRight, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useItem } from "@/hooks/useItems";
+import { ITEM_LOCATIONS_QUERY_KEY } from "@/hooks/queryKeys";
 import { useCanView } from "@/hooks/usePermissions";
 import { useGranularCapabilities } from "@/hooks/useGranularCapabilities";
 import { GRANULAR_CAPABILITIES } from "@/constants/granular-permissions";
@@ -108,7 +109,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
   const canPrintBatchQr =
     canViewItems && granularCapabilities[GRANULAR_CAPABILITIES.ITEM_BATCH_QR_PRINT] === true;
   const { data, isLoading, error } = useQuery<ItemLocationsResponse>({
-    queryKey: ["item-locations", itemId],
+    queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId],
     queryFn: async () => apiClient.get<ItemLocationsResponse>(`/api/items/${itemId}/locations`),
   });
   const { data: itemResponse } = useItem(itemId);
@@ -181,7 +182,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
         locationId: location.locationId,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["item-locations", itemId] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
       toast.success(t("defaultUpdated"));
     },
     onError: (mutationError) => {
@@ -221,7 +222,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["item-locations", itemId] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
       toast.success(t("stockMoved"));
       setMoveDialogOpen(false);
       setSelectedWarehouseId("");
@@ -253,7 +254,7 @@ export const LocationsTab = ({ itemId }: LocationsTabProps) => {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["item-locations", itemId] });
+      queryClient.invalidateQueries({ queryKey: [ITEM_LOCATIONS_QUERY_KEY, itemId] });
       queryClient.invalidateQueries({ queryKey: ["items", itemId] });
       queryClient.invalidateQueries({ queryKey: ["items"] });
       toast.success(t("maxStockUpdated"));

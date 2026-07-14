@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deliveryNotesApi } from "@/lib/api/delivery-notes";
-import { PICK_LISTS_QUERY_KEY, DELIVERY_NOTES_QUERY_KEY } from "@/hooks/queryKeys";
+import {
+  DELIVERY_NOTE_ALLOCATION_AVAILABILITY_QUERY_KEY,
+  DELIVERY_NOTES_QUERY_KEY,
+  PICK_LISTS_QUERY_KEY,
+  STOCK_REQUESTS_QUERY_KEY,
+} from "@/hooks/queryKeys";
 import { useInventoryRealtimeInvalidation } from "@/hooks/useInventoryRealtimeInvalidation";
 import { DELIVERY_NOTE_ALLOCATION_AVAILABILITY_MAX_LINES } from "@/constants/delivery-notes";
 import type {
@@ -57,10 +62,10 @@ export function useCreateDeliveryNote() {
     mutationFn: (data: CreateDeliveryNotePayload) => deliveryNotesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
     },
     onError: () => {
-      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
     },
   });
 }
@@ -69,7 +74,11 @@ export function useDeliveryNoteAllocationAvailability(srItemIds: string[], enabl
   const normalizedIds = Array.from(new Set(srItemIds)).sort();
 
   return useQuery({
-    queryKey: [DELIVERY_NOTES_QUERY_KEY, "allocation-availability", normalizedIds],
+    queryKey: [
+      DELIVERY_NOTES_QUERY_KEY,
+      DELIVERY_NOTE_ALLOCATION_AVAILABILITY_QUERY_KEY,
+      normalizedIds,
+    ],
     queryFn: async () => {
       const chunks = Array.from(
         {
@@ -223,7 +232,7 @@ export function useSubmitDeliveryNoteReceiving() {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
-      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
     },
   });
 }
@@ -274,15 +283,8 @@ export function useAcceptDeliveryNoteReceivingOverage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      itemId,
-      notes,
-    }: {
-      id: string;
-      itemId: string;
-      notes?: string | null;
-    }) => deliveryNotesApi.acceptReceivingOverage(id, itemId, { notes }),
+    mutationFn: ({ id, itemId, notes }: { id: string; itemId: string; notes?: string | null }) =>
+      deliveryNotesApi.acceptReceivingOverage(id, itemId, { notes }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
@@ -296,15 +298,8 @@ export function useRejectDeliveryNoteReceivingOverage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      id,
-      itemId,
-      notes,
-    }: {
-      id: string;
-      itemId: string;
-      notes?: string | null;
-    }) => deliveryNotesApi.rejectReceivingOverage(id, itemId, { notes }),
+    mutationFn: ({ id, itemId, notes }: { id: string; itemId: string; notes?: string | null }) =>
+      deliveryNotesApi.rejectReceivingOverage(id, itemId, { notes }),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id] });
@@ -345,7 +340,7 @@ export function useAdjustDispatchedDeliveryNoteItem() {
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
       queryClient.invalidateQueries({ queryKey: ["stock-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stock-balances"] });
-      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
     },
   });
 }
@@ -362,7 +357,7 @@ export function useAddDeliveryNoteItems() {
         queryKey: [DELIVERY_NOTES_QUERY_KEY, variables.id, "allocatable-items"],
       });
       queryClient.invalidateQueries({ queryKey: [PICK_LISTS_QUERY_KEY] });
-      queryClient.invalidateQueries({ queryKey: ["stock-requests"] });
+      queryClient.invalidateQueries({ queryKey: [STOCK_REQUESTS_QUERY_KEY] });
     },
   });
 }

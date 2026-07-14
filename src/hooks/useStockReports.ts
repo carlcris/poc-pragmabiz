@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { STOCK_MOVEMENT_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -68,7 +69,7 @@ export function useStockMovement(filters: StockMovementFilters) {
   const { enabled = true, ...queryFilters } = filters;
 
   return useQuery<StockMovementResponse>({
-    queryKey: ["stock-movement-report", queryFilters],
+    queryKey: [STOCK_MOVEMENT_REPORT_QUERY_KEY, queryFilters],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams();
