@@ -173,10 +173,15 @@ These are the records everything else in the app is built on. Before testing any
 **Optional fields**: mobile number, website, tax ID, a separate shipping address, credit limit, bank details, notes.
 
 **Validation rules**:
-- If you leave the Code blank, the system **auto-generates one** for you (a sequential code). This is the opposite of Items, where the code must always be typed manually — worth testing both behaviors deliberately so you don't assume one applies to the other.
+- The New Supplier form requires a Code. Leaving it blank prevents submission, so code generation cannot be tested through this pop-up.
+- The New Supplier form also requires a valid Email. Blank or malformed email values are rejected before submission.
 - **Important gap to test**: the required-field list above is enforced by the on-screen form, but if a request were made a different way (bypassing the form), most of those "required" fields aren't actually double-checked — meaning it may be possible to end up with a supplier missing a contact person or address if something submits data outside the normal screen. Worth flagging if you find a way to reproduce this (e.g. via an import tool, if one exists).
 
-**Why the supplier's email and language matter**: when a Stock Requisition (section 17b) is sent, the app emails that supplier the itemized request, using whichever language is set on the supplier record. **If the supplier has no email address at all, the requisition still goes through and shows as successfully sent — no email is sent, and no error or warning is shown to the user.** This is a real gap worth testing explicitly: create/send a requisition for a supplier with a blank email and confirm the app reports success anyway with no indication anything failed.
+**Why the supplier's email and language matter**: when a Stock Requisition (section 17b) is sent, the app emails that supplier the itemized request, using whichever language is set on the supplier record.
+
+**Bypass-only checks (not New Supplier form tests)**:
+- The supplier API contains a fallback that generates a sequential Code when a direct request omits it. Test this only when direct API testing is in scope; the form cannot reach this path.
+- A supplier with an empty Email can only be introduced through a direct request or preconfigured test data. With such a supplier, sending a Stock Requisition still succeeds without sending an email or warning the user. Test this only with bypass-created data, not through the form.
 
 **What must already exist first**: nothing — a supplier can be the very first record you create in a fresh environment.
 
@@ -190,8 +195,6 @@ These are the records everything else in the app is built on. Before testing any
 **Things to test**:
 - Try to delete a supplier that has an open Purchase Order — confirm it's refused with a clear message.
 - Delete a supplier with no orders — confirm it succeeds.
-- Create a requisition for a supplier with no email, send it, and confirm the app shows success with no warning that no email went out.
-- Leave the Code field blank when creating a new supplier and confirm one is generated automatically.
 - Set a supplier to Blacklisted and confirm it disappears from the picker on new Purchase Orders, while an already-open PO against it is untouched.
 
 ---
@@ -514,14 +517,14 @@ These are the records everything else in the app is built on. Before testing any
 **Step-by-step workflow**:
 
 1. **Create** → status Draft. Freely editable.
-2. **Post** → opens a confirmation dialog telling you exactly what will happen (a stock movement will be recorded, stock levels updated, the accounting ledger updated), then commits. Status becomes Posted. This directly changes on-hand inventory — there is no approval step in between today.
+2. **Post** → records a stock movement, updates stock levels and the stock ledger, then changes the status to Posted. It does not create an accounting journal or General Ledger entry. This directly changes on-hand inventory — there is no approval step in between today.
 
 **Who can do it**: edit access to Stock Adjustments (posting uses the same permission as editing).
 
 **Things to test**:
 - Confirm Post only ever appears as an option while status is Draft.
 - **Do not test for an approval step.** Pending, Approved, and Rejected exist as filter options and as designed stages, but there is no button anywhere in the app that sets them. If you find a status filter for "Pending Approval" and can't get a record into that state, this is why — flag it to the product team as a design-vs-implementation gap, not a bug you need to chase.
-- Confirm posting correctly updates the item's on-hand quantity by exactly the adjusted amount, and that a corresponding stock and ledger entry is created.
+- Confirm posting correctly updates the item's on-hand quantity by exactly the adjusted amount, and that a corresponding stock transaction appears in the stock ledger.
 
 ---
 
@@ -641,7 +644,7 @@ These are the records everything else in the app is built on. Before testing any
 
 **What must exist first**: a Reorder Rule for the item/warehouse combination (section below) — without a rule, an item is never evaluated for reordering at all.
 
-**How a record starts**: Reorder Rules are created manually (Inventory → Reorder Management → Rules tab → **New Rule**). Suggestions and Alerts are **not** created by a button — they appear automatically whenever stock for a ruled item/warehouse falls below its reorder point.
+**How a record starts**: Reorder Rules are created manually (Inventory → Reorder Management → Rules tab → **New Rule**). Alerts are **not** created by a button — they appear automatically whenever stock for a ruled item/warehouse falls below its reorder point. Suggestions are not currently generated.
 
 **This screen has three tabs, and they behave very differently — read carefully before testing:**
 
@@ -655,18 +658,17 @@ When an item/warehouse with a rule drops below its reorder point, an alert appea
 - **Acknowledge** — dismisses an active alert (moves it to the "acknowledged" list). **Unacknowledge** reverses this.
 - **Create Stock Requisition** — select one or more alerts with the checkboxes, then click this button. It opens the Stock Requisition form pre-filled with a line per selected item, using the rule's reorder quantity (or a calculated fallback if that's zero) as the requested quantity. This is the real, working path from "stock is low" to "an order request exists" — use this, not the Suggestions tab, for that flow.
 
-### Suggestions tab — **do not test the Approve/Reject buttons; they are broken**
+### Suggestions tab — **unimplemented; do not test as a workflow**
 
-This tab shows a separate, system-generated list of suggested reorders (with priority, estimated cost, supplier, and lead time). It has **Approve** and **Reject** buttons on every pending suggestion. **Both buttons are confirmed broken — the app has no matching endpoint for either action, so clicking them will fail.** This is not a permissions issue, a data issue, or something that varies by environment: the action they call does not exist anywhere in the backend. Log this as a defect if you encounter it; don't spend time trying to figure out what permission unlocks it, because none does.
+The Suggestions endpoint currently returns an empty list unconditionally, so stock changes never create pending suggestions and the Approve/Reject workflow cannot be reached. Treat the entire tab as a placeholder, not as a partially working workflow. Use the Alerts tab for the supported low-stock-to-requisition flow.
 
-**Who can do it**: edit access to Reorder Management for rules, alerts, and (if it worked) suggestions.
+**Who can do it**: edit access to Reorder Management for rules and alerts. The Suggestions workflow is not implemented.
 
 **Things to test**:
 - Create a rule for an item/warehouse, drop that item's stock below the reorder point (via a Stock Adjustment, for example), and confirm an alert appears on the Alerts tab.
 - Try to create a second rule for the same item + warehouse — should be refused.
 - Acknowledge an alert, confirm it moves to the acknowledged list, then unacknowledge it and confirm it reappears as active.
 - Select one or more active alerts and click Create Stock Requisition — confirm the requisition form opens pre-filled with the correct item(s) and a sensible quantity, and that submitting it creates a real requisition.
-- Click Approve or Reject on any suggestion in the Suggestions tab — confirm it fails, and log it as a defect rather than continuing to test around it.
 
 ---
 
@@ -963,7 +965,7 @@ These apply across *every* module above, so check them once per module rather th
    - Frame Job Order's Complete action checking the wrong permission.
    - Stock Transformation scrap output still creating a putaway task instead of being excluded entirely.
    - A Warehouse Location's "Pickable" switch having no effect on real picking — confirmed reproducible, should be logged as a defect wherever you find it, not just noted in passing.
-   - Reorder Management's Suggestions tab: the Approve and Reject buttons are visible and clickable but call an action that doesn't exist in the backend — confirmed broken, not environment-specific.
+   - Reorder Management's Suggestions tab is entirely unimplemented: its list endpoint always returns an empty array, so suggestions and their Approve/Reject workflow cannot be tested.
    - The Workflow settings tab's approval-requirement toggles (Purchase Order, Stock Request, Delivery Note) having no effect on the actual workflows they claim to gate.
    - A Sales Invoice payment can be recorded successfully, and the invoice marked Paid, even if the corresponding accounting-ledger entry silently fails to post — no error is surfaced to the user either way.
 5. **No consistent "in use" protection across master data.** Suppliers and Roles correctly block deletion when something else depends on them; Items, Customers, Warehouses, and Warehouse Locations do not — treat every master-data delete as its own test rather than assuming the app protects itself consistently.

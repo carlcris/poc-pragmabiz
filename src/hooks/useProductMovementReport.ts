@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { PRODUCT_MOVEMENT_REPORT_QUERY_KEY } from "@/hooks/queryKeys";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
@@ -65,7 +66,7 @@ export function useProductMovementReport(filters: ProductMovementReportFilters) 
   const { enabled = true, ...queryFilters } = filters;
 
   return useQuery<ProductMovementReportResponse>({
-    queryKey: ["product-movement-report", queryFilters],
+    queryKey: [PRODUCT_MOVEMENT_REPORT_QUERY_KEY, queryFilters],
     enabled,
     queryFn: async () => {
       const params = new URLSearchParams();

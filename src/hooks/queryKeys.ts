@@ -25,4 +25,5 @@ export const INVENTORY_REPORT_QUERY_KEY = "inventory-report";
 export const ITEM_LOCATION_BATCH_REPORT_QUERY_KEY = "item-location-batch-report";
 export const STOCK_AGING_REPORT_QUERY_KEY = "stock-aging-report";
 export const STOCK_MOVEMENT_REPORT_QUERY_KEY = "stock-movement-report";
+export const PRODUCT_MOVEMENT_REPORT_QUERY_KEY = "product-movement-report";
 export const STOCK_LEDGER_QUERY_KEY = "stock-ledger";
